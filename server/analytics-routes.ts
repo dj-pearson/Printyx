@@ -5,7 +5,7 @@ const analyticsRouter = Router();
 // Phase 3: Analytics endpoints for conversion insights and trend widgets
 analyticsRouter.get('/api/analytics/conversion-metrics/:dealId?', async (req, res) => {
   try {
-    const tenantId = req.session?.tenantId;
+    const tenantId = req.session?.tenant_id;
     const conversionMetrics = {
       leadToQualifiedRate: 65,
       qualifiedToDemoRate: 45,

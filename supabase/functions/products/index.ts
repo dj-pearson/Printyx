@@ -26,9 +26,9 @@ export default async function handler(req: Request) {
 
     // Extract tenant ID from JWT metadata
     const tenantId =
-      (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
+      (user.app_metadata?.tenant_id as string) ||
+      (user.user_metadata?.tenant_id as string) ||
       (user.user_metadata?.tenant_id as string);
 
     if (!tenantId) {

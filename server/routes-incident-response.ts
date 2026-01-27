@@ -17,7 +17,7 @@ const router = express.Router();
 // Get incident response dashboard
 router.get('/api/incident-response/dashboard', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -462,7 +462,7 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
 // Get detailed incident information
 router.get('/api/incident-response/incidents/:incidentId', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { incidentId } = req.params;
 
     if (!tenantId) {
@@ -626,7 +626,7 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
 // Execute incident response playbook
 router.post('/api/incident-response/playbooks/:playbookId/execute', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { playbookId } = req.params;
     const { incidentId, parameters } = req.body;
 

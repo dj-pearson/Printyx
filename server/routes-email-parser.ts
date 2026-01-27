@@ -54,7 +54,7 @@ const correctionSchema = z.object({
 // Helper to get user ID from request (supports Supabase JWT and session)
 const getUserId = (req: Request): string | undefined => {
   const reqAny = req as any;
-  return reqAny.user?.id || reqAny.user?.claims?.sub || reqAny.session?.userId;
+  return reqAny.user?.id || reqAny.user?.claims?.sub || reqAny.session?.user_id;
 };
 
 /**
@@ -66,7 +66,7 @@ router.get('/config', async (req: any, res) => {
     const { tenantId } = req;
 
     const config = await db.query.emailMonitorConfig.findFirst({
-      where: eq(emailMonitorConfig.tenantId, tenantId),
+      where: eq(emailMonitorConfig.tenant_id, tenantId),
     });
 
     if (!config) {
@@ -129,7 +129,7 @@ router.post('/config', async (req: any, res) => {
 
     // Check if config exists
     const existingConfig = await db.query.emailMonitorConfig.findFirst({
-      where: eq(emailMonitorConfig.tenantId, tenantId),
+      where: eq(emailMonitorConfig.tenant_id, tenantId),
     });
 
     let config;
@@ -152,7 +152,7 @@ router.post('/config', async (req: any, res) => {
           sendConfirmationEmail,
           updatedAt: new Date(),
         })
-        .where(eq(emailMonitorConfig.tenantId, tenantId))
+        .where(eq(emailMonitorConfig.tenant_id, tenantId))
         .returning();
     } else {
       // Create new config
@@ -253,7 +253,7 @@ router.get('/processed-emails', async (req: any, res) => {
     const status = req.query.status as string; // success, failed, skipped
     const offset = (page - 1) * limit;
 
-    let whereConditions: any = eq(processedEmails.tenantId, tenantId);
+    let whereConditions: any = eq(processedEmails.tenant_id, tenantId);
 
     if (status) {
       whereConditions = and(whereConditions, eq(processedEmails.processingStatus, status));
@@ -298,7 +298,7 @@ router.get('/stats', async (req: any, res) => {
 
     // Get config with stats
     const config = await db.query.emailMonitorConfig.findFirst({
-      where: eq(emailMonitorConfig.tenantId, tenantId),
+      where: eq(emailMonitorConfig.tenant_id, tenantId),
     });
 
     if (!config) {
@@ -322,7 +322,7 @@ router.get('/stats', async (req: any, res) => {
       .from(processedEmails)
       .where(
         and(
-          eq(processedEmails.tenantId, tenantId),
+          eq(processedEmails.tenant_id, tenantId),
           gte(processedEmails.processedAt, thirtyDaysAgo),
         ),
       )
@@ -411,7 +411,7 @@ router.post('/enable', async (req: any, res) => {
     await db
       .update(emailMonitorConfig)
       .set({ enabled: true, updatedAt: new Date() })
-      .where(eq(emailMonitorConfig.tenantId, tenantId));
+      .where(eq(emailMonitorConfig.tenant_id, tenantId));
 
     await startEmailMonitor(tenantId);
 
@@ -433,7 +433,7 @@ router.post('/disable', async (req: any, res) => {
     await db
       .update(emailMonitorConfig)
       .set({ enabled: false, updatedAt: new Date() })
-      .where(eq(emailMonitorConfig.tenantId, tenantId));
+      .where(eq(emailMonitorConfig.tenant_id, tenantId));
 
     await stopEmailMonitor(tenantId);
 

@@ -53,7 +53,7 @@ router.get('/connections', async (req: Request, res: Response) => {
   try {
     const { manufacturerType, connectionStatus } = req.query;
 
-    const connections = await storage.getManufacturerConnections(user.tenantId, {
+    const connections = await storage.getManufacturerConnections(user.tenant_id, {
       manufacturerType: manufacturerType as string | undefined,
       connectionStatus: connectionStatus as string | undefined,
     });
@@ -80,7 +80,7 @@ router.get('/connections/:id', async (req: Request, res: Response) => {
   try {
     const connection = await storage.getManufacturerConnection(req.params.id);
 
-    if (!connection || connection.tenantId !== user.tenantId) {
+    if (!connection || connection.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Connection not found' });
     }
 
@@ -114,7 +114,7 @@ router.post('/connections', async (req: Request, res: Response) => {
     const data = insertManufacturerConnectionSchema.parse(req.body);
     const connection = await storage.createManufacturerConnection({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
     });
 
     res.status(201).json(connection);
@@ -143,12 +143,12 @@ router.put('/connections/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getManufacturerConnection(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Connection not found' });
     }
 
     const data = insertManufacturerConnectionSchema.partial().parse(req.body);
-    const updated = await storage.updateManufacturerConnection(req.params.id, user.tenantId, data);
+    const updated = await storage.updateManufacturerConnection(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -176,11 +176,11 @@ router.delete('/connections/:id', async (req: Request, res: Response) => {
 
   try {
     const connection = await storage.getManufacturerConnection(req.params.id);
-    if (!connection || connection.tenantId !== user.tenantId) {
+    if (!connection || connection.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Connection not found' });
     }
 
-    await storage.deleteManufacturerConnection(req.params.id, user.tenantId);
+    await storage.deleteManufacturerConnection(req.params.id, user.tenant_id);
     res.status(204).send();
   } catch (error) {
     console.error('Delete manufacturer connection error:', error);
@@ -197,11 +197,11 @@ router.post('/connections/:id/test', async (req: Request, res: Response) => {
 
   try {
     const connection = await storage.getManufacturerConnection(req.params.id);
-    if (!connection || connection.tenantId !== user.tenantId) {
+    if (!connection || connection.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Connection not found' });
     }
 
-    const result = await storage.testManufacturerConnection(req.params.id, user.tenantId);
+    const result = await storage.testManufacturerConnection(req.params.id, user.tenant_id);
     res.json(result);
   } catch (error) {
     console.error('Test manufacturer connection error:', error);
@@ -218,7 +218,7 @@ router.patch('/connections/:id/health', async (req: Request, res: Response) => {
 
   try {
     const connection = await storage.getManufacturerConnection(req.params.id);
-    if (!connection || connection.tenantId !== user.tenantId) {
+    if (!connection || connection.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Connection not found' });
     }
 
@@ -230,7 +230,7 @@ router.patch('/connections/:id/health', async (req: Request, res: Response) => {
     });
 
     const data = healthSchema.parse(req.body);
-    const updated = await storage.updateConnectionHealth(req.params.id, user.tenantId, data);
+    const updated = await storage.updateConnectionHealth(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -254,7 +254,7 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const { connectionId, orderStatus, startDate, endDate } = req.query;
 
-    const orders = await storage.getManufacturerOrders(user.tenantId, {
+    const orders = await storage.getManufacturerOrders(user.tenant_id, {
       connectionId: connectionId as string | undefined,
       orderStatus: orderStatus as string | undefined,
       startDate: startDate ? new Date(startDate as string) : undefined,
@@ -278,7 +278,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   try {
     const order = await storage.getManufacturerOrder(req.params.id);
 
-    if (!order || order.tenantId !== user.tenantId) {
+    if (!order || order.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
@@ -300,7 +300,7 @@ router.post('/', async (req: Request, res: Response) => {
     const data = insertManufacturerOrderSchema.parse(req.body);
     const order = await storage.createManufacturerOrder({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
     });
 
     res.status(201).json(order);
@@ -322,12 +322,12 @@ router.put('/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getManufacturerOrder(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
     const data = insertManufacturerOrderSchema.partial().parse(req.body);
-    const updated = await storage.updateManufacturerOrder(req.params.id, user.tenantId, data);
+    const updated = await storage.updateManufacturerOrder(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -348,11 +348,11 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
   try {
     const order = await storage.getManufacturerOrder(req.params.id);
-    if (!order || order.tenantId !== user.tenantId) {
+    if (!order || order.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    await storage.deleteManufacturerOrder(req.params.id, user.tenantId);
+    await storage.deleteManufacturerOrder(req.params.id, user.tenant_id);
     res.status(204).send();
   } catch (error) {
     console.error('Delete manufacturer order error:', error);
@@ -369,11 +369,11 @@ router.post('/:id/submit', async (req: Request, res: Response) => {
 
   try {
     const order = await storage.getManufacturerOrder(req.params.id);
-    if (!order || order.tenantId !== user.tenantId) {
+    if (!order || order.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    const submitted = await storage.submitOrder(req.params.id, user.tenantId);
+    const submitted = await storage.submitOrder(req.params.id, user.tenant_id);
     res.json(submitted);
   } catch (error) {
     console.error('Submit manufacturer order error:', error);
@@ -390,7 +390,7 @@ router.post('/:id/acknowledge', async (req: Request, res: Response) => {
 
   try {
     const order = await storage.getManufacturerOrder(req.params.id);
-    if (!order || order.tenantId !== user.tenantId) {
+    if (!order || order.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
@@ -401,7 +401,7 @@ router.post('/:id/acknowledge', async (req: Request, res: Response) => {
     const { manufacturerOrderNumber } = acknowledgeSchema.parse(req.body);
     const acknowledged = await storage.acknowledgeOrder(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       manufacturerOrderNumber,
     );
 
@@ -424,7 +424,7 @@ router.patch('/:id/fulfillment', async (req: Request, res: Response) => {
 
   try {
     const order = await storage.getManufacturerOrder(req.params.id);
-    if (!order || order.tenantId !== user.tenantId) {
+    if (!order || order.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
@@ -435,7 +435,7 @@ router.patch('/:id/fulfillment', async (req: Request, res: Response) => {
     });
 
     const data = fulfillmentSchema.parse(req.body);
-    const updated = await storage.updateOrderFulfillment(req.params.id, user.tenantId, data);
+    const updated = await storage.updateOrderFulfillment(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -459,7 +459,7 @@ router.get('/:orderId/line-items', async (req: Request, res: Response) => {
   try {
     // Verify order belongs to tenant
     const order = await storage.getManufacturerOrder(req.params.orderId);
-    if (!order || order.tenantId !== user.tenantId) {
+    if (!order || order.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
@@ -481,7 +481,7 @@ router.get('/line-items/:id', async (req: Request, res: Response) => {
   try {
     const lineItem = await storage.getOrderLineItem(req.params.id);
 
-    if (!lineItem || lineItem.tenantId !== user.tenantId) {
+    if (!lineItem || lineItem.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Line item not found' });
     }
 
@@ -502,14 +502,14 @@ router.post('/:orderId/line-items', async (req: Request, res: Response) => {
   try {
     // Verify order belongs to tenant
     const order = await storage.getManufacturerOrder(req.params.orderId);
-    if (!order || order.tenantId !== user.tenantId) {
+    if (!order || order.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
     const data = insertManufacturerOrderLineItemSchema.parse(req.body);
     const lineItem = await storage.createOrderLineItem({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       orderId: req.params.orderId,
     });
 
@@ -533,7 +533,7 @@ router.post('/:orderId/line-items/bulk', async (req: Request, res: Response) => 
   try {
     // Verify order belongs to tenant
     const order = await storage.getManufacturerOrder(req.params.orderId);
-    if (!order || order.tenantId !== user.tenantId) {
+    if (!order || order.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
@@ -545,7 +545,7 @@ router.post('/:orderId/line-items/bulk', async (req: Request, res: Response) => 
     const lineItems = await storage.bulkCreateOrderLineItems(
       itemsData.map((item) => ({
         ...item,
-        tenantId: user.tenantId,
+        tenantId: user.tenant_id,
         orderId: req.params.orderId,
       })),
     );
@@ -569,12 +569,12 @@ router.put('/line-items/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getOrderLineItem(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Line item not found' });
     }
 
     const data = insertManufacturerOrderLineItemSchema.partial().parse(req.body);
-    const updated = await storage.updateOrderLineItem(req.params.id, user.tenantId, data);
+    const updated = await storage.updateOrderLineItem(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -595,11 +595,11 @@ router.delete('/line-items/:id', async (req: Request, res: Response) => {
 
   try {
     const lineItem = await storage.getOrderLineItem(req.params.id);
-    if (!lineItem || lineItem.tenantId !== user.tenantId) {
+    if (!lineItem || lineItem.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Line item not found' });
     }
 
-    await storage.deleteOrderLineItem(req.params.id, user.tenantId);
+    await storage.deleteOrderLineItem(req.params.id, user.tenant_id);
     res.status(204).send();
   } catch (error) {
     console.error('Delete order line item error:', error);
@@ -616,7 +616,7 @@ router.patch('/line-items/:id/shipment', async (req: Request, res: Response) => 
 
   try {
     const lineItem = await storage.getOrderLineItem(req.params.id);
-    if (!lineItem || lineItem.tenantId !== user.tenantId) {
+    if (!lineItem || lineItem.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Line item not found' });
     }
 
@@ -627,7 +627,7 @@ router.patch('/line-items/:id/shipment', async (req: Request, res: Response) => 
     });
 
     const data = shipmentSchema.parse(req.body);
-    const updated = await storage.updateLineItemShipment(req.params.id, user.tenantId, data);
+    const updated = await storage.updateLineItemShipment(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -651,7 +651,7 @@ router.get('/:orderId/confirmations', async (req: Request, res: Response) => {
   try {
     // Verify order belongs to tenant
     const order = await storage.getManufacturerOrder(req.params.orderId);
-    if (!order || order.tenantId !== user.tenantId) {
+    if (!order || order.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
@@ -673,7 +673,7 @@ router.get('/confirmations/:id', async (req: Request, res: Response) => {
   try {
     const confirmation = await storage.getOrderConfirmation(req.params.id);
 
-    if (!confirmation || confirmation.tenantId !== user.tenantId) {
+    if (!confirmation || confirmation.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Confirmation not found' });
     }
 
@@ -694,14 +694,14 @@ router.post('/:orderId/confirmations', async (req: Request, res: Response) => {
   try {
     // Verify order belongs to tenant
     const order = await storage.getManufacturerOrder(req.params.orderId);
-    if (!order || order.tenantId !== user.tenantId) {
+    if (!order || order.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
     const data = insertManufacturerOrderConfirmationSchema.parse(req.body);
     const confirmation = await storage.createOrderConfirmation({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       orderId: req.params.orderId,
     });
 
@@ -724,12 +724,12 @@ router.put('/confirmations/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getOrderConfirmation(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Confirmation not found' });
     }
 
     const data = insertManufacturerOrderConfirmationSchema.partial().parse(req.body);
-    const updated = await storage.updateOrderConfirmation(req.params.id, user.tenantId, data);
+    const updated = await storage.updateOrderConfirmation(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -750,11 +750,11 @@ router.post('/confirmations/:id/process', async (req: Request, res: Response) =>
 
   try {
     const confirmation = await storage.getOrderConfirmation(req.params.id);
-    if (!confirmation || confirmation.tenantId !== user.tenantId) {
+    if (!confirmation || confirmation.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Confirmation not found' });
     }
 
-    const processed = await storage.processConfirmation(req.params.id, user.tenantId);
+    const processed = await storage.processConfirmation(req.params.id, user.tenant_id);
     res.json(processed);
   } catch (error) {
     console.error('Process order confirmation error:', error);
@@ -774,7 +774,7 @@ router.get('/:orderId/shipments', async (req: Request, res: Response) => {
   try {
     // Verify order belongs to tenant
     const order = await storage.getManufacturerOrder(req.params.orderId);
-    if (!order || order.tenantId !== user.tenantId) {
+    if (!order || order.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
@@ -796,7 +796,7 @@ router.get('/shipments/:id', async (req: Request, res: Response) => {
   try {
     const shipment = await storage.getOrderShipment(req.params.id);
 
-    if (!shipment || shipment.tenantId !== user.tenantId) {
+    if (!shipment || shipment.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Shipment not found' });
     }
 
@@ -817,7 +817,7 @@ router.get('/shipments/tracking/:trackingNumber', async (req: Request, res: Resp
   try {
     const shipment = await storage.getShipmentByTrackingNumber(
       req.params.trackingNumber,
-      user.tenantId,
+      user.tenant_id,
     );
 
     if (!shipment) {
@@ -841,14 +841,14 @@ router.post('/:orderId/shipments', async (req: Request, res: Response) => {
   try {
     // Verify order belongs to tenant
     const order = await storage.getManufacturerOrder(req.params.orderId);
-    if (!order || order.tenantId !== user.tenantId) {
+    if (!order || order.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
     const data = insertManufacturerOrderShipmentSchema.parse(req.body);
     const shipment = await storage.createOrderShipment({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       orderId: req.params.orderId,
     });
 
@@ -871,12 +871,12 @@ router.put('/shipments/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getOrderShipment(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Shipment not found' });
     }
 
     const data = insertManufacturerOrderShipmentSchema.partial().parse(req.body);
-    const updated = await storage.updateOrderShipment(req.params.id, user.tenantId, data);
+    const updated = await storage.updateOrderShipment(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -897,11 +897,11 @@ router.delete('/shipments/:id', async (req: Request, res: Response) => {
 
   try {
     const shipment = await storage.getOrderShipment(req.params.id);
-    if (!shipment || shipment.tenantId !== user.tenantId) {
+    if (!shipment || shipment.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Shipment not found' });
     }
 
-    await storage.deleteOrderShipment(req.params.id, user.tenantId);
+    await storage.deleteOrderShipment(req.params.id, user.tenant_id);
     res.status(204).send();
   } catch (error) {
     console.error('Delete order shipment error:', error);
@@ -918,7 +918,7 @@ router.patch('/shipments/:id/tracking', async (req: Request, res: Response) => {
 
   try {
     const shipment = await storage.getOrderShipment(req.params.id);
-    if (!shipment || shipment.tenantId !== user.tenantId) {
+    if (!shipment || shipment.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Shipment not found' });
     }
 
@@ -929,7 +929,7 @@ router.patch('/shipments/:id/tracking', async (req: Request, res: Response) => {
     });
 
     const data = trackingSchema.parse(req.body);
-    const updated = await storage.updateShipmentTracking(req.params.id, user.tenantId, data);
+    const updated = await storage.updateShipmentTracking(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -950,7 +950,7 @@ router.post('/shipments/:id/deliver', async (req: Request, res: Response) => {
 
   try {
     const shipment = await storage.getOrderShipment(req.params.id);
-    if (!shipment || shipment.tenantId !== user.tenantId) {
+    if (!shipment || shipment.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Shipment not found' });
     }
 
@@ -961,7 +961,7 @@ router.post('/shipments/:id/deliver', async (req: Request, res: Response) => {
     });
 
     const data = deliverySchema.parse(req.body);
-    const delivered = await storage.deliverShipment(req.params.id, user.tenantId, data);
+    const delivered = await storage.deliverShipment(req.params.id, user.tenant_id, data);
 
     res.json(delivered);
   } catch (error) {
@@ -985,7 +985,7 @@ router.get('/:orderId/exceptions', async (req: Request, res: Response) => {
   try {
     // Verify order belongs to tenant
     const order = await storage.getManufacturerOrder(req.params.orderId);
-    if (!order || order.tenantId !== user.tenantId) {
+    if (!order || order.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
@@ -1007,7 +1007,7 @@ router.get('/exceptions/unresolved', async (req: Request, res: Response) => {
   try {
     const { severity, exceptionType } = req.query;
 
-    const exceptions = await storage.getUnresolvedExceptions(user.tenantId, {
+    const exceptions = await storage.getUnresolvedExceptions(user.tenant_id, {
       severity: severity as string | undefined,
       exceptionType: exceptionType as string | undefined,
     });
@@ -1029,7 +1029,7 @@ router.get('/exceptions/:id', async (req: Request, res: Response) => {
   try {
     const exception = await storage.getOrderException(req.params.id);
 
-    if (!exception || exception.tenantId !== user.tenantId) {
+    if (!exception || exception.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Exception not found' });
     }
 
@@ -1051,7 +1051,7 @@ router.post('/exceptions', async (req: Request, res: Response) => {
     const data = insertManufacturerOrderExceptionSchema.parse(req.body);
     const exception = await storage.createOrderException({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
     });
 
     res.status(201).json(exception);
@@ -1073,12 +1073,12 @@ router.put('/exceptions/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getOrderException(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Exception not found' });
     }
 
     const data = insertManufacturerOrderExceptionSchema.partial().parse(req.body);
-    const updated = await storage.updateOrderException(req.params.id, user.tenantId, data);
+    const updated = await storage.updateOrderException(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -1099,7 +1099,7 @@ router.post('/exceptions/:id/resolve', async (req: Request, res: Response) => {
 
   try {
     const exception = await storage.getOrderException(req.params.id);
-    if (!exception || exception.tenantId !== user.tenantId) {
+    if (!exception || exception.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Exception not found' });
     }
 
@@ -1110,7 +1110,7 @@ router.post('/exceptions/:id/resolve', async (req: Request, res: Response) => {
     const { resolutionNotes } = resolveSchema.parse(req.body);
     const resolved = await storage.resolveException(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       user.id,
       resolutionNotes,
     );
@@ -1134,11 +1134,11 @@ router.post('/exceptions/:id/retry', async (req: Request, res: Response) => {
 
   try {
     const exception = await storage.getOrderException(req.params.id);
-    if (!exception || exception.tenantId !== user.tenantId) {
+    if (!exception || exception.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Exception not found' });
     }
 
-    const result = await storage.retryFailedOrder(req.params.id, user.tenantId);
+    const result = await storage.retryFailedOrder(req.params.id, user.tenant_id);
     res.json(result);
   } catch (error) {
     console.error('Retry failed order error:', error);
@@ -1165,7 +1165,7 @@ router.get('/analytics/dashboard', async (req: Request, res: Response) => {
   try {
     const { connectionId, startDate, endDate } = req.query;
 
-    const analytics = await storage.getManufacturerOrderAnalytics(user.tenantId, {
+    const analytics = await storage.getManufacturerOrderAnalytics(user.tenant_id, {
       connectionId: connectionId as string | undefined,
       startDate: startDate ? new Date(startDate as string) : undefined,
       endDate: endDate ? new Date(endDate as string) : undefined,

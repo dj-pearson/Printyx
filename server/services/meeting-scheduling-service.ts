@@ -144,7 +144,7 @@ class MeetingSchedulingService {
       // Create the scheduling request
       const request: SchedulingRequest = {
         id: `req-${Date.now()}`,
-        tenantId: requestData.tenantId || 'mock-tenant',
+        tenantId: requestData.tenant_id || 'mock-tenant',
         requesterId: requestData.requesterId || 'mock-user',
         title: requestData.title || 'New Meeting',
         description: requestData.description,

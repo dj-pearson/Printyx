@@ -63,7 +63,7 @@ class AutomatedBillingService {
       .from(billingSchedules)
       .where(
         and(
-          eq(billingSchedules.tenantId, tenantId),
+          eq(billingSchedules.tenant_id, tenantId),
           eq(billingSchedules.isActive, true),
           lte(billingSchedules.nextRunDate, now),
         ),
@@ -103,7 +103,7 @@ class AutomatedBillingService {
       const [schedule] = await db
         .select()
         .from(billingSchedules)
-        .where(and(eq(billingSchedules.id, scheduleId), eq(billingSchedules.tenantId, tenantId)))
+        .where(and(eq(billingSchedules.id, scheduleId), eq(billingSchedules.tenant_id, tenantId)))
         .limit(1);
 
       if (!schedule) {
@@ -124,7 +124,7 @@ class AutomatedBillingService {
         const [contract] = await db
           .select()
           .from(contracts)
-          .where(and(eq(contracts.id, schedule.contractId), eq(contracts.tenantId, tenantId)))
+          .where(and(eq(contracts.id, schedule.contractId), eq(contracts.tenant_id, tenantId)))
           .limit(1);
 
         if (contract) {
@@ -138,7 +138,7 @@ class AutomatedBillingService {
           .where(
             and(
               eq(contracts.customerId, schedule.customerId),
-              eq(contracts.tenantId, tenantId),
+              eq(contracts.tenant_id, tenantId),
               eq(contracts.status, 'active'),
             ),
           );
@@ -147,7 +147,7 @@ class AutomatedBillingService {
         contractsToProcess = await db
           .select()
           .from(contracts)
-          .where(and(eq(contracts.tenantId, tenantId), eq(contracts.status, 'active')));
+          .where(and(eq(contracts.tenant_id, tenantId), eq(contracts.status, 'active')));
       }
 
       // Process each contract
@@ -260,7 +260,7 @@ class AutomatedBillingService {
       .from(invoices)
       .where(
         and(
-          eq(invoices.tenantId, tenantId),
+          eq(invoices.tenant_id, tenantId),
           eq(invoices.contractId, contract.id),
           gte(invoices.billingPeriodStart, periodStart),
           lte(invoices.billingPeriodEnd, periodEnd),
@@ -278,7 +278,7 @@ class AutomatedBillingService {
       .from(meterReadings)
       .where(
         and(
-          eq(meterReadings.tenantId, tenantId),
+          eq(meterReadings.tenant_id, tenantId),
           eq(meterReadings.contractId, contract.id),
           gte(meterReadings.readingDate, periodStart),
           lte(meterReadings.readingDate, periodEnd),
@@ -471,7 +471,7 @@ class AutomatedBillingService {
     const pendingReadings = await db
       .select()
       .from(meterReadings)
-      .where(and(eq(meterReadings.tenantId, tenantId), eq(meterReadings.billingStatus, 'pending')))
+      .where(and(eq(meterReadings.tenant_id, tenantId), eq(meterReadings.billingStatus, 'pending')))
       .orderBy(meterReadings.contractId, meterReadings.readingDate);
 
     // Group by contract
@@ -584,19 +584,21 @@ class AutomatedBillingService {
     const [pendingResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(invoices)
-      .where(and(eq(invoices.tenantId, tenantId), eq(invoices.status, 'open')));
+      .where(and(eq(invoices.tenant_id, tenantId), eq(invoices.status, 'open')));
 
     // Get overdue invoices count
     const [overdueResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(invoices)
-      .where(and(eq(invoices.tenantId, tenantId), eq(invoices.status, 'overdue')));
+      .where(and(eq(invoices.tenant_id, tenantId), eq(invoices.status, 'overdue')));
 
     // Get pending meter readings count
     const [pendingReadingsResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(meterReadings)
-      .where(and(eq(meterReadings.tenantId, tenantId), eq(meterReadings.billingStatus, 'pending')));
+      .where(
+        and(eq(meterReadings.tenant_id, tenantId), eq(meterReadings.billingStatus, 'pending')),
+      );
 
     // Get scheduled runs count (due in next 7 days)
     const weekFromNow = new Date();
@@ -607,7 +609,7 @@ class AutomatedBillingService {
       .from(billingSchedules)
       .where(
         and(
-          eq(billingSchedules.tenantId, tenantId),
+          eq(billingSchedules.tenant_id, tenantId),
           eq(billingSchedules.isActive, true),
           lte(billingSchedules.nextRunDate, weekFromNow),
         ),
@@ -617,8 +619,8 @@ class AutomatedBillingService {
     const recentGenerations = await db
       .select()
       .from(invoiceGenerationLogs)
-      .where(eq(invoiceGenerationLogs.tenantId, tenantId))
-      .orderBy(desc(invoiceGenerationLogs.createdAt))
+      .where(eq(invoiceGenerationLogs.tenant_id, tenantId))
+      .orderBy(desc(invoiceGenerationLogs.created_at))
       .limit(10);
 
     // Get meter collection status

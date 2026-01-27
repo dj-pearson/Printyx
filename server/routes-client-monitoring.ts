@@ -55,7 +55,7 @@ async function authenticateClient(req: any, res: any, next: any) {
       .where(
         and(
           eq(monitoringClients.apiKey, hashedApiKey),
-          eq(monitoringClients.tenantId, tenantId),
+          eq(monitoringClients.tenant_id, tenantId),
           eq(monitoringClients.isActive, true),
         ),
       )
@@ -71,7 +71,7 @@ async function authenticateClient(req: any, res: any, next: any) {
 
     // Attach client to request
     req.monitoringClient = client[0];
-    req.tenantId = tenantId;
+    req.tenant_id = tenantId;
 
     next();
   } catch (error) {
@@ -143,7 +143,7 @@ async function lookupTonerProduct(
     const results = await db
       .select()
       .from(supplies)
-      .where(and(eq(supplies.tenantId, tenantId), eq(supplies.isActive, true), or(...conditions)))
+      .where(and(eq(supplies.tenant_id, tenantId), eq(supplies.isActive, true), or(...conditions)))
       .limit(1);
 
     if (results.length === 0) {
@@ -176,7 +176,7 @@ async function lookupTonerProduct(
       .from(inventoryItems)
       .where(
         and(
-          eq(inventoryItems.tenantId, tenantId),
+          eq(inventoryItems.tenant_id, tenantId),
           or(
             eq(inventoryItems.partNumber, product.productCode),
             eq(inventoryItems.manufacturerPartNumber, product.productCode),
@@ -268,7 +268,7 @@ async function checkServiceContractCoverage(
 
     // Build query conditions
     const conditions = [
-      eq(serviceContracts.tenantId, tenantId),
+      eq(serviceContracts.tenant_id, tenantId),
       eq(serviceContracts.contractStatus, 'active'),
       lte(serviceContracts.startDate, now), // Contract has started
     ];
@@ -464,7 +464,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Get all monitoring clients for a tenant
   app.get('/api/monitoring-clients', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -472,8 +472,8 @@ export function registerClientMonitoringRoutes(app: Express) {
       const clients = await db
         .select()
         .from(monitoringClients)
-        .where(eq(monitoringClients.tenantId, tenantId))
-        .orderBy(desc(monitoringClients.createdAt));
+        .where(eq(monitoringClients.tenant_id, tenantId))
+        .orderBy(desc(monitoringClients.created_at));
 
       res.json(clients);
     } catch (error) {
@@ -485,7 +485,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Create a new monitoring client
   app.post('/api/monitoring-clients', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -520,7 +520,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Get monitoring client by ID
   app.get('/api/monitoring-clients/:id', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       const { id } = req.params;
 
       if (!tenantId) {
@@ -530,7 +530,7 @@ export function registerClientMonitoringRoutes(app: Express) {
       const client = await db
         .select()
         .from(monitoringClients)
-        .where(and(eq(monitoringClients.tenantId, tenantId), eq(monitoringClients.id, id)))
+        .where(and(eq(monitoringClients.tenant_id, tenantId), eq(monitoringClients.id, id)))
         .limit(1);
 
       if (!client[0]) {
@@ -547,7 +547,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Update monitoring client
   app.put('/api/monitoring-clients/:id', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       const { id } = req.params;
 
       if (!tenantId) {
@@ -560,7 +560,7 @@ export function registerClientMonitoringRoutes(app: Express) {
           ...req.body,
           updatedAt: new Date(),
         })
-        .where(and(eq(monitoringClients.tenantId, tenantId), eq(monitoringClients.id, id)))
+        .where(and(eq(monitoringClients.tenant_id, tenantId), eq(monitoringClients.id, id)))
         .returning();
 
       if (!updatedClient) {
@@ -577,7 +577,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Rotate API key for a monitoring client
   app.post('/api/monitoring-clients/:id/rotate-key', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       const { id } = req.params;
 
       if (!tenantId) {
@@ -595,7 +595,7 @@ export function registerClientMonitoringRoutes(app: Express) {
           apiKeyLastRotated: new Date(),
           updatedAt: new Date(),
         })
-        .where(and(eq(monitoringClients.tenantId, tenantId), eq(monitoringClients.id, id)))
+        .where(and(eq(monitoringClients.tenant_id, tenantId), eq(monitoringClients.id, id)))
         .returning();
 
       if (!updatedClient) {
@@ -615,7 +615,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Delete monitoring client
   app.delete('/api/monitoring-clients/:id', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       const { id } = req.params;
 
       if (!tenantId) {
@@ -624,7 +624,7 @@ export function registerClientMonitoringRoutes(app: Express) {
 
       await db
         .delete(monitoringClients)
-        .where(and(eq(monitoringClients.tenantId, tenantId), eq(monitoringClients.id, id)));
+        .where(and(eq(monitoringClients.tenant_id, tenantId), eq(monitoringClients.id, id)));
 
       res.json({ message: 'Monitoring client deleted successfully' });
     } catch (error) {
@@ -636,7 +636,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Get client activity logs
   app.get('/api/monitoring-clients/:id/activity', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       const { id } = req.params;
 
       if (!tenantId) {
@@ -646,7 +646,7 @@ export function registerClientMonitoringRoutes(app: Express) {
       const logs = await db
         .select()
         .from(clientActivityLogs)
-        .where(and(eq(clientActivityLogs.tenantId, tenantId), eq(clientActivityLogs.clientId, id)))
+        .where(and(eq(clientActivityLogs.tenant_id, tenantId), eq(clientActivityLogs.clientId, id)))
         .orderBy(desc(clientActivityLogs.timestamp))
         .limit(100);
 
@@ -660,7 +660,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Get discovered devices for a client
   app.get('/api/monitoring-clients/:id/discovered-devices', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       const { id } = req.params;
 
       if (!tenantId) {
@@ -672,7 +672,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         .from(clientDiscoveredDevices)
         .where(
           and(
-            eq(clientDiscoveredDevices.tenantId, tenantId),
+            eq(clientDiscoveredDevices.tenant_id, tenantId),
             eq(clientDiscoveredDevices.clientId, id),
           ),
         )
@@ -693,7 +693,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   app.post('/api/client-metrics/submit', authenticateClient, async (req: any, res) => {
     try {
       const client = req.monitoringClient;
-      const tenantId = req.tenantId;
+      const tenantId = req.tenant_id;
 
       // Validate submission data
       const validatedData = clientMetricSubmissionSchema.parse(req.body);
@@ -714,7 +714,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         .from(manufacturerIntegrations)
         .where(
           and(
-            eq(manufacturerIntegrations.tenantId, tenantId),
+            eq(manufacturerIntegrations.tenant_id, tenantId),
             eq(manufacturerIntegrations.manufacturer, 'printanista'), // Use printanista as the manufacturer type for custom clients
             eq(manufacturerIntegrations.integrationName, `Client: ${client.clientName}`),
           ),
@@ -750,7 +750,7 @@ export function registerClientMonitoringRoutes(app: Express) {
             .from(deviceRegistrations)
             .where(
               and(
-                eq(deviceRegistrations.tenantId, tenantId),
+                eq(deviceRegistrations.tenant_id, tenantId),
                 eq(deviceRegistrations.serialNumber, deviceData.serialNumber),
               ),
             )
@@ -913,7 +913,7 @@ export function registerClientMonitoringRoutes(app: Express) {
       // Log error activity
       if (req.monitoringClient) {
         await db.insert(clientActivityLogs).values({
-          tenantId: req.tenantId,
+          tenantId: req.tenant_id,
           clientId: req.monitoringClient.id,
           activity: 'metrics_submitted',
           status: 'error',
@@ -945,7 +945,7 @@ export function registerClientMonitoringRoutes(app: Express) {
 
       // Log heartbeat
       await db.insert(clientActivityLogs).values({
-        tenantId: req.tenantId,
+        tenantId: req.tenant_id,
         clientId: client.id,
         activity: 'heartbeat',
         status: 'success',
@@ -986,7 +986,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Get fleet-wide dashboard overview
   app.get('/api/fleet/dashboard', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -995,14 +995,14 @@ export function registerClientMonitoringRoutes(app: Express) {
       const devices = await db
         .select()
         .from(deviceRegistrations)
-        .where(eq(deviceRegistrations.tenantId, tenantId));
+        .where(eq(deviceRegistrations.tenant_id, tenantId));
 
       // Get latest metrics for each device
       const deviceIds = devices.map((d) => d.id);
       const latestMetrics = await db
         .select()
         .from(deviceMetrics)
-        .where(eq(deviceMetrics.tenantId, tenantId))
+        .where(eq(deviceMetrics.tenant_id, tenantId))
         .orderBy(desc(deviceMetrics.collectionTimestamp));
 
       // Build metrics map (latest per device)
@@ -1138,7 +1138,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Get all monitored devices with current status
   app.get('/api/fleet/devices', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1149,7 +1149,7 @@ export function registerClientMonitoringRoutes(app: Express) {
       let query = db
         .select()
         .from(deviceRegistrations)
-        .where(eq(deviceRegistrations.tenantId, tenantId));
+        .where(eq(deviceRegistrations.tenant_id, tenantId));
 
       const devices = await query.orderBy(desc(deviceRegistrations.lastSeen));
 
@@ -1157,7 +1157,7 @@ export function registerClientMonitoringRoutes(app: Express) {
       const latestMetrics = await db
         .select()
         .from(deviceMetrics)
-        .where(eq(deviceMetrics.tenantId, tenantId))
+        .where(eq(deviceMetrics.tenant_id, tenantId))
         .orderBy(desc(deviceMetrics.collectionTimestamp));
 
       // Build metrics map
@@ -1214,7 +1214,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Get device-specific metrics history
   app.get('/api/fleet/devices/:id/metrics', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       const { id } = req.params;
       const { startDate, endDate, limit = 100 } = req.query;
 
@@ -1226,7 +1226,7 @@ export function registerClientMonitoringRoutes(app: Express) {
       const device = await db
         .select()
         .from(deviceRegistrations)
-        .where(and(eq(deviceRegistrations.tenantId, tenantId), eq(deviceRegistrations.id, id)))
+        .where(and(eq(deviceRegistrations.tenant_id, tenantId), eq(deviceRegistrations.id, id)))
         .limit(1);
 
       if (!device[0]) {
@@ -1237,7 +1237,7 @@ export function registerClientMonitoringRoutes(app: Express) {
       let metricsQuery = db
         .select()
         .from(deviceMetrics)
-        .where(and(eq(deviceMetrics.tenantId, tenantId), eq(deviceMetrics.deviceId, id)))
+        .where(and(eq(deviceMetrics.tenant_id, tenantId), eq(deviceMetrics.deviceId, id)))
         .orderBy(desc(deviceMetrics.collectionTimestamp));
 
       const metrics = await metricsQuery.limit(Number(limit));
@@ -1256,7 +1256,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Get customer-specific devices
   app.get('/api/customers/:customerId/devices', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       const { customerId } = req.params;
 
       if (!tenantId) {
@@ -1267,14 +1267,14 @@ export function registerClientMonitoringRoutes(app: Express) {
       const devices = await db
         .select()
         .from(deviceRegistrations)
-        .where(eq(deviceRegistrations.tenantId, tenantId))
+        .where(eq(deviceRegistrations.tenant_id, tenantId))
         .orderBy(desc(deviceRegistrations.lastSeen));
 
       // Get latest metrics for each device
       const latestMetrics = await db
         .select()
         .from(deviceMetrics)
-        .where(eq(deviceMetrics.tenantId, tenantId))
+        .where(eq(deviceMetrics.tenant_id, tenantId))
         .orderBy(desc(deviceMetrics.collectionTimestamp));
 
       // Build metrics map
@@ -1318,7 +1318,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Get customer meter reading history
   app.get('/api/customers/:customerId/metrics/history', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       const { customerId } = req.params;
       const { startDate, endDate, limit = 1000 } = req.query;
 
@@ -1330,7 +1330,7 @@ export function registerClientMonitoringRoutes(app: Express) {
       const devices = await db
         .select()
         .from(deviceRegistrations)
-        .where(eq(deviceRegistrations.tenantId, tenantId));
+        .where(eq(deviceRegistrations.tenant_id, tenantId));
 
       const deviceIds = devices.map((d) => d.id);
 
@@ -1338,7 +1338,7 @@ export function registerClientMonitoringRoutes(app: Express) {
       const metrics = await db
         .select()
         .from(deviceMetrics)
-        .where(eq(deviceMetrics.tenantId, tenantId))
+        .where(eq(deviceMetrics.tenant_id, tenantId))
         .orderBy(desc(deviceMetrics.collectionTimestamp))
         .limit(Number(limit));
 
@@ -1375,7 +1375,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   // Manual toner order trigger
   app.post('/api/devices/:id/order-toner', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId || req.tenantId;
+      const tenantId = req.user?.tenant_id || req.tenant_id;
       const { id } = req.params;
       const { colors, urgent = false, notes } = req.body;
 
@@ -1399,7 +1399,7 @@ export function registerClientMonitoringRoutes(app: Express) {
           manufacturerIntegrations,
           eq(deviceRegistrations.integrationId, manufacturerIntegrations.id),
         )
-        .where(and(eq(deviceRegistrations.tenantId, tenantId), eq(deviceRegistrations.id, id)))
+        .where(and(eq(deviceRegistrations.tenant_id, tenantId), eq(deviceRegistrations.id, id)))
         .limit(1);
 
       if (!device[0]) {
@@ -1410,7 +1410,7 @@ export function registerClientMonitoringRoutes(app: Express) {
       const latestMetric = await db
         .select()
         .from(deviceMetrics)
-        .where(and(eq(deviceMetrics.tenantId, tenantId), eq(deviceMetrics.deviceId, id)))
+        .where(and(eq(deviceMetrics.tenant_id, tenantId), eq(deviceMetrics.deviceId, id)))
         .orderBy(desc(deviceMetrics.collectionTimestamp))
         .limit(1);
 
@@ -1668,7 +1668,7 @@ export function registerClientMonitoringRoutes(app: Express) {
       if (apiKeyHeader) {
         // Validate API key (simplified - just check it exists for now)
         authenticated = true;
-      } else if (req.user || req.session?.userId) {
+      } else if (req.user || req.session?.user_id) {
         // User is authenticated via session
         authenticated = true;
       }
@@ -1690,7 +1690,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         query = query.where(eq(oidMappings.manufacturer, manufacturer as string));
       }
 
-      const mappings = await query.orderBy(desc(oidMappings.createdAt));
+      const mappings = await query.orderBy(desc(oidMappings.created_at));
 
       // Transform to client-friendly format
       const presets = mappings.map((mapping) => ({
@@ -1724,7 +1724,7 @@ export function registerClientMonitoringRoutes(app: Express) {
       const apiKeyHeader = req.headers['x-api-key'];
       if (apiKeyHeader) {
         authenticated = true;
-      } else if (req.user || req.session?.userId) {
+      } else if (req.user || req.session?.user_id) {
         authenticated = true;
       }
 
@@ -1804,7 +1804,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   app.post('/api/printer-monitoring/devices', authenticateClient, async (req: any, res) => {
     try {
       const client = req.monitoringClient;
-      const tenantId = req.tenantId;
+      const tenantId = req.tenant_id;
       const { ip, manufacturer, model, serialNumber, location, companyId, locationId } = req.body;
 
       if (!ip || !manufacturer || !model) {
@@ -1819,7 +1819,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         .from(manufacturerIntegrations)
         .where(
           and(
-            eq(manufacturerIntegrations.tenantId, tenantId),
+            eq(manufacturerIntegrations.tenant_id, tenantId),
             eq(manufacturerIntegrations.manufacturer, 'printanista'),
             eq(manufacturerIntegrations.integrationName, `Client: ${client.clientName}`),
           ),
@@ -1848,7 +1848,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         .from(deviceRegistrations)
         .where(
           and(
-            eq(deviceRegistrations.tenantId, tenantId),
+            eq(deviceRegistrations.tenant_id, tenantId),
             or(
               eq(deviceRegistrations.serialNumber, serialNumber || ''),
               eq(deviceRegistrations.ipAddress, ip),
@@ -1902,7 +1902,7 @@ export function registerClientMonitoringRoutes(app: Express) {
   app.post('/api/printer-monitoring/metrics', authenticateClient, async (req: any, res) => {
     try {
       const client = req.monitoringClient;
-      const tenantId = req.tenantId;
+      const tenantId = req.tenant_id;
       const { deviceId, timestamp, metrics } = req.body;
 
       if (!deviceId || !metrics) {
@@ -1916,7 +1916,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         .select()
         .from(deviceRegistrations)
         .where(
-          and(eq(deviceRegistrations.tenantId, tenantId), eq(deviceRegistrations.id, deviceId)),
+          and(eq(deviceRegistrations.tenant_id, tenantId), eq(deviceRegistrations.id, deviceId)),
         )
         .limit(1);
 

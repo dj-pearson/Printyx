@@ -300,7 +300,7 @@ class BillingEngineService {
           and(
             eq(autoInvoiceGeneration.sourceType, 'service_ticket'),
             eq(autoInvoiceGeneration.sourceId, ticketId),
-            eq(autoInvoiceGeneration.tenantId, tenantId),
+            eq(autoInvoiceGeneration.tenant_id, tenantId),
             eq(autoInvoiceGeneration.generationStatus, 'completed'),
           ),
         )
@@ -766,7 +766,7 @@ class BillingEngineService {
       .from(billingRules)
       .where(
         and(
-          eq(billingRules.tenantId, tenantId),
+          eq(billingRules.tenant_id, tenantId),
           eq(billingRules.ruleStatus, 'active'),
           lte(billingRules.effectiveStartDate, effectiveDate),
           sql`(${billingRules.effectiveEndDate} IS NULL OR ${billingRules.effectiveEndDate} >= ${effectiveDate})`,
@@ -820,7 +820,7 @@ class BillingEngineService {
       .from(invoices)
       .where(
         and(
-          eq(invoices.tenantId, tenantId),
+          eq(invoices.tenant_id, tenantId),
           gte(invoices.invoiceDate, start),
           lte(invoices.invoiceDate, end),
         ),
@@ -839,7 +839,7 @@ class BillingEngineService {
       .from(invoices)
       .where(
         and(
-          eq(invoices.tenantId, tenantId),
+          eq(invoices.tenant_id, tenantId),
           eq(invoices.invoiceStatus, 'paid'),
           gte(invoices.invoiceDate, start),
           lte(invoices.invoiceDate, end),
@@ -858,7 +858,7 @@ class BillingEngineService {
       .from(autoInvoiceGeneration)
       .where(
         and(
-          eq(autoInvoiceGeneration.tenantId, tenantId),
+          eq(autoInvoiceGeneration.tenant_id, tenantId),
           gte(autoInvoiceGeneration.triggeredAt, start),
           lte(autoInvoiceGeneration.triggeredAt, end),
         ),
@@ -932,7 +932,7 @@ class BillingEngineService {
     const [contract] = await db
       .select()
       .from(contracts)
-      .where(and(eq(contracts.id, contractId), eq(contracts.tenantId, tenantId)))
+      .where(and(eq(contracts.id, contractId), eq(contracts.tenant_id, tenantId)))
       .limit(1);
 
     return contract;
@@ -950,7 +950,7 @@ class BillingEngineService {
       .where(
         and(
           eq(meterReadings.contractId, contractId),
-          eq(meterReadings.tenantId, tenantId),
+          eq(meterReadings.tenant_id, tenantId),
           gte(meterReadings.readingDate, start),
           lte(meterReadings.readingDate, end),
         ),
@@ -968,7 +968,7 @@ class BillingEngineService {
     const readings = await db
       .select()
       .from(meterReadings)
-      .where(and(eq(meterReadings.equipmentId, equipmentId), eq(meterReadings.tenantId, tenantId)))
+      .where(and(eq(meterReadings.equipmentId, equipmentId), eq(meterReadings.tenant_id, tenantId)))
       .orderBy(desc(meterReadings.readingDate))
       .limit(limit);
 
@@ -1082,8 +1082,8 @@ class BillingEngineService {
     const [lastInvoice] = await db
       .select({ invoiceNumber: invoices.invoiceNumber })
       .from(invoices)
-      .where(eq(invoices.tenantId, tenantId))
-      .orderBy(desc(invoices.createdAt))
+      .where(eq(invoices.tenant_id, tenantId))
+      .orderBy(desc(invoices.created_at))
       .limit(1);
 
     if (lastInvoice && lastInvoice.invoiceNumber) {
@@ -1158,7 +1158,7 @@ class BillingEngineService {
       })
       .from(invoices)
       .leftJoin(businessRecords, eq(invoices.customerId, businessRecords.id))
-      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenant_id, tenantId)))
       .limit(1);
 
     if (!invoice || !invoice.customerEmail) {
@@ -1193,7 +1193,7 @@ class BillingEngineService {
         issueDate: new Date(),
         updatedAt: new Date(),
       })
-      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenant_id, tenantId)));
   }
 
   private async logInvoiceGeneration(

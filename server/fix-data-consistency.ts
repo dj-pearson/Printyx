@@ -103,12 +103,12 @@ export function createTenantAwareRoute(routeFunction: string, entityName: string
 // Replace hardcoded tenant ID with session-based resolution
 app.get("${routeFunction}", resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
-    const tenantId = req.tenantId!;
+    const tenantId = req.tenant_id!;
     
     // Query actual database instead of returning mock data
     const records = await db.select().from(${entityName})
-      .where(eq(${entityName}.tenantId, tenantId))
-      .orderBy(desc(${entityName}.createdAt));
+      .where(eq(${entityName}.tenant_id, tenantId))
+      .orderBy(desc(${entityName}.created_at));
 
     // Transform database fields to frontend format if needed
     const transformedRecords = records.map(record => 

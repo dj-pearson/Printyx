@@ -62,7 +62,7 @@ class KnowledgeBaseService {
         const parentCategory = await db.query.knowledgeCategories.findFirst({
           where: and(
             eq(knowledgeCategories.id, categoryData.parentCategoryId),
-            eq(knowledgeCategories.tenantId, tenantId),
+            eq(knowledgeCategories.tenant_id, tenantId),
           ),
         });
         categoryLevel = (parentCategory?.categoryLevel || 0) + 1;
@@ -100,7 +100,7 @@ class KnowledgeBaseService {
       parentCategoryId?: string | null;
     } = {},
   ): Promise<KnowledgeCategory[]> {
-    const conditions = [eq(knowledgeCategories.tenantId, tenantId)];
+    const conditions = [eq(knowledgeCategories.tenant_id, tenantId)];
 
     if (!options.includeInactive) {
       conditions.push(eq(knowledgeCategories.isActive, true));
@@ -138,7 +138,7 @@ class KnowledgeBaseService {
           .where(
             and(
               eq(knowledgeArticles.categoryId, category.id),
-              eq(knowledgeArticles.tenantId, tenantId),
+              eq(knowledgeArticles.tenant_id, tenantId),
               eq(knowledgeArticles.status, 'published'),
             ),
           );
@@ -243,7 +243,7 @@ class KnowledgeBaseService {
     try {
       // Get current article
       const currentArticle = await db.query.knowledgeArticles.findFirst({
-        where: and(eq(knowledgeArticles.id, articleId), eq(knowledgeArticles.tenantId, tenantId)),
+        where: and(eq(knowledgeArticles.id, articleId), eq(knowledgeArticles.tenant_id, tenantId)),
       });
 
       if (!currentArticle) {
@@ -295,7 +295,7 @@ class KnowledgeBaseService {
       const [updatedArticle] = await db
         .update(knowledgeArticles)
         .set(updateData)
-        .where(and(eq(knowledgeArticles.id, articleId), eq(knowledgeArticles.tenantId, tenantId)))
+        .where(and(eq(knowledgeArticles.id, articleId), eq(knowledgeArticles.tenant_id, tenantId)))
         .returning();
 
       // Create version history
@@ -322,12 +322,12 @@ class KnowledgeBaseService {
     } = {},
   ): Promise<KnowledgeArticle | undefined> {
     const article = await db.query.knowledgeArticles.findFirst({
-      where: and(eq(knowledgeArticles.id, articleId), eq(knowledgeArticles.tenantId, tenantId)),
+      where: and(eq(knowledgeArticles.id, articleId), eq(knowledgeArticles.tenant_id, tenantId)),
     });
 
     if (article && options.incrementView) {
       // Track view
-      await this.trackArticleView(tenantId, articleId, options.userId, options.sessionId);
+      await this.trackArticleView(tenantId, articleId, options.user_id, options.sessionId);
 
       // Increment view count
       await db
@@ -367,7 +367,7 @@ class KnowledgeBaseService {
     const startTime = Date.now();
 
     try {
-      const conditions = [eq(knowledgeArticles.tenantId, tenantId)];
+      const conditions = [eq(knowledgeArticles.tenant_id, tenantId)];
 
       if (options.categoryId) {
         conditions.push(eq(knowledgeArticles.categoryId, options.categoryId));
@@ -399,7 +399,7 @@ class KnowledgeBaseService {
         where: and(...conditions),
         limit: options.limit || 20,
         offset: options.offset || 0,
-        orderBy: [desc(knowledgeArticles.publishedAt), desc(knowledgeArticles.createdAt)],
+        orderBy: [desc(knowledgeArticles.publishedAt), desc(knowledgeArticles.created_at)],
       });
 
       const total = articles.length; // In production, do a count query
@@ -598,7 +598,7 @@ class KnowledgeBaseService {
         .values({
           tenantId,
           articleId,
-          userId: feedbackData.userId,
+          userId: feedbackData.user_id,
           userEmail: feedbackData.userEmail,
           userName: feedbackData.userName,
           feedbackType: feedbackData.feedbackType,
@@ -656,7 +656,7 @@ class KnowledgeBaseService {
     try {
       // Get all articles for tenant
       const allArticles = await db.query.knowledgeArticles.findMany({
-        where: eq(knowledgeArticles.tenantId, tenantId),
+        where: eq(knowledgeArticles.tenant_id, tenantId),
       });
 
       const publishedArticles = allArticles.filter((a) => a.status === 'published');
@@ -676,7 +676,7 @@ class KnowledgeBaseService {
 
       // Get categories with article counts
       const categories = await db.query.knowledgeCategories.findMany({
-        where: eq(knowledgeCategories.tenantId, tenantId),
+        where: eq(knowledgeCategories.tenant_id, tenantId),
       });
 
       const popularCategories = categories
@@ -720,7 +720,7 @@ class KnowledgeBaseService {
     const [version] = await db
       .insert(articleVersions)
       .values({
-        tenantId: article.tenantId,
+        tenantId: article.tenant_id,
         articleId,
         version: article.version,
         changeDescription,

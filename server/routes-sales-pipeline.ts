@@ -46,7 +46,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   app.get('/api/sales-pipeline/opportunities', async (req: TenantRequest, res: Response) => {
     try {
       const { stage, rep } = req.query;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
 
       if (!tenantId) {
         return res.status(403).json({ message: 'Access denied' });
@@ -137,7 +137,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
       try {
         const { id } = req.params;
         const { stage, notes } = stageUpdateSchema.parse(req.body);
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         const userId = req.user?.id;
 
         if (!tenantId || !userId) {
@@ -217,7 +217,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
       try {
         const { id } = req.params;
         const { activity_type, notes } = activityLogSchema.parse(req.body);
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         const userId = req.user?.id;
 
         if (!tenantId || !userId) {
@@ -268,7 +268,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   // Get sales rep metrics
   app.get('/api/sales-pipeline/rep-metrics', async (req: TenantRequest, res: Response) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
 
       if (!tenantId) {
         return res.status(403).json({ message: 'Access denied' });
@@ -381,7 +381,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   // Get pipeline summary
   app.get('/api/sales-pipeline/summary', async (req: TenantRequest, res: Response) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
 
       if (!tenantId) {
         return res.status(403).json({ message: 'Access denied' });
@@ -479,7 +479,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   app.post('/api/sales-pipeline/opportunities', async (req: TenantRequest, res: Response) => {
     try {
       const data = pipelineOpportunitySchema.parse(req.body);
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       const userId = req.user?.id;
 
       if (!tenantId || !userId) {

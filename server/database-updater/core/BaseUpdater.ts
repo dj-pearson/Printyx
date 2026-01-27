@@ -47,7 +47,7 @@ export abstract class BaseUpdater {
 
   constructor(name: string, options: UpdaterOptions) {
     this.name = name;
-    this.tenantId = options.tenantId;
+    this.tenant_id = options.tenant_id;
     this.dryRun = options.dryRun || false;
     this.logger = options.logger;
     this.customerId = options.customerId;
@@ -71,7 +71,7 @@ export abstract class BaseUpdater {
 
     try {
       this.logger.info(`Starting execution for updater: ${this.name}`, {
-        tenantId: this.tenantId,
+        tenantId: this.tenant_id,
         customerId: this.customerId,
         dryRun: this.dryRun,
       });
@@ -152,7 +152,7 @@ export abstract class BaseUpdater {
   getConfig() {
     return {
       name: this.name,
-      tenantId: this.tenantId,
+      tenantId: this.tenant_id,
       customerId: this.customerId,
       dryRun: this.dryRun,
       enabled: this.enabled,

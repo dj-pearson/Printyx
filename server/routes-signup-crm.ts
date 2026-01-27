@@ -93,7 +93,7 @@ router.get('/signups/:id', async (req, res) => {
       .select()
       .from(trialActivityLog)
       .where(eq(trialActivityLog.signupId, id))
-      .orderBy(desc(trialActivityLog.createdAt))
+      .orderBy(desc(trialActivityLog.created_at))
       .limit(50);
 
     // Get communications
@@ -108,7 +108,7 @@ router.get('/signups/:id', async (req, res) => {
       .select()
       .from(conversionFunnelEvents)
       .where(eq(conversionFunnelEvents.signupId, id))
-      .orderBy(desc(conversionFunnelEvents.createdAt));
+      .orderBy(desc(conversionFunnelEvents.created_at));
 
     res.json({
       signup: signup[0],
@@ -137,7 +137,7 @@ router.patch('/signups/:id', async (req, res) => {
     if (tags) updates.tags = tags;
     if (assignedTo !== undefined) updates.assignedTo = assignedTo;
     if (qualificationScore !== undefined) updates.qualificationScore = qualificationScore;
-    updates.updatedAt = new Date();
+    updates.updated_at = new Date();
 
     const updated = await db
       .update(platformSignups)
@@ -168,7 +168,7 @@ router.get('/signups-analytics', async (req, res) => {
     const totalSignups = await db
       .select({ count: count() })
       .from(platformSignups)
-      .where(and(gte(platformSignups.createdAt, start), lte(platformSignups.createdAt, end)));
+      .where(and(gte(platformSignups.created_at, start), lte(platformSignups.created_at, end)));
 
     // Signups by status
     const byStatus = await db
@@ -177,7 +177,7 @@ router.get('/signups-analytics', async (req, res) => {
         count: count(),
       })
       .from(platformSignups)
-      .where(and(gte(platformSignups.createdAt, start), lte(platformSignups.createdAt, end)))
+      .where(and(gte(platformSignups.created_at, start), lte(platformSignups.created_at, end)))
       .groupBy(platformSignups.status);
 
     // Signups by source
@@ -187,14 +187,14 @@ router.get('/signups-analytics', async (req, res) => {
         count: count(),
       })
       .from(platformSignups)
-      .where(and(gte(platformSignups.createdAt, start), lte(platformSignups.createdAt, end)))
+      .where(and(gte(platformSignups.created_at, start), lte(platformSignups.created_at, end)))
       .groupBy(platformSignups.source);
 
     // Average qualification score
     const avgQualification = await db
       .select({ avg: platformSignups.qualificationScore })
       .from(platformSignups)
-      .where(and(gte(platformSignups.createdAt, start), lte(platformSignups.createdAt, end)));
+      .where(and(gte(platformSignups.created_at, start), lte(platformSignups.created_at, end)));
 
     // Conversion rate (signups to activated)
     const activated = await db
@@ -203,8 +203,8 @@ router.get('/signups-analytics', async (req, res) => {
       .where(
         and(
           eq(platformSignups.status, 'activated'),
-          gte(platformSignups.createdAt, start),
-          lte(platformSignups.createdAt, end),
+          gte(platformSignups.created_at, start),
+          lte(platformSignups.created_at, end),
         ),
       );
 

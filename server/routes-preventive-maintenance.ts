@@ -10,7 +10,7 @@ const router = express.Router();
 // Get all maintenance schedules
 router.get('/api/maintenance/schedules', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
@@ -228,7 +228,7 @@ router.get('/api/maintenance/schedules', async (req: any, res) => {
 // Get maintenance analytics and insights
 router.get('/api/maintenance/analytics', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
@@ -356,7 +356,7 @@ router.get('/api/maintenance/analytics', async (req: any, res) => {
 // Get maintenance templates
 router.get('/api/maintenance/templates', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
@@ -474,7 +474,7 @@ router.get('/api/maintenance/templates', async (req: any, res) => {
 // Auto-generate maintenance schedules
 router.post('/api/maintenance/auto-generate', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { equipmentIds, templateId, startDate, frequency } = req.body;
 
     if (!tenantId) {
@@ -571,7 +571,7 @@ router.put('/api/maintenance/schedules/:id', async (req: any, res) => {
 // Get predictive maintenance recommendations
 router.get('/api/maintenance/predictions', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }

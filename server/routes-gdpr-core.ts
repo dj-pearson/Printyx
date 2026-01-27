@@ -56,7 +56,7 @@ router.post(
   auditLogMiddleware('CREATE_DATA_EXPORT', 'personal_data_exports', 'high', 'data_access'),
   async (req: TenantRequest, res: Response) => {
     try {
-      const exportRequest = await gdprDataExportService.createExportRequest(req.tenantId!, {
+      const exportRequest = await gdprDataExportService.createExportRequest(req.tenant_id!, {
         ...req.body,
         requestedBy: req.user!.id,
         ipAddress: req.ip || req.connection.remoteAddress,
@@ -83,7 +83,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const { page, limit, status, subjectId } = req.query;
-      const result = await gdprDataExportService.listExportRequests(req.tenantId!, {
+      const result = await gdprDataExportService.listExportRequests(req.tenant_id!, {
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
         status: status as string,
@@ -107,7 +107,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const exportRequest = await gdprDataExportService.getExportRequest(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
       );
 
@@ -133,7 +133,7 @@ router.post(
   async (req: TenantRequest, res: Response) => {
     try {
       const result = await gdprDataExportService.processExportRequest(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
         req.user!.id,
       );
@@ -163,7 +163,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const exportRequest = await gdprDataExportService.getExportRequest(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
       );
 
@@ -180,12 +180,12 @@ router.get(
       }
 
       // Record the download
-      await gdprDataExportService.recordDownload(req.tenantId!, req.params.id);
+      await gdprDataExportService.recordDownload(req.tenant_id!, req.params.id);
 
       // In a real implementation, you would serve the actual file
       // For now, we'll return the data that was exported
       const result = await gdprDataExportService.processExportRequest(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
         req.user!.id,
       );
@@ -211,7 +211,7 @@ router.get(
   requireRole(['admin', 'compliance_officer', 'manager']),
   async (req: TenantRequest, res: Response) => {
     try {
-      const templates = await gdprDataExportService.listTemplates(req.tenantId!);
+      const templates = await gdprDataExportService.listTemplates(req.tenant_id!);
       res.json({ templates });
     } catch (error) {
       console.error('Error listing export templates:', error);
@@ -228,7 +228,7 @@ router.post(
   requireRole(['admin', 'compliance_officer']),
   async (req: TenantRequest, res: Response) => {
     try {
-      const template = await gdprDataExportService.createTemplate(req.tenantId!, req.body);
+      const template = await gdprDataExportService.createTemplate(req.tenant_id!, req.body);
       res.status(201).json({ template });
     } catch (error) {
       console.error('Error creating export template:', error);
@@ -257,7 +257,7 @@ router.post(
   async (req: TenantRequest, res: Response) => {
     try {
       const consent = await consentManagementService.recordConsent(
-        req.tenantId!,
+        req.tenant_id!,
         {
           ...req.body,
           ipAddress: req.ip || req.connection.remoteAddress,
@@ -288,7 +288,7 @@ router.post(
       const { subjectType, subjectId, subjectEmail, consentTypes, ...commonData } = req.body;
 
       const consents = await consentManagementService.bulkRecordConsents(
-        req.tenantId!,
+        req.tenant_id!,
         subjectType,
         subjectId,
         subjectEmail,
@@ -321,7 +321,7 @@ router.post(
   async (req: TenantRequest, res: Response) => {
     try {
       const consent = await consentManagementService.withdrawConsent(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
         {
           ...req.body,
@@ -348,7 +348,7 @@ router.post(
 router.get('/consent/subject/:type/:id', async (req: TenantRequest, res: Response) => {
   try {
     const consents = await consentManagementService.getSubjectConsents(
-      req.tenantId!,
+      req.tenant_id!,
       req.params.type,
       req.params.id,
     );
@@ -365,7 +365,7 @@ router.get('/consent/subject/:type/:id', async (req: TenantRequest, res: Respons
  */
 router.get('/consent/subject/:id/summary', async (req: TenantRequest, res: Response) => {
   try {
-    const summary = await consentManagementService.getConsentSummary(req.tenantId!, req.params.id);
+    const summary = await consentManagementService.getConsentSummary(req.tenant_id!, req.params.id);
 
     res.json({ summary });
   } catch (error) {
@@ -380,7 +380,7 @@ router.get('/consent/subject/:id/summary', async (req: TenantRequest, res: Respo
 router.get('/consent/check/:subjectId/:consentType', async (req: TenantRequest, res: Response) => {
   try {
     const hasConsent = await consentManagementService.hasConsent(
-      req.tenantId!,
+      req.tenant_id!,
       req.params.subjectId,
       req.params.consentType as any,
     );
@@ -401,7 +401,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const { page, limit, status, consentType, subjectType } = req.query;
-      const result = await consentManagementService.listConsents(req.tenantId!, {
+      const result = await consentManagementService.listConsents(req.tenant_id!, {
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
         status: status as string,
@@ -426,7 +426,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const history = await consentManagementService.getConsentHistory(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
       );
 
@@ -446,7 +446,7 @@ router.get(
   requireRole(['admin', 'compliance_officer', 'manager']),
   async (req: TenantRequest, res: Response) => {
     try {
-      const stats = await consentManagementService.getConsentStats(req.tenantId!);
+      const stats = await consentManagementService.getConsentStats(req.tenant_id!);
       res.json(stats);
     } catch (error) {
       console.error('Error fetching consent stats:', error);
@@ -463,7 +463,7 @@ router.get(
   requireRole(['admin', 'compliance_officer']),
   async (req: TenantRequest, res: Response) => {
     try {
-      const templates = await consentManagementService.listTemplates(req.tenantId!);
+      const templates = await consentManagementService.listTemplates(req.tenant_id!);
       res.json({ templates });
     } catch (error) {
       console.error('Error listing consent templates:', error);
@@ -480,7 +480,7 @@ router.post(
   requireRole(['admin', 'compliance_officer']),
   async (req: TenantRequest, res: Response) => {
     try {
-      const template = await consentManagementService.createTemplate(req.tenantId!, req.body);
+      const template = await consentManagementService.createTemplate(req.tenant_id!, req.body);
       res.status(201).json({ template });
     } catch (error) {
       console.error('Error creating consent template:', error);
@@ -513,7 +513,7 @@ router.post(
   auditLogMiddleware('CREATE_DPA', 'data_processing_agreements', 'high', 'data_modification'),
   async (req: TenantRequest, res: Response) => {
     try {
-      const dpa = await dpaManagementService.createDpa(req.tenantId!, req.body, req.user!.id);
+      const dpa = await dpaManagementService.createDpa(req.tenant_id!, req.body, req.user!.id);
 
       res.status(201).json({
         message: 'DPA created successfully',
@@ -535,7 +535,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const { page, limit, status, vendorName, riskLevel, expiringWithinDays } = req.query;
-      const result = await dpaManagementService.listDpas(req.tenantId!, {
+      const result = await dpaManagementService.listDpas(req.tenant_id!, {
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
         status: status as string,
@@ -560,7 +560,7 @@ router.get(
   requireRole(['admin', 'compliance_officer', 'legal', 'manager']),
   async (req: TenantRequest, res: Response) => {
     try {
-      const dpa = await dpaManagementService.getDpa(req.tenantId!, req.params.id);
+      const dpa = await dpaManagementService.getDpa(req.tenant_id!, req.params.id);
 
       if (!dpa) {
         return res.status(404).json({ message: 'DPA not found' });
@@ -584,7 +584,7 @@ router.put(
   async (req: TenantRequest, res: Response) => {
     try {
       const dpa = await dpaManagementService.updateDpa(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
         req.body,
         req.user!.id,
@@ -618,7 +618,7 @@ router.post(
   async (req: TenantRequest, res: Response) => {
     try {
       const dpa = await dpaManagementService.submitForReview(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
         req.user!.id,
       );
@@ -644,7 +644,7 @@ router.post(
   async (req: TenantRequest, res: Response) => {
     try {
       const dpa = await dpaManagementService.approveForSignature(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
         req.user!.id,
       );
@@ -670,7 +670,7 @@ router.post(
   async (req: TenantRequest, res: Response) => {
     try {
       const dpa = await dpaManagementService.recordSignatures(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
         req.body,
         req.user!.id,
@@ -697,7 +697,7 @@ router.post(
   async (req: TenantRequest, res: Response) => {
     try {
       const dpa = await dpaManagementService.renewDpa(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
         {
           newExpirationDate: new Date(req.body.newExpirationDate),
@@ -726,7 +726,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const withinDays = req.query.days ? Number(req.query.days) : 30;
-      const dpas = await dpaManagementService.getExpiringDpas(req.tenantId!, withinDays);
+      const dpas = await dpaManagementService.getExpiringDpas(req.tenant_id!, withinDays);
 
       res.json({ dpas, withinDays });
     } catch (error) {
@@ -744,7 +744,7 @@ router.get(
   requireRole(['admin', 'compliance_officer']),
   async (req: TenantRequest, res: Response) => {
     try {
-      const dpas = await dpaManagementService.getDpasPendingCompliance(req.tenantId!);
+      const dpas = await dpaManagementService.getDpasPendingCompliance(req.tenant_id!);
       res.json({ dpas });
     } catch (error) {
       console.error('Error fetching DPAs pending compliance:', error);
@@ -768,7 +768,7 @@ router.post(
   async (req: TenantRequest, res: Response) => {
     try {
       const dpa = await dpaManagementService.addSubprocessor(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
         req.body,
         req.user!.id,
@@ -800,7 +800,7 @@ router.delete(
   async (req: TenantRequest, res: Response) => {
     try {
       const dpa = await dpaManagementService.removeSubprocessor(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
         req.params.name,
         req.user!.id,
@@ -831,7 +831,7 @@ router.post(
   ),
   async (req: TenantRequest, res: Response) => {
     try {
-      const check = await dpaManagementService.createComplianceCheck(req.tenantId!, {
+      const check = await dpaManagementService.createComplianceCheck(req.tenant_id!, {
         ...req.body,
         dpaId: req.params.id,
         reviewedBy: req.user!.id,
@@ -857,10 +857,14 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const { page, limit } = req.query;
-      const result = await dpaManagementService.listComplianceChecks(req.tenantId!, req.params.id, {
-        page: page ? Number(page) : undefined,
-        limit: limit ? Number(limit) : undefined,
-      });
+      const result = await dpaManagementService.listComplianceChecks(
+        req.tenant_id!,
+        req.params.id,
+        {
+          page: page ? Number(page) : undefined,
+          limit: limit ? Number(limit) : undefined,
+        },
+      );
 
       res.json(result);
     } catch (error) {
@@ -878,7 +882,7 @@ router.get(
   requireRole(['admin', 'compliance_officer', 'legal', 'manager']),
   async (req: TenantRequest, res: Response) => {
     try {
-      const stats = await dpaManagementService.getStats(req.tenantId!);
+      const stats = await dpaManagementService.getStats(req.tenant_id!);
       res.json(stats);
     } catch (error) {
       console.error('Error fetching DPA stats:', error);
@@ -906,7 +910,7 @@ router.post(
   async (req: TenantRequest, res: Response) => {
     try {
       const rule = await contactDeduplicationService.createRule(
-        req.tenantId!,
+        req.tenant_id!,
         req.body,
         req.user!.id,
       );
@@ -932,7 +936,7 @@ router.get(
     try {
       const { entityType } = req.query;
       const rules = await contactDeduplicationService.listRules(
-        req.tenantId!,
+        req.tenant_id!,
         entityType as string,
       );
 
@@ -952,7 +956,7 @@ router.get(
   requireRole(['admin', 'manager']),
   async (req: TenantRequest, res: Response) => {
     try {
-      const rule = await contactDeduplicationService.getRule(req.tenantId!, req.params.id);
+      const rule = await contactDeduplicationService.getRule(req.tenant_id!, req.params.id);
 
       if (!rule) {
         return res.status(404).json({ message: 'Rule not found' });
@@ -981,7 +985,7 @@ router.put(
   async (req: TenantRequest, res: Response) => {
     try {
       const rule = await contactDeduplicationService.updateRule(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
         req.body,
       );
@@ -1008,7 +1012,7 @@ router.post(
       const { entityType, record, ruleId } = req.body;
 
       const duplicates = await contactDeduplicationService.findDuplicatesForRecord(
-        req.tenantId!,
+        req.tenant_id!,
         entityType,
         record,
         ruleId,
@@ -1031,7 +1035,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const { page, limit, status, entityType, minScore } = req.query;
-      const result = await contactDeduplicationService.listMatches(req.tenantId!, {
+      const result = await contactDeduplicationService.listMatches(req.tenant_id!, {
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
         status: status as string,
@@ -1059,7 +1063,7 @@ router.post(
       const { resolution, notes } = req.body;
 
       const match = await contactDeduplicationService.resolveMatch(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
         resolution,
         req.user!.id,
@@ -1096,7 +1100,7 @@ router.post(
       } = req.body;
 
       const history = await contactDeduplicationService.mergeRecords(
-        req.tenantId!,
+        req.tenant_id!,
         entityType,
         survivingRecordId,
         mergedRecordId,
@@ -1129,7 +1133,7 @@ router.post(
   async (req: TenantRequest, res: Response) => {
     try {
       await contactDeduplicationService.rollbackMerge(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.id,
         req.user!.id,
         req.body.reason,
@@ -1154,7 +1158,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const history = await contactDeduplicationService.getMergeHistory(
-        req.tenantId!,
+        req.tenant_id!,
         req.params.recordId,
       );
 
@@ -1176,7 +1180,7 @@ router.post(
   async (req: TenantRequest, res: Response) => {
     try {
       const job = await contactDeduplicationService.createScanJob(
-        req.tenantId!,
+        req.tenant_id!,
         {
           ...req.body,
           triggerType: 'manual',
@@ -1205,7 +1209,7 @@ router.post(
     try {
       // Run the scan job asynchronously
       contactDeduplicationService
-        .runScanJob(req.tenantId!, req.params.id)
+        .runScanJob(req.tenant_id!, req.params.id)
         .catch((err) => console.error('Scan job error:', err));
 
       res.json({ message: 'Scan job started' });
@@ -1225,7 +1229,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const { page, limit, status } = req.query;
-      const result = await contactDeduplicationService.listScanJobs(req.tenantId!, {
+      const result = await contactDeduplicationService.listScanJobs(req.tenant_id!, {
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
         status: status as string,
@@ -1247,7 +1251,7 @@ router.get(
   requireRole(['admin', 'manager']),
   async (req: TenantRequest, res: Response) => {
     try {
-      const stats = await contactDeduplicationService.getStats(req.tenantId!);
+      const stats = await contactDeduplicationService.getStats(req.tenant_id!);
       res.json(stats);
     } catch (error) {
       console.error('Error fetching dedup stats:', error);

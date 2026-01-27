@@ -104,7 +104,7 @@ export function registerModularDashboardRoutes(app: Express) {
             .select({ total: sum(invoices.totalAmount) })
             .from(invoices)
             .where(
-              and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`),
+              and(eq(invoices.tenant_id, tenantId), sql`created_at::text LIKE ${currentMonth}`),
             );
 
           modules.push({
@@ -123,7 +123,7 @@ export function registerModularDashboardRoutes(app: Express) {
           const dealsResult = await db
             .select({ count: count() })
             .from(deals)
-            .where(eq(deals.tenantId, tenantId));
+            .where(eq(deals.tenant_id, tenantId));
 
           modules.push({
             id: 'personal_deals',
@@ -142,7 +142,7 @@ export function registerModularDashboardRoutes(app: Express) {
             .select({ count: count() })
             .from(businessRecords)
             .where(
-              and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'lead')),
+              and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.recordType, 'lead')),
             );
 
           modules.push({
@@ -161,7 +161,7 @@ export function registerModularDashboardRoutes(app: Express) {
           const ticketsResult = await db
             .select({ count: count() })
             .from(serviceTickets)
-            .where(eq(serviceTickets.tenantId, tenantId));
+            .where(eq(serviceTickets.tenant_id, tenantId));
 
           modules.push({
             id: 'personal_tickets',
@@ -180,7 +180,7 @@ export function registerModularDashboardRoutes(app: Express) {
             .select({ total: sum(invoices.totalAmount) })
             .from(invoices)
             .where(
-              and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`),
+              and(eq(invoices.tenant_id, tenantId), sql`created_at::text LIKE ${currentMonth}`),
             );
 
           modules.push({
@@ -202,7 +202,7 @@ export function registerModularDashboardRoutes(app: Express) {
             .from(businessRecords)
             .where(
               and(
-                eq(businessRecords.tenantId, tenantId),
+                eq(businessRecords.tenant_id, tenantId),
                 eq(businessRecords.recordType, 'customer'),
               ),
             );
@@ -224,7 +224,9 @@ export function registerModularDashboardRoutes(app: Express) {
           const lowStockResult = await db
             .select({ count: count() })
             .from(inventoryItems)
-            .where(and(eq(inventoryItems.tenantId, tenantId), sql`current_stock <= reorder_point`));
+            .where(
+              and(eq(inventoryItems.tenant_id, tenantId), sql`current_stock <= reorder_point`),
+            );
 
           modules.push({
             id: 'inventory_alerts',
@@ -244,13 +246,13 @@ export function registerModularDashboardRoutes(app: Express) {
             db
               .select({ count: count() })
               .from(serviceTickets)
-              .where(eq(serviceTickets.tenantId, tenantId)),
+              .where(eq(serviceTickets.tenant_id, tenantId)),
 
             db
               .select({ count: count() })
               .from(serviceTickets)
               .where(
-                and(eq(serviceTickets.tenantId, tenantId), sql`status IN ('open', 'in_progress')`),
+                and(eq(serviceTickets.tenant_id, tenantId), sql`status IN ('open', 'in_progress')`),
               ),
           ]);
 
@@ -272,7 +274,7 @@ export function registerModularDashboardRoutes(app: Express) {
             .select({ total: sum(invoices.totalAmount) })
             .from(invoices)
             .where(
-              and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`),
+              and(eq(invoices.tenant_id, tenantId), sql`created_at::text LIKE ${currentMonth}`),
             );
 
           modules.push({
@@ -295,7 +297,7 @@ export function registerModularDashboardRoutes(app: Express) {
               .from(businessRecords)
               .where(
                 and(
-                  eq(businessRecords.tenantId, tenantId),
+                  eq(businessRecords.tenant_id, tenantId),
                   eq(businessRecords.recordType, 'customer'),
                 ),
               ),
@@ -303,20 +305,23 @@ export function registerModularDashboardRoutes(app: Express) {
             db
               .select({ count: count() })
               .from(contracts)
-              .where(and(eq(contracts.tenantId, tenantId), eq(contracts.status, 'active'))),
+              .where(and(eq(contracts.tenant_id, tenantId), eq(contracts.status, 'active'))),
 
             db
               .select({ total: sum(invoices.totalAmount) })
               .from(invoices)
               .where(
-                and(eq(invoices.tenantId, tenantId), sql`created_at >= NOW() - INTERVAL '30 days'`),
+                and(
+                  eq(invoices.tenant_id, tenantId),
+                  sql`created_at >= NOW() - INTERVAL '30 days'`,
+                ),
               ),
 
             db
               .select({ count: count() })
               .from(serviceTickets)
               .where(
-                and(eq(serviceTickets.tenantId, tenantId), sql`status IN ('open', 'in_progress')`),
+                and(eq(serviceTickets.tenant_id, tenantId), sql`status IN ('open', 'in_progress')`),
               ),
           ]);
 

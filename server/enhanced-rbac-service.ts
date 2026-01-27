@@ -50,7 +50,7 @@ export class EnhancedRBACService {
    */
   async hasPermission(query: PermissionQuery): Promise<boolean> {
     const effectivePermissions = await this.getEffectivePermissions(
-      query.userId,
+      query.user_id,
       query.organizationalContext,
     );
 
@@ -111,7 +111,7 @@ export class EnhancedRBACService {
     const computeTime = Date.now() - computeStart;
 
     // Cache the results (pass userId for proper cache storage)
-    await this.cachePermissions(cacheKey, permissions, computeTime, orgContext.tenantId, userId);
+    await this.cachePermissions(cacheKey, permissions, computeTime, orgContext.tenant_id, userId);
 
     return permissions;
   }
@@ -180,8 +180,8 @@ export class EnhancedRBACService {
       .from(userRoleAssignments)
       .where(
         and(
-          eq(userRoleAssignments.userId, userId),
-          eq(userRoleAssignments.tenantId, orgContext.tenantId),
+          eq(userRoleAssignments.user_id, userId),
+          eq(userRoleAssignments.tenant_id, orgContext.tenant_id),
           eq(userRoleAssignments.isActive, true),
           lte(userRoleAssignments.effectiveFrom, now),
           or(
@@ -215,7 +215,7 @@ export class EnhancedRBACService {
         and(
           gte((enhancedRoles as any).lft, enhancedRoles.lft),
           lte((enhancedRoles as any).rght, enhancedRoles.rght),
-          eq((enhancedRoles as any).tenantId, orgContext.tenantId),
+          eq((enhancedRoles as any).tenant_id, orgContext.tenant_id),
         ),
       )
       .innerJoin(rolePermissions, eq(rolePermissions.roleId, (enhancedRoles as any).id))
@@ -249,8 +249,8 @@ export class EnhancedRBACService {
       .from(permissionOverrides)
       .where(
         and(
-          eq(permissionOverrides.userId, userId),
-          eq(permissionOverrides.tenantId, orgContext.tenantId),
+          eq(permissionOverrides.user_id, userId),
+          eq(permissionOverrides.tenant_id, orgContext.tenant_id),
           eq(permissionOverrides.isActive, true),
           lte(permissionOverrides.effectiveFrom, now),
           or(
@@ -299,7 +299,7 @@ export class EnhancedRBACService {
     }
 
     // Invalidate cache
-    await this.invalidateCache(roleData.tenantId);
+    await this.invalidateCache(roleData.tenant_id);
 
     return role;
   }
@@ -347,7 +347,7 @@ export class EnhancedRBACService {
     }
 
     // Invalidate cache
-    await this.invalidateCache(role[0].tenantId);
+    await this.invalidateCache(role[0].tenant_id);
   }
 
   /**
@@ -386,7 +386,7 @@ export class EnhancedRBACService {
       .returning();
 
     // Invalidate cache
-    await this.invalidateCache(overrideData.tenantId);
+    await this.invalidateCache(overrideData.tenant_id);
 
     return override;
   }
@@ -437,7 +437,7 @@ export class EnhancedRBACService {
 
   // Cache management methods
   private generateCacheKey(userId: string, orgContext: OrganizationalContext): string {
-    const contextStr = `${orgContext.tenantId}:${orgContext.unitId || ''}:${orgContext.locationId || ''}:${orgContext.regionId || ''}`;
+    const contextStr = `${orgContext.tenant_id}:${orgContext.unitId || ''}:${orgContext.locationId || ''}:${orgContext.regionId || ''}`;
     return createHash('sha256').update(`${userId}:${contextStr}`).digest('hex');
   }
 
@@ -508,7 +508,7 @@ export class EnhancedRBACService {
     this.cacheManager.clear();
 
     // Clear L2 cache for tenant
-    await db.delete(permissionCache).where(eq(permissionCache.tenantId, tenantId));
+    await db.delete(permissionCache).where(eq(permissionCache.tenant_id, tenantId));
   }
 
   // Helper methods

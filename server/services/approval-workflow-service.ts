@@ -52,7 +52,7 @@ export class ApprovalWorkflowService {
     const activeRules = await db
       .select()
       .from(approvalRules)
-      .where(and(eq(approvalRules.tenantId, tenantId), eq(approvalRules.isActive, true)))
+      .where(and(eq(approvalRules.tenant_id, tenantId), eq(approvalRules.isActive, true)))
       .orderBy(desc(approvalRules.priority), desc(approvalRules.order));
 
     const matchedRules: ApprovalRule[] = [];
@@ -225,7 +225,7 @@ export class ApprovalWorkflowService {
       if (!rule.approvers || rule.approvers.length === 0) continue;
 
       for (const approver of rule.approvers) {
-        const approverId = approver.userId || `role:${approver.roleId}`;
+        const approverId = approver.user_id || `role:${approver.roleId}`;
 
         // Skip duplicates unless multiple rules require different levels
         if (seenApprovers.has(approverId)) continue;
@@ -233,11 +233,11 @@ export class ApprovalWorkflowService {
         seenApprovers.add(approverId);
 
         // Resolve actual user if role-based
-        let resolvedUserId = approver.userId;
+        let resolvedUserId = approver.user_id;
         let resolvedUserName = approver.userName || '';
         let resolvedRole = approver.roleName || '';
 
-        if (approver.roleId && !approver.userId) {
+        if (approver.roleId && !approver.user_id) {
           // Find users with this role
           const usersWithRole = await db
             .select({
@@ -248,12 +248,12 @@ export class ApprovalWorkflowService {
             })
             .from(users)
             .leftJoin(roles, eq(users.roleId, roles.id))
-            .where(and(eq(users.tenantId, tenantId), eq(users.roleId, approver.roleId)))
+            .where(and(eq(users.tenant_id, tenantId), eq(users.roleId, approver.roleId)))
             .limit(1);
 
           if (usersWithRole.length > 0) {
             const user = usersWithRole[0];
-            resolvedUserId = user.userId;
+            resolvedUserId = user.user_id;
             resolvedUserName = `${user.userName} ${user.userLastName}`;
             resolvedRole = user.roleName || '';
           }
@@ -292,7 +292,7 @@ export class ApprovalWorkflowService {
       .from(approvalDelegations)
       .where(
         and(
-          eq(approvalDelegations.tenantId, tenantId),
+          eq(approvalDelegations.tenant_id, tenantId),
           eq(approvalDelegations.delegatorId, delegatorId),
           eq(approvalDelegations.isActive, true),
           lte(approvalDelegations.startDate, now),
@@ -312,7 +312,7 @@ export class ApprovalWorkflowService {
     matchedRules: ApprovalRule[],
   ): Promise<ApprovalRequest> {
     // Build approval chain
-    const approvalChain = await this.buildApprovalChain(requestData.tenantId, matchedRules);
+    const approvalChain = await this.buildApprovalChain(requestData.tenant_id, matchedRules);
 
     // Calculate SLA deadline (use strictest SLA from matched rules)
     const minSlaHours = Math.min(...matchedRules.map((r) => r.slaHours || 24));
@@ -548,7 +548,7 @@ export class ApprovalWorkflowService {
       .from(approvalRequests)
       .where(
         and(
-          eq(approvalRequests.tenantId, tenantId),
+          eq(approvalRequests.tenant_id, tenantId),
           or(eq(approvalRequests.status, 'pending'), eq(approvalRequests.status, 'in_review')),
         ),
       );

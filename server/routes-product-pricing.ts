@@ -56,7 +56,7 @@ export function registerProductPricingRoutes(app: Express) {
    */
   app.get('/api/pricing/settings', isAuthenticated, async (req: AuthRequest, res: Response) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
       }
@@ -75,7 +75,7 @@ export function registerProductPricingRoutes(app: Express) {
    */
   app.put('/api/pricing/settings', isAuthenticated, async (req: AuthRequest, res: Response) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       const userRole = req.user?.role || 'standard';
 
       if (!tenantId) {
@@ -119,7 +119,7 @@ export function registerProductPricingRoutes(app: Express) {
           notifyManagersOnApproval,
           updatedAt: new Date(),
         })
-        .where(eq(companyPricingSettings.tenantId, tenantId))
+        .where(eq(companyPricingSettings.tenant_id, tenantId))
         .returning();
 
       res.json(updated);
@@ -135,7 +135,7 @@ export function registerProductPricingRoutes(app: Express) {
    */
   app.get('/api/pricing/visibility', isAuthenticated, async (req: AuthRequest, res: Response) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       const userRole = req.user?.role || 'standard';
 
       if (!tenantId) {
@@ -159,7 +159,7 @@ export function registerProductPricingRoutes(app: Express) {
     isAuthenticated,
     async (req: AuthRequest, res: Response) => {
       try {
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ error: 'Tenant ID required' });
         }
@@ -199,7 +199,7 @@ export function registerProductPricingRoutes(app: Express) {
     isAuthenticated,
     async (req: AuthRequest, res: Response) => {
       try {
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         const userRole = req.user?.role || 'standard';
         const productId = req.params.id;
 
@@ -223,7 +223,7 @@ export function registerProductPricingRoutes(app: Express) {
         const [product] = await db
           .select()
           .from(productModels)
-          .where(and(eq(productModels.id, productId), eq(productModels.tenantId, tenantId)))
+          .where(and(eq(productModels.id, productId), eq(productModels.tenant_id, tenantId)))
           .limit(1);
 
         if (!product) {
@@ -279,13 +279,13 @@ export function registerProductPricingRoutes(app: Express) {
           updateData[`${tier}SuggestedRetail`] = suggestedRetail;
         }
 
-        updateData.updatedAt = new Date();
+        updateData.updated_at = new Date();
 
         // Update the product
         const [updated] = await db
           .update(productModels)
           .set(updateData)
-          .where(and(eq(productModels.id, productId), eq(productModels.tenantId, tenantId)))
+          .where(and(eq(productModels.id, productId), eq(productModels.tenant_id, tenantId)))
           .returning();
 
         // Filter response based on user role
@@ -309,7 +309,7 @@ export function registerProductPricingRoutes(app: Express) {
     isAuthenticated,
     async (req: AuthRequest, res: Response) => {
       try {
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         const userRole = req.user?.role || 'standard';
 
         if (!tenantId) {
@@ -336,7 +336,7 @@ export function registerProductPricingRoutes(app: Express) {
           const [product] = await db
             .select()
             .from(productModels)
-            .where(and(eq(productModels.id, productId), eq(productModels.tenantId, tenantId)))
+            .where(and(eq(productModels.id, productId), eq(productModels.tenant_id, tenantId)))
             .limit(1);
 
           if (!product) continue;
@@ -358,7 +358,7 @@ export function registerProductPricingRoutes(app: Express) {
           const [updated] = await db
             .update(productModels)
             .set(updateData)
-            .where(and(eq(productModels.id, productId), eq(productModels.tenantId, tenantId)))
+            .where(and(eq(productModels.id, productId), eq(productModels.tenant_id, tenantId)))
             .returning();
 
           results.push(updated);
@@ -385,7 +385,7 @@ export function registerProductPricingRoutes(app: Express) {
     isAuthenticated,
     async (req: AuthRequest, res: Response) => {
       try {
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         const userRole = req.user?.role || 'standard';
 
         if (!tenantId) {
@@ -411,7 +411,7 @@ export function registerProductPricingRoutes(app: Express) {
           })
           .from(enhancedQuotePricing)
           .leftJoin(users, eq(enhancedQuotePricing.createdBy, users.id))
-          .where(eq(enhancedQuotePricing.tenantId, tenantId))
+          .where(eq(enhancedQuotePricing.tenant_id, tenantId))
           .$dynamic();
 
         // Apply filters
@@ -420,18 +420,18 @@ export function registerProductPricingRoutes(app: Express) {
         }
 
         if (startDate) {
-          query = query.where(sql`${enhancedQuotePricing.createdAt} >= ${startDate}`);
+          query = query.where(sql`${enhancedQuotePricing.created_at} >= ${startDate}`);
         }
 
         if (endDate) {
-          query = query.where(sql`${enhancedQuotePricing.createdAt} <= ${endDate}`);
+          query = query.where(sql`${enhancedQuotePricing.created_at} <= ${endDate}`);
         }
 
         if (salesRepId) {
           query = query.where(eq(enhancedQuotePricing.createdBy, salesRepId as string));
         }
 
-        const quotes = await query.orderBy(desc(enhancedQuotePricing.createdAt)).limit(100);
+        const quotes = await query.orderBy(desc(enhancedQuotePricing.created_at)).limit(100);
 
         // Get line items for each quote
         const quoteIds = quotes.map((q) => q.quote.id);
@@ -455,7 +455,7 @@ export function registerProductPricingRoutes(app: Express) {
         // Build margin report
         const report = quotes.map(({ quote, salesRep }) => ({
           quoteNumber: quote.quoteNumber,
-          quoteDate: quote.createdAt,
+          quoteDate: quote.created_at,
           quoteStatus: quote.status,
           salesRep: salesRep ? `${salesRep.firstName} ${salesRep.lastName}` : 'Unknown',
           salesRepEmail: salesRep?.email,
@@ -507,7 +507,7 @@ export function registerProductPricingRoutes(app: Express) {
     isAuthenticated,
     async (req: AuthRequest, res: Response) => {
       try {
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         const userRole = req.user?.role || 'standard';
 
         if (!tenantId) {
@@ -529,8 +529,8 @@ export function registerProductPricingRoutes(app: Express) {
           })
           .from(enhancedQuotePricing)
           .leftJoin(users, eq(enhancedQuotePricing.createdBy, users.id))
-          .where(eq(enhancedQuotePricing.tenantId, tenantId))
-          .orderBy(desc(enhancedQuotePricing.createdAt))
+          .where(eq(enhancedQuotePricing.tenant_id, tenantId))
+          .orderBy(desc(enhancedQuotePricing.created_at))
           .limit(1000);
 
         // Build CSV
@@ -550,7 +550,7 @@ export function registerProductPricingRoutes(app: Express) {
 
         const rows = quotes.map(({ quote, salesRep }) => [
           quote.quoteNumber,
-          quote.createdAt?.toISOString().split('T')[0] || '',
+          quote.created_at?.toISOString().split('T')[0] || '',
           salesRep ? `${salesRep.firstName} ${salesRep.lastName}` : '',
           quote.status,
           quote.totalDealerCost || '0',
@@ -583,7 +583,7 @@ export function registerProductPricingRoutes(app: Express) {
     isAuthenticated,
     async (req: AuthRequest, res: Response) => {
       try {
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         const userId = req.user?.id;
 
         if (!tenantId || !userId) {
@@ -638,7 +638,7 @@ export function registerProductPricingRoutes(app: Express) {
     isAuthenticated,
     async (req: AuthRequest, res: Response) => {
       try {
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         const userId = req.user?.id;
         const userRole = req.user?.role || 'standard';
         const approvalId = req.params.id;
@@ -671,7 +671,7 @@ export function registerProductPricingRoutes(app: Express) {
           .where(
             and(
               eq(priceChangeApprovals.id, approvalId),
-              eq(priceChangeApprovals.tenantId, tenantId),
+              eq(priceChangeApprovals.tenant_id, tenantId),
             ),
           )
           .returning();
@@ -693,7 +693,7 @@ export function registerProductPricingRoutes(app: Express) {
     isAuthenticated,
     async (req: AuthRequest, res: Response) => {
       try {
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         const userRole = req.user?.role || 'standard';
 
         if (!tenantId) {
@@ -717,7 +717,7 @@ export function registerProductPricingRoutes(app: Express) {
           .leftJoin(users, eq(priceChangeApprovals.requestedBy, users.id))
           .where(
             and(
-              eq(priceChangeApprovals.tenantId, tenantId),
+              eq(priceChangeApprovals.tenant_id, tenantId),
               eq(priceChangeApprovals.status, 'pending'),
             ),
           )

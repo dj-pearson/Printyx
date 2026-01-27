@@ -26,7 +26,7 @@ const router = express.Router();
 // Helper to get user ID from request (supports Supabase JWT and session)
 const getUserId = (req: Request): string | undefined => {
   const reqAny = req as any;
-  return reqAny.user?.id || reqAny.user?.claims?.sub || reqAny.session?.userId;
+  return reqAny.user?.id || reqAny.user?.claims?.sub || reqAny.session?.user_id;
 };
 
 // Configure multer for file uploads
@@ -65,12 +65,12 @@ const upload = multer({
 // Get all templates
 router.get('/api/document-templates', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
 
     const templates = await db.query.documentTemplates.findMany({
       where: (t, { eq, and, or }) =>
-        and(or(eq(t.tenantId, tenantId), eq(t.isPublic, true)), eq(t.isActive, true)),
-      orderBy: (t, { desc }) => [desc(t.createdAt)],
+        and(or(eq(t.tenant_id, tenantId), eq(t.isPublic, true)), eq(t.isActive, true)),
+      orderBy: (t, { desc }) => [desc(t.created_at)],
     });
 
     res.json(templates);
@@ -83,12 +83,12 @@ router.get('/api/document-templates', async (req: Request, res: Response) => {
 // Get single template
 router.get('/api/document-templates/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const { id } = req.params;
 
     const template = await db.query.documentTemplates.findFirst({
       where: (t, { eq, and, or }) =>
-        and(eq(t.id, parseInt(id)), or(eq(t.tenantId, tenantId), eq(t.isPublic, true))),
+        and(eq(t.id, parseInt(id)), or(eq(t.tenant_id, tenantId), eq(t.isPublic, true))),
     });
 
     if (!template) {
@@ -105,7 +105,7 @@ router.get('/api/document-templates/:id', async (req: Request, res: Response) =>
 // Create template
 router.post('/api/document-templates', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const userId = getUserId(req);
 
     const validatedData = insertDocumentTemplateSchema.parse({
@@ -126,11 +126,11 @@ router.post('/api/document-templates', async (req: Request, res: Response) => {
 // Update template
 router.put('/api/document-templates/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const { id } = req.params;
 
     const template = await db.query.documentTemplates.findFirst({
-      where: (t, { eq, and }) => and(eq(t.id, parseInt(id)), eq(t.tenantId, tenantId)),
+      where: (t, { eq, and }) => and(eq(t.id, parseInt(id)), eq(t.tenant_id, tenantId)),
     });
 
     if (!template) {
@@ -156,11 +156,11 @@ router.put('/api/document-templates/:id', async (req: Request, res: Response) =>
 // Delete template (soft delete)
 router.delete('/api/document-templates/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const { id } = req.params;
 
     const template = await db.query.documentTemplates.findFirst({
-      where: (t, { eq, and }) => and(eq(t.id, parseInt(id)), eq(t.tenantId, tenantId)),
+      where: (t, { eq, and }) => and(eq(t.id, parseInt(id)), eq(t.tenant_id, tenantId)),
     });
 
     if (!template) {
@@ -182,7 +182,7 @@ router.delete('/api/document-templates/:id', async (req: Request, res: Response)
 // Preview template
 router.post('/api/document-templates/:id/preview', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const { id } = req.params;
     const { sampleData } = req.body;
 
@@ -206,7 +206,7 @@ router.post('/api/document-templates/:id/preview', async (req: Request, res: Res
 // Generate document from template
 router.post('/api/documents/generate', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const userId = getUserId(req);
     const {
       templateId,
@@ -260,7 +260,7 @@ router.post('/api/documents/generate', async (req: Request, res: Response) => {
 // Batch generate documents
 router.post('/api/documents/batch-generate', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const userId = getUserId(req);
     const { templateId, contextList, format } = req.body;
 
@@ -290,7 +290,7 @@ router.post('/api/documents/batch-generate', async (req: Request, res: Response)
 // Get generated documents
 router.get('/api/documents/generated', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const { workflowId, taskId, businessRecordId, type } = req.query;
 
     const conditions: any = { tenantId };
@@ -307,7 +307,7 @@ router.get('/api/documents/generated', async (req: Request, res: Response) => {
         );
         return and(...clauses);
       },
-      orderBy: (d, { desc }) => [desc(d.createdAt)],
+      orderBy: (d, { desc }) => [desc(d.created_at)],
     });
 
     res.json(documents);
@@ -320,11 +320,11 @@ router.get('/api/documents/generated', async (req: Request, res: Response) => {
 // Download generated document
 router.get('/api/documents/generated/:id/download', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const { id } = req.params;
 
     const document = await db.query.generatedDocuments.findFirst({
-      where: (d, { eq, and }) => and(eq(d.id, parseInt(id)), eq(d.tenantId, tenantId)),
+      where: (d, { eq, and }) => and(eq(d.id, parseInt(id)), eq(d.tenant_id, tenantId)),
     });
 
     if (!document) {
@@ -359,7 +359,7 @@ router.get('/api/documents/generated/:id/download', async (req: Request, res: Re
 // Upload document for OCR processing
 router.post('/api/documents/upload', upload.single('file'), async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const userId = getUserId(req);
 
     if (!req.file) {
@@ -398,11 +398,11 @@ router.post('/api/documents/upload', upload.single('file'), async (req: Request,
 // Get upload status
 router.get('/api/documents/uploads/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const { id } = req.params;
 
     const upload = await db.query.documentUploads.findFirst({
-      where: (u, { eq, and }) => and(eq(u.id, parseInt(id)), eq(u.tenantId, tenantId)),
+      where: (u, { eq, and }) => and(eq(u.id, parseInt(id)), eq(u.tenant_id, tenantId)),
     });
 
     if (!upload) {
@@ -419,11 +419,11 @@ router.get('/api/documents/uploads/:id', async (req: Request, res: Response) => 
 // Get all uploads
 router.get('/api/documents/uploads', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
 
     const uploads = await db.query.documentUploads.findMany({
-      where: (u, { eq }) => eq(u.tenantId, tenantId),
-      orderBy: (u, { desc }) => [desc(u.createdAt)],
+      where: (u, { eq }) => eq(u.tenant_id, tenantId),
+      orderBy: (u, { desc }) => [desc(u.created_at)],
     });
 
     res.json(uploads);
@@ -436,13 +436,13 @@ router.get('/api/documents/uploads', async (req: Request, res: Response) => {
 // Approve/review uploaded document
 router.post('/api/documents/uploads/:id/review', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const userId = getUserId(req);
     const { id } = req.params;
     const { approved, notes } = req.body;
 
     const upload = await db.query.documentUploads.findFirst({
-      where: (u, { eq, and }) => and(eq(u.id, parseInt(id)), eq(u.tenantId, tenantId)),
+      where: (u, { eq, and }) => and(eq(u.id, parseInt(id)), eq(u.tenant_id, tenantId)),
     });
 
     if (!upload) {
@@ -473,11 +473,11 @@ router.post('/api/documents/uploads/:id/review', async (req: Request, res: Respo
 // Get field mappings
 router.get('/api/document-field-mappings', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
 
     const mappings = await db.query.documentFieldMappings.findMany({
-      where: (m, { eq, and }) => and(eq(m.tenantId, tenantId), eq(m.isActive, true)),
-      orderBy: (m, { desc }) => [desc(m.createdAt)],
+      where: (m, { eq, and }) => and(eq(m.tenant_id, tenantId), eq(m.isActive, true)),
+      orderBy: (m, { desc }) => [desc(m.created_at)],
     });
 
     res.json(mappings);
@@ -490,7 +490,7 @@ router.get('/api/document-field-mappings', async (req: Request, res: Response) =
 // Create field mapping
 router.post('/api/document-field-mappings', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = (req as any).tenant_id;
     const userId = getUserId(req);
 
     const validatedData = insertDocumentFieldMappingSchema.parse({

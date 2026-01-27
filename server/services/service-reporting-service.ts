@@ -227,7 +227,7 @@ export class ServiceReportingService {
       LEFT JOIN business_records br ON st.customer_id = br.id
       LEFT JOIN equipment e ON st.equipment_id = e.id
       WHERE st.assigned_technician_id = ${userContext.id}
-        AND st.tenant_id = ${userContext.tenantId}
+        AND st.tenant_id = ${userContext.tenant_id}
         ${dateFilter}
         ${statusFilter}
       ORDER BY
@@ -344,7 +344,7 @@ export class ServiceReportingService {
       LEFT JOIN service_tickets st ON pu.ticket_id = st.id
       LEFT JOIN business_records br ON st.customer_id = br.id
       WHERE pu.technician_id = ${userContext.id}
-        AND pu.tenant_id = ${userContext.tenantId}
+        AND pu.tenant_id = ${userContext.tenant_id}
         ${dateFilter}
       ORDER BY pu.used_at DESC
     `);
@@ -444,7 +444,7 @@ export class ServiceReportingService {
       LEFT JOIN service_tickets st ON te.ticket_id = st.id
       LEFT JOIN business_records br ON st.customer_id = br.id
       WHERE te.technician_id = ${userContext.id}
-        AND te.tenant_id = ${userContext.tenantId}
+        AND te.tenant_id = ${userContext.tenant_id}
         ${dateFilter}
       ORDER BY te.entry_date DESC
     `);
@@ -576,7 +576,7 @@ export class ServiceReportingService {
       LEFT JOIN equipment e ON st.equipment_id = e.id
       LEFT JOIN locations l ON br.location_id = l.id
       LEFT JOIN users u ON st.assigned_technician_id = u.id
-      WHERE st.tenant_id = ${userContext.tenantId}
+      WHERE st.tenant_id = ${userContext.tenant_id}
         AND st.status IN ('open', 'scheduled', 'in_progress')
         AND (
           st.assigned_technician_id = ANY(${sql.raw(`ARRAY[${accessibleUserIds.map((id) => `'${id}'`).join(',')}]`)})

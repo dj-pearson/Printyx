@@ -15,13 +15,13 @@ export function registerTemplateRoutes(app: Express) {
   // Get all templates
   app.get('/api/templates', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
 
       const templates = await db
         .select()
         .from(projectTemplates)
-        .where(eq(projectTemplates.tenantId, tenantId))
-        .orderBy(projectTemplates.createdAt);
+        .where(eq(projectTemplates.tenant_id, tenantId))
+        .orderBy(projectTemplates.created_at);
 
       res.json(templates);
     } catch (error) {
@@ -33,13 +33,13 @@ export function registerTemplateRoutes(app: Express) {
   // Get single template
   app.get('/api/templates/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       const templateId = req.params.id;
 
       const [template] = await db
         .select()
         .from(projectTemplates)
-        .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenantId, tenantId)));
+        .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenant_id, tenantId)));
 
       if (!template) {
         return res.status(404).json({ error: 'Template not found' });
@@ -55,7 +55,7 @@ export function registerTemplateRoutes(app: Express) {
   // Create template
   app.post('/api/templates', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       const userId = req.user?.claims?.sub || req.user?.id;
 
       const templateData = {
@@ -76,13 +76,13 @@ export function registerTemplateRoutes(app: Express) {
   // Update template
   app.patch('/api/templates/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       const templateId = req.params.id;
 
       const [updatedTemplate] = await db
         .update(projectTemplates)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenantId, tenantId)))
+        .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenant_id, tenantId)))
         .returning();
 
       if (!updatedTemplate) {
@@ -99,12 +99,12 @@ export function registerTemplateRoutes(app: Express) {
   // Delete template
   app.delete('/api/templates/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       const templateId = req.params.id;
 
       await db
         .delete(projectTemplates)
-        .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenantId, tenantId)));
+        .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenant_id, tenantId)));
 
       res.json({ success: true });
     } catch (error) {
@@ -116,7 +116,7 @@ export function registerTemplateRoutes(app: Express) {
   // Instantiate template - create project from template
   app.post('/api/templates/:id/instantiate', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       const userId = req.user?.claims?.sub || req.user?.id;
       const templateId = req.params.id;
 
@@ -124,7 +124,7 @@ export function registerTemplateRoutes(app: Express) {
       const [template] = await db
         .select()
         .from(projectTemplates)
-        .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenantId, tenantId)));
+        .where(and(eq(projectTemplates.id, templateId), eq(projectTemplates.tenant_id, tenantId)));
 
       if (!template) {
         return res.status(404).json({ error: 'Template not found' });
@@ -181,7 +181,7 @@ export function registerTemplateRoutes(app: Express) {
   // Create template from existing project
   app.post('/api/projects/:id/create-template', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       const userId = req.user?.claims?.sub || req.user?.id;
       const projectId = req.params.id;
 
@@ -189,7 +189,7 @@ export function registerTemplateRoutes(app: Express) {
       const [project] = await db
         .select()
         .from(projects)
-        .where(and(eq(projects.id, projectId), eq(projects.tenantId, tenantId)));
+        .where(and(eq(projects.id, projectId), eq(projects.tenant_id, tenantId)));
 
       if (!project) {
         return res.status(404).json({ error: 'Project not found' });
@@ -199,7 +199,7 @@ export function registerTemplateRoutes(app: Express) {
       const projectTasks = await db
         .select()
         .from(tasks)
-        .where(and(eq(tasks.projectId, projectId), eq(tasks.tenantId, tenantId)));
+        .where(and(eq(tasks.projectId, projectId), eq(tasks.tenant_id, tenantId)));
 
       // Build task template
       const taskTemplate = projectTasks.map((task) => ({

@@ -14,13 +14,13 @@ const router = express.Router();
 // Get all scheduled demos
 router.get('/api/demos', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
-    const tenantId = req.tenantId!;
+    const tenantId = req.tenant_id!;
 
     // Query actual database for demos
     const demos = await db
       .select()
       .from(demoSchedules)
-      .where(eq(demoSchedules.tenantId, tenantId))
+      .where(eq(demoSchedules.tenant_id, tenantId))
       .orderBy(desc(demoSchedules.scheduledDate));
 
     res.json(demos);
@@ -76,7 +76,7 @@ router.get('/api/demos', resolveTenant, requireTenant, async (req: TenantRequest
 // Get available customers for demo scheduling
 router.get('/api/demos/customers', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
@@ -96,7 +96,7 @@ router.get('/api/demos/customers', async (req: any, res) => {
       })
       .from(businessRecords)
       .where(
-        and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
+        and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.recordType, 'customer')),
       )
       .orderBy(asc(businessRecords.companyName));
 
@@ -110,7 +110,7 @@ router.get('/api/demos/customers', async (req: any, res) => {
 // Create new demo schedule (Phase 2: Enhanced validations)
 router.post('/api/demos', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const userId = req.user?.id;
 
     if (!tenantId) {
@@ -295,7 +295,7 @@ router.put('/api/demos/:demoId/checklist/:itemId', async (req: any, res) => {
 // Get equipment availability
 router.get('/api/demos/equipment-availability', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }

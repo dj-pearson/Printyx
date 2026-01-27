@@ -44,12 +44,12 @@ router.get('/reports', async (req: any, res) => {
     let query = db
       .select()
       .from(reportDefinitions)
-      .where(and(eq(reportDefinitions.tenantId, tenantId), eq(reportDefinitions.isActive, true)));
+      .where(and(eq(reportDefinitions.tenant_id, tenantId), eq(reportDefinitions.isActive, true)));
 
     if (category) {
       query = query.where(
         and(
-          eq(reportDefinitions.tenantId, tenantId),
+          eq(reportDefinitions.tenant_id, tenantId),
           eq(reportDefinitions.category, category as string),
           eq(reportDefinitions.isActive, true),
         ),
@@ -89,7 +89,7 @@ router.get('/reports/:id', async (req: any, res) => {
     const report = await db
       .select()
       .from(reportDefinitions)
-      .where(and(eq(reportDefinitions.id, id), eq(reportDefinitions.tenantId, tenantId)))
+      .where(and(eq(reportDefinitions.id, id), eq(reportDefinitions.tenant_id, tenantId)))
       .limit(1);
 
     if (report.length === 0) {
@@ -127,7 +127,7 @@ router.post('/reports/:code/execute', async (req: any, res) => {
       .where(
         and(
           eq(reportDefinitions.code, code),
-          eq(reportDefinitions.tenantId, tenantId),
+          eq(reportDefinitions.tenant_id, tenantId),
           eq(reportDefinitions.isActive, true),
         ),
       )
@@ -199,7 +199,7 @@ router.get('/kpis', async (req: any, res) => {
     const { category, highPriority } = req.query;
 
     let whereConditions = [
-      eq(kpiDefinitions.tenantId, tenantId),
+      eq(kpiDefinitions.tenant_id, tenantId),
       eq(kpiDefinitions.isActive, true),
     ];
 
@@ -250,7 +250,7 @@ router.get('/kpis/:id/current-value', async (req: any, res) => {
     const kpiDef = await db
       .select()
       .from(kpiDefinitions)
-      .where(and(eq(kpiDefinitions.id, id), eq(kpiDefinitions.tenantId, tenantId)))
+      .where(and(eq(kpiDefinitions.id, id), eq(kpiDefinitions.tenant_id, tenantId)))
       .limit(1);
 
     if (kpiDef.length === 0) {
@@ -261,7 +261,7 @@ router.get('/kpis/:id/current-value', async (req: any, res) => {
     const latestValue = await db
       .select()
       .from(kpiValues)
-      .where(and(eq(kpiValues.kpiId, id), eq(kpiValues.tenantId, tenantId)))
+      .where(and(eq(kpiValues.kpiId, id), eq(kpiValues.tenant_id, tenantId)))
       .orderBy(desc(kpiValues.recordedAt))
       .limit(1);
 
@@ -302,7 +302,7 @@ router.get('/reports/categories', async (req: any, res) => {
         count: sql<number>`count(*)`.as('count'),
       })
       .from(reportDefinitions)
-      .where(and(eq(reportDefinitions.tenantId, tenantId), eq(reportDefinitions.isActive, true)))
+      .where(and(eq(reportDefinitions.tenant_id, tenantId), eq(reportDefinitions.isActive, true)))
       .groupBy(reportDefinitions.category);
 
     res.json({
@@ -343,7 +343,7 @@ router.get('/kpis/categories', async (req: any, res) => {
         ),
       })
       .from(kpiDefinitions)
-      .where(and(eq(kpiDefinitions.tenantId, tenantId), eq(kpiDefinitions.isActive, true)))
+      .where(and(eq(kpiDefinitions.tenant_id, tenantId), eq(kpiDefinitions.isActive, true)))
       .groupBy(kpiDefinitions.category);
 
     res.json({

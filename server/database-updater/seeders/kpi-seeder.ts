@@ -1431,7 +1431,7 @@ export async function seedKPIs() {
             createdBy: systemUserId,
           })
           .onConflictDoUpdate({
-            target: [kpiDefinitions.code, kpiDefinitions.tenantId],
+            target: [kpiDefinitions.code, kpiDefinitions.tenant_id],
             set: {
               name: kpi.name,
               description: kpi.description || '',

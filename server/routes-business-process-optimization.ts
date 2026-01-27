@@ -27,7 +27,7 @@ router.use(enhanceUserContext);
 // Get process optimization dashboard
 router.get('/api/business-process/dashboard', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -449,7 +449,7 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
 // Get workflow template details
 router.get('/api/business-process/workflows/:workflowId', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { workflowId } = req.params;
 
     if (!tenantId) {
@@ -581,7 +581,7 @@ router.get('/api/business-process/workflows/:workflowId', async (req: any, res) 
 // Create new workflow template
 router.post('/api/business-process/workflows', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const workflowData = req.body;
 
     if (!tenantId) {
@@ -610,7 +610,7 @@ router.post('/api/business-process/workflows', async (req: any, res) => {
 // Update workflow template
 router.put('/api/business-process/workflows/:workflowId', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { workflowId } = req.params;
     const updateData = req.body;
 
@@ -636,7 +636,7 @@ router.put('/api/business-process/workflows/:workflowId', async (req: any, res) 
 // Execute workflow
 router.post('/api/business-process/workflows/:workflowId/execute', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { workflowId } = req.params;
     const { inputData, triggeredBy } = req.body;
 
@@ -668,7 +668,7 @@ router.post('/api/business-process/workflows/:workflowId/execute', async (req: a
 // Get process improvement recommendations
 router.get('/api/business-process/recommendations', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });

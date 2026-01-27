@@ -25,7 +25,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       const { status, riskLevel, ownerId, daysUntilRenewal } = req.query;
 
-      let conditions = [eq(contractRenewals.tenantId, tenantId)];
+      let conditions = [eq(contractRenewals.tenant_id, tenantId)];
 
       if (status) {
         conditions.push(eq(contractRenewals.renewalStatus, status as string));
@@ -63,7 +63,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const tenantId = req.headers['x-tenant-id'] as string;
 
       const renewal = await db.query.contractRenewals.findFirst({
-        where: and(eq(contractRenewals.id, id), eq(contractRenewals.tenantId, tenantId)),
+        where: and(eq(contractRenewals.id, id), eq(contractRenewals.tenant_id, tenantId)),
       });
 
       if (!renewal) {
@@ -120,7 +120,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const [updated] = await db
         .update(contractRenewals)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(and(eq(contractRenewals.id, id), eq(contractRenewals.tenantId, tenantId)))
+        .where(and(eq(contractRenewals.id, id), eq(contractRenewals.tenant_id, tenantId)))
         .returning();
 
       if (!updated) {
@@ -152,7 +152,7 @@ export function registerRenewalManagementRoutes(app: Express) {
           proposedContractValue,
           updatedAt: new Date(),
         })
-        .where(and(eq(contractRenewals.id, id), eq(contractRenewals.tenantId, tenantId)))
+        .where(and(eq(contractRenewals.id, id), eq(contractRenewals.tenant_id, tenantId)))
         .returning();
 
       if (!updated) {
@@ -182,7 +182,7 @@ export function registerRenewalManagementRoutes(app: Express) {
           churnedToCompetitor,
           updatedAt: new Date(),
         })
-        .where(and(eq(contractRenewals.id, id), eq(contractRenewals.tenantId, tenantId)))
+        .where(and(eq(contractRenewals.id, id), eq(contractRenewals.tenant_id, tenantId)))
         .returning();
 
       if (!updated) {
@@ -210,7 +210,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       const renewalsNeedingAttention = await db.query.contractRenewals.findMany({
         where: and(
-          eq(contractRenewals.tenantId, tenantId),
+          eq(contractRenewals.tenant_id, tenantId),
           eq(contractRenewals.renewalStatus, 'pending'),
           or(
             lte(contractRenewals.contractEndDate, ninetyDaysFromNow),
@@ -235,7 +235,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const tenantId = req.headers['x-tenant-id'] as string;
 
       const renewal = await db.query.contractRenewals.findFirst({
-        where: and(eq(contractRenewals.id, id), eq(contractRenewals.tenantId, tenantId)),
+        where: and(eq(contractRenewals.id, id), eq(contractRenewals.tenant_id, tenantId)),
       });
 
       if (!renewal) {
@@ -277,7 +277,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const activities = await db.query.renewalActivities.findMany({
         where: and(
           eq(renewalActivities.renewalId, renewalId as string),
-          eq(renewalActivities.tenantId, tenantId),
+          eq(renewalActivities.tenant_id, tenantId),
         ),
         orderBy: [desc(renewalActivities.activityDate)],
       });
@@ -331,7 +331,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       }
 
       const playbooks = await db.query.renewalPlaybooks.findMany({
-        where: eq(renewalPlaybooks.tenantId, tenantId),
+        where: eq(renewalPlaybooks.tenant_id, tenantId),
         orderBy: [desc(renewalPlaybooks.isDefault), desc(renewalPlaybooks.successRate)],
       });
 
@@ -373,7 +373,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const [updated] = await db
         .update(renewalPlaybooks)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(and(eq(renewalPlaybooks.id, id), eq(renewalPlaybooks.tenantId, tenantId)))
+        .where(and(eq(renewalPlaybooks.id, id), eq(renewalPlaybooks.tenant_id, tenantId)))
         .returning();
 
       if (!updated) {
@@ -394,7 +394,7 @@ export function registerRenewalManagementRoutes(app: Express) {
       const tenantId = req.headers['x-tenant-id'] as string;
 
       const renewal = await db.query.contractRenewals.findFirst({
-        where: and(eq(contractRenewals.id, renewalId), eq(contractRenewals.tenantId, tenantId)),
+        where: and(eq(contractRenewals.id, renewalId), eq(contractRenewals.tenant_id, tenantId)),
       });
 
       if (!renewal) {
@@ -403,7 +403,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       // Get all active playbooks
       const playbooks = await db.query.renewalPlaybooks.findMany({
-        where: and(eq(renewalPlaybooks.tenantId, tenantId), eq(renewalPlaybooks.isActive, true)),
+        where: and(eq(renewalPlaybooks.tenant_id, tenantId), eq(renewalPlaybooks.isActive, true)),
       });
 
       // Find matching playbook based on trigger conditions
@@ -458,7 +458,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       const { customerId, status, ownerId } = req.query;
 
-      let conditions = [eq(expansionOpportunities.tenantId, tenantId)];
+      let conditions = [eq(expansionOpportunities.tenant_id, tenantId)];
 
       if (customerId) {
         conditions.push(eq(expansionOpportunities.customerId, customerId as string));
@@ -517,7 +517,7 @@ export function registerRenewalManagementRoutes(app: Express) {
         .update(expansionOpportunities)
         .set({ ...req.body, updatedAt: new Date() })
         .where(
-          and(eq(expansionOpportunities.id, id), eq(expansionOpportunities.tenantId, tenantId)),
+          and(eq(expansionOpportunities.id, id), eq(expansionOpportunities.tenant_id, tenantId)),
         )
         .returning();
 
@@ -549,7 +549,7 @@ export function registerRenewalManagementRoutes(app: Express) {
           updatedAt: new Date(),
         })
         .where(
-          and(eq(expansionOpportunities.id, id), eq(expansionOpportunities.tenantId, tenantId)),
+          and(eq(expansionOpportunities.id, id), eq(expansionOpportunities.tenant_id, tenantId)),
         )
         .returning();
 

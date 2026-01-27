@@ -609,7 +609,7 @@ export class ManufacturerIntegrationService {
         .from(manufacturerIntegrations)
         .where(
           and(
-            eq(manufacturerIntegrations.tenantId, tenantId),
+            eq(manufacturerIntegrations.tenant_id, tenantId),
             eq(manufacturerIntegrations.id, integrationId),
           ),
         )
@@ -681,7 +681,7 @@ export class ManufacturerIntegrationService {
           eq(deviceRegistrations.integrationId, manufacturerIntegrations.id),
         )
         .where(
-          and(eq(deviceRegistrations.tenantId, tenantId), eq(deviceRegistrations.id, deviceId)),
+          and(eq(deviceRegistrations.tenant_id, tenantId), eq(deviceRegistrations.id, deviceId)),
         )
         .limit(1);
 
@@ -756,7 +756,7 @@ export class ManufacturerIntegrationService {
       })
       .where(
         and(
-          eq(manufacturerIntegrations.tenantId, tenantId),
+          eq(manufacturerIntegrations.tenant_id, tenantId),
           eq(manufacturerIntegrations.id, integrationId),
         ),
       );

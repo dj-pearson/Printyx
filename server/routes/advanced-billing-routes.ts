@@ -41,7 +41,7 @@ router.get('/rules', async (req: Request, res: Response) => {
     if (equipmentId) filters.equipmentId = equipmentId as string;
     if (contractId) filters.contractId = contractId as string;
 
-    const rules = await storage.getBillingRules(user.tenantId, filters);
+    const rules = await storage.getBillingRules(user.tenant_id, filters);
     res.json(rules);
   } catch (error) {
     console.error('Get billing rules error:', error);
@@ -59,7 +59,7 @@ router.get('/rules/:id', async (req: Request, res: Response) => {
   try {
     const rule = await storage.getBillingRule(req.params.id);
 
-    if (!rule || rule.tenantId !== user.tenantId) {
+    if (!rule || rule.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Billing rule not found' });
     }
 
@@ -87,7 +87,7 @@ router.post('/rules', async (req: Request, res: Response) => {
     const data = insertBillingRuleSchema.parse(req.body);
     const rule = await storage.createBillingRule({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       createdBy: user.id,
     });
 
@@ -116,12 +116,12 @@ router.put('/rules/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getBillingRule(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Billing rule not found' });
     }
 
     const data = insertBillingRuleSchema.partial().parse(req.body);
-    const updated = await storage.updateBillingRule(req.params.id, user.tenantId, data);
+    const updated = await storage.updateBillingRule(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -148,11 +148,11 @@ router.delete('/rules/:id', async (req: Request, res: Response) => {
 
   try {
     const rule = await storage.getBillingRule(req.params.id);
-    if (!rule || rule.tenantId !== user.tenantId) {
+    if (!rule || rule.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Billing rule not found' });
     }
 
-    await storage.deleteBillingRule(req.params.id, user.tenantId);
+    await storage.deleteBillingRule(req.params.id, user.tenant_id);
     res.status(204).send();
   } catch (error) {
     console.error('Delete billing rule error:', error);
@@ -168,7 +168,7 @@ router.get('/rules/customer/:customerId', async (req: Request, res: Response) =>
   }
 
   try {
-    const rules = await storage.getBillingRulesByCustomer(req.params.customerId, user.tenantId);
+    const rules = await storage.getBillingRulesByCustomer(req.params.customerId, user.tenant_id);
     res.json(rules);
   } catch (error) {
     console.error('Get billing rules by customer error:', error);
@@ -184,7 +184,7 @@ router.get('/rules/contract/:contractId', async (req: Request, res: Response) =>
   }
 
   try {
-    const rules = await storage.getBillingRulesByContract(req.params.contractId, user.tenantId);
+    const rules = await storage.getBillingRulesByContract(req.params.contractId, user.tenant_id);
     res.json(rules);
   } catch (error) {
     console.error('Get billing rules by contract error:', error);
@@ -211,7 +211,7 @@ router.get('/anomalies', async (req: Request, res: Response) => {
     if (equipmentId) filters.equipmentId = equipmentId as string;
     if (customerId) filters.customerId = customerId as string;
 
-    const anomalies = await storage.getMeterAnomalies(user.tenantId, filters);
+    const anomalies = await storage.getMeterAnomalies(user.tenant_id, filters);
     res.json(anomalies);
   } catch (error) {
     console.error('Get meter anomalies error:', error);
@@ -227,7 +227,7 @@ router.get('/anomalies/unresolved', async (req: Request, res: Response) => {
   }
 
   try {
-    const anomalies = await storage.getUnresolvedMeterAnomalies(user.tenantId);
+    const anomalies = await storage.getUnresolvedMeterAnomalies(user.tenant_id);
     res.json(anomalies);
   } catch (error) {
     console.error('Get unresolved anomalies error:', error);
@@ -245,7 +245,7 @@ router.get('/anomalies/:id', async (req: Request, res: Response) => {
   try {
     const anomaly = await storage.getMeterAnomaly(req.params.id);
 
-    if (!anomaly || anomaly.tenantId !== user.tenantId) {
+    if (!anomaly || anomaly.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Meter anomaly not found' });
     }
 
@@ -267,7 +267,7 @@ router.post('/anomalies', async (req: Request, res: Response) => {
     const data = insertMeterAnomalySchema.parse(req.body);
     const anomaly = await storage.createMeterAnomaly({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
     });
 
     res.status(201).json(anomaly);
@@ -289,7 +289,7 @@ router.post('/anomalies/:id/review', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getMeterAnomaly(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Meter anomaly not found' });
     }
 
@@ -297,7 +297,7 @@ router.post('/anomalies/:id/review', async (req: Request, res: Response) => {
 
     const reviewed = await storage.reviewMeterAnomaly(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       user.id,
       reviewNotes,
     );
@@ -318,7 +318,7 @@ router.post('/anomalies/:id/resolve', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getMeterAnomaly(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Meter anomaly not found' });
     }
 
@@ -327,7 +327,7 @@ router.post('/anomalies/:id/resolve', async (req: Request, res: Response) => {
 
     const resolved = await storage.resolveMeterAnomaly(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       resolutionMethod,
       resolutionNotes,
       correctedBwReading,
@@ -349,7 +349,7 @@ router.get('/anomalies/equipment/:equipmentId', async (req: Request, res: Respon
   }
 
   try {
-    const anomalies = await storage.getAnomaliesByEquipment(req.params.equipmentId, user.tenantId);
+    const anomalies = await storage.getAnomaliesByEquipment(req.params.equipmentId, user.tenant_id);
 
     res.json(anomalies);
   } catch (error) {
@@ -377,7 +377,7 @@ router.get('/disputes', async (req: Request, res: Response) => {
     if (customerId) filters.customerId = customerId as string;
     if (invoiceId) filters.invoiceId = invoiceId as string;
 
-    const disputes = await storage.getBillingDisputes(user.tenantId, filters);
+    const disputes = await storage.getBillingDisputes(user.tenant_id, filters);
     res.json(disputes);
   } catch (error) {
     console.error('Get billing disputes error:', error);
@@ -393,7 +393,7 @@ router.get('/disputes/open', async (req: Request, res: Response) => {
   }
 
   try {
-    const disputes = await storage.getOpenBillingDisputes(user.tenantId);
+    const disputes = await storage.getOpenBillingDisputes(user.tenant_id);
     res.json(disputes);
   } catch (error) {
     console.error('Get open disputes error:', error);
@@ -411,7 +411,7 @@ router.get('/disputes/:id', async (req: Request, res: Response) => {
   try {
     const dispute = await storage.getBillingDispute(req.params.id);
 
-    if (!dispute || dispute.tenantId !== user.tenantId) {
+    if (!dispute || dispute.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Billing dispute not found' });
     }
 
@@ -433,7 +433,7 @@ router.post('/disputes', async (req: Request, res: Response) => {
     const data = insertBillingDisputeSchema.parse(req.body);
     const dispute = await storage.createBillingDispute({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       createdBy: user.id,
     });
 
@@ -456,12 +456,12 @@ router.put('/disputes/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getBillingDispute(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Billing dispute not found' });
     }
 
     const data = insertBillingDisputeSchema.partial().parse(req.body);
-    const updated = await storage.updateBillingDispute(req.params.id, user.tenantId, data);
+    const updated = await storage.updateBillingDispute(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -488,7 +488,7 @@ router.post('/disputes/:id/assign', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getBillingDispute(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Billing dispute not found' });
     }
 
@@ -497,7 +497,7 @@ router.post('/disputes/:id/assign', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'assignedTo is required' });
     }
 
-    const assigned = await storage.assignBillingDispute(req.params.id, user.tenantId, assignedTo);
+    const assigned = await storage.assignBillingDispute(req.params.id, user.tenant_id, assignedTo);
 
     res.json(assigned);
   } catch (error) {
@@ -515,11 +515,11 @@ router.post('/disputes/:id/acknowledge', async (req: Request, res: Response) => 
 
   try {
     const existing = await storage.getBillingDispute(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Billing dispute not found' });
     }
 
-    const acknowledged = await storage.acknowledgeBillingDispute(req.params.id, user.tenantId);
+    const acknowledged = await storage.acknowledgeBillingDispute(req.params.id, user.tenant_id);
 
     res.json(acknowledged);
   } catch (error) {
@@ -543,7 +543,7 @@ router.post('/disputes/:id/resolve', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getBillingDispute(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Billing dispute not found' });
     }
 
@@ -554,7 +554,7 @@ router.post('/disputes/:id/resolve', async (req: Request, res: Response) => {
 
     const resolved = await storage.resolveBillingDispute(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       user.id,
       resolutionType,
       resolutionDescription,
@@ -582,7 +582,7 @@ router.post('/disputes/:id/escalate', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getBillingDispute(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Billing dispute not found' });
     }
 
@@ -593,7 +593,7 @@ router.post('/disputes/:id/escalate', async (req: Request, res: Response) => {
 
     const escalated = await storage.escalateBillingDispute(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       escalatedTo,
       escalationReason,
     );
@@ -615,7 +615,7 @@ router.get('/disputes/customer/:customerId', async (req: Request, res: Response)
   try {
     const disputes = await storage.getBillingDisputesByCustomer(
       req.params.customerId,
-      user.tenantId,
+      user.tenant_id,
     );
 
     res.json(disputes);
@@ -633,7 +633,10 @@ router.get('/disputes/invoice/:invoiceId', async (req: Request, res: Response) =
   }
 
   try {
-    const disputes = await storage.getBillingDisputesByInvoice(req.params.invoiceId, user.tenantId);
+    const disputes = await storage.getBillingDisputesByInvoice(
+      req.params.invoiceId,
+      user.tenant_id,
+    );
 
     res.json(disputes);
   } catch (error) {
@@ -660,7 +663,7 @@ router.get('/generation/logs', async (req: Request, res: Response) => {
     if (customerId) filters.customerId = customerId as string;
     if (batchId) filters.batchId = batchId as string;
 
-    const logs = await storage.getInvoiceGenerationLogs(user.tenantId, filters);
+    const logs = await storage.getInvoiceGenerationLogs(user.tenant_id, filters);
     res.json(logs);
   } catch (error) {
     console.error('Get invoice generation logs error:', error);
@@ -678,7 +681,7 @@ router.get('/generation/logs/:id', async (req: Request, res: Response) => {
   try {
     const log = await storage.getInvoiceGenerationLog(req.params.id);
 
-    if (!log || log.tenantId !== user.tenantId) {
+    if (!log || log.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Invoice generation log not found' });
     }
 
@@ -712,7 +715,7 @@ router.post('/generation/generate', async (req: Request, res: Response) => {
     }
 
     const result = await storage.generateInvoice(
-      user.tenantId,
+      user.tenant_id,
       customerId,
       contractId,
       new Date(billingPeriodStart),
@@ -750,7 +753,7 @@ router.post('/generation/batch', async (req: Request, res: Response) => {
     }
 
     const results = await storage.generateInvoiceBatch(
-      user.tenantId,
+      user.tenant_id,
       customerIds,
       new Date(billingPeriodStart),
       new Date(billingPeriodEnd),
@@ -772,7 +775,7 @@ router.get('/generation/failed', async (req: Request, res: Response) => {
   }
 
   try {
-    const failedLogs = await storage.getFailedInvoiceGenerations(user.tenantId);
+    const failedLogs = await storage.getFailedInvoiceGenerations(user.tenant_id);
     res.json(failedLogs);
   } catch (error) {
     console.error('Get failed invoice generations error:', error);
@@ -791,7 +794,7 @@ router.get('/generation/stats', async (req: Request, res: Response) => {
     const { startDate, endDate } = req.query;
 
     const stats = await storage.getInvoiceGenerationStats(
-      user.tenantId,
+      user.tenant_id,
       startDate ? new Date(startDate as string) : undefined,
       endDate ? new Date(endDate as string) : undefined,
     );
@@ -821,7 +824,7 @@ router.get('/schedules', async (req: Request, res: Response) => {
     if (isActive !== undefined) filters.isActive = isActive === 'true';
     if (customerId) filters.customerId = customerId as string;
 
-    const schedules = await storage.getBillingSchedules(user.tenantId, filters);
+    const schedules = await storage.getBillingSchedules(user.tenant_id, filters);
     res.json(schedules);
   } catch (error) {
     console.error('Get billing schedules error:', error);
@@ -837,7 +840,7 @@ router.get('/schedules/active', async (req: Request, res: Response) => {
   }
 
   try {
-    const schedules = await storage.getActiveBillingSchedules(user.tenantId);
+    const schedules = await storage.getActiveBillingSchedules(user.tenant_id);
     res.json(schedules);
   } catch (error) {
     console.error('Get active billing schedules error:', error);
@@ -853,7 +856,7 @@ router.get('/schedules/due', async (req: Request, res: Response) => {
   }
 
   try {
-    const schedules = await storage.getDueBillingSchedules(user.tenantId);
+    const schedules = await storage.getDueBillingSchedules(user.tenant_id);
     res.json(schedules);
   } catch (error) {
     console.error('Get due billing schedules error:', error);
@@ -871,7 +874,7 @@ router.get('/schedules/:id', async (req: Request, res: Response) => {
   try {
     const schedule = await storage.getBillingSchedule(req.params.id);
 
-    if (!schedule || schedule.tenantId !== user.tenantId) {
+    if (!schedule || schedule.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Billing schedule not found' });
     }
 
@@ -899,7 +902,7 @@ router.post('/schedules', async (req: Request, res: Response) => {
     const data = insertBillingScheduleSchema.parse(req.body);
     const schedule = await storage.createBillingSchedule({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       createdBy: user.id,
     });
 
@@ -928,12 +931,12 @@ router.put('/schedules/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getBillingSchedule(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Billing schedule not found' });
     }
 
     const data = insertBillingScheduleSchema.partial().parse(req.body);
-    const updated = await storage.updateBillingSchedule(req.params.id, user.tenantId, data);
+    const updated = await storage.updateBillingSchedule(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -960,11 +963,11 @@ router.delete('/schedules/:id', async (req: Request, res: Response) => {
 
   try {
     const schedule = await storage.getBillingSchedule(req.params.id);
-    if (!schedule || schedule.tenantId !== user.tenantId) {
+    if (!schedule || schedule.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Billing schedule not found' });
     }
 
-    await storage.deleteBillingSchedule(req.params.id, user.tenantId);
+    await storage.deleteBillingSchedule(req.params.id, user.tenant_id);
     res.status(204).send();
   } catch (error) {
     console.error('Delete billing schedule error:', error);
@@ -990,7 +993,7 @@ router.get('/credit-memos', async (req: Request, res: Response) => {
     if (invoiceId) filters.invoiceId = invoiceId as string;
     if (disputeId) filters.disputeId = disputeId as string;
 
-    const creditMemos = await storage.getCreditMemos(user.tenantId, filters);
+    const creditMemos = await storage.getCreditMemos(user.tenant_id, filters);
     res.json(creditMemos);
   } catch (error) {
     console.error('Get credit memos error:', error);
@@ -1006,7 +1009,7 @@ router.get('/credit-memos/pending', async (req: Request, res: Response) => {
   }
 
   try {
-    const creditMemos = await storage.getPendingCreditMemos(user.tenantId);
+    const creditMemos = await storage.getPendingCreditMemos(user.tenant_id);
     res.json(creditMemos);
   } catch (error) {
     console.error('Get pending credit memos error:', error);
@@ -1024,7 +1027,7 @@ router.get('/credit-memos/:id', async (req: Request, res: Response) => {
   try {
     const creditMemo = await storage.getCreditMemo(req.params.id);
 
-    if (!creditMemo || creditMemo.tenantId !== user.tenantId) {
+    if (!creditMemo || creditMemo.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Credit memo not found' });
     }
 
@@ -1052,7 +1055,7 @@ router.post('/credit-memos', async (req: Request, res: Response) => {
     const data = insertCreditMemoSchema.parse(req.body);
     const creditMemo = await storage.createCreditMemo({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       createdBy: user.id,
     });
 
@@ -1075,12 +1078,12 @@ router.put('/credit-memos/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getCreditMemo(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Credit memo not found' });
     }
 
     const data = insertCreditMemoSchema.partial().parse(req.body);
-    const updated = await storage.updateCreditMemo(req.params.id, user.tenantId, data);
+    const updated = await storage.updateCreditMemo(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -1107,11 +1110,11 @@ router.post('/credit-memos/:id/approve', async (req: Request, res: Response) => 
 
   try {
     const existing = await storage.getCreditMemo(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Credit memo not found' });
     }
 
-    const approved = await storage.approveCreditMemo(req.params.id, user.tenantId, user.id);
+    const approved = await storage.approveCreditMemo(req.params.id, user.tenant_id, user.id);
 
     res.json(approved);
   } catch (error) {
@@ -1135,11 +1138,11 @@ router.post('/credit-memos/:id/issue', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getCreditMemo(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Credit memo not found' });
     }
 
-    const issued = await storage.issueCreditMemo(req.params.id, user.tenantId);
+    const issued = await storage.issueCreditMemo(req.params.id, user.tenant_id);
 
     res.json(issued);
   } catch (error) {
@@ -1163,7 +1166,7 @@ router.post('/credit-memos/:id/apply', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getCreditMemo(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Credit memo not found' });
     }
 
@@ -1172,7 +1175,7 @@ router.post('/credit-memos/:id/apply', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'invoiceId is required' });
     }
 
-    const applied = await storage.applyCreditMemo(req.params.id, user.tenantId, invoiceId);
+    const applied = await storage.applyCreditMemo(req.params.id, user.tenant_id, invoiceId);
 
     res.json(applied);
   } catch (error) {
@@ -1196,7 +1199,7 @@ router.post('/credit-memos/:id/void', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getCreditMemo(req.params.id);
-    if (!existing || existing.tenantId !== user.tenantId) {
+    if (!existing || existing.tenant_id !== user.tenant_id) {
       return res.status(404).json({ error: 'Credit memo not found' });
     }
 
@@ -1205,7 +1208,7 @@ router.post('/credit-memos/:id/void', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'voidReason is required' });
     }
 
-    const voided = await storage.voidCreditMemo(req.params.id, user.tenantId, user.id, voidReason);
+    const voided = await storage.voidCreditMemo(req.params.id, user.tenant_id, user.id, voidReason);
 
     res.json(voided);
   } catch (error) {
@@ -1224,7 +1227,7 @@ router.get('/credit-memos/customer/:customerId', async (req: Request, res: Respo
   try {
     const creditMemos = await storage.getCreditMemosByCustomer(
       req.params.customerId,
-      user.tenantId,
+      user.tenant_id,
     );
     res.json(creditMemos);
   } catch (error) {

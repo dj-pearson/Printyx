@@ -30,7 +30,7 @@ router.get('/schedules', async (req: Request, res: Response) => {
   try {
     const { isActive, contractId, customerId } = req.query;
 
-    let whereConditions = [eq(billingSchedules.tenantId, user.tenantId)];
+    let whereConditions = [eq(billingSchedules.tenant_id, user.tenant_id)];
 
     if (isActive !== undefined) {
       whereConditions.push(eq(billingSchedules.isActive, isActive === 'true'));
@@ -65,7 +65,7 @@ router.get('/schedules/due', async (req: Request, res: Response) => {
   }
 
   try {
-    const dueSchedules = await automatedBillingService.getDueSchedules(user.tenantId);
+    const dueSchedules = await automatedBillingService.getDueSchedules(user.tenant_id);
     res.json(dueSchedules);
   } catch (error) {
     console.error('Get due schedules error:', error);
@@ -102,7 +102,7 @@ router.post('/schedules', async (req: Request, res: Response) => {
     const data = scheduleSchema.parse(req.body);
 
     const schedule = await automatedBillingService.createBillingSchedule(
-      user.tenantId,
+      user.tenant_id,
       data,
       user.id,
     );
@@ -133,7 +133,7 @@ router.put('/schedules/:id', async (req: Request, res: Response) => {
       .select()
       .from(billingSchedules)
       .where(
-        and(eq(billingSchedules.id, req.params.id), eq(billingSchedules.tenantId, user.tenantId)),
+        and(eq(billingSchedules.id, req.params.id), eq(billingSchedules.tenant_id, user.tenant_id)),
       )
       .limit(1);
 
@@ -190,7 +190,7 @@ router.delete('/schedules/:id', async (req: Request, res: Response) => {
       .select()
       .from(billingSchedules)
       .where(
-        and(eq(billingSchedules.id, req.params.id), eq(billingSchedules.tenantId, user.tenantId)),
+        and(eq(billingSchedules.id, req.params.id), eq(billingSchedules.tenant_id, user.tenant_id)),
       )
       .limit(1);
 
@@ -223,7 +223,7 @@ router.post('/schedules/:id/execute', async (req: Request, res: Response) => {
   try {
     const result = await automatedBillingService.executeScheduledRun(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       user.id,
     );
 
@@ -246,13 +246,13 @@ router.post('/execute-all-due', async (req: Request, res: Response) => {
   }
 
   try {
-    const dueSchedules = await automatedBillingService.getDueSchedules(user.tenantId);
+    const dueSchedules = await automatedBillingService.getDueSchedules(user.tenant_id);
     const results: any[] = [];
 
     for (const schedule of dueSchedules) {
       const result = await automatedBillingService.executeScheduledRun(
         schedule.scheduleId,
-        user.tenantId,
+        user.tenant_id,
         user.id,
       );
       results.push({
@@ -287,7 +287,7 @@ router.post('/process-pending-meters', async (req: Request, res: Response) => {
 
   try {
     const result = await automatedBillingService.processPendingMeterReadings(
-      user.tenantId,
+      user.tenant_id,
       user.id,
     );
 
@@ -306,7 +306,7 @@ router.get('/meter-status', async (req: Request, res: Response) => {
   }
 
   try {
-    const status = await automatedBillingService.getMeterCollectionStatus(user.tenantId);
+    const status = await automatedBillingService.getMeterCollectionStatus(user.tenant_id);
     res.json(status);
   } catch (error) {
     console.error('Get meter status error:', error);
@@ -324,7 +324,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
   }
 
   try {
-    const metrics = await automatedBillingService.getBillingDashboardMetrics(user.tenantId);
+    const metrics = await automatedBillingService.getBillingDashboardMetrics(user.tenant_id);
     res.json(metrics);
   } catch (error) {
     console.error('Get billing dashboard error:', error);
@@ -342,7 +342,7 @@ router.get('/generation-logs', async (req: Request, res: Response) => {
   try {
     const { status, batchId, limit } = req.query;
 
-    let whereConditions = [eq(invoiceGenerationLogs.tenantId, user.tenantId)];
+    let whereConditions = [eq(invoiceGenerationLogs.tenant_id, user.tenant_id)];
 
     if (status) {
       whereConditions.push(eq(invoiceGenerationLogs.status, status as string));
@@ -356,7 +356,7 @@ router.get('/generation-logs', async (req: Request, res: Response) => {
       .select()
       .from(invoiceGenerationLogs)
       .where(and(...whereConditions))
-      .orderBy(desc(invoiceGenerationLogs.createdAt));
+      .orderBy(desc(invoiceGenerationLogs.created_at));
 
     if (limit) {
       query = query.limit(parseInt(limit as string)) as any;
@@ -392,7 +392,7 @@ router.post('/generate-invoice', async (req: Request, res: Response) => {
 
     const invoice = await billingEngine.generateInvoiceFromContract(
       data.contractId,
-      user.tenantId,
+      user.tenant_id,
       {
         billingPeriodStart: data.billingPeriodStart,
         billingPeriodEnd: data.billingPeriodEnd,
@@ -432,7 +432,7 @@ router.post('/bulk-generate', async (req: Request, res: Response) => {
 
     const data = bulkSchema.parse(req.body);
 
-    const result = await billingEngine.generateBulkInvoices(data.contractIds, user.tenantId, {
+    const result = await billingEngine.generateBulkInvoices(data.contractIds, user.tenant_id, {
       billingPeriodStart: data.billingPeriodStart,
       billingPeriodEnd: data.billingPeriodEnd,
       autoSend: data.autoSend,

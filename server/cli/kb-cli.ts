@@ -58,7 +58,7 @@ program
         console.log(`   ID: ${article.id}`);
         console.log(`   Status: ${article.status}`);
         console.log(`   Views: ${article.viewCount}`);
-        console.log(`   Created: ${article.createdAt}`);
+        console.log(`   Created: ${article.created_at}`);
         console.log('');
       });
     } catch (error) {
@@ -211,7 +211,10 @@ program
       await db
         .delete(knowledgeArticles)
         .where(
-          and(eq(knowledgeArticles.id, options.id), eq(knowledgeArticles.tenantId, options.tenant)),
+          and(
+            eq(knowledgeArticles.id, options.id),
+            eq(knowledgeArticles.tenant_id, options.tenant),
+          ),
         );
 
       console.log('\n✅ Article deleted successfully!');
@@ -241,7 +244,7 @@ program
       } else if (options.category) {
         const drafts = await db.query.knowledgeArticles.findMany({
           where: and(
-            eq(knowledgeArticles.tenantId, options.tenant),
+            eq(knowledgeArticles.tenant_id, options.tenant),
             eq(knowledgeArticles.categoryId, options.category),
             eq(knowledgeArticles.status, 'draft'),
           ),
@@ -250,7 +253,7 @@ program
       } else if (options.all) {
         const drafts = await db.query.knowledgeArticles.findMany({
           where: and(
-            eq(knowledgeArticles.tenantId, options.tenant),
+            eq(knowledgeArticles.tenant_id, options.tenant),
             eq(knowledgeArticles.status, 'draft'),
           ),
         });
@@ -411,7 +414,7 @@ program
           `"${a.title.replace(/"/g, '""')}"`,
           a.status,
           a.categoryId,
-          a.createdAt,
+          a.created_at,
           a.viewCount,
         ]);
 
@@ -493,7 +496,7 @@ program
       if (options.pending) {
         const feedback = await db.query.articleFeedback.findMany({
           where: and(
-            eq(articleFeedback.tenantId, options.tenant),
+            eq(articleFeedback.tenant_id, options.tenant),
             eq(articleFeedback.resolved, false),
           ),
           limit: 50,
@@ -511,7 +514,7 @@ program
           console.log(`Type: ${fb.feedbackType}`);
           console.log(`Rating: ${fb.rating || 'N/A'}`);
           console.log(`Comment: ${fb.comment || 'N/A'}`);
-          console.log(`Created: ${fb.createdAt}`);
+          console.log(`Created: ${fb.created_at}`);
           console.log('---');
         }
       } else if (options.resolve) {
@@ -530,7 +533,7 @@ program
           .where(
             and(
               eq(articleFeedback.id, options.resolve),
-              eq(articleFeedback.tenantId, options.tenant),
+              eq(articleFeedback.tenant_id, options.tenant),
             ),
           );
 

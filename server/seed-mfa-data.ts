@@ -58,10 +58,10 @@ async function seedMfaData() {
     const testUser = testUsers[0];
 
     // Delete existing backup codes for test users
-    await db.delete(mfaBackupCodes).where(eq(mfaBackupCodes.userId, testUser.id));
+    await db.delete(mfaBackupCodes).where(eq(mfaBackupCodes.user_id, testUser.id));
 
     // Delete existing audit logs for test users
-    await db.delete(mfaAuditLogs).where(eq(mfaAuditLogs.userId, testUser.id));
+    await db.delete(mfaAuditLogs).where(eq(mfaAuditLogs.user_id, testUser.id));
 
     console.log('✓ Cleaned up existing MFA data');
 
@@ -92,7 +92,7 @@ async function seedMfaData() {
     await db.insert(mfaBackupCodes).values(
       backupCodes.map(({ hash }) => ({
         userId: testUser.id,
-        tenantId: testUser.tenantId,
+        tenantId: testUser.tenant_id,
         codeHash: hash,
         isUsed: false,
       })),
@@ -107,7 +107,7 @@ async function seedMfaData() {
     const usedBackupCodes = await db
       .select()
       .from(mfaBackupCodes)
-      .where(and(eq(mfaBackupCodes.userId, testUser.id), eq(mfaBackupCodes.isUsed, false)))
+      .where(and(eq(mfaBackupCodes.user_id, testUser.id), eq(mfaBackupCodes.isUsed, false)))
       .limit(1);
 
     if (usedBackupCodes.length > 0) {
@@ -133,7 +133,7 @@ async function seedMfaData() {
       // Enrollment event
       {
         userId: testUser.id,
-        tenantId: testUser.tenantId,
+        tenantId: testUser.tenant_id,
         eventType: 'enrollment',
         eventDetails: {
           method: 'totp',
@@ -150,7 +150,7 @@ async function seedMfaData() {
       // Successful verification
       {
         userId: testUser.id,
-        tenantId: testUser.tenantId,
+        tenantId: testUser.tenant_id,
         eventType: 'verification_success',
         eventDetails: {
           method: 'totp',
@@ -167,7 +167,7 @@ async function seedMfaData() {
       // Another successful verification
       {
         userId: testUser.id,
-        tenantId: testUser.tenantId,
+        tenantId: testUser.tenant_id,
         eventType: 'verification_success',
         eventDetails: {
           method: 'totp',
@@ -184,7 +184,7 @@ async function seedMfaData() {
       // Failed verification attempt
       {
         userId: testUser.id,
-        tenantId: testUser.tenantId,
+        tenantId: testUser.tenant_id,
         eventType: 'verification_failure',
         eventDetails: {
           method: 'totp',
@@ -202,7 +202,7 @@ async function seedMfaData() {
       // Backup code used
       {
         userId: testUser.id,
-        tenantId: testUser.tenantId,
+        tenantId: testUser.tenant_id,
         eventType: 'backup_code_used',
         eventDetails: {
           codesRemaining: 9,

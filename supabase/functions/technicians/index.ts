@@ -22,9 +22,9 @@ export default async function handler(req: Request) {
     }
 
     const tenantId =
-      (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
+      (user.app_metadata?.tenant_id as string) ||
+      (user.user_metadata?.tenant_id as string) ||
       (user.user_metadata?.tenant_id as string);
 
     if (!tenantId) {
@@ -205,7 +205,7 @@ export default async function handler(req: Request) {
 
       const technicianData = {
         tenant_id: tenantId,
-        user_id: body.userId || body.user_id || null,
+        user_id: body.user_id || body.user_id || null,
         first_name: body.firstName || body.first_name,
         last_name: body.lastName || body.last_name,
         email: body.email,

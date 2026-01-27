@@ -3263,7 +3263,7 @@ export async function seedReports() {
             createdBy: systemUserId,
           })
           .onConflictDoUpdate({
-            target: [reportDefinitions.code, reportDefinitions.tenantId],
+            target: [reportDefinitions.code, reportDefinitions.tenant_id],
             set: {
               name: report.name,
               description: report.description || '',

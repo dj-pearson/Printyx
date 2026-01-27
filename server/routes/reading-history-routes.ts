@@ -13,7 +13,7 @@ const router = Router();
 
 // Middleware to require authentication
 const requireAuth = (req: Request, res: Response, next: Function) => {
-  if (!req.session || !req.session.userId) {
+  if (!req.session || !req.session.user_id) {
     return res.status(401).json({ message: 'Authentication required' });
   }
   next();
@@ -22,13 +22,15 @@ const requireAuth = (req: Request, res: Response, next: Function) => {
 // Helper to get tenant ID
 const getTenantId = (req: Request): string => {
   return (
-    (req as any).tenantId || (req.session as any).tenantId || '00000000-0000-0000-0000-000000000000'
+    (req as any).tenant_id ||
+    (req.session as any).tenant_id ||
+    '00000000-0000-0000-0000-000000000000'
   );
 };
 
 // Helper to get user ID
 const getUserId = (req: Request): string => {
-  return req.session?.userId || (req.session as any).user?.id || '';
+  return req.session?.user_id || (req.session as any).user?.id || '';
 };
 
 /**
@@ -42,8 +44,8 @@ router.get('/', async (req: Request, res: Response) => {
     const { completed, limit = 50, offset = 0 } = req.query;
 
     let whereConditions = and(
-      eq(readingHistory.tenantId, tenantId),
-      eq(readingHistory.userId, userId),
+      eq(readingHistory.tenant_id, tenantId),
+      eq(readingHistory.user_id, userId),
     );
 
     // Filter by completion status if specified
@@ -126,7 +128,7 @@ router.post('/', async (req: Request, res: Response) => {
     const existing = await db
       .select()
       .from(readingHistory)
-      .where(and(eq(readingHistory.userId, userId), eq(readingHistory.articleId, articleId)))
+      .where(and(eq(readingHistory.user_id, userId), eq(readingHistory.articleId, articleId)))
       .limit(1);
 
     let result;
@@ -219,8 +221,8 @@ router.get('/recent', async (req: Request, res: Response) => {
       .innerJoin(knowledgeArticles, eq(readingHistory.articleId, knowledgeArticles.id))
       .where(
         and(
-          eq(readingHistory.tenantId, tenantId),
-          eq(readingHistory.userId, userId),
+          eq(readingHistory.tenant_id, tenantId),
+          eq(readingHistory.user_id, userId),
           gte(readingHistory.lastViewedAt, sevenDaysAgo),
         ),
       )
@@ -263,7 +265,7 @@ router.get('/stats', async (req: Request, res: Response) => {
         averageProgress: sql<number>`avg(${readingHistory.readingProgress})`,
       })
       .from(readingHistory)
-      .where(and(eq(readingHistory.tenantId, tenantId), eq(readingHistory.userId, userId)));
+      .where(and(eq(readingHistory.tenant_id, tenantId), eq(readingHistory.user_id, userId)));
 
     // Get reading streak (consecutive days with reading activity)
     const recentActivity = await db
@@ -271,7 +273,7 @@ router.get('/stats', async (req: Request, res: Response) => {
         date: sql<string>`DATE(${readingHistory.lastViewedAt})`,
       })
       .from(readingHistory)
-      .where(and(eq(readingHistory.tenantId, tenantId), eq(readingHistory.userId, userId)))
+      .where(and(eq(readingHistory.tenant_id, tenantId), eq(readingHistory.user_id, userId)))
       .groupBy(sql`DATE(${readingHistory.lastViewedAt})`)
       .orderBy(desc(sql`DATE(${readingHistory.lastViewedAt})`))
       .limit(30);
@@ -307,8 +309,8 @@ router.get('/stats', async (req: Request, res: Response) => {
       .from(readingHistory)
       .where(
         and(
-          eq(readingHistory.tenantId, tenantId),
-          eq(readingHistory.userId, userId),
+          eq(readingHistory.tenant_id, tenantId),
+          eq(readingHistory.user_id, userId),
           gte(readingHistory.lastViewedAt, weekAgo),
         ),
       );
@@ -356,7 +358,7 @@ router.get('/:articleId', async (req: Request, res: Response) => {
     const history = await db
       .select()
       .from(readingHistory)
-      .where(and(eq(readingHistory.userId, userId), eq(readingHistory.articleId, articleId)))
+      .where(and(eq(readingHistory.user_id, userId), eq(readingHistory.articleId, articleId)))
       .limit(1);
 
     res.json({
@@ -385,7 +387,7 @@ router.delete('/:articleId', async (req: Request, res: Response) => {
 
     await db
       .delete(readingHistory)
-      .where(and(eq(readingHistory.userId, userId), eq(readingHistory.articleId, articleId)));
+      .where(and(eq(readingHistory.user_id, userId), eq(readingHistory.articleId, articleId)));
 
     res.json({
       success: true,

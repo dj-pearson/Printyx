@@ -62,7 +62,7 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
       .from(businessRecords)
       .where(
         and(
-          eq(businessRecords.tenantId, tenantId),
+          eq(businessRecords.tenant_id, tenantId),
           or(
             ilike(businessRecords.companyName, searchTerm),
             ilike(businessRecords.contactName, searchTerm),
@@ -118,7 +118,7 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
       .leftJoin(businessRecords, eq(deals.businessRecordId, businessRecords.id))
       .where(
         and(
-          eq(deals.tenantId, tenantId),
+          eq(deals.tenant_id, tenantId),
           or(ilike(deals.name, searchTerm), ilike(businessRecords.companyName, searchTerm)),
         ),
       )
@@ -173,7 +173,7 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
         )
         .where(
           and(
-            eq(businessRecordActivities.tenantId, tenantId),
+            eq(businessRecordActivities.tenant_id, tenantId),
             or(
               ilike(businessRecordActivities.title, searchTerm),
               ilike(businessRecordActivities.notes, searchTerm),
@@ -223,7 +223,7 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
         .leftJoin(businessRecords, eq(quotes.businessRecordId, businessRecords.id))
         .where(
           and(
-            eq(quotes.tenantId, tenantId),
+            eq(quotes.tenant_id, tenantId),
             or(
               ilike(quotes.quoteNumber, searchTerm),
               ilike(businessRecords.companyName, searchTerm),

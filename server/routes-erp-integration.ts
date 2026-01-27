@@ -17,7 +17,7 @@ const router = express.Router();
 // Get ERP integration dashboard
 router.get('/api/erp-integration/dashboard', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -685,7 +685,7 @@ router.get('/api/erp-integration/dashboard', async (req: any, res) => {
 // Get specific integration details
 router.get('/api/erp-integration/systems/:systemId', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { systemId } = req.params;
 
     if (!tenantId) {
@@ -718,7 +718,7 @@ router.get('/api/erp-integration/systems/:systemId', async (req: any, res) => {
 // Create new integration
 router.post('/api/erp-integration/systems', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.user?.tenant_id;
     const { name, type, connectionConfig } = req.body;
 
     if (!tenantId) {

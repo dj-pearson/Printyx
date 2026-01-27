@@ -104,9 +104,9 @@ class PermissionCacheService {
       .from(permissionCache)
       .where(
         and(
-          eq(permissionCache.userId, userId),
+          eq(permissionCache.user_id, userId),
           eq(permissionCache.organizationalContext, organizationalContext),
-          eq(permissionCache.tenantId, tenantId),
+          eq(permissionCache.tenant_id, tenantId),
           sql`${permissionCache.expiresAt} > NOW()`,
         ),
       )
@@ -184,7 +184,7 @@ class PermissionCacheService {
     }
 
     // Delete from database
-    await db.delete(permissionCache).where(eq(permissionCache.userId, userId));
+    await db.delete(permissionCache).where(eq(permissionCache.user_id, userId));
   }
 
   /**
@@ -231,8 +231,8 @@ class PermissionComputationService {
       .innerJoin(enhancedRoles, eq(userRoleAssignments.roleId, enhancedRoles.id))
       .where(
         and(
-          eq(userRoleAssignments.userId, userId),
-          eq(userRoleAssignments.tenantId, tenantId),
+          eq(userRoleAssignments.user_id, userId),
+          eq(userRoleAssignments.tenant_id, tenantId),
           eq(userRoleAssignments.isActive, true),
           or(
             eq(userRoleAssignments.effectiveUntil, null),
@@ -357,7 +357,7 @@ class PermissionComputationService {
       .innerJoin(permissions, eq(permissionOverrides.permissionId, permissions.id))
       .where(
         and(
-          eq(permissionOverrides.userId, userId),
+          eq(permissionOverrides.user_id, userId),
           eq(permissionOverrides.isActive, true),
           or(
             eq(permissionOverrides.effectiveUntil, null),
@@ -482,8 +482,8 @@ export const enhanceUserContext = async (
     }
 
     // Get user ID from existing auth (session or JWT)
-    const userId = req.session?.userId || req.user?.id;
-    const tenantId = req.session?.tenantId || req.user?.tenantId;
+    const userId = req.session?.user_id || req.user?.id;
+    const tenantId = req.session?.tenant_id || req.user?.tenant_id;
 
     if (!userId) {
       res.status(401).json({ error: 'Authentication required' });
@@ -520,8 +520,8 @@ export const enhanceUserContext = async (
         .innerJoin(enhancedRoles, eq(userRoleAssignments.roleId, enhancedRoles.id))
         .where(
           and(
-            eq(userRoleAssignments.userId, userId),
-            eq(userRoleAssignments.tenantId, tenantId),
+            eq(userRoleAssignments.user_id, userId),
+            eq(userRoleAssignments.tenant_id, tenantId),
             eq(userRoleAssignments.isActive, true),
           ),
         )
@@ -926,7 +926,7 @@ export const checkApprovalRequired = async (
     .from(permissionOverrides)
     .where(
       and(
-        eq(permissionOverrides.userId, userId),
+        eq(permissionOverrides.user_id, userId),
         eq(permissionOverrides.permissionId, permission.id),
         eq(permissionOverrides.isActive, true),
         sql`${permissionOverrides.effectiveUntil} > NOW() OR ${permissionOverrides.effectiveUntil} IS NULL`,
@@ -971,7 +971,7 @@ export const requireApproval = (
       const approvalStatus = await checkApprovalRequired(
         permissionCode,
         req.user.id,
-        req.user.tenantId,
+        req.user.tenant_id,
         resourceId,
       );
 
@@ -1059,7 +1059,7 @@ async function logRBACEvent(
     timestamp: new Date().toISOString(),
     eventType,
     userId: req.user?.id,
-    tenantId: req.user?.tenantId,
+    tenantId: req.user?.tenant_id,
     roleCode: req.user?.roleCode,
     roleLevel: req.user?.roleLevel,
     details,
@@ -1090,7 +1090,7 @@ async function logRBACEvent(
       .values({
         eventType,
         userId: req.user?.id || null,
-        tenantId: req.user?.tenantId || null,
+        tenantId: req.user?.tenant_id || null,
         roleCode: req.user?.roleCode || null,
         roleLevel: req.user?.roleLevel || null,
         details,

@@ -49,7 +49,7 @@ router.get('/technicians/locations', async (req: Request, res: Response) => {
   }
 
   try {
-    const locations = await storage.getActiveTechnicianLocations(user.tenantId);
+    const locations = await storage.getActiveTechnicianLocations(user.tenant_id);
     res.json(locations);
   } catch (error) {
     console.error('Get active technician locations error:', error);
@@ -65,7 +65,7 @@ router.get('/technicians/:id/location', async (req: Request, res: Response) => {
   }
 
   try {
-    const location = await storage.getTechnicianLocation(req.params.id, user.tenantId);
+    const location = await storage.getTechnicianLocation(req.params.id, user.tenant_id);
 
     if (!location) {
       return res.status(404).json({ error: 'Technician location not found' });
@@ -89,7 +89,7 @@ router.put('/technicians/:id/location', async (req: Request, res: Response) => {
     const data = insertTechnicianLocationSchema.parse(req.body);
     const location = await storage.updateTechnicianLocation(req.params.id, {
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       technicianId: req.params.id,
     });
 
@@ -112,7 +112,7 @@ router.get('/technicians/status/:status', async (req: Request, res: Response) =>
 
   try {
     const locations = await storage.getTechnicianLocationsByStatus(
-      user.tenantId,
+      user.tenant_id,
       req.params.status,
     );
 
@@ -145,7 +145,7 @@ router.get('/technicians/nearby', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid coordinates or radius' });
     }
 
-    const allLocations = await storage.getActiveTechnicianLocations(user.tenantId);
+    const allLocations = await storage.getActiveTechnicianLocations(user.tenant_id);
 
     // Filter locations within radius
     const nearbyTechnicians = allLocations
@@ -186,7 +186,7 @@ router.get('/technicians/:id/history', async (req: Request, res: Response) => {
     if (activityType) filters.activityType = activityType as string;
     if (ticketId) filters.ticketId = ticketId as string;
 
-    const history = await storage.getGpsLocationHistory(req.params.id, user.tenantId, filters);
+    const history = await storage.getGpsLocationHistory(req.params.id, user.tenant_id, filters);
 
     res.json(history);
   } catch (error) {
@@ -206,7 +206,7 @@ router.post('/location-history', async (req: Request, res: Response) => {
     const data = insertLocationHistorySchema.parse(req.body);
     const history = await storage.createGpsLocationHistory({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
     });
 
     res.status(201).json(history);
@@ -227,7 +227,7 @@ router.get('/tickets/:ticketId/activity-timeline', async (req: Request, res: Res
   }
 
   try {
-    const timeline = await storage.getTicketActivityTimeline(req.params.ticketId, user.tenantId);
+    const timeline = await storage.getTicketActivityTimeline(req.params.ticketId, user.tenant_id);
 
     res.json(timeline);
   } catch (error) {
@@ -255,7 +255,7 @@ router.get('/technicians/:id/distance', async (req: Request, res: Response) => {
 
     const distance = await storage.calculateDistanceTraveled(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       start,
       end,
     );
@@ -289,7 +289,7 @@ router.get('/routes', async (req: Request, res: Response) => {
     if (routeDate) filters.routeDate = new Date(routeDate as string);
     if (routeStatus) filters.routeStatus = routeStatus as string;
 
-    const routes = await storage.getRouteAssignments(user.tenantId, filters);
+    const routes = await storage.getRouteAssignments(user.tenant_id, filters);
 
     res.json(routes);
   } catch (error) {
@@ -306,7 +306,7 @@ router.get('/routes/:id', async (req: Request, res: Response) => {
   }
 
   try {
-    const route = await storage.getRouteAssignment(req.params.id, user.tenantId);
+    const route = await storage.getRouteAssignment(req.params.id, user.tenant_id);
 
     if (!route) {
       return res.status(404).json({ error: 'Route not found' });
@@ -330,7 +330,7 @@ router.post('/routes', async (req: Request, res: Response) => {
     const data = insertRouteAssignmentSchema.parse(req.body);
     const route = await storage.createRouteAssignment({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       createdBy: user.id,
     });
 
@@ -352,13 +352,13 @@ router.put('/routes/:id', async (req: Request, res: Response) => {
   }
 
   try {
-    const existing = await storage.getRouteAssignment(req.params.id, user.tenantId);
+    const existing = await storage.getRouteAssignment(req.params.id, user.tenant_id);
     if (!existing) {
       return res.status(404).json({ error: 'Route not found' });
     }
 
     const data = insertRouteAssignmentSchema.partial().parse(req.body);
-    const updated = await storage.updateRouteAssignment(req.params.id, user.tenantId, data);
+    const updated = await storage.updateRouteAssignment(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -378,12 +378,12 @@ router.delete('/routes/:id', async (req: Request, res: Response) => {
   }
 
   try {
-    const route = await storage.getRouteAssignment(req.params.id, user.tenantId);
+    const route = await storage.getRouteAssignment(req.params.id, user.tenant_id);
     if (!route) {
       return res.status(404).json({ error: 'Route not found' });
     }
 
-    await storage.deleteRouteAssignment(req.params.id, user.tenantId);
+    await storage.deleteRouteAssignment(req.params.id, user.tenant_id);
     res.status(204).send();
   } catch (error) {
     console.error('Delete route assignment error:', error);
@@ -399,7 +399,7 @@ router.post('/routes/:id/start', async (req: Request, res: Response) => {
   }
 
   try {
-    const route = await storage.getRouteAssignment(req.params.id, user.tenantId);
+    const route = await storage.getRouteAssignment(req.params.id, user.tenant_id);
     if (!route) {
       return res.status(404).json({ error: 'Route not found' });
     }
@@ -414,7 +414,7 @@ router.post('/routes/:id/start', async (req: Request, res: Response) => {
 
     const { startLocation } = startSchema.parse(req.body);
 
-    const updated = await storage.startRoute(req.params.id, user.tenantId, startLocation);
+    const updated = await storage.startRoute(req.params.id, user.tenant_id, startLocation);
 
     res.json(updated);
   } catch (error) {
@@ -434,7 +434,7 @@ router.post('/routes/:id/complete', async (req: Request, res: Response) => {
   }
 
   try {
-    const route = await storage.getRouteAssignment(req.params.id, user.tenantId);
+    const route = await storage.getRouteAssignment(req.params.id, user.tenant_id);
     if (!route) {
       return res.status(404).json({ error: 'Route not found' });
     }
@@ -452,7 +452,7 @@ router.post('/routes/:id/complete', async (req: Request, res: Response) => {
 
     const updated = await storage.completeRoute(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       endLocation,
       actualDuration,
     );
@@ -475,7 +475,7 @@ router.patch('/routes/:id/progress', async (req: Request, res: Response) => {
   }
 
   try {
-    const route = await storage.getRouteAssignment(req.params.id, user.tenantId);
+    const route = await storage.getRouteAssignment(req.params.id, user.tenant_id);
     if (!route) {
       return res.status(404).json({ error: 'Route not found' });
     }
@@ -487,7 +487,7 @@ router.patch('/routes/:id/progress', async (req: Request, res: Response) => {
 
     const data = progressSchema.parse(req.body);
 
-    const updated = await storage.updateRouteProgress(req.params.id, user.tenantId, data);
+    const updated = await storage.updateRouteProgress(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -518,7 +518,7 @@ router.get('/deviations', async (req: Request, res: Response) => {
     if (severity) filters.severity = severity as string;
     if (resolved !== undefined) filters.resolved = resolved === 'true';
 
-    const deviations = await storage.getRouteDeviations(user.tenantId, filters);
+    const deviations = await storage.getRouteDeviations(user.tenant_id, filters);
 
     res.json(deviations);
   } catch (error) {
@@ -535,7 +535,7 @@ router.get('/deviations/unresolved', async (req: Request, res: Response) => {
   }
 
   try {
-    const deviations = await storage.getRouteDeviations(user.tenantId, { resolved: false });
+    const deviations = await storage.getRouteDeviations(user.tenant_id, { resolved: false });
 
     res.json(deviations);
   } catch (error) {
@@ -552,7 +552,7 @@ router.get('/deviations/:id', async (req: Request, res: Response) => {
   }
 
   try {
-    const deviation = await storage.getRouteDeviation(req.params.id, user.tenantId);
+    const deviation = await storage.getRouteDeviation(req.params.id, user.tenant_id);
 
     if (!deviation) {
       return res.status(404).json({ error: 'Deviation not found' });
@@ -576,7 +576,7 @@ router.post('/deviations', async (req: Request, res: Response) => {
     const data = insertRouteDeviationSchema.parse(req.body);
     const deviation = await storage.createRouteDeviation({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
     });
 
     res.status(201).json(deviation);
@@ -597,7 +597,7 @@ router.post('/deviations/:id/acknowledge', async (req: Request, res: Response) =
   }
 
   try {
-    const deviation = await storage.getRouteDeviation(req.params.id, user.tenantId);
+    const deviation = await storage.getRouteDeviation(req.params.id, user.tenant_id);
     if (!deviation) {
       return res.status(404).json({ error: 'Deviation not found' });
     }
@@ -610,7 +610,7 @@ router.post('/deviations/:id/acknowledge', async (req: Request, res: Response) =
 
     const updated = await storage.acknowledgeDeviation(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       acknowledgedBy,
     );
 
@@ -632,7 +632,7 @@ router.post('/deviations/:id/resolve', async (req: Request, res: Response) => {
   }
 
   try {
-    const deviation = await storage.getRouteDeviation(req.params.id, user.tenantId);
+    const deviation = await storage.getRouteDeviation(req.params.id, user.tenant_id);
     if (!deviation) {
       return res.status(404).json({ error: 'Deviation not found' });
     }
@@ -646,7 +646,7 @@ router.post('/deviations/:id/resolve', async (req: Request, res: Response) => {
 
     const updated = await storage.resolveDeviation(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       resolvedBy,
       resolutionNotes,
     );
@@ -678,7 +678,7 @@ router.get('/etas', async (req: Request, res: Response) => {
     if (technicianId) filters.technicianId = technicianId as string;
     if (routeId) filters.routeId = routeId as string;
 
-    const etas = await storage.getEtaCalculations(user.tenantId, filters);
+    const etas = await storage.getEtaCalculations(user.tenant_id, filters);
 
     res.json(etas);
   } catch (error) {
@@ -695,7 +695,7 @@ router.get('/etas/:id', async (req: Request, res: Response) => {
   }
 
   try {
-    const eta = await storage.getEtaCalculation(req.params.id, user.tenantId);
+    const eta = await storage.getEtaCalculation(req.params.id, user.tenant_id);
 
     if (!eta) {
       return res.status(404).json({ error: 'ETA calculation not found' });
@@ -719,7 +719,7 @@ router.post('/etas', async (req: Request, res: Response) => {
     const data = insertEtaCalculationSchema.parse(req.body);
     const eta = await storage.createEtaCalculation({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
     });
 
     res.status(201).json(eta);
@@ -740,7 +740,7 @@ router.get('/tickets/:ticketId/eta', async (req: Request, res: Response) => {
   }
 
   try {
-    const eta = await storage.getLatestEtaForTicket(req.params.ticketId, user.tenantId);
+    const eta = await storage.getLatestEtaForTicket(req.params.ticketId, user.tenant_id);
 
     if (!eta) {
       return res.status(404).json({ error: 'No ETA found for this ticket' });
@@ -761,7 +761,7 @@ router.patch('/etas/:id/arrival', async (req: Request, res: Response) => {
   }
 
   try {
-    const eta = await storage.getEtaCalculation(req.params.id, user.tenantId);
+    const eta = await storage.getEtaCalculation(req.params.id, user.tenant_id);
     if (!eta) {
       return res.status(404).json({ error: 'ETA calculation not found' });
     }
@@ -772,7 +772,11 @@ router.patch('/etas/:id/arrival', async (req: Request, res: Response) => {
 
     const { actualArrivalTime } = arrivalSchema.parse(req.body);
 
-    const updated = await storage.updateEtaArrival(req.params.id, user.tenantId, actualArrivalTime);
+    const updated = await storage.updateEtaArrival(
+      req.params.id,
+      user.tenant_id,
+      actualArrivalTime,
+    );
 
     res.json(updated);
   } catch (error) {
@@ -797,7 +801,7 @@ router.get('/technicians/:id/eta-accuracy', async (req: Request, res: Response) 
     const start = startDate ? new Date(startDate as string) : undefined;
     const end = endDate ? new Date(endDate as string) : undefined;
 
-    const accuracy = await storage.getEtaAccuracyMetrics(req.params.id, user.tenantId, start, end);
+    const accuracy = await storage.getEtaAccuracyMetrics(req.params.id, user.tenant_id, start, end);
 
     res.json(accuracy);
   } catch (error) {
@@ -823,7 +827,7 @@ router.get('/geofences', async (req: Request, res: Response) => {
     if (isActive !== undefined) filters.isActive = isActive === 'true';
     if (customerId) filters.customerId = customerId as string;
 
-    const geofences = await storage.getGeofences(user.tenantId, filters);
+    const geofences = await storage.getGeofences(user.tenant_id, filters);
 
     res.json(geofences);
   } catch (error) {
@@ -840,7 +844,7 @@ router.get('/geofences/:id', async (req: Request, res: Response) => {
   }
 
   try {
-    const geofence = await storage.getGeofence(req.params.id, user.tenantId);
+    const geofence = await storage.getGeofence(req.params.id, user.tenant_id);
 
     if (!geofence) {
       return res.status(404).json({ error: 'Geofence not found' });
@@ -870,7 +874,7 @@ router.post('/geofences', async (req: Request, res: Response) => {
     const data = insertGeofenceSchema.parse(req.body);
     const geofence = await storage.createGeofence({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       createdBy: user.id,
     });
 
@@ -898,13 +902,13 @@ router.put('/geofences/:id', async (req: Request, res: Response) => {
   }
 
   try {
-    const existing = await storage.getGeofence(req.params.id, user.tenantId);
+    const existing = await storage.getGeofence(req.params.id, user.tenant_id);
     if (!existing) {
       return res.status(404).json({ error: 'Geofence not found' });
     }
 
     const data = insertGeofenceSchema.partial().parse(req.body);
-    const updated = await storage.updateGeofence(req.params.id, user.tenantId, data);
+    const updated = await storage.updateGeofence(req.params.id, user.tenant_id, data);
 
     res.json(updated);
   } catch (error) {
@@ -930,12 +934,12 @@ router.delete('/geofences/:id', async (req: Request, res: Response) => {
   }
 
   try {
-    const geofence = await storage.getGeofence(req.params.id, user.tenantId);
+    const geofence = await storage.getGeofence(req.params.id, user.tenant_id);
     if (!geofence) {
       return res.status(404).json({ error: 'Geofence not found' });
     }
 
-    await storage.deleteGeofence(req.params.id, user.tenantId);
+    await storage.deleteGeofence(req.params.id, user.tenant_id);
     res.status(204).send();
   } catch (error) {
     console.error('Delete geofence error:', error);
@@ -959,12 +963,12 @@ router.post('/geofences/check', async (req: Request, res: Response) => {
 
     const { geofenceId, latitude, longitude } = checkSchema.parse(req.body);
 
-    const geofence = await storage.getGeofence(geofenceId, user.tenantId);
+    const geofence = await storage.getGeofence(geofenceId, user.tenant_id);
     if (!geofence) {
       return res.status(404).json({ error: 'Geofence not found' });
     }
 
-    const isInside = await storage.checkGeofence(geofenceId, user.tenantId, latitude, longitude);
+    const isInside = await storage.checkGeofence(geofenceId, user.tenant_id, latitude, longitude);
 
     res.json({ geofenceId, latitude, longitude, isInside });
   } catch (error) {
@@ -994,7 +998,7 @@ router.get('/geofence-events', async (req: Request, res: Response) => {
     if (eventType) filters.eventType = eventType as string;
     if (ticketId) filters.ticketId = ticketId as string;
 
-    const events = await storage.getGeofenceEvents(user.tenantId, filters);
+    const events = await storage.getGeofenceEvents(user.tenant_id, filters);
 
     res.json(events);
   } catch (error) {
@@ -1014,7 +1018,7 @@ router.post('/geofence-events', async (req: Request, res: Response) => {
     const data = insertGeofenceEventSchema.parse(req.body);
     const event = await storage.createGeofenceEvent({
       ...data,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
     });
 
     res.status(201).json(event);
@@ -1044,7 +1048,7 @@ router.get('/technicians/:id/geofence-events', async (req: Request, res: Respons
 
     const events = await storage.getGeofenceEventsForTechnician(
       req.params.id,
-      user.tenantId,
+      user.tenant_id,
       filters,
     );
 
@@ -1063,7 +1067,7 @@ router.get('/tickets/:ticketId/geofence-events', async (req: Request, res: Respo
   }
 
   try {
-    const events = await storage.getGeofenceEventsForTicket(req.params.ticketId, user.tenantId);
+    const events = await storage.getGeofenceEventsForTicket(req.params.ticketId, user.tenant_id);
 
     res.json(events);
   } catch (error) {

@@ -52,11 +52,11 @@ export class ManufacturerIntegrationService {
       .from(manufacturerIntegrations)
       .where(
         and(
-          eq(manufacturerIntegrations.tenantId, tenantId),
+          eq(manufacturerIntegrations.tenant_id, tenantId),
           eq(manufacturerIntegrations.isActive, true),
         ),
       )
-      .orderBy(desc(manufacturerIntegrations.createdAt));
+      .orderBy(desc(manufacturerIntegrations.created_at));
   }
 
   /**
@@ -72,7 +72,7 @@ export class ManufacturerIntegrationService {
       .where(
         and(
           eq(manufacturerIntegrations.id, integrationId),
-          eq(manufacturerIntegrations.tenantId, tenantId),
+          eq(manufacturerIntegrations.tenant_id, tenantId),
         ),
       );
 
@@ -104,7 +104,7 @@ export class ManufacturerIntegrationService {
       .where(
         and(
           eq(manufacturerIntegrations.id, integrationId),
-          eq(manufacturerIntegrations.tenantId, tenantId),
+          eq(manufacturerIntegrations.tenant_id, tenantId),
         ),
       );
 
@@ -145,7 +145,7 @@ export class ManufacturerIntegrationService {
    */
   async getDevices(tenantId: string, integrationId?: string): Promise<DeviceRegistration[]> {
     const conditions = [
-      eq(deviceRegistrations.tenantId, tenantId),
+      eq(deviceRegistrations.tenant_id, tenantId),
       eq(deviceRegistrations.isActive, true),
     ];
 
@@ -192,7 +192,7 @@ export class ManufacturerIntegrationService {
       .where(
         and(
           eq(deviceRegistrations.id, deviceRegistrationId),
-          eq(deviceRegistrations.tenantId, tenantId),
+          eq(deviceRegistrations.tenant_id, tenantId),
         ),
       );
 
@@ -215,7 +215,9 @@ export class ManufacturerIntegrationService {
     const [result] = await db
       .select()
       .from(deviceRegistrations)
-      .where(and(eq(deviceRegistrations.id, deviceId), eq(deviceRegistrations.tenantId, tenantId)));
+      .where(
+        and(eq(deviceRegistrations.id, deviceId), eq(deviceRegistrations.tenant_id, tenantId)),
+      );
 
     return result || null;
   }
@@ -231,7 +233,7 @@ export class ManufacturerIntegrationService {
     toDate?: Date,
   ): Promise<DeviceMetric[]> {
     const conditions = [
-      eq(deviceMetrics.tenantId, tenantId),
+      eq(deviceMetrics.tenant_id, tenantId),
       eq(deviceMetrics.deviceRegistrationId, deviceRegistrationId),
     ];
 
@@ -331,7 +333,7 @@ export class ManufacturerIntegrationService {
     fromDate?: Date,
     limit: number = 100,
   ): Promise<any[]> {
-    const conditions = [eq(integrationAuditLogs.tenantId, tenantId)];
+    const conditions = [eq(integrationAuditLogs.tenant_id, tenantId)];
 
     if (integrationId) {
       conditions.push(eq(integrationAuditLogs.integrationId, integrationId));

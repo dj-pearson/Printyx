@@ -17,7 +17,7 @@ export async function seedCustomerSuccessData(tenantId: string) {
     const customers = await db
       .select()
       .from(businessRecords)
-      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.status, 'active')))
+      .where(and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.status, 'active')))
       .limit(10);
 
     if (customers.length === 0) {
@@ -29,7 +29,7 @@ export async function seedCustomerSuccessData(tenantId: string) {
     const existingContracts = await db
       .select()
       .from(contracts)
-      .where(eq(contracts.tenantId, tenantId))
+      .where(eq(contracts.tenant_id, tenantId))
       .limit(10);
 
     // Seed Customer Health Scores (10 records)

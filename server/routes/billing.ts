@@ -45,10 +45,10 @@ const router = Router();
  * Ensure tenant context is available
  */
 const requireTenantContext = (req: any, res: any, next: any) => {
-  if (!req.tenantId && !req.user?.tenantId) {
+  if (!req.tenant_id && !req.user?.tenant_id) {
     return res.status(401).json({ error: 'No tenant context' });
   }
-  req.tenantId = req.tenantId || req.user?.tenantId;
+  req.tenant_id = req.tenant_id || req.user?.tenant_id;
   next();
 };
 
@@ -56,7 +56,7 @@ const requireTenantContext = (req: any, res: any, next: any) => {
  * Require authentication (placeholder - adjust based on your auth setup)
  */
 const isAuthenticated = (req: any, res: any, next: any) => {
-  if (!req.user && !req.session?.userId) {
+  if (!req.user && !req.session?.user_id) {
     return res.status(401).json({ error: 'Authentication required' });
   }
   next();
@@ -93,15 +93,15 @@ const invoiceGenerationSchema = z.object({
  */
 router.get('/payment-methods', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
 
     const paymentMethods = await db
       .select()
       .from(subscriptionPaymentMethods)
-      .where(eq(subscriptionPaymentMethods.tenantId, tenantId))
+      .where(eq(subscriptionPaymentMethods.tenant_id, tenantId))
       .orderBy(
         desc(subscriptionPaymentMethods.isDefault),
-        desc(subscriptionPaymentMethods.createdAt),
+        desc(subscriptionPaymentMethods.created_at),
       );
 
     res.json(paymentMethods);
@@ -117,7 +117,7 @@ router.get('/payment-methods', requireTenantContext, async (req: any, res) => {
  */
 router.post('/payment-methods', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const { paymentMethodId, billingDetails } = req.body;
 
     if (!paymentMethodId) {
@@ -145,7 +145,7 @@ router.post('/payment-methods', requireTenantContext, async (req: any, res) => {
     const existingMethods = await db
       .select()
       .from(subscriptionPaymentMethods)
-      .where(eq(subscriptionPaymentMethods.tenantId, tenantId));
+      .where(eq(subscriptionPaymentMethods.tenant_id, tenantId));
 
     const isFirst = existingMethods.length === 0;
 
@@ -184,7 +184,7 @@ router.post('/payment-methods', requireTenantContext, async (req: any, res) => {
  */
 router.delete('/payment-methods/:id', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const paymentMethodId = req.params.id;
 
     // Verify payment method belongs to tenant
@@ -194,7 +194,7 @@ router.delete('/payment-methods/:id', requireTenantContext, async (req: any, res
       .where(
         and(
           eq(subscriptionPaymentMethods.id, paymentMethodId),
-          eq(subscriptionPaymentMethods.tenantId, tenantId),
+          eq(subscriptionPaymentMethods.tenant_id, tenantId),
         ),
       )
       .limit(1);
@@ -208,7 +208,7 @@ router.delete('/payment-methods/:id', requireTenantContext, async (req: any, res
       const allMethods = await db
         .select()
         .from(subscriptionPaymentMethods)
-        .where(eq(subscriptionPaymentMethods.tenantId, tenantId));
+        .where(eq(subscriptionPaymentMethods.tenant_id, tenantId));
 
       if (allMethods.length === 1) {
         return res.status(400).json({
@@ -238,7 +238,7 @@ router.delete('/payment-methods/:id', requireTenantContext, async (req: any, res
       const [nextMethod] = await db
         .select()
         .from(subscriptionPaymentMethods)
-        .where(eq(subscriptionPaymentMethods.tenantId, tenantId))
+        .where(eq(subscriptionPaymentMethods.tenant_id, tenantId))
         .limit(1);
 
       if (nextMethod) {
@@ -267,7 +267,7 @@ router.delete('/payment-methods/:id', requireTenantContext, async (req: any, res
  */
 router.get('/invoices', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const {
       status,
       fromDate,
@@ -300,14 +300,14 @@ router.get('/invoices', requireTenantContext, async (req: any, res) => {
         description: invoices.description,
         billingPeriodStart: invoices.billingPeriodStart,
         billingPeriodEnd: invoices.billingPeriodEnd,
-        createdAt: invoices.createdAt,
-        updatedAt: invoices.updatedAt,
+        createdAt: invoices.created_at,
+        updatedAt: invoices.updated_at,
       })
       .from(invoices)
       .leftJoin(businessRecords, eq(invoices.customerId, businessRecords.id));
 
     // Build filter conditions
-    const conditions = [eq(invoices.tenantId, tenantId)];
+    const conditions = [eq(invoices.tenant_id, tenantId)];
 
     if (status) {
       conditions.push(eq(invoices.invoiceStatus, status as string));
@@ -342,14 +342,14 @@ router.get('/invoices', requireTenantContext, async (req: any, res) => {
       conditions.push(
         and(
           isNotNull(invoices.externalCustomerId),
-          gte(invoices.createdAt, sql`NOW() - INTERVAL '7 days'`),
+          gte(invoices.created_at, sql`NOW() - INTERVAL '7 days'`),
         )!,
       );
     }
 
     const finalQuery = query
       .where(and(...conditions))
-      .orderBy(desc(invoices.createdAt))
+      .orderBy(desc(invoices.created_at))
       .limit(parseInt(limit as string))
       .offset(parseInt(offset as string));
 
@@ -389,7 +389,7 @@ router.get('/invoices', requireTenantContext, async (req: any, res) => {
  */
 router.get('/invoices/:id', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const invoiceId = req.params.id;
 
     const [invoice] = await db
@@ -420,12 +420,12 @@ router.get('/invoices/:id', requireTenantContext, async (req: any, res) => {
         notes: invoices.notes,
         billingPeriodStart: invoices.billingPeriodStart,
         billingPeriodEnd: invoices.billingPeriodEnd,
-        createdAt: invoices.createdAt,
-        updatedAt: invoices.updatedAt,
+        createdAt: invoices.created_at,
+        updatedAt: invoices.updated_at,
       })
       .from(invoices)
       .leftJoin(businessRecords, eq(invoices.customerId, businessRecords.id))
-      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenant_id, tenantId)));
 
     if (!invoice) {
       return res.status(404).json({ error: 'Invoice not found' });
@@ -453,8 +453,8 @@ router.get('/invoices/:id', requireTenantContext, async (req: any, res) => {
  */
 router.post('/invoices', isAuthenticated, requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
-    const userId = req.user?.claims?.sub || req.session?.userId;
+    const tenantId = req.tenant_id;
+    const userId = req.user?.claims?.sub || req.session?.user_id;
 
     // Check if this is contract-based generation
     if (req.body.contractId && req.body.useContractGeneration) {
@@ -499,7 +499,7 @@ router.post('/invoices', isAuthenticated, requireTenantContext, async (req: any,
  */
 router.put('/invoices/:id', isAuthenticated, requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const invoiceId = req.params.id;
 
     const [updatedInvoice] = await db
@@ -508,7 +508,7 @@ router.put('/invoices/:id', isAuthenticated, requireTenantContext, async (req: a
         ...req.body,
         updatedAt: new Date(),
       })
-      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenant_id, tenantId)))
       .returning();
 
     if (!updatedInvoice) {
@@ -528,14 +528,14 @@ router.put('/invoices/:id', isAuthenticated, requireTenantContext, async (req: a
  */
 router.delete('/invoices/:id', isAuthenticated, requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const invoiceId = req.params.id;
 
     // Check if invoice can be deleted (only drafts can be deleted)
     const [existingInvoice] = await db
       .select({ status: invoices.status, invoiceStatus: invoices.invoiceStatus })
       .from(invoices)
-      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenant_id, tenantId)));
 
     if (!existingInvoice) {
       return res.status(404).json({ error: 'Invoice not found' });
@@ -551,7 +551,7 @@ router.delete('/invoices/:id', isAuthenticated, requireTenantContext, async (req
     // Delete invoice
     await db
       .delete(invoices)
-      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenant_id, tenantId)));
 
     res.json({ message: 'Invoice deleted successfully' });
   } catch (error) {
@@ -575,7 +575,7 @@ router.post('/invoices/:id/email', isAuthenticated, requireTenantContext, async 
 
 async function handleInvoiceSend(req: any, res: any) {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const invoiceId = req.params.id;
     const { recipientEmail, customMessage, includeAttachment = true } = req.body;
 
@@ -596,7 +596,7 @@ async function handleInvoiceSend(req: any, res: any) {
       })
       .from(invoices)
       .leftJoin(businessRecords, eq(invoices.customerId, businessRecords.id))
-      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenant_id, tenantId)))
       .limit(1);
 
     if (!invoice) {
@@ -702,7 +702,7 @@ async function handleInvoiceSend(req: any, res: any) {
         issueDate: invoice.issueDate || new Date(),
         updatedAt: new Date(),
       })
-      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenant_id, tenantId)))
       .returning();
 
     res.json({
@@ -735,7 +735,7 @@ router.post('/invoices/:id/pay', isAuthenticated, requireTenantContext, async (r
 
 async function handlePaymentRecording(req: any, res: any) {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const invoiceId = req.params.id;
     const { paymentDate, paymentMethod, paymentNotes, amount } = req.body;
 
@@ -743,7 +743,7 @@ async function handlePaymentRecording(req: any, res: any) {
     const [invoice] = await db
       .select()
       .from(invoices)
-      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)));
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenant_id, tenantId)));
 
     if (!invoice) {
       return res.status(404).json({ error: 'Invoice not found' });
@@ -768,7 +768,7 @@ async function handlePaymentRecording(req: any, res: any) {
         paymentNotes: paymentNotes || '',
         updatedAt: new Date(),
       })
-      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenant_id, tenantId)))
       .returning();
 
     res.json(updatedInvoice);
@@ -784,14 +784,14 @@ async function handlePaymentRecording(req: any, res: any) {
  */
 router.get('/invoices/:id/pdf', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const invoiceId = req.params.id;
 
     // Verify invoice belongs to tenant
     const [invoice] = await db
       .select()
       .from(invoices)
-      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenant_id, tenantId)))
       .limit(1);
 
     if (!invoice) {
@@ -840,10 +840,10 @@ router.get('/invoices/:id/pdf', requireTenantContext, async (req: any, res) => {
  */
 router.get('/auto-invoice-status', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const { sourceId, sourceType = 'service_ticket' } = req.query;
 
-    const conditions = [eq(autoInvoiceGeneration.tenantId, tenantId)];
+    const conditions = [eq(autoInvoiceGeneration.tenant_id, tenantId)];
 
     if (sourceId) {
       conditions.push(eq(autoInvoiceGeneration.sourceId, sourceId as string));
@@ -872,7 +872,7 @@ router.get('/auto-invoice-status', requireTenantContext, async (req: any, res) =
  */
 router.post('/auto-generate', isAuthenticated, requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const { sourceType, sourceId } = req.body;
 
     if (!sourceType || !sourceId) {
@@ -909,7 +909,7 @@ router.post('/auto-generate', isAuthenticated, requireTenantContext, async (req:
  */
 router.get('/metrics', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const { period = '30' } = req.query;
 
     const dateRange = {
@@ -935,7 +935,7 @@ router.get('/metrics', requireTenantContext, async (req: any, res) => {
  */
 router.get('/health-score', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
 
     const healthScore = await billingEngine.calculateBillingHealthScore(tenantId);
 
@@ -952,12 +952,12 @@ router.get('/health-score', requireTenantContext, async (req: any, res) => {
  */
 router.get('/dashboard', isAuthenticated, requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
 
     const [totalInvoicesResult] = await db
       .select({ count: count() })
       .from(invoices)
-      .where(eq(invoices.tenantId, tenantId));
+      .where(eq(invoices.tenant_id, tenantId));
 
     const [paidInvoicesResult] = await db
       .select({
@@ -965,7 +965,7 @@ router.get('/dashboard', isAuthenticated, requireTenantContext, async (req: any,
         totalValue: sql<number>`COALESCE(SUM(CAST(${invoices.totalAmount} AS DECIMAL)), 0)`,
       })
       .from(invoices)
-      .where(and(eq(invoices.tenantId, tenantId), eq(invoices.invoiceStatus, 'paid')));
+      .where(and(eq(invoices.tenant_id, tenantId), eq(invoices.invoiceStatus, 'paid')));
 
     const [pendingInvoicesResult] = await db
       .select({
@@ -973,7 +973,7 @@ router.get('/dashboard', isAuthenticated, requireTenantContext, async (req: any,
         totalValue: sql<number>`COALESCE(SUM(CAST(${invoices.balance} AS DECIMAL)), 0)`,
       })
       .from(invoices)
-      .where(and(eq(invoices.tenantId, tenantId), eq(invoices.invoiceStatus, 'sent')));
+      .where(and(eq(invoices.tenant_id, tenantId), eq(invoices.invoiceStatus, 'sent')));
 
     const [overdueInvoicesResult] = await db
       .select({
@@ -983,7 +983,7 @@ router.get('/dashboard', isAuthenticated, requireTenantContext, async (req: any,
       .from(invoices)
       .where(
         and(
-          eq(invoices.tenantId, tenantId),
+          eq(invoices.tenant_id, tenantId),
           eq(invoices.invoiceStatus, 'sent'),
           sql`${invoices.dueDate} < CURRENT_DATE`,
         ),
@@ -1023,7 +1023,7 @@ router.get('/dashboard', isAuthenticated, requireTenantContext, async (req: any,
  */
 router.get('/info', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
 
     // Get default payment method for billing details
     const [paymentMethod] = await db
@@ -1031,7 +1031,7 @@ router.get('/info', requireTenantContext, async (req: any, res) => {
       .from(subscriptionPaymentMethods)
       .where(
         and(
-          eq(subscriptionPaymentMethods.tenantId, tenantId),
+          eq(subscriptionPaymentMethods.tenant_id, tenantId),
           eq(subscriptionPaymentMethods.isDefault, true),
         ),
       )
@@ -1052,7 +1052,7 @@ router.get('/info', requireTenantContext, async (req: any, res) => {
  */
 router.put('/address', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const addressData = billingAddressSchema.parse(req.body);
 
     // Update the default payment method's billing details
@@ -1061,7 +1061,7 @@ router.put('/address', requireTenantContext, async (req: any, res) => {
       .from(subscriptionPaymentMethods)
       .where(
         and(
-          eq(subscriptionPaymentMethods.tenantId, tenantId),
+          eq(subscriptionPaymentMethods.tenant_id, tenantId),
           eq(subscriptionPaymentMethods.isDefault, true),
         ),
       )
@@ -1135,7 +1135,7 @@ router.get('/stripe/config', (req: any, res) => {
  */
 router.post('/stripe/setup-intent', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
 
     if (!StripeService.isConfigured() || !stripe) {
       return res.status(501).json({
@@ -1211,11 +1211,11 @@ router.post('/stripe/webhooks', async (req: any, res) => {
  */
 router.get('/rules', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const { status, ruleType, customerId, contractId, limit = 50, offset = 0 } = req.query;
 
     // Build filter conditions
-    const conditions = [eq(billingRules.tenantId, tenantId)];
+    const conditions = [eq(billingRules.tenant_id, tenantId)];
 
     if (status) {
       conditions.push(eq(billingRules.ruleStatus, status as string));
@@ -1237,7 +1237,7 @@ router.get('/rules', requireTenantContext, async (req: any, res) => {
       .select()
       .from(billingRules)
       .where(and(...conditions))
-      .orderBy(desc(billingRules.priority), desc(billingRules.createdAt))
+      .orderBy(desc(billingRules.priority), desc(billingRules.created_at))
       .limit(parseInt(limit as string))
       .offset(parseInt(offset as string));
 
@@ -1268,13 +1268,13 @@ router.get('/rules', requireTenantContext, async (req: any, res) => {
  */
 router.get('/rules/:id', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const ruleId = req.params.id;
 
     const [rule] = await db
       .select()
       .from(billingRules)
-      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenant_id, tenantId)))
       .limit(1);
 
     if (!rule) {
@@ -1294,8 +1294,8 @@ router.get('/rules/:id', requireTenantContext, async (req: any, res) => {
  */
 router.post('/rules', isAuthenticated, requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
-    const userId = req.user?.claims?.sub || req.session?.userId;
+    const tenantId = req.tenant_id;
+    const userId = req.user?.claims?.sub || req.session?.user_id;
 
     const ruleData = insertBillingRuleSchema.parse({
       ...req.body,
@@ -1327,14 +1327,14 @@ router.post('/rules', isAuthenticated, requireTenantContext, async (req: any, re
  */
 router.put('/rules/:id', isAuthenticated, requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const ruleId = req.params.id;
 
     // Verify rule exists and belongs to tenant
     const [existingRule] = await db
       .select()
       .from(billingRules)
-      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenant_id, tenantId)))
       .limit(1);
 
     if (!existingRule) {
@@ -1347,7 +1347,7 @@ router.put('/rules/:id', isAuthenticated, requireTenantContext, async (req: any,
         ...req.body,
         updatedAt: new Date(),
       })
-      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenant_id, tenantId)))
       .returning();
 
     res.json(updatedRule);
@@ -1366,14 +1366,14 @@ router.put('/rules/:id', isAuthenticated, requireTenantContext, async (req: any,
  */
 router.delete('/rules/:id', isAuthenticated, requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const ruleId = req.params.id;
 
     // Verify rule exists
     const [existingRule] = await db
       .select()
       .from(billingRules)
-      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenant_id, tenantId)))
       .limit(1);
 
     if (!existingRule) {
@@ -1387,7 +1387,7 @@ router.delete('/rules/:id', isAuthenticated, requireTenantContext, async (req: a
         ruleStatus: 'inactive',
         updatedAt: new Date(),
       })
-      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenant_id, tenantId)))
       .returning();
 
     res.json({
@@ -1410,7 +1410,7 @@ router.patch(
   requireTenantContext,
   async (req: any, res) => {
     try {
-      const tenantId = req.tenantId;
+      const tenantId = req.tenant_id;
       const ruleId = req.params.id;
 
       const [updatedRule] = await db
@@ -1419,7 +1419,7 @@ router.patch(
           ruleStatus: 'active',
           updatedAt: new Date(),
         })
-        .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+        .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenant_id, tenantId)))
         .returning();
 
       if (!updatedRule) {
@@ -1444,7 +1444,7 @@ router.patch(
   requireTenantContext,
   async (req: any, res) => {
     try {
-      const tenantId = req.tenantId;
+      const tenantId = req.tenant_id;
       const ruleId = req.params.id;
 
       const [updatedRule] = await db
@@ -1453,7 +1453,7 @@ router.patch(
           ruleStatus: 'inactive',
           updatedAt: new Date(),
         })
-        .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
+        .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenant_id, tenantId)))
         .returning();
 
       if (!updatedRule) {
@@ -1478,7 +1478,7 @@ router.patch(
  */
 router.get('/analytics/revenue-forecast', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const { periods = 3 } = req.query;
 
     const forecast = await billingAnalytics.forecastRevenue(tenantId, parseInt(periods as string));
@@ -1502,7 +1502,7 @@ router.get('/analytics/revenue-forecast', requireTenantContext, async (req: any,
  */
 router.get('/analytics/churn-prediction', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
 
     const predictions = await billingAnalytics.predictChurn(tenantId);
 
@@ -1532,7 +1532,7 @@ router.get('/analytics/churn-prediction', requireTenantContext, async (req: any,
  */
 router.get('/analytics/lifetime-value', requireTenantContext, async (req: any, res) => {
   try {
-    const tenantId = req.tenantId;
+    const tenantId = req.tenant_id;
     const { customerId } = req.query;
 
     const lifetimeValues = await billingAnalytics.calculateLifetimeValue(

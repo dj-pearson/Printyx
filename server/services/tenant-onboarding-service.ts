@@ -1118,7 +1118,7 @@ export class TenantOnboardingService {
       })
       .returning()
       .onConflictDoUpdate({
-        target: tenantHealthScores.tenantId,
+        target: tenantHealthScores.tenant_id,
         set: {
           overallScore,
           overallGrade,
@@ -1179,7 +1179,7 @@ export class TenantOnboardingService {
   private static async checkIntegrationHealth(tenantId: string): Promise<any[]> {
     // Get integration logs for this tenant
     const integrations = await db.query.integrationSetupLogs.findMany({
-      where: eq(integrationSetupLogs.tenantId, tenantId),
+      where: eq(integrationSetupLogs.tenant_id, tenantId),
       limit: 10,
     });
 

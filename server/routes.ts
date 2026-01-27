@@ -200,16 +200,16 @@ import { cacheControl, etag, varyByTenant } from './middleware/cache-middleware'
 // Basic authentication middleware - Updated to work with current auth system
 const requireAuth = async (req: any, res: any, next: any) => {
   // Check for session-based auth (legacy) or user object (current)
-  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
+  const isAuthenticated = req.session?.user_id || req.user?.id || req.user?.claims?.sub;
 
   if (!isAuthenticated) {
     return res.status(401).json({ message: 'Authentication required' });
   }
 
   // Get user ID from various sources
-  const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
+  const userId = req.user?.id || req.user?.claims?.sub || req.session?.user_id;
 
-  if (userId && (!req.user || !req.user.tenantId)) {
+  if (userId && (!req.user || !req.user.tenant_id)) {
     // Fetch full user details from database if missing
     try {
       const fullUser = await storage.getUser(userId);
@@ -217,7 +217,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
         req.user = {
           ...req.user,
           id: fullUser.id,
-          tenantId: fullUser.tenantId,
+          tenantId: fullUser.tenant_id,
           isPlatformUser: fullUser.isPlatformUser,
           email: fullUser.email,
           firstName: fullUser.firstName,
@@ -238,7 +238,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
       id: helperUserId,
       tenantId: helperTenantId,
     };
-  } else if (!req.user.tenantId && !req.user.id) {
+  } else if (!req.user.tenant_id && !req.user.id) {
     // If we have user claims but no structured user object, build it
     req.user = {
       id: helperUserId,
@@ -700,7 +700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.user = {
         id: req.supabaseUser.id,
         email: req.supabaseUser.email,
-        tenantId: req.supabaseUser.tenantId,
+        tenantId: req.supabaseUser.tenant_id,
         roleId: req.supabaseUser.roleId,
         teamId: req.supabaseUser.teamId,
         accessScope: req.supabaseUser.accessScope,
@@ -796,7 +796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // to avoid relying on PostgREST access to internal tables (which may be RLS-protected).
   app.get('/api/me', async (req: any, res) => {
     try {
-      const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
+      const userId = req.user?.id || req.user?.claims?.sub || req.session?.user_id;
       if (!userId) {
         return res.status(401).json({ message: 'Not authenticated' });
       }
@@ -811,7 +811,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        tenantId: user.tenantId,
+        tenantId: user.tenant_id,
         roleId: user.roleId,
         teamId: user.teamId,
         accessScope: (user as any).accessScope || undefined,
@@ -874,7 +874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Only allow platform admins (root) or users from the same tenant
       const isRoot = user?.role?.canAccessAllTenants || (user?.role?.level ?? 0) >= 7;
-      if (!isRoot && user?.tenantId !== tenantId) {
+      if (!isRoot && user?.tenant_id !== tenantId) {
         return res.status(403).json({ error: 'Insufficient permissions' });
       }
 
@@ -893,7 +893,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .from(locations)
         .leftJoin(regions, eq(locations.regionId, regions.id))
-        .where(eq(locations.tenantId, tenantId))
+        .where(eq(locations.tenant_id, tenantId))
         .orderBy(locations.name);
 
       res.json(locationResults);
@@ -916,7 +916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const user = await storage.getUserWithRole(userId);
 
         // Only allow platform admins or users from the same tenant
-        if (!user?.role?.canAccessAllTenants && user?.tenantId !== tenantId) {
+        if (!user?.role?.canAccessAllTenants && user?.tenant_id !== tenantId) {
           return res.status(403).json({ error: 'Insufficient permissions' });
         }
 
@@ -929,7 +929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .from(regions)
           .leftJoin(locations, eq(regions.id, locations.regionId))
-          .where(eq(regions.tenantId, tenantId))
+          .where(eq(regions.tenant_id, tenantId))
           .groupBy(regions.id, regions.name, regions.description)
           .orderBy(regions.name);
 
@@ -954,7 +954,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const user = await storage.getUserWithRole(userId);
 
         // Only allow platform admins or users from the same tenant
-        if (!user?.role?.canAccessAllTenants && user?.tenantId !== tenantId) {
+        if (!user?.role?.canAccessAllTenants && user?.tenant_id !== tenantId) {
           return res.status(403).json({ error: 'Insufficient permissions' });
         }
 
@@ -974,7 +974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .from(locations)
           .leftJoin(regions, eq(locations.regionId, regions.id))
-          .where(eq(locations.tenantId, tenantId));
+          .where(eq(locations.tenant_id, tenantId));
 
         res.json({
           ...tenant,
@@ -992,7 +992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard routes - using authenticated user's tenant
   app.get('/api/dashboard/metrics', async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       // Real dashboard metrics from database
       const [customerCount, contractCount, monthlyRevenue, openTicketCount] = await Promise.all([
@@ -1001,14 +1001,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .select({ count: sql<number>`count(*)::int` })
           .from(businessRecords)
           .where(
-            and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
+            and(
+              eq(businessRecords.tenant_id, tenantId),
+              eq(businessRecords.recordType, 'customer'),
+            ),
           ),
 
         // Active contracts count
         db
           .select({ count: sql<number>`count(*)::int` })
           .from(contracts)
-          .where(and(eq(contracts.tenantId, tenantId), eq(contracts.status, 'active'))),
+          .where(and(eq(contracts.tenant_id, tenantId), eq(contracts.status, 'active'))),
 
         // Monthly revenue from invoices (current month)
         db
@@ -1018,8 +1021,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(invoices)
           .where(
             and(
-              eq(invoices.tenantId, tenantId),
-              sql`date_trunc('month', ${invoices.createdAt}) = date_trunc('month', current_date)`,
+              eq(invoices.tenant_id, tenantId),
+              sql`date_trunc('month', ${invoices.created_at}) = date_trunc('month', current_date)`,
             ),
           ),
 
@@ -1027,7 +1030,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         db
           .select({ count: sql<number>`count(*)::int` })
           .from(serviceTickets)
-          .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.status, 'open'))),
+          .where(and(eq(serviceTickets.tenant_id, tenantId), eq(serviceTickets.status, 'open'))),
       ]);
 
       const metrics = {
@@ -1047,7 +1050,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dashboard/recent-tickets', async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       // Real recent tickets from database
       const tickets = await db
@@ -1057,13 +1060,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: serviceTickets.status,
           priority: serviceTickets.priority,
           customer: businessRecords.companyName,
-          createdAt: serviceTickets.createdAt,
+          createdAt: serviceTickets.created_at,
           description: serviceTickets.description,
         })
         .from(serviceTickets)
         .leftJoin(businessRecords, eq(serviceTickets.customerId, businessRecords.id))
-        .where(eq(serviceTickets.tenantId, tenantId))
-        .orderBy(desc(serviceTickets.createdAt))
+        .where(eq(serviceTickets.tenant_id, tenantId))
+        .orderBy(desc(serviceTickets.created_at))
         .limit(10);
 
       res.json(tickets);
@@ -1075,7 +1078,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dashboard/top-customers', async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       // Real top customers from database based on contract values
       const customers = await db
@@ -1088,7 +1091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(businessRecords)
         .leftJoin(contracts, eq(businessRecords.id, contracts.customerId))
         .where(
-          and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
+          and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.recordType, 'customer')),
         )
         .groupBy(businessRecords.id, businessRecords.companyName)
         .orderBy(desc(sql`coalesce(sum(${contracts.monthlyBase}::numeric), 0)`))
@@ -1108,7 +1111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/dashboard/alerts', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -1124,7 +1127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           minThreshold: inventoryItems.reorderPoint,
         })
         .from(inventoryItems)
-        .where(and(eq(inventoryItems.tenantId, tenantId), sql`quantity_on_hand <= reorder_point`))
+        .where(and(eq(inventoryItems.tenant_id, tenantId), sql`quantity_on_hand <= reorder_point`))
         .orderBy(asc(inventoryItems.quantityOnHand))
         .limit(20);
 
@@ -1148,7 +1151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Demo Scheduling Routes
   app.get('/api/demos', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1185,7 +1188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/demos/customers', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1205,7 +1208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .from(businessRecords)
         .where(
-          and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
+          and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.recordType, 'customer')),
         )
         .orderBy(asc(businessRecords.companyName));
 
@@ -1220,7 +1223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/sales-trends', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       const monthsNum = Number((req.query as any)?.months ?? 6);
 
       if (!tenantId) {
@@ -1260,7 +1263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // E-signature Integration Routes
   app.get('/api/signature-requests', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1307,7 +1310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/signature-templates', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1352,7 +1355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/signature-analytics', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1403,7 +1406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Preventive Maintenance Automation Routes
   app.get('/api/maintenance/schedules', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1473,7 +1476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/maintenance/analytics', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1544,7 +1547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/maintenance/templates', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1589,7 +1592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/maintenance/predictions', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1649,7 +1652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Customer Success & Retention Routes
   app.get('/api/customer-success/health-scores', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1726,7 +1729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/customer-success/usage-analytics', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1802,7 +1805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/customer-success/satisfaction', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1870,7 +1873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Remote Monitoring & IoT Integration Routes
   app.get('/api/remote-monitoring/equipment-status', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -1951,7 +1954,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/remote-monitoring/fleet-overview', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -2011,7 +2014,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Document Management & Workflow Automation Routes
   app.get('/api/document-management/library', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -2106,7 +2109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/document-management/workflows', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -2179,7 +2182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mobile Service App Routes
   app.get('/api/mobile/dashboard', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -2274,7 +2277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/mobile/route-optimization', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -2326,7 +2329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Business Process Optimization Routes
   app.get('/api/business-process/dashboard', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -2435,7 +2438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Security & Compliance Management Routes
   app.get('/api/security/dashboard', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -2602,7 +2605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Security Incident Response System Routes
   app.get('/api/incident-response/dashboard', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -2771,7 +2774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI-Powered Analytics & Intelligence Routes
   app.get('/api/ai-analytics/dashboard', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -2969,7 +2972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Advanced Workflow Automation Routes
   app.get('/api/workflow-automation/dashboard', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -3130,7 +3133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Predictive Analytics Engine Routes (Legacy - keeping for backwards compatibility)
   app.get('/api/predictive-analytics/legacy-dashboard', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -3298,7 +3301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Security & Compliance Management Routes
   app.get('/api/security-compliance/dashboard', requireAuth, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -3461,7 +3464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ERP Integration Hub Routes
   app.get('/api/erp-integration/dashboard', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -3695,7 +3698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Advanced Integration Hub Routes - Real Implementation
   app.get('/api/integration-hub/dashboard', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -3723,7 +3726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     etag(),
     async (req: any, res) => {
       try {
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -3755,7 +3758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const { id } = req.params;
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -3788,7 +3791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Leads API routes (unified with business records)
   app.get('/api/leads', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -3806,7 +3809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/leads/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -3845,7 +3848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     upload.single('file'),
     async (req: any, res) => {
       try {
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ error: 'Tenant ID is required' });
         }
@@ -3971,7 +3974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Lead mutation routes (using legacy storage pattern - TODO: migrate to business records)
   app.post('/api/leads', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -3991,7 +3994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/leads/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4010,7 +4013,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/leads/:id/convert', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4026,7 +4029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/leads/:id/activities', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4041,7 +4044,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/leads/:id/activities', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4063,7 +4066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/leads/:id/contacts', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4078,7 +4081,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/leads/:id/contacts', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4110,7 +4113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/leads/:id/related-records', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4127,7 +4130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product Models
   app.get('/api/product-models', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4143,7 +4146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/product-models/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4160,7 +4163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/product-models', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4179,7 +4182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/product-models/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4240,7 +4243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/product-models/bulk-delete', async (req: any, res) => {
     try {
       const { ids } = req.body;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -4298,7 +4301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/product-models/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4344,7 +4347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Product Accessories
   app.get('/api/product-accessories', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4371,7 +4374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const { modelId } = req.params;
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -4386,7 +4389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/product-accessories', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4405,7 +4408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/product-accessories/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4426,7 +4429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const { modelId } = req.params;
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -4458,7 +4461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/product-accessories/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4477,7 +4480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/accessories/:accessoryId/compatibility', async (req: any, res) => {
     try {
       const { accessoryId } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4492,7 +4495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/accessories/:accessoryId/compatibility', async (req: any, res) => {
     try {
       const { accessoryId } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4515,7 +4518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const { accessoryId, modelId } = req.params;
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -4531,7 +4534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/models/:modelId/compatibility', async (req: any, res) => {
     try {
       const { modelId } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4545,7 +4548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/accessory-model-compatibility', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4567,7 +4570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const { accessoryId, modelId } = req.params;
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -4583,7 +4586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Professional Services
   app.get('/api/professional-services', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4597,7 +4600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/professional-services', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4616,7 +4619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/professional-services/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4634,7 +4637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/professional-services/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4652,7 +4655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Service Products
   app.get('/api/service-products', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4666,7 +4669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/service-products', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4685,7 +4688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Software Products
   app.get('/api/software-products', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4699,7 +4702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/software-products', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4718,7 +4721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/software-products/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4738,7 +4741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/software-products/bulk-delete', async (req: any, res) => {
     try {
       const { ids } = req.body;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4760,7 +4763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/software-products/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4778,7 +4781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Supplies
   app.get('/api/supplies', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4792,7 +4795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/supplies', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4811,7 +4814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/supplies/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4829,7 +4832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/supplies/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4847,7 +4850,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Managed Services
   app.get('/api/managed-services', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4862,7 +4865,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Inventory
   app.get('/api/inventory', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4885,7 +4888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/inventory', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4916,7 +4919,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/inventory/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4944,7 +4947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/managed-services', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4963,7 +4966,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/managed-services/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -4981,7 +4984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/managed-services/:id', async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -5188,7 +5191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(inventoryItems)
         .where(
           and(
-            tenantId ? eq(inventoryItems.tenantId, tenantId) : sql`TRUE`,
+            tenantId ? eq(inventoryItems.tenant_id, tenantId) : sql`TRUE`,
             sql`reorder_point IS NOT NULL AND current_stock <= reorder_point AND COALESCE(reorder_point, 0) > 0 AND supplier IS NOT NULL`,
           ),
         )
@@ -5200,7 +5203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const vendorRows = await db
         .select({ id: vendors.id, name: vendors.vendorName })
         .from(vendors)
-        .where(tenantId ? eq(vendors.tenantId, tenantId) : sql`TRUE`);
+        .where(tenantId ? eq(vendors.tenant_id, tenantId) : sql`TRUE`);
       const vendorNameToId = new Map(vendorRows.map((v) => [v.name?.toLowerCase(), v.id] as const));
 
       const groupsMap = new Map<string, any>();
@@ -5318,7 +5321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const user = await storage.getUser(userId);
-        if (!user?.tenantId) {
+        if (!user?.tenant_id) {
           return res.status(403).json({ message: 'Access denied' });
         }
 
@@ -5332,7 +5335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const contact = await storage.createContact({
             ...contactData,
             companyId: companyId, // Use companyId field for company_contacts table
-            tenantId: user.tenantId,
+            tenantId: user.tenant_id,
             ownerId: user.id, // Set the current user as owner
             leadStatus: 'new', // Set default lead status
           });
@@ -5355,7 +5358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Meter Readings - list with optional filters
   app.get('/api/meter-readings', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -5400,7 +5403,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create meter reading (accepts UI shape and schema shape)
   app.post('/api/meter-readings', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -5445,7 +5448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Contract Tiered Rates Management
   app.get('/api/contract-tiered-rates', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -5459,7 +5462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/contract-tiered-rates', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -5479,7 +5482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PERFORMANCE OPTIMIZED: Batch fetches contracts and tiered rates instead of N+1 queries
   app.post('/api/billing/generate-invoices', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -5510,7 +5513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allContracts = await db
         .select()
         .from(contracts)
-        .where(and(eq(contracts.tenantId, tenantId), inArray(contracts.id, contractIds)));
+        .where(and(eq(contracts.tenant_id, tenantId), inArray(contracts.id, contractIds)));
 
       // PERFORMANCE FIX: Batch fetch all tiered rates for these contracts in one query
       const allTieredRates = await db
@@ -5627,7 +5630,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -5650,7 +5653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .from(contracts)
           .leftJoin(invoices, eq(contracts.id, invoices.contractId))
-          .where(eq(contracts.tenantId, tenantId))
+          .where(eq(contracts.tenant_id, tenantId))
           .groupBy(contracts.id, contracts.contractNumber, contracts.monthlyBase)
           .orderBy(desc(sql`COALESCE(SUM(${invoices.totalAmount}::numeric), 0)`))
           .limit(pageSize)
@@ -5660,7 +5663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const countResult = await db
           .select({ count: sql<number>`COUNT(DISTINCT ${contracts.id})::int` })
           .from(contracts)
-          .where(eq(contracts.tenantId, tenantId));
+          .where(eq(contracts.tenant_id, tenantId));
         const totalCount = countResult[0]?.count || 0;
 
         // Calculate profitability metrics for only the returned rows
@@ -5717,7 +5720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: 'No file uploaded' });
         }
 
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -5820,7 +5823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: 'No file uploaded' });
         }
 
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -5878,7 +5881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: 'No file uploaded' });
         }
 
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -5946,7 +5949,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .on('error', reject);
         });
 
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -6005,7 +6008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .from(productAccessories)
               .where(
                 and(
-                  eq(productAccessories.tenantId, tenantId),
+                  eq(productAccessories.tenant_id, tenantId),
                   eq(productAccessories.accessoryCode, accessoryData.accessoryCode),
                 ),
               )
@@ -6088,7 +6091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: 'No file uploaded' });
         }
 
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -6159,7 +6162,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const { modelId } = req.params;
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -6178,7 +6181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: any, res) => {
       try {
         const { modelId } = req.params;
-        const tenantId = req.user?.tenantId;
+        const tenantId = req.user?.tenant_id;
         if (!tenantId) {
           return res.status(400).json({ message: 'Tenant ID is required' });
         }
@@ -6449,11 +6452,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const user = await storage.getUser(userId);
-      if (!user?.tenantId) {
+      if (!user?.tenant_id) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
-      const result = await storage.getUsers(user.tenantId);
+      const result = await storage.getUsers(user.tenant_id);
       res.json(result);
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -6472,11 +6475,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const user = await storage.getUser(userId);
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(403).json({ message: 'Access denied' });
     }
     try {
-      const tenantId = user.tenantId;
+      const tenantId = user.tenant_id;
       const stageId = String((req.query as any)?.stageId || '');
       const search = String((req.query as any)?.search || '');
       const leadId = String((req.query as any)?.leadId || '');
@@ -6501,7 +6504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update deal stage (for drag and drop)
   app.put('/api/deals/:id/stage', async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
       const dealId = req.params.id;
       const { stageId } = req.body;
 
@@ -6522,7 +6525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all deal stages for tenant
   app.get('/api/deal-stages', async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       const stages = await storage.getDealStages(tenantId);
       res.json(stages);
@@ -6535,7 +6538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create deal stage
   app.post('/api/deal-stages', async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       const stageData = insertDealStageSchema.parse({
         ...req.body,
@@ -6556,7 +6559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         // Check if stages already exist
         const existingStages = await storage.getDealStages(tenantId);
@@ -6647,7 +6650,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const dealId = req.params.id;
 
         const activities = await storage.getDealActivities(dealId, tenantId);
@@ -6665,7 +6668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const dealId = req.params.id;
         const userId = req.user.id;
 
@@ -6765,7 +6768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     async (req: any, res) => {
       try {
-        const tenantId = req.session?.tenantId;
+        const tenantId = req.session?.tenant_id;
         const metrics = await storage.getPerformanceMetrics(tenantId);
         res.json(metrics);
       } catch (error) {
@@ -6777,7 +6780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/performance/alerts', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = req.user?.tenant_id;
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -6798,7 +6801,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             primaryVendor: inventoryItems.primaryVendor,
           })
           .from(inventoryItems)
-          .where(and(eq(inventoryItems.tenantId, tenantId), sql`quantity_on_hand <= reorder_point`))
+          .where(
+            and(eq(inventoryItems.tenant_id, tenantId), sql`quantity_on_hand <= reorder_point`),
+          )
           .orderBy(asc(inventoryItems.quantityOnHand))
           .limit(20);
 
@@ -6830,7 +6835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(serviceTickets)
           .where(
             and(
-              eq(serviceTickets.tenantId, tenantId),
+              eq(serviceTickets.tenant_id, tenantId),
               sql`scheduled_date < NOW()`,
               sql`status NOT IN ('completed', 'cancelled')`,
             ),
@@ -6859,7 +6864,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .select({
             id: invoices.id,
             invoiceNumber: invoices.invoiceNumber,
-            createdAt: invoices.createdAt,
+            createdAt: invoices.created_at,
             dueDate: invoices.dueDate,
             status: invoices.status,
             totalAmount: invoices.totalAmount,
@@ -6867,11 +6872,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(invoices)
           .where(
             and(
-              eq(invoices.tenantId, tenantId),
+              eq(invoices.tenant_id, tenantId),
               sql`(status = 'overdue') OR (due_date < NOW() AND status = 'pending')`,
             ),
           )
-          .orderBy(desc(invoices.createdAt))
+          .orderBy(desc(invoices.created_at))
           .limit(10);
 
         alerts.push(
@@ -6912,7 +6917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .leftJoin(businessRecords, eq(serviceContracts.customerId, businessRecords.id))
           .where(
             and(
-              eq(serviceContracts.tenantId, tenantId),
+              eq(serviceContracts.tenant_id, tenantId),
               eq(serviceContracts.contractStatus, 'active'),
               lte(serviceContracts.endDate, sql`NOW() + INTERVAL '90 days'`), // Next 90 days
               gte(serviceContracts.endDate, sql`NOW()`),
@@ -7349,7 +7354,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   // Admin: list SEO pages
   app.get('/api/seo/pages', async (_req: any, res) => {
     try {
-      const rows = await db.select().from(seoPages).orderBy(desc(seoPages.updatedAt));
+      const rows = await db.select().from(seoPages).orderBy(desc(seoPages.updated_at));
       res.json(rows);
     } catch (error: any) {
       res.status(500).json({ message: 'Failed to load SEO pages', detail: error?.message });
@@ -8085,7 +8090,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
               if (!existing.status && productData.status) updateData.status = productData.status;
 
               if (Object.keys(updateData).length > 0) {
-                updateData.updatedAt = new Date();
+                updateData.updated_at = new Date();
                 await db
                   .update(masterProductModels)
                   .set(updateData)
@@ -8223,7 +8228,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       try {
         const equipment = await storage.getCustomerEquipment(
           req.params.id as string,
-          req.tenantId as string,
+          req.tenant_id as string,
         );
         res.json(equipment);
       } catch (error) {
@@ -8241,7 +8246,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       try {
         const meterReadings = await storage.getCustomerMeterReadings(
           req.params.id as string,
-          req.tenantId as string,
+          req.tenant_id as string,
         );
         res.json(meterReadings);
       } catch (error) {
@@ -8259,7 +8264,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       try {
         const invoices = await storage.getCustomerInvoices(
           req.params.id as string,
-          req.tenantId as string,
+          req.tenant_id as string,
         );
         res.json(invoices);
       } catch (error) {
@@ -8277,7 +8282,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       try {
         const serviceTickets = await storage.getCustomerServiceTickets(
           req.params.id as string,
-          req.tenantId as string,
+          req.tenant_id as string,
         );
         res.json(serviceTickets);
       } catch (error) {
@@ -8295,7 +8300,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       try {
         const contracts = await storage.getCustomerContracts(
           req.params.id as string,
-          req.tenantId as string,
+          req.tenant_id as string,
         );
         res.json(contracts);
       } catch (error) {
@@ -8308,7 +8313,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   // Contract routes
   app.get('/api/contracts', requireTenant, async (req: TenantRequest, res) => {
     try {
-      const contracts = await storage.getContracts(req.tenantId!);
+      const contracts = await storage.getContracts(req.tenant_id!);
       res.json(contracts);
     } catch (error) {
       console.error('Error fetching contracts:', error);
@@ -8319,7 +8324,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   app.post('/api/contracts', requireTenant, async (req: TenantRequest, res) => {
     try {
       const session = req.session as any;
-      const userId = session?.userId;
+      const userId = session?.user_id;
 
       if (!userId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -8336,7 +8341,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       // Prepare contract data with only existing database columns
       const contractData = {
         customerId: req.body.customerId,
-        tenantId: req.tenantId!,
+        tenantId: req.tenant_id!,
         contractNumber,
         startDate: req.body.startDate,
         endDate: req.body.endDate,
@@ -8530,7 +8535,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
         const equipmentId = String((req.query as any)?.equipmentId || '');
         const customerId = String((req.query as any)?.customerId || '');
         const priority = String((req.query as any)?.priority || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         // Use direct SQL query for maintenance schedules
         const query = `
@@ -8582,7 +8587,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     async (req: any, res) => {
       try {
         const days = Number((req.query as any)?.days ?? 7);
-        const tenantId = String((req as any).user?.tenantId || '');
+        const tenantId = String((req as any).user?.tenant_id || '');
         const futureDate = new Date();
         futureDate.setDate(futureDate.getDate() + parseInt(String(days)));
 
@@ -8622,7 +8627,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const createdBy = req.user.id;
 
         const {
@@ -8685,7 +8690,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const queries = [
           // Total schedules
@@ -8723,7 +8728,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT 
@@ -8750,7 +8755,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         const {
@@ -8779,7 +8784,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       `;
 
         // For demo, use the user's business record association
-        const businessRecordId = req.user.tenantId; // Placeholder
+        const businessRecordId = req.user.tenant_id; // Placeholder
 
         const result = await db.$client.query(query, [
           tenantId,
@@ -8813,7 +8818,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT *
@@ -8837,7 +8842,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT *
@@ -8861,7 +8866,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const search = String((req.query as any)?.search || '');
         const category = String((req.query as any)?.category || '');
 
@@ -8905,7 +8910,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const queries = [
           `SELECT COUNT(*) as total_invoices FROM billing_invoices WHERE tenant_id = $1`,
@@ -8948,7 +8953,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       const ticketId = String((req.query as any)?.ticketId || '');
       const contractId = String((req.query as any)?.contractId || '');
       const filter = String((req.query as any)?.filter || '');
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       let whereConditions = ['bi.tenant_id = $1'];
       const queryParams: any[] = [tenantId];
@@ -9001,7 +9006,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     async (req: any, res) => {
       try {
         const type = String((req.query as any)?.type || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
@@ -9033,7 +9038,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const {
           configuration_name,
@@ -9101,7 +9106,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   // Get billing cycles
   app.get('/api/billing/cycles', async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       const query = `
         SELECT *
@@ -9124,7 +9129,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         // Create a new billing cycle
@@ -9228,7 +9233,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT 
@@ -9257,7 +9262,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         const {
@@ -9304,7 +9309,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const queries = [
           `SELECT COALESCE(SUM(total_forecast_amount), 0) as total_revenue_forecast FROM financial_forecasts WHERE tenant_id = $1 AND forecast_type = 'revenue' AND status = 'published'`,
@@ -9339,7 +9344,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     async (req: any, res) => {
       try {
         const type = String((req.query as any)?.type || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
@@ -9371,7 +9376,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         const {
@@ -9427,7 +9432,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT *
@@ -9451,7 +9456,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         const {
@@ -9521,7 +9526,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     async (req: any, res) => {
       try {
         const type = String((req.query as any)?.type || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
@@ -9553,7 +9558,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         // Real profitability analysis based on actual customer data
@@ -9568,7 +9573,10 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
           .leftJoin(invoices, eq(businessRecords.id, invoices.customerId))
           .leftJoin(serviceTickets, eq(businessRecords.id, serviceTickets.customerId))
           .where(
-            and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
+            and(
+              eq(businessRecords.tenant_id, tenantId),
+              eq(businessRecords.recordType, 'customer'),
+            ),
           )
           .groupBy(businessRecords.id, businessRecords.companyName)
           .having(sql`sum(${invoices.totalAmount}) > 0`)
@@ -9630,7 +9638,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   // Get financial KPIs
   app.get('/api/financial/kpis', async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       const query = `
         SELECT *
@@ -9655,7 +9663,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const queries = [
           `SELECT COUNT(*) as total_equipment FROM equipment_lifecycle_stages WHERE tenant_id = $1 AND current_stage != 'active'`,
@@ -9693,7 +9701,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       try {
         const stage = String((req.query as any)?.stage || '');
         const status = String((req.query as any)?.status || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let whereConditions = ['els.tenant_id = $1'];
         const queryParams = [tenantId];
@@ -9735,7 +9743,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT 
@@ -9763,7 +9771,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         const {
@@ -9854,7 +9862,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT *
@@ -9878,7 +9886,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const {
           purchase_order_id,
@@ -9936,7 +9944,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT 
@@ -9966,7 +9974,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const {
           equipment_id,
@@ -10021,7 +10029,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT 
@@ -10050,7 +10058,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const queries = [
           `SELECT COALESCE(SUM(net_payment_amount), 0) as total_paid FROM commission_payments WHERE tenant_id = $1 AND payment_status = 'completed' AND EXTRACT(MONTH FROM payment_date) = EXTRACT(MONTH FROM CURRENT_DATE)`,
@@ -10086,7 +10094,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT *
@@ -10110,7 +10118,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         const {
@@ -10166,7 +10174,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       try {
         const period = String((req.query as any)?.period || '');
         const status = String((req.query as any)?.status || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let whereConditions = ['cc.tenant_id = $1'];
         const queryParams = [tenantId];
@@ -10223,7 +10231,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         // Sample commission calculations for demo
@@ -10306,7 +10314,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT 
@@ -10333,7 +10341,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         const {
@@ -10381,7 +10389,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT 
@@ -10408,7 +10416,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT 
@@ -10435,7 +10443,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const {
           dispute_type,
@@ -10488,7 +10496,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const queries = [
           `SELECT COUNT(*) as total_devices FROM iot_devices WHERE tenant_id = $1`,
@@ -10526,7 +10534,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       try {
         const type = String((req.query as any)?.type || '');
         const status = String((req.query as any)?.status || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let whereConditions = ['iot.tenant_id = $1'];
         const queryParams = [tenantId];
@@ -10566,7 +10574,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const {
           device_name,
@@ -10625,7 +10633,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT 
@@ -10653,7 +10661,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     async (req: any, res) => {
       try {
         const severity = String((req.query as any)?.severity || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let whereConditions = ['pa.tenant_id = $1'];
         const queryParams = [tenantId];
@@ -10690,7 +10698,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT 
@@ -10714,7 +10722,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   // Sync devices (simulate data collection)
   app.post('/api/monitoring/sync', async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       // Get active devices
       const devicesQuery = `SELECT * FROM iot_devices WHERE tenant_id = $1 AND monitoring_enabled = true`;
@@ -10773,7 +10781,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   // Get mobile app metrics
   app.get('/api/mobile/metrics', async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       const queries = [
         `SELECT COUNT(*) as active_work_orders FROM mobile_work_orders WHERE tenant_id = $1 AND status IN ('assigned', 'en_route', 'on_site', 'in_progress')`,
@@ -10811,7 +10819,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
         const status = String((req.query as any)?.status || '');
         const priority = String((req.query as any)?.priority || '');
         const technician = String((req.query as any)?.technician || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let whereConditions = ['mwo.tenant_id = $1'];
         const queryParams = [tenantId];
@@ -10858,7 +10866,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const {
           work_order_type,
@@ -10919,7 +10927,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT *
@@ -10943,7 +10951,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT 
@@ -10971,7 +10979,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const {
           order_type,
@@ -11033,7 +11041,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT 
@@ -11064,7 +11072,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT 
@@ -11088,7 +11096,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   // Sync mobile data
   app.post('/api/mobile/sync', async (req: any, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user.tenant_id;
 
       // Get active technicians
       const techniciansQuery = `SELECT id, name FROM users WHERE tenant_id = $1 AND role LIKE '%technician%'`;
@@ -11136,7 +11144,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const queries = [
           `SELECT COUNT(*) as active_workflows FROM workflow_executions WHERE tenant_id = $1 AND status IN ('running', 'pending')`,
@@ -11173,7 +11181,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     async (req: any, res) => {
       try {
         const category = String((req.query as any)?.category || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
@@ -11205,7 +11213,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         const {
@@ -11288,7 +11296,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     async (req: any, res) => {
       try {
         const { id } = req.params;
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         // Get template
@@ -11338,7 +11346,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     async (req: any, res) => {
       try {
         const status = String((req.query as any)?.status || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let whereConditions = ['we.tenant_id = $1'];
         const queryParams = [tenantId];
@@ -11374,7 +11382,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     async (req: any, res) => {
       try {
         const { id, action } = req.params;
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let newStatus;
         let updateFields = [];
@@ -11431,7 +11439,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const queries = [
           `SELECT COUNT(*) as active_technicians FROM field_technicians WHERE tenant_id = $1 AND employment_status = 'active' AND availability_status IN ('available', 'busy')`,
@@ -11467,7 +11475,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT *
@@ -11491,7 +11499,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const {
           employee_id,
@@ -11551,7 +11559,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
         const status = String((req.query as any)?.status || '');
         const technician = String((req.query as any)?.technician || '');
         const priority = String((req.query as any)?.priority || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
@@ -11601,7 +11609,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const {
           work_order_type,
@@ -11665,7 +11673,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT *
@@ -11690,7 +11698,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         const {
@@ -11745,7 +11753,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const queries = [
           `SELECT COALESCE(SUM(final_payment_amount), 0) as total_paid FROM commission_payments WHERE tenant_id = $1 AND payment_status = 'processed'`,
@@ -11781,7 +11789,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT *
@@ -11805,7 +11813,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
         const userId = req.user.id;
 
         const {
@@ -11858,7 +11866,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT *
@@ -11882,7 +11890,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const {
           employee_id,
@@ -11929,7 +11937,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       try {
         const period = String((req.query as any)?.period || '');
         const status = String((req.query as any)?.status || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
@@ -11992,7 +12000,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const {
           transaction_type,
@@ -12066,7 +12074,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
     async (req: any, res) => {
       try {
         const period = String((req.query as any)?.period || '');
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         let whereConditions = ['tenant_id = $1'];
         const queryParams = [tenantId];
@@ -12119,7 +12127,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const query = `
         SELECT *
@@ -12155,7 +12163,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
 
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user.tenant_id;
 
         const {
           dispute_type,
@@ -12352,7 +12360,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
           .where(
             and(
               eq(meterReadings.contractId, contractId),
-              eq(meterReadings.tenantId, tenantId),
+              eq(meterReadings.tenant_id, tenantId),
               eq(meterReadings.billingStatus, 'pending'),
             ),
           )
@@ -12733,7 +12741,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
         .from(businessRecords)
         .where(
           and(
-            eq(businessRecords.tenantId, tenantId),
+            eq(businessRecords.tenant_id, tenantId),
             // Only search customers for phone-in tickets, not leads
             eq(businessRecords.recordType, 'customer'),
             or(
@@ -12786,7 +12794,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
       const tenantId = req.headers['x-tenant-id'] as string;
 
       let whereConditions = [
-        eq(businessRecords.tenantId, tenantId),
+        eq(businessRecords.tenant_id, tenantId),
         eq(businessRecords.id, companyId),
       ];
 

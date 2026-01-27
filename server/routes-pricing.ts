@@ -12,11 +12,11 @@ import { z } from 'zod';
 export async function getCompanyPricingSettings(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const settings = await storage.getCompanyPricingSettings(user.tenantId);
+    const settings = await storage.getCompanyPricingSettings(user.tenant_id);
     res.json(settings);
   } catch (error) {
     console.error('Error fetching company pricing settings:', error);
@@ -27,16 +27,16 @@ export async function getCompanyPricingSettings(req: Request, res: Response) {
 export async function updateCompanyPricingSettings(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const validated = insertCompanyPricingSettingsSchema.parse({
       ...req.body,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
     });
 
-    const settings = await storage.updateCompanyPricingSettings(user.tenantId, validated);
+    const settings = await storage.updateCompanyPricingSettings(user.tenant_id, validated);
     res.json(settings);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -51,11 +51,11 @@ export async function updateCompanyPricingSettings(req: Request, res: Response) 
 export async function getProductPricing(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const productPricing = await storage.getProductPricing(user.tenantId);
+    const productPricing = await storage.getProductPricing(user.tenant_id);
     res.json(productPricing);
   } catch (error) {
     console.error('Error fetching product pricing:', error);
@@ -66,13 +66,13 @@ export async function getProductPricing(req: Request, res: Response) {
 export async function createProductPricing(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const validated = insertProductPricingSchema.parse({
       ...req.body,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       createdBy: user.id,
     });
 
@@ -90,14 +90,14 @@ export async function createProductPricing(req: Request, res: Response) {
 export async function updateProductPricing(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const { id } = req.params;
     const validated = insertProductPricingSchema.partial().parse(req.body);
 
-    const productPricing = await storage.updateProductPricing(id, user.tenantId, validated);
+    const productPricing = await storage.updateProductPricing(id, user.tenant_id, validated);
     if (!productPricing) {
       return res.status(404).json({ message: 'Product pricing not found' });
     }
@@ -115,12 +115,12 @@ export async function updateProductPricing(req: Request, res: Response) {
 export async function deleteProductPricing(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const { id } = req.params;
-    const success = await storage.deleteProductPricing(id, user.tenantId);
+    const success = await storage.deleteProductPricing(id, user.tenant_id);
 
     if (!success) {
       return res.status(404).json({ message: 'Product pricing not found' });
@@ -137,12 +137,12 @@ export async function deleteProductPricing(req: Request, res: Response) {
 export async function getQuotePricing(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const { quoteId } = req.params;
-    const quotePricing = await storage.getQuotePricing(quoteId, user.tenantId);
+    const quotePricing = await storage.getQuotePricing(quoteId, user.tenant_id);
     res.json(quotePricing);
   } catch (error) {
     console.error('Error fetching quote pricing:', error);
@@ -153,13 +153,13 @@ export async function getQuotePricing(req: Request, res: Response) {
 export async function createQuotePricing(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const validated = insertQuotePricingSchema.parse({
       ...req.body,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
       createdBy: user.id,
     });
 
@@ -177,14 +177,14 @@ export async function createQuotePricing(req: Request, res: Response) {
 export async function updateQuotePricing(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const { id } = req.params;
     const validated = insertQuotePricingSchema.partial().parse(req.body);
 
-    const quotePricing = await storage.updateQuotePricing(id, user.tenantId, validated);
+    const quotePricing = await storage.updateQuotePricing(id, user.tenant_id, validated);
     if (!quotePricing) {
       return res.status(404).json({ message: 'Quote pricing not found' });
     }
@@ -203,12 +203,12 @@ export async function updateQuotePricing(req: Request, res: Response) {
 export async function getQuoteLineItems(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const { quotePricingId } = req.params;
-    const lineItems = await storage.getQuotePricingLineItems(quotePricingId, user.tenantId);
+    const lineItems = await storage.getQuotePricingLineItems(quotePricingId, user.tenant_id);
     res.json(lineItems);
   } catch (error) {
     console.error('Error fetching quote line items:', error);
@@ -219,13 +219,13 @@ export async function getQuoteLineItems(req: Request, res: Response) {
 export async function createQuoteLineItem(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const validated = insertQuotePricingLineItemSchema.parse({
       ...req.body,
-      tenantId: user.tenantId,
+      tenantId: user.tenant_id,
     });
 
     const lineItem = await storage.createQuotePricingLineItem(validated);
@@ -242,14 +242,14 @@ export async function createQuoteLineItem(req: Request, res: Response) {
 export async function updateQuoteLineItem(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const { id } = req.params;
     const validated = insertQuotePricingLineItemSchema.partial().parse(req.body);
 
-    const lineItem = await storage.updateQuotePricingLineItem(id, user.tenantId, validated);
+    const lineItem = await storage.updateQuotePricingLineItem(id, user.tenant_id, validated);
     if (!lineItem) {
       return res.status(404).json({ message: 'Quote line item not found' });
     }
@@ -267,12 +267,12 @@ export async function updateQuoteLineItem(req: Request, res: Response) {
 export async function deleteQuoteLineItem(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const { id } = req.params;
-    const success = await storage.deleteQuotePricingLineItem(id, user.tenantId);
+    const success = await storage.deleteQuotePricingLineItem(id, user.tenant_id);
 
     if (!success) {
       return res.status(404).json({ message: 'Quote line item not found' });
@@ -289,20 +289,20 @@ export async function deleteQuoteLineItem(req: Request, res: Response) {
 export async function calculatePricingForProduct(req: Request, res: Response) {
   try {
     const user = req.user as any;
-    if (!user?.tenantId) {
+    if (!user?.tenant_id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const { productId, productType, dealerCost, customMarkup, quantity = 1 } = req.body;
 
     // Get company settings
-    const companySettings = await storage.getCompanyPricingSettings(user.tenantId);
+    const companySettings = await storage.getCompanyPricingSettings(user.tenant_id);
 
     // Get product-specific pricing if exists
     const productPricing = await storage.getProductPricingByProductId(
       productId,
       productType,
-      user.tenantId,
+      user.tenant_id,
     );
 
     // Calculate pricing layers

@@ -185,14 +185,14 @@ export function requireApiKey(
     // Attach API key info to request
     req.apiKey = {
       id: key.id,
-      tenantId: key.tenantId,
+      tenantId: key.tenant_id,
       keyType: key.keyType,
       scopes: (key.scopes as string[]) || [],
       permissions: (key.permissions as string[]) || [],
     };
 
     // Set tenant context from API key
-    (req as any).tenantId = key.tenantId;
+    (req as any).tenant_id = key.tenant_id;
 
     next();
   };
@@ -248,7 +248,7 @@ export function logApiKeyUsage() {
         apiKeyService
           .logUsage(
             req.apiKey.id,
-            req.apiKey.tenantId,
+            req.apiKey.tenant_id,
             {
               requestId: req.requestId || '',
               method: req.method,
@@ -403,12 +403,12 @@ export function hybridAuth(options: { requiredScopes?: string[] } = {}) {
 
         req.apiKey = {
           id: key.id,
-          tenantId: key.tenantId,
+          tenantId: key.tenant_id,
           keyType: key.keyType,
           scopes: (key.scopes as string[]) || [],
           permissions: (key.permissions as string[]) || [],
         };
-        (req as any).tenantId = key.tenantId;
+        (req as any).tenant_id = key.tenant_id;
 
         return next();
       }
@@ -416,7 +416,7 @@ export function hybridAuth(options: { requiredScopes?: string[] } = {}) {
 
     // Fall back to session auth
     const session = req.session as any;
-    if (session?.userId) {
+    if (session?.user_id) {
       return next();
     }
 

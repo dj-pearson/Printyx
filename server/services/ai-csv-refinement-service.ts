@@ -433,7 +433,7 @@ If none are true duplicates, return { "matches": [] }`;
         aiMappingConfidence: mappingResult.confidence,
         updatedAt: new Date(),
       })
-      .where(and(eq(csvImportJobs.id, jobId), eq(csvImportJobs.tenantId, tenantId)));
+      .where(and(eq(csvImportJobs.id, jobId), eq(csvImportJobs.tenant_id, tenantId)));
 
     // Step 2: AI Data Cleaning (if we have high enough mapping confidence)
     let cleanedData = csvData;
@@ -462,7 +462,7 @@ If none are true duplicates, return { "matches": [] }`;
         transformedData: cleanedData,
         updatedAt: new Date(),
       })
-      .where(and(eq(csvImportJobs.id, jobId), eq(csvImportJobs.tenantId, tenantId)));
+      .where(and(eq(csvImportJobs.id, jobId), eq(csvImportJobs.tenant_id, tenantId)));
 
     return {
       mappings: mappingResult.mappings,

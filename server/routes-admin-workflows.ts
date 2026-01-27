@@ -31,11 +31,11 @@ const requireAuth = (req: any, res: any, next: any) => {
       id: userId,
       tenantId: getTenantId(req),
     };
-  } else if (!req.user.tenantId || !req.user.id) {
+  } else if (!req.user.tenant_id || !req.user.id) {
     req.user = {
       ...req.user,
       id: req.user.id || userId,
-      tenantId: req.user.tenantId || getTenantId(req),
+      tenantId: req.user.tenant_id || getTenantId(req),
     };
   }
 

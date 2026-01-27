@@ -307,7 +307,7 @@ export async function setupDemoAuth() {
       await db
         .update(teams)
         .set({ managerId: salesManager.id })
-        .where(and(eq(teams.department, 'sales'), eq(teams.tenantId, demoTenant.id)));
+        .where(and(eq(teams.department, 'sales'), eq(teams.tenant_id, demoTenant.id)));
       console.log('✓ Assigned sales team managers');
     }
 
@@ -315,7 +315,7 @@ export async function setupDemoAuth() {
       await db
         .update(teams)
         .set({ managerId: serviceManager.id })
-        .where(and(eq(teams.department, 'service'), eq(teams.tenantId, demoTenant.id)));
+        .where(and(eq(teams.department, 'service'), eq(teams.tenant_id, demoTenant.id)));
       console.log('✓ Assigned service team managers');
     }
 

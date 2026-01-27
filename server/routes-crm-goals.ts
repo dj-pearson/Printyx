@@ -77,8 +77,8 @@ export function registerCrmGoalRoutes(app: Express) {
           .from(salesGoals)
           .leftJoin(users, eq(salesGoals.assignedToUserId, users.id))
           .leftJoin(salesTeams, eq(salesGoals.assignedToTeamId, salesTeams.id))
-          .where(eq(salesGoals.tenantId, req.user!.tenantId))
-          .orderBy(desc(salesGoals.createdAt));
+          .where(eq(salesGoals.tenant_id, req.user!.tenant_id))
+          .orderBy(desc(salesGoals.created_at));
 
         res.json(goals);
       } catch (error) {
@@ -92,7 +92,7 @@ export function registerCrmGoalRoutes(app: Express) {
     try {
       const goalData = insertSalesGoalSchema.parse({
         ...req.body,
-        tenantId: req.user.tenantId,
+        tenantId: req.user.tenant_id,
         assignedBy: req.user?.id || req.user?.claims?.sub,
       });
 
@@ -127,7 +127,7 @@ export function registerCrmGoalRoutes(app: Express) {
           salesTeamMembers,
           and(eq(salesTeams.id, salesTeamMembers.teamId), eq(salesTeamMembers.isActive, true)),
         )
-        .where(eq(salesTeams.tenantId, req.user.tenantId))
+        .where(eq(salesTeams.tenant_id, req.user.tenant_id))
         .groupBy(salesTeams.id, users.firstName, users.lastName)
         .orderBy(asc(salesTeams.teamLevel), asc(salesTeams.name));
 
@@ -142,7 +142,7 @@ export function registerCrmGoalRoutes(app: Express) {
     try {
       const teamData = insertSalesTeamSchema.parse({
         ...req.body,
-        tenantId: req.user.tenantId,
+        tenantId: req.user.tenant_id,
       });
 
       const [team] = await db.insert(salesTeams).values(teamData).returning();
@@ -160,7 +160,7 @@ export function registerCrmGoalRoutes(app: Express) {
       const members = await db
         .select({
           id: salesTeamMembers.id,
-          userId: salesTeamMembers.userId,
+          userId: salesTeamMembers.user_id,
           role: salesTeamMembers.role,
           joinedDate: salesTeamMembers.joinedDate,
           isActive: salesTeamMembers.isActive,
@@ -169,11 +169,11 @@ export function registerCrmGoalRoutes(app: Express) {
           userEmail: users.email,
         })
         .from(salesTeamMembers)
-        .innerJoin(users, eq(salesTeamMembers.userId, users.id))
+        .innerJoin(users, eq(salesTeamMembers.user_id, users.id))
         .where(
           and(
             eq(salesTeamMembers.teamId, req.params.teamId),
-            eq(salesTeamMembers.tenantId, req.user.tenantId),
+            eq(salesTeamMembers.tenant_id, req.user.tenant_id),
           ),
         )
         .orderBy(asc(users.firstName));
@@ -190,14 +190,14 @@ export function registerCrmGoalRoutes(app: Express) {
     try {
       const { period = 'weekly', userId, teamId, startDate, endDate } = req.query;
 
-      let whereConditions = [eq(activityReports.tenantId, req.user.tenantId)];
+      let whereConditions = [eq(activityReports.tenant_id, req.user.tenant_id)];
 
       if (period) {
         whereConditions.push(eq(activityReports.period, period as any));
       }
 
       if (userId) {
-        whereConditions.push(eq(activityReports.userId, userId as string));
+        whereConditions.push(eq(activityReports.user_id, userId as string));
       }
 
       if (teamId) {
@@ -215,7 +215,7 @@ export function registerCrmGoalRoutes(app: Express) {
       const reports = await db
         .select({
           id: activityReports.id,
-          userId: activityReports.userId,
+          userId: activityReports.user_id,
           teamId: activityReports.teamId,
           reportDate: activityReports.reportDate,
           period: activityReports.period,
@@ -235,7 +235,7 @@ export function registerCrmGoalRoutes(app: Express) {
           teamName: salesTeams.name,
         })
         .from(activityReports)
-        .leftJoin(users, eq(activityReports.userId, users.id))
+        .leftJoin(users, eq(activityReports.user_id, users.id))
         .leftJoin(salesTeams, eq(activityReports.teamId, salesTeams.id))
         .where(and(...whereConditions))
         .orderBy(desc(activityReports.reportDate));
@@ -252,7 +252,7 @@ export function registerCrmGoalRoutes(app: Express) {
     try {
       const { goalId, startDate, endDate } = req.query;
 
-      let whereConditions = [eq(goalProgress.tenantId, req.user.tenantId)];
+      let whereConditions = [eq(goalProgress.tenant_id, req.user.tenant_id)];
 
       if (goalId) {
         whereConditions.push(eq(goalProgress.goalId, goalId as string));
@@ -331,9 +331,9 @@ export function registerCrmGoalRoutes(app: Express) {
         .from(leadActivities)
         .where(
           and(
-            eq(leadActivities.tenantId, req.user.tenantId),
-            gte(leadActivities.createdAt, startDate),
-            lte(leadActivities.createdAt, endDate),
+            eq(leadActivities.tenant_id, req.user.tenant_id),
+            gte(leadActivities.created_at, startDate),
+            lte(leadActivities.created_at, endDate),
             ...(userId ? [eq(leadActivities.createdBy, userId)] : []),
           ),
         );
@@ -358,9 +358,9 @@ export function registerCrmGoalRoutes(app: Express) {
         .from(customerActivities)
         .where(
           and(
-            eq(customerActivities.tenantId, req.user.tenantId),
-            gte(customerActivities.createdAt, startDate),
-            lte(customerActivities.createdAt, endDate),
+            eq(customerActivities.tenant_id, req.user.tenant_id),
+            gte(customerActivities.created_at, startDate),
+            lte(customerActivities.created_at, endDate),
             ...(userId ? [eq(customerActivities.createdBy, userId)] : []),
           ),
         );
@@ -381,7 +381,7 @@ export function registerCrmGoalRoutes(app: Express) {
         (customerActivitiesStats[0]?.emailReplies || 0);
 
       const reportData = {
-        tenantId: req.user.tenantId,
+        tenantId: req.user.tenant_id,
         userId,
         teamId,
         reportDate: new Date(reportDate),
@@ -415,13 +415,13 @@ export function registerCrmGoalRoutes(app: Express) {
       const activeGoalsCount = await db
         .select({ count: count() })
         .from(salesGoals)
-        .where(and(eq(salesGoals.tenantId, req.user.tenantId), eq(salesGoals.isActive, true)));
+        .where(and(eq(salesGoals.tenant_id, req.user.tenant_id), eq(salesGoals.isActive, true)));
 
       // Get teams count
       const teamsCount = await db
         .select({ count: count() })
         .from(salesTeams)
-        .where(and(eq(salesTeams.tenantId, req.user.tenantId), eq(salesTeams.isActive, true)));
+        .where(and(eq(salesTeams.tenant_id, req.user.tenant_id), eq(salesTeams.isActive, true)));
 
       // Get team members count
       const membersCount = await db
@@ -429,7 +429,7 @@ export function registerCrmGoalRoutes(app: Express) {
         .from(salesTeamMembers)
         .where(
           and(
-            eq(salesTeamMembers.tenantId, req.user.tenantId),
+            eq(salesTeamMembers.tenant_id, req.user.tenant_id),
             eq(salesTeamMembers.isActive, true),
           ),
         );
@@ -440,7 +440,7 @@ export function registerCrmGoalRoutes(app: Express) {
         .from(activityReports)
         .where(
           and(
-            eq(activityReports.tenantId, req.user.tenantId),
+            eq(activityReports.tenant_id, req.user.tenant_id),
             gte(activityReports.reportDate, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)), // Last 7 days
           ),
         );
@@ -467,9 +467,9 @@ export function registerCrmGoalRoutes(app: Express) {
         .from(salesMetrics)
         .where(
           and(
-            eq(salesMetrics.tenantId, req.user.tenantId),
+            eq(salesMetrics.tenant_id, req.user.tenant_id),
             eq(salesMetrics.metricPeriod, period),
-            userId ? eq(salesMetrics.userId, userId) : undefined,
+            userId ? eq(salesMetrics.user_id, userId) : undefined,
             teamId ? eq(salesMetrics.teamId, teamId) : undefined,
           ),
         )
@@ -486,7 +486,7 @@ export function registerCrmGoalRoutes(app: Express) {
     try {
       const metricsData = insertSalesMetricsSchema.parse({
         ...req.body,
-        tenantId: req.user.tenantId,
+        tenantId: req.user.tenant_id,
       });
 
       const [metrics] = await db.insert(salesMetrics).values(metricsData).returning();
@@ -508,9 +508,9 @@ export function registerCrmGoalRoutes(app: Express) {
         .from(conversionFunnel)
         .where(
           and(
-            eq(conversionFunnel.tenantId, req.user.tenantId),
+            eq(conversionFunnel.tenant_id, req.user.tenant_id),
             eq(conversionFunnel.trackingPeriod, period),
-            userId ? eq(conversionFunnel.userId, userId) : undefined,
+            userId ? eq(conversionFunnel.user_id, userId) : undefined,
             teamId ? eq(conversionFunnel.teamId, teamId) : undefined,
           ),
         )
@@ -533,16 +533,16 @@ export function registerCrmGoalRoutes(app: Express) {
         .from(managerInsights)
         .where(
           and(
-            eq(managerInsights.tenantId, req.user.tenantId),
+            eq(managerInsights.tenant_id, req.user.tenant_id),
             managerId ? eq(managerInsights.managerId, managerId) : undefined,
             teamId ? eq(managerInsights.teamId, teamId) : undefined,
-            userId ? eq(managerInsights.userId, userId) : undefined,
+            userId ? eq(managerInsights.user_id, userId) : undefined,
             category ? eq(managerInsights.insightCategory, category) : undefined,
             priority ? eq(managerInsights.priorityLevel, priority) : undefined,
             eq(managerInsights.isActive, true),
           ),
         )
-        .orderBy(desc(managerInsights.createdAt));
+        .orderBy(desc(managerInsights.created_at));
 
       res.json(insights);
     } catch (error) {
@@ -563,8 +563,8 @@ export function registerCrmGoalRoutes(app: Express) {
         .from(salesMetrics)
         .where(
           and(
-            eq(salesMetrics.tenantId, req.user.tenantId),
-            userId ? eq(salesMetrics.userId, userId) : undefined,
+            eq(salesMetrics.tenant_id, req.user.tenant_id),
+            userId ? eq(salesMetrics.user_id, userId) : undefined,
             teamId ? eq(salesMetrics.teamId, teamId) : undefined,
             eq(salesMetrics.metricPeriod, 'monthly'),
           ),
@@ -582,9 +582,9 @@ export function registerCrmGoalRoutes(app: Express) {
       // Analyze call answer rate
       if (metrics.callAnswerRate && Number(metrics.callAnswerRate) < 25) {
         insights.push({
-          tenantId: req.user.tenantId,
+          tenantId: req.user.tenant_id,
           managerId,
-          userId: metrics.userId,
+          userId: metrics.user_id,
           teamId: metrics.teamId,
           insightType: 'performance_gap',
           insightCategory: 'calls',
@@ -612,9 +612,9 @@ export function registerCrmGoalRoutes(app: Express) {
       // Analyze email response rate
       if (metrics.emailResponseRate && Number(metrics.emailResponseRate) < 15) {
         insights.push({
-          tenantId: req.user.tenantId,
+          tenantId: req.user.tenant_id,
           managerId,
-          userId: metrics.userId,
+          userId: metrics.user_id,
           teamId: metrics.teamId,
           insightType: 'performance_gap',
           insightCategory: 'emails',
@@ -656,9 +656,9 @@ export function registerCrmGoalRoutes(app: Express) {
         );
 
         insights.push({
-          tenantId: req.user.tenantId,
+          tenantId: req.user.tenant_id,
           managerId,
-          userId: metrics.userId,
+          userId: metrics.user_id,
           teamId: metrics.teamId,
           insightType: 'activity_recommendation',
           insightCategory: 'deals',
@@ -794,7 +794,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       const analysis = await db
         .select({
-          userId: salesMetrics.userId,
+          userId: salesMetrics.user_id,
           teamId: salesMetrics.teamId,
           periodStart: salesMetrics.periodStartDate,
 
@@ -826,13 +826,13 @@ export function registerCrmGoalRoutes(app: Express) {
           teamName: salesTeams.name,
         })
         .from(salesMetrics)
-        .leftJoin(users, eq(salesMetrics.userId, users.id))
+        .leftJoin(users, eq(salesMetrics.user_id, users.id))
         .leftJoin(salesTeams, eq(salesMetrics.teamId, salesTeams.id))
         .where(
           and(
-            eq(salesMetrics.tenantId, req.user.tenantId),
+            eq(salesMetrics.tenant_id, req.user.tenant_id),
             eq(salesMetrics.metricPeriod, period),
-            userId ? eq(salesMetrics.userId, userId) : undefined,
+            userId ? eq(salesMetrics.user_id, userId) : undefined,
             teamId ? eq(salesMetrics.teamId, teamId) : undefined,
           ),
         )

@@ -25,12 +25,14 @@ export const dashboardModules = {
         db
           .select({ total: sum(invoices.totalAmount) })
           .from(invoices)
-          .where(and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`)),
+          .where(and(eq(invoices.tenant_id, tenantId), sql`created_at::text LIKE ${currentMonth}`)),
 
         db
           .select({ total: sum(invoices.totalAmount) })
           .from(invoices)
-          .where(and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${previousMonth}`)),
+          .where(
+            and(eq(invoices.tenant_id, tenantId), sql`created_at::text LIKE ${previousMonth}`),
+          ),
 
         db
           .select({
@@ -38,7 +40,9 @@ export const dashboardModules = {
             value: sum(deals.amount),
           })
           .from(deals)
-          .where(and(eq(deals.tenantId, tenantId), ...(userId ? [eq(deals.ownerId, userId)] : []))),
+          .where(
+            and(eq(deals.tenant_id, tenantId), ...(userId ? [eq(deals.ownerId, userId)] : [])),
+          ),
       ]);
 
       const currentRev = Number(currentRevenue[0]?.total || 0);
@@ -62,7 +66,7 @@ export const dashboardModules = {
           .from(deals)
           .where(
             and(
-              eq(deals.tenantId, tenantId),
+              eq(deals.tenant_id, tenantId),
               sql`status NOT IN ('closed_won', 'closed_lost')`,
               ...(userId ? [eq(deals.ownerId, userId)] : []),
             ),
@@ -73,7 +77,7 @@ export const dashboardModules = {
           .from(deals)
           .where(
             and(
-              eq(deals.tenantId, tenantId),
+              eq(deals.tenant_id, tenantId),
               sql`status NOT IN ('closed_won', 'closed_lost')`,
               ...(userId ? [eq(deals.ownerId, userId)] : []),
             ),
@@ -95,7 +99,7 @@ export const dashboardModules = {
       const achieved = await db
         .select({ total: sum(invoices.totalAmount) })
         .from(invoices)
-        .where(and(eq(invoices.tenantId, tenantId), sql`created_at::text LIKE ${currentMonth}`));
+        .where(and(eq(invoices.tenant_id, tenantId), sql`created_at::text LIKE ${currentMonth}`));
 
       const achievedAmount = Number(achieved[0]?.total || 0);
       const percentage = (achievedAmount / monthlyGoal) * 100;
@@ -116,7 +120,7 @@ export const dashboardModules = {
           .from(businessRecords)
           .where(
             and(
-              eq(businessRecords.tenantId, tenantId),
+              eq(businessRecords.tenant_id, tenantId),
               eq(businessRecords.recordType, 'lead'),
               ...(userId ? [eq(businessRecords.assignedSalesRep, userId)] : []),
             ),
@@ -127,7 +131,7 @@ export const dashboardModules = {
           .from(businessRecords)
           .where(
             and(
-              eq(businessRecords.tenantId, tenantId),
+              eq(businessRecords.tenant_id, tenantId),
               eq(businessRecords.recordType, 'lead'),
               sql`created_at >= NOW() - INTERVAL '30 days'`,
               ...(userId ? [eq(businessRecords.assignedSalesRep, userId)] : []),
@@ -155,7 +159,7 @@ export const dashboardModules = {
           .from(serviceTickets)
           .where(
             and(
-              eq(serviceTickets.tenantId, tenantId),
+              eq(serviceTickets.tenant_id, tenantId),
               sql`created_at >= NOW() - INTERVAL '30 days'`,
               ...(userId ? [eq(serviceTickets.assignedTechnicianId, userId)] : []),
             ),
@@ -166,7 +170,7 @@ export const dashboardModules = {
           .from(serviceTickets)
           .where(
             and(
-              eq(serviceTickets.tenantId, tenantId),
+              eq(serviceTickets.tenant_id, tenantId),
               sql`DATE(created_at) = ${today}`,
               ...(userId ? [eq(serviceTickets.assignedTechnicianId, userId)] : []),
             ),
@@ -177,7 +181,7 @@ export const dashboardModules = {
           .from(serviceTickets)
           .where(
             and(
-              eq(serviceTickets.tenantId, tenantId),
+              eq(serviceTickets.tenant_id, tenantId),
               sql`status IN ('open', 'in_progress')`,
               ...(userId ? [eq(serviceTickets.assignedTechnicianId, userId)] : []),
             ),
@@ -212,7 +216,7 @@ export const dashboardModules = {
           .from(serviceTickets)
           .where(
             and(
-              eq(serviceTickets.tenantId, tenantId),
+              eq(serviceTickets.tenant_id, tenantId),
               sql`created_at >= NOW() - INTERVAL '30 days'`,
               ...(userId ? [eq(serviceTickets.assignedTechnicianId, userId)] : []),
             ),
@@ -223,7 +227,7 @@ export const dashboardModules = {
           .from(serviceTickets)
           .where(
             and(
-              eq(serviceTickets.tenantId, tenantId),
+              eq(serviceTickets.tenant_id, tenantId),
               eq(serviceTickets.status, 'completed'),
               sql`created_at >= NOW() - INTERVAL '30 days'`,
               ...(userId ? [eq(serviceTickets.assignedTechnicianId, userId)] : []),
@@ -253,26 +257,29 @@ export const dashboardModules = {
           .select({ count: count() })
           .from(businessRecords)
           .where(
-            and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
+            and(
+              eq(businessRecords.tenant_id, tenantId),
+              eq(businessRecords.recordType, 'customer'),
+            ),
           ),
 
         db
           .select({ count: count() })
           .from(contracts)
-          .where(and(eq(contracts.tenantId, tenantId), eq(contracts.status, 'active'))),
+          .where(and(eq(contracts.tenant_id, tenantId), eq(contracts.status, 'active'))),
 
         db
           .select({ total: sum(invoices.totalAmount) })
           .from(invoices)
           .where(
-            and(eq(invoices.tenantId, tenantId), sql`created_at >= NOW() - INTERVAL '30 days'`),
+            and(eq(invoices.tenant_id, tenantId), sql`created_at >= NOW() - INTERVAL '30 days'`),
           ),
 
         db
           .select({ count: count() })
           .from(serviceTickets)
           .where(
-            and(eq(serviceTickets.tenantId, tenantId), sql`status IN ('open', 'in_progress')`),
+            and(eq(serviceTickets.tenant_id, tenantId), sql`status IN ('open', 'in_progress')`),
           ),
       ]);
 
@@ -294,7 +301,7 @@ export const dashboardModules = {
           minThreshold: inventoryItems.reorderPoint,
         })
         .from(inventoryItems)
-        .where(and(eq(inventoryItems.tenantId, tenantId), sql`current_stock <= reorder_point`))
+        .where(and(eq(inventoryItems.tenant_id, tenantId), sql`current_stock <= reorder_point`))
         .limit(10);
 
       return lowStockItems.map((item) => ({
@@ -315,7 +322,8 @@ export function registerModularDashboardRoutes(app: Express) {
   app.get('/api/dashboard/modules', async (req: any, res) => {
     try {
       // Try multiple ways to get tenant ID from the request
-      const tenantId = req.user?.tenantId || req.tenantId || '1d4522ad-b3d8-4018-8890-f9294b2efbe6';
+      const tenantId =
+        req.user?.tenant_id || req.tenant_id || '1d4522ad-b3d8-4018-8890-f9294b2efbe6';
       const userId = req.user?.id;
 
       if (!tenantId) {

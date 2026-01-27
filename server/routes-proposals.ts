@@ -59,12 +59,12 @@ const requireAuth = (req: any, res: any, next: any) => {
       tenantId:
         getTenantId(req) || process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000',
     };
-  } else if (!req.user.tenantId || !req.user.id) {
+  } else if (!req.user.tenant_id || !req.user.id) {
     req.user = {
       ...req.user,
       id: req.user.id || userId,
       tenantId:
-        req.user.tenantId ||
+        req.user.tenant_id ||
         getTenantId(req) ||
         process.env.DEMO_TENANT_ID ||
         '550e8400-e29b-41d4-a716-446655440000',
@@ -100,7 +100,7 @@ router.post(
     try {
       const validatedData = insertProposalTemplateSchema.parse({
         ...req.body,
-        tenantId: req.user.tenantId,
+        tenantId: req.user.tenant_id,
         createdBy: req.user.id,
       });
 
@@ -126,7 +126,7 @@ router.put('/proposal-templates/:id', async (req: any, res) => {
     const [template] = await db
       .update(proposalTemplates)
       .set(updateData)
-      .where(and(eq(proposalTemplates.id, id), eq(proposalTemplates.tenantId, req.user.tenantId)))
+      .where(and(eq(proposalTemplates.id, id), eq(proposalTemplates.tenant_id, req.user.tenant_id)))
       .returning();
 
     if (!template) {
@@ -148,7 +148,7 @@ router.get('/equipment-packages', async (req: any, res) => {
     const packages = await db
       .select()
       .from(equipmentPackages)
-      .where(eq(equipmentPackages.tenantId, req.user.tenantId))
+      .where(eq(equipmentPackages.tenant_id, req.user.tenant_id))
       .orderBy(equipmentPackages.packageName);
 
     res.json(packages);
@@ -163,7 +163,7 @@ router.post('/equipment-packages', async (req: any, res) => {
   try {
     const validatedData = insertEquipmentPackageSchema.parse({
       ...req.body,
-      tenantId: req.user.tenantId,
+      tenantId: req.user.tenant_id,
     });
 
     const [package_] = await db.insert(equipmentPackages).values([validatedData]).returning();
@@ -202,7 +202,7 @@ router.get(
           acceptedAt: proposals.acceptedAt,
           createdBy: proposals.createdBy,
           assignedTo: proposals.assignedTo,
-          createdAt: proposals.createdAt,
+          createdAt: proposals.created_at,
           // Join with business records to get customer info
           customerName: businessRecords.companyName,
           customerEmail: businessRecords.primaryContactEmail,
@@ -210,7 +210,7 @@ router.get(
         .from(proposals)
         .leftJoin(businessRecords, eq(proposals.businessRecordId, businessRecords.id));
 
-      const conditions: any[] = [eq(proposals.tenantId, req.user.tenantId)];
+      const conditions: any[] = [eq(proposals.tenant_id, req.user.tenant_id)];
 
       if (status) {
         conditions.push(eq(proposals.status, status as string));
@@ -224,13 +224,13 @@ router.get(
       if (filter === 'aging' && days) {
         const n = Number.parseInt(days, 10);
         if (!Number.isNaN(n) && n > 0) {
-          conditions.push(sql`${proposals.createdAt} < NOW() - INTERVAL '${n} days'`);
+          conditions.push(sql`${proposals.created_at} < NOW() - INTERVAL '${n} days'`);
         }
       }
 
       const query = baseQuery.where(and(...conditions));
 
-      const result = await query.orderBy(desc(proposals.createdAt));
+      const result = await query.orderBy(desc(proposals.created_at));
 
       res.json(result);
     } catch (error) {
@@ -246,7 +246,7 @@ router.get('/new', async (req: any, res) => {
     // Return a new proposal template
     const newProposal = {
       id: 'new',
-      tenantId: req.user.tenantId,
+      tenantId: req.user.tenant_id,
       proposalNumber: '', // Will be generated on save
       version: 1,
       title: '',
@@ -286,7 +286,7 @@ router.get('/:id', async (req: any, res) => {
     const proposalResult = await db
       .select()
       .from(proposals)
-      .where(and(eq(proposals.id, id), eq(proposals.tenantId, req.user.tenantId)))
+      .where(and(eq(proposals.id, id), eq(proposals.tenant_id, req.user.tenant_id)))
       .limit(1);
 
     if (proposalResult.length === 0) {
@@ -302,7 +302,7 @@ router.get('/:id', async (req: any, res) => {
       .where(
         and(
           eq(proposalLineItems.proposalId, id),
-          eq(proposalLineItems.tenantId, req.user.tenantId),
+          eq(proposalLineItems.tenant_id, req.user.tenant_id),
         ),
       )
       .orderBy(proposalLineItems.lineNumber);
@@ -330,12 +330,12 @@ router.post(
       console.log('User:', req.user);
 
       // Generate proposal number
-      const proposalNumber = await generateProposalNumber(req.user.tenantId);
+      const proposalNumber = await generateProposalNumber(req.user.tenant_id);
       console.log('Generated proposal number:', proposalNumber);
 
       const dataToValidate = {
         ...req.body,
-        tenantId: req.user.tenantId,
+        tenantId: req.user.tenant_id,
         proposalNumber,
         createdBy: req.user.id,
         assignedTo: req.user.id, // Default to creator
@@ -355,7 +355,7 @@ router.post(
       if (req.body.lineItems && req.body.lineItems.length > 0) {
         const lineItemsData = req.body.lineItems.map((item: any, index: number) => ({
           ...item,
-          tenantId: req.user.tenantId,
+          tenantId: req.user.tenant_id,
           proposalId: proposal.id,
           lineNumber: item.lineNumber || index + 1,
           itemType: item.itemType || 'equipment', // Use provided itemType or default to equipment
@@ -415,7 +415,7 @@ router.put('/:id', async (req: any, res) => {
     const [proposal] = await db
       .update(proposals)
       .set(updateData)
-      .where(and(eq(proposals.id, id), eq(proposals.tenantId, req.user.tenantId)))
+      .where(and(eq(proposals.id, id), eq(proposals.tenant_id, req.user.tenant_id)))
       .returning();
 
     if (!proposal) {
@@ -430,14 +430,14 @@ router.put('/:id', async (req: any, res) => {
         .where(
           and(
             eq(proposalLineItems.proposalId, id),
-            eq(proposalLineItems.tenantId, req.user.tenantId),
+            eq(proposalLineItems.tenant_id, req.user.tenant_id),
           ),
         );
 
       // Insert new line items
       const lineItemsData = lineItemsToUpdate.map((item: any, index: number) => ({
         ...item,
-        tenantId: req.user.tenantId,
+        tenantId: req.user.tenant_id,
         proposalId: id,
         lineNumber: item.lineNumber || index + 1,
         itemType: item.itemType || 'equipment',
@@ -460,7 +460,7 @@ router.patch('/:id', async (req: any, res) => {
     const { lineItems: lineItemsToUpdate, ...restData } = req.body;
 
     // Remove updatedAt from body if present and let database handle it
-    delete restData.updatedAt;
+    delete restData.updated_at;
 
     // Convert date strings to proper Date objects for timestamp fields
     const updateData = { ...restData };
@@ -481,7 +481,7 @@ router.patch('/:id', async (req: any, res) => {
     const [proposal] = await db
       .update(proposals)
       .set(updateData)
-      .where(and(eq(proposals.id, id), eq(proposals.tenantId, req.user.tenantId)))
+      .where(and(eq(proposals.id, id), eq(proposals.tenant_id, req.user.tenant_id)))
       .returning();
 
     if (!proposal) {
@@ -498,14 +498,14 @@ router.patch('/:id', async (req: any, res) => {
         .where(
           and(
             eq(proposalLineItems.proposalId, id),
-            eq(proposalLineItems.tenantId, req.user.tenantId),
+            eq(proposalLineItems.tenant_id, req.user.tenant_id),
           ),
         );
 
       // Insert new line items
       const lineItemsData = lineItemsToUpdate.map((item: any, index: number) => ({
         ...item,
-        tenantId: req.user.tenantId,
+        tenantId: req.user.tenant_id,
         proposalId: id,
         lineNumber: item.lineNumber || index + 1,
         itemType: item.itemType || 'equipment',
@@ -525,7 +525,7 @@ router.patch('/:id', async (req: any, res) => {
     const updatedProposalWithLineItems = await db
       .select()
       .from(proposals)
-      .where(and(eq(proposals.id, id), eq(proposals.tenantId, req.user.tenantId)))
+      .where(and(eq(proposals.id, id), eq(proposals.tenant_id, req.user.tenant_id)))
       .limit(1);
 
     const updatedLineItems = await db
@@ -534,7 +534,7 @@ router.patch('/:id', async (req: any, res) => {
       .where(
         and(
           eq(proposalLineItems.proposalId, id),
-          eq(proposalLineItems.tenantId, req.user.tenantId),
+          eq(proposalLineItems.tenant_id, req.user.tenant_id),
         ),
       );
 
@@ -578,7 +578,7 @@ router.patch('/:id/status', async (req: any, res) => {
     const [proposal] = await db
       .update(proposals)
       .set(updateData)
-      .where(and(eq(proposals.id, id), eq(proposals.tenantId, req.user.tenantId)))
+      .where(and(eq(proposals.id, id), eq(proposals.tenant_id, req.user.tenant_id)))
       .returning();
 
     if (!proposal) {
@@ -588,13 +588,13 @@ router.patch('/:id/status', async (req: any, res) => {
     // Synchronize Sales Pipeline and Contracts
     try {
       if (status === 'sent') {
-        await upsertDealForProposal(proposal, req.user.id, req.user.tenantId);
+        await upsertDealForProposal(proposal, req.user.id, req.user.tenant_id);
       }
       if (status === 'accepted') {
-        const dealId = await upsertDealForProposal(proposal, req.user.id, req.user.tenantId, {
+        const dealId = await upsertDealForProposal(proposal, req.user.id, req.user.tenant_id, {
           forceWon: true,
         });
-        await createContractFromProposal(proposal, req.user.tenantId, req.user.id);
+        await createContractFromProposal(proposal, req.user.tenant_id, req.user.id);
       }
     } catch (syncError) {
       console.error('[PROPOSALS] Sync error (deal/contract):', syncError);
@@ -636,13 +636,13 @@ router.post('/:proposalId/line-items', async (req: any, res) => {
       .where(
         and(
           eq(proposalLineItems.proposalId, proposalId),
-          eq(proposalLineItems.tenantId, req.user.tenantId),
+          eq(proposalLineItems.tenant_id, req.user.tenant_id),
         ),
       );
 
     const validatedData = insertProposalLineItemSchema.parse({
       ...req.body,
-      tenantId: req.user.tenantId,
+      tenantId: req.user.tenant_id,
       proposalId,
       lineNumber: maxLineNumber + 1,
     });
@@ -650,7 +650,7 @@ router.post('/:proposalId/line-items', async (req: any, res) => {
     const [lineItem] = await db.insert(proposalLineItems).values([validatedData]).returning();
 
     // Recalculate proposal totals
-    await recalculateProposalTotals(proposalId, req.user.tenantId);
+    await recalculateProposalTotals(proposalId, req.user.tenant_id);
 
     res.status(201).json(lineItem);
   } catch (error) {
@@ -672,7 +672,7 @@ router.put('/:proposalId/line-items/:lineItemId', async (req: any, res) => {
         and(
           eq(proposalLineItems.id, lineItemId),
           eq(proposalLineItems.proposalId, proposalId),
-          eq(proposalLineItems.tenantId, req.user.tenantId),
+          eq(proposalLineItems.tenant_id, req.user.tenant_id),
         ),
       )
       .returning();
@@ -682,7 +682,7 @@ router.put('/:proposalId/line-items/:lineItemId', async (req: any, res) => {
     }
 
     // Recalculate proposal totals
-    await recalculateProposalTotals(proposalId, req.user.tenantId);
+    await recalculateProposalTotals(proposalId, req.user.tenant_id);
 
     res.json(lineItem);
   } catch (error) {
@@ -702,7 +702,7 @@ router.delete('/:proposalId/line-items/:lineItemId', async (req: any, res) => {
         and(
           eq(proposalLineItems.id, lineItemId),
           eq(proposalLineItems.proposalId, proposalId),
-          eq(proposalLineItems.tenantId, req.user.tenantId),
+          eq(proposalLineItems.tenant_id, req.user.tenant_id),
         ),
       );
 
@@ -711,7 +711,7 @@ router.delete('/:proposalId/line-items/:lineItemId', async (req: any, res) => {
     }
 
     // Recalculate proposal totals
-    await recalculateProposalTotals(proposalId, req.user.tenantId);
+    await recalculateProposalTotals(proposalId, req.user.tenant_id);
 
     res.json({ success: true });
   } catch (error) {
@@ -729,7 +729,7 @@ router.post('/:proposalId/comments', async (req: any, res) => {
 
     const validatedData = insertProposalCommentSchema.parse({
       ...req.body,
-      tenantId: req.user.tenantId,
+      tenantId: req.user.tenant_id,
       proposalId,
       authorId: req.user.id,
       authorName: req.user.displayName || req.user.email,
@@ -791,7 +791,7 @@ async function generateProposalNumber(tenantId: string): Promise<string> {
     .select({ proposalNumber: proposals.proposalNumber })
     .from(proposals)
     .where(
-      and(eq(proposals.tenantId, tenantId), sql`${proposals.proposalNumber} LIKE ${prefix + '%'}`),
+      and(eq(proposals.tenant_id, tenantId), sql`${proposals.proposalNumber} LIKE ${prefix + '%'}`),
     )
     .orderBy(desc(proposals.proposalNumber))
     .limit(1);
@@ -810,7 +810,7 @@ async function recalculateProposalTotals(proposalId: string, tenantId: string) {
     .select()
     .from(proposalLineItems)
     .where(
-      and(eq(proposalLineItems.proposalId, proposalId), eq(proposalLineItems.tenantId, tenantId)),
+      and(eq(proposalLineItems.proposalId, proposalId), eq(proposalLineItems.tenant_id, tenantId)),
     );
 
   const subtotal = lineItems.reduce((sum, item) => sum + parseFloat(item.totalPrice || '0'), 0);
@@ -819,7 +819,7 @@ async function recalculateProposalTotals(proposalId: string, tenantId: string) {
   const [proposal] = await db
     .select()
     .from(proposals)
-    .where(and(eq(proposals.id, proposalId), eq(proposals.tenantId, tenantId)));
+    .where(and(eq(proposals.id, proposalId), eq(proposals.tenant_id, tenantId)));
 
   if (proposal) {
     const discountAmount = parseFloat(proposal.discountAmount || '0');
@@ -843,7 +843,7 @@ async function getStageIdByName(tenantId: string, stageName: string): Promise<st
   const rows = await db
     .select({ id: dealStages.id })
     .from(dealStages)
-    .where(and(eq(dealStages.tenantId, tenantId), eq(dealStages.name, stageName)))
+    .where(and(eq(dealStages.tenant_id, tenantId), eq(dealStages.name, stageName)))
     .limit(1);
   return rows[0]?.id || null;
 }
@@ -852,7 +852,7 @@ async function getWonStageId(tenantId: string): Promise<string | null> {
   const rows = await db
     .select({ id: dealStages.id })
     .from(dealStages)
-    .where(and(eq(dealStages.tenantId, tenantId), eq(dealStages.isWonStage, true)))
+    .where(and(eq(dealStages.tenant_id, tenantId), eq(dealStages.isWonStage, true)))
     .limit(1);
   if (rows[0]?.id) return rows[0].id;
   // Fallback to a stage named "Closed Won"
@@ -862,7 +862,7 @@ async function getWonStageId(tenantId: string): Promise<string | null> {
   const first = await db
     .select({ id: dealStages.id })
     .from(dealStages)
-    .where(eq(dealStages.tenantId, tenantId))
+    .where(eq(dealStages.tenant_id, tenantId))
     .orderBy(asc(dealStages.sortOrder))
     .limit(1);
   return first[0]?.id || null;
@@ -878,7 +878,7 @@ async function getProposalSentStageId(tenantId: string): Promise<string | null> 
   const first = await db
     .select({ id: dealStages.id })
     .from(dealStages)
-    .where(eq(dealStages.tenantId, tenantId))
+    .where(eq(dealStages.tenant_id, tenantId))
     .orderBy(asc(dealStages.sortOrder))
     .limit(1);
   return first[0]?.id || null;
@@ -905,7 +905,7 @@ async function upsertDealForProposal(
   const existing = await db
     .select({ id: deals.id })
     .from(deals)
-    .where(and(eq(deals.tenantId, tenantId), eq(deals.title, title)))
+    .where(and(eq(deals.tenant_id, tenantId), eq(deals.title, title)))
     .limit(1);
 
   const stageId = options?.forceWon
@@ -931,7 +931,7 @@ async function upsertDealForProposal(
         actualCloseDate: options?.forceWon ? new Date() : null,
         updatedAt: new Date(),
       })
-      .where(and(eq(deals.id, existing[0].id), eq(deals.tenantId, tenantId)));
+      .where(and(eq(deals.id, existing[0].id), eq(deals.tenant_id, tenantId)));
     return existing[0].id;
   }
 
@@ -966,7 +966,7 @@ async function generateContractNumber(tenantId: string): Promise<string> {
     .select({ contractNumber: contracts.contractNumber })
     .from(contracts)
     .where(
-      and(eq(contracts.tenantId, tenantId), sql`${contracts.contractNumber} LIKE ${prefix + '%'}`),
+      and(eq(contracts.tenant_id, tenantId), sql`${contracts.contractNumber} LIKE ${prefix + '%'}`),
     )
     .orderBy(desc(contracts.contractNumber))
     .limit(1);
@@ -1023,7 +1023,7 @@ async function getQuoteDataForExport(proposalId: string, tenantId: string) {
   const [quote] = await db
     .select()
     .from(proposals)
-    .where(and(eq(proposals.id, proposalId), eq(proposals.tenantId, tenantId)));
+    .where(and(eq(proposals.id, proposalId), eq(proposals.tenant_id, tenantId)));
 
   if (!quote) {
     throw new Error(`Quote not found: ${proposalId}`);
@@ -1035,7 +1035,7 @@ async function getQuoteDataForExport(proposalId: string, tenantId: string) {
     .select()
     .from(proposalLineItems)
     .where(
-      and(eq(proposalLineItems.proposalId, proposalId), eq(proposalLineItems.tenantId, tenantId)),
+      and(eq(proposalLineItems.proposalId, proposalId), eq(proposalLineItems.tenant_id, tenantId)),
     )
     .orderBy(proposalLineItems.lineNumber);
 
@@ -1053,7 +1053,7 @@ async function getQuoteDataForExport(proposalId: string, tenantId: string) {
         .where(
           and(
             eq(businessRecords.id, quote.businessRecordId),
-            eq(businessRecords.tenantId, tenantId),
+            eq(businessRecords.tenant_id, tenantId),
           ),
         );
       console.log(`🏢 Found company: ${company?.companyName || 'Unknown'}`);
@@ -1068,7 +1068,7 @@ async function getQuoteDataForExport(proposalId: string, tenantId: string) {
         .select()
         .from(companyContacts)
         .where(
-          and(eq(companyContacts.id, quote.contactId), eq(companyContacts.tenantId, tenantId)),
+          and(eq(companyContacts.id, quote.contactId), eq(companyContacts.tenant_id, tenantId)),
         );
       console.log(`👤 Found contact: ${contact?.firstName} ${contact?.lastName}`);
     } catch (error) {
@@ -1279,7 +1279,7 @@ function generateQuoteHTML(
           <h3>Quote Information</h3>
           <p><strong>Status:</strong> ${quote.status}</p>
           <p><strong>Valid Until:</strong> ${validUntil}</p>
-          <p><strong>Created:</strong> ${new Date(quote.createdAt).toLocaleDateString()}</p>
+          <p><strong>Created:</strong> ${new Date(quote.created_at).toLocaleDateString()}</p>
         </div>
         <div class="info-section">
           <h3>Customer Information</h3>
@@ -1349,7 +1349,7 @@ router.get('/:id/export/pdf', async (req: any, res: any) => {
   let browser = null;
   try {
     const { id } = req.params;
-    const tenantId = req.user.tenantId;
+    const tenantId = req.user.tenant_id;
 
     console.log(`📄 PDF Export: Starting export for proposal ${id}, tenant ${tenantId}`);
 
@@ -1485,7 +1485,7 @@ router.get('/:id/export/pdf', async (req: any, res: any) => {
             <p><strong>Customer:</strong> ${company?.companyName || 'N/A'}</p>
             <p><strong>Contact:</strong> ${contact ? `${contact.firstName} ${contact.lastName}` : 'N/A'}</p>
             <p><strong>Valid Until:</strong> ${new Date(quote.validUntil).toLocaleDateString()}</p>
-            <p><strong>Created:</strong> ${new Date(quote.createdAt).toLocaleDateString()}</p>
+            <p><strong>Created:</strong> ${new Date(quote.created_at).toLocaleDateString()}</p>
           </div>
           
           <div class="line-items">
@@ -1557,7 +1557,7 @@ router.get('/:id/export/manager-pdf', async (req: any, res: any) => {
   let browser = null;
   try {
     const { id } = req.params;
-    const tenantId = req.user.tenantId;
+    const tenantId = req.user.tenant_id;
 
     console.log(`📊 Manager PDF Export: Starting export for proposal ${id}, tenant ${tenantId}`);
 
@@ -1725,7 +1725,7 @@ router.get('/:id/export/manager-pdf', async (req: any, res: any) => {
             <p><strong>Customer:</strong> ${company?.companyName || 'N/A'}</p>
             <p><strong>Contact:</strong> ${contact ? `${contact.firstName} ${contact.lastName}` : 'N/A'}</p>
             <p><strong>Valid Until:</strong> ${new Date(quote.validUntil).toLocaleDateString()}</p>
-            <p><strong>Created:</strong> ${new Date(quote.createdAt).toLocaleDateString()}</p>
+            <p><strong>Created:</strong> ${new Date(quote.created_at).toLocaleDateString()}</p>
           </div>
           
           <div class="line-items">

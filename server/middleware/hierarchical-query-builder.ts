@@ -103,7 +103,7 @@ export class HierarchicalQueryBuilder {
     // Using parameterized query to prevent SQL injection
     if (scope !== 'platform') {
       const tenantField = this.getFieldName('tenantId', options);
-      filters.push(sql`${sql.identifier(tenantField)} = ${this.userContext.tenantId}`);
+      filters.push(sql`${sql.identifier(tenantField)} = ${this.userContext.tenant_id}`);
     }
 
     // Apply scope-specific filters
@@ -205,7 +205,7 @@ export class HierarchicalQueryBuilder {
           .from(organizationalUnits)
           .where(
             and(
-              eq(organizationalUnits.tenantId, this.userContext.tenantId),
+              eq(organizationalUnits.tenant_id, this.userContext.tenant_id),
               eq(organizationalUnits.unitType, 'location'),
             ),
           );
@@ -224,7 +224,7 @@ export class HierarchicalQueryBuilder {
           .where(
             and(
               eq(organizationalUnits.id, this.userContext.regionId),
-              eq(organizationalUnits.tenantId, this.userContext.tenantId),
+              eq(organizationalUnits.tenant_id, this.userContext.tenant_id),
             ),
           )
           .limit(1);
@@ -238,7 +238,7 @@ export class HierarchicalQueryBuilder {
           .from(organizationalUnits)
           .where(
             and(
-              eq(organizationalUnits.tenantId, this.userContext.tenantId),
+              eq(organizationalUnits.tenant_id, this.userContext.tenant_id),
               eq(organizationalUnits.unitType, 'location'),
               gte(organizationalUnits.lft, regionalUnit[0].lft),
               lte(organizationalUnits.rght, regionalUnit[0].rght),
@@ -279,7 +279,7 @@ export class HierarchicalQueryBuilder {
           .from(organizationalUnits)
           .where(
             and(
-              eq(organizationalUnits.tenantId, this.userContext.tenantId),
+              eq(organizationalUnits.tenant_id, this.userContext.tenant_id),
               eq(organizationalUnits.unitType, 'regional'),
             ),
           );
@@ -313,7 +313,7 @@ export class HierarchicalQueryBuilder {
           .from(organizationalUnits)
           .where(
             and(
-              eq(organizationalUnits.tenantId, this.userContext.tenantId),
+              eq(organizationalUnits.tenant_id, this.userContext.tenant_id),
               eq(organizationalUnits.unitType, 'regional'),
               lte(organizationalUnits.lft, location[0].lft),
               gte(organizationalUnits.rght, location[0].rght),
@@ -341,7 +341,7 @@ export class HierarchicalQueryBuilder {
         const allUsers = await db
           .select({ id: users.id })
           .from(users)
-          .where(eq(users.tenantId, this.userContext.tenantId));
+          .where(eq(users.tenant_id, this.userContext.tenant_id));
         return allUsers.map((u) => u.id);
 
       case 'regional':
@@ -355,7 +355,7 @@ export class HierarchicalQueryBuilder {
           .from(users)
           .where(
             and(
-              eq(users.tenantId, this.userContext.tenantId),
+              eq(users.tenant_id, this.userContext.tenant_id),
               inArray(users.primaryLocationId, locationIds),
             ),
           );
@@ -368,7 +368,7 @@ export class HierarchicalQueryBuilder {
           .from(users)
           .where(
             and(
-              eq(users.tenantId, this.userContext.tenantId),
+              eq(users.tenant_id, this.userContext.tenant_id),
               or(eq(users.managerId, this.userContext.id), eq(users.id, this.userContext.id)),
             ),
           );
@@ -469,7 +469,7 @@ export class HierarchicalQueryBuilder {
 
     // Tenant filter (except platform)
     if (scope !== 'platform') {
-      filters.push(sql`${sql.identifier(`${prefix}tenant_id`)} = ${this.userContext.tenantId}`);
+      filters.push(sql`${sql.identifier(`${prefix}tenant_id`)} = ${this.userContext.tenant_id}`);
     }
 
     // Scope-specific filters

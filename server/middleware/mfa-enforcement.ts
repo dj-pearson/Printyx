@@ -169,8 +169,8 @@ export function requireMfaForAdmins(options: MfaEnforcementOptions = {}) {
       }
 
       // Get tenant MFA settings
-      const tenantSettings = user.tenantId
-        ? await getTenantMfaSettings(user.tenantId)
+      const tenantSettings = user.tenant_id
+        ? await getTenantMfaSettings(user.tenant_id)
         : { mfaRequiredRoles: requiredRoles, mfaRequiredLevel: requiredLevel, mfaEnabled: true };
 
       // Skip if MFA is disabled for tenant
@@ -341,7 +341,7 @@ export async function getUsersNeedingMfa(tenantId: string): Promise<
 > {
   const tenantSettings = await getTenantMfaSettings(tenantId);
 
-  const allUsers = await db.select().from(users).where(eq(users.tenantId, tenantId));
+  const allUsers = await db.select().from(users).where(eq(users.tenant_id, tenantId));
 
   const usersNeedingMfa = [];
 

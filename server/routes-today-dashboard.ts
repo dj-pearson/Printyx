@@ -55,7 +55,7 @@ export function registerTodayDashboardRoutes(app: Router) {
       const overdueActivities =
         (await db.query.activities?.findMany({
           where: and(
-            eq(businessRecordActivities.tenantId, tenantId),
+            eq(businessRecordActivities.tenant_id, tenantId),
             or(
               lte(businessRecordActivities.dueDate!, todayStart),
               lte(businessRecordActivities.scheduledDate!, yesterday),
@@ -70,7 +70,7 @@ export function registerTodayDashboardRoutes(app: Router) {
       const todayActivities =
         (await db.query.activities?.findMany({
           where: and(
-            eq(businessRecordActivities.tenantId, tenantId),
+            eq(businessRecordActivities.tenant_id, tenantId),
             gte(businessRecordActivities.scheduledDate!, todayStart),
             lte(businessRecordActivities.scheduledDate!, todayEnd),
             eq(businessRecordActivities.status, 'pending'),
@@ -83,7 +83,7 @@ export function registerTodayDashboardRoutes(app: Router) {
       const upcomingActivities =
         (await db.query.activities?.findMany({
           where: and(
-            eq(businessRecordActivities.tenantId, tenantId),
+            eq(businessRecordActivities.tenant_id, tenantId),
             gte(businessRecordActivities.scheduledDate!, addDays(todayEnd, 1)),
             lte(businessRecordActivities.scheduledDate!, threeDaysFromNow),
             eq(businessRecordActivities.status, 'pending'),
@@ -98,7 +98,7 @@ export function registerTodayDashboardRoutes(app: Router) {
         .from(leadScoreCalculations)
         .where(
           and(
-            eq(leadScoreCalculations.tenantId, tenantId),
+            eq(leadScoreCalculations.tenant_id, tenantId),
             gte(leadScoreCalculations.totalScore, 70), // High-scoring leads (70+)
             or(
               eq(leadScoreCalculations.qualificationStatus, 'qualified'),
@@ -135,7 +135,7 @@ export function registerTodayDashboardRoutes(app: Router) {
       const allDeals =
         (await db.query.deals?.findMany({
           where: and(
-            eq(deals.tenantId, tenantId),
+            eq(deals.tenant_id, tenantId),
             or(
               eq(deals.dealStage, 'prospecting'),
               eq(deals.dealStage, 'qualification'),
@@ -148,7 +148,7 @@ export function registerTodayDashboardRoutes(app: Router) {
       // Calculate days since last update and identify stale deals
       const pipelineAlerts = allDeals
         .map((deal) => {
-          const updatedAt = deal.updatedAt ? new Date(deal.updatedAt) : new Date(deal.createdAt!);
+          const updatedAt = deal.updatedAt ? new Date(deal.updatedAt) : new Date(deal.created_at!);
           const daysSinceUpdate = Math.floor(
             (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24),
           );
@@ -176,7 +176,7 @@ export function registerTodayDashboardRoutes(app: Router) {
       const recentWins =
         (await db.query.deals?.findMany({
           where: and(
-            eq(deals.tenantId, tenantId),
+            eq(deals.tenant_id, tenantId),
             eq(deals.dealStage, 'closed-won'),
             gte(deals.actualCloseDate!, weekStart),
             lte(deals.actualCloseDate!, weekEnd),
@@ -198,7 +198,7 @@ export function registerTodayDashboardRoutes(app: Router) {
       // Calculate quick stats
       const allDealsForStats =
         (await db.query.deals?.findMany({
-          where: eq(deals.tenantId, tenantId),
+          where: eq(deals.tenant_id, tenantId),
         })) || [];
 
       const pipelineValue = allDealsForStats
@@ -224,7 +224,7 @@ export function registerTodayDashboardRoutes(app: Router) {
       const totalLeads =
         (await db.query.businessRecords?.findMany({
           where: and(
-            eq(businessRecords.tenantId, tenantId),
+            eq(businessRecords.tenant_id, tenantId),
             eq(businessRecords.recordType, 'lead'),
           ),
         })) || [];
@@ -238,7 +238,7 @@ export function registerTodayDashboardRoutes(app: Router) {
       const completedToday =
         (await db.query.activities?.findMany({
           where: and(
-            eq(businessRecordActivities.tenantId, tenantId),
+            eq(businessRecordActivities.tenant_id, tenantId),
             eq(businessRecordActivities.status, 'completed'),
             gte(businessRecordActivities.completedAt!, todayStart),
           ),

@@ -210,7 +210,7 @@ export async function getCompanyPricingSettings(
     const [settings] = await db
       .select()
       .from(companyPricingSettings)
-      .where(eq(companyPricingSettings.tenantId, tenantId))
+      .where(eq(companyPricingSettings.tenant_id, tenantId))
       .limit(1);
 
     return settings || null;

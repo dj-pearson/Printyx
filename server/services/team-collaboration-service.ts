@@ -130,7 +130,7 @@ class TeamCollaborationService {
       // Mock team creation - in production, this would use Drizzle ORM
       const team: Team = {
         id: `team-${Date.now()}`,
-        tenantId: teamData.tenantId || 'mock-tenant',
+        tenantId: teamData.tenant_id || 'mock-tenant',
         name: teamData.name || 'New Team',
         description: teamData.description,
         teamType: teamData.teamType || 'department',
@@ -167,7 +167,7 @@ class TeamCollaborationService {
       const member: TeamMember = {
         id: `member-${Date.now()}`,
         teamId,
-        userId: memberData.userId || 'new-user',
+        userId: memberData.user_id || 'new-user',
         role: optimalAssignment.recommendedRole,
         permissions: optimalAssignment.recommendedPermissions,
         workloadCapacity: optimalAssignment.recommendedCapacity,
@@ -203,7 +203,7 @@ class TeamCollaborationService {
 
       const project: Project = {
         id: `project-${Date.now()}`,
-        tenantId: projectData.tenantId || 'mock-tenant',
+        tenantId: projectData.tenant_id || 'mock-tenant',
         parentProjectId: projectData.parentProjectId,
         teamId: projectData.teamId,
         name: projectData.name || 'New Project',
@@ -260,7 +260,7 @@ Available Tasks: ${tasks.length}
 Current Team Utilization: ${Math.round(currentCapacity.averageUtilization)}%
 
 Team Member Skills and Capacity:
-${teamMembers.map((m) => `- ${m.userId}: Skills: ${m.skills.join(', ')}, Capacity: ${m.workloadCapacity}x, Current: ${currentCapacity.memberAnalytics[m.userId]?.utilizationPercentage || 0}%`).join('\n')}
+${teamMembers.map((m) => `- ${m.user_id}: Skills: ${m.skills.join(', ')}, Capacity: ${m.workloadCapacity}x, Current: ${currentCapacity.memberAnalytics[m.user_id]?.utilizationPercentage || 0}%`).join('\n')}
 
 Tasks to Assign:
 ${tasks.map((t) => `- ${t.title}: Priority: ${t.priority}, Est. Hours: ${t.estimatedDuration / 60}, Skills: ${t.requiredSkills?.join(', ') || 'general'}`).join('\n')}
@@ -356,9 +356,9 @@ Return JSON with assignments:
         const availableHours = weeklyHours * member.workloadCapacity;
         const allocatedHours = Math.random() * availableHours; // Mock current allocation
 
-        memberAnalytics[member.userId] = {
+        memberAnalytics[member.user_id] = {
           teamId,
-          userId: member.userId,
+          userId: member.user_id,
           totalCapacityHours: availableHours,
           allocatedHours,
           utilizationPercentage: (allocatedHours / availableHours) * 100,

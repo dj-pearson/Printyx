@@ -193,7 +193,7 @@ class AdvancedSchedulingService {
     // Analyze recent scheduling history
     const recentHistory = this.schedulingHistory
       .filter((h) => h.timestamp > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)) // Last 30 days
-      .filter((h) => h.tasks.some((t) => t.userId === userId));
+      .filter((h) => h.tasks.some((t) => t.user_id === userId));
 
     if (recentHistory.length === 0) return;
 
@@ -320,7 +320,7 @@ Return JSON with updated pattern insights:
         const task1 = tasks[i];
         const task2 = tasks[j];
 
-        if (task1.userId === task2.userId) {
+        if (task1.user_id === task2.user_id) {
           // Same user
           this.constraintSolver.addConstraint({
             id: `no_overlap_${task1.id}_${task2.id}`,
@@ -426,7 +426,7 @@ Return JSON with updated pattern insights:
           const slot = values[`task_${task.id}`];
           if (!slot) return false;
 
-          const pattern = this.userPatterns.get(task.userId);
+          const pattern = this.userPatterns.get(task.user_id);
           if (!pattern) return true;
 
           const startHour = slot.startTime.getHours();
@@ -471,7 +471,7 @@ Return JSON with updated pattern insights:
           const slot = values[`task_${task.id}`];
           if (!slot) return 100; // High penalty for unscheduled
 
-          const pattern = this.userPatterns.get(task.userId);
+          const pattern = this.userPatterns.get(task.user_id);
           if (!pattern) return 0;
 
           const hour = slot.startTime.getHours();
@@ -509,7 +509,7 @@ Return JSON with updated pattern insights:
             const slot = values[`task_${task.id}`];
             if (!slot) return 100;
 
-            const pattern = this.userPatterns.get(task.userId);
+            const pattern = this.userPatterns.get(task.user_id);
             if (!pattern) return 0;
 
             const hour = slot.startTime.getHours();
@@ -542,10 +542,10 @@ Return JSON with updated pattern insights:
     // Group tasks by type/category for the same user
     const userTasks = new Map<string, Task[]>();
     for (const task of tasks) {
-      if (!userTasks.has(task.userId)) {
-        userTasks.set(task.userId, []);
+      if (!userTasks.has(task.user_id)) {
+        userTasks.set(task.user_id, []);
       }
-      userTasks.get(task.userId)!.push(task);
+      userTasks.get(task.user_id)!.push(task);
     }
 
     for (const [userId, userTaskList] of userTasks.entries()) {
@@ -593,7 +593,7 @@ Return JSON with updated pattern insights:
     const now = new Date();
     const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 2 weeks ahead
 
-    const userResource = resources.find((r) => r.id === task.userId && r.type === 'user');
+    const userResource = resources.find((r) => r.id === task.user_id && r.type === 'user');
     if (!userResource) return slots;
 
     // Generate 30-minute slots
@@ -709,7 +709,7 @@ Return JSON with updated pattern insights:
     // Analyze scheduling patterns
     for (const [userId, pattern] of this.userPatterns.entries()) {
       const userTasks = result.scheduledTasks.filter(
-        (st) => tasks.find((t) => t.id === st.taskId)?.userId === userId,
+        (st) => tasks.find((t) => t.id === st.taskId)?.user_id === userId,
       );
 
       if (userTasks.length > 0) {

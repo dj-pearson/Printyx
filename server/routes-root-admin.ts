@@ -20,11 +20,11 @@ const requireAuth = (req: any, res: any, next: any) => {
       id: userId,
       tenantId: getTenantId(req),
     };
-  } else if (!req.user.tenantId || !req.user.id) {
+  } else if (!req.user.tenant_id || !req.user.id) {
     req.user = {
       ...req.user,
       id: req.user.id || userId,
-      tenantId: req.user.tenantId || getTenantId(req),
+      tenantId: req.user.tenant_id || getTenantId(req),
     };
   }
 
@@ -36,7 +36,7 @@ const router = Router();
 // Middleware to check root admin access (exported for reuse)
 export const requireRootAdmin = async (req: any, res: any, next: any) => {
   try {
-    const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
+    const userId = req.user?.id || req.user?.claims?.sub || req.session?.user_id;
 
     if (!userId) {
       return res.status(401).json({ message: 'Authentication required' });
@@ -148,7 +148,7 @@ router.get('/tenants', requireRootAdmin, async (req, res) => {
         userCount: count(users.id),
       })
       .from(tenants)
-      .leftJoin(users, eq(users.tenantId, tenants.id))
+      .leftJoin(users, eq(users.tenant_id, tenants.id))
       .groupBy(tenants.id)
       .orderBy(desc(tenants.lastActivity));
 
@@ -171,34 +171,34 @@ router.get(
           id: activityReports.id,
           type: activityReports.type,
           severity: activityReports.severity,
-          tenantId: activityReports.tenantId,
-          userId: activityReports.userId,
+          tenantId: activityReports.tenant_id,
+          userId: activityReports.user_id,
           description: activityReports.description,
           metadata: activityReports.metadata,
-          timestamp: activityReports.createdAt,
+          timestamp: activityReports.created_at,
           resolved: activityReports.resolved,
         })
         .from(activityReports)
         .where(eq(activityReports.type, 'security_alert'))
-        .orderBy(desc(activityReports.createdAt))
+        .orderBy(desc(activityReports.created_at))
         .limit(50);
 
       // Enrich with tenant and user names
       const enrichedAlerts = await Promise.all(
         alerts.map(async (alert) => {
-          const tenant = alert.tenantId
+          const tenant = alert.tenant_id
             ? await db
                 .select({ name: tenants.name })
                 .from(tenants)
-                .where(eq(tenants.id, alert.tenantId))
+                .where(eq(tenants.id, alert.tenant_id))
                 .limit(1)
             : null;
 
-          const user = alert.userId
+          const user = alert.user_id
             ? await db
                 .select({ name: users.name, email: users.email })
                 .from(users)
-                .where(eq(users.id, alert.userId))
+                .where(eq(users.id, alert.user_id))
                 .limit(1)
             : null;
 
@@ -305,14 +305,14 @@ router.get('/users', requireRootAdmin, async (req, res) => {
         name: users.name,
         email: users.email,
         roleId: users.roleId,
-        tenantId: users.tenantId,
+        tenantId: users.tenant_id,
         status: users.status,
         lastLogin: users.lastLogin,
-        createdAt: users.createdAt,
+        createdAt: users.created_at,
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
-      .leftJoin(tenants, eq(users.tenantId, tenants.id));
+      .leftJoin(tenants, eq(users.tenant_id, tenants.id));
 
     // Apply filters
     const conditions = [];
@@ -345,11 +345,11 @@ router.get('/users', requireRootAdmin, async (req, res) => {
               .limit(1)
           : null;
 
-        const tenant = user.tenantId
+        const tenant = user.tenant_id
           ? await db
               .select({ name: tenants.name })
               .from(tenants)
-              .where(eq(tenants.id, user.tenantId))
+              .where(eq(tenants.id, user.tenant_id))
               .limit(1)
           : null;
 
@@ -382,7 +382,7 @@ router.get('/roles', requireRootAdmin, async (req, res) => {
         level: roles.level,
         permissions: roles.permissions,
         canAccessAllTenants: roles.canAccessAllTenants,
-        createdAt: roles.createdAt,
+        createdAt: roles.created_at,
         userCount: count(users.id),
       })
       .from(roles)
@@ -403,7 +403,7 @@ router.get('/audit-logs', requireRootAdmin, async (req, res) => {
     const logs = await db
       .select({
         id: auditLogs.id,
-        userId: auditLogs.userId,
+        userId: auditLogs.user_id,
         action: auditLogs.action,
         tableName: auditLogs.tableName,
         recordId: auditLogs.recordId,
@@ -418,11 +418,11 @@ router.get('/audit-logs', requireRootAdmin, async (req, res) => {
     // Enrich with user information
     const enrichedLogs = await Promise.all(
       logs.map(async (log) => {
-        const user = log.userId
+        const user = log.user_id
           ? await db
               .select({ name: users.name, email: users.email })
               .from(users)
-              .where(eq(users.id, log.userId))
+              .where(eq(users.id, log.user_id))
               .limit(1)
           : null;
 
@@ -542,15 +542,15 @@ router.get('/rbac-audit-logs', requireRootAdmin, async (req, res) => {
 
     // Filter by user ID
     if (userId) {
-      conditions.push(eq(rbacAuditLog.userId, userId as string));
+      conditions.push(eq(rbacAuditLog.user_id, userId as string));
     }
 
     // Filter by date range
     if (startDate) {
-      conditions.push(gte(rbacAuditLog.createdAt, new Date(startDate as string)));
+      conditions.push(gte(rbacAuditLog.created_at, new Date(startDate as string)));
     }
     if (endDate) {
-      conditions.push(lte(rbacAuditLog.createdAt, new Date(endDate as string)));
+      conditions.push(lte(rbacAuditLog.created_at, new Date(endDate as string)));
     }
 
     // Filter by route (partial match)
@@ -566,7 +566,7 @@ router.get('/rbac-audit-logs', requireRootAdmin, async (req, res) => {
       .select()
       .from(rbacAuditLog)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(rbacAuditLog.createdAt))
+      .orderBy(desc(rbacAuditLog.created_at))
       .limit(limitNum)
       .offset(offsetNum);
 
@@ -579,11 +579,11 @@ router.get('/rbac-audit-logs', requireRootAdmin, async (req, res) => {
     // Enrich with user information
     const enrichedLogs = await Promise.all(
       logs.map(async (log) => {
-        const user = log.userId
+        const user = log.user_id
           ? await db
               .select({ name: users.name, email: users.email })
               .from(users)
-              .where(eq(users.id, log.userId))
+              .where(eq(users.id, log.user_id))
               .limit(1)
           : null;
 
@@ -618,10 +618,10 @@ router.get('/rbac-audit-logs/stats', requireRootAdmin, async (req, res) => {
     const conditions: any[] = [];
 
     if (startDate) {
-      conditions.push(gte(rbacAuditLog.createdAt, new Date(startDate as string)));
+      conditions.push(gte(rbacAuditLog.created_at, new Date(startDate as string)));
     }
     if (endDate) {
-      conditions.push(lte(rbacAuditLog.createdAt, new Date(endDate as string)));
+      conditions.push(lte(rbacAuditLog.created_at, new Date(endDate as string)));
     }
 
     // Get counts by event type
@@ -659,7 +659,7 @@ router.get('/rbac-audit-logs/stats', requireRootAdmin, async (req, res) => {
       .select({ count: count() })
       .from(rbacAuditLog)
       .where(
-        and(eq(rbacAuditLog.eventType, 'ADMIN_BYPASS'), gte(rbacAuditLog.createdAt, yesterday)),
+        and(eq(rbacAuditLog.eventType, 'ADMIN_BYPASS'), gte(rbacAuditLog.created_at, yesterday)),
       );
 
     res.json({
@@ -691,13 +691,13 @@ router.get('/rbac-audit-logs/admin-bypass', requireRootAdmin, async (req, res) =
     const conditions: any[] = [eq(rbacAuditLog.eventType, 'ADMIN_BYPASS')];
 
     if (userId) {
-      conditions.push(eq(rbacAuditLog.userId, userId as string));
+      conditions.push(eq(rbacAuditLog.user_id, userId as string));
     }
     if (startDate) {
-      conditions.push(gte(rbacAuditLog.createdAt, new Date(startDate as string)));
+      conditions.push(gte(rbacAuditLog.created_at, new Date(startDate as string)));
     }
     if (endDate) {
-      conditions.push(lte(rbacAuditLog.createdAt, new Date(endDate as string)));
+      conditions.push(lte(rbacAuditLog.created_at, new Date(endDate as string)));
     }
 
     const limitNum = Math.min(parseInt(limitParam as string, 10) || 50, 500);
@@ -706,17 +706,17 @@ router.get('/rbac-audit-logs/admin-bypass', requireRootAdmin, async (req, res) =
       .select()
       .from(rbacAuditLog)
       .where(and(...conditions))
-      .orderBy(desc(rbacAuditLog.createdAt))
+      .orderBy(desc(rbacAuditLog.created_at))
       .limit(limitNum);
 
     // Enrich with user information
     const enrichedLogs = await Promise.all(
       logs.map(async (log) => {
-        const user = log.userId
+        const user = log.user_id
           ? await db
               .select({ name: users.name, email: users.email })
               .from(users)
-              .where(eq(users.id, log.userId))
+              .where(eq(users.id, log.user_id))
               .limit(1)
           : null;
 

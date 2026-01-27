@@ -48,9 +48,9 @@ export default async function handler(req: Request) {
 
     // Extract tenant ID
     const tenantId =
-      (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
+      (user.app_metadata?.tenant_id as string) ||
+      (user.user_metadata?.tenant_id as string) ||
       (user.user_metadata?.tenant_id as string);
 
     if (!tenantId) {
@@ -331,7 +331,7 @@ export default async function handler(req: Request) {
               const { data: existingCompanies, error: searchError } = await admin
                 .from('companies')
                 .select('*')
-                .eq('tenant_id', job.tenantId)
+                .eq('tenant_id', job.tenant_id)
                 .ilike('business_name', businessName)
                 .limit(10);
 
@@ -390,18 +390,18 @@ export default async function handler(req: Request) {
                   const { data: existingLead } = await admin
                     .from('leads')
                     .select('id')
-                    .eq('tenant_id', job.tenantId)
+                    .eq('tenant_id', job.tenant_id)
                     .eq('company_id', existingCompany.id)
                     .maybeSingle();
 
                   if (!existingLead) {
                     const { error: leadInsertError } = await admin.from('leads').insert({
-                      tenant_id: job.tenantId,
+                      tenant_id: job.tenant_id,
                       company_id: existingCompany.id,
                       status: mappedData.status || 'new',
                       priority: mappedData.priority || 'medium',
                       source: mappedData.leadSource || mappedData.source || 'import',
-                      created_by: job.userId,
+                      created_by: job.user_id,
                     });
 
                     if (!leadInsertError) {
@@ -415,7 +415,7 @@ export default async function handler(req: Request) {
                   const { data: existingCustomer, error: customerCheckError } = await admin
                     .from('customers')
                     .select('id, contact_id')
-                    .eq('tenant_id', job.tenantId)
+                    .eq('tenant_id', job.tenant_id)
                     .eq('company_id', existingCompany.id)
                     .maybeSingle();
 
@@ -497,7 +497,7 @@ export default async function handler(req: Request) {
                         .from('company_contacts')
                         .insert({
                           company_id: existingCompany.id,
-                          tenant_id: job.tenantId,
+                          tenant_id: job.tenant_id,
                           first_name: mappedData.primaryContactFirstName || 'Primary',
                           last_name: mappedData.primaryContactLastName || 'Contact',
                           email: contactEmail || null,
@@ -532,10 +532,10 @@ export default async function handler(req: Request) {
                     );
 
                     const { error: customerInsertError } = await admin.from('customers').insert({
-                      tenant_id: job.tenantId,
+                      tenant_id: job.tenant_id,
                       company_id: existingCompany.id,
                       contact_id: contactId,
-                      created_by: job.userId,
+                      created_by: job.user_id,
                     });
 
                     if (!customerInsertError) {
@@ -657,7 +657,7 @@ export default async function handler(req: Request) {
                 const { data: newCompany, error: insertError } = await admin
                   .from('companies')
                   .insert({
-                    tenant_id: job.tenantId,
+                    tenant_id: job.tenant_id,
                     business_record_type:
                       mappedData.recordType || mappedData.businessRecordType || 'Customer',
                     business_name: businessName,
@@ -679,8 +679,8 @@ export default async function handler(req: Request) {
                       mappedData.zipCode ||
                       mappedData.mailingZipPostalCode ||
                       null,
-                    created_by: job.userId,
-                    business_owner: job.userId,
+                    created_by: job.user_id,
+                    business_owner: job.user_id,
                   })
                   .select()
                   .single();
@@ -695,12 +695,12 @@ export default async function handler(req: Request) {
 
                   if (isLead) {
                     const { error: leadError } = await admin.from('leads').insert({
-                      tenant_id: job.tenantId,
+                      tenant_id: job.tenant_id,
                       company_id: newCompany.id,
                       status: mappedData.status || 'new',
                       priority: mappedData.priority || 'medium',
                       source: mappedData.leadSource || mappedData.source || 'import',
-                      created_by: job.userId,
+                      created_by: job.user_id,
                     });
 
                     if (leadError) {
@@ -712,7 +712,7 @@ export default async function handler(req: Request) {
                       .from('company_contacts')
                       .insert({
                         company_id: newCompany.id,
-                        tenant_id: job.tenantId,
+                        tenant_id: job.tenant_id,
                         first_name: mappedData.primaryContactFirstName || 'Primary',
                         last_name: mappedData.primaryContactLastName || 'Contact',
                         email: mappedData.primaryContactEmail || mappedData.email || null,
@@ -730,10 +730,10 @@ export default async function handler(req: Request) {
 
                     // SECOND: Create customer with contact_id
                     const { error: customerError } = await admin.from('customers').insert({
-                      tenant_id: job.tenantId,
+                      tenant_id: job.tenant_id,
                       company_id: newCompany.id,
                       contact_id: newContact.id,
-                      created_by: job.userId,
+                      created_by: job.user_id,
                     });
 
                     if (customerError) {

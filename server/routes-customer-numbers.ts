@@ -18,11 +18,11 @@ const requireAuth = (req: any, res: any, next: any) => {
       id: userId,
       tenantId: getTenantId(req),
     };
-  } else if (!req.user.id || !req.user.tenantId) {
+  } else if (!req.user.id || !req.user.tenant_id) {
     req.user = {
       ...req.user,
       id: req.user.id || userId,
-      tenantId: req.user.tenantId || getTenantId(req),
+      tenantId: req.user.tenant_id || getTenantId(req),
     };
   }
 
@@ -50,7 +50,7 @@ class CustomerNumberService {
       .select()
       .from(customerNumberConfig)
       .where(
-        and(eq(customerNumberConfig.tenantId, tenantId), eq(customerNumberConfig.isActive, true)),
+        and(eq(customerNumberConfig.tenant_id, tenantId), eq(customerNumberConfig.isActive, true)),
       )
       .limit(1);
 
@@ -114,7 +114,7 @@ class CustomerNumberService {
         customerNumber,
         updatedAt: new Date(),
       })
-      .where(and(eq(businessRecords.id, customerId), eq(businessRecords.tenantId, tenantId)));
+      .where(and(eq(businessRecords.id, customerId), eq(businessRecords.tenant_id, tenantId)));
   }
 
   /**
@@ -137,14 +137,14 @@ class CustomerNumberService {
         customerNumber,
         updatedAt: new Date(),
       })
-      .where(and(eq(businessRecords.id, leadId), eq(businessRecords.tenantId, tenantId)));
+      .where(and(eq(businessRecords.id, leadId), eq(businessRecords.tenant_id, tenantId)));
 
     // Get configuration for history
     const config = await db
       .select()
       .from(customerNumberConfig)
       .where(
-        and(eq(customerNumberConfig.tenantId, tenantId), eq(customerNumberConfig.isActive, true)),
+        and(eq(customerNumberConfig.tenant_id, tenantId), eq(customerNumberConfig.isActive, true)),
       )
       .limit(1);
 
@@ -171,8 +171,8 @@ router.get('/config', async (req: any, res) => {
     const configs = await db
       .select()
       .from(customerNumberConfig)
-      .where(eq(customerNumberConfig.tenantId, tenantId))
-      .orderBy(desc(customerNumberConfig.createdAt));
+      .where(eq(customerNumberConfig.tenant_id, tenantId))
+      .orderBy(desc(customerNumberConfig.created_at));
 
     res.json(configs);
   } catch (error) {
@@ -196,7 +196,7 @@ router.post('/config', async (req: any, res) => {
       await db
         .update(customerNumberConfig)
         .set({ isActive: false })
-        .where(eq(customerNumberConfig.tenantId, tenantId));
+        .where(eq(customerNumberConfig.tenant_id, tenantId));
     }
 
     const [config] = await db.insert(customerNumberConfig).values(validatedData).returning();
@@ -218,7 +218,7 @@ router.put('/config/:id', async (req: any, res) => {
     const existing = await db
       .select()
       .from(customerNumberConfig)
-      .where(and(eq(customerNumberConfig.id, id), eq(customerNumberConfig.tenantId, tenantId)))
+      .where(and(eq(customerNumberConfig.id, id), eq(customerNumberConfig.tenant_id, tenantId)))
       .limit(1);
 
     if (!existing[0]) {
@@ -230,7 +230,7 @@ router.put('/config/:id', async (req: any, res) => {
       await db
         .update(customerNumberConfig)
         .set({ isActive: false })
-        .where(and(eq(customerNumberConfig.tenantId, tenantId), ne(customerNumberConfig.id, id)));
+        .where(and(eq(customerNumberConfig.tenant_id, tenantId), ne(customerNumberConfig.id, id)));
     }
 
     const [updated] = await db
@@ -282,7 +282,7 @@ router.post('/assign', async (req: any, res) => {
       .select()
       .from(customerNumberConfig)
       .where(
-        and(eq(customerNumberConfig.tenantId, tenantId), eq(customerNumberConfig.isActive, true)),
+        and(eq(customerNumberConfig.tenant_id, tenantId), eq(customerNumberConfig.isActive, true)),
       )
       .limit(1);
 
@@ -342,7 +342,7 @@ router.get('/history', async (req: any, res) => {
         configId: customerNumberHistory.configId,
       })
       .from(customerNumberHistory)
-      .where(eq(customerNumberHistory.tenantId, tenantId))
+      .where(eq(customerNumberHistory.tenant_id, tenantId))
       .orderBy(desc(customerNumberHistory.generatedAt))
       .limit(100);
 

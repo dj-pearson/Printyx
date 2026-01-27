@@ -155,8 +155,8 @@ export function registerCsvImportRoutes(app: Express) {
         }
 
         const { entityType, useAiRefinement, duplicateStrategy } = bodyValidation.data;
-        const tenantId = req.tenantId!;
-        const userId = req.user?.id || req.session?.userId;
+        const tenantId = req.tenant_id!;
+        const userId = req.user?.id || req.session?.user_id;
 
         if (!userId) {
           return res.status(401).json({ message: 'User not authenticated' });
@@ -252,7 +252,7 @@ export function registerCsvImportRoutes(app: Express) {
         }
 
         // Verify tenant access
-        if (job.tenantId !== req.tenantId) {
+        if (job.tenant_id !== req.tenant_id) {
           return res.status(403).json({ message: 'Access denied' });
         }
 
@@ -280,7 +280,7 @@ export function registerCsvImportRoutes(app: Express) {
     requireTenant,
     async (req: ImportRequest, res: Response) => {
       try {
-        const tenantId = req.tenantId!;
+        const tenantId = req.tenant_id!;
         const { entityType, status, limit } = req.query;
 
         const jobs = await CsvImportService.getImportJobs(tenantId, {
@@ -331,7 +331,7 @@ export function registerCsvImportRoutes(app: Express) {
           return res.status(404).json({ message: 'Import job not found' });
         }
 
-        if (job.tenantId !== req.tenantId) {
+        if (job.tenant_id !== req.tenant_id) {
           return res.status(403).json({ message: 'Access denied' });
         }
 
@@ -375,7 +375,7 @@ export function registerCsvImportRoutes(app: Express) {
           return res.status(404).json({ message: 'Import job not found' });
         }
 
-        if (job.tenantId !== req.tenantId) {
+        if (job.tenant_id !== req.tenant_id) {
           return res.status(403).json({ message: 'Access denied' });
         }
 
@@ -418,7 +418,7 @@ export function registerCsvImportRoutes(app: Express) {
           return res.status(404).json({ message: 'Import job not found' });
         }
 
-        if (job.tenantId !== req.tenantId) {
+        if (job.tenant_id !== req.tenant_id) {
           return res.status(403).json({ message: 'Access denied' });
         }
 
@@ -452,11 +452,11 @@ export function registerCsvImportRoutes(app: Express) {
           return res.status(404).json({ message: 'Import job not found' });
         }
 
-        if (job.tenantId !== req.tenantId) {
+        if (job.tenant_id !== req.tenant_id) {
           return res.status(403).json({ message: 'Access denied' });
         }
 
-        const userId = req.user?.id || req.session?.userId;
+        const userId = req.user?.id || req.session?.user_id;
         if (!userId) {
           return res.status(401).json({ message: 'User not authenticated' });
         }
@@ -497,11 +497,11 @@ export function registerCsvImportRoutes(app: Express) {
           return res.status(404).json({ message: 'Import job not found' });
         }
 
-        if (job.tenantId !== req.tenantId) {
+        if (job.tenant_id !== req.tenant_id) {
           return res.status(403).json({ message: 'Access denied' });
         }
 
-        const userId = req.user?.id || req.session?.userId;
+        const userId = req.user?.id || req.session?.user_id;
         if (!userId) {
           return res.status(401).json({ message: 'User not authenticated' });
         }
@@ -543,7 +543,7 @@ export function registerCsvImportRoutes(app: Express) {
           return res.status(404).json({ message: 'Import job not found' });
         }
 
-        if (job.tenantId !== req.tenantId) {
+        if (job.tenant_id !== req.tenant_id) {
           return res.status(403).json({ message: 'Access denied' });
         }
 
@@ -583,7 +583,7 @@ export function registerCsvImportRoutes(app: Express) {
           return res.status(404).json({ message: 'Import job not found' });
         }
 
-        if (job.tenantId !== req.tenantId) {
+        if (job.tenant_id !== req.tenant_id) {
           return res.status(403).json({ message: 'Access denied' });
         }
 
@@ -690,7 +690,7 @@ export function registerCsvImportRoutes(app: Express) {
           return res.status(404).json({ message: 'Import job not found' });
         }
 
-        if (job.tenantId !== req.tenantId) {
+        if (job.tenant_id !== req.tenant_id) {
           return res.status(403).json({ message: 'Access denied' });
         }
 
@@ -705,7 +705,7 @@ export function registerCsvImportRoutes(app: Express) {
 
         const result = await aiCsvRefinementService.processImportWithAI(
           jobId,
-          req.tenantId!, // Pass tenantId for defense-in-depth isolation
+          req.tenant_id!, // Pass tenantId for defense-in-depth isolation
           rawData,
           headers,
           job.entityType,

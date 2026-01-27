@@ -70,7 +70,7 @@ export class UnifiedMeterCollectionService {
         } catch (error) {
           console.error(`Failed to collect from integration ${integration.id}:`, error);
           await this.integrationService.updateIntegrationStatus(
-            integration.tenantId,
+            integration.tenant_id,
             integration.id,
             'error',
             error instanceof Error ? error.message : 'Unknown error',
@@ -104,7 +104,7 @@ export class UnifiedMeterCollectionService {
 
       // Get all registered devices for this integration
       const devices = await this.integrationService.getDevices(
-        integration.tenantId,
+        integration.tenant_id,
         integration.id,
       );
 
@@ -121,7 +121,7 @@ export class UnifiedMeterCollectionService {
           if (result.success && result.metrics.length > 0) {
             // Store collected metrics
             await this.integrationService.collectDeviceMetrics(
-              integration.tenantId,
+              integration.tenant_id,
               device.id,
               result.metrics.map((metric) => ({
                 metricType: metric.metricType,
@@ -143,7 +143,7 @@ export class UnifiedMeterCollectionService {
 
             // Log successful collection
             await this.integrationService.logAuditEvent(
-              integration.tenantId,
+              integration.tenant_id,
               integration.id,
               'data_collection',
               'success',
@@ -159,7 +159,7 @@ export class UnifiedMeterCollectionService {
 
             // Log collection failure
             await this.integrationService.logAuditEvent(
-              integration.tenantId,
+              integration.tenant_id,
               integration.id,
               'data_collection',
               'error',
@@ -179,7 +179,7 @@ export class UnifiedMeterCollectionService {
           console.error(`Failed to collect from device ${device.deviceId}:`, error);
 
           await this.integrationService.logAuditEvent(
-            integration.tenantId,
+            integration.tenant_id,
             integration.id,
             'data_collection',
             'error',
@@ -192,20 +192,20 @@ export class UnifiedMeterCollectionService {
       // Update integration status based on results
       if (errorCount === 0) {
         await this.integrationService.updateIntegrationStatus(
-          integration.tenantId,
+          integration.tenant_id,
           integration.id,
           'active',
         );
       } else if (successCount > 0) {
         await this.integrationService.updateIntegrationStatus(
-          integration.tenantId,
+          integration.tenant_id,
           integration.id,
           'active',
           `Partial success: ${successCount} succeeded, ${errorCount} failed`,
         );
       } else {
         await this.integrationService.updateIntegrationStatus(
-          integration.tenantId,
+          integration.tenant_id,
           integration.id,
           'error',
           `All device collections failed (${errorCount} devices)`,
@@ -227,14 +227,14 @@ export class UnifiedMeterCollectionService {
       console.error(`Failed to process integration ${integration.id}:`, error);
 
       await this.integrationService.updateIntegrationStatus(
-        integration.tenantId,
+        integration.tenant_id,
         integration.id,
         'error',
         error instanceof Error ? error.message : 'Unknown error',
       );
 
       await this.integrationService.logAuditEvent(
-        integration.tenantId,
+        integration.tenant_id,
         integration.id,
         'integration_error',
         'error',

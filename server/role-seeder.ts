@@ -526,7 +526,7 @@ export async function seedDemoUsers(tenantId: string) {
         // Create user
         await db.insert(users).values({
           id: userData.id,
-          tenantId: userData.tenantId,
+          tenantId: userData.tenant_id,
           email: userData.email,
           firstName: userData.firstName,
           lastName: userData.lastName,

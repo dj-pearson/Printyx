@@ -175,7 +175,7 @@ class BillingAnalyticsService {
       .from(invoices)
       .where(
         and(
-          eq(invoices.tenantId, tenantId),
+          eq(invoices.tenant_id, tenantId),
           gte(invoices.invoiceDate, startDate),
           sql`${invoices.invoiceStatus} IN ('paid', 'partial')`,
         ),
@@ -338,7 +338,7 @@ class BillingAnalyticsService {
       })
       .from(businessRecords)
       .leftJoin(invoices, eq(businessRecords.id, invoices.customerId))
-      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.status, 'active')))
+      .where(and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.status, 'active')))
       .groupBy(businessRecords.id, businessRecords.companyName);
 
     return results;
@@ -478,7 +478,7 @@ class BillingAnalyticsService {
   ): Promise<CustomerLifetimeValue[]> {
     try {
       // Build query conditions
-      const conditions = [eq(businessRecords.tenantId, tenantId)];
+      const conditions = [eq(businessRecords.tenant_id, tenantId)];
       if (customerId) {
         conditions.push(eq(businessRecords.id, customerId));
       }
@@ -487,7 +487,7 @@ class BillingAnalyticsService {
         .select({
           id: businessRecords.id,
           name: businessRecords.companyName,
-          createdAt: businessRecords.createdAt,
+          createdAt: businessRecords.created_at,
           totalRevenue: sql<number>`COALESCE(SUM(CAST(${invoices.totalAmount} AS DECIMAL)), 0)`,
           invoiceCount: count(invoices.id),
           firstInvoiceDate: sql<Date>`MIN(${invoices.invoiceDate})`,
@@ -496,13 +496,13 @@ class BillingAnalyticsService {
         .from(businessRecords)
         .leftJoin(invoices, eq(businessRecords.id, invoices.customerId))
         .where(and(...conditions))
-        .groupBy(businessRecords.id, businessRecords.companyName, businessRecords.createdAt);
+        .groupBy(businessRecords.id, businessRecords.companyName, businessRecords.created_at);
 
       const lifetimeValues: CustomerLifetimeValue[] = [];
 
       for (const customer of customers) {
         // Calculate customer age in months
-        const firstDate = customer.firstInvoiceDate || customer.createdAt;
+        const firstDate = customer.firstInvoiceDate || customer.created_at;
         const customerAge = Math.max(1, this.monthsDiff(new Date(firstDate), new Date()));
 
         // Calculate average monthly revenue

@@ -161,7 +161,7 @@ function substituteQueryParameters(
   // Default parameters
   const defaultParams: ReportParameters = {
     userId: user?.id,
-    tenantId: user?.tenantId,
+    tenantId: user?.tenant_id,
     locationId: user?.locationId,
     regionId: user?.regionId,
     dateFrom: params.dateFrom || null,
@@ -386,7 +386,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
       .from(reportDefinitions)
       .where(
         and(
-          eq(reportDefinitions.tenantId, req.user.tenantId),
+          eq(reportDefinitions.tenant_id, req.user.tenant_id),
           eq(reportDefinitions.isActive, true),
         ),
       );
@@ -460,7 +460,7 @@ router.get('/:code', async (req: AuthenticatedRequest, res: Response) => {
       .where(
         and(
           eq(reportDefinitions.code, code),
-          eq(reportDefinitions.tenantId, req.user.tenantId),
+          eq(reportDefinitions.tenant_id, req.user.tenant_id),
           eq(reportDefinitions.isActive, true),
         ),
       )
@@ -487,7 +487,7 @@ router.get('/:code', async (req: AuthenticatedRequest, res: Response) => {
       .from(userReportPreferences)
       .where(
         and(
-          eq(userReportPreferences.userId, req.user.id),
+          eq(userReportPreferences.user_id, req.user.id),
           eq(userReportPreferences.reportDefinitionId, reportDef.id),
         ),
       )
@@ -528,7 +528,7 @@ router.post('/:code/execute', async (req: AuthenticatedRequest, res: Response) =
       .where(
         and(
           eq(reportDefinitions.code, code),
-          eq(reportDefinitions.tenantId, req.user.tenantId),
+          eq(reportDefinitions.tenant_id, req.user.tenant_id),
           eq(reportDefinitions.isActive, true),
         ),
       )
@@ -556,7 +556,7 @@ router.post('/:code/execute', async (req: AuthenticatedRequest, res: Response) =
     if (cachedData && !reportDef.isRealTime) {
       // Record execution (cache hit)
       await db.insert(reportExecutions).values({
-        tenantId: req.user.tenantId,
+        tenantId: req.user.tenant_id,
         reportDefinitionId: reportDef.id,
         userId: req.user.id,
         parameters: executionRequest.parameters || {},
@@ -626,7 +626,7 @@ router.post('/:code/execute', async (req: AuthenticatedRequest, res: Response) =
 
     // Record execution
     await db.insert(reportExecutions).values({
-      tenantId: req.user.tenantId,
+      tenantId: req.user.tenant_id,
       reportDefinitionId: reportDef.id,
       userId: req.user.id,
       parameters: executionRequest.parameters || {},
@@ -654,7 +654,7 @@ router.post('/:code/execute', async (req: AuthenticatedRequest, res: Response) =
     // Record failed execution
     if (req.user) {
       await db.insert(reportExecutions).values({
-        tenantId: req.user.tenantId,
+        tenantId: req.user.tenant_id,
         reportDefinitionId: req.params.code,
         userId: req.user.id,
         parameters: req.body.parameters || {},
@@ -694,7 +694,7 @@ router.post('/:code/export', async (req: AuthenticatedRequest, res: Response) =>
       .where(
         and(
           eq(reportDefinitions.code, code),
-          eq(reportDefinitions.tenantId, req.user.tenantId),
+          eq(reportDefinitions.tenant_id, req.user.tenant_id),
           eq(reportDefinitions.isActive, true),
         ),
       )
@@ -783,7 +783,7 @@ router.post('/:code/schedule', async (req: AuthenticatedRequest, res: Response) 
       .where(
         and(
           eq(reportDefinitions.code, code),
-          eq(reportDefinitions.tenantId, req.user.tenantId),
+          eq(reportDefinitions.tenant_id, req.user.tenant_id),
           eq(reportDefinitions.isActive, true),
         ),
       )
@@ -805,7 +805,7 @@ router.post('/:code/schedule', async (req: AuthenticatedRequest, res: Response) 
     const schedule = await db
       .insert(reportSchedules)
       .values({
-        tenantId: req.user.tenantId,
+        tenantId: req.user.tenant_id,
         reportDefinitionId: reportDef.id,
         name: scheduleRequest.name,
         description: scheduleRequest.description || null,
@@ -852,12 +852,12 @@ router.get('/scheduled/list', async (req: AuthenticatedRequest, res: Response) =
       .innerJoin(reportDefinitions, eq(reportSchedules.reportDefinitionId, reportDefinitions.id))
       .where(
         and(
-          eq(reportSchedules.tenantId, req.user.tenantId),
+          eq(reportSchedules.tenant_id, req.user.tenant_id),
           eq(reportSchedules.createdBy, req.user.id),
           eq(reportSchedules.isActive, true),
         ),
       )
-      .orderBy(desc(reportSchedules.createdAt));
+      .orderBy(desc(reportSchedules.created_at));
 
     res.json({
       schedules: schedules.map((s) => ({
@@ -892,7 +892,7 @@ router.delete('/scheduled/:id', async (req: AuthenticatedRequest, res: Response)
       .where(
         and(
           eq(reportSchedules.id, id),
-          eq(reportSchedules.tenantId, req.user.tenantId),
+          eq(reportSchedules.tenant_id, req.user.tenant_id),
           eq(reportSchedules.createdBy, req.user.id),
         ),
       )
@@ -936,11 +936,11 @@ router.get('/executions/recent', async (req: AuthenticatedRequest, res: Response
       .innerJoin(reportDefinitions, eq(reportExecutions.reportDefinitionId, reportDefinitions.id))
       .where(
         and(
-          eq(reportExecutions.tenantId, req.user.tenantId),
-          eq(reportExecutions.userId, req.user.id),
+          eq(reportExecutions.tenant_id, req.user.tenant_id),
+          eq(reportExecutions.user_id, req.user.id),
         ),
       )
-      .orderBy(desc(reportExecutions.createdAt))
+      .orderBy(desc(reportExecutions.created_at))
       .limit(Number(limit));
 
     res.json({

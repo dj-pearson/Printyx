@@ -455,7 +455,7 @@ router.get('/api/calculator/leads', async (req: any, res) => {
     }
 
     const leads = await query
-      .orderBy(desc(calculatorLeads.createdAt))
+      .orderBy(desc(calculatorLeads.created_at))
       .limit(parseInt(limit as string))
       .offset(parseInt(offset as string));
 
@@ -486,7 +486,7 @@ router.get('/api/calculator/leads/:leadId', async (req: any, res) => {
       .select()
       .from(calculatorSessions)
       .where(eq(calculatorSessions.leadId, leadId))
-      .orderBy(desc(calculatorSessions.createdAt));
+      .orderBy(desc(calculatorSessions.created_at));
 
     // Get email sequence progress
     const emailSequence = await db
