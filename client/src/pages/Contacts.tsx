@@ -77,6 +77,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { getApiUrl } from '@/lib/config';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { useAuthContext } from '@/providers/AuthProvider';
@@ -140,7 +141,7 @@ interface Contact {
 export default function Contacts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuthContext();
+  const { user, getAccessToken } = useAuthContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     contactOwner: '',
@@ -436,11 +437,18 @@ export default function Contacts() {
         params.append('ownerId', filters.contactOwner);
       }
 
-      const response = await fetch(`/api/contacts?${params.toString()}`, {
+      // Get auth token for Edge Function
+      const token = await getAccessToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(getApiUrl(`/api/contacts?${params.toString()}`), {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         credentials: 'include',
       });
 
@@ -492,11 +500,18 @@ export default function Contacts() {
   // Delete contact mutation
   const deleteContactMutation = useMutation({
     mutationFn: async (contactId: string) => {
-      const response = await fetch(`/api/company-contacts/${contactId}`, {
+      // Get auth token for Edge Function
+      const token = await getAccessToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(getApiUrl(`/api/company-contacts/${contactId}`), {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         credentials: 'include',
       });
 
