@@ -105,7 +105,7 @@ router.get('/api/business-records', requireAuth, async (req: Request, res: Respo
     } = req.query;
 
     // Build WHERE conditions
-    const conditions: any[] = [eq(businessRecords.tenant_id, tenantId)];
+    const conditions: any[] = [eq(businessRecords.tenantId, tenantId)];
 
     if (recordType) {
       conditions.push(eq(businessRecords.recordType, recordType as string));
@@ -152,7 +152,7 @@ router.get('/api/business-records', requireAuth, async (req: Request, res: Respo
 
     // Execute query with pagination
     const sortColumn =
-      businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.created_at;
+      businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.createdAt;
     const orderFn = sortOrder === 'asc' ? asc : desc;
 
     const records = await db
@@ -205,7 +205,7 @@ router.get(
         .from(businessRecords)
         .where(
           and(
-            eq(businessRecords.tenant_id, tenantId),
+            eq(businessRecords.tenantId, tenantId),
             or(
               eq(businessRecords.id, identifier),
               eq(businessRecords.urlSlug, identifier),
@@ -224,7 +224,7 @@ router.get(
         .select()
         .from(businessRecordActivities)
         .where(eq(businessRecordActivities.businessRecordId, record.id))
-        .orderBy(desc(businessRecordActivities.created_at))
+        .orderBy(desc(businessRecordActivities.createdAt))
         .limit(20);
 
       res.json({
@@ -324,7 +324,7 @@ router.patch('/api/business-records/:id', requireAuth, async (req: Request, res:
     const [existing] = await db
       .select()
       .from(businessRecords)
-      .where(and(eq(businessRecords.id, id), eq(businessRecords.tenant_id, tenantId)))
+      .where(and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId)))
       .limit(1);
 
     if (!existing) {
@@ -398,7 +398,7 @@ router.patch(
       const [existing] = await db
         .select()
         .from(businessRecords)
-        .where(and(eq(businessRecords.id, id), eq(businessRecords.tenant_id, tenantId)))
+        .where(and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId)))
         .limit(1);
 
       if (!existing) {
@@ -503,7 +503,7 @@ router.post(
           ...(recordType && { recordType }),
           updatedAt: new Date(),
         })
-        .where(and(eq(businessRecords.tenant_id, tenantId), inArray(businessRecords.id, ids)))
+        .where(and(eq(businessRecords.tenantId, tenantId), inArray(businessRecords.id, ids)))
         .returning();
 
       // Log activities
@@ -548,7 +548,7 @@ router.delete('/api/business-records/:id', requireAuth, async (req: Request, res
     const [existing] = await db
       .select()
       .from(businessRecords)
-      .where(and(eq(businessRecords.id, id), eq(businessRecords.tenant_id, tenantId)))
+      .where(and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId)))
       .limit(1);
 
     if (!existing) {
@@ -606,7 +606,7 @@ router.get(
           count: sql<number>`count(*)`,
         })
         .from(businessRecords)
-        .where(eq(businessRecords.tenant_id, tenantId))
+        .where(eq(businessRecords.tenantId, tenantId))
         .groupBy(businessRecords.recordType, businessRecords.status);
 
       // Calculate pipeline value
@@ -617,7 +617,7 @@ router.get(
         .from(businessRecords)
         .where(
           and(
-            eq(businessRecords.tenant_id, tenantId),
+            eq(businessRecords.tenantId, tenantId),
             inArray(businessRecords.recordType, ['lead', 'prospect']),
           ),
         );
@@ -656,7 +656,7 @@ router.get('/api/customers', requireAuth, async (req: Request, res: Response) =>
 
     // Build WHERE conditions - filter for customers only
     const conditions: any[] = [
-      eq(businessRecords.tenant_id, tenantId),
+      eq(businessRecords.tenantId, tenantId),
       eq(businessRecords.recordType, 'customer'),
     ];
 
@@ -697,7 +697,7 @@ router.get('/api/customers', requireAuth, async (req: Request, res: Response) =>
 
     // Execute query with pagination
     const sortColumn =
-      businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.created_at;
+      businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.createdAt;
     const orderFn = sortOrder === 'asc' ? asc : desc;
 
     const records = await db
@@ -745,7 +745,7 @@ router.get('/api/customers/:identifier', requireAuth, async (req: Request, res: 
       .from(businessRecords)
       .where(
         and(
-          eq(businessRecords.tenant_id, tenantId),
+          eq(businessRecords.tenantId, tenantId),
           eq(businessRecords.recordType, 'customer'), // Only return customer records
           or(
             eq(businessRecords.id, identifier),
@@ -765,7 +765,7 @@ router.get('/api/customers/:identifier', requireAuth, async (req: Request, res: 
       .select()
       .from(businessRecordActivities)
       .where(eq(businessRecordActivities.businessRecordId, record.id))
-      .orderBy(desc(businessRecordActivities.created_at))
+      .orderBy(desc(businessRecordActivities.createdAt))
       .limit(20);
 
     res.json({

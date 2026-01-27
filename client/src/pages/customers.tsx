@@ -277,7 +277,7 @@ export default function Customers() {
       const records = (response?.records || []).map((c: any) => ({
         ...c,
         id: c.id,
-        companyName: c.business_name || c.companyName || '',
+        companyName: c.businessName || c.companyName || '',
         businessRecordType: c.business_record_type || c.businessRecordType || 'Customer',
         billingAddress: c.billing_address || c.billingAddress || '',
         billingCity: c.billing_city || c.billingCity || '',
@@ -286,21 +286,21 @@ export default function Customers() {
         phone: c.phone || '',
         website: c.website || '',
         industry: c.industry || '',
-        createdAt: c.created_at || c.createdAt || '',
-        updatedAt: c.updated_at || c.updatedAt || '',
+        createdAt: c.createdAt || c.createdAt || '',
+        updatedAt: c.updatedAt || c.updatedAt || '',
         // Transform contacts array
         companyContacts: Array.isArray(c.company_contacts)
           ? c.company_contacts.map((contact: any) => ({
               id: contact.id,
-              firstName: contact.first_name || '',
-              lastName: contact.last_name || '',
+              firstName: contact.firstName || '',
+              lastName: contact.lastName || '',
               email: contact.email || '',
               phone: contact.phone || '',
               mobile: contact.mobile || '',
               title: contact.title || '',
               department: contact.department || '',
               isPrimaryContact: contact.is_primary_contact || contact.is_primary || false,
-              companyId: contact.company_id || contact.companyId,
+              companyId: contact.companyId || contact.companyId,
             }))
           : [],
       }));
@@ -323,7 +323,7 @@ export default function Customers() {
       const response = await apiRequest('/api/companies', 'GET');
       return (response?.records || response || []).map((c: any) => ({
         id: c.id,
-        companyName: c.business_name || c.companyName || '',
+        companyName: c.businessName || c.companyName || '',
         businessRecordType: c.business_record_type || c.businessRecordType || '',
       }));
     },

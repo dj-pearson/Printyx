@@ -15,11 +15,11 @@ const requireAuth = (req: any, res: any, next: any) => {
       id: userId,
       tenantId: getTenantId(req),
     };
-  } else if (!req.user.id || !req.user.tenant_id) {
+  } else if (!req.user.id || !req.user.tenantId) {
     req.user = {
       ...req.user,
       id: req.user.id || userId,
-      tenantId: req.user.tenant_id || getTenantId(req),
+      tenantId: req.user.tenantId || getTenantId(req),
     };
   }
 
@@ -35,7 +35,7 @@ router.use(requireAuth);
 router.get('/dashboard', async (req, res) => {
   try {
     const userId = (req as any).user?.id;
-    const tenantId = (req as any).user?.tenant_id;
+    const tenantId = (req as any).user?.tenantId;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ message: 'Authentication required' });
@@ -363,7 +363,7 @@ router.get('/dashboard', async (req, res) => {
 router.get('/models', async (req, res) => {
   try {
     const userId = (req as any).user?.id;
-    const tenantId = (req as any).user?.tenant_id;
+    const tenantId = (req as any).user?.tenantId;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ message: 'Authentication required' });
@@ -462,7 +462,7 @@ router.get('/models', async (req, res) => {
 router.get('/data-sources', async (req, res) => {
   try {
     const userId = (req as any).user?.id;
-    const tenantId = (req as any).user?.tenant_id;
+    const tenantId = (req as any).user?.tenantId;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ message: 'Authentication required' });

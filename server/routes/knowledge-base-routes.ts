@@ -16,7 +16,7 @@ const router = Router();
  */
 router.get('/categories', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).user?.tenant_id;
+    const tenantId = (req as any).user?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({
@@ -55,8 +55,8 @@ router.get('/categories', async (req: Request, res: Response) => {
  */
 router.post('/categories', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
-    const userId = (req as any).user_id || 'demo-user';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
+    const userId = (req as any).userId || 'demo-user';
 
     const validatedData = insertKnowledgeCategorySchema.parse(req.body);
 
@@ -81,7 +81,7 @@ router.post('/categories', async (req: Request, res: Response) => {
  */
 router.get('/articles', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).user?.tenant_id;
+    const tenantId = (req as any).user?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({
@@ -138,8 +138,8 @@ router.get('/articles', async (req: Request, res: Response) => {
  */
 router.get('/articles/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
-    const userId = (req as any).user_id;
+    const tenantId = (req as any).tenantId || 'demo-tenant';
+    const userId = (req as any).userId;
     const { id } = req.params;
     const { incrementView } = req.query;
 
@@ -175,8 +175,8 @@ router.get('/articles/:id', async (req: Request, res: Response) => {
  */
 router.post('/articles', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
-    const userId = (req as any).user_id || 'demo-user';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
+    const userId = (req as any).userId || 'demo-user';
 
     const article = await KnowledgeBaseService.createArticle(tenantId, userId, req.body);
 
@@ -199,8 +199,8 @@ router.post('/articles', async (req: Request, res: Response) => {
  */
 router.put('/articles/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
-    const userId = (req as any).user_id || 'demo-user';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
+    const userId = (req as any).userId || 'demo-user';
     const { id } = req.params;
 
     const article = await KnowledgeBaseService.updateArticle(id, tenantId, userId, req.body);
@@ -224,8 +224,8 @@ router.put('/articles/:id', async (req: Request, res: Response) => {
  */
 router.post('/articles/:id/feedback', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
-    const userId = (req as any).user_id;
+    const tenantId = (req as any).tenantId || 'demo-tenant';
+    const userId = (req as any).userId;
     const { id } = req.params;
 
     const feedback = await KnowledgeBaseService.submitFeedback(tenantId, id, {
@@ -252,8 +252,8 @@ router.post('/articles/:id/feedback', async (req: Request, res: Response) => {
  */
 router.post('/ai/generate', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
-    const userId = (req as any).user_id || 'demo-user';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
+    const userId = (req as any).userId || 'demo-user';
 
     const schema = z.object({
       topic: z.string().min(3),
@@ -293,7 +293,7 @@ router.post('/ai/generate', async (req: Request, res: Response) => {
  */
 router.get('/analytics', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
     const { startDate, endDate } = req.query;
 
     const start = startDate
@@ -325,7 +325,7 @@ router.get('/analytics', async (req: Request, res: Response) => {
  */
 router.get('/featured', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
     const { limit } = req.query;
 
     const result = await KnowledgeBaseService.searchArticles(tenantId, '', {
@@ -355,7 +355,7 @@ router.get('/featured', async (req: Request, res: Response) => {
  */
 router.get('/popular', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
     const { limit } = req.query;
 
     const result = await KnowledgeBaseService.searchArticles(tenantId, '', {

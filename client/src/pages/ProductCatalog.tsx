@@ -113,11 +113,11 @@ export default function ProductCatalog() {
         ...product,
         id: product.id,
         masterProductId: product.master_product_id || product.masterProductId || '',
-        tenantId: product.tenant_id || product.tenantId || '',
-        dealerCost: product.dealer_cost || product.dealerCost || 0,
-        marginPercentage: product.margin_percentage || product.marginPercentage || 0,
-        createdAt: product.created_at || product.createdAt || '',
-        updatedAt: product.updated_at || product.updatedAt || '',
+        tenantId: product.tenantId || product.tenantId || '',
+        dealerCost: product.dealerCost || product.dealerCost || 0,
+        marginPercentage: product.marginPercentage || product.marginPercentage || 0,
+        createdAt: product.createdAt || product.createdAt || '',
+        updatedAt: product.updatedAt || product.updatedAt || '',
       }));
     },
   });

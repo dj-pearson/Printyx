@@ -410,7 +410,7 @@ export function getQueryBuilder(req: AuthenticatedRequest): HierarchicalQueryBui
 
   return new HierarchicalQueryBuilder({
     id: req.user.id,
-    tenantId: req.user.tenant_id,
+    tenantId: req.user.tenantId,
     scope: req.user.territoryScope,
     locationId: req.user.locationId,
     regionId: req.user.regionId,

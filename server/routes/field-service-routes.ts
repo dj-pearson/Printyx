@@ -15,7 +15,7 @@ const router = Router();
 
 router.get('/installations', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id) {
+    if (!req.session?.user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
@@ -31,7 +31,7 @@ router.get('/installations', async (req, res, next) => {
     if (customerId && typeof customerId === 'string') filters.customerId = customerId;
     if (technicianId && typeof technicianId === 'string') filters.technicianId = technicianId;
 
-    const installations = await storage.getInstallations(req.session.user.tenant_id, filters);
+    const installations = await storage.getInstallations(req.session.user.tenantId, filters);
     res.json(installations);
   } catch (error) {
     next(error);
@@ -40,13 +40,13 @@ router.get('/installations', async (req, res, next) => {
 
 router.get('/installations/:id', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id) {
+    if (!req.session?.user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const installation = await storage.getInstallationById(
       req.params.id,
-      req.session.user.tenant_id,
+      req.session.user.tenantId,
     );
 
     if (!installation) {
@@ -61,7 +61,7 @@ router.get('/installations/:id', async (req, res, next) => {
 
 router.post('/installations', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id || !req.session?.user?.id) {
+    if (!req.session?.user?.tenantId || !req.session?.user?.id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
@@ -78,13 +78,13 @@ router.post('/installations', async (req, res, next) => {
 
     const installationData = {
       ...validationResult.data,
-      tenantId: req.session.user.tenant_id,
+      tenantId: req.session.user.tenantId,
       createdBy: req.session.user.id,
     };
 
     if (!installationData.installationNumber) {
       installationData.installationNumber = await storage.generateInstallationNumber(
-        req.session.user.tenant_id,
+        req.session.user.tenantId,
       );
     }
 
@@ -97,7 +97,7 @@ router.post('/installations', async (req, res, next) => {
 
 router.patch('/installations/:id', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id) {
+    if (!req.session?.user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
@@ -115,7 +115,7 @@ router.patch('/installations/:id', async (req, res, next) => {
 
     const updated = await storage.updateInstallation(
       req.params.id,
-      req.session.user.tenant_id,
+      req.session.user.tenantId,
       validationResult.data,
     );
 
@@ -131,11 +131,11 @@ router.patch('/installations/:id', async (req, res, next) => {
 
 router.delete('/installations/:id', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id) {
+    if (!req.session?.user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    await storage.deleteInstallation(req.params.id, req.session.user.tenant_id);
+    await storage.deleteInstallation(req.params.id, req.session.user.tenantId);
     res.status(204).send();
   } catch (error) {
     next(error);
@@ -148,7 +148,7 @@ router.delete('/installations/:id', async (req, res, next) => {
 
 router.get('/service-signatures', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id) {
+    if (!req.session?.user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
@@ -161,7 +161,7 @@ router.get('/service-signatures', async (req, res, next) => {
     if (installationId && typeof installationId === 'string')
       filters.installationId = installationId;
 
-    const signatures = await storage.getServiceSignatures(req.session.user.tenant_id, filters);
+    const signatures = await storage.getServiceSignatures(req.session.user.tenantId, filters);
     res.json(signatures);
   } catch (error) {
     next(error);
@@ -170,13 +170,13 @@ router.get('/service-signatures', async (req, res, next) => {
 
 router.get('/service-signatures/:id', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id) {
+    if (!req.session?.user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const signature = await storage.getServiceSignatureById(
       req.params.id,
-      req.session.user.tenant_id,
+      req.session.user.tenantId,
     );
 
     if (!signature) {
@@ -191,7 +191,7 @@ router.get('/service-signatures/:id', async (req, res, next) => {
 
 router.post('/service-signatures', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id || !req.session?.user?.id) {
+    if (!req.session?.user?.tenantId || !req.session?.user?.id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
@@ -208,7 +208,7 @@ router.post('/service-signatures', async (req, res, next) => {
 
     const signatureData = {
       ...validationResult.data,
-      tenantId: req.session.user.tenant_id,
+      tenantId: req.session.user.tenantId,
       capturedBy: req.session.user.id,
     };
 
@@ -221,7 +221,7 @@ router.post('/service-signatures', async (req, res, next) => {
 
 router.patch('/service-signatures/:id', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id) {
+    if (!req.session?.user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
@@ -239,7 +239,7 @@ router.patch('/service-signatures/:id', async (req, res, next) => {
 
     const updated = await storage.updateServiceSignature(
       req.params.id,
-      req.session.user.tenant_id,
+      req.session.user.tenantId,
       validationResult.data,
     );
 
@@ -255,11 +255,11 @@ router.patch('/service-signatures/:id', async (req, res, next) => {
 
 router.delete('/service-signatures/:id', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id) {
+    if (!req.session?.user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    await storage.deleteServiceSignature(req.params.id, req.session.user.tenant_id);
+    await storage.deleteServiceSignature(req.params.id, req.session.user.tenantId);
     res.status(204).send();
   } catch (error) {
     next(error);
@@ -272,13 +272,13 @@ router.delete('/service-signatures/:id', async (req, res, next) => {
 
 router.get('/installations/:installationId/checklists', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id) {
+    if (!req.session?.user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const checklists = await storage.getInstallationChecklists(
       req.params.installationId,
-      req.session.user.tenant_id,
+      req.session.user.tenantId,
     );
     res.json(checklists);
   } catch (error) {
@@ -288,13 +288,13 @@ router.get('/installations/:installationId/checklists', async (req, res, next) =
 
 router.get('/installation-checklists/:id', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id) {
+    if (!req.session?.user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
     const checklist = await storage.getInstallationChecklistById(
       req.params.id,
-      req.session.user.tenant_id,
+      req.session.user.tenantId,
     );
 
     if (!checklist) {
@@ -309,7 +309,7 @@ router.get('/installation-checklists/:id', async (req, res, next) => {
 
 router.post('/installation-checklists', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id || !req.session?.user?.id) {
+    if (!req.session?.user?.tenantId || !req.session?.user?.id) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
@@ -326,7 +326,7 @@ router.post('/installation-checklists', async (req, res, next) => {
 
     const checklistData = {
       ...validationResult.data,
-      tenantId: req.session.user.tenant_id,
+      tenantId: req.session.user.tenantId,
     };
 
     const checklist = await storage.createInstallationChecklist(checklistData);
@@ -338,7 +338,7 @@ router.post('/installation-checklists', async (req, res, next) => {
 
 router.post('/installation-checklists/bulk', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id) {
+    if (!req.session?.user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
@@ -361,7 +361,7 @@ router.post('/installation-checklists/bulk', async (req, res, next) => {
 
     const checklistsData = validationResult.data.map((item) => ({
       ...item,
-      tenantId: req.session.user!.tenant_id,
+      tenantId: req.session.user!.tenantId,
     }));
 
     const checklists = await storage.bulkCreateInstallationChecklists(checklistsData);
@@ -373,7 +373,7 @@ router.post('/installation-checklists/bulk', async (req, res, next) => {
 
 router.patch('/installation-checklists/:id', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id) {
+    if (!req.session?.user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
@@ -391,7 +391,7 @@ router.patch('/installation-checklists/:id', async (req, res, next) => {
 
     const updated = await storage.updateInstallationChecklist(
       req.params.id,
-      req.session.user.tenant_id,
+      req.session.user.tenantId,
       validationResult.data,
     );
 
@@ -407,11 +407,11 @@ router.patch('/installation-checklists/:id', async (req, res, next) => {
 
 router.delete('/installation-checklists/:id', async (req, res, next) => {
   try {
-    if (!req.session?.user?.tenant_id) {
+    if (!req.session?.user?.tenantId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    await storage.deleteInstallationChecklist(req.params.id, req.session.user.tenant_id);
+    await storage.deleteInstallationChecklist(req.params.id, req.session.user.tenantId);
     res.status(204).send();
   } catch (error) {
     next(error);

@@ -131,13 +131,13 @@ export function registerUserProfileRoutes(app: Express) {
         email: userRecord.email || '',
         first_name: userRecord.firstName,
         last_name: userRecord.lastName,
-        tenant_id: userRecord.tenant_id,
+        tenant_id: userRecord.tenantId,
         role: (userRecord as any).role, // String role column
         role_id: userRecord.roleId,
         team_id: userRecord.teamId,
         profile_image_url: userRecord.profileImageUrl,
         roleData: roleData, // Parsed role information
-        createdAt: userRecord.created_at,
+        createdAt: userRecord.createdAt,
         lastLoginAt: userRecord.lastLoginAt,
       };
 
@@ -176,7 +176,7 @@ export function registerUserProfileRoutes(app: Express) {
         const { getUserEffectivePermissions } = await import(
           './middleware/enhanced-rbac-middleware'
         );
-        const tenantId = req.supabaseUser?.tenant_id || (req as any).tenant_id;
+        const tenantId = req.supabaseUser?.tenantId || (req as any).tenantId;
 
         if (!tenantId) {
           return res.status(400).json({ error: 'Tenant context required' });

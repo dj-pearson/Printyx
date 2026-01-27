@@ -92,7 +92,7 @@ export class AutoLeadRoutingService {
     try {
       // Step 1: Fetch lead data
       const lead = await db.query.businessRecords.findFirst({
-        where: and(eq(businessRecords.id, leadId), eq(businessRecords.tenant_id, tenantId)),
+        where: and(eq(businessRecords.id, leadId), eq(businessRecords.tenantId, tenantId)),
       });
 
       if (!lead) {
@@ -113,7 +113,7 @@ export class AutoLeadRoutingService {
       const bestRep = repScores[0];
 
       // Step 4: Assign the lead
-      await this.assignLeadToRep(leadId, bestRep.user_id, tenantId, 'auto_ai_routing', leadScore);
+      await this.assignLeadToRep(leadId, bestRep.userId, tenantId, 'auto_ai_routing', leadScore);
 
       // Step 5: Send email notification (async, don't wait)
       const emailSent = await this.sendAssignmentEmail(lead, bestRep, leadScore).catch((err) => {
@@ -126,7 +126,7 @@ export class AutoLeadRoutingService {
       return {
         success: true,
         leadScore,
-        assignedTo: bestRep.user_id,
+        assignedTo: bestRep.userId,
         assignedRepName: bestRep.userName,
         assignmentReason: repScores[0].reasons.join('; '),
         alternativeReps: repScores.slice(1, 4), // Top 3 alternatives
@@ -145,7 +145,7 @@ export class AutoLeadRoutingService {
   private async scoreLead(lead: any, tenantId: string): Promise<LeadScoringResult> {
     // Fetch scoring rules
     const rules = await db.query.leadScoringRules.findMany({
-      where: and(eq(leadScoringRules.tenant_id, tenantId), eq(leadScoringRules.isActive, true)),
+      where: and(eq(leadScoringRules.tenantId, tenantId), eq(leadScoringRules.isActive, true)),
       orderBy: [desc(leadScoringRules.priority)],
     });
 
@@ -178,7 +178,7 @@ export class AutoLeadRoutingService {
     const bantData = await db.query.bantQualificationCriteria.findFirst({
       where: and(
         eq(bantQualificationCriteria.leadId, lead.id),
-        eq(bantQualificationCriteria.tenant_id, tenantId),
+        eq(bantQualificationCriteria.tenantId, tenantId),
       ),
     });
     const bantScore = bantData?.totalBantScore || 0;
@@ -328,7 +328,7 @@ Format as JSON:
   ): Promise<RepScoringResult[]> {
     // Get all available reps with capacity
     const reps = await db.query.repCapacity.findMany({
-      where: and(eq(repCapacity.tenant_id, tenantId), eq(repCapacity.isAvailable, true)),
+      where: and(eq(repCapacity.tenantId, tenantId), eq(repCapacity.isAvailable, true)),
     });
 
     if (reps.length === 0) {
@@ -377,8 +377,8 @@ Format as JSON:
       // Geographic match
       const territories = await db.query.salesTerritories.findMany({
         where: and(
-          eq(salesTerritories.tenant_id, tenantId),
-          eq(salesTerritories.ownerId, rep.user_id),
+          eq(salesTerritories.tenantId, tenantId),
+          eq(salesTerritories.ownerId, rep.userId),
           eq(salesTerritories.isActive, true),
         ),
       });
@@ -402,10 +402,10 @@ Format as JSON:
       }
 
       // Get rep name from users table
-      const userName = await getUserFullName(rep.user_id);
+      const userName = await getUserFullName(rep.userId);
 
       repScores.push({
-        userId: rep.user_id,
+        userId: rep.userId,
         userName,
         score,
         reasons,
@@ -444,7 +444,7 @@ Format as JSON:
         status: 'assigned',
         updatedAt: new Date(),
       })
-      .where(and(eq(businessRecords.id, leadId), eq(businessRecords.tenant_id, tenantId)));
+      .where(and(eq(businessRecords.id, leadId), eq(businessRecords.tenantId, tenantId)));
 
     // Record in assignment history
     await db.insert(leadAssignmentHistory).values({

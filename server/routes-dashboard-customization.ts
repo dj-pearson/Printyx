@@ -82,8 +82,8 @@ router.get('/layouts', async (req: Request, res: Response) => {
       .from(dashboardLayouts)
       .where(
         and(
-          eq(dashboardLayouts.tenant_id, tenantId),
-          or(eq(dashboardLayouts.user_id, userId), eq(dashboardLayouts.roleId, roleId || '')),
+          eq(dashboardLayouts.tenantId, tenantId),
+          or(eq(dashboardLayouts.userId, userId), eq(dashboardLayouts.roleId, roleId || '')),
         ),
       );
 
@@ -110,7 +110,7 @@ router.get('/layout/:layoutId', async (req: Request, res: Response) => {
     const layout = await db
       .select()
       .from(dashboardLayouts)
-      .where(and(eq(dashboardLayouts.id, layoutId), eq(dashboardLayouts.tenant_id, tenantId)))
+      .where(and(eq(dashboardLayouts.id, layoutId), eq(dashboardLayouts.tenantId, tenantId)))
       .limit(1);
 
     if (!layout.length) {
@@ -184,13 +184,13 @@ router.patch('/layout/:layoutId', async (req: Request, res: Response) => {
     if (description !== undefined) updates.description = description;
     if (widgets) updates.widgets = widgets;
     if (columns) updates.columns = columns;
-    updates.updated_at = new Date();
+    updates.updatedAt = new Date();
 
     // Verify ownership
     const layout = await db
       .select()
       .from(dashboardLayouts)
-      .where(and(eq(dashboardLayouts.id, layoutId), eq(dashboardLayouts.tenant_id, tenantId)))
+      .where(and(eq(dashboardLayouts.id, layoutId), eq(dashboardLayouts.tenantId, tenantId)))
       .limit(1);
 
     if (!layout.length) {
@@ -221,7 +221,7 @@ router.delete('/layout/:layoutId', async (req: Request, res: Response) => {
 
     await db
       .delete(dashboardLayouts)
-      .where(and(eq(dashboardLayouts.id, layoutId), eq(dashboardLayouts.tenant_id, tenantId)));
+      .where(and(eq(dashboardLayouts.id, layoutId), eq(dashboardLayouts.tenantId, tenantId)));
 
     res.json({ success: true });
   } catch (error) {
@@ -248,8 +248,8 @@ router.get('/preferences', async (req: Request, res: Response) => {
       .from(userDashboardPreferences)
       .where(
         and(
-          eq(userDashboardPreferences.user_id, userId),
-          eq(userDashboardPreferences.tenant_id, tenantId),
+          eq(userDashboardPreferences.userId, userId),
+          eq(userDashboardPreferences.tenantId, tenantId),
         ),
       )
       .limit(1);
@@ -303,15 +303,15 @@ router.patch('/preferences', async (req: Request, res: Response) => {
     if (compactMode !== undefined) updates.compactMode = compactMode;
     if (globalFilters) updates.globalFilters = globalFilters;
     if (widgetStates) updates.widgetStates = widgetStates;
-    updates.updated_at = new Date();
+    updates.updatedAt = new Date();
 
     const updated = await db
       .update(userDashboardPreferences)
       .set(updates)
       .where(
         and(
-          eq(userDashboardPreferences.user_id, userId),
-          eq(userDashboardPreferences.tenant_id, tenantId),
+          eq(userDashboardPreferences.userId, userId),
+          eq(userDashboardPreferences.tenantId, tenantId),
         ),
       )
       .returning();
@@ -385,9 +385,7 @@ router.get('/snapshots/:layoutId', async (req: Request, res: Response) => {
     const snapshots = await db
       .select()
       .from(dashboardSnapshots)
-      .where(
-        and(eq(dashboardSnapshots.layoutId, layoutId), eq(dashboardSnapshots.user_id, userId)),
-      );
+      .where(and(eq(dashboardSnapshots.layoutId, layoutId), eq(dashboardSnapshots.userId, userId)));
 
     res.json({ data: snapshots });
   } catch (error) {

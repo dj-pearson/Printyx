@@ -62,8 +62,8 @@ export default function AdvancedReporting() {
       return (response || []).map((customer: any) => ({
         ...customer,
         id: customer.id,
-        companyName: customer.company_name || customer.companyName || '',
-        createdAt: customer.created_at || customer.createdAt || '',
+        companyName: customer.companyName || customer.companyName || '',
+        createdAt: customer.createdAt || customer.createdAt || '',
       }));
     },
   });
@@ -75,10 +75,10 @@ export default function AdvancedReporting() {
       return (response || []).map((contract: any) => ({
         ...contract,
         id: contract.id,
-        contractNumber: contract.contract_number || contract.contractNumber || '',
-        customerId: contract.customer_id || contract.customerId || '',
-        startDate: contract.start_date || contract.startDate || '',
-        endDate: contract.end_date || contract.endDate || '',
+        contractNumber: contract.contractNumber || contract.contractNumber || '',
+        customerId: contract.customerId || contract.customerId || '',
+        startDate: contract.startDate || contract.startDate || '',
+        endDate: contract.endDate || contract.endDate || '',
       }));
     },
   });
@@ -90,9 +90,9 @@ export default function AdvancedReporting() {
       return (response || []).map((ticket: any) => ({
         ...ticket,
         id: ticket.id,
-        ticketNumber: ticket.ticket_number || ticket.ticketNumber || '',
-        customerId: ticket.customer_id || ticket.customerId || '',
-        createdAt: ticket.created_at || ticket.createdAt || '',
+        ticketNumber: ticket.ticketNumber || ticket.ticketNumber || '',
+        customerId: ticket.customerId || ticket.customerId || '',
+        createdAt: ticket.createdAt || ticket.createdAt || '',
       }));
     },
   });
@@ -104,9 +104,9 @@ export default function AdvancedReporting() {
       return (response || []).map((invoice: any) => ({
         ...invoice,
         id: invoice.id,
-        invoiceNumber: invoice.invoice_number || invoice.invoiceNumber || '',
+        invoiceNumber: invoice.invoiceNumber || invoice.invoiceNumber || '',
         issueDate: invoice.issue_date || invoice.issueDate || '',
-        dueDate: invoice.due_date || invoice.dueDate || '',
+        dueDate: invoice.dueDate || invoice.dueDate || '',
       }));
     },
   });
@@ -118,7 +118,7 @@ export default function AdvancedReporting() {
       return (response || []).map((reading: any) => ({
         ...reading,
         id: reading.id,
-        equipmentId: reading.equipment_id || reading.equipmentId || '',
+        equipmentId: reading.equipmentId || reading.equipmentId || '',
         readingDate: reading.reading_date || reading.readingDate || '',
         blackMeter: reading.black_meter || reading.blackMeter || 0,
         colorMeter: reading.color_meter || reading.colorMeter || 0,

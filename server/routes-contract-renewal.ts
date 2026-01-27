@@ -21,11 +21,11 @@ const router = Router();
 
 // Middleware to check tenant
 function requireTenant(req: Request, res: Response, next: NextFunction) {
-  const tenantId = (req as any).tenant_id || (req.session as any)?.tenant_id;
+  const tenantId = (req as any).tenantId || (req.session as any)?.tenantId;
   if (!tenantId) {
     return res.status(403).json({ error: 'Tenant context required' });
   }
-  (req as any).tenant_id = tenantId;
+  (req as any).tenantId = tenantId;
   next();
 }
 
@@ -42,7 +42,7 @@ router.get(
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
   async (req: Request, res: Response) => {
     try {
-      const tenantId = (req as any).tenant_id;
+      const tenantId = (req as any).tenantId;
       const metrics = await renewalService.getDashboardMetrics(tenantId);
       res.json(metrics);
     } catch (error) {
@@ -61,11 +61,11 @@ router.get(
  */
 router.get('/contracts', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const { status, risk } = req.query;
 
     const contracts = await db.query.contractRenewalTracking.findMany({
-      where: eq(contractRenewalTracking.tenant_id, tenantId),
+      where: eq(contractRenewalTracking.tenantId, tenantId),
       orderBy: [contractRenewalTracking.daysUntilExpiration],
       limit: 100,
     });
@@ -86,7 +86,7 @@ router.get('/contracts', async (req: Request, res: Response) => {
  */
 router.get('/expiring', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const days = parseInt(req.query.days as string) || 90;
     const contracts = await renewalService.getExpiringContracts(tenantId, days);
     res.json(contracts);
@@ -105,7 +105,7 @@ router.get('/expiring', async (req: Request, res: Response) => {
  */
 router.get('/at-risk', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const contracts = await renewalService.getContractsAtRisk(tenantId);
     res.json(contracts);
   } catch (error) {
@@ -123,7 +123,7 @@ router.get('/at-risk', async (req: Request, res: Response) => {
  */
 router.post('/analyze/:contractTrackingId', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const contractTrackingId = parseInt(req.params.contractTrackingId);
 
     if (isNaN(contractTrackingId)) {
@@ -147,7 +147,7 @@ router.post('/analyze/:contractTrackingId', async (req: Request, res: Response) 
  */
 router.post('/analyze-all', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const results = await renewalService.analyzeExpiringContracts(tenantId);
     res.json(results);
   } catch (error) {
@@ -165,7 +165,7 @@ router.post('/analyze-all', async (req: Request, res: Response) => {
  */
 router.post('/generate-proposal/:contractTrackingId', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const contractTrackingId = parseInt(req.params.contractTrackingId);
 
     if (isNaN(contractTrackingId)) {
@@ -206,11 +206,11 @@ router.post('/generate-proposal/:contractTrackingId', async (req: Request, res: 
  */
 router.get('/proposals', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const { status } = req.query;
 
     const proposals = await db.query.renewalProposals.findMany({
-      where: eq(renewalProposals.tenant_id, tenantId),
+      where: eq(renewalProposals.tenantId, tenantId),
       orderBy: [desc(renewalProposals.proposalDate)],
       limit: 100,
     });
@@ -231,7 +231,7 @@ router.get('/proposals', async (req: Request, res: Response) => {
  */
 router.get('/proposals/:proposalId', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const proposalId = parseInt(req.params.proposalId);
 
     if (isNaN(proposalId)) {
@@ -239,7 +239,7 @@ router.get('/proposals/:proposalId', async (req: Request, res: Response) => {
     }
 
     const proposal = await db.query.renewalProposals.findFirst({
-      where: and(eq(renewalProposals.id, proposalId), eq(renewalProposals.tenant_id, tenantId)),
+      where: and(eq(renewalProposals.id, proposalId), eq(renewalProposals.tenantId, tenantId)),
     });
 
     if (!proposal) {
@@ -262,7 +262,7 @@ router.get('/proposals/:proposalId', async (req: Request, res: Response) => {
  */
 router.patch('/proposals/:proposalId/status', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const proposalId = parseInt(req.params.proposalId);
     const { status, customerResponse, responseDate, rejectionReason } = req.body;
 
@@ -290,7 +290,7 @@ router.patch('/proposals/:proposalId/status', async (req: Request, res: Response
     const [updatedProposal] = await db
       .update(renewalProposals)
       .set(updates)
-      .where(and(eq(renewalProposals.id, proposalId), eq(renewalProposals.tenant_id, tenantId)))
+      .where(and(eq(renewalProposals.id, proposalId), eq(renewalProposals.tenantId, tenantId)))
       .returning();
 
     if (!updatedProposal) {
@@ -313,7 +313,7 @@ router.patch('/proposals/:proposalId/status', async (req: Request, res: Response
  */
 router.get('/contract/:contractTrackingId', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const contractTrackingId = parseInt(req.params.contractTrackingId);
 
     if (isNaN(contractTrackingId)) {
@@ -323,7 +323,7 @@ router.get('/contract/:contractTrackingId', async (req: Request, res: Response) 
     const contract = await db.query.contractRenewalTracking.findFirst({
       where: and(
         eq(contractRenewalTracking.id, contractTrackingId),
-        eq(contractRenewalTracking.tenant_id, tenantId),
+        eq(contractRenewalTracking.tenantId, tenantId),
       ),
       with: {
         proposals: {
@@ -356,7 +356,7 @@ router.get('/contract/:contractTrackingId', async (req: Request, res: Response) 
  */
 router.patch('/contract/:contractTrackingId', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const contractTrackingId = parseInt(req.params.contractTrackingId);
     const updates = req.body;
 
@@ -373,7 +373,7 @@ router.patch('/contract/:contractTrackingId', async (req: Request, res: Response
       .where(
         and(
           eq(contractRenewalTracking.id, contractTrackingId),
-          eq(contractRenewalTracking.tenant_id, tenantId),
+          eq(contractRenewalTracking.tenantId, tenantId),
         ),
       )
       .returning();
@@ -398,7 +398,7 @@ router.patch('/contract/:contractTrackingId', async (req: Request, res: Response
  */
 router.get('/rules', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const rules = await renewalService.getRenewalAutomationRules(tenantId);
     res.json(rules);
   } catch (error) {
@@ -416,7 +416,7 @@ router.get('/rules', async (req: Request, res: Response) => {
  */
 router.put('/rules', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const updates = req.body;
     const rules = await renewalService.updateRenewalAutomationRules(tenantId, updates);
     res.json(rules);
@@ -435,7 +435,7 @@ router.put('/rules', async (req: Request, res: Response) => {
  */
 router.post('/proposals/:proposalId/send', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const proposalId = parseInt(req.params.proposalId);
     const { sendVia = 'email' } = req.body;
 
@@ -451,7 +451,7 @@ router.post('/proposals/:proposalId/send', async (req: Request, res: Response) =
         sentVia,
         updatedAt: new Date(),
       })
-      .where(and(eq(renewalProposals.id, proposalId), eq(renewalProposals.tenant_id, tenantId)))
+      .where(and(eq(renewalProposals.id, proposalId), eq(renewalProposals.tenantId, tenantId)))
       .returning();
 
     if (!proposal) {
@@ -469,7 +469,7 @@ router.post('/proposals/:proposalId/send', async (req: Request, res: Response) =
       .where(
         and(
           eq(contractRenewalTracking.id, proposal.contractRenewalTrackingId),
-          eq(contractRenewalTracking.tenant_id, tenantId),
+          eq(contractRenewalTracking.tenantId, tenantId),
         ),
       );
 

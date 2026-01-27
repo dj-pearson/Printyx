@@ -44,7 +44,7 @@ export class DashboardService {
     const integrations = await db
       .select()
       .from(systemIntegrations)
-      .where(eq(systemIntegrations.tenant_id, tenantId));
+      .where(eq(systemIntegrations.tenantId, tenantId));
 
     const activeIntegrations = integrations.filter((i) => i.status === 'connected').length;
     const pendingIntegrations = integrations.filter((i) => i.status === 'pending').length;
@@ -74,7 +74,7 @@ export class DashboardService {
       })
       .from(integrationMetrics)
       .where(
-        and(eq(integrationMetrics.tenant_id, tenantId), gte(integrationMetrics.periodStart, today)),
+        and(eq(integrationMetrics.tenantId, tenantId), gte(integrationMetrics.periodStart, today)),
       );
 
     const metrics = todayMetrics[0] || {
@@ -136,7 +136,7 @@ export class DashboardService {
       .select()
       .from(integrationMetrics)
       .where(
-        and(eq(integrationMetrics.tenant_id, tenantId), gte(integrationMetrics.periodStart, today)),
+        and(eq(integrationMetrics.tenantId, tenantId), gte(integrationMetrics.periodStart, today)),
       );
 
     // Build a map of integration metrics
@@ -153,7 +153,7 @@ export class DashboardService {
       .from(integrationApiLogs)
       .where(
         and(
-          eq(integrationApiLogs.tenant_id, tenantId),
+          eq(integrationApiLogs.tenantId, tenantId),
           gte(integrationApiLogs.requestTimestamp, new Date(Date.now() - 24 * 60 * 60 * 1000)),
         ),
       )
@@ -189,7 +189,7 @@ export class DashboardService {
         apiId: integration.providerId,
         name: integration.name,
         status: integration.status,
-        configuredAt: integration.config?.created_at || new Date(),
+        configuredAt: integration.config?.createdAt || new Date(),
         lastSync: integration.lastSync || null,
         syncFrequency: integration.providerId.includes('calendar') ? 'real-time' : 'hourly',
         recordsSynced: Number(metrics?.recordsSynced) || 0,
@@ -339,7 +339,7 @@ export class DashboardService {
     const integrations = await db
       .select()
       .from(systemIntegrations)
-      .where(eq(systemIntegrations.tenant_id, tenantId));
+      .where(eq(systemIntegrations.tenantId, tenantId));
 
     const activeIntegrations = integrations.filter((i) => i.status === 'connected');
     const totalWebhooks = activeIntegrations.length * 2; // Assume 2 webhooks per integration

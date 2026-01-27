@@ -43,11 +43,11 @@ const requireAuth = (req: any, res: any, next: any) => {
       id: userId,
       tenantId: getTenantId(req),
     };
-  } else if (!req.user.tenant_id || !req.user.id) {
+  } else if (!req.user.tenantId || !req.user.id) {
     req.user = {
       ...req.user,
       id: req.user.id || userId,
-      tenantId: req.user.tenant_id || getTenantId(req),
+      tenantId: req.user.tenantId || getTenantId(req),
     };
   }
 
@@ -275,7 +275,7 @@ router.post('/:tenantId/integrations/setup', async (req, res) => {
     }
 
     const result = await TenantOnboardingService.setupIntegration({
-      tenantId: req.params.tenant_id,
+      tenantId: req.params.tenantId,
       integrationType,
       configuration,
     });
@@ -300,8 +300,8 @@ router.post('/:tenantId/integrations/setup', async (req, res) => {
 router.get('/:tenantId/integrations', async (req, res) => {
   try {
     const integrations = await db.query.integrationSetupLogs.findMany({
-      where: eq(integrationSetupLogs.tenant_id, req.params.tenant_id),
-      orderBy: desc(integrationSetupLogs.created_at),
+      where: eq(integrationSetupLogs.tenantId, req.params.tenantId),
+      orderBy: desc(integrationSetupLogs.createdAt),
     });
 
     res.json({ integrations });
@@ -365,7 +365,7 @@ router.post('/:tenantId/import/validate', async (req, res) => {
     }
 
     const result = await TenantOnboardingService.importDataWithValidation({
-      tenantId: req.params.tenant_id,
+      tenantId: req.params.tenantId,
       dataType,
       fileName,
       fileSize: fileSize || 0,
@@ -445,7 +445,7 @@ router.post('/import/:validationId/execute', async (req, res) => {
  */
 router.post('/:tenantId/validate-health', async (req, res) => {
   try {
-    const healthScore = await TenantOnboardingService.validateTenantHealth(req.params.tenant_id);
+    const healthScore = await TenantOnboardingService.validateTenantHealth(req.params.tenantId);
 
     res.status(201).json({
       success: true,
@@ -467,7 +467,7 @@ router.post('/:tenantId/validate-health', async (req, res) => {
 router.get('/:tenantId/health', async (req, res) => {
   try {
     const healthScore = await db.query.tenantHealthScores.findFirst({
-      where: eq(tenantHealthScores.tenant_id, req.params.tenant_id),
+      where: eq(tenantHealthScores.tenantId, req.params.tenantId),
       orderBy: desc(tenantHealthScores.calculatedAt),
     });
 
@@ -501,7 +501,7 @@ router.post('/:tenantId/clone', async (req, res) => {
     }
 
     const result = await TenantOnboardingService.cloneTenant({
-      sourceTenantId: req.params.tenant_id,
+      sourceTenantId: req.params.tenantId,
       cloneSettings,
       modifications: modifications || [],
       initiatedBy,
@@ -556,13 +556,13 @@ router.get('/onboarding/analytics', async (req, res) => {
     // Get recent analytics record
     const analytics = await db.query.onboardingAnalytics.findFirst({
       where: eq(onboardingAnalytics.period, period as string),
-      orderBy: desc(onboardingAnalytics.created_at),
+      orderBy: desc(onboardingAnalytics.createdAt),
     });
 
     // Get summary stats
     const sessions = await db.query.tenantOnboardingSessions.findMany({
       limit: 100,
-      orderBy: desc(tenantOnboardingSessions.created_at),
+      orderBy: desc(tenantOnboardingSessions.createdAt),
     });
 
     const completed = sessions.filter((s) => s.status === 'completed').length;
@@ -595,7 +595,7 @@ router.get('/onboarding/recent', async (req, res) => {
 
     const sessions = await db.query.tenantOnboardingSessions.findMany({
       where: status ? eq(tenantOnboardingSessions.status, status as any) : undefined,
-      orderBy: desc(tenantOnboardingSessions.created_at),
+      orderBy: desc(tenantOnboardingSessions.createdAt),
       limit: Number(limit),
     });
 

@@ -46,11 +46,11 @@ const requireAuth = (req: any, res: any, next: any) => {
       id: userId,
       tenantId: getTenantId(req),
     };
-  } else if (!req.user.tenant_id || !req.user.id) {
+  } else if (!req.user.tenantId || !req.user.id) {
     req.user = {
       ...req.user,
       id: req.user.id || userId,
-      tenantId: req.user.tenant_id || getTenantId(req),
+      tenantId: req.user.tenantId || getTenantId(req),
     };
   }
 
@@ -65,7 +65,7 @@ const auditLog = (action: string) => {
       action,
       userId: getUserId(req),
       userEmail: req.user?.email,
-      targetUserId: req.params.user_id || req.body.user_id,
+      targetUserId: req.params.userId || req.body.userId,
       ip: req.ip || req.connection.remoteAddress,
       userAgent: req.headers['user-agent'],
       requestBody: action.includes('IMPERSONATION')
@@ -265,8 +265,8 @@ router.get('/bulk-operations/:id', async (req, res) => {
 router.get('/:userId/onboarding', async (req, res) => {
   try {
     const checklist = await db.query.onboardingChecklists.findFirst({
-      where: eq(onboardingChecklists.user_id, req.params.user_id),
-      orderBy: desc(onboardingChecklists.created_at),
+      where: eq(onboardingChecklists.userId, req.params.userId),
+      orderBy: desc(onboardingChecklists.createdAt),
     });
 
     if (!checklist) {
@@ -355,7 +355,7 @@ router.post('/:userId/offboard', async (req, res) => {
     }
 
     const result = await UserLifecycleService.offboardUser({
-      userId: req.params.user_id,
+      userId: req.params.userId,
       tenantId,
       reason,
       lastWorkingDay: new Date(lastWorkingDay),
@@ -383,8 +383,8 @@ router.post('/:userId/offboard', async (req, res) => {
 router.get('/:userId/offboarding', async (req, res) => {
   try {
     const workflow = await db.query.offboardingWorkflows.findFirst({
-      where: eq(offboardingWorkflows.user_id, req.params.user_id),
-      orderBy: desc(offboardingWorkflows.created_at),
+      where: eq(offboardingWorkflows.userId, req.params.userId),
+      orderBy: desc(offboardingWorkflows.createdAt),
     });
 
     if (!workflow) {
@@ -521,7 +521,7 @@ router.post('/:userId/impersonate', auditLog('USER_IMPERSONATION_START'), async 
 
     const result = await UserLifecycleService.startImpersonation({
       adminId,
-      impersonatedUserId: req.params.user_id,
+      impersonatedUserId: req.params.userId,
       tenantId,
       reason,
       ticketNumber,
@@ -575,7 +575,7 @@ router.get('/impersonate/active', async (req, res) => {
     const sessions = await db.query.userImpersonationSessions.findMany({
       where: and(
         eq(userImpersonationSessions.isActive, true),
-        tenantId ? eq(userImpersonationSessions.tenant_id, tenantId as string) : undefined,
+        tenantId ? eq(userImpersonationSessions.tenantId, tenantId as string) : undefined,
       ),
       orderBy: desc(userImpersonationSessions.startedAt),
     });
@@ -600,8 +600,8 @@ router.get('/:userId/lifecycle-events', async (req, res) => {
     const { limit = 50 } = req.query;
 
     const events = await db.query.userLifecycleEvents.findMany({
-      where: eq(userLifecycleEvents.user_id, req.params.user_id),
-      orderBy: desc(userLifecycleEvents.created_at),
+      where: eq(userLifecycleEvents.userId, req.params.userId),
+      orderBy: desc(userLifecycleEvents.createdAt),
       limit: Number(limit),
     });
 

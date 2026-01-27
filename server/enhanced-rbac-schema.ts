@@ -76,7 +76,7 @@ export const organizationalUnits = pgTable(
     updatedAt: timestamp('updated_at').defaultNow(),
   },
   (table) => [
-    index('idx_org_units_tenant').on(table.tenant_id),
+    index('idx_org_units_tenant').on(table.tenantId),
     index('idx_org_units_parent').on(table.parentUnitId),
     index('idx_org_units_nested_set').on(table.lft, table.rght),
     index('idx_org_units_type').on(table.unitType),
@@ -126,7 +126,7 @@ export const enhancedRoles = pgTable(
     updatedAt: timestamp('updated_at').defaultNow(),
   },
   (table) => [
-    index('idx_enhanced_roles_tenant').on(table.tenant_id),
+    index('idx_enhanced_roles_tenant').on(table.tenantId),
     index('idx_enhanced_roles_org_unit').on(table.organizationalUnitId),
     index('idx_enhanced_roles_hierarchy').on(table.hierarchyLevel),
     index('idx_enhanced_roles_nested_set').on(table.lft, table.rght),
@@ -231,9 +231,9 @@ export const userRoleAssignments = pgTable(
     updatedAt: timestamp('updated_at').defaultNow(),
   },
   (table) => [
-    index('idx_user_role_assignments_user').on(table.user_id),
+    index('idx_user_role_assignments_user').on(table.userId),
     index('idx_user_role_assignments_role').on(table.roleId),
-    index('idx_user_role_assignments_tenant').on(table.tenant_id),
+    index('idx_user_role_assignments_tenant').on(table.tenantId),
     index('idx_user_role_assignments_org_unit').on(table.organizationalUnitId),
     index('idx_user_role_assignments_effective').on(table.effectiveFrom, table.effectiveUntil),
   ],
@@ -276,7 +276,7 @@ export const permissionOverrides = pgTable(
     createdAt: timestamp('created_at').defaultNow(),
   },
   (table) => [
-    index('idx_permission_overrides_user').on(table.user_id),
+    index('idx_permission_overrides_user').on(table.userId),
     index('idx_permission_overrides_permission').on(table.permissionId),
     index('idx_permission_overrides_effective').on(table.effectiveFrom, table.effectiveUntil),
     index('idx_permission_overrides_review').on(table.nextReviewDate),
@@ -309,7 +309,7 @@ export const permissionCache = pgTable(
     tenantId: varchar('tenant_id').notNull(),
   },
   (table) => [
-    index('idx_permission_cache_user_context').on(table.user_id, table.organizationalContext),
+    index('idx_permission_cache_user_context').on(table.userId, table.organizationalContext),
     index('idx_permission_cache_expires').on(table.expiresAt),
     index('idx_permission_cache_hash').on(table.permissionHash),
   ],
@@ -400,9 +400,9 @@ export const rbacAuditLog = pgTable(
   },
   (table) => ({
     eventTypeIdx: index('rbac_audit_event_type_idx').on(table.eventType),
-    userIdIdx: index('rbac_audit_user_id_idx').on(table.user_id),
-    tenantIdIdx: index('rbac_audit_tenant_id_idx').on(table.tenant_id),
-    createdAtIdx: index('rbac_audit_created_at_idx').on(table.created_at),
+    userIdIdx: index('rbac_audit_user_id_idx').on(table.userId),
+    tenantIdIdx: index('rbac_audit_tenant_id_idx').on(table.tenantId),
+    createdAtIdx: index('rbac_audit_created_at_idx').on(table.createdAt),
   }),
 );
 

@@ -55,7 +55,7 @@ router.get('/api/integrations/marketplace', async (req: any, res) => {
  */
 router.get('/api/integrations', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -71,7 +71,7 @@ router.get('/api/integrations', async (req: any, res) => {
       .select()
       .from(integrationMetrics)
       .where(
-        and(eq(integrationMetrics.tenant_id, tenantId), gte(integrationMetrics.periodStart, today)),
+        and(eq(integrationMetrics.tenantId, tenantId), gte(integrationMetrics.periodStart, today)),
       );
 
     // Build metrics map by integration ID
@@ -86,7 +86,7 @@ router.get('/api/integrations', async (req: any, res) => {
       .from(integrationApiLogs)
       .where(
         and(
-          eq(integrationApiLogs.tenant_id, tenantId),
+          eq(integrationApiLogs.tenantId, tenantId),
           gte(integrationApiLogs.requestTimestamp, new Date(Date.now() - 24 * 60 * 60 * 1000)),
         ),
       )
@@ -160,7 +160,7 @@ router.get('/api/integrations', async (req: any, res) => {
 router.post('/api/integrations/oauth/init', async (req: any, res) => {
   try {
     const { providerId } = req.body;
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
 
     if (!tenantId || !userId) {
@@ -238,7 +238,7 @@ router.get('/api/integrations/:integrationId/calendar/events', async (req: any, 
   try {
     const { integrationId } = req.params;
     const { startDate, endDate } = req.query;
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -287,7 +287,7 @@ router.get('/api/integrations/:integrationId/calendar/events', async (req: any, 
 router.delete('/api/integrations/:integrationId', async (req: any, res) => {
   try {
     const { integrationId } = req.params;
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -308,7 +308,7 @@ router.delete('/api/integrations/:integrationId', async (req: any, res) => {
 router.post('/api/integrations/:integrationId/test', async (req: any, res) => {
   try {
     const { integrationId } = req.params;
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });

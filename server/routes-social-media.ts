@@ -28,12 +28,12 @@ const isAuthenticated = (req: any, res: any, next: any) => {
       tenantId: getTenantId(req),
       claims: { sub: userId },
     };
-  } else if (!req.user.tenant_id || !req.user.id) {
+  } else if (!req.user.tenantId || !req.user.id) {
     // Ensure user object has id and tenantId
     req.user = {
       ...req.user,
       id: req.user.id || userId,
-      tenantId: req.user.tenant_id || getTenantId(req),
+      tenantId: req.user.tenantId || getTenantId(req),
       claims: req.user.claims || { sub: userId },
     };
   }
@@ -148,7 +148,7 @@ async function sendWebhook(webhookUrl: string, post: SocialMediaPost): Promise<b
         webhookPayload: payload,
         status: 'published',
       })
-      .where(and(eq(socialMediaPosts.id, post.id), eq(socialMediaPosts.tenant_id, post.tenant_id)));
+      .where(and(eq(socialMediaPosts.id, post.id), eq(socialMediaPosts.tenantId, post.tenantId)));
 
     return true;
   } catch (error) {
@@ -161,7 +161,7 @@ async function sendWebhook(webhookUrl: string, post: SocialMediaPost): Promise<b
         webhookStatus: 'failed',
         status: 'failed',
       })
-      .where(and(eq(socialMediaPosts.id, post.id), eq(socialMediaPosts.tenant_id, post.tenant_id)));
+      .where(and(eq(socialMediaPosts.id, post.id), eq(socialMediaPosts.tenantId, post.tenantId)));
 
     return false;
   }
@@ -170,7 +170,7 @@ async function sendWebhook(webhookUrl: string, post: SocialMediaPost): Promise<b
 // Get all social media posts
 router.get('/api/social-media/posts', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ message: 'Tenant ID required' });
     }
@@ -178,8 +178,8 @@ router.get('/api/social-media/posts', isAuthenticated, async (req: any, res) => 
     const posts = await db
       .select()
       .from(socialMediaPosts)
-      .where(eq(socialMediaPosts.tenant_id, tenantId))
-      .orderBy(desc(socialMediaPosts.created_at));
+      .where(eq(socialMediaPosts.tenantId, tenantId))
+      .orderBy(desc(socialMediaPosts.createdAt));
 
     res.json(posts);
   } catch (error) {
@@ -191,7 +191,7 @@ router.get('/api/social-media/posts', isAuthenticated, async (req: any, res) => 
 // Generate and create new social media post
 router.post('/api/social-media/posts/generate', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const userId = req.user?.claims?.sub;
 
     if (!tenantId) {
@@ -245,7 +245,7 @@ router.post('/api/social-media/posts/generate', isAuthenticated, async (req: any
 // Update existing post
 router.put('/api/social-media/posts/:id', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { id } = req.params;
 
     if (!tenantId) {
@@ -257,7 +257,7 @@ router.put('/api/social-media/posts/:id', isAuthenticated, async (req: any, res)
     const [updatedPost] = await db
       .update(socialMediaPosts)
       .set({ ...updateData, updatedAt: new Date() })
-      .where(and(eq(socialMediaPosts.id, id), eq(socialMediaPosts.tenant_id, tenantId)))
+      .where(and(eq(socialMediaPosts.id, id), eq(socialMediaPosts.tenantId, tenantId)))
       .returning();
 
     if (!updatedPost) {
@@ -274,7 +274,7 @@ router.put('/api/social-media/posts/:id', isAuthenticated, async (req: any, res)
 // Delete post
 router.delete('/api/social-media/posts/:id', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { id } = req.params;
 
     if (!tenantId) {
@@ -283,7 +283,7 @@ router.delete('/api/social-media/posts/:id', isAuthenticated, async (req: any, r
 
     const deletedPost = await db
       .delete(socialMediaPosts)
-      .where(and(eq(socialMediaPosts.id, id), eq(socialMediaPosts.tenant_id, tenantId)))
+      .where(and(eq(socialMediaPosts.id, id), eq(socialMediaPosts.tenantId, tenantId)))
       .returning();
 
     if (deletedPost.length === 0) {
@@ -300,7 +300,7 @@ router.delete('/api/social-media/posts/:id', isAuthenticated, async (req: any, r
 // Manually broadcast post to webhook
 router.post('/api/social-media/posts/:id/broadcast', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { id } = req.params;
     const { webhookUrl } = req.body;
 
@@ -316,7 +316,7 @@ router.post('/api/social-media/posts/:id/broadcast', isAuthenticated, async (req
     const [post] = await db
       .select()
       .from(socialMediaPosts)
-      .where(and(eq(socialMediaPosts.id, id), eq(socialMediaPosts.tenant_id, tenantId)));
+      .where(and(eq(socialMediaPosts.id, id), eq(socialMediaPosts.tenantId, tenantId)));
 
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
@@ -326,7 +326,7 @@ router.post('/api/social-media/posts/:id/broadcast', isAuthenticated, async (req
     await db
       .update(socialMediaPosts)
       .set({ webhookUrl })
-      .where(and(eq(socialMediaPosts.id, id), eq(socialMediaPosts.tenant_id, tenantId)));
+      .where(and(eq(socialMediaPosts.id, id), eq(socialMediaPosts.tenantId, tenantId)));
 
     const success = await sendWebhook(webhookUrl, { ...post, webhookUrl });
 
@@ -345,7 +345,7 @@ router.post('/api/social-media/posts/:id/broadcast', isAuthenticated, async (req
 // Get all cron jobs
 router.get('/api/social-media/cron-jobs', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ message: 'Tenant ID required' });
     }
@@ -353,8 +353,8 @@ router.get('/api/social-media/cron-jobs', isAuthenticated, async (req: any, res)
     const cronJobs = await db
       .select()
       .from(socialMediaCronJobs)
-      .where(eq(socialMediaCronJobs.tenant_id, tenantId))
-      .orderBy(desc(socialMediaCronJobs.created_at));
+      .where(eq(socialMediaCronJobs.tenantId, tenantId))
+      .orderBy(desc(socialMediaCronJobs.createdAt));
 
     res.json(cronJobs);
   } catch (error) {
@@ -366,7 +366,7 @@ router.get('/api/social-media/cron-jobs', isAuthenticated, async (req: any, res)
 // Create new cron job
 router.post('/api/social-media/cron-jobs', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const userId = req.user?.claims?.sub;
 
     if (!tenantId) {
@@ -391,7 +391,7 @@ router.post('/api/social-media/cron-jobs', isAuthenticated, async (req: any, res
 // Update cron job
 router.put('/api/social-media/cron-jobs/:id', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { id } = req.params;
 
     if (!tenantId) {
@@ -403,7 +403,7 @@ router.put('/api/social-media/cron-jobs/:id', isAuthenticated, async (req: any, 
     const [updatedCronJob] = await db
       .update(socialMediaCronJobs)
       .set({ ...updateData, updatedAt: new Date() })
-      .where(and(eq(socialMediaCronJobs.id, id), eq(socialMediaCronJobs.tenant_id, tenantId)))
+      .where(and(eq(socialMediaCronJobs.id, id), eq(socialMediaCronJobs.tenantId, tenantId)))
       .returning();
 
     if (!updatedCronJob) {
@@ -420,7 +420,7 @@ router.put('/api/social-media/cron-jobs/:id', isAuthenticated, async (req: any, 
 // Delete cron job
 router.delete('/api/social-media/cron-jobs/:id', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { id } = req.params;
 
     if (!tenantId) {
@@ -429,7 +429,7 @@ router.delete('/api/social-media/cron-jobs/:id', isAuthenticated, async (req: an
 
     const deletedCronJob = await db
       .delete(socialMediaCronJobs)
-      .where(and(eq(socialMediaCronJobs.id, id), eq(socialMediaCronJobs.tenant_id, tenantId)))
+      .where(and(eq(socialMediaCronJobs.id, id), eq(socialMediaCronJobs.tenantId, tenantId)))
       .returning();
 
     if (deletedCronJob.length === 0) {
@@ -446,7 +446,7 @@ router.delete('/api/social-media/cron-jobs/:id', isAuthenticated, async (req: an
 // Execute cron job manually (for testing)
 router.post('/api/social-media/cron-jobs/:id/execute', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { id } = req.params;
 
     if (!tenantId) {
@@ -457,7 +457,7 @@ router.post('/api/social-media/cron-jobs/:id/execute', isAuthenticated, async (r
     const [cronJob] = await db
       .select()
       .from(socialMediaCronJobs)
-      .where(and(eq(socialMediaCronJobs.id, id), eq(socialMediaCronJobs.tenant_id, tenantId)));
+      .where(and(eq(socialMediaCronJobs.id, id), eq(socialMediaCronJobs.tenantId, tenantId)));
 
     if (!cronJob) {
       return res.status(404).json({ message: 'Cron job not found' });
@@ -505,7 +505,7 @@ router.post('/api/social-media/cron-jobs/:id/execute', isAuthenticated, async (r
           failureCount: webhookSuccess ? cronJob.failureCount : cronJob.failureCount + 1,
           updatedAt: new Date(),
         })
-        .where(and(eq(socialMediaCronJobs.id, id), eq(socialMediaCronJobs.tenant_id, tenantId)));
+        .where(and(eq(socialMediaCronJobs.id, id), eq(socialMediaCronJobs.tenantId, tenantId)));
 
       res.json({
         success: webhookSuccess,
@@ -522,7 +522,7 @@ router.post('/api/social-media/cron-jobs/:id/execute', isAuthenticated, async (r
           failureCount: cronJob.failureCount + 1,
           updatedAt: new Date(),
         })
-        .where(and(eq(socialMediaCronJobs.id, id), eq(socialMediaCronJobs.tenant_id, tenantId)));
+        .where(and(eq(socialMediaCronJobs.id, id), eq(socialMediaCronJobs.tenantId, tenantId)));
 
       throw executionError;
     }

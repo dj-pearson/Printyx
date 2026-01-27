@@ -112,7 +112,7 @@ async function processTonerAlerts(
         // Check if alert already exists for this device/color
         const existingAlert = await db.query.tonerAlerts.findFirst({
           where: and(
-            eq(tonerAlerts.tenant_id, tenantId),
+            eq(tonerAlerts.tenantId, tenantId),
             eq(tonerAlerts.serialNumber, device.serialNumber),
             eq(tonerAlerts.supplyType, color),
             eq(tonerAlerts.status, 'active'),
@@ -154,7 +154,7 @@ async function processTonerAlerts(
             .set({ status: 'resolved', resolvedAt: new Date() })
             .where(
               and(
-                eq(tonerAlerts.tenant_id, tenantId),
+                eq(tonerAlerts.tenantId, tenantId),
                 eq(tonerAlerts.serialNumber, device.serialNumber),
                 eq(tonerAlerts.supplyType, color),
                 eq(tonerAlerts.status, 'active'),
@@ -187,7 +187,7 @@ async function authenticateClient(apiKey: string | undefined, tenantIdHeader: st
     const client = await db.query.clientRegistrations.findFirst({
       where: and(
         eq(clientRegistrations.apiKey, apiKey),
-        eq(clientRegistrations.tenant_id, tenantId),
+        eq(clientRegistrations.tenantId, tenantId),
         eq(clientRegistrations.status, 'active'),
       ),
     });
@@ -236,7 +236,7 @@ router.post('/submit', async (req, res: Response<SubmitMetricsResponse>) => {
     const results = await Promise.allSettled(
       devices.map((device) => {
         const metricData: NewClientCollectedMetric = {
-          tenantId: client.tenant_id,
+          tenantId: client.tenantId,
           clientId: client.clientId,
           serialNumber: device.serialNumber,
           ipAddress: device.ipAddress,
@@ -288,13 +288,13 @@ router.post('/submit', async (req, res: Response<SubmitMetricsResponse>) => {
       }));
 
     // Process toner alerts (fire and forget, don't block response)
-    processTonerAlerts(client.tenant_id, client.clientId, devices).catch((err) => {
+    processTonerAlerts(client.tenantId, client.clientId, devices).catch((err) => {
       console.error('Error processing toner alerts:', err);
     });
 
     // Log activity
     const activityLog: NewClientActivityLog = {
-      tenantId: client.tenant_id,
+      tenantId: client.tenantId,
       clientId: client.clientId,
       eventType: 'metrics',
       eventData: { deviceCount: devices.length, successful, failed, clientVersion },
@@ -358,7 +358,7 @@ router.post('/heartbeat', async (req, res) => {
     // Log heartbeat if buffer has pending items
     if (bufferSize && bufferSize > 0) {
       const activityLog: NewClientActivityLog = {
-        tenantId: client.tenant_id,
+        tenantId: client.tenantId,
         clientId: client.clientId,
         eventType: 'heartbeat',
         eventData: { clientVersion, bufferSize },
@@ -403,7 +403,7 @@ router.get('/config', async (req, res) => {
     // Get monitored devices for this client
     const devices = await db.query.monitoredDevices.findMany({
       where: and(
-        eq(monitoredDevices.tenant_id, client.tenant_id),
+        eq(monitoredDevices.tenantId, client.tenantId),
         eq(monitoredDevices.clientId, client.clientId),
         eq(monitoredDevices.enabled, true),
       ),
@@ -446,7 +446,7 @@ router.get('/config', async (req, res) => {
 router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const { clientName, location } = req.body;
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
 
     if (!clientName) {
       return res.status(400).json({ message: 'Client name is required' });
@@ -490,9 +490,9 @@ router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest,
         clientId: newClient.clientId,
         clientName: newClient.clientName,
         apiKey: newClient.apiKey, // Only show on creation
-        tenantId: newClient.tenant_id,
+        tenantId: newClient.tenantId,
         status: newClient.status,
-        createdAt: newClient.created_at,
+        createdAt: newClient.createdAt,
       },
     });
   } catch (error) {
@@ -507,11 +507,11 @@ router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest,
  */
 router.get('/clients', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
 
     const clients = await db.query.clientRegistrations.findMany({
-      where: eq(clientRegistrations.tenant_id, tenantId),
-      orderBy: [desc(clientRegistrations.created_at)],
+      where: eq(clientRegistrations.tenantId, tenantId),
+      orderBy: [desc(clientRegistrations.createdAt)],
     });
 
     // Don't return API keys in list view
@@ -531,12 +531,12 @@ router.get('/clients', resolveTenant, requireTenant, async (req: TenantRequest, 
 router.get('/clients/:clientId', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const { clientId } = req.params;
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
 
     const client = await db.query.clientRegistrations.findFirst({
       where: and(
         eq(clientRegistrations.clientId, clientId),
-        eq(clientRegistrations.tenant_id, tenantId),
+        eq(clientRegistrations.tenantId, tenantId),
       ),
     });
 
@@ -548,7 +548,7 @@ router.get('/clients/:clientId', resolveTenant, requireTenant, async (req: Tenan
     const activity = await db.query.clientActivityLogs.findMany({
       where: and(
         eq(clientActivityLogs.clientId, clientId),
-        eq(clientActivityLogs.tenant_id, tenantId),
+        eq(clientActivityLogs.tenantId, tenantId),
       ),
       orderBy: [desc(clientActivityLogs.timestamp)],
       limit: 100,
@@ -558,7 +558,7 @@ router.get('/clients/:clientId', resolveTenant, requireTenant, async (req: Tenan
     const deviceCount = await db.query.monitoredDevices.findMany({
       where: and(
         eq(monitoredDevices.clientId, clientId),
-        eq(monitoredDevices.tenant_id, tenantId),
+        eq(monitoredDevices.tenantId, tenantId),
         eq(monitoredDevices.enabled, true),
       ),
     });
@@ -567,10 +567,10 @@ router.get('/clients/:clientId', resolveTenant, requireTenant, async (req: Tenan
     const activeAlerts = await db.query.tonerAlerts.findMany({
       where: and(
         eq(tonerAlerts.clientId, clientId),
-        eq(tonerAlerts.tenant_id, tenantId),
+        eq(tonerAlerts.tenantId, tenantId),
         eq(tonerAlerts.status, 'active'),
       ),
-      orderBy: [desc(tonerAlerts.created_at)],
+      orderBy: [desc(tonerAlerts.createdAt)],
       limit: 50,
     });
 
@@ -602,12 +602,12 @@ router.post(
   async (req: TenantRequest, res) => {
     try {
       const { clientId } = req.params;
-      const tenantId = req.tenant_id!;
+      const tenantId = req.tenantId!;
 
       const client = await db.query.clientRegistrations.findFirst({
         where: and(
           eq(clientRegistrations.clientId, clientId),
-          eq(clientRegistrations.tenant_id, tenantId),
+          eq(clientRegistrations.tenantId, tenantId),
         ),
       });
 

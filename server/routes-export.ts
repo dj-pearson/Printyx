@@ -8,7 +8,7 @@ export async function exportChecklistPDF(req: Request, res: Response) {
     const { id } = req.params;
     const user = req.user as any;
 
-    if (!user?.tenant_id) {
+    if (!user?.tenantId) {
       return res.status(400).json({ error: 'Tenant ID is required' });
     }
 
@@ -18,7 +18,7 @@ export async function exportChecklistPDF(req: Request, res: Response) {
       .from(onboardingChecklists)
       .where(eq(onboardingChecklists.id, id));
 
-    if (!checklist || checklist.tenant_id !== user.tenant_id) {
+    if (!checklist || checklist.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Checklist not found' });
     }
 
@@ -44,7 +44,7 @@ export async function exportChecklistExcel(req: Request, res: Response) {
     const { id } = req.params;
     const user = req.user as any;
 
-    if (!user?.tenant_id) {
+    if (!user?.tenantId) {
       return res.status(400).json({ error: 'Tenant ID is required' });
     }
 
@@ -54,7 +54,7 @@ export async function exportChecklistExcel(req: Request, res: Response) {
       .from(onboardingChecklists)
       .where(eq(onboardingChecklists.id, id));
 
-    if (!checklist || checklist.tenant_id !== user.tenant_id) {
+    if (!checklist || checklist.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Checklist not found' });
     }
 
@@ -83,7 +83,7 @@ export async function exportChecklistCSV(req: Request, res: Response) {
     const { id } = req.params;
     const user = req.user as any;
 
-    if (!user?.tenant_id) {
+    if (!user?.tenantId) {
       return res.status(400).json({ error: 'Tenant ID is required' });
     }
 
@@ -93,7 +93,7 @@ export async function exportChecklistCSV(req: Request, res: Response) {
       .from(onboardingChecklists)
       .where(eq(onboardingChecklists.id, id));
 
-    if (!checklist || checklist.tenant_id !== user.tenant_id) {
+    if (!checklist || checklist.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Checklist not found' });
     }
 
@@ -137,7 +137,7 @@ function generatePDFContent(checklist: any, equipment: any[]) {
       <div class="header">
         <h1>Equipment Installation Checklist</h1>
         <h2>${checklist.checklistTitle}</h2>
-        <p>Created: ${new Date(checklist.created_at).toLocaleDateString()}</p>
+        <p>Created: ${new Date(checklist.createdAt).toLocaleDateString()}</p>
       </div>
 
       <div class="section">
@@ -199,7 +199,7 @@ function generatePDFContent(checklist: any, equipment: any[]) {
       <div class="section">
         <h3>Status</h3>
         <p><strong>Current Status:</strong> ${checklist.status}</p>
-        <p><strong>Last Updated:</strong> ${new Date(checklist.updated_at).toLocaleDateString()}</p>
+        <p><strong>Last Updated:</strong> ${new Date(checklist.updatedAt).toLocaleDateString()}</p>
       </div>
     </body>
     </html>
@@ -215,7 +215,7 @@ function generateExcelContent(checklist: any, equipment: any[]) {
     checklist: {
       title: checklist.checklistTitle,
       status: checklist.status,
-      createdAt: checklist.created_at,
+      createdAt: checklist.createdAt,
       customer: checklist.customerData,
       site: checklist.siteInformation,
       scheduledDate: checklist.scheduledInstallDate,
@@ -262,7 +262,7 @@ function generateCSVContent(checklist: any, equipment: any[]) {
     item.location || '',
     item.isReplacement ? 'Yes' : 'No',
     checklist.status,
-    new Date(checklist.created_at).toLocaleDateString(),
+    new Date(checklist.createdAt).toLocaleDateString(),
   ]);
 
   const csvContent = [

@@ -188,7 +188,7 @@ export default function FinancialForecasting() {
         forecastType: forecast.forecast_type || forecast.forecastType || '',
         forecastPeriod: forecast.forecast_period || forecast.forecastPeriod || '',
         scenarioType: forecast.scenario_type || forecast.scenarioType || '',
-        createdAt: forecast.created_at || forecast.createdAt || '',
+        createdAt: forecast.createdAt || forecast.createdAt || '',
       }));
     },
   });
@@ -204,7 +204,7 @@ export default function FinancialForecasting() {
         ...projection,
         id: projection.id,
         projectionDate: projection.projection_date || projection.projectionDate || '',
-        createdAt: projection.created_at || projection.createdAt || '',
+        createdAt: projection.createdAt || projection.createdAt || '',
       }));
     },
   });
@@ -222,7 +222,7 @@ export default function FinancialForecasting() {
         ...analysis,
         id: analysis.id,
         analysisType: analysis.analysis_type || analysis.analysisType || '',
-        createdAt: analysis.created_at || analysis.createdAt || '',
+        createdAt: analysis.createdAt || analysis.createdAt || '',
       }));
     },
   });
@@ -238,7 +238,7 @@ export default function FinancialForecasting() {
         kpiName: kpi.kpi_name || kpi.kpiName || '',
         currentValue: kpi.current_value || kpi.currentValue || 0,
         targetValue: kpi.target_value || kpi.targetValue || 0,
-        createdAt: kpi.created_at || kpi.createdAt || '',
+        createdAt: kpi.createdAt || kpi.createdAt || '',
       }));
     },
   });
@@ -975,8 +975,8 @@ export default function FinancialForecasting() {
                               <p>Type: {forecast.forecast_type.replace('_', ' ')}</p>
                               <p>Period: {forecast.forecast_period}</p>
                               <p>
-                                Duration: {format(new Date(forecast.start_date), 'MMM dd')} -{' '}
-                                {format(new Date(forecast.end_date), 'MMM dd, yyyy')}
+                                Duration: {format(new Date(forecast.startDate), 'MMM dd')} -{' '}
+                                {format(new Date(forecast.endDate), 'MMM dd, yyyy')}
                               </p>
                               <p>Growth Rate: {(forecast.growth_rate * 100).toFixed(1)}%</p>
                               <p>Confidence: {(forecast.confidence_level * 100).toFixed(0)}%</p>

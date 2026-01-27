@@ -37,7 +37,7 @@ router.put(
   requireServiceAccess(2),
   async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const { requestId } = req.params;
       const userId = req.user?.claims?.sub;
 
@@ -116,7 +116,7 @@ router.put(
 // Get all service requests for admin management (ADMIN/DEALER ONLY)
 router.get('/service-requests', requireServiceAccess(2), async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { status, limit = 50, offset = 0 } = req.query;
 
     if (!tenantId) {
@@ -174,7 +174,7 @@ router.post('/phone-in-tickets', async (req, res) => {
         .where(
           and(
             eq(businessRecords.id, validatedData.customerId),
-            eq(businessRecords.tenant_id, tenantId),
+            eq(businessRecords.tenantId, tenantId),
           ),
         )
         .limit(1);
@@ -279,7 +279,7 @@ router.get('/customers', async (req, res) => {
         type: businessRecords.type,
       })
       .from(businessRecords)
-      .where(and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.type, 'customer')));
+      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.type, 'customer')));
 
     if (search) {
       query = query.where(
@@ -310,7 +310,7 @@ router.get('/phone-in-tickets', async (req, res) => {
     const limitNum = Math.min(200, Math.max(1, parseInt(limit || '50', 10)));
     const offsetNum = Math.max(0, parseInt(offset || '0', 10));
 
-    let where = and(eq(phoneInTickets.tenant_id, tenantId));
+    let where = and(eq(phoneInTickets.tenantId, tenantId));
     if (converted === 'true') {
       where = and(where, sql`${phoneInTickets.convertedToTicketId} IS NOT NULL`);
     } else if (converted === 'false') {
@@ -320,7 +320,7 @@ router.get('/phone-in-tickets', async (req, res) => {
     const rows = await db
       .select({
         id: phoneInTickets.id,
-        tenantId: phoneInTickets.tenant_id,
+        tenantId: phoneInTickets.tenantId,
         callerName: phoneInTickets.callerName,
         callerPhone: phoneInTickets.callerPhone,
         callerEmail: phoneInTickets.callerEmail,
@@ -341,12 +341,12 @@ router.get('/phone-in-tickets', async (req, res) => {
         contactMethod: phoneInTickets.contactMethod,
         convertedToTicketId: phoneInTickets.convertedToTicketId,
         convertedAt: phoneInTickets.convertedAt,
-        createdAt: phoneInTickets.created_at,
-        updatedAt: phoneInTickets.updated_at,
+        createdAt: phoneInTickets.createdAt,
+        updatedAt: phoneInTickets.updatedAt,
       })
       .from(phoneInTickets)
       .where(where)
-      .orderBy(desc(phoneInTickets.created_at))
+      .orderBy(desc(phoneInTickets.createdAt))
       .limit(limitNum)
       .offset(offsetNum);
 
@@ -562,11 +562,11 @@ router.get('/service-tickets/:ticketId/parts-requests', async (req, res) => {
       .from(ticketPartsRequests)
       .where(
         and(
-          eq(ticketPartsRequests.tenant_id, tenantId),
+          eq(ticketPartsRequests.tenantId, tenantId),
           eq(ticketPartsRequests.serviceTicketId, ticketId),
         ),
       )
-      .orderBy(desc(ticketPartsRequests.created_at));
+      .orderBy(desc(ticketPartsRequests.createdAt));
 
     res.json(partsRequests);
   } catch (error) {
@@ -626,7 +626,7 @@ router.post('/service-tickets/:ticketId/complete', async (req, res) => {
       try {
         const [ticket] = await db
           .select({
-            tenantId: serviceTickets.tenant_id,
+            tenantId: serviceTickets.tenantId,
           })
           .from(serviceTickets)
           .where(eq(serviceTickets.id, ticketId))
@@ -634,7 +634,7 @@ router.post('/service-tickets/:ticketId/complete', async (req, res) => {
 
         if (ticket) {
           // Use centralized billing engine service for auto-invoice generation
-          await billingEngine.autoGenerateFromServiceTicket(ticketId, ticket.tenant_id);
+          await billingEngine.autoGenerateFromServiceTicket(ticketId, ticket.tenantId);
         }
       } catch (invErr) {
         console.error('Auto-invoice generation failed:', invErr);
@@ -658,7 +658,7 @@ router.get('/technician-sessions/:sessionId/workflow-steps', async (req, res) =>
     const steps = await db
       .select()
       .from(workflowSteps)
-      .where(and(eq(workflowSteps.tenant_id, tenantId), eq(workflowSteps.sessionId, sessionId)))
+      .where(and(eq(workflowSteps.tenantId, tenantId), eq(workflowSteps.sessionId, sessionId)))
       .orderBy(workflowSteps.stepStarted);
 
     res.json(steps);
@@ -689,7 +689,7 @@ router.get('/customers/search', async (req, res) => {
       .from(customers)
       .where(
         and(
-          eq(customers.tenant_id, tenantId),
+          eq(customers.tenantId, tenantId),
           sql`(
             LOWER(${customers.name}) LIKE LOWER(${'%' + searchTerm + '%'}) OR
             LOWER(${customers.phone}) LIKE LOWER(${'%' + searchTerm + '%'}) OR
@@ -766,7 +766,7 @@ router.post('/phone-in-tickets/:id/convert', async (req, res) => {
     const [phoneTicket] = await db
       .select()
       .from(phoneInTickets)
-      .where(and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenant_id, tenantId)))
+      .where(and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenantId, tenantId)))
       .limit(1);
 
     if (!phoneTicket) {
@@ -823,12 +823,12 @@ router.get('/phone-tickets/equipment/:companyId', async (req, res) => {
         brand: sql`'Canon'`.as('brand'),
         model: sql`'imageRUNNER ADVANCE'`.as('model'),
         serial:
-          sql`CONCAT('SN', LPAD(CAST(EXTRACT(epoch FROM ${serviceTickets.created_at}) AS TEXT), 8, '0'))`.as(
+          sql`CONCAT('SN', LPAD(CAST(EXTRACT(epoch FROM ${serviceTickets.createdAt}) AS TEXT), 8, '0'))`.as(
             'serial',
           ),
       })
       .from(serviceTickets)
-      .where(and(eq(serviceTickets.tenant_id, tenantId), eq(serviceTickets.customerId, companyId)))
+      .where(and(eq(serviceTickets.tenantId, tenantId), eq(serviceTickets.customerId, companyId)))
       .limit(10);
 
     res.json(equipment);
@@ -854,7 +854,7 @@ router.get('/phone-tickets/search-contacts/:companyId', async (req, res) => {
         role: businessRecords.jobTitle,
       })
       .from(businessRecords)
-      .where(and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.id, companyId)))
+      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.id, companyId)))
       .limit(20);
 
     res.json(contacts);

@@ -47,14 +47,14 @@ export default function Contracts() {
       return (response || []).map((contract: any) => ({
         ...contract,
         id: contract.id,
-        contractNumber: contract.contract_number || contract.contractNumber || '',
-        customerId: contract.customer_id || contract.customerId || '',
-        quoteId: contract.quote_id || contract.quoteId || null,
-        startDate: contract.start_date || contract.startDate || '',
-        endDate: contract.end_date || contract.endDate || '',
+        contractNumber: contract.contractNumber || contract.contractNumber || '',
+        customerId: contract.customerId || contract.customerId || '',
+        quoteId: contract.quoteId || contract.quoteId || null,
+        startDate: contract.startDate || contract.startDate || '',
+        endDate: contract.endDate || contract.endDate || '',
         signedDate: contract.signed_date || contract.signedDate || null,
-        createdAt: contract.created_at || contract.createdAt || '',
-        updatedAt: contract.updated_at || contract.updatedAt || '',
+        createdAt: contract.createdAt || contract.createdAt || '',
+        updatedAt: contract.updatedAt || contract.updatedAt || '',
       }));
     },
   });
@@ -86,10 +86,10 @@ export default function Contracts() {
       return (response || []).map((quote: any) => ({
         ...quote,
         id: quote.id,
-        quoteNumber: quote.quote_number || quote.quoteNumber || '',
-        customerId: quote.customer_id || quote.customerId || '',
+        quoteNumber: quote.quoteNumber || quote.quoteNumber || '',
+        customerId: quote.customerId || quote.customerId || '',
         validUntil: quote.valid_until || quote.validUntil || null,
-        createdAt: quote.created_at || quote.createdAt || '',
+        createdAt: quote.createdAt || quote.createdAt || '',
       }));
     },
     enabled: isCreateOpen,
@@ -104,8 +104,8 @@ export default function Contracts() {
       return (response || []).map((item: any) => ({
         ...item,
         id: item.id,
-        productId: item.product_id || item.productId || '',
-        quoteId: item.quote_id || item.quoteId || '',
+        productId: item.productId || item.productId || '',
+        quoteId: item.quoteId || item.quoteId || '',
       }));
     },
     enabled: !!selectedQuoteId,

@@ -131,7 +131,7 @@ export class IntegrationService {
 
     return {
       id: integration.id,
-      tenantId: integration.tenant_id!,
+      tenantId: integration.tenantId!,
       providerId,
       name: integration.name,
       status: integration.status as any,
@@ -149,11 +149,11 @@ export class IntegrationService {
     const integrations = await db
       .select()
       .from(systemIntegrations)
-      .where(eq(systemIntegrations.tenant_id, tenantId));
+      .where(eq(systemIntegrations.tenantId, tenantId));
 
     return integrations.map((integration) => ({
       id: integration.id,
-      tenantId: integration.tenant_id!,
+      tenantId: integration.tenantId!,
       providerId: integration.provider,
       name: integration.name,
       status: integration.status as any,
@@ -251,7 +251,7 @@ export class IntegrationService {
     await db
       .delete(systemIntegrations)
       .where(
-        and(eq(systemIntegrations.id, integrationId), eq(systemIntegrations.tenant_id, tenantId)),
+        and(eq(systemIntegrations.id, integrationId), eq(systemIntegrations.tenantId, tenantId)),
       );
   }
 
@@ -410,14 +410,14 @@ export class IntegrationService {
       .select()
       .from(systemIntegrations)
       .where(
-        and(eq(systemIntegrations.id, integrationId), eq(systemIntegrations.tenant_id, tenantId)),
+        and(eq(systemIntegrations.id, integrationId), eq(systemIntegrations.tenantId, tenantId)),
       );
 
     if (!integration) return null;
 
     return {
       id: integration.id,
-      tenantId: integration.tenant_id!,
+      tenantId: integration.tenantId!,
       providerId: integration.provider,
       name: integration.name,
       status: integration.status as any,

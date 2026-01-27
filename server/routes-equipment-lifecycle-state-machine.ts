@@ -20,7 +20,7 @@ const getUserId = (req: Request): string | undefined => {
   return (
     reqAny.user?.id ||
     reqAny.user?.claims?.sub ||
-    reqAny.session?.user_id ||
+    reqAny.session?.userId ||
     reqAny.session?.user?.id
   );
 };
@@ -52,7 +52,7 @@ router.post(
       const { equipmentId } = req.params;
       const { toStage, reason, metadata } = req.body;
       const userId = getUserId(req);
-      const tenantId = req.tenant_id;
+      const tenantId = req.tenantId;
 
       if (!userId) {
         return res.status(401).json({
@@ -118,7 +118,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const { equipmentId } = req.params;
-      const tenantId = req.tenant_id;
+      const tenantId = req.tenantId;
 
       if (!tenantId) {
         return res.status(400).json({
@@ -157,7 +157,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const { equipmentId, toStage } = req.params;
-      const tenantId = req.tenant_id;
+      const tenantId = req.tenantId;
 
       if (!tenantId) {
         return res.status(400).json({
@@ -177,7 +177,7 @@ router.get(
         .where(
           and(
             eq(equipmentLifecycle.equipmentId, equipmentId),
-            eq(equipmentLifecycle.tenant_id, tenantId),
+            eq(equipmentLifecycle.tenantId, tenantId),
           ),
         );
 
@@ -241,7 +241,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const { equipmentId } = req.params;
-      const tenantId = req.tenant_id;
+      const tenantId = req.tenantId;
 
       if (!tenantId) {
         return res.status(400).json({
@@ -261,7 +261,7 @@ router.get(
         .where(
           and(
             eq(equipmentLifecycle.equipmentId, equipmentId),
-            eq(equipmentLifecycle.tenant_id, tenantId),
+            eq(equipmentLifecycle.tenantId, tenantId),
           ),
         );
 
@@ -322,7 +322,7 @@ router.post(
       const { transitionId } = req.params;
       const { reason } = req.body;
       const userId = getUserId(req);
-      const tenantId = req.tenant_id;
+      const tenantId = req.tenantId;
 
       if (!userId) {
         return res.status(401).json({
@@ -396,7 +396,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const { transitionId } = req.params;
-      const tenantId = req.tenant_id;
+      const tenantId = req.tenantId;
 
       if (!tenantId) {
         return res.status(400).json({

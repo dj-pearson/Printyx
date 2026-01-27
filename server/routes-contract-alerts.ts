@@ -33,7 +33,7 @@ router.get(
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
   async (req: AuthenticatedRequest, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const { daysAhead = 180 } = req.query; // Default to 180 days ahead
 
       if (!tenantId) {
@@ -66,7 +66,7 @@ router.get(
         .leftJoin(businessRecords, eq(serviceContracts.customerId, businessRecords.id))
         .where(
           and(
-            eq(serviceContracts.tenant_id, tenantId),
+            eq(serviceContracts.tenantId, tenantId),
             eq(serviceContracts.contractStatus, 'active'),
             lte(
               serviceContracts.endDate,
@@ -98,7 +98,7 @@ router.get(
         .leftJoin(businessRecords, eq(contracts.customerId, businessRecords.id))
         .where(
           and(
-            eq(contracts.tenant_id, tenantId),
+            eq(contracts.tenantId, tenantId),
             eq(contracts.status, 'active'),
             lte(contracts.endDate, sql`NOW() + INTERVAL '${sql.raw(String(daysAhead))} days'`),
             gte(contracts.endDate, sql`NOW()`),
@@ -179,7 +179,7 @@ router.get(
 // Get detailed renewal opportunity for a specific contract
 router.get('/api/alerts/contract-expirations/:contractId', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { contractId } = req.params;
 
     if (!tenantId) {
@@ -216,7 +216,7 @@ router.get('/api/alerts/contract-expirations/:contractId', async (req: any, res)
       })
       .from(serviceContracts)
       .leftJoin(businessRecords, eq(serviceContracts.customerId, businessRecords.id))
-      .where(and(eq(serviceContracts.id, contractId), eq(serviceContracts.tenant_id, tenantId)))
+      .where(and(eq(serviceContracts.id, contractId), eq(serviceContracts.tenantId, tenantId)))
       .limit(1);
 
     if (!serviceContract) {
@@ -239,7 +239,7 @@ router.get('/api/alerts/contract-expirations/:contractId', async (req: any, res)
         })
         .from(contracts)
         .leftJoin(businessRecords, eq(contracts.customerId, businessRecords.id))
-        .where(and(eq(contracts.id, contractId), eq(contracts.tenant_id, tenantId)))
+        .where(and(eq(contracts.id, contractId), eq(contracts.tenantId, tenantId)))
         .limit(1);
 
       if (!generalContract) {
@@ -276,7 +276,7 @@ router.post(
   '/api/alerts/contract-expirations/:contractId/create-renewal',
   async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const { contractId } = req.params;
       const userId = req.user?.id || req.user?.claims?.sub;
 
@@ -297,7 +297,7 @@ router.post(
           monthlyBaseRate: serviceContracts.monthlyBaseRate,
         })
         .from(serviceContracts)
-        .where(and(eq(serviceContracts.id, contractId), eq(serviceContracts.tenant_id, tenantId)))
+        .where(and(eq(serviceContracts.id, contractId), eq(serviceContracts.tenantId, tenantId)))
         .limit(1);
 
       if (!contract) {
@@ -314,7 +314,7 @@ router.post(
         .where(
           and(
             eq(renewalOpportunities.contractId, contractId),
-            eq(renewalOpportunities.tenant_id, tenantId),
+            eq(renewalOpportunities.tenantId, tenantId),
           ),
         )
         .limit(1);
@@ -381,7 +381,7 @@ router.post(
  */
 router.post('/api/alerts/renewal-workflow/process', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({
@@ -420,7 +420,7 @@ router.post('/api/alerts/renewal-workflow/process', async (req: any, res) => {
  */
 router.get('/api/alerts/renewal-workflow/summary', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({

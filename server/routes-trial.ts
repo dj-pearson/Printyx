@@ -10,7 +10,7 @@ const router = express.Router();
 // Helper to get user ID from request (supports Supabase JWT and session)
 const getUserId = (req: Request): string | undefined => {
   const reqAny = req as any;
-  return reqAny.user?.id || reqAny.user?.claims?.sub || reqAny.session?.user_id;
+  return reqAny.user?.id || reqAny.user?.claims?.sub || reqAny.session?.userId;
 };
 
 /**

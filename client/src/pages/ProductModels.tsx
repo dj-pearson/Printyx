@@ -72,10 +72,10 @@ export default function ProductModels() {
       return (response || []).map((model: any) => ({
         ...model,
         id: model.id,
-        modelNumber: model.model_number || model.modelNumber || '',
+        modelNumber: model.modelNumber || model.modelNumber || '',
         modelName: model.model_name || model.modelName || '',
-        createdAt: model.created_at || model.createdAt || '',
-        updatedAt: model.updated_at || model.updatedAt || '',
+        createdAt: model.createdAt || model.createdAt || '',
+        updatedAt: model.updatedAt || model.updatedAt || '',
       }));
     },
   });

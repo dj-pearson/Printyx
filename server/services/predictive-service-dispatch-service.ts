@@ -174,7 +174,7 @@ export class PredictiveServiceDispatchService {
 
     return db.query.clientCollectedMetrics.findMany({
       where: and(
-        eq(clientCollectedMetrics.tenant_id, parseInt(tenantId)),
+        eq(clientCollectedMetrics.tenantId, parseInt(tenantId)),
         eq(clientCollectedMetrics.serialNumber, serialNumber),
         gte(clientCollectedMetrics.collectionTimestamp, thirtyDaysAgo),
       ),
@@ -390,7 +390,7 @@ Format as JSON:
   ): Promise<TechnicianMatch | null> {
     // Get all available technicians
     const technicians = await db.query.repCapacity.findMany({
-      where: and(eq(repCapacity.tenant_id, tenantId), eq(repCapacity.isAvailable, true)),
+      where: and(eq(repCapacity.tenantId, tenantId), eq(repCapacity.isAvailable, true)),
     });
 
     if (technicians.length === 0) {
@@ -442,10 +442,10 @@ Format as JSON:
       nextSlot.setHours(nextSlot.getHours() + tech.currentActiveLeads * 2); // 2 hours per existing job
 
       // Get technician name from users table
-      const technicianName = await getUserName(tech.user_id);
+      const technicianName = await getUserName(tech.userId);
 
       matches.push({
-        technicianId: tech.user_id,
+        technicianId: tech.userId,
         technicianName,
         score,
         reasons,

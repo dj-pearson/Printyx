@@ -55,7 +55,7 @@ function validateTenantHeader(
   req: TenantRequest,
   headerTenantId: string,
 ): { valid: boolean; tenantId?: string; reason?: string } {
-  const userTenantId = req.supabaseUser?.tenant_id || req.user?.tenant_id;
+  const userTenantId = req.supabaseUser?.tenantId || req.user?.tenantId;
   const userId = getUserId(req as Request);
   const isAdmin = isPlatformAdmin(req as Request);
 
@@ -116,10 +116,10 @@ const TENANT_CONFIG = {
 /**
  * Middleware to resolve tenant from multiple sources
  * Priority order:
- * 1. Supabase JWT app_metadata.tenant_id (highest priority)
+ * 1. Supabase JWT app_metadata.tenantId (highest priority)
  * 2. x-tenant-id header (for self-hosted/API scenarios)
- * 3. req.user.tenant_id (set by isAuthenticated after DB lookup)
- * 4. Already set req.tenant_id (by isAuthenticated or other middleware)
+ * 3. req.user.tenantId (set by isAuthenticated after DB lookup)
+ * 4. Already set req.tenantId (by isAuthenticated or other middleware)
  * 5. Subdomain: xyz-company.printyx.net
  * 6. Path prefix: printyx.net/xyz-company/... (if enabled)
  * 7. Session/default fallback (development)
@@ -127,7 +127,7 @@ const TENANT_CONFIG = {
 export const resolveTenant = async (req: TenantRequest, res: Response, next: NextFunction) => {
   try {
     // Priority 1: Supabase JWT tenant (from supabase-auth middleware)
-    const jwtTenantId = req.supabaseUser?.tenant_id;
+    const jwtTenantId = req.supabaseUser?.tenantId;
     const headerTenantId = req.get('x-tenant-id');
     const isPlatformAdmin =
       req.supabaseUser?.isPlatformUser ||
@@ -138,7 +138,7 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
       if (headerTenantId && headerTenantId !== jwtTenantId) {
         // Only platform admins can access different tenants via header
         if (isPlatformAdmin) {
-          req.tenant_id = headerTenantId;
+          req.tenantId = headerTenantId;
           console.log(
             `[TENANT SECURITY] Platform admin accessing tenant ${headerTenantId} (own: ${jwtTenantId})`,
           );
@@ -156,8 +156,8 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
         }
       }
 
-      req.tenant_id = jwtTenantId;
-      // console.log(`[TENANT DEBUG] Using Supabase JWT tenant: ${req.tenant_id}`);
+      req.tenantId = jwtTenantId;
+      // console.log(`[TENANT DEBUG] Using Supabase JWT tenant: ${req.tenantId}`);
       return next();
     }
 
@@ -174,21 +174,21 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
         });
       }
 
-      req.tenant_id = validation.tenant_id;
-      // console.log(`[TENANT DEBUG] Using validated x-tenant-id header: ${req.tenant_id}`);
+      req.tenantId = validation.tenantId;
+      // console.log(`[TENANT DEBUG] Using validated x-tenant-id header: ${req.tenantId}`);
       return next();
     }
 
     // Priority 3: User's tenantId (set by isAuthenticated after DB lookup)
-    if (req.user?.tenant_id) {
-      req.tenant_id = req.user.tenant_id;
-      // console.log(`[TENANT DEBUG] Using user tenantId from isAuthenticated: ${req.tenant_id}`);
+    if (req.user?.tenantId) {
+      req.tenantId = req.user.tenantId;
+      // console.log(`[TENANT DEBUG] Using user tenantId from isAuthenticated: ${req.tenantId}`);
       return next();
     }
 
     // Priority 4: Already set on request (by isAuthenticated or other middleware)
-    if ((req as any).tenant_id) {
-      // console.log(`[TENANT DEBUG] Using existing req.tenant_id: ${(req as any).tenant_id}`);
+    if ((req as any).tenantId) {
+      // console.log(`[TENANT DEBUG] Using existing req.tenantId: ${(req as any).tenantId}`);
       return next();
     }
 
@@ -228,16 +228,16 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
     ) {
       // console.log(`[TENANT DEBUG] Development environment detected, using user tenant or default`);
 
-      if (req.user?.tenant_id) {
-        req.tenant_id = req.user.tenant_id;
-        // console.log(`[TENANT DEBUG] Using user tenant: ${req.tenant_id}`);
-      } else if ((req.session as any)?.tenant_id) {
-        req.tenant_id = (req.session as any).tenant_id;
-        // console.log(`[TENANT DEBUG] Using session tenant: ${req.tenant_id}`);
+      if (req.user?.tenantId) {
+        req.tenantId = req.user.tenantId;
+        // console.log(`[TENANT DEBUG] Using user tenant: ${req.tenantId}`);
+      } else if ((req.session as any)?.tenantId) {
+        req.tenantId = (req.session as any).tenantId;
+        // console.log(`[TENANT DEBUG] Using session tenant: ${req.tenantId}`);
       } else {
         // Default to demo tenant for development
-        req.tenant_id = process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
-        // console.log(`[TENANT DEBUG] Using default demo tenant: ${req.tenant_id}`);
+        req.tenantId = process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
+        // console.log(`[TENANT DEBUG] Using default demo tenant: ${req.tenantId}`);
       }
 
       return next(); // Skip database lookup for development
@@ -248,12 +248,12 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
       const tenant = await storage.getTenantBySlug(tenantSlug);
       if (tenant && tenant.isActive) {
         req.tenant = tenant;
-        req.tenant_id = tenant.id;
+        req.tenantId = tenant.id;
         // console.log(`[TENANT DEBUG] Found tenant in DB: ${tenant.id}`);
 
         // Store tenant context in session if available
         if (req.session) {
-          (req.session as any).tenant_id = tenant.id;
+          (req.session as any).tenantId = tenant.id;
           (req.session as any).tenantSlug = tenant.slug;
         }
       } else {
@@ -276,7 +276,7 @@ export const resolveTenant = async (req: TenantRequest, res: Response, next: Nex
  * Middleware to ensure tenant context exists
  */
 export const requireTenant = (req: TenantRequest, res: Response, next: NextFunction) => {
-  if (!req.tenant && !req.tenant_id) {
+  if (!req.tenant && !req.tenantId) {
     return res.status(400).json({
       error: 'Tenant required',
       message:

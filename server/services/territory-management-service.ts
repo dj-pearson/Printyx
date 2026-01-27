@@ -95,7 +95,7 @@ export class TerritoryManagementService {
   async getTerritory(tenantId: string, territoryId: string): Promise<SalesTerritory | null> {
     return (
       (await db.query.salesTerritories.findFirst({
-        where: and(eq(salesTerritories.id, territoryId), eq(salesTerritories.tenant_id, tenantId)),
+        where: and(eq(salesTerritories.id, territoryId), eq(salesTerritories.tenantId, tenantId)),
       })) || null
     );
   }
@@ -117,7 +117,7 @@ export class TerritoryManagementService {
     const { page = 1, limit = 25, type, ownerId, isActive, search } = options;
     const offset = (page - 1) * limit;
 
-    const conditions = [eq(salesTerritories.tenant_id, tenantId)];
+    const conditions = [eq(salesTerritories.tenantId, tenantId)];
 
     if (type) {
       conditions.push(eq(salesTerritories.territoryType, type));
@@ -163,7 +163,7 @@ export class TerritoryManagementService {
     const [updated] = await db
       .update(salesTerritories)
       .set({ ...updates, updatedAt: new Date() })
-      .where(and(eq(salesTerritories.id, territoryId), eq(salesTerritories.tenant_id, tenantId)))
+      .where(and(eq(salesTerritories.id, territoryId), eq(salesTerritories.tenantId, tenantId)))
       .returning();
 
     await logAuditEvent({
@@ -209,7 +209,7 @@ export class TerritoryManagementService {
     },
   ): Promise<SalesTerritory | null> {
     const territories = await db.query.salesTerritories.findMany({
-      where: and(eq(salesTerritories.tenant_id, tenantId), eq(salesTerritories.isActive, true)),
+      where: and(eq(salesTerritories.tenantId, tenantId), eq(salesTerritories.isActive, true)),
       orderBy: [desc(salesTerritories.priority)],
     });
 
@@ -324,7 +324,7 @@ export class TerritoryManagementService {
           ownerId: territory.ownerId,
           updatedAt: new Date(),
         })
-        .where(and(eq(businessRecords.id, leadId), eq(businessRecords.tenant_id, tenantId)));
+        .where(and(eq(businessRecords.id, leadId), eq(businessRecords.tenantId, tenantId)));
 
       // Record assignment history
       await db.insert(leadAssignmentHistory).values({
@@ -379,7 +379,7 @@ export class TerritoryManagementService {
     const { page = 1, limit = 25, isActive } = options;
     const offset = (page - 1) * limit;
 
-    const conditions = [eq(leadAssignmentRules.tenant_id, tenantId)];
+    const conditions = [eq(leadAssignmentRules.tenantId, tenantId)];
 
     if (isActive !== undefined) {
       conditions.push(eq(leadAssignmentRules.isActive, isActive));
@@ -410,7 +410,7 @@ export class TerritoryManagementService {
   async getAssignmentRule(tenantId: string, ruleId: string): Promise<LeadAssignmentRule | null> {
     return (
       (await db.query.leadAssignmentRules.findFirst({
-        where: and(eq(leadAssignmentRules.id, ruleId), eq(leadAssignmentRules.tenant_id, tenantId)),
+        where: and(eq(leadAssignmentRules.id, ruleId), eq(leadAssignmentRules.tenantId, tenantId)),
       })) || null
     );
   }
@@ -426,7 +426,7 @@ export class TerritoryManagementService {
     const [updated] = await db
       .update(leadAssignmentRules)
       .set({ ...updates, updatedAt: new Date() })
-      .where(and(eq(leadAssignmentRules.id, ruleId), eq(leadAssignmentRules.tenant_id, tenantId)))
+      .where(and(eq(leadAssignmentRules.id, ruleId), eq(leadAssignmentRules.tenantId, tenantId)))
       .returning();
 
     return updated;
@@ -446,7 +446,7 @@ export class TerritoryManagementService {
    */
   async getOrCreateRepCapacity(tenantId: string, userId: string): Promise<RepCapacity> {
     let capacity = await db.query.repCapacity.findFirst({
-      where: and(eq(repCapacity.tenant_id, tenantId), eq(repCapacity.user_id, userId)),
+      where: and(eq(repCapacity.tenantId, tenantId), eq(repCapacity.userId, userId)),
     });
 
     if (!capacity) {
@@ -474,7 +474,7 @@ export class TerritoryManagementService {
     const [updated] = await db
       .update(repCapacity)
       .set({ ...updates, updatedAt: new Date() })
-      .where(and(eq(repCapacity.tenant_id, tenantId), eq(repCapacity.user_id, userId)))
+      .where(and(eq(repCapacity.tenantId, tenantId), eq(repCapacity.userId, userId)))
       .returning();
 
     return updated;
@@ -490,7 +490,7 @@ export class TerritoryManagementService {
     const { page = 1, limit = 25, isAvailable } = options;
     const offset = (page - 1) * limit;
 
-    const conditions = [eq(repCapacity.tenant_id, tenantId)];
+    const conditions = [eq(repCapacity.tenantId, tenantId)];
 
     if (isAvailable !== undefined) {
       conditions.push(eq(repCapacity.isAvailable, isAvailable));
@@ -524,7 +524,7 @@ export class TerritoryManagementService {
     territoryId?: string,
   ): Promise<RepCapacity | null> {
     const conditions = [
-      eq(repCapacity.tenant_id, tenantId),
+      eq(repCapacity.tenantId, tenantId),
       eq(repCapacity.isAvailable, true),
       sql`${repCapacity.currentActiveLeads} < ${repCapacity.maxActiveLeads}`,
     ];
@@ -533,7 +533,7 @@ export class TerritoryManagementService {
     if (territoryId) {
       const territory = await this.getTerritory(tenantId, territoryId);
       if (territory?.teamMembers?.length) {
-        conditions.push(inArray(repCapacity.user_id, territory.teamMembers));
+        conditions.push(inArray(repCapacity.userId, territory.teamMembers));
       }
     }
 
@@ -566,7 +566,7 @@ export class TerritoryManagementService {
   ): Promise<LeadAssignmentHistory[]> {
     return await db.query.leadAssignmentHistory.findMany({
       where: and(
-        eq(leadAssignmentHistory.tenant_id, tenantId),
+        eq(leadAssignmentHistory.tenantId, tenantId),
         eq(leadAssignmentHistory.leadId, leadId),
       ),
       orderBy: [desc(leadAssignmentHistory.assignedAt)],
@@ -585,7 +585,7 @@ export class TerritoryManagementService {
     const offset = (page - 1) * limit;
 
     const whereClause = and(
-      eq(leadAssignmentHistory.tenant_id, tenantId),
+      eq(leadAssignmentHistory.tenantId, tenantId),
       eq(leadAssignmentHistory.assignedTo, userId),
     );
 
@@ -630,26 +630,26 @@ export class TerritoryManagementService {
       db
         .select({ count: sql`count(*)` })
         .from(salesTerritories)
-        .where(eq(salesTerritories.tenant_id, tenantId)),
+        .where(eq(salesTerritories.tenantId, tenantId)),
       db
         .select({ count: sql`count(*)` })
         .from(salesTerritories)
-        .where(and(eq(salesTerritories.tenant_id, tenantId), eq(salesTerritories.isActive, true))),
+        .where(and(eq(salesTerritories.tenantId, tenantId), eq(salesTerritories.isActive, true))),
       db
         .select({ type: salesTerritories.territoryType, count: sql`count(*)` })
         .from(salesTerritories)
-        .where(eq(salesTerritories.tenant_id, tenantId))
+        .where(eq(salesTerritories.tenantId, tenantId))
         .groupBy(salesTerritories.territoryType),
       db
         .select({ count: sql`sum(${salesTerritories.activeLeadsCount})` })
         .from(salesTerritories)
-        .where(eq(salesTerritories.tenant_id, tenantId)),
+        .where(eq(salesTerritories.tenantId, tenantId)),
       db
         .select({ count: sql`count(*)` })
         .from(businessRecords)
         .where(
           and(
-            eq(businessRecords.tenant_id, tenantId),
+            eq(businessRecords.tenantId, tenantId),
             sql`${businessRecords.ownerId} IS NULL`,
             eq(businessRecords.status, 'lead'),
           ),
@@ -659,7 +659,7 @@ export class TerritoryManagementService {
         .from(repCapacity)
         .where(
           and(
-            eq(repCapacity.tenant_id, tenantId),
+            eq(repCapacity.tenantId, tenantId),
             eq(repCapacity.isAvailable, true),
             sql`${repCapacity.currentActiveLeads} < ${repCapacity.maxActiveLeads}`,
           ),

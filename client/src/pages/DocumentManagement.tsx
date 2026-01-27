@@ -159,11 +159,11 @@ export default function DocumentManagement() {
         data.recentDocuments?.map((doc: any) => ({
           ...doc,
           lastModified: new Date(doc.lastModified || doc.last_modified),
-          createdAt: doc.created_at || doc.createdAt,
+          createdAt: doc.createdAt || doc.createdAt,
           workflow: doc.workflow
             ? {
                 ...doc.workflow,
-                dueDate: new Date(doc.workflow.dueDate || doc.workflow.due_date),
+                dueDate: new Date(doc.workflow.dueDate || doc.workflow.dueDate),
               }
             : undefined,
         })) || [],

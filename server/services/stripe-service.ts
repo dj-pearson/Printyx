@@ -151,7 +151,7 @@ export class StripeService {
     let email = userEmail;
     if (!email) {
       const adminUser = await db.query.users.findFirst({
-        where: eq(users.tenant_id, tenantId),
+        where: eq(users.tenantId, tenantId),
       });
       email = adminUser?.email || `tenant-${tenantId}@printyx.com`;
     }
@@ -425,7 +425,7 @@ export class StripeService {
    */
   private static async handleSubscriptionCreated(subscription: Stripe.Subscription): Promise<void> {
     const customerId = subscription.customer as string;
-    const tenantId = subscription.metadata.tenant_id;
+    const tenantId = subscription.metadata.tenantId;
 
     if (!tenantId) {
       console.error('❌ No tenantId in subscription metadata');
@@ -440,7 +440,7 @@ export class StripeService {
    * Webhook handler: Subscription updated
    */
   private static async handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
-    const tenantId = subscription.metadata.tenant_id;
+    const tenantId = subscription.metadata.tenantId;
 
     if (!tenantId) {
       console.error('❌ No tenantId in subscription metadata');
@@ -454,7 +454,7 @@ export class StripeService {
         status: this.mapStripeStatus(subscription.status),
         updatedAt: new Date(),
       })
-      .where(eq(tenantSubscriptions.tenant_id, tenantId));
+      .where(eq(tenantSubscriptions.tenantId, tenantId));
 
     console.log(`✅ Subscription updated for tenant ${tenantId}: status=${subscription.status}`);
   }
@@ -463,7 +463,7 @@ export class StripeService {
    * Webhook handler: Subscription deleted
    */
   private static async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
-    const tenantId = subscription.metadata.tenant_id;
+    const tenantId = subscription.metadata.tenantId;
 
     if (!tenantId) {
       console.error('❌ No tenantId in subscription metadata');
@@ -477,7 +477,7 @@ export class StripeService {
         endedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(eq(tenantSubscriptions.tenant_id, tenantId));
+      .where(eq(tenantSubscriptions.tenantId, tenantId));
 
     console.log(`✅ Subscription deleted for tenant ${tenantId}`);
   }
@@ -938,7 +938,7 @@ export class StripeService {
   private static async handleCheckoutSessionCompleted(
     session: Stripe.Checkout.Session,
   ): Promise<{ success: boolean; message: string; data?: any }> {
-    const tenantId = session.metadata?.tenant_id;
+    const tenantId = session.metadata?.tenantId;
 
     if (!tenantId) {
       console.error('❌ No tenantId in checkout session metadata');
@@ -960,7 +960,7 @@ export class StripeService {
           status: 'active',
           updatedAt: new Date(),
         })
-        .where(eq(tenantSubscriptions.tenant_id, tenantId));
+        .where(eq(tenantSubscriptions.tenantId, tenantId));
 
       return {
         success: true,
@@ -992,7 +992,7 @@ export class StripeService {
   private static async handleCheckoutSessionExpired(
     session: Stripe.Checkout.Session,
   ): Promise<{ success: boolean; message: string }> {
-    const tenantId = session.metadata?.tenant_id;
+    const tenantId = session.metadata?.tenantId;
     console.log(`⚠️  Checkout session expired for tenant ${tenantId || 'unknown'}`);
 
     return { success: true, message: 'Checkout session expired' };
@@ -1004,7 +1004,7 @@ export class StripeService {
   private static async handleTrialWillEnd(
     subscription: Stripe.Subscription,
   ): Promise<{ success: boolean; message: string }> {
-    const tenantId = subscription.metadata.tenant_id;
+    const tenantId = subscription.metadata.tenantId;
 
     if (!tenantId) {
       console.error('❌ No tenantId in subscription metadata');
@@ -1038,7 +1038,7 @@ export class StripeService {
   private static async handlePaymentIntentSucceeded(
     paymentIntent: Stripe.PaymentIntent,
   ): Promise<{ success: boolean; message: string; data?: any }> {
-    const tenantId = paymentIntent.metadata?.tenant_id;
+    const tenantId = paymentIntent.metadata?.tenantId;
     const purchaseType = paymentIntent.metadata?.type;
 
     console.log(`✅ Payment succeeded for tenant ${tenantId || 'unknown'}: ${paymentIntent.id}`);
@@ -1061,7 +1061,7 @@ export class StripeService {
   private static async handlePaymentIntentFailed(
     paymentIntent: Stripe.PaymentIntent,
   ): Promise<{ success: boolean; message: string }> {
-    const tenantId = paymentIntent.metadata?.tenant_id;
+    const tenantId = paymentIntent.metadata?.tenantId;
 
     console.log(`❌ Payment failed for tenant ${tenantId || 'unknown'}: ${paymentIntent.id}`);
 

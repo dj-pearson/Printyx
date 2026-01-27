@@ -22,15 +22,15 @@ async function seedFieldServiceData() {
 
     // Clean up existing field service data for this tenant
     console.log('Cleaning up existing field service data...');
-    await db.delete(servicePhotos).where(eq(servicePhotos.tenant_id, tenantId));
-    await db.delete(installationChecklists).where(eq(installationChecklists.tenant_id, tenantId));
-    await db.delete(serviceSignatures).where(eq(serviceSignatures.tenant_id, tenantId));
-    await db.delete(installations).where(eq(installations.tenant_id, tenantId));
+    await db.delete(servicePhotos).where(eq(servicePhotos.tenantId, tenantId));
+    await db.delete(installationChecklists).where(eq(installationChecklists.tenantId, tenantId));
+    await db.delete(serviceSignatures).where(eq(serviceSignatures.tenantId, tenantId));
+    await db.delete(installations).where(eq(installations.tenantId, tenantId));
     console.log('✓ Cleanup complete');
 
     // Get some customers for testing
     const customers = await db.query.businessRecords.findMany({
-      where: (records, { eq }) => eq(records.tenant_id, tenantId),
+      where: (records, { eq }) => eq(records.tenantId, tenantId),
       limit: 3,
     });
 
@@ -44,19 +44,19 @@ async function seedFieldServiceData() {
 
     // Get some technicians for testing
     const technicians = await db.query.technicians.findMany({
-      where: (tech, { eq }) => eq(tech.tenant_id, tenantId),
+      where: (tech, { eq }) => eq(tech.tenantId, tenantId),
       limit: 3,
     });
 
     // Get some service tickets for testing
     const serviceTickets = await db.query.serviceTickets.findMany({
-      where: (tickets, { eq }) => eq(tickets.tenant_id, tenantId),
+      where: (tickets, { eq }) => eq(tickets.tenantId, tenantId),
       limit: 3,
     });
 
     // Get a user for created_by/captured_by
     const users = await db.query.users.findMany({
-      where: (u, { eq }) => eq(u.tenant_id, tenantId),
+      where: (u, { eq }) => eq(u.tenantId, tenantId),
       limit: 1,
     });
 

@@ -255,7 +255,7 @@ class AIEmployeeService {
         SELECT t.*, e.employee_type, e.ai_capabilities, e.ai_personality, e.autonomy_level, e.decision_threshold
         FROM ai_employee_tasks t
         JOIN ai_employees e ON t.employee_id = e.id
-        WHERE t.id = ${taskId} AND t.tenant_id = ${tenantId}
+        WHERE t.id = ${taskId} AND t.tenantId = ${tenantId}
       `);
 
       if (!taskResult.rows[0]) {
@@ -577,7 +577,7 @@ class AIEmployeeService {
         SELECT we.*, aw.workflow_steps, aw.employee_assignments
         FROM ai_workflow_executions we
         JOIN ai_employee_workflows aw ON we.workflow_id = aw.id
-        WHERE we.id = ${executionId} AND we.tenant_id = ${tenantId}
+        WHERE we.id = ${executionId} AND we.tenantId = ${tenantId}
       `);
 
       if (!workflowResult.rows[0]) {

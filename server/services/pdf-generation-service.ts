@@ -635,13 +635,13 @@ class PDFGenerationService {
         notes: invoices.notes,
         billingPeriodStart: invoices.billingPeriodStart,
         billingPeriodEnd: invoices.billingPeriodEnd,
-        tenantId: invoices.tenant_id,
-        createdAt: invoices.created_at,
-        updatedAt: invoices.updated_at,
+        tenantId: invoices.tenantId,
+        createdAt: invoices.createdAt,
+        updatedAt: invoices.updatedAt,
       })
       .from(invoices)
       .leftJoin(businessRecords, eq(invoices.customerId, businessRecords.id))
-      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenant_id, tenantId)))
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId)))
       .limit(1);
 
     if (!invoice) {

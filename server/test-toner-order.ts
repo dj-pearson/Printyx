@@ -64,7 +64,7 @@ async function setupTestData() {
     .from(deviceRegistrations)
     .where(
       and(
-        eq(deviceRegistrations.tenant_id, TEST_TENANT_ID),
+        eq(deviceRegistrations.tenantId, TEST_TENANT_ID),
         eq(deviceRegistrations.serialNumber, 'TEST-HP-P4015-001'),
       ),
     )
@@ -132,7 +132,7 @@ async function setupTestData() {
     .from(serviceContracts)
     .where(
       and(
-        eq(serviceContracts.tenant_id, TEST_TENANT_ID),
+        eq(serviceContracts.tenantId, TEST_TENANT_ID),
         eq(serviceContracts.contractNumber, 'TEST-SVC-2025-001'),
       ),
     )

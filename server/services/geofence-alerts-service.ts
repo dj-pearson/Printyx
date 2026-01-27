@@ -168,7 +168,7 @@ export class GeofenceAlertsService {
       .from(geofenceAlertRules)
       .where(
         and(
-          eq(geofenceAlertRules.tenant_id, tenantId),
+          eq(geofenceAlertRules.tenantId, tenantId),
           eq(geofenceAlertRules.geofenceId, geofenceId),
           eq(geofenceAlertRules.isActive, true),
         ),
@@ -411,7 +411,7 @@ export class GeofenceAlertsService {
     const [geofence] = await db
       .select()
       .from(geofences)
-      .where(and(eq(geofences.id, geofenceId), eq(geofences.tenant_id, tenantId)))
+      .where(and(eq(geofences.id, geofenceId), eq(geofences.tenantId, tenantId)))
       .limit(1);
 
     if (!geofence) {
@@ -426,7 +426,7 @@ export class GeofenceAlertsService {
       .where(
         and(
           eq(technicianLocations.technicianId, technicianId),
-          eq(technicianLocations.tenant_id, tenantId),
+          eq(technicianLocations.tenantId, tenantId),
         ),
       )
       .limit(1);
@@ -521,7 +521,7 @@ export class GeofenceAlertsService {
       .from(technicianDwellSessions)
       .where(
         and(
-          eq(technicianDwellSessions.tenant_id, tenantId),
+          eq(technicianDwellSessions.tenantId, tenantId),
           eq(technicianDwellSessions.technicianId, technicianId),
           eq(technicianDwellSessions.geofenceId, geofenceId),
           eq(technicianDwellSessions.isActive, true),
@@ -571,7 +571,7 @@ export class GeofenceAlertsService {
       .from(technicianDwellSessions)
       .where(
         and(
-          eq(technicianDwellSessions.tenant_id, tenantId),
+          eq(technicianDwellSessions.tenantId, tenantId),
           eq(technicianDwellSessions.isActive, true),
         ),
       );
@@ -642,7 +642,7 @@ export class GeofenceAlertsService {
         acknowledgedBy,
         acknowledgmentNotes: notes,
       })
-      .where(and(eq(geofenceAlerts.id, alertId), eq(geofenceAlerts.tenant_id, tenantId)))
+      .where(and(eq(geofenceAlerts.id, alertId), eq(geofenceAlerts.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -667,7 +667,7 @@ export class GeofenceAlertsService {
         resolutionType,
         resolutionNotes: notes,
       })
-      .where(and(eq(geofenceAlerts.id, alertId), eq(geofenceAlerts.tenant_id, tenantId)))
+      .where(and(eq(geofenceAlerts.id, alertId), eq(geofenceAlerts.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -690,7 +690,7 @@ export class GeofenceAlertsService {
         escalatedTo,
         escalationReason: reason,
       })
-      .where(and(eq(geofenceAlerts.id, alertId), eq(geofenceAlerts.tenant_id, tenantId)))
+      .where(and(eq(geofenceAlerts.id, alertId), eq(geofenceAlerts.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -706,7 +706,7 @@ export class GeofenceAlertsService {
     let query = db
       .select()
       .from(geofenceAlerts)
-      .where(and(eq(geofenceAlerts.tenant_id, tenantId), eq(geofenceAlerts.isAcknowledged, false)))
+      .where(and(eq(geofenceAlerts.tenantId, tenantId), eq(geofenceAlerts.isAcknowledged, false)))
       .orderBy(desc(geofenceAlerts.triggeredAt));
 
     if (options?.limit) {
@@ -737,7 +737,7 @@ export class GeofenceAlertsService {
       .from(geofenceAlerts)
       .where(
         and(
-          eq(geofenceAlerts.tenant_id, tenantId),
+          eq(geofenceAlerts.tenantId, tenantId),
           gte(geofenceAlerts.triggeredAt, startDate),
           lte(geofenceAlerts.triggeredAt, endDate),
         ),

@@ -26,7 +26,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       }
 
       const territories = await db.query.salesTerritories.findMany({
-        where: eq(salesTerritories.tenant_id, tenantId),
+        where: eq(salesTerritories.tenantId, tenantId),
         orderBy: [desc(salesTerritories.isActive), asc(salesTerritories.territoryName)],
       });
 
@@ -44,7 +44,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       const tenantId = req.headers['x-tenant-id'] as string;
 
       const territory = await db.query.salesTerritories.findFirst({
-        where: and(eq(salesTerritories.id, id), eq(salesTerritories.tenant_id, tenantId)),
+        where: and(eq(salesTerritories.id, id), eq(salesTerritories.tenantId, tenantId)),
       });
 
       if (!territory) {
@@ -89,7 +89,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       const [updated] = await db
         .update(salesTerritories)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(and(eq(salesTerritories.id, id), eq(salesTerritories.tenant_id, tenantId)))
+        .where(and(eq(salesTerritories.id, id), eq(salesTerritories.tenantId, tenantId)))
         .returning();
 
       if (!updated) {
@@ -111,7 +111,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       const [deleted] = await db
         .delete(salesTerritories)
-        .where(and(eq(salesTerritories.id, id), eq(salesTerritories.tenant_id, tenantId)))
+        .where(and(eq(salesTerritories.id, id), eq(salesTerritories.tenantId, tenantId)))
         .returning();
 
       if (!deleted) {
@@ -136,7 +136,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       }
 
       const rules = await db.query.leadAssignmentRules.findMany({
-        where: eq(leadAssignmentRules.tenant_id, tenantId),
+        where: eq(leadAssignmentRules.tenantId, tenantId),
         orderBy: [desc(leadAssignmentRules.priority), asc(leadAssignmentRules.ruleName)],
       });
 
@@ -154,7 +154,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       const tenantId = req.headers['x-tenant-id'] as string;
 
       const rule = await db.query.leadAssignmentRules.findFirst({
-        where: and(eq(leadAssignmentRules.id, id), eq(leadAssignmentRules.tenant_id, tenantId)),
+        where: and(eq(leadAssignmentRules.id, id), eq(leadAssignmentRules.tenantId, tenantId)),
       });
 
       if (!rule) {
@@ -199,7 +199,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       const [updated] = await db
         .update(leadAssignmentRules)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(and(eq(leadAssignmentRules.id, id), eq(leadAssignmentRules.tenant_id, tenantId)))
+        .where(and(eq(leadAssignmentRules.id, id), eq(leadAssignmentRules.tenantId, tenantId)))
         .returning();
 
       if (!updated) {
@@ -221,7 +221,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       const [deleted] = await db
         .delete(leadAssignmentRules)
-        .where(and(eq(leadAssignmentRules.id, id), eq(leadAssignmentRules.tenant_id, tenantId)))
+        .where(and(eq(leadAssignmentRules.id, id), eq(leadAssignmentRules.tenantId, tenantId)))
         .returning();
 
       if (!deleted) {
@@ -244,7 +244,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       const tenantId = req.headers['x-tenant-id'] as string;
 
       const capacity = await db.query.repCapacity.findFirst({
-        where: and(eq(repCapacity.user_id, userId), eq(repCapacity.tenant_id, tenantId)),
+        where: and(eq(repCapacity.userId, userId), eq(repCapacity.tenantId, tenantId)),
       });
 
       if (!capacity) {
@@ -267,8 +267,8 @@ export function registerLeadAssignmentRoutes(app: Express) {
       }
 
       const capacities = await db.query.repCapacity.findMany({
-        where: eq(repCapacity.tenant_id, tenantId),
-        orderBy: [desc(repCapacity.isAvailable), asc(repCapacity.user_id)],
+        where: eq(repCapacity.tenantId, tenantId),
+        orderBy: [desc(repCapacity.isAvailable), asc(repCapacity.userId)],
       });
 
       res.json(capacities);
@@ -293,10 +293,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       // Check if capacity already exists
       const existing = await db.query.repCapacity.findFirst({
-        where: and(
-          eq(repCapacity.user_id, capacityData.user_id),
-          eq(repCapacity.tenant_id, tenantId),
-        ),
+        where: and(eq(repCapacity.userId, capacityData.userId), eq(repCapacity.tenantId, tenantId)),
       });
 
       if (existing) {
@@ -333,7 +330,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
           unavailableUntil,
           updatedAt: new Date(),
         })
-        .where(and(eq(repCapacity.user_id, userId), eq(repCapacity.tenant_id, tenantId)))
+        .where(and(eq(repCapacity.userId, userId), eq(repCapacity.tenantId, tenantId)))
         .returning();
 
       if (!updated) {
@@ -358,7 +355,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       const history = await db.query.leadAssignmentHistory.findMany({
         where: and(
           eq(leadAssignmentHistory.leadId, leadId),
-          eq(leadAssignmentHistory.tenant_id, tenantId),
+          eq(leadAssignmentHistory.tenantId, tenantId),
         ),
         orderBy: [desc(leadAssignmentHistory.assignedAt)],
       });
@@ -379,7 +376,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       const assignments = await db.query.leadAssignmentHistory.findMany({
         where: and(
           eq(leadAssignmentHistory.assignedTo, userId),
-          eq(leadAssignmentHistory.tenant_id, tenantId),
+          eq(leadAssignmentHistory.tenantId, tenantId),
         ),
         orderBy: [desc(leadAssignmentHistory.assignedAt)],
         limit: 100,
@@ -426,14 +423,14 @@ export function registerLeadAssignmentRoutes(app: Express) {
       const { status } = req.query;
 
       let query = db.query.leadAssignmentQueue.findMany({
-        where: eq(leadAssignmentQueue.tenant_id, tenantId),
+        where: eq(leadAssignmentQueue.tenantId, tenantId),
         orderBy: [desc(leadAssignmentQueue.priority), asc(leadAssignmentQueue.scheduleFor)],
       });
 
       if (status) {
         query = db.query.leadAssignmentQueue.findMany({
           where: and(
-            eq(leadAssignmentQueue.tenant_id, tenantId),
+            eq(leadAssignmentQueue.tenantId, tenantId),
             eq(leadAssignmentQueue.status, status as string),
           ),
           orderBy: [desc(leadAssignmentQueue.priority), asc(leadAssignmentQueue.scheduleFor)],
@@ -482,7 +479,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
           status: 'processing',
           processedAt: new Date(),
         })
-        .where(and(eq(leadAssignmentQueue.id, id), eq(leadAssignmentQueue.tenant_id, tenantId)))
+        .where(and(eq(leadAssignmentQueue.id, id), eq(leadAssignmentQueue.tenantId, tenantId)))
         .returning();
 
       if (!processed) {
@@ -514,7 +511,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       // Get active assignment rules ordered by priority
       const rules = await db.query.leadAssignmentRules.findMany({
         where: and(
-          eq(leadAssignmentRules.tenant_id, tenantId),
+          eq(leadAssignmentRules.tenantId, tenantId),
           eq(leadAssignmentRules.isActive, true),
         ),
         orderBy: [desc(leadAssignmentRules.priority)],

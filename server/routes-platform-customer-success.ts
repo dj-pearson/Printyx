@@ -271,7 +271,7 @@ router.post('/health-scores/calculate', async (req: Request, res: Response) => {
       .insert(platformHealthScores)
       .values({
         businessRecordId,
-        tenantId: businessRecord.tenant_id || undefined,
+        tenantId: businessRecord.tenantId || undefined,
         overallScore,
         healthStatus,
         trend: trend || undefined,
@@ -489,7 +489,7 @@ router.post('/churn-predictions/predict', async (req: Request, res: Response) =>
       .insert(platformChurnPredictions)
       .values({
         businessRecordId,
-        tenantId: businessRecord.tenant_id || undefined,
+        tenantId: businessRecord.tenantId || undefined,
         churnRisk,
         churnProbability: churnProbability.toFixed(4) as any,
         confidenceLevel: '0.75' as any, // Placeholder confidence
@@ -570,7 +570,7 @@ router.get('/interventions', async (req: Request, res: Response) => {
 
     const interventions = await db.query.platformSuccessInterventions.findMany({
       where: whereClause,
-      orderBy: [desc(platformSuccessInterventions.created_at)],
+      orderBy: [desc(platformSuccessInterventions.createdAt)],
       limit: limitNum,
       offset: offset,
     });

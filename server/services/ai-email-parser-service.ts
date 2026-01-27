@@ -69,7 +69,7 @@ export class AIEmailParserService {
   private tenantId: string;
 
   constructor(tenantId: string) {
-    this.tenant_id = tenantId;
+    this.tenantId = tenantId;
   }
 
   /**
@@ -235,7 +235,7 @@ Parse the email above and return ONLY the JSON:`;
     if (customer) {
       // Get customer's equipment (limit to 20 to not overwhelm the prompt)
       equipmentList = await db.query.equipment.findMany({
-        where: and(eq(equipment.tenant_id, this.tenant_id), eq(equipment.customerId, customer.id)),
+        where: and(eq(equipment.tenantId, this.tenantId), eq(equipment.customerId, customer.id)),
         limit: 20,
       });
     }

@@ -1900,8 +1900,8 @@ export class DatabaseStorage implements IStorage {
         version: masterProductModels.version,
         category: masterProductModels.category,
         productType: masterProductModels.productType,
-        createdAt: masterProductModels.created_at,
-        updatedAt: masterProductModels.updated_at,
+        createdAt: masterProductModels.createdAt,
+        updatedAt: masterProductModels.updatedAt,
         itemType: sql<string>`'model'`.as('itemType'),
       })
       .from(masterProductModels);
@@ -1922,8 +1922,8 @@ export class DatabaseStorage implements IStorage {
         version: masterProductAccessories.version,
         category: masterProductAccessories.category,
         productType: sql<string>`'accessory'`.as('productType'),
-        createdAt: masterProductAccessories.created_at,
-        updatedAt: masterProductAccessories.updated_at,
+        createdAt: masterProductAccessories.createdAt,
+        updatedAt: masterProductAccessories.updatedAt,
         itemType: sql<string>`'accessory'`.as('itemType'),
       })
       .from(masterProductAccessories);
@@ -1963,13 +1963,13 @@ export class DatabaseStorage implements IStorage {
 
     // Execute both queries and combine results
     const [models, accessories] = await Promise.all([
-      modelQuery.orderBy(desc(masterProductModels.updated_at)),
-      accessoryQuery.orderBy(desc(masterProductAccessories.updated_at)),
+      modelQuery.orderBy(desc(masterProductModels.updatedAt)),
+      accessoryQuery.orderBy(desc(masterProductAccessories.updatedAt)),
     ]);
 
     // Combine and sort by updated date
     const allProducts = [...models, ...accessories].sort(
-      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
 
     return allProducts;
@@ -2081,7 +2081,7 @@ export class DatabaseStorage implements IStorage {
     const rows = await db
       .select({
         enabledProductId: enabledProducts.enabledProductId,
-        tenantId: enabledProducts.tenant_id,
+        tenantId: enabledProducts.tenantId,
         source: enabledProducts.source,
         enabled: enabledProducts.enabled,
         customSku: enabledProducts.customSku,
@@ -2102,7 +2102,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(enabledProducts)
       .leftJoin(masterProductModels, eq(enabledProducts.masterProductId, masterProductModels.id))
-      .where(and(eq(enabledProducts.tenant_id, tenantId), eq(enabledProducts.enabled, true)))
+      .where(and(eq(enabledProducts.tenantId, tenantId), eq(enabledProducts.enabled, true)))
       .orderBy(desc(enabledProducts.enabledAt));
     return rows as any;
   }
@@ -2118,7 +2118,7 @@ export class DatabaseStorage implements IStorage {
       .from(enabledProducts)
       .where(
         and(
-          eq(enabledProducts.tenant_id, tenantId),
+          eq(enabledProducts.tenantId, tenantId),
           eq(enabledProducts.masterProductId, masterProductId),
         ),
       )
@@ -2203,7 +2203,7 @@ export class DatabaseStorage implements IStorage {
         isActive: users.isActive,
       })
       .from(users)
-      .where(eq(users.tenant_id, tenantId));
+      .where(eq(users.tenantId, tenantId));
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
@@ -2291,7 +2291,7 @@ export class DatabaseStorage implements IStorage {
     roleLevel: number,
     teamId?: string,
   ): Promise<Customer[]> {
-    let query = db.select().from(customers).where(eq(customers.tenant_id, tenantId));
+    let query = db.select().from(customers).where(eq(customers.tenantId, tenantId));
 
     // Apply role-based filtering
     if (roleLevel === 1) {
@@ -2301,8 +2301,8 @@ export class DatabaseStorage implements IStorage {
         .from(userCustomerAssignments)
         .where(
           and(
-            eq(userCustomerAssignments.user_id, userId),
-            eq(userCustomerAssignments.tenant_id, tenantId),
+            eq(userCustomerAssignments.userId, userId),
+            eq(userCustomerAssignments.tenantId, tenantId),
           ),
         );
 
@@ -2319,7 +2319,7 @@ export class DatabaseStorage implements IStorage {
       const teamUserIds = await db
         .select({ userId: users.id })
         .from(users)
-        .where(and(eq(users.teamId, teamId), eq(users.tenant_id, tenantId)));
+        .where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
 
       const teamCustomerIds = await db
         .select({ customerId: userCustomerAssignments.customerId })
@@ -2327,10 +2327,10 @@ export class DatabaseStorage implements IStorage {
         .where(
           and(
             inArray(
-              userCustomerAssignments.user_id,
-              teamUserIds.map((u) => u.user_id),
+              userCustomerAssignments.userId,
+              teamUserIds.map((u) => u.userId),
             ),
-            eq(userCustomerAssignments.tenant_id, tenantId),
+            eq(userCustomerAssignments.tenantId, tenantId),
           ),
         );
 
@@ -2354,7 +2354,7 @@ export class DatabaseStorage implements IStorage {
     roleLevel: number,
     teamId?: string,
   ): Promise<Lead[]> {
-    let query = db.select().from(leads).where(eq(leads.tenant_id, tenantId));
+    let query = db.select().from(leads).where(eq(leads.tenantId, tenantId));
 
     if (roleLevel === 1) {
       // Individual - only assigned leads
@@ -2364,12 +2364,12 @@ export class DatabaseStorage implements IStorage {
       const teamUserIds = await db
         .select({ userId: users.id })
         .from(users)
-        .where(and(eq(users.teamId, teamId), eq(users.tenant_id, tenantId)));
+        .where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
 
       query = query.where(
         inArray(
           leads.ownerId,
-          teamUserIds.map((u) => u.user_id),
+          teamUserIds.map((u) => u.userId),
         ),
       );
     }
@@ -2383,7 +2383,7 @@ export class DatabaseStorage implements IStorage {
     roleLevel: number,
     teamId?: string,
   ): Promise<ServiceTicket[]> {
-    let query = db.select().from(serviceTickets).where(eq(serviceTickets.tenant_id, tenantId));
+    let query = db.select().from(serviceTickets).where(eq(serviceTickets.tenantId, tenantId));
 
     if (roleLevel === 1) {
       // Individual technician - only assigned tickets
@@ -2395,8 +2395,8 @@ export class DatabaseStorage implements IStorage {
       const teamTechnicianIds = await db
         .select({ technicianId: technicians.id })
         .from(technicians)
-        .innerJoin(users, eq(technicians.user_id, users.id))
-        .where(and(eq(users.teamId, teamId), eq(users.tenant_id, tenantId)));
+        .innerJoin(users, eq(technicians.userId, users.id))
+        .where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
 
       if (teamTechnicianIds.length > 0) {
         query = query.where(
@@ -2417,7 +2417,7 @@ export class DatabaseStorage implements IStorage {
     roleLevel: number,
     teamId?: string,
   ): Promise<Contract[]> {
-    let query = db.select().from(contracts).where(eq(contracts.tenant_id, tenantId));
+    let query = db.select().from(contracts).where(eq(contracts.tenantId, tenantId));
 
     if (roleLevel === 1) {
       // Individual sales rep - only assigned contracts
@@ -2427,12 +2427,12 @@ export class DatabaseStorage implements IStorage {
       const teamUserIds = await db
         .select({ userId: users.id })
         .from(users)
-        .where(and(eq(users.teamId, teamId), eq(users.tenant_id, tenantId)));
+        .where(and(eq(users.teamId, teamId), eq(users.tenantId, tenantId)));
 
       query = query.where(
         inArray(
           contracts.assignedSalespersonId,
-          teamUserIds.map((u) => u.user_id),
+          teamUserIds.map((u) => u.userId),
         ),
       );
     }
@@ -2442,7 +2442,7 @@ export class DatabaseStorage implements IStorage {
 
   // Standard CRUD operations (existing methods with tenant filtering)
   async getCustomers(tenantId: string): Promise<Customer[]> {
-    return await db.select().from(customers).where(eq(customers.tenant_id, tenantId));
+    return await db.select().from(customers).where(eq(customers.tenantId, tenantId));
   }
 
   async getCustomer(customerId: string, tenantId: string): Promise<Customer | undefined> {
@@ -2450,7 +2450,7 @@ export class DatabaseStorage implements IStorage {
       const result = await db
         .select()
         .from(customers)
-        .where(and(eq(customers.id, customerId), eq(customers.tenant_id, tenantId)))
+        .where(and(eq(customers.id, customerId), eq(customers.tenantId, tenantId)))
         .limit(1);
       return result[0];
     } catch (error) {
@@ -2472,7 +2472,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedCustomer] = await db
       .update(customers)
       .set({ ...customer, updatedAt: new Date() })
-      .where(and(eq(customers.id, id), eq(customers.tenant_id, tenantId)))
+      .where(and(eq(customers.id, id), eq(customers.tenantId, tenantId)))
       .returning();
     return updatedCustomer;
   }
@@ -2480,7 +2480,7 @@ export class DatabaseStorage implements IStorage {
   async deleteCustomer(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(customers)
-      .where(and(eq(customers.id, id), eq(customers.tenant_id, tenantId)));
+      .where(and(eq(customers.id, id), eq(customers.tenantId, tenantId)));
     return (result.rowCount ?? 0) > 0;
   }
 
@@ -2490,7 +2490,7 @@ export class DatabaseStorage implements IStorage {
       return await db
         .select()
         .from(equipment)
-        .where(and(eq(equipment.customerId, customerId), eq(equipment.tenant_id, tenantId)));
+        .where(and(eq(equipment.customerId, customerId), eq(equipment.tenantId, tenantId)));
     } catch (error) {
       console.log('No equipment table found, returning empty array');
       return [];
@@ -2502,7 +2502,7 @@ export class DatabaseStorage implements IStorage {
       return await db
         .select()
         .from(meterReadings)
-        .where(and(eq(meterReadings.customerId, customerId), eq(meterReadings.tenant_id, tenantId)))
+        .where(and(eq(meterReadings.customerId, customerId), eq(meterReadings.tenantId, tenantId)))
         .orderBy(desc(meterReadings.readingDate));
     } catch (error) {
       console.log('No meter readings table found, returning empty array');
@@ -2515,7 +2515,7 @@ export class DatabaseStorage implements IStorage {
       return await db
         .select()
         .from(invoices)
-        .where(and(eq(invoices.customerId, customerId), eq(invoices.tenant_id, tenantId)))
+        .where(and(eq(invoices.customerId, customerId), eq(invoices.tenantId, tenantId)))
         .orderBy(desc(invoices.invoiceDate));
     } catch (error) {
       console.log('No invoices table found, returning empty array');
@@ -2529,9 +2529,9 @@ export class DatabaseStorage implements IStorage {
         .select()
         .from(serviceTickets)
         .where(
-          and(eq(serviceTickets.customerId, customerId), eq(serviceTickets.tenant_id, tenantId)),
+          and(eq(serviceTickets.customerId, customerId), eq(serviceTickets.tenantId, tenantId)),
         )
-        .orderBy(desc(serviceTickets.created_at));
+        .orderBy(desc(serviceTickets.createdAt));
     } catch (error) {
       console.log('No service tickets table found, returning empty array');
       return [];
@@ -2543,7 +2543,7 @@ export class DatabaseStorage implements IStorage {
       return await db
         .select()
         .from(contracts)
-        .where(and(eq(contracts.customerId, customerId), eq(contracts.tenant_id, tenantId)));
+        .where(and(eq(contracts.customerId, customerId), eq(contracts.tenantId, tenantId)));
     } catch (error) {
       console.log('No contracts found, returning empty array');
       return [];
@@ -2552,14 +2552,14 @@ export class DatabaseStorage implements IStorage {
 
   // Company operations (new primary business entity)
   async getCompanies(tenantId: string): Promise<Company[]> {
-    return await db.select().from(companies).where(eq(companies.tenant_id, tenantId));
+    return await db.select().from(companies).where(eq(companies.tenantId, tenantId));
   }
 
   async getCompany(id: string, tenantId: string): Promise<Company | undefined> {
     const [company] = await db
       .select()
       .from(companies)
-      .where(and(eq(companies.id, id), eq(companies.tenant_id, tenantId)));
+      .where(and(eq(companies.id, id), eq(companies.tenantId, tenantId)));
     return company;
   }
 
@@ -2573,7 +2573,7 @@ export class DatabaseStorage implements IStorage {
       const [company] = await db
         .select()
         .from(companies)
-        .where(and(eq(companies.businessName, name.trim()), eq(companies.tenant_id, tenantId)));
+        .where(and(eq(companies.businessName, name.trim()), eq(companies.tenantId, tenantId)));
       return company;
     } catch (error) {
       console.error('Error in getCompanyByName:', error);
@@ -2594,7 +2594,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedCompany] = await db
       .update(companies)
       .set({ ...company, updatedAt: new Date() })
-      .where(and(eq(companies.id, id), eq(companies.tenant_id, tenantId)))
+      .where(and(eq(companies.id, id), eq(companies.tenantId, tenantId)))
       .returning();
     return updatedCompany;
   }
@@ -2602,7 +2602,7 @@ export class DatabaseStorage implements IStorage {
   async deleteCompany(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(companies)
-      .where(and(eq(companies.id, id), eq(companies.tenant_id, tenantId)));
+      .where(and(eq(companies.id, id), eq(companies.tenantId, tenantId)));
     return result.rowCount > 0;
   }
 
@@ -2611,24 +2611,22 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(companyContacts)
-      .where(
-        and(eq(companyContacts.companyId, companyId), eq(companyContacts.tenant_id, tenantId)),
-      );
+      .where(and(eq(companyContacts.companyId, companyId), eq(companyContacts.tenantId, tenantId)));
   }
 
   async getAllCompanyContacts(tenantId: string): Promise<CompanyContact[]> {
     return await db
       .select()
       .from(companyContacts)
-      .where(eq(companyContacts.tenant_id, tenantId))
-      .orderBy(desc(companyContacts.created_at));
+      .where(eq(companyContacts.tenantId, tenantId))
+      .orderBy(desc(companyContacts.createdAt));
   }
 
   async getCompanyContact(id: string, tenantId: string): Promise<CompanyContact | undefined> {
     const [contact] = await db
       .select()
       .from(companyContacts)
-      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenant_id, tenantId)));
+      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId)));
     return contact;
   }
 
@@ -2647,7 +2645,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(companyContacts)
       .set({ ...contactData, updatedAt: new Date() })
-      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenant_id, tenantId)))
+      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId)))
       .returning();
     return updated;
   }
@@ -2655,7 +2653,7 @@ export class DatabaseStorage implements IStorage {
   async deleteCompanyContact(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(companyContacts)
-      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenant_id, tenantId)));
+      .where(and(eq(companyContacts.id, id), eq(companyContacts.tenantId, tenantId)));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
@@ -2777,8 +2775,8 @@ export class DatabaseStorage implements IStorage {
 
       return result.rows.map((row: any) => ({
         id: row.id,
-        tenantId: row.tenant_id,
-        companyName: row.company_name,
+        tenantId: row.tenantId,
+        companyName: row.companyName,
         status: row.status,
         recordType: row.record_type,
         phone: row.phone,
@@ -2790,13 +2788,13 @@ export class DatabaseStorage implements IStorage {
         addressLine1: row.address_line1,
         city: row.city,
         state: row.state,
-        postalCode: row.postal_code,
+        postalCode: row.postalCode,
         url_slug: row.url_slug,
         urlSlug: row.url_slug,
         company_display_id: row.company_display_id,
         companyDisplayId: row.company_display_id,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
       }));
     } catch (error) {
       console.error('Error in getBusinessRecords:', error);
@@ -2810,7 +2808,7 @@ export class DatabaseStorage implements IStorage {
     const [record] = await db
       .select()
       .from(businessRecords)
-      .where(and(eq(businessRecords.id, id), eq(businessRecords.tenant_id, tenantId)));
+      .where(and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId)));
     return record;
   }
 
@@ -2819,7 +2817,7 @@ export class DatabaseStorage implements IStorage {
     const [record] = await db
       .select()
       .from(businessRecords)
-      .where(and(eq(businessRecords.urlSlug, urlSlug), eq(businessRecords.tenant_id, tenantId)));
+      .where(and(eq(businessRecords.urlSlug, urlSlug), eq(businessRecords.tenantId, tenantId)));
     return record;
   }
 
@@ -2837,7 +2835,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedRecord] = await db
       .update(businessRecords)
       .set({ ...updates, updatedAt: new Date() })
-      .where(and(eq(businessRecords.id, id), eq(businessRecords.tenant_id, tenantId)))
+      .where(and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId)))
       .returning();
     console.log(
       '[DEBUG] STORAGE - Updated record returned:',
@@ -2857,7 +2855,7 @@ export class DatabaseStorage implements IStorage {
 
   // Quote operations
   async getQuotes(tenantId: string): Promise<Quote[]> {
-    return await db.select().from(quotes).where(eq(quotes.tenant_id, tenantId));
+    return await db.select().from(quotes).where(eq(quotes.tenantId, tenantId));
   }
 
   async createQuote(quote: Omit<Quote, 'id' | 'createdAt' | 'updatedAt'>): Promise<Quote> {
@@ -2867,7 +2865,7 @@ export class DatabaseStorage implements IStorage {
 
   // Equipment operations
   async getEquipment(tenantId: string): Promise<Equipment[]> {
-    return await db.select().from(equipment).where(eq(equipment.tenant_id, tenantId));
+    return await db.select().from(equipment).where(eq(equipment.tenantId, tenantId));
   }
 
   async createEquipment(
@@ -2879,7 +2877,7 @@ export class DatabaseStorage implements IStorage {
 
   // Contract operations
   async getContracts(tenantId: string): Promise<Contract[]> {
-    return await db.select().from(contracts).where(eq(contracts.tenant_id, tenantId));
+    return await db.select().from(contracts).where(eq(contracts.tenantId, tenantId));
   }
 
   async createContract(
@@ -2891,7 +2889,7 @@ export class DatabaseStorage implements IStorage {
 
   // Service ticket operations
   async getServiceTickets(tenantId: string): Promise<ServiceTicket[]> {
-    return await db.select().from(serviceTickets).where(eq(serviceTickets.tenant_id, tenantId));
+    return await db.select().from(serviceTickets).where(eq(serviceTickets.tenantId, tenantId));
   }
 
   async createServiceTicket(
@@ -2909,14 +2907,14 @@ export class DatabaseStorage implements IStorage {
     const [updatedTicket] = await db
       .update(serviceTickets)
       .set({ ...ticket, updatedAt: new Date() })
-      .where(and(eq(serviceTickets.id, id), eq(serviceTickets.tenant_id, tenantId)))
+      .where(and(eq(serviceTickets.id, id), eq(serviceTickets.tenantId, tenantId)))
       .returning();
     return updatedTicket;
   }
 
   // Inventory operations
   async getInventoryItems(tenantId: string): Promise<InventoryItem[]> {
-    return await db.select().from(inventoryItems).where(eq(inventoryItems.tenant_id, tenantId));
+    return await db.select().from(inventoryItems).where(eq(inventoryItems.tenantId, tenantId));
   }
 
   async createInventoryItem(
@@ -2934,14 +2932,14 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(inventoryItems)
       .set({ ...updates, updatedAt: new Date() })
-      .where(and(eq(inventoryItems.id, id), eq(inventoryItems.tenant_id, tenantId)))
+      .where(and(eq(inventoryItems.id, id), eq(inventoryItems.tenantId, tenantId)))
       .returning();
     return updated;
   }
 
   // Technician operations
   async getTechnicians(tenantId: string): Promise<Technician[]> {
-    return await db.select().from(technicians).where(eq(technicians.tenant_id, tenantId));
+    return await db.select().from(technicians).where(eq(technicians.tenantId, tenantId));
   }
 
   async createTechnician(
@@ -2953,7 +2951,7 @@ export class DatabaseStorage implements IStorage {
 
   // Meter reading operations
   async getMeterReadings(tenantId: string): Promise<MeterReading[]> {
-    return await db.select().from(meterReadings).where(eq(meterReadings.tenant_id, tenantId));
+    return await db.select().from(meterReadings).where(eq(meterReadings.tenantId, tenantId));
   }
 
   async createMeterReading(
@@ -2967,7 +2965,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(meterReadings)
-      .where(and(eq(meterReadings.tenant_id, tenantId), eq(meterReadings.billingStatus, status)));
+      .where(and(eq(meterReadings.tenantId, tenantId), eq(meterReadings.billingStatus, status)));
   }
 
   async updateMeterReading(
@@ -2978,7 +2976,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedReading] = await db
       .update(meterReadings)
       .set({ ...reading, updatedAt: new Date() })
-      .where(and(eq(meterReadings.id, id), eq(meterReadings.tenant_id, tenantId)))
+      .where(and(eq(meterReadings.id, id), eq(meterReadings.tenantId, tenantId)))
       .returning();
     return updatedReading;
   }
@@ -2987,13 +2985,13 @@ export class DatabaseStorage implements IStorage {
     const [contract] = await db
       .select()
       .from(contracts)
-      .where(and(eq(contracts.id, id), eq(contracts.tenant_id, tenantId)));
+      .where(and(eq(contracts.id, id), eq(contracts.tenantId, tenantId)));
     return contract;
   }
 
   // Invoice operations
   async getInvoices(tenantId: string): Promise<Invoice[]> {
-    return await db.select().from(invoices).where(eq(invoices.tenant_id, tenantId));
+    return await db.select().from(invoices).where(eq(invoices.tenantId, tenantId));
   }
 
   async createInvoice(invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>): Promise<Invoice> {
@@ -3011,8 +3009,8 @@ export class DatabaseStorage implements IStorage {
       .from(userCustomerAssignments)
       .where(
         and(
-          eq(userCustomerAssignments.user_id, userId),
-          eq(userCustomerAssignments.tenant_id, tenantId),
+          eq(userCustomerAssignments.userId, userId),
+          eq(userCustomerAssignments.tenantId, tenantId),
         ),
       );
   }
@@ -3029,7 +3027,7 @@ export class DatabaseStorage implements IStorage {
     const [lead] = await db
       .select()
       .from(leads)
-      .where(and(eq(leads.id, id), eq(leads.tenant_id, tenantId)));
+      .where(and(eq(leads.id, id), eq(leads.tenantId, tenantId)));
     return lead;
   }
 
@@ -3057,7 +3055,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(businessRecords.id, leadId),
-          eq(businessRecords.tenant_id, tenantId),
+          eq(businessRecords.tenantId, tenantId),
           eq(businessRecords.recordType, 'lead'),
         ),
       )
@@ -3099,7 +3097,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(businessRecords.id, customerId),
-          eq(businessRecords.tenant_id, tenantId),
+          eq(businessRecords.tenantId, tenantId),
           eq(businessRecords.recordType, 'customer'),
         ),
       )
@@ -3136,7 +3134,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(businessRecords.id, customerId),
-          eq(businessRecords.tenant_id, tenantId),
+          eq(businessRecords.tenantId, tenantId),
           eq(businessRecords.recordType, 'customer'),
         ),
       )
@@ -3158,7 +3156,7 @@ export class DatabaseStorage implements IStorage {
         deactivatedBy: null,
         updatedAt: new Date(),
       })
-      .where(and(eq(businessRecords.id, customerId), eq(businessRecords.tenant_id, tenantId)))
+      .where(and(eq(businessRecords.id, customerId), eq(businessRecords.tenantId, tenantId)))
       .returning();
   }
 
@@ -3173,7 +3171,7 @@ export class DatabaseStorage implements IStorage {
       .from(businessRecords)
       .where(
         and(
-          eq(businessRecords.tenant_id, tenantId),
+          eq(businessRecords.tenantId, tenantId),
           eq(businessRecords.recordType, 'customer'),
           isNotNull(businessRecords.customerNumber),
         ),
@@ -3198,10 +3196,10 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(businessRecordActivities.businessRecordId, businessRecordId),
-          eq(businessRecordActivities.tenant_id, tenantId),
+          eq(businessRecordActivities.tenantId, tenantId),
         ),
       )
-      .orderBy(sql`${businessRecordActivities.created_at} DESC`);
+      .orderBy(sql`${businessRecordActivities.createdAt} DESC`);
   }
 
   async createBusinessRecordActivity(activity: any): Promise<any> {
@@ -3230,8 +3228,8 @@ export class DatabaseStorage implements IStorage {
       const activities = await db
         .select()
         .from(businessRecordActivities)
-        .where(eq(businessRecordActivities.tenant_id, tenantId))
-        .orderBy(desc(businessRecordActivities.created_at));
+        .where(eq(businessRecordActivities.tenantId, tenantId))
+        .orderBy(desc(businessRecordActivities.createdAt));
 
       // Then get business records for context
       const businessRecordIds = [...new Set(activities.map((a) => a.businessRecordId))];
@@ -3300,7 +3298,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(leadContacts)
-      .where(and(eq(leadContacts.leadId, leadId), eq(leadContacts.tenant_id, tenantId)));
+      .where(and(eq(leadContacts.leadId, leadId), eq(leadContacts.tenantId, tenantId)));
   }
 
   async createLeadContact(
@@ -3315,9 +3313,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(leadRelatedRecords)
-      .where(
-        and(eq(leadRelatedRecords.leadId, leadId), eq(leadRelatedRecords.tenant_id, tenantId)),
-      );
+      .where(and(eq(leadRelatedRecords.leadId, leadId), eq(leadRelatedRecords.tenantId, tenantId)));
   }
 
   async createLeadRelatedRecord(
@@ -3341,12 +3337,12 @@ export class DatabaseStorage implements IStorage {
         newRepPrice: productModels.newRepPrice,
         upgradeRepPrice: productModels.upgradeRepPrice,
         isActive: productModels.isActive,
-        tenantId: productModels.tenant_id,
-        createdAt: productModels.created_at,
-        updatedAt: productModels.updated_at,
+        tenantId: productModels.tenantId,
+        createdAt: productModels.createdAt,
+        updatedAt: productModels.updatedAt,
       })
       .from(productModels)
-      .where(eq(productModels.tenant_id, tenantId))
+      .where(eq(productModels.tenantId, tenantId))
       .orderBy(productModels.productName);
   }
 
@@ -3354,7 +3350,7 @@ export class DatabaseStorage implements IStorage {
     const [model] = await db
       .select()
       .from(productModels)
-      .where(and(eq(productModels.id, id), eq(productModels.tenant_id, tenantId)));
+      .where(and(eq(productModels.id, id), eq(productModels.tenantId, tenantId)));
     return model;
   }
 
@@ -3365,9 +3361,7 @@ export class DatabaseStorage implements IStorage {
     const [model] = await db
       .select()
       .from(productModels)
-      .where(
-        and(eq(productModels.productCode, productCode), eq(productModels.tenant_id, tenantId)),
-      );
+      .where(and(eq(productModels.productCode, productCode), eq(productModels.tenantId, tenantId)));
     return model;
   }
 
@@ -3383,7 +3377,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(productModels.productCode, productCode),
           eq(productModels.productName, productName),
-          eq(productModels.tenant_id, tenantId),
+          eq(productModels.tenantId, tenantId),
         ),
       );
     return model;
@@ -3416,7 +3410,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           inArray(productAccessories.accessoryCode, requiredCodes),
-          eq(productAccessories.tenant_id, tenantId),
+          eq(productAccessories.tenantId, tenantId),
         ),
       );
 
@@ -3437,7 +3431,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           inArray(productAccessories.accessoryCode, accessoryCodes),
-          eq(productAccessories.tenant_id, tenantId),
+          eq(productAccessories.tenantId, tenantId),
         ),
       );
 
@@ -3457,7 +3451,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .update(productModels)
       .set({ ...model, updatedAt: new Date() })
-      .where(and(eq(productModels.id, id), eq(productModels.tenant_id, tenantId)))
+      .where(and(eq(productModels.id, id), eq(productModels.tenantId, tenantId)))
       .returning();
     return result;
   }
@@ -3465,7 +3459,7 @@ export class DatabaseStorage implements IStorage {
   async deleteProductModel(id: string, tenantId: string): Promise<boolean> {
     const [result] = await db
       .delete(productModels)
-      .where(and(eq(productModels.id, id), eq(productModels.tenant_id, tenantId)))
+      .where(and(eq(productModels.id, id), eq(productModels.tenantId, tenantId)))
       .returning();
     return !!result;
   }
@@ -3502,7 +3496,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(productAccessories)
-      .where(eq(productAccessories.tenant_id, tenantId))
+      .where(eq(productAccessories.tenantId, tenantId))
       .orderBy(productAccessories.accessoryName);
   }
 
@@ -3516,7 +3510,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(productAccessories.accessoryCode, accessoryCode),
-          eq(productAccessories.tenant_id, tenantId),
+          eq(productAccessories.tenantId, tenantId),
         ),
       );
     return accessory;
@@ -3533,7 +3527,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(accessoryModelCompatibility.modelId, modelId),
-          eq(accessoryModelCompatibility.tenant_id, tenantId),
+          eq(accessoryModelCompatibility.tenantId, tenantId),
         ),
       );
 
@@ -3550,7 +3544,7 @@ export class DatabaseStorage implements IStorage {
             productAccessories.id,
             accessoryIds.map((a) => a.accessoryId),
           ),
-          eq(productAccessories.tenant_id, tenantId),
+          eq(productAccessories.tenantId, tenantId),
         ),
       )
       .orderBy(productAccessories.accessoryName);
@@ -3564,7 +3558,7 @@ export class DatabaseStorage implements IStorage {
   async deleteProductAccessory(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(productAccessories)
-      .where(and(eq(productAccessories.id, id), eq(productAccessories.tenant_id, tenantId)));
+      .where(and(eq(productAccessories.id, id), eq(productAccessories.tenantId, tenantId)));
     return result.rowCount > 0;
   }
 
@@ -3576,7 +3570,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .update(productAccessories)
       .set({ ...accessory, updatedAt: new Date() })
-      .where(and(eq(productAccessories.id, id), eq(productAccessories.tenant_id, tenantId)))
+      .where(and(eq(productAccessories.id, id), eq(productAccessories.tenantId, tenantId)))
       .returning();
     return result;
   }
@@ -3592,7 +3586,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(accessoryModelCompatibility.accessoryId, accessoryId),
-          eq(accessoryModelCompatibility.tenant_id, tenantId),
+          eq(accessoryModelCompatibility.tenantId, tenantId),
         ),
       );
   }
@@ -3607,7 +3601,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(accessoryModelCompatibility.modelId, modelId),
-          eq(accessoryModelCompatibility.tenant_id, tenantId),
+          eq(accessoryModelCompatibility.tenantId, tenantId),
         ),
       );
   }
@@ -3630,7 +3624,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(accessoryModelCompatibility.accessoryId, accessoryId),
           eq(accessoryModelCompatibility.modelId, modelId),
-          eq(accessoryModelCompatibility.tenant_id, tenantId),
+          eq(accessoryModelCompatibility.tenantId, tenantId),
         ),
       );
   }
@@ -3639,7 +3633,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(cpcRates)
-      .where(and(eq(cpcRates.modelId, modelId), eq(cpcRates.tenant_id, tenantId)))
+      .where(and(eq(cpcRates.modelId, modelId), eq(cpcRates.tenantId, tenantId)))
       .orderBy(cpcRates.colorType);
   }
 
@@ -3653,7 +3647,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(contractTieredRates)
-      .where(eq(contractTieredRates.tenant_id, tenantId))
+      .where(eq(contractTieredRates.tenantId, tenantId))
       .orderBy(contractTieredRates.sortOrder);
   }
 
@@ -3673,20 +3667,20 @@ export class DatabaseStorage implements IStorage {
   // ============= TASK MANAGEMENT OPERATIONS =============
 
   async getTasks(tenantId: string, userId?: string): Promise<Task[]> {
-    let query = db.select().from(tasks).where(eq(tasks.tenant_id, tenantId));
+    let query = db.select().from(tasks).where(eq(tasks.tenantId, tenantId));
 
     if (userId) {
       query = query.where(eq(tasks.assignedTo, userId));
     }
 
-    return await query.orderBy(desc(tasks.created_at)).limit(50);
+    return await query.orderBy(desc(tasks.createdAt)).limit(50);
   }
 
   async getTask(id: string, tenantId: string): Promise<Task | undefined> {
     const [task] = await db
       .select()
       .from(tasks)
-      .where(and(eq(tasks.id, id), eq(tasks.tenant_id, tenantId)));
+      .where(and(eq(tasks.id, id), eq(tasks.tenantId, tenantId)));
     return task;
   }
 
@@ -3699,7 +3693,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .update(tasks)
       .set({ ...task, updatedAt: new Date() })
-      .where(and(eq(tasks.id, id), eq(tasks.tenant_id, tenantId)))
+      .where(and(eq(tasks.id, id), eq(tasks.tenantId, tenantId)))
       .returning();
     return result;
   }
@@ -3712,7 +3706,7 @@ export class DatabaseStorage implements IStorage {
         avgHours: sql<number>`AVG(${tasks.actualHours})`,
       })
       .from(tasks)
-      .where(eq(tasks.tenant_id, tenantId));
+      .where(eq(tasks.tenantId, tenantId));
 
     if (userId) {
       baseQuery = baseQuery.where(eq(tasks.assignedTo, userId));
@@ -3745,7 +3739,7 @@ export class DatabaseStorage implements IStorage {
       .from(tasks)
       .where(
         and(
-          eq(tasks.tenant_id, tenantId),
+          eq(tasks.tenantId, tenantId),
           lt(tasks.dueDate, new Date()),
           ne(tasks.status, 'completed'),
         ),
@@ -3760,8 +3754,8 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(projects)
-      .where(eq(projects.tenant_id, tenantId))
-      .orderBy(desc(projects.created_at));
+      .where(eq(projects.tenantId, tenantId))
+      .orderBy(desc(projects.createdAt));
   }
 
   async createProject(project: InsertProject): Promise<Project> {
@@ -3780,7 +3774,7 @@ export class DatabaseStorage implements IStorage {
         unit: performanceMetrics.unit,
       })
       .from(performanceMetrics)
-      .where(tenantId ? eq(performanceMetrics.tenant_id, tenantId) : sql`TRUE`)
+      .where(tenantId ? eq(performanceMetrics.tenantId, tenantId) : sql`TRUE`)
       .where(gte(performanceMetrics.timestamp, new Date(Date.now() - 60 * 60 * 1000))) // Last hour
       .groupBy(performanceMetrics.metricType, performanceMetrics.unit);
 
@@ -3819,7 +3813,7 @@ export class DatabaseStorage implements IStorage {
       .from(systemAlerts)
       .where(
         and(
-          tenantId ? eq(systemAlerts.tenant_id, tenantId) : sql`TRUE`,
+          tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`,
           eq(systemAlerts.isRead, false),
           ne(systemAlerts.severity, 'info'),
         ),
@@ -3835,21 +3829,21 @@ export class DatabaseStorage implements IStorage {
       return await db
         .select({
           id: systemAlerts.id,
-          tenantId: systemAlerts.tenant_id,
+          tenantId: systemAlerts.tenantId,
           title: systemAlerts.title,
           message: systemAlerts.message,
           severity: systemAlerts.severity,
           category: systemAlerts.category,
           isRead: systemAlerts.isRead,
-          createdAt: systemAlerts.created_at,
-          updatedAt: systemAlerts.updated_at,
+          createdAt: systemAlerts.createdAt,
+          updatedAt: systemAlerts.updatedAt,
           expiresAt: systemAlerts.expiresAt,
           metadata: systemAlerts.metadata,
         })
         .from(systemAlerts)
-        .where(tenantId ? eq(systemAlerts.tenant_id, tenantId) : sql`TRUE`)
-        .where(gte(systemAlerts.created_at, new Date(Date.now() - 24 * 60 * 60 * 1000))) // Last 24 hours
-        .orderBy(desc(systemAlerts.created_at))
+        .where(tenantId ? eq(systemAlerts.tenantId, tenantId) : sql`TRUE`)
+        .where(gte(systemAlerts.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000))) // Last 24 hours
+        .orderBy(desc(systemAlerts.createdAt))
         .limit(10);
     } catch (error) {
       console.error('Error fetching system alerts:', error);
@@ -3873,7 +3867,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(systemIntegrations)
-      .where(tenantId ? eq(systemIntegrations.tenant_id, tenantId) : sql`TRUE`)
+      .where(tenantId ? eq(systemIntegrations.tenantId, tenantId) : sql`TRUE`)
       .orderBy(systemIntegrations.name);
   }
 
@@ -3893,7 +3887,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(systemIntegrations.id, id),
-          tenantId ? eq(systemIntegrations.tenant_id, tenantId) : sql`TRUE`,
+          tenantId ? eq(systemIntegrations.tenantId, tenantId) : sql`TRUE`,
         ),
       )
       .returning();
@@ -3905,7 +3899,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(professionalServices)
-      .where(eq(professionalServices.tenant_id, tenantId))
+      .where(eq(professionalServices.tenantId, tenantId))
       .orderBy(professionalServices.productName);
   }
 
@@ -3919,7 +3913,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(professionalServices.productCode, productCode),
-          eq(professionalServices.tenant_id, tenantId),
+          eq(professionalServices.tenantId, tenantId),
         ),
       );
     return service;
@@ -3940,7 +3934,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .update(professionalServices)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(professionalServices.id, id), eq(professionalServices.tenant_id, tenantId)))
+      .where(and(eq(professionalServices.id, id), eq(professionalServices.tenantId, tenantId)))
       .returning();
     return result;
   }
@@ -3948,7 +3942,7 @@ export class DatabaseStorage implements IStorage {
   async deleteProfessionalService(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(professionalServices)
-      .where(and(eq(professionalServices.id, id), eq(professionalServices.tenant_id, tenantId)));
+      .where(and(eq(professionalServices.id, id), eq(professionalServices.tenantId, tenantId)));
     return result.rowCount > 0;
   }
 
@@ -3957,7 +3951,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(serviceProducts)
-      .where(eq(serviceProducts.tenant_id, tenantId))
+      .where(eq(serviceProducts.tenantId, tenantId))
       .orderBy(serviceProducts.productName);
   }
 
@@ -3971,7 +3965,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(softwareProducts)
-      .where(eq(softwareProducts.tenant_id, tenantId))
+      .where(eq(softwareProducts.tenantId, tenantId))
       .orderBy(softwareProducts.productName);
   }
 
@@ -3983,10 +3977,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(softwareProducts)
       .where(
-        and(
-          eq(softwareProducts.productCode, productCode),
-          eq(softwareProducts.tenant_id, tenantId),
-        ),
+        and(eq(softwareProducts.productCode, productCode), eq(softwareProducts.tenantId, tenantId)),
       );
     return product;
   }
@@ -4004,7 +3995,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .update(softwareProducts)
       .set({ ...product, updatedAt: new Date() })
-      .where(and(eq(softwareProducts.id, id), eq(softwareProducts.tenant_id, tenantId)))
+      .where(and(eq(softwareProducts.id, id), eq(softwareProducts.tenantId, tenantId)))
       .returning();
     return result;
   }
@@ -4012,14 +4003,14 @@ export class DatabaseStorage implements IStorage {
   async deleteSoftwareProduct(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(softwareProducts)
-      .where(and(eq(softwareProducts.id, id), eq(softwareProducts.tenant_id, tenantId)));
+      .where(and(eq(softwareProducts.id, id), eq(softwareProducts.tenantId, tenantId)));
     return result.rowCount > 0;
   }
 
   async bulkDeleteSoftwareProducts(ids: string[], tenantId: string): Promise<number> {
     const result = await db
       .delete(softwareProducts)
-      .where(and(inArray(softwareProducts.id, ids), eq(softwareProducts.tenant_id, tenantId)));
+      .where(and(inArray(softwareProducts.id, ids), eq(softwareProducts.tenantId, tenantId)));
     return result.rowCount || 0;
   }
 
@@ -4059,7 +4050,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(managedServices)
-      .where(eq(managedServices.tenant_id, tenantId))
+      .where(eq(managedServices.tenantId, tenantId))
       .orderBy(managedServices.productName);
   }
 
@@ -4071,7 +4062,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(managedServices)
       .where(
-        and(eq(managedServices.productCode, productCode), eq(managedServices.tenant_id, tenantId)),
+        and(eq(managedServices.productCode, productCode), eq(managedServices.tenantId, tenantId)),
       );
     return service;
   }
@@ -4081,7 +4072,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(supplies)
-      .where(eq(supplies.tenant_id, tenantId))
+      .where(eq(supplies.tenantId, tenantId))
       .orderBy(supplies.productName);
   }
 
@@ -4089,7 +4080,7 @@ export class DatabaseStorage implements IStorage {
     const [supply] = await db
       .select()
       .from(supplies)
-      .where(and(eq(supplies.productCode, productCode), eq(supplies.tenant_id, tenantId)));
+      .where(and(eq(supplies.productCode, productCode), eq(supplies.tenantId, tenantId)));
     return supply;
   }
 
@@ -4106,7 +4097,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .update(supplies)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(supplies.id, id), eq(supplies.tenant_id, tenantId)))
+      .where(and(eq(supplies.id, id), eq(supplies.tenantId, tenantId)))
       .returning();
     return result;
   }
@@ -4114,7 +4105,7 @@ export class DatabaseStorage implements IStorage {
   async deleteSupply(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(supplies)
-      .where(and(eq(supplies.id, id), eq(supplies.tenant_id, tenantId)));
+      .where(and(eq(supplies.id, id), eq(supplies.tenantId, tenantId)));
     return result.rowCount > 0;
   }
 
@@ -4131,7 +4122,7 @@ export class DatabaseStorage implements IStorage {
     const [result] = await db
       .update(managedServices)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(managedServices.id, id), eq(managedServices.tenant_id, tenantId)))
+      .where(and(eq(managedServices.id, id), eq(managedServices.tenantId, tenantId)))
       .returning();
     return result;
   }
@@ -4139,7 +4130,7 @@ export class DatabaseStorage implements IStorage {
   async deleteManagedService(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(managedServices)
-      .where(and(eq(managedServices.id, id), eq(managedServices.tenant_id, tenantId)));
+      .where(and(eq(managedServices.id, id), eq(managedServices.tenantId, tenantId)));
     return result.rowCount > 0;
   }
 
@@ -4165,7 +4156,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(leadContacts.leadId, companyId), // Using leadId as companyId for now
-          eq(leadContacts.tenant_id, tenantId),
+          eq(leadContacts.tenantId, tenantId),
         ),
       )
       .orderBy(leadContacts.firstName, leadContacts.lastName);
@@ -4186,7 +4177,7 @@ export class DatabaseStorage implements IStorage {
   async deleteContact(contactId: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(leadContacts)
-      .where(and(eq(leadContacts.id, contactId), eq(leadContacts.tenant_id, tenantId)));
+      .where(and(eq(leadContacts.id, contactId), eq(leadContacts.tenantId, tenantId)));
     return result.rowCount > 0;
   }
 
@@ -4206,10 +4197,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(enhancedContacts)
       .where(
-        and(
-          eq(enhancedContacts.companyName, companyName),
-          eq(enhancedContacts.tenant_id, tenantId),
-        ),
+        and(eq(enhancedContacts.companyName, companyName), eq(enhancedContacts.tenantId, tenantId)),
       )
       .orderBy(enhancedContacts.firstName, enhancedContacts.lastName);
   }
@@ -4218,14 +4206,14 @@ export class DatabaseStorage implements IStorage {
 
   // Vendor operations
   async getVendors(tenantId: string): Promise<Vendor[]> {
-    return await db.select().from(vendors).where(eq(vendors.tenant_id, tenantId));
+    return await db.select().from(vendors).where(eq(vendors.tenantId, tenantId));
   }
 
   async getVendor(id: string, tenantId: string): Promise<Vendor | undefined> {
     const [vendor] = await db
       .select()
       .from(vendors)
-      .where(and(eq(vendors.id, id), eq(vendors.tenant_id, tenantId)));
+      .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)));
     return vendor;
   }
 
@@ -4242,7 +4230,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedVendor] = await db
       .update(vendors)
       .set({ ...vendor, updatedAt: new Date() })
-      .where(and(eq(vendors.id, id), eq(vendors.tenant_id, tenantId)))
+      .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)))
       .returning();
     return updatedVendor;
   }
@@ -4250,20 +4238,20 @@ export class DatabaseStorage implements IStorage {
   async deleteVendor(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(vendors)
-      .where(and(eq(vendors.id, id), eq(vendors.tenant_id, tenantId)));
+      .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)));
     return result.rowCount > 0;
   }
 
   // Accounts Payable operations
   async getAccountsPayable(tenantId: string): Promise<AccountsPayable[]> {
-    return await db.select().from(accountsPayable).where(eq(accountsPayable.tenant_id, tenantId));
+    return await db.select().from(accountsPayable).where(eq(accountsPayable.tenantId, tenantId));
   }
 
   async getAccountPayable(id: string, tenantId: string): Promise<AccountsPayable | undefined> {
     const [ap] = await db
       .select()
       .from(accountsPayable)
-      .where(and(eq(accountsPayable.id, id), eq(accountsPayable.tenant_id, tenantId)));
+      .where(and(eq(accountsPayable.id, id), eq(accountsPayable.tenantId, tenantId)));
     return ap;
   }
 
@@ -4280,7 +4268,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedAP] = await db
       .update(accountsPayable)
       .set({ ...ap, updatedAt: new Date() })
-      .where(and(eq(accountsPayable.id, id), eq(accountsPayable.tenant_id, tenantId)))
+      .where(and(eq(accountsPayable.id, id), eq(accountsPayable.tenantId, tenantId)))
       .returning();
     return updatedAP;
   }
@@ -4290,7 +4278,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(accountsReceivable)
-      .where(eq(accountsReceivable.tenant_id, tenantId));
+      .where(eq(accountsReceivable.tenantId, tenantId));
   }
 
   async getAccountReceivable(
@@ -4300,7 +4288,7 @@ export class DatabaseStorage implements IStorage {
     const [ar] = await db
       .select()
       .from(accountsReceivable)
-      .where(and(eq(accountsReceivable.id, id), eq(accountsReceivable.tenant_id, tenantId)));
+      .where(and(eq(accountsReceivable.id, id), eq(accountsReceivable.tenantId, tenantId)));
     return ar;
   }
 
@@ -4317,21 +4305,21 @@ export class DatabaseStorage implements IStorage {
     const [updatedAR] = await db
       .update(accountsReceivable)
       .set({ ...ar, updatedAt: new Date() })
-      .where(and(eq(accountsReceivable.id, id), eq(accountsReceivable.tenant_id, tenantId)))
+      .where(and(eq(accountsReceivable.id, id), eq(accountsReceivable.tenantId, tenantId)))
       .returning();
     return updatedAR;
   }
 
   // Chart of Accounts operations
   async getChartOfAccounts(tenantId: string): Promise<ChartOfAccount[]> {
-    return await db.select().from(chartOfAccounts).where(eq(chartOfAccounts.tenant_id, tenantId));
+    return await db.select().from(chartOfAccounts).where(eq(chartOfAccounts.tenantId, tenantId));
   }
 
   async getChartOfAccount(id: string, tenantId: string): Promise<ChartOfAccount | undefined> {
     const [account] = await db
       .select()
       .from(chartOfAccounts)
-      .where(and(eq(chartOfAccounts.id, id), eq(chartOfAccounts.tenant_id, tenantId)));
+      .where(and(eq(chartOfAccounts.id, id), eq(chartOfAccounts.tenantId, tenantId)));
     return account;
   }
 
@@ -4348,21 +4336,21 @@ export class DatabaseStorage implements IStorage {
     const [updatedAccount] = await db
       .update(chartOfAccounts)
       .set({ ...account, updatedAt: new Date() })
-      .where(and(eq(chartOfAccounts.id, id), eq(chartOfAccounts.tenant_id, tenantId)))
+      .where(and(eq(chartOfAccounts.id, id), eq(chartOfAccounts.tenantId, tenantId)))
       .returning();
     return updatedAccount;
   }
 
   // Purchase Order operations
   async getPurchaseOrders(tenantId: string): Promise<PurchaseOrder[]> {
-    return await db.select().from(purchaseOrders).where(eq(purchaseOrders.tenant_id, tenantId));
+    return await db.select().from(purchaseOrders).where(eq(purchaseOrders.tenantId, tenantId));
   }
 
   async getPurchaseOrder(id: string, tenantId: string): Promise<PurchaseOrder | undefined> {
     const [po] = await db
       .select()
       .from(purchaseOrders)
-      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenant_id, tenantId)));
+      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenantId, tenantId)));
     return po;
   }
 
@@ -4379,7 +4367,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedPO] = await db
       .update(purchaseOrders)
       .set({ ...po, updatedAt: new Date() })
-      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenant_id, tenantId)))
+      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenantId, tenantId)))
       .returning();
     return updatedPO;
   }
@@ -4394,7 +4382,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(purchaseOrderItems.purchaseOrderId, purchaseOrderId),
-          eq(purchaseOrderItems.tenant_id, tenantId),
+          eq(purchaseOrderItems.tenantId, tenantId),
         ),
       );
   }
@@ -4412,7 +4400,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedItem] = await db
       .update(purchaseOrderItems)
       .set(item)
-      .where(and(eq(purchaseOrderItems.id, id), eq(purchaseOrderItems.tenant_id, tenantId)))
+      .where(and(eq(purchaseOrderItems.id, id), eq(purchaseOrderItems.tenantId, tenantId)))
       .returning();
     return updatedItem;
   }
@@ -4422,13 +4410,13 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(purchaseOrderItems)
       .where(
-        and(eq(purchaseOrderItems.purchaseOrderId, id), eq(purchaseOrderItems.tenant_id, tenantId)),
+        and(eq(purchaseOrderItems.purchaseOrderId, id), eq(purchaseOrderItems.tenantId, tenantId)),
       );
 
     // Then delete the purchase order
     const result = await db
       .delete(purchaseOrders)
-      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenant_id, tenantId)));
+      .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenantId, tenantId)));
 
     return result.rowCount > 0;
   }
@@ -4436,7 +4424,7 @@ export class DatabaseStorage implements IStorage {
   async deletePurchaseOrderItem(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(purchaseOrderItems)
-      .where(and(eq(purchaseOrderItems.id, id), eq(purchaseOrderItems.tenant_id, tenantId)));
+      .where(and(eq(purchaseOrderItems.id, id), eq(purchaseOrderItems.tenantId, tenantId)));
 
     return result.rowCount > 0;
   }
@@ -4454,7 +4442,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(companyContacts.companyId, businessRecordId),
-          eq(companyContacts.tenant_id, tenantId),
+          eq(companyContacts.tenantId, tenantId),
         ),
       )
       .orderBy(companyContacts.firstName, companyContacts.lastName);
@@ -4496,13 +4484,13 @@ export class DatabaseStorage implements IStorage {
         stageColor: dealStages.color,
         ownerId: deals.ownerId,
         ownerName: users.firstName,
-        createdAt: deals.created_at,
-        updatedAt: deals.updated_at,
+        createdAt: deals.createdAt,
+        updatedAt: deals.updatedAt,
       })
       .from(deals)
       .leftJoin(dealStages, eq(deals.stageId, dealStages.id))
       .leftJoin(users, eq(deals.ownerId, users.id))
-      .where(eq(deals.tenant_id, tenantId));
+      .where(eq(deals.tenantId, tenantId));
 
     if (stageId) {
       query = query.where(eq(deals.stageId, stageId));
@@ -4522,7 +4510,7 @@ export class DatabaseStorage implements IStorage {
       );
     }
 
-    return await query.orderBy(desc(deals.created_at));
+    return await query.orderBy(desc(deals.createdAt));
   }
 
   async getDeal(id: string, tenantId: string): Promise<any> {
@@ -4550,13 +4538,13 @@ export class DatabaseStorage implements IStorage {
         stageColor: dealStages.color,
         ownerId: deals.ownerId,
         ownerName: users.firstName,
-        createdAt: deals.created_at,
-        updatedAt: deals.updated_at,
+        createdAt: deals.createdAt,
+        updatedAt: deals.updatedAt,
       })
       .from(deals)
       .leftJoin(dealStages, eq(deals.stageId, dealStages.id))
       .leftJoin(users, eq(deals.ownerId, users.id))
-      .where(and(eq(deals.id, id), eq(deals.tenant_id, tenantId)));
+      .where(and(eq(deals.id, id), eq(deals.tenantId, tenantId)));
     return deal;
   }
 
@@ -4565,7 +4553,7 @@ export class DatabaseStorage implements IStorage {
     const [defaultStage] = await db
       .select()
       .from(dealStages)
-      .where(eq(dealStages.tenant_id, deal.tenant_id))
+      .where(eq(dealStages.tenantId, deal.tenantId))
       .orderBy(dealStages.sortOrder)
       .limit(1);
 
@@ -4584,7 +4572,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedDeal] = await db
       .update(deals)
       .set({ ...deal, updatedAt: new Date() })
-      .where(and(eq(deals.id, id), eq(deals.tenant_id, tenantId)))
+      .where(and(eq(deals.id, id), eq(deals.tenantId, tenantId)))
       .returning();
     return updatedDeal;
   }
@@ -4607,7 +4595,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedDeal] = await db
       .update(deals)
       .set(updateData)
-      .where(and(eq(deals.id, id), eq(deals.tenant_id, tenantId)))
+      .where(and(eq(deals.id, id), eq(deals.tenantId, tenantId)))
       .returning();
 
     // Create activity record for stage change
@@ -4632,7 +4620,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select({
         id: dealStages.id,
-        tenantId: dealStages.tenant_id,
+        tenantId: dealStages.tenantId,
         name: dealStages.name,
         description: dealStages.description,
         color: dealStages.color,
@@ -4640,11 +4628,11 @@ export class DatabaseStorage implements IStorage {
         isActive: dealStages.isActive,
         isClosingStage: dealStages.isClosingStage,
         isWonStage: dealStages.isWonStage,
-        createdAt: dealStages.created_at,
-        updatedAt: dealStages.updated_at,
+        createdAt: dealStages.createdAt,
+        updatedAt: dealStages.updatedAt,
       })
       .from(dealStages)
-      .where(and(eq(dealStages.tenant_id, tenantId), eq(dealStages.isActive, true)))
+      .where(and(eq(dealStages.tenantId, tenantId), eq(dealStages.isActive, true)))
       .orderBy(dealStages.sortOrder);
   }
 
@@ -4657,7 +4645,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedStage] = await db
       .update(dealStages)
       .set({ ...stage, updatedAt: new Date() })
-      .where(and(eq(dealStages.id, id), eq(dealStages.tenant_id, tenantId)))
+      .where(and(eq(dealStages.id, id), eq(dealStages.tenantId, tenantId)))
       .returning();
     return updatedStage;
   }
@@ -4672,14 +4660,14 @@ export class DatabaseStorage implements IStorage {
         description: dealActivities.description,
         duration: dealActivities.duration,
         outcome: dealActivities.outcome,
-        userId: dealActivities.user_id,
+        userId: dealActivities.userId,
         userName: users.firstName,
-        createdAt: dealActivities.created_at,
+        createdAt: dealActivities.createdAt,
       })
       .from(dealActivities)
-      .leftJoin(users, eq(dealActivities.user_id, users.id))
-      .where(and(eq(dealActivities.dealId, dealId), eq(dealActivities.tenant_id, tenantId)))
-      .orderBy(desc(dealActivities.created_at));
+      .leftJoin(users, eq(dealActivities.userId, users.id))
+      .where(and(eq(dealActivities.dealId, dealId), eq(dealActivities.tenantId, tenantId)))
+      .orderBy(desc(dealActivities.createdAt));
   }
 
   async createDealActivity(activity: any): Promise<any> {
@@ -4694,7 +4682,7 @@ export class DatabaseStorage implements IStorage {
       .from(companyPricingSettings)
       .where(
         and(
-          eq(companyPricingSettings.tenant_id, tenantId),
+          eq(companyPricingSettings.tenantId, tenantId),
           eq(companyPricingSettings.isActive, true),
         ),
       );
@@ -4729,8 +4717,8 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(productPricing)
-      .where(eq(productPricing.tenant_id, tenantId))
-      .orderBy(desc(productPricing.created_at));
+      .where(eq(productPricing.tenantId, tenantId))
+      .orderBy(desc(productPricing.createdAt));
   }
 
   async getProductPricingByProductId(
@@ -4745,7 +4733,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(productPricing.productId, productId),
           eq(productPricing.productType, productType),
-          eq(productPricing.tenant_id, tenantId),
+          eq(productPricing.tenantId, tenantId),
           eq(productPricing.isActive, true),
         ),
       );
@@ -4765,7 +4753,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(productPricing)
       .set({ ...pricingData, updatedAt: new Date() })
-      .where(and(eq(productPricing.id, id), eq(productPricing.tenant_id, tenantId)))
+      .where(and(eq(productPricing.id, id), eq(productPricing.tenantId, tenantId)))
       .returning();
     return updated;
   }
@@ -4773,7 +4761,7 @@ export class DatabaseStorage implements IStorage {
   async deleteProductPricing(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(productPricing)
-      .where(and(eq(productPricing.id, id), eq(productPricing.tenant_id, tenantId)));
+      .where(and(eq(productPricing.id, id), eq(productPricing.tenantId, tenantId)));
     return result.rowCount > 0;
   }
 
@@ -4788,7 +4776,7 @@ export class DatabaseStorage implements IStorage {
             eq(quotePricing.customerId, quoteId),
             eq(quotePricing.quoteNumber, quoteId),
           ),
-          eq(quotePricing.tenant_id, tenantId),
+          eq(quotePricing.tenantId, tenantId),
         ),
       );
     return pricing;
@@ -4807,7 +4795,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(quotePricing)
       .set({ ...pricingData, updatedAt: new Date() })
-      .where(and(eq(quotePricing.id, id), eq(quotePricing.tenant_id, tenantId)))
+      .where(and(eq(quotePricing.id, id), eq(quotePricing.tenantId, tenantId)))
       .returning();
     return updated;
   }
@@ -4822,7 +4810,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(quotePricingLineItems.quotePricingId, quotePricingId),
-          eq(quotePricingLineItems.tenant_id, tenantId),
+          eq(quotePricingLineItems.tenantId, tenantId),
         ),
       )
       .orderBy(asc(quotePricingLineItems.lineNumber));
@@ -4843,7 +4831,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(quotePricingLineItems)
       .set({ ...lineItemData, updatedAt: new Date() })
-      .where(and(eq(quotePricingLineItems.id, id), eq(quotePricingLineItems.tenant_id, tenantId)))
+      .where(and(eq(quotePricingLineItems.id, id), eq(quotePricingLineItems.tenantId, tenantId)))
       .returning();
     return updated;
   }
@@ -4851,7 +4839,7 @@ export class DatabaseStorage implements IStorage {
   async deleteQuotePricingLineItem(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(quotePricingLineItems)
-      .where(and(eq(quotePricingLineItems.id, id), eq(quotePricingLineItems.tenant_id, tenantId)));
+      .where(and(eq(quotePricingLineItems.id, id), eq(quotePricingLineItems.tenantId, tenantId)));
     return result.rowCount > 0;
   }
 
@@ -4877,17 +4865,17 @@ export class DatabaseStorage implements IStorage {
         leadStatus: companyContacts.leadStatus,
         lastContactDate: companyContacts.lastContactDate,
         nextFollowUpDate: companyContacts.nextFollowUpDate,
-        createdAt: companyContacts.created_at,
+        createdAt: companyContacts.createdAt,
         ownerId: companyContacts.ownerId,
         ownerName: users.firstName,
         favoriteContentType: companyContacts.favoriteContentType,
         preferredChannels: companyContacts.preferredChannels,
-        tenantId: companyContacts.tenant_id,
+        tenantId: companyContacts.tenantId,
       })
       .from(companyContacts)
       .leftJoin(companies, eq(companyContacts.companyId, companies.id))
       .leftJoin(users, eq(companyContacts.ownerId, users.id))
-      .where(eq(companyContacts.tenant_id, options.filters.tenant_id));
+      .where(eq(companyContacts.tenantId, options.filters.tenantId));
 
     // Apply additional filters
     if (options.filters.ownerId) {
@@ -4928,7 +4916,7 @@ export class DatabaseStorage implements IStorage {
           : query.orderBy(desc(companyContacts.lastName));
     } else {
       // Default sort by created date
-      query = query.orderBy(desc(companyContacts.created_at));
+      query = query.orderBy(desc(companyContacts.createdAt));
     }
 
     // Apply pagination
@@ -4941,7 +4929,7 @@ export class DatabaseStorage implements IStorage {
     let query = db
       .select({ count: count() })
       .from(companyContacts)
-      .where(eq(companyContacts.tenant_id, options.filters.tenant_id));
+      .where(eq(companyContacts.tenantId, options.filters.tenantId));
 
     // Apply additional filters
     if (options.filters.ownerId) {
@@ -5024,16 +5012,16 @@ export class DatabaseStorage implements IStorage {
 
   // User Settings Methods
   async getUserSettings(userId: string): Promise<UserSettings | undefined> {
-    const [settings] = await db.select().from(userSettings).where(eq(userSettings.user_id, userId));
+    const [settings] = await db.select().from(userSettings).where(eq(userSettings.userId, userId));
 
     // If no settings exist, create default settings
     if (!settings) {
       // Get user's tenant info
       const user = await this.getUserById(userId);
-      if (!user?.tenant_id) {
+      if (!user?.tenantId) {
         throw new Error('User tenant ID is required for creating settings');
       }
-      const tenantId = user.tenant_id;
+      const tenantId = user.tenantId;
 
       const defaultSettings = {
         id: `settings-${userId}`,
@@ -5090,14 +5078,14 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(userSettings)
       .set({ ...settingsData, updatedAt: new Date() })
-      .where(eq(userSettings.user_id, userId))
+      .where(eq(userSettings.userId, userId))
       .returning();
 
     return updated;
   }
 
   async deleteUserSettings(userId: string): Promise<boolean> {
-    const result = await db.delete(userSettings).where(eq(userSettings.user_id, userId));
+    const result = await db.delete(userSettings).where(eq(userSettings.userId, userId));
     return result.rowCount > 0;
   }
 
@@ -5120,7 +5108,7 @@ export class DatabaseStorage implements IStorage {
   async deleteUserCustomerAssignments(userId: string): Promise<boolean> {
     const result = await db
       .delete(userCustomerAssignments)
-      .where(eq(userCustomerAssignments.user_id, userId));
+      .where(eq(userCustomerAssignments.userId, userId));
     return result.rowCount > 0;
   }
 
@@ -5243,7 +5231,7 @@ export class DatabaseStorage implements IStorage {
     let query = db
       .select()
       .from(mobileServiceSessions)
-      .where(eq(mobileServiceSessions.tenant_id, params.tenant_id));
+      .where(eq(mobileServiceSessions.tenantId, params.tenantId));
 
     if (params.serviceTicketId) {
       query = query.where(eq(mobileServiceSessions.serviceTicketId, params.serviceTicketId));
@@ -5253,7 +5241,7 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(mobileServiceSessions.technicianId, params.technicianId));
     }
 
-    return await query.orderBy(desc(mobileServiceSessions.created_at));
+    return await query.orderBy(desc(mobileServiceSessions.createdAt));
   }
 
   async createMobileServiceSession(
@@ -5271,7 +5259,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedSession] = await db
       .update(mobileServiceSessions)
       .set({ ...session, updatedAt: new Date() })
-      .where(and(eq(mobileServiceSessions.id, id), eq(mobileServiceSessions.tenant_id, tenantId)))
+      .where(and(eq(mobileServiceSessions.id, id), eq(mobileServiceSessions.tenantId, tenantId)))
       .returning();
     return updatedSession;
   }
@@ -5283,7 +5271,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(timeTrackingEntries.sessionId, sessionId),
-          eq(timeTrackingEntries.tenant_id, tenantId),
+          eq(timeTrackingEntries.tenantId, tenantId),
         ),
       )
       .orderBy(desc(timeTrackingEntries.timestamp));
@@ -5299,10 +5287,7 @@ export class DatabaseStorage implements IStorage {
     serviceTicketId?: string;
     sessionId?: string;
   }): Promise<ServicePhoto[]> {
-    let query = db
-      .select()
-      .from(servicePhotos)
-      .where(eq(servicePhotos.tenant_id, params.tenant_id));
+    let query = db.select().from(servicePhotos).where(eq(servicePhotos.tenantId, params.tenantId));
 
     if (params.serviceTicketId) {
       query = query.where(eq(servicePhotos.serviceTicketId, params.serviceTicketId));
@@ -5330,7 +5315,7 @@ export class DatabaseStorage implements IStorage {
     let query = db
       .select()
       .from(locationHistory)
-      .where(eq(locationHistory.tenant_id, params.tenant_id));
+      .where(eq(locationHistory.tenantId, params.tenantId));
 
     if (params.technicianId) {
       query = query.where(eq(locationHistory.technicianId, params.technicianId));
@@ -5361,8 +5346,8 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(onboardingChecklists)
-      .where(eq(onboardingChecklists.tenant_id, tenantId))
-      .orderBy(desc(onboardingChecklists.created_at));
+      .where(eq(onboardingChecklists.tenantId, tenantId))
+      .orderBy(desc(onboardingChecklists.createdAt));
   }
 
   async getOnboardingChecklist(
@@ -5372,7 +5357,7 @@ export class DatabaseStorage implements IStorage {
     const [checklist] = await db
       .select()
       .from(onboardingChecklists)
-      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenant_id, tenantId)));
+      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)));
     return checklist;
   }
 
@@ -5391,7 +5376,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedChecklist] = await db
       .update(onboardingChecklists)
       .set({ ...checklist, updatedAt: new Date() })
-      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenant_id, tenantId)))
+      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)))
       .returning();
     return updatedChecklist;
   }
@@ -5399,7 +5384,7 @@ export class DatabaseStorage implements IStorage {
   async deleteOnboardingChecklist(id: string, tenantId: string): Promise<void> {
     await db
       .delete(onboardingChecklists)
-      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenant_id, tenantId)));
+      .where(and(eq(onboardingChecklists.id, id), eq(onboardingChecklists.tenantId, tenantId)));
   }
 
   async getOnboardingEquipment(
@@ -5412,10 +5397,10 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(onboardingEquipment.checklistId, checklistId),
-          eq(onboardingEquipment.tenant_id, tenantId),
+          eq(onboardingEquipment.tenantId, tenantId),
         ),
       )
-      .orderBy(onboardingEquipment.created_at);
+      .orderBy(onboardingEquipment.createdAt);
   }
 
   async createOnboardingEquipment(
@@ -5433,7 +5418,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedEquipment] = await db
       .update(onboardingEquipment)
       .set({ ...equipment, updatedAt: new Date() })
-      .where(and(eq(onboardingEquipment.id, id), eq(onboardingEquipment.tenant_id, tenantId)))
+      .where(and(eq(onboardingEquipment.id, id), eq(onboardingEquipment.tenantId, tenantId)))
       .returning();
     return updatedEquipment;
   }
@@ -5448,10 +5433,10 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(onboardingNetworkConfig.checklistId, checklistId),
-          eq(onboardingNetworkConfig.tenant_id, tenantId),
+          eq(onboardingNetworkConfig.tenantId, tenantId),
         ),
       )
-      .orderBy(onboardingNetworkConfig.created_at);
+      .orderBy(onboardingNetworkConfig.createdAt);
   }
 
   async createOnboardingNetworkConfig(
@@ -5470,7 +5455,7 @@ export class DatabaseStorage implements IStorage {
       .update(onboardingNetworkConfig)
       .set({ ...config, updatedAt: new Date() })
       .where(
-        and(eq(onboardingNetworkConfig.id, id), eq(onboardingNetworkConfig.tenant_id, tenantId)),
+        and(eq(onboardingNetworkConfig.id, id), eq(onboardingNetworkConfig.tenantId, tenantId)),
       )
       .returning();
     return updatedConfig;
@@ -5486,10 +5471,10 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(onboardingPrintManagement.checklistId, checklistId),
-          eq(onboardingPrintManagement.tenant_id, tenantId),
+          eq(onboardingPrintManagement.tenantId, tenantId),
         ),
       )
-      .orderBy(onboardingPrintManagement.created_at);
+      .orderBy(onboardingPrintManagement.createdAt);
   }
 
   async createOnboardingPrintManagement(
@@ -5508,10 +5493,7 @@ export class DatabaseStorage implements IStorage {
       .update(onboardingPrintManagement)
       .set({ ...config, updatedAt: new Date() })
       .where(
-        and(
-          eq(onboardingPrintManagement.id, id),
-          eq(onboardingPrintManagement.tenant_id, tenantId),
-        ),
+        and(eq(onboardingPrintManagement.id, id), eq(onboardingPrintManagement.tenantId, tenantId)),
       )
       .returning();
     return updatedConfig;
@@ -5527,7 +5509,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(onboardingDynamicSections.checklistId, checklistId),
-          eq(onboardingDynamicSections.tenant_id, tenantId),
+          eq(onboardingDynamicSections.tenantId, tenantId),
         ),
       )
       .orderBy(onboardingDynamicSections.sectionOrder);
@@ -5549,10 +5531,7 @@ export class DatabaseStorage implements IStorage {
       .update(onboardingDynamicSections)
       .set({ ...section, updatedAt: new Date() })
       .where(
-        and(
-          eq(onboardingDynamicSections.id, id),
-          eq(onboardingDynamicSections.tenant_id, tenantId),
-        ),
+        and(eq(onboardingDynamicSections.id, id), eq(onboardingDynamicSections.tenantId, tenantId)),
       )
       .returning();
     return updatedSection;
@@ -5562,10 +5541,7 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(onboardingDynamicSections)
       .where(
-        and(
-          eq(onboardingDynamicSections.id, id),
-          eq(onboardingDynamicSections.tenant_id, tenantId),
-        ),
+        and(eq(onboardingDynamicSections.id, id), eq(onboardingDynamicSections.tenantId, tenantId)),
       );
   }
 
@@ -5574,9 +5550,9 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(onboardingTasks)
       .where(
-        and(eq(onboardingTasks.checklistId, checklistId), eq(onboardingTasks.tenant_id, tenantId)),
+        and(eq(onboardingTasks.checklistId, checklistId), eq(onboardingTasks.tenantId, tenantId)),
       )
-      .orderBy(onboardingTasks.created_at);
+      .orderBy(onboardingTasks.createdAt);
   }
 
   async createOnboardingTask(task: InsertOnboardingTask): Promise<OnboardingTask> {
@@ -5592,7 +5568,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedTask] = await db
       .update(onboardingTasks)
       .set({ ...task, updatedAt: new Date() })
-      .where(and(eq(onboardingTasks.id, id), eq(onboardingTasks.tenant_id, tenantId)))
+      .where(and(eq(onboardingTasks.id, id), eq(onboardingTasks.tenantId, tenantId)))
       .returning();
     return updatedTask;
   }
@@ -5600,7 +5576,7 @@ export class DatabaseStorage implements IStorage {
   async deleteOnboardingTask(id: string, tenantId: string): Promise<void> {
     await db
       .delete(onboardingTasks)
-      .where(and(eq(onboardingTasks.id, id), eq(onboardingTasks.tenant_id, tenantId)));
+      .where(and(eq(onboardingTasks.id, id), eq(onboardingTasks.tenantId, tenantId)));
   }
 
   // ============= LEASE MANAGEMENT OPERATIONS =============
@@ -5610,15 +5586,15 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(leases)
-      .where(eq(leases.tenant_id, tenantId))
-      .orderBy(desc(leases.created_at));
+      .where(eq(leases.tenantId, tenantId))
+      .orderBy(desc(leases.createdAt));
   }
 
   async getLease(id: string, tenantId: string): Promise<Lease | undefined> {
     const [lease] = await db
       .select()
       .from(leases)
-      .where(and(eq(leases.id, id), eq(leases.tenant_id, tenantId)));
+      .where(and(eq(leases.id, id), eq(leases.tenantId, tenantId)));
     return lease;
   }
 
@@ -5626,7 +5602,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(leases)
-      .where(and(eq(leases.customerId, customerId), eq(leases.tenant_id, tenantId)))
+      .where(and(eq(leases.customerId, customerId), eq(leases.tenantId, tenantId)))
       .orderBy(desc(leases.startDate));
   }
 
@@ -5634,8 +5610,8 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(leases)
-      .where(and(eq(leases.status, status), eq(leases.tenant_id, tenantId)))
-      .orderBy(desc(leases.created_at));
+      .where(and(eq(leases.status, status), eq(leases.tenantId, tenantId)))
+      .orderBy(desc(leases.createdAt));
   }
 
   async createLease(lease: InsertLease): Promise<Lease> {
@@ -5651,13 +5627,13 @@ export class DatabaseStorage implements IStorage {
     const [updatedLease] = await db
       .update(leases)
       .set({ ...lease, updatedAt: new Date() })
-      .where(and(eq(leases.id, id), eq(leases.tenant_id, tenantId)))
+      .where(and(eq(leases.id, id), eq(leases.tenantId, tenantId)))
       .returning();
     return updatedLease;
   }
 
   async deleteLease(id: string, tenantId: string): Promise<void> {
-    await db.delete(leases).where(and(eq(leases.id, id), eq(leases.tenant_id, tenantId)));
+    await db.delete(leases).where(and(eq(leases.id, id), eq(leases.tenantId, tenantId)));
   }
 
   // Lease Payments operations
@@ -5665,7 +5641,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(leasePayments)
-      .where(and(eq(leasePayments.leaseId, leaseId), eq(leasePayments.tenant_id, tenantId)))
+      .where(and(eq(leasePayments.leaseId, leaseId), eq(leasePayments.tenantId, tenantId)))
       .orderBy(leasePayments.scheduledDate);
   }
 
@@ -5673,7 +5649,7 @@ export class DatabaseStorage implements IStorage {
     const [payment] = await db
       .select()
       .from(leasePayments)
-      .where(and(eq(leasePayments.id, id), eq(leasePayments.tenant_id, tenantId)));
+      .where(and(eq(leasePayments.id, id), eq(leasePayments.tenantId, tenantId)));
     return payment;
   }
 
@@ -5686,7 +5662,7 @@ export class DatabaseStorage implements IStorage {
       .from(leasePayments)
       .where(
         and(
-          eq(leasePayments.tenant_id, tenantId),
+          eq(leasePayments.tenantId, tenantId),
           eq(leasePayments.status, 'scheduled'),
           lte(leasePayments.scheduledDate, futureDate),
         ),
@@ -5702,7 +5678,7 @@ export class DatabaseStorage implements IStorage {
       .from(leasePayments)
       .where(
         and(
-          eq(leasePayments.tenant_id, tenantId),
+          eq(leasePayments.tenantId, tenantId),
           eq(leasePayments.status, 'scheduled'),
           lt(leasePayments.scheduledDate, today),
         ),
@@ -5723,7 +5699,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedPayment] = await db
       .update(leasePayments)
       .set({ ...payment, updatedAt: new Date() })
-      .where(and(eq(leasePayments.id, id), eq(leasePayments.tenant_id, tenantId)))
+      .where(and(eq(leasePayments.id, id), eq(leasePayments.tenantId, tenantId)))
       .returning();
     return updatedPayment;
   }
@@ -5731,7 +5707,7 @@ export class DatabaseStorage implements IStorage {
   async deleteLeasePayment(id: string, tenantId: string): Promise<void> {
     await db
       .delete(leasePayments)
-      .where(and(eq(leasePayments.id, id), eq(leasePayments.tenant_id, tenantId)));
+      .where(and(eq(leasePayments.id, id), eq(leasePayments.tenantId, tenantId)));
   }
 
   // Lease Renewals operations
@@ -5739,15 +5715,15 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(leaseRenewals)
-      .where(eq(leaseRenewals.tenant_id, tenantId))
-      .orderBy(desc(leaseRenewals.created_at));
+      .where(eq(leaseRenewals.tenantId, tenantId))
+      .orderBy(desc(leaseRenewals.createdAt));
   }
 
   async getLeaseRenewal(id: string, tenantId: string): Promise<LeaseRenewal | undefined> {
     const [renewal] = await db
       .select()
       .from(leaseRenewals)
-      .where(and(eq(leaseRenewals.id, id), eq(leaseRenewals.tenant_id, tenantId)));
+      .where(and(eq(leaseRenewals.id, id), eq(leaseRenewals.tenantId, tenantId)));
     return renewal;
   }
 
@@ -5758,7 +5734,7 @@ export class DatabaseStorage implements IStorage {
     const [renewal] = await db
       .select()
       .from(leaseRenewals)
-      .where(and(eq(leaseRenewals.leaseId, leaseId), eq(leaseRenewals.tenant_id, tenantId)));
+      .where(and(eq(leaseRenewals.leaseId, leaseId), eq(leaseRenewals.tenantId, tenantId)));
     return renewal;
   }
 
@@ -5774,7 +5750,7 @@ export class DatabaseStorage implements IStorage {
       .from(leaseRenewals)
       .where(
         and(
-          eq(leaseRenewals.tenant_id, tenantId),
+          eq(leaseRenewals.tenantId, tenantId),
           eq(leaseRenewals.renewalOffered, true),
           lte(leaseRenewals.renewalDeadline, futureDate),
         ),
@@ -5795,7 +5771,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedRenewal] = await db
       .update(leaseRenewals)
       .set({ ...renewal, updatedAt: new Date() })
-      .where(and(eq(leaseRenewals.id, id), eq(leaseRenewals.tenant_id, tenantId)))
+      .where(and(eq(leaseRenewals.id, id), eq(leaseRenewals.tenantId, tenantId)))
       .returning();
     return updatedRenewal;
   }
@@ -5803,7 +5779,7 @@ export class DatabaseStorage implements IStorage {
   async deleteLeaseRenewal(id: string, tenantId: string): Promise<void> {
     await db
       .delete(leaseRenewals)
-      .where(and(eq(leaseRenewals.id, id), eq(leaseRenewals.tenant_id, tenantId)));
+      .where(and(eq(leaseRenewals.id, id), eq(leaseRenewals.tenantId, tenantId)));
   }
 
   // Lease Dispositions operations
@@ -5811,7 +5787,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(leaseDispositions)
-      .where(eq(leaseDispositions.tenant_id, tenantId))
+      .where(eq(leaseDispositions.tenantId, tenantId))
       .orderBy(desc(leaseDispositions.actionDate));
   }
 
@@ -5819,7 +5795,7 @@ export class DatabaseStorage implements IStorage {
     const [disposition] = await db
       .select()
       .from(leaseDispositions)
-      .where(and(eq(leaseDispositions.id, id), eq(leaseDispositions.tenant_id, tenantId)));
+      .where(and(eq(leaseDispositions.id, id), eq(leaseDispositions.tenantId, tenantId)));
     return disposition;
   }
 
@@ -5830,9 +5806,7 @@ export class DatabaseStorage implements IStorage {
     const [disposition] = await db
       .select()
       .from(leaseDispositions)
-      .where(
-        and(eq(leaseDispositions.leaseId, leaseId), eq(leaseDispositions.tenant_id, tenantId)),
-      );
+      .where(and(eq(leaseDispositions.leaseId, leaseId), eq(leaseDispositions.tenantId, tenantId)));
     return disposition;
   }
 
@@ -5849,7 +5823,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedDisposition] = await db
       .update(leaseDispositions)
       .set({ ...disposition, updatedAt: new Date() })
-      .where(and(eq(leaseDispositions.id, id), eq(leaseDispositions.tenant_id, tenantId)))
+      .where(and(eq(leaseDispositions.id, id), eq(leaseDispositions.tenantId, tenantId)))
       .returning();
     return updatedDisposition;
   }
@@ -5857,7 +5831,7 @@ export class DatabaseStorage implements IStorage {
   async deleteLeaseDisposition(id: string, tenantId: string): Promise<void> {
     await db
       .delete(leaseDispositions)
-      .where(and(eq(leaseDispositions.id, id), eq(leaseDispositions.tenant_id, tenantId)));
+      .where(and(eq(leaseDispositions.id, id), eq(leaseDispositions.tenantId, tenantId)));
   }
 
   // ============= E-SIGNATURE INTEGRATION OPERATIONS =============
@@ -5873,17 +5847,17 @@ export class DatabaseStorage implements IStorage {
         .from(integrationCredentials)
         .where(
           and(
-            eq(integrationCredentials.tenant_id, tenantId),
+            eq(integrationCredentials.tenantId, tenantId),
             eq(integrationCredentials.provider, provider),
           ),
         )
-        .orderBy(desc(integrationCredentials.created_at));
+        .orderBy(desc(integrationCredentials.createdAt));
     }
     return await db
       .select()
       .from(integrationCredentials)
-      .where(eq(integrationCredentials.tenant_id, tenantId))
-      .orderBy(desc(integrationCredentials.created_at));
+      .where(eq(integrationCredentials.tenantId, tenantId))
+      .orderBy(desc(integrationCredentials.createdAt));
   }
 
   async getIntegrationCredential(
@@ -5893,9 +5867,7 @@ export class DatabaseStorage implements IStorage {
     const [credential] = await db
       .select()
       .from(integrationCredentials)
-      .where(
-        and(eq(integrationCredentials.id, id), eq(integrationCredentials.tenant_id, tenantId)),
-      );
+      .where(and(eq(integrationCredentials.id, id), eq(integrationCredentials.tenantId, tenantId)));
     return credential;
   }
 
@@ -5908,7 +5880,7 @@ export class DatabaseStorage implements IStorage {
       .from(integrationCredentials)
       .where(
         and(
-          eq(integrationCredentials.tenant_id, tenantId),
+          eq(integrationCredentials.tenantId, tenantId),
           eq(integrationCredentials.provider, provider),
         ),
       );
@@ -5930,7 +5902,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedCredential] = await db
       .update(integrationCredentials)
       .set({ ...credential, updatedAt: new Date() })
-      .where(and(eq(integrationCredentials.id, id), eq(integrationCredentials.tenant_id, tenantId)))
+      .where(and(eq(integrationCredentials.id, id), eq(integrationCredentials.tenantId, tenantId)))
       .returning();
     return updatedCredential;
   }
@@ -5938,9 +5910,7 @@ export class DatabaseStorage implements IStorage {
   async deleteIntegrationCredential(id: string, tenantId: string): Promise<void> {
     await db
       .delete(integrationCredentials)
-      .where(
-        and(eq(integrationCredentials.id, id), eq(integrationCredentials.tenant_id, tenantId)),
-      );
+      .where(and(eq(integrationCredentials.id, id), eq(integrationCredentials.tenantId, tenantId)));
   }
 
   async testIntegrationConnection(
@@ -5961,21 +5931,21 @@ export class DatabaseStorage implements IStorage {
       return await db
         .select()
         .from(signatureRequests)
-        .where(and(eq(signatureRequests.tenant_id, tenantId), eq(signatureRequests.status, status)))
-        .orderBy(desc(signatureRequests.created_at));
+        .where(and(eq(signatureRequests.tenantId, tenantId), eq(signatureRequests.status, status)))
+        .orderBy(desc(signatureRequests.createdAt));
     }
     return await db
       .select()
       .from(signatureRequests)
-      .where(eq(signatureRequests.tenant_id, tenantId))
-      .orderBy(desc(signatureRequests.created_at));
+      .where(eq(signatureRequests.tenantId, tenantId))
+      .orderBy(desc(signatureRequests.createdAt));
   }
 
   async getSignatureRequest(id: string, tenantId: string): Promise<SignatureRequest | undefined> {
     const [request] = await db
       .select()
       .from(signatureRequests)
-      .where(and(eq(signatureRequests.id, id), eq(signatureRequests.tenant_id, tenantId)));
+      .where(and(eq(signatureRequests.id, id), eq(signatureRequests.tenantId, tenantId)));
     return request;
   }
 
@@ -5987,12 +5957,9 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(signatureRequests)
       .where(
-        and(
-          eq(signatureRequests.customerId, customerId),
-          eq(signatureRequests.tenant_id, tenantId),
-        ),
+        and(eq(signatureRequests.customerId, customerId), eq(signatureRequests.tenantId, tenantId)),
       )
-      .orderBy(desc(signatureRequests.created_at));
+      .orderBy(desc(signatureRequests.createdAt));
   }
 
   async getExpiringSignatureRequests(
@@ -6007,7 +5974,7 @@ export class DatabaseStorage implements IStorage {
       .from(signatureRequests)
       .where(
         and(
-          eq(signatureRequests.tenant_id, tenantId),
+          eq(signatureRequests.tenantId, tenantId),
           lte(signatureRequests.expirationDate, futureDate),
           ne(signatureRequests.status, 'completed'),
           ne(signatureRequests.status, 'voided'),
@@ -6029,7 +5996,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedRequest] = await db
       .update(signatureRequests)
       .set({ ...request, updatedAt: new Date() })
-      .where(and(eq(signatureRequests.id, id), eq(signatureRequests.tenant_id, tenantId)))
+      .where(and(eq(signatureRequests.id, id), eq(signatureRequests.tenantId, tenantId)))
       .returning();
     return updatedRequest;
   }
@@ -6037,7 +6004,7 @@ export class DatabaseStorage implements IStorage {
   async deleteSignatureRequest(id: string, tenantId: string): Promise<void> {
     await db
       .delete(signatureRequests)
-      .where(and(eq(signatureRequests.id, id), eq(signatureRequests.tenant_id, tenantId)));
+      .where(and(eq(signatureRequests.id, id), eq(signatureRequests.tenantId, tenantId)));
   }
 
   // Signature Signers operations
@@ -6046,7 +6013,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(signatureSigners)
       .where(
-        and(eq(signatureSigners.requestId, requestId), eq(signatureSigners.tenant_id, tenantId)),
+        and(eq(signatureSigners.requestId, requestId), eq(signatureSigners.tenantId, tenantId)),
       )
       .orderBy(signatureSigners.signerOrder);
   }
@@ -6055,7 +6022,7 @@ export class DatabaseStorage implements IStorage {
     const [signer] = await db
       .select()
       .from(signatureSigners)
-      .where(and(eq(signatureSigners.id, id), eq(signatureSigners.tenant_id, tenantId)));
+      .where(and(eq(signatureSigners.id, id), eq(signatureSigners.tenantId, tenantId)));
     return signer;
   }
 
@@ -6072,7 +6039,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedSigner] = await db
       .update(signatureSigners)
       .set({ ...signer, updatedAt: new Date() })
-      .where(and(eq(signatureSigners.id, id), eq(signatureSigners.tenant_id, tenantId)))
+      .where(and(eq(signatureSigners.id, id), eq(signatureSigners.tenantId, tenantId)))
       .returning();
     return updatedSigner;
   }
@@ -6080,7 +6047,7 @@ export class DatabaseStorage implements IStorage {
   async deleteSignatureSigner(id: string, tenantId: string): Promise<void> {
     await db
       .delete(signatureSigners)
-      .where(and(eq(signatureSigners.id, id), eq(signatureSigners.tenant_id, tenantId)));
+      .where(and(eq(signatureSigners.id, id), eq(signatureSigners.tenantId, tenantId)));
   }
 
   // Signature Documents operations
@@ -6089,10 +6056,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(signatureDocuments)
       .where(
-        and(
-          eq(signatureDocuments.requestId, requestId),
-          eq(signatureDocuments.tenant_id, tenantId),
-        ),
+        and(eq(signatureDocuments.requestId, requestId), eq(signatureDocuments.tenantId, tenantId)),
       )
       .orderBy(signatureDocuments.documentOrder);
   }
@@ -6101,7 +6065,7 @@ export class DatabaseStorage implements IStorage {
     const [document] = await db
       .select()
       .from(signatureDocuments)
-      .where(and(eq(signatureDocuments.id, id), eq(signatureDocuments.tenant_id, tenantId)));
+      .where(and(eq(signatureDocuments.id, id), eq(signatureDocuments.tenantId, tenantId)));
     return document;
   }
 
@@ -6118,7 +6082,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedDocument] = await db
       .update(signatureDocuments)
       .set({ ...document, updatedAt: new Date() })
-      .where(and(eq(signatureDocuments.id, id), eq(signatureDocuments.tenant_id, tenantId)))
+      .where(and(eq(signatureDocuments.id, id), eq(signatureDocuments.tenantId, tenantId)))
       .returning();
     return updatedDocument;
   }
@@ -6126,7 +6090,7 @@ export class DatabaseStorage implements IStorage {
   async deleteSignatureDocument(id: string, tenantId: string): Promise<void> {
     await db
       .delete(signatureDocuments)
-      .where(and(eq(signatureDocuments.id, id), eq(signatureDocuments.tenant_id, tenantId)));
+      .where(and(eq(signatureDocuments.id, id), eq(signatureDocuments.tenantId, tenantId)));
   }
 
   // Signature Audit Logs operations
@@ -6135,10 +6099,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(signatureAuditLogs)
       .where(
-        and(
-          eq(signatureAuditLogs.requestId, requestId),
-          eq(signatureAuditLogs.tenant_id, tenantId),
-        ),
+        and(eq(signatureAuditLogs.requestId, requestId), eq(signatureAuditLogs.tenantId, tenantId)),
       )
       .orderBy(desc(signatureAuditLogs.eventTimestamp));
   }
@@ -6151,7 +6112,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(signatureAuditLogs)
       .where(
-        and(eq(signatureAuditLogs.signerId, signerId), eq(signatureAuditLogs.tenant_id, tenantId)),
+        and(eq(signatureAuditLogs.signerId, signerId), eq(signatureAuditLogs.tenantId, tenantId)),
       )
       .orderBy(desc(signatureAuditLogs.eventTimestamp));
   }
@@ -6168,7 +6129,7 @@ export class DatabaseStorage implements IStorage {
     tenantId: string,
     filters?: { status?: string; customerId?: string; technicianId?: string },
   ): Promise<Installation[]> {
-    const conditions = [eq(installations.tenant_id, tenantId)];
+    const conditions = [eq(installations.tenantId, tenantId)];
 
     if (filters?.status) {
       conditions.push(eq(installations.status, filters.status));
@@ -6191,7 +6152,7 @@ export class DatabaseStorage implements IStorage {
     const [installation] = await db
       .select()
       .from(installations)
-      .where(and(eq(installations.id, id), eq(installations.tenant_id, tenantId)));
+      .where(and(eq(installations.id, id), eq(installations.tenantId, tenantId)));
     return installation || null;
   }
 
@@ -6205,7 +6166,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(installations.installationNumber, installationNumber),
-          eq(installations.tenant_id, tenantId),
+          eq(installations.tenantId, tenantId),
         ),
       );
     return installation || null;
@@ -6224,7 +6185,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedInstallation] = await db
       .update(installations)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(installations.id, id), eq(installations.tenant_id, tenantId)))
+      .where(and(eq(installations.id, id), eq(installations.tenantId, tenantId)))
       .returning();
     return updatedInstallation || null;
   }
@@ -6232,7 +6193,7 @@ export class DatabaseStorage implements IStorage {
   async deleteInstallation(id: string, tenantId: string): Promise<void> {
     await db
       .delete(installations)
-      .where(and(eq(installations.id, id), eq(installations.tenant_id, tenantId)));
+      .where(and(eq(installations.id, id), eq(installations.tenantId, tenantId)));
   }
 
   async generateInstallationNumber(tenantId: string): Promise<string> {
@@ -6244,7 +6205,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(installations)
       .where(
-        and(eq(installations.tenant_id, tenantId), isNotNull(installations.installationNumber)),
+        and(eq(installations.tenantId, tenantId), isNotNull(installations.installationNumber)),
       );
 
     const currentYearInstallations = existingInstallations.filter((i) =>
@@ -6262,7 +6223,7 @@ export class DatabaseStorage implements IStorage {
     tenantId: string,
     filters?: { serviceTicketId?: string; installationId?: string },
   ): Promise<ServiceSignature[]> {
-    const conditions = [eq(serviceSignatures.tenant_id, tenantId)];
+    const conditions = [eq(serviceSignatures.tenantId, tenantId)];
 
     if (filters?.serviceTicketId) {
       conditions.push(eq(serviceSignatures.serviceTicketId, filters.serviceTicketId));
@@ -6282,7 +6243,7 @@ export class DatabaseStorage implements IStorage {
     const [signature] = await db
       .select()
       .from(serviceSignatures)
-      .where(and(eq(serviceSignatures.id, id), eq(serviceSignatures.tenant_id, tenantId)));
+      .where(and(eq(serviceSignatures.id, id), eq(serviceSignatures.tenantId, tenantId)));
     return signature || null;
   }
 
@@ -6299,7 +6260,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedSignature] = await db
       .update(serviceSignatures)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(serviceSignatures.id, id), eq(serviceSignatures.tenant_id, tenantId)))
+      .where(and(eq(serviceSignatures.id, id), eq(serviceSignatures.tenantId, tenantId)))
       .returning();
     return updatedSignature || null;
   }
@@ -6307,7 +6268,7 @@ export class DatabaseStorage implements IStorage {
   async deleteServiceSignature(id: string, tenantId: string): Promise<void> {
     await db
       .delete(serviceSignatures)
-      .where(and(eq(serviceSignatures.id, id), eq(serviceSignatures.tenant_id, tenantId)));
+      .where(and(eq(serviceSignatures.id, id), eq(serviceSignatures.tenantId, tenantId)));
   }
 
   // Installation Checklists operations
@@ -6321,7 +6282,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(installationChecklists.installationId, installationId),
-          eq(installationChecklists.tenant_id, tenantId),
+          eq(installationChecklists.tenantId, tenantId),
         ),
       )
       .orderBy(asc(installationChecklists.stepOrder));
@@ -6334,9 +6295,7 @@ export class DatabaseStorage implements IStorage {
     const [checklist] = await db
       .select()
       .from(installationChecklists)
-      .where(
-        and(eq(installationChecklists.id, id), eq(installationChecklists.tenant_id, tenantId)),
-      );
+      .where(and(eq(installationChecklists.id, id), eq(installationChecklists.tenantId, tenantId)));
     return checklist || null;
   }
 
@@ -6355,7 +6314,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedChecklist] = await db
       .update(installationChecklists)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(installationChecklists.id, id), eq(installationChecklists.tenant_id, tenantId)))
+      .where(and(eq(installationChecklists.id, id), eq(installationChecklists.tenantId, tenantId)))
       .returning();
     return updatedChecklist || null;
   }
@@ -6363,9 +6322,7 @@ export class DatabaseStorage implements IStorage {
   async deleteInstallationChecklist(id: string, tenantId: string): Promise<void> {
     await db
       .delete(installationChecklists)
-      .where(
-        and(eq(installationChecklists.id, id), eq(installationChecklists.tenant_id, tenantId)),
-      );
+      .where(and(eq(installationChecklists.id, id), eq(installationChecklists.tenantId, tenantId)));
   }
 
   async bulkCreateInstallationChecklists(
@@ -6379,9 +6336,9 @@ export class DatabaseStorage implements IStorage {
     tenantId: string,
     filters?: { templateType?: string; isActive?: boolean; category?: string },
   ): Promise<EmailTemplate[]> {
-    let query = db.select().from(emailTemplates).where(eq(emailTemplates.tenant_id, tenantId));
+    let query = db.select().from(emailTemplates).where(eq(emailTemplates.tenantId, tenantId));
 
-    const conditions = [eq(emailTemplates.tenant_id, tenantId)];
+    const conditions = [eq(emailTemplates.tenantId, tenantId)];
 
     if (filters?.templateType) {
       conditions.push(eq(emailTemplates.templateType, filters.templateType));
@@ -6397,14 +6354,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(emailTemplates)
       .where(and(...conditions))
-      .orderBy(desc(emailTemplates.created_at));
+      .orderBy(desc(emailTemplates.createdAt));
   }
 
   async getEmailTemplateById(id: string, tenantId: string): Promise<EmailTemplate | null> {
     const [template] = await db
       .select()
       .from(emailTemplates)
-      .where(and(eq(emailTemplates.id, id), eq(emailTemplates.tenant_id, tenantId)));
+      .where(and(eq(emailTemplates.id, id), eq(emailTemplates.tenantId, tenantId)));
     return template || null;
   }
 
@@ -6416,7 +6373,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(emailTemplates)
       .where(
-        and(eq(emailTemplates.templateName, templateName), eq(emailTemplates.tenant_id, tenantId)),
+        and(eq(emailTemplates.templateName, templateName), eq(emailTemplates.tenantId, tenantId)),
       );
     return template || null;
   }
@@ -6434,7 +6391,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedTemplate] = await db
       .update(emailTemplates)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(emailTemplates.id, id), eq(emailTemplates.tenant_id, tenantId)))
+      .where(and(eq(emailTemplates.id, id), eq(emailTemplates.tenantId, tenantId)))
       .returning();
     return updatedTemplate || null;
   }
@@ -6442,14 +6399,14 @@ export class DatabaseStorage implements IStorage {
   async deleteEmailTemplate(id: string, tenantId: string): Promise<void> {
     await db
       .delete(emailTemplates)
-      .where(and(eq(emailTemplates.id, id), eq(emailTemplates.tenant_id, tenantId)));
+      .where(and(eq(emailTemplates.id, id), eq(emailTemplates.tenantId, tenantId)));
   }
 
   async getEmailCampaigns(
     tenantId: string,
     filters?: { status?: string; campaignType?: string; ownerId?: string },
   ): Promise<EmailCampaign[]> {
-    const conditions = [eq(emailCampaigns.tenant_id, tenantId)];
+    const conditions = [eq(emailCampaigns.tenantId, tenantId)];
 
     if (filters?.status) {
       conditions.push(eq(emailCampaigns.status, filters.status));
@@ -6465,14 +6422,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(emailCampaigns)
       .where(and(...conditions))
-      .orderBy(desc(emailCampaigns.created_at));
+      .orderBy(desc(emailCampaigns.createdAt));
   }
 
   async getEmailCampaignById(id: string, tenantId: string): Promise<EmailCampaign | null> {
     const [campaign] = await db
       .select()
       .from(emailCampaigns)
-      .where(and(eq(emailCampaigns.id, id), eq(emailCampaigns.tenant_id, tenantId)));
+      .where(and(eq(emailCampaigns.id, id), eq(emailCampaigns.tenantId, tenantId)));
     return campaign || null;
   }
 
@@ -6484,7 +6441,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(emailCampaigns)
       .where(
-        and(eq(emailCampaigns.campaignName, campaignName), eq(emailCampaigns.tenant_id, tenantId)),
+        and(eq(emailCampaigns.campaignName, campaignName), eq(emailCampaigns.tenantId, tenantId)),
       );
     return campaign || null;
   }
@@ -6502,7 +6459,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedCampaign] = await db
       .update(emailCampaigns)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(emailCampaigns.id, id), eq(emailCampaigns.tenant_id, tenantId)))
+      .where(and(eq(emailCampaigns.id, id), eq(emailCampaigns.tenantId, tenantId)))
       .returning();
     return updatedCampaign || null;
   }
@@ -6510,7 +6467,7 @@ export class DatabaseStorage implements IStorage {
   async deleteEmailCampaign(id: string, tenantId: string): Promise<void> {
     await db
       .delete(emailCampaigns)
-      .where(and(eq(emailCampaigns.id, id), eq(emailCampaigns.tenant_id, tenantId)));
+      .where(and(eq(emailCampaigns.id, id), eq(emailCampaigns.tenantId, tenantId)));
   }
 
   async updateCampaignMetrics(campaignId: string, tenantId: string): Promise<EmailCampaign | null> {
@@ -6520,12 +6477,12 @@ export class DatabaseStorage implements IStorage {
     const sends = await db
       .select()
       .from(emailSends)
-      .where(and(eq(emailSends.campaignId, campaignId), eq(emailSends.tenant_id, tenantId)));
+      .where(and(eq(emailSends.campaignId, campaignId), eq(emailSends.tenantId, tenantId)));
 
     const events = await db
       .select()
       .from(emailEvents)
-      .where(and(eq(emailEvents.campaignId, campaignId), eq(emailEvents.tenant_id, tenantId)));
+      .where(and(eq(emailEvents.campaignId, campaignId), eq(emailEvents.tenantId, tenantId)));
 
     const emailsSent = sends.length;
     const emailsDelivered = sends.filter((s) => s.status === 'delivered').length;
@@ -6579,15 +6536,15 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(emailSends)
-      .where(and(eq(emailSends.campaignId, campaignId), eq(emailSends.tenant_id, tenantId)))
-      .orderBy(desc(emailSends.created_at));
+      .where(and(eq(emailSends.campaignId, campaignId), eq(emailSends.tenantId, tenantId)))
+      .orderBy(desc(emailSends.createdAt));
   }
 
   async getEmailSendById(id: string, tenantId: string): Promise<EmailSend | null> {
     const [send] = await db
       .select()
       .from(emailSends)
-      .where(and(eq(emailSends.id, id), eq(emailSends.tenant_id, tenantId)));
+      .where(and(eq(emailSends.id, id), eq(emailSends.tenantId, tenantId)));
     return send || null;
   }
 
@@ -6595,8 +6552,8 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(emailSends)
-      .where(and(eq(emailSends.recipientEmail, recipientEmail), eq(emailSends.tenant_id, tenantId)))
-      .orderBy(desc(emailSends.created_at));
+      .where(and(eq(emailSends.recipientEmail, recipientEmail), eq(emailSends.tenantId, tenantId)))
+      .orderBy(desc(emailSends.createdAt));
   }
 
   async createEmailSend(send: InsertEmailSend): Promise<EmailSend> {
@@ -6612,7 +6569,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedSend] = await db
       .update(emailSends)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(emailSends.id, id), eq(emailSends.tenant_id, tenantId)))
+      .where(and(eq(emailSends.id, id), eq(emailSends.tenantId, tenantId)))
       .returning();
     return updatedSend || null;
   }
@@ -6620,7 +6577,7 @@ export class DatabaseStorage implements IStorage {
   async deleteEmailSend(id: string, tenantId: string): Promise<void> {
     await db
       .delete(emailSends)
-      .where(and(eq(emailSends.id, id), eq(emailSends.tenant_id, tenantId)));
+      .where(and(eq(emailSends.id, id), eq(emailSends.tenantId, tenantId)));
   }
 
   async bulkCreateEmailSends(sends: InsertEmailSend[]): Promise<EmailSend[]> {
@@ -6632,7 +6589,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(emailEvents)
-      .where(and(eq(emailEvents.emailSendId, emailSendId), eq(emailEvents.tenant_id, tenantId)))
+      .where(and(eq(emailEvents.emailSendId, emailSendId), eq(emailEvents.tenantId, tenantId)))
       .orderBy(asc(emailEvents.eventTimestamp));
   }
 
@@ -6641,10 +6598,7 @@ export class DatabaseStorage implements IStorage {
     tenantId: string,
     filters?: { eventType?: string },
   ): Promise<EmailEvent[]> {
-    const conditions = [
-      eq(emailEvents.campaignId, campaignId),
-      eq(emailEvents.tenant_id, tenantId),
-    ];
+    const conditions = [eq(emailEvents.campaignId, campaignId), eq(emailEvents.tenantId, tenantId)];
 
     if (filters?.eventType) {
       conditions.push(eq(emailEvents.eventType, filters.eventType));
@@ -6666,7 +6620,7 @@ export class DatabaseStorage implements IStorage {
     tenantId: string,
     filters?: { listType?: string; isActive?: boolean; category?: string },
   ): Promise<EmailList[]> {
-    const conditions = [eq(emailLists.tenant_id, tenantId)];
+    const conditions = [eq(emailLists.tenantId, tenantId)];
 
     if (filters?.listType) {
       conditions.push(eq(emailLists.listType, filters.listType));
@@ -6682,14 +6636,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(emailLists)
       .where(and(...conditions))
-      .orderBy(desc(emailLists.created_at));
+      .orderBy(desc(emailLists.createdAt));
   }
 
   async getEmailListById(id: string, tenantId: string): Promise<EmailList | null> {
     const [list] = await db
       .select()
       .from(emailLists)
-      .where(and(eq(emailLists.id, id), eq(emailLists.tenant_id, tenantId)));
+      .where(and(eq(emailLists.id, id), eq(emailLists.tenantId, tenantId)));
     return list || null;
   }
 
@@ -6697,7 +6651,7 @@ export class DatabaseStorage implements IStorage {
     const [list] = await db
       .select()
       .from(emailLists)
-      .where(and(eq(emailLists.listName, listName), eq(emailLists.tenant_id, tenantId)));
+      .where(and(eq(emailLists.listName, listName), eq(emailLists.tenantId, tenantId)));
     return list || null;
   }
 
@@ -6714,7 +6668,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedList] = await db
       .update(emailLists)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(emailLists.id, id), eq(emailLists.tenant_id, tenantId)))
+      .where(and(eq(emailLists.id, id), eq(emailLists.tenantId, tenantId)))
       .returning();
     return updatedList || null;
   }
@@ -6722,14 +6676,14 @@ export class DatabaseStorage implements IStorage {
   async deleteEmailList(id: string, tenantId: string): Promise<void> {
     await db
       .delete(emailLists)
-      .where(and(eq(emailLists.id, id), eq(emailLists.tenant_id, tenantId)));
+      .where(and(eq(emailLists.id, id), eq(emailLists.tenantId, tenantId)));
   }
 
   async updateListMemberCounts(listId: string, tenantId: string): Promise<EmailList | null> {
     const members = await db
       .select()
       .from(emailListMembers)
-      .where(and(eq(emailListMembers.listId, listId), eq(emailListMembers.tenant_id, tenantId)));
+      .where(and(eq(emailListMembers.listId, listId), eq(emailListMembers.tenantId, tenantId)));
 
     const totalMembers = members.length;
     const activeMembers = members.filter((m) => m.status === 'active').length;
@@ -6749,7 +6703,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<EmailListMember[]> {
     const conditions = [
       eq(emailListMembers.listId, listId),
-      eq(emailListMembers.tenant_id, tenantId),
+      eq(emailListMembers.tenantId, tenantId),
     ];
 
     if (filters?.status) {
@@ -6760,14 +6714,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(emailListMembers)
       .where(and(...conditions))
-      .orderBy(desc(emailListMembers.created_at));
+      .orderBy(desc(emailListMembers.createdAt));
   }
 
   async getEmailListMemberById(id: string, tenantId: string): Promise<EmailListMember | null> {
     const [member] = await db
       .select()
       .from(emailListMembers)
-      .where(and(eq(emailListMembers.id, id), eq(emailListMembers.tenant_id, tenantId)));
+      .where(and(eq(emailListMembers.id, id), eq(emailListMembers.tenantId, tenantId)));
     return member || null;
   }
 
@@ -6783,7 +6737,7 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(emailListMembers.listId, listId),
           eq(emailListMembers.email, email),
-          eq(emailListMembers.tenant_id, tenantId),
+          eq(emailListMembers.tenantId, tenantId),
         ),
       );
     return member || null;
@@ -6802,7 +6756,7 @@ export class DatabaseStorage implements IStorage {
     const [updatedMember] = await db
       .update(emailListMembers)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(emailListMembers.id, id), eq(emailListMembers.tenant_id, tenantId)))
+      .where(and(eq(emailListMembers.id, id), eq(emailListMembers.tenantId, tenantId)))
       .returning();
     return updatedMember || null;
   }
@@ -6810,7 +6764,7 @@ export class DatabaseStorage implements IStorage {
   async deleteEmailListMember(id: string, tenantId: string): Promise<void> {
     await db
       .delete(emailListMembers)
-      .where(and(eq(emailListMembers.id, id), eq(emailListMembers.tenant_id, tenantId)));
+      .where(and(eq(emailListMembers.id, id), eq(emailListMembers.tenantId, tenantId)));
   }
 
   async bulkCreateEmailListMembers(members: InsertEmailListMember[]): Promise<EmailListMember[]> {
@@ -6822,7 +6776,7 @@ export class DatabaseStorage implements IStorage {
     tenantId: string,
     filters?: { unsubscribeType?: string; email?: string },
   ): Promise<EmailUnsubscribe[]> {
-    const conditions = [eq(emailUnsubscribes.tenant_id, tenantId)];
+    const conditions = [eq(emailUnsubscribes.tenantId, tenantId)];
 
     if (filters?.unsubscribeType) {
       conditions.push(eq(emailUnsubscribes.unsubscribeType, filters.unsubscribeType));
@@ -6845,7 +6799,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<EmailUnsubscribe | null> {
     const conditions = [
       eq(emailUnsubscribes.email, email),
-      eq(emailUnsubscribes.tenant_id, tenantId),
+      eq(emailUnsubscribes.tenantId, tenantId),
     ];
 
     if (unsubscribeType) {
@@ -6929,7 +6883,7 @@ export class DatabaseStorage implements IStorage {
     const backupCodes = await db
       .select()
       .from(mfaBackupCodes)
-      .where(and(eq(mfaBackupCodes.user_id, userId), eq(mfaBackupCodes.isUsed, false)))
+      .where(and(eq(mfaBackupCodes.userId, userId), eq(mfaBackupCodes.isUsed, false)))
       .limit(1);
 
     return {
@@ -6977,7 +6931,7 @@ export class DatabaseStorage implements IStorage {
     const backupCodesList = await db
       .select()
       .from(mfaBackupCodes)
-      .where(and(eq(mfaBackupCodes.user_id, userId), eq(mfaBackupCodes.isUsed, false)));
+      .where(and(eq(mfaBackupCodes.userId, userId), eq(mfaBackupCodes.isUsed, false)));
 
     for (const backupCode of backupCodesList) {
       const isValid = await bcrypt.compare(code, backupCode.codeHash);
@@ -7003,12 +6957,12 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(mfaBackupCodes)
-      .where(and(eq(mfaBackupCodes.user_id, userId), eq(mfaBackupCodes.isUsed, false)))
-      .orderBy(asc(mfaBackupCodes.created_at));
+      .where(and(eq(mfaBackupCodes.userId, userId), eq(mfaBackupCodes.isUsed, false)))
+      .orderBy(asc(mfaBackupCodes.createdAt));
   }
 
   async deleteAllBackupCodes(userId: string): Promise<void> {
-    await db.delete(mfaBackupCodes).where(eq(mfaBackupCodes.user_id, userId));
+    await db.delete(mfaBackupCodes).where(eq(mfaBackupCodes.userId, userId));
   }
 
   // MFA Audit Logs
@@ -7022,7 +6976,7 @@ export class DatabaseStorage implements IStorage {
     userId: string,
     filters?: { eventType?: string; success?: boolean },
   ): Promise<MfaAuditLog[]> {
-    const conditions = [eq(mfaAuditLogs.user_id, userId)];
+    const conditions = [eq(mfaAuditLogs.userId, userId)];
 
     if (filters?.eventType) {
       conditions.push(eq(mfaAuditLogs.eventType, filters.eventType));
@@ -7036,14 +6990,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(mfaAuditLogs)
       .where(and(...conditions))
-      .orderBy(desc(mfaAuditLogs.created_at));
+      .orderBy(desc(mfaAuditLogs.createdAt));
   }
 
   async getMfaAuditLogsByTenant(
     tenantId: string,
     filters?: { eventType?: string; success?: boolean },
   ): Promise<MfaAuditLog[]> {
-    const conditions = [eq(mfaAuditLogs.tenant_id, tenantId)];
+    const conditions = [eq(mfaAuditLogs.tenantId, tenantId)];
 
     if (filters?.eventType) {
       conditions.push(eq(mfaAuditLogs.eventType, filters.eventType));
@@ -7057,7 +7011,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(mfaAuditLogs)
       .where(and(...conditions))
-      .orderBy(desc(mfaAuditLogs.created_at));
+      .orderBy(desc(mfaAuditLogs.createdAt));
   }
 
   // MFA Status Reporting & Compliance
@@ -7073,7 +7027,7 @@ export class DatabaseStorage implements IStorage {
     const totalUsersResult = await db
       .select({ count: count() })
       .from(users)
-      .where(eq(users.tenant_id, tenantId));
+      .where(eq(users.tenantId, tenantId));
 
     const totalUsers = totalUsersResult[0]?.count || 0;
 
@@ -7081,7 +7035,7 @@ export class DatabaseStorage implements IStorage {
     const mfaEnabledResult = await db
       .select({ count: count() })
       .from(users)
-      .where(and(eq(users.tenant_id, tenantId), eq(users.twoFactorEnabled, true)));
+      .where(and(eq(users.tenantId, tenantId), eq(users.twoFactorEnabled, true)));
 
     const mfaEnabledUsers = mfaEnabledResult[0]?.count || 0;
     const mfaDisabledUsers = totalUsers - mfaEnabledUsers;
@@ -7097,10 +7051,10 @@ export class DatabaseStorage implements IStorage {
       .from(mfaAuditLogs)
       .where(
         and(
-          eq(mfaAuditLogs.tenant_id, tenantId),
+          eq(mfaAuditLogs.tenantId, tenantId),
           eq(mfaAuditLogs.eventType, 'enrollment'),
           eq(mfaAuditLogs.success, true),
-          gte(mfaAuditLogs.created_at, thirtyDaysAgo),
+          gte(mfaAuditLogs.createdAt, thirtyDaysAgo),
         ),
       );
 
@@ -7112,9 +7066,9 @@ export class DatabaseStorage implements IStorage {
       .from(mfaAuditLogs)
       .where(
         and(
-          eq(mfaAuditLogs.tenant_id, tenantId),
+          eq(mfaAuditLogs.tenantId, tenantId),
           eq(mfaAuditLogs.eventType, 'verification_failure'),
-          gte(mfaAuditLogs.created_at, thirtyDaysAgo),
+          gte(mfaAuditLogs.createdAt, thirtyDaysAgo),
         ),
       );
 
@@ -7136,7 +7090,7 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(
         and(
-          eq(users.tenant_id, tenantId),
+          eq(users.tenantId, tenantId),
           or(eq(users.twoFactorEnabled, false), isNull(users.twoFactorEnabled)),
         ),
       )
@@ -7157,7 +7111,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getWorkflows(tenantId: string, status?: string): Promise<Workflow[]> {
-    const conditions = [eq(workflows.tenant_id, tenantId)];
+    const conditions = [eq(workflows.tenantId, tenantId)];
     if (status) {
       conditions.push(eq(workflows.status, status as any));
     }
@@ -7165,7 +7119,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(workflows)
       .where(and(...conditions))
-      .orderBy(desc(workflows.created_at));
+      .orderBy(desc(workflows.createdAt));
   }
 
   async updateWorkflow(id: string, data: Partial<InsertWorkflow>): Promise<Workflow> {
@@ -7345,7 +7299,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(workflowExecutions)
       .where(eq(workflowExecutions.workflowId, workflowId))
-      .orderBy(desc(workflowExecutions.created_at))
+      .orderBy(desc(workflowExecutions.createdAt))
       .limit(limit);
   }
 
@@ -7356,8 +7310,8 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(workflowExecutions)
-      .where(eq(workflowExecutions.tenant_id, tenantId))
-      .orderBy(desc(workflowExecutions.created_at))
+      .where(eq(workflowExecutions.tenantId, tenantId))
+      .orderBy(desc(workflowExecutions.createdAt))
       .limit(limit);
   }
 
@@ -7378,7 +7332,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(workflowExecutions)
       .where(eq(workflowExecutions.status, 'queued'))
-      .orderBy(asc(workflowExecutions.created_at))
+      .orderBy(asc(workflowExecutions.createdAt))
       .limit(limit);
   }
 
@@ -7418,7 +7372,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(workflowExecutionEvents)
       .where(eq(workflowExecutionEvents.executionId, executionId))
-      .orderBy(asc(workflowExecutionEvents.created_at));
+      .orderBy(asc(workflowExecutionEvents.createdAt));
   }
 
   // Workflow Conditions Management
@@ -7576,7 +7530,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLeadScoringRules(tenantId: string, category?: string): Promise<LeadScoringRule[]> {
-    const conditions = [eq(leadScoringRules.tenant_id, tenantId)];
+    const conditions = [eq(leadScoringRules.tenantId, tenantId)];
     if (category) {
       conditions.push(eq(leadScoringRules.category, category));
     }
@@ -7591,7 +7545,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(leadScoringRules)
-      .where(and(eq(leadScoringRules.tenant_id, tenantId), eq(leadScoringRules.isActive, true)))
+      .where(and(eq(leadScoringRules.tenantId, tenantId), eq(leadScoringRules.isActive, true)))
       .orderBy(desc(leadScoringRules.priority));
   }
 
@@ -7664,7 +7618,7 @@ export class DatabaseStorage implements IStorage {
       .from(bantQualificationCriteria)
       .where(
         and(
-          eq(bantQualificationCriteria.tenant_id, tenantId),
+          eq(bantQualificationCriteria.tenantId, tenantId),
           gte(bantQualificationCriteria.totalBantScore, minBantScore),
         ),
       )
@@ -7707,7 +7661,7 @@ export class DatabaseStorage implements IStorage {
         ),
       })
       .from(leadScoreCalculations)
-      .where(eq(leadScoreCalculations.tenant_id, tenantId))
+      .where(eq(leadScoreCalculations.tenantId, tenantId))
       .groupBy(leadScoreCalculations.leadId)
       .as('latest_scores');
 
@@ -7721,7 +7675,7 @@ export class DatabaseStorage implements IStorage {
           eq(leadScoreCalculations.calculatedAt, subquery.maxCalculatedAt),
         ),
       )
-      .where(eq(leadScoreCalculations.tenant_id, tenantId))
+      .where(eq(leadScoreCalculations.tenantId, tenantId))
       .orderBy(desc(leadScoreCalculations.totalScore))
       .limit(limit)
       .then((results) => results.map((r) => r.lead_score_calculations));
@@ -7736,7 +7690,7 @@ export class DatabaseStorage implements IStorage {
         ),
       })
       .from(leadScoreCalculations)
-      .where(eq(leadScoreCalculations.tenant_id, tenantId))
+      .where(eq(leadScoreCalculations.tenantId, tenantId))
       .groupBy(leadScoreCalculations.leadId)
       .as('latest_scores');
 
@@ -7752,7 +7706,7 @@ export class DatabaseStorage implements IStorage {
       )
       .where(
         and(
-          eq(leadScoreCalculations.tenant_id, tenantId),
+          eq(leadScoreCalculations.tenantId, tenantId),
           eq(leadScoreCalculations.leadGrade, grade),
         ),
       )
@@ -7783,7 +7737,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(leadQualificationHistory)
-      .where(eq(leadQualificationHistory.tenant_id, tenantId))
+      .where(eq(leadQualificationHistory.tenantId, tenantId))
       .orderBy(desc(leadQualificationHistory.changedAt))
       .limit(limit);
   }
@@ -7860,7 +7814,7 @@ export class DatabaseStorage implements IStorage {
         ),
       })
       .from(leadScoreCalculations)
-      .where(eq(leadScoreCalculations.tenant_id, tenantId))
+      .where(eq(leadScoreCalculations.tenantId, tenantId))
       .groupBy(leadScoreCalculations.leadId)
       .as('latest_scores');
 
@@ -7874,7 +7828,7 @@ export class DatabaseStorage implements IStorage {
           eq(leadScoreCalculations.calculatedAt, subquery.maxCalculatedAt),
         ),
       )
-      .where(eq(leadScoreCalculations.tenant_id, tenantId))
+      .where(eq(leadScoreCalculations.tenantId, tenantId))
       .then((results) => results.map((r) => r.lead_score_calculations));
 
     const totalLeadsScored = latestScores.length;
@@ -7906,7 +7860,7 @@ export class DatabaseStorage implements IStorage {
         timesTriggered: sql<number>`COUNT(*)`.as('times_triggered'),
       })
       .from(leadScoringFactors)
-      .where(eq(leadScoringFactors.tenant_id, tenantId))
+      .where(eq(leadScoringFactors.tenantId, tenantId))
       .groupBy(leadScoringFactors.ruleId, leadScoringFactors.factorName)
       .orderBy(sql`SUM(${leadScoringFactors.pointsAwarded}) DESC`)
       .limit(10);
@@ -7942,7 +7896,7 @@ export class DatabaseStorage implements IStorage {
     const allBant = await db
       .select()
       .from(bantQualificationCriteria)
-      .where(eq(bantQualificationCriteria.tenant_id, tenantId));
+      .where(eq(bantQualificationCriteria.tenantId, tenantId));
 
     const totalAssessed = allBant.length;
     const qualifiedCount = allBant.filter((b) => b.totalBantScore >= 50).length;
@@ -7995,9 +7949,9 @@ export class DatabaseStorage implements IStorage {
     let query = db
       .select()
       .from(manufacturerConnections)
-      .where(eq(manufacturerConnections.tenant_id, tenantId));
+      .where(eq(manufacturerConnections.tenantId, tenantId));
 
-    const conditions = [eq(manufacturerConnections.tenant_id, tenantId)];
+    const conditions = [eq(manufacturerConnections.tenantId, tenantId)];
 
     if (filters?.manufacturerType) {
       conditions.push(
@@ -8015,7 +7969,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(manufacturerConnections)
       .where(and(...conditions))
-      .orderBy(desc(manufacturerConnections.updated_at));
+      .orderBy(desc(manufacturerConnections.updatedAt));
 
     return result;
   }
@@ -8039,7 +7993,7 @@ export class DatabaseStorage implements IStorage {
       .from(manufacturerConnections)
       .where(
         and(
-          eq(manufacturerConnections.tenant_id, tenantId),
+          eq(manufacturerConnections.tenantId, tenantId),
           eq(manufacturerConnections.manufacturerType, manufacturerType as any),
         ),
       )
@@ -8068,7 +8022,7 @@ export class DatabaseStorage implements IStorage {
       .update(manufacturerConnections)
       .set({ ...data, updatedAt: new Date() })
       .where(
-        and(eq(manufacturerConnections.id, id), eq(manufacturerConnections.tenant_id, tenantId)),
+        and(eq(manufacturerConnections.id, id), eq(manufacturerConnections.tenantId, tenantId)),
       )
       .returning();
 
@@ -8079,7 +8033,7 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(manufacturerConnections)
       .where(
-        and(eq(manufacturerConnections.id, id), eq(manufacturerConnections.tenant_id, tenantId)),
+        and(eq(manufacturerConnections.id, id), eq(manufacturerConnections.tenantId, tenantId)),
       );
   }
 
@@ -8106,7 +8060,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerConnections.id, connectionId),
-          eq(manufacturerConnections.tenant_id, tenantId),
+          eq(manufacturerConnections.tenantId, tenantId),
         ),
       )
       .returning();
@@ -8124,7 +8078,7 @@ export class DatabaseStorage implements IStorage {
       endDate?: Date;
     },
   ): Promise<ManufacturerOrder[]> {
-    const conditions = [eq(manufacturerOrders.tenant_id, tenantId)];
+    const conditions = [eq(manufacturerOrders.tenantId, tenantId)];
 
     if (filters?.connectionId) {
       conditions.push(eq(manufacturerOrders.connectionId, filters.connectionId));
@@ -8171,7 +8125,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerOrders.orderNumber, orderNumber),
-          eq(manufacturerOrders.tenant_id, tenantId),
+          eq(manufacturerOrders.tenantId, tenantId),
         ),
       )
       .limit(1);
@@ -8196,7 +8150,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(manufacturerOrders)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(manufacturerOrders.id, id), eq(manufacturerOrders.tenant_id, tenantId)))
+      .where(and(eq(manufacturerOrders.id, id), eq(manufacturerOrders.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -8205,7 +8159,7 @@ export class DatabaseStorage implements IStorage {
   async deleteManufacturerOrder(id: string, tenantId: string): Promise<void> {
     await db
       .delete(manufacturerOrders)
-      .where(and(eq(manufacturerOrders.id, id), eq(manufacturerOrders.tenant_id, tenantId)));
+      .where(and(eq(manufacturerOrders.id, id), eq(manufacturerOrders.tenantId, tenantId)));
   }
 
   async submitOrder(orderId: string, tenantId: string): Promise<ManufacturerOrder | null> {
@@ -8216,7 +8170,7 @@ export class DatabaseStorage implements IStorage {
         submittedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(and(eq(manufacturerOrders.id, orderId), eq(manufacturerOrders.tenant_id, tenantId)))
+      .where(and(eq(manufacturerOrders.id, orderId), eq(manufacturerOrders.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -8235,7 +8189,7 @@ export class DatabaseStorage implements IStorage {
         manufacturerOrderNumber,
         updatedAt: new Date(),
       })
-      .where(and(eq(manufacturerOrders.id, orderId), eq(manufacturerOrders.tenant_id, tenantId)))
+      .where(and(eq(manufacturerOrders.id, orderId), eq(manufacturerOrders.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -8253,7 +8207,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(manufacturerOrders)
       .set({ ...fulfillmentData, updatedAt: new Date() })
-      .where(and(eq(manufacturerOrders.id, orderId), eq(manufacturerOrders.tenant_id, tenantId)))
+      .where(and(eq(manufacturerOrders.id, orderId), eq(manufacturerOrders.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -8302,7 +8256,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerOrderLineItems.id, id),
-          eq(manufacturerOrderLineItems.tenant_id, tenantId),
+          eq(manufacturerOrderLineItems.tenantId, tenantId),
         ),
       )
       .returning();
@@ -8316,7 +8270,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerOrderLineItems.id, id),
-          eq(manufacturerOrderLineItems.tenant_id, tenantId),
+          eq(manufacturerOrderLineItems.tenantId, tenantId),
         ),
       );
   }
@@ -8347,7 +8301,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerOrderLineItems.id, lineItemId),
-          eq(manufacturerOrderLineItems.tenant_id, tenantId),
+          eq(manufacturerOrderLineItems.tenantId, tenantId),
         ),
       )
       .returning();
@@ -8398,7 +8352,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerOrderConfirmations.id, id),
-          eq(manufacturerOrderConfirmations.tenant_id, tenantId),
+          eq(manufacturerOrderConfirmations.tenantId, tenantId),
         ),
       )
       .returning();
@@ -8420,7 +8374,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerOrderConfirmations.id, confirmationId),
-          eq(manufacturerOrderConfirmations.tenant_id, tenantId),
+          eq(manufacturerOrderConfirmations.tenantId, tenantId),
         ),
       )
       .returning();
@@ -8459,7 +8413,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerOrderShipments.trackingNumber, trackingNumber),
-          eq(manufacturerOrderShipments.tenant_id, tenantId),
+          eq(manufacturerOrderShipments.tenantId, tenantId),
         ),
       )
       .limit(1);
@@ -8489,7 +8443,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerOrderShipments.id, id),
-          eq(manufacturerOrderShipments.tenant_id, tenantId),
+          eq(manufacturerOrderShipments.tenantId, tenantId),
         ),
       )
       .returning();
@@ -8503,7 +8457,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerOrderShipments.id, id),
-          eq(manufacturerOrderShipments.tenant_id, tenantId),
+          eq(manufacturerOrderShipments.tenantId, tenantId),
         ),
       );
   }
@@ -8523,7 +8477,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerOrderShipments.id, shipmentId),
-          eq(manufacturerOrderShipments.tenant_id, tenantId),
+          eq(manufacturerOrderShipments.tenantId, tenantId),
         ),
       )
       .returning();
@@ -8550,7 +8504,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerOrderShipments.id, shipmentId),
-          eq(manufacturerOrderShipments.tenant_id, tenantId),
+          eq(manufacturerOrderShipments.tenantId, tenantId),
         ),
       )
       .returning();
@@ -8574,7 +8528,7 @@ export class DatabaseStorage implements IStorage {
     filters?: { severity?: string; exceptionType?: string },
   ): Promise<ManufacturerOrderException[]> {
     const conditions = [
-      eq(manufacturerOrderExceptions.tenant_id, tenantId),
+      eq(manufacturerOrderExceptions.tenantId, tenantId),
       eq(manufacturerOrderExceptions.resolved, false),
     ];
 
@@ -8627,7 +8581,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerOrderExceptions.id, id),
-          eq(manufacturerOrderExceptions.tenant_id, tenantId),
+          eq(manufacturerOrderExceptions.tenantId, tenantId),
         ),
       )
       .returning();
@@ -8653,7 +8607,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(manufacturerOrderExceptions.id, exceptionId),
-          eq(manufacturerOrderExceptions.tenant_id, tenantId),
+          eq(manufacturerOrderExceptions.tenantId, tenantId),
         ),
       )
       .returning();
@@ -8686,7 +8640,7 @@ export class DatabaseStorage implements IStorage {
       totalValue: number;
     }>;
   }> {
-    const conditions = [eq(manufacturerOrders.tenant_id, tenantId)];
+    const conditions = [eq(manufacturerOrders.tenantId, tenantId)];
 
     if (filters?.connectionId) {
       conditions.push(eq(manufacturerOrders.connectionId, filters.connectionId));
@@ -8736,7 +8690,7 @@ export class DatabaseStorage implements IStorage {
       .from(manufacturerOrderShipments)
       .where(
         and(
-          eq(manufacturerOrderShipments.tenant_id, tenantId),
+          eq(manufacturerOrderShipments.tenantId, tenantId),
           isNotNull(manufacturerOrderShipments.estimatedDeliveryDate),
           isNotNull(manufacturerOrderShipments.actualDeliveryDate),
         ),
@@ -8757,7 +8711,7 @@ export class DatabaseStorage implements IStorage {
     const exceptions = await db
       .select()
       .from(manufacturerOrderExceptions)
-      .where(eq(manufacturerOrderExceptions.tenant_id, tenantId));
+      .where(eq(manufacturerOrderExceptions.tenantId, tenantId));
 
     const exceptionRate = totalOrders > 0 ? (exceptions.length / totalOrders) * 100 : 0;
 
@@ -8767,7 +8721,7 @@ export class DatabaseStorage implements IStorage {
     const connections = await db
       .select()
       .from(manufacturerConnections)
-      .where(eq(manufacturerConnections.tenant_id, tenantId));
+      .where(eq(manufacturerConnections.tenantId, tenantId));
 
     const connectionMap = new Map(connections.map((c) => [c.id, c.manufacturerName]));
 
@@ -8813,7 +8767,7 @@ export class DatabaseStorage implements IStorage {
       .from(technicianLocations)
       .where(
         and(
-          eq(technicianLocations.tenant_id, tenantId),
+          eq(technicianLocations.tenantId, tenantId),
           eq(technicianLocations.technicianId, technicianId),
         ),
       )
@@ -8836,7 +8790,7 @@ export class DatabaseStorage implements IStorage {
         .set({ ...data, updatedAt: new Date() })
         .where(
           and(
-            eq(technicianLocations.tenant_id, tenantId),
+            eq(technicianLocations.tenantId, tenantId),
             eq(technicianLocations.technicianId, technicianId),
           ),
         )
@@ -8857,7 +8811,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(technicianLocations)
       .where(
-        and(eq(technicianLocations.tenant_id, tenantId), eq(technicianLocations.status, status)),
+        and(eq(technicianLocations.tenantId, tenantId), eq(technicianLocations.status, status)),
       )
       .orderBy(desc(technicianLocations.timestamp));
   }
@@ -8873,7 +8827,7 @@ export class DatabaseStorage implements IStorage {
     const allLocations = await db
       .select()
       .from(technicianLocations)
-      .where(eq(technicianLocations.tenant_id, tenantId));
+      .where(eq(technicianLocations.tenantId, tenantId));
 
     // Filter locations within radius using Haversine formula
     const nearbyLocations = allLocations.filter((loc) => {
@@ -8897,7 +8851,7 @@ export class DatabaseStorage implements IStorage {
       .from(gpsLocationHistory)
       .where(
         and(
-          eq(gpsLocationHistory.tenant_id, tenantId),
+          eq(gpsLocationHistory.tenantId, tenantId),
           eq(gpsLocationHistory.technicianId, technicianId),
           gte(gpsLocationHistory.timestamp, startDate),
           lte(gpsLocationHistory.timestamp, endDate),
@@ -8919,7 +8873,7 @@ export class DatabaseStorage implements IStorage {
       .delete(technicianLocations)
       .where(
         and(
-          eq(technicianLocations.tenant_id, tenantId),
+          eq(technicianLocations.tenantId, tenantId),
           eq(technicianLocations.technicianId, technicianId),
         ),
       );
@@ -8929,7 +8883,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(technicianLocations)
-      .where(eq(technicianLocations.tenant_id, tenantId))
+      .where(eq(technicianLocations.tenantId, tenantId))
       .orderBy(desc(technicianLocations.timestamp));
   }
 
@@ -8948,7 +8902,7 @@ export class DatabaseStorage implements IStorage {
     filters?: { startDate?: Date; endDate?: Date; activityType?: string; ticketId?: string },
   ): Promise<GpsLocationHistory[]> {
     const conditions = [
-      eq(gpsLocationHistory.tenant_id, tenantId),
+      eq(gpsLocationHistory.tenantId, tenantId),
       eq(gpsLocationHistory.technicianId, technicianId),
     ];
 
@@ -8982,7 +8936,7 @@ export class DatabaseStorage implements IStorage {
       .from(gpsLocationHistory)
       .where(
         and(
-          eq(gpsLocationHistory.tenant_id, tenantId),
+          eq(gpsLocationHistory.tenantId, tenantId),
           eq(gpsLocationHistory.technicianId, technicianId),
           eq(gpsLocationHistory.ticketId, ticketId),
         ),
@@ -9027,7 +8981,7 @@ export class DatabaseStorage implements IStorage {
     tenantId: string,
     filters?: { technicianId?: string; routeDate?: Date; routeStatus?: string },
   ): Promise<RouteAssignment[]> {
-    const conditions = [eq(routeAssignments.tenant_id, tenantId)];
+    const conditions = [eq(routeAssignments.tenantId, tenantId)];
 
     if (filters?.technicianId) {
       conditions.push(eq(routeAssignments.technicianId, filters.technicianId));
@@ -9050,7 +9004,7 @@ export class DatabaseStorage implements IStorage {
     const [route] = await db
       .select()
       .from(routeAssignments)
-      .where(and(eq(routeAssignments.id, routeId), eq(routeAssignments.tenant_id, tenantId)))
+      .where(and(eq(routeAssignments.id, routeId), eq(routeAssignments.tenantId, tenantId)))
       .limit(1);
     return route || null;
   }
@@ -9071,7 +9025,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(routeAssignments)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(routeAssignments.id, routeId), eq(routeAssignments.tenant_id, tenantId)))
+      .where(and(eq(routeAssignments.id, routeId), eq(routeAssignments.tenantId, tenantId)))
       .returning();
     return updated || null;
   }
@@ -9079,7 +9033,7 @@ export class DatabaseStorage implements IStorage {
   async deleteRouteAssignment(routeId: string, tenantId: string): Promise<void> {
     await db
       .delete(routeAssignments)
-      .where(and(eq(routeAssignments.id, routeId), eq(routeAssignments.tenant_id, tenantId)));
+      .where(and(eq(routeAssignments.id, routeId), eq(routeAssignments.tenantId, tenantId)));
   }
 
   async startRoute(routeId: string, tenantId: string): Promise<RouteAssignment | null> {
@@ -9090,7 +9044,7 @@ export class DatabaseStorage implements IStorage {
         routeStartTime: new Date(),
         updatedAt: new Date(),
       })
-      .where(and(eq(routeAssignments.id, routeId), eq(routeAssignments.tenant_id, tenantId)))
+      .where(and(eq(routeAssignments.id, routeId), eq(routeAssignments.tenantId, tenantId)))
       .returning();
     return updated || null;
   }
@@ -9111,7 +9065,7 @@ export class DatabaseStorage implements IStorage {
         actualDuration: durationMinutes,
         updatedAt: new Date(),
       })
-      .where(and(eq(routeAssignments.id, routeId), eq(routeAssignments.tenant_id, tenantId)))
+      .where(and(eq(routeAssignments.id, routeId), eq(routeAssignments.tenantId, tenantId)))
       .returning();
     return updated || null;
   }
@@ -9147,7 +9101,7 @@ export class DatabaseStorage implements IStorage {
         completedStops,
         updatedAt: new Date(),
       })
-      .where(and(eq(routeAssignments.id, routeId), eq(routeAssignments.tenant_id, tenantId)))
+      .where(and(eq(routeAssignments.id, routeId), eq(routeAssignments.tenantId, tenantId)))
       .returning();
     return updated || null;
   }
@@ -9163,7 +9117,7 @@ export class DatabaseStorage implements IStorage {
       resolved?: boolean;
     },
   ): Promise<RouteDeviation[]> {
-    const conditions = [eq(routeDeviations.tenant_id, tenantId)];
+    const conditions = [eq(routeDeviations.tenantId, tenantId)];
 
     if (filters?.routeId) {
       conditions.push(eq(routeDeviations.routeId, filters.routeId));
@@ -9192,7 +9146,7 @@ export class DatabaseStorage implements IStorage {
     const [deviation] = await db
       .select()
       .from(routeDeviations)
-      .where(and(eq(routeDeviations.id, deviationId), eq(routeDeviations.tenant_id, tenantId)))
+      .where(and(eq(routeDeviations.id, deviationId), eq(routeDeviations.tenantId, tenantId)))
       .limit(1);
     return deviation || null;
   }
@@ -9217,7 +9171,7 @@ export class DatabaseStorage implements IStorage {
         acknowledgedAt: new Date(),
         acknowledgedBy: userId,
       })
-      .where(and(eq(routeDeviations.id, deviationId), eq(routeDeviations.tenant_id, tenantId)))
+      .where(and(eq(routeDeviations.id, deviationId), eq(routeDeviations.tenantId, tenantId)))
       .returning();
     return updated || null;
   }
@@ -9238,7 +9192,7 @@ export class DatabaseStorage implements IStorage {
         acknowledged: true,
         acknowledgedAt: new Date(),
       })
-      .where(and(eq(routeDeviations.id, deviationId), eq(routeDeviations.tenant_id, tenantId)))
+      .where(and(eq(routeDeviations.id, deviationId), eq(routeDeviations.tenantId, tenantId)))
       .returning();
     return updated || null;
   }
@@ -9248,7 +9202,7 @@ export class DatabaseStorage implements IStorage {
     filters?: { severity?: string; deviationType?: string },
   ): Promise<RouteDeviation[]> {
     const conditions = [
-      eq(routeDeviations.tenant_id, tenantId),
+      eq(routeDeviations.tenantId, tenantId),
       eq(routeDeviations.resolved, false),
     ];
 
@@ -9274,7 +9228,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(routeDeviations)
       .set(data)
-      .where(and(eq(routeDeviations.id, deviationId), eq(routeDeviations.tenant_id, tenantId)))
+      .where(and(eq(routeDeviations.id, deviationId), eq(routeDeviations.tenantId, tenantId)))
       .returning();
     return updated || null;
   }
@@ -9284,7 +9238,7 @@ export class DatabaseStorage implements IStorage {
     tenantId: string,
     filters?: { ticketId?: string; technicianId?: string; routeId?: string },
   ): Promise<EtaCalculation[]> {
-    const conditions = [eq(etaCalculations.tenant_id, tenantId)];
+    const conditions = [eq(etaCalculations.tenantId, tenantId)];
 
     if (filters?.ticketId) {
       conditions.push(eq(etaCalculations.ticketId, filters.ticketId));
@@ -9307,7 +9261,7 @@ export class DatabaseStorage implements IStorage {
     const [eta] = await db
       .select()
       .from(etaCalculations)
-      .where(and(eq(etaCalculations.id, etaId), eq(etaCalculations.tenant_id, tenantId)))
+      .where(and(eq(etaCalculations.id, etaId), eq(etaCalculations.tenantId, tenantId)))
       .limit(1);
     return eta || null;
   }
@@ -9328,7 +9282,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(etaCalculations)
       .set(data)
-      .where(and(eq(etaCalculations.id, etaId), eq(etaCalculations.tenant_id, tenantId)))
+      .where(and(eq(etaCalculations.id, etaId), eq(etaCalculations.tenantId, tenantId)))
       .returning();
     return updated || null;
   }
@@ -9343,7 +9297,7 @@ export class DatabaseStorage implements IStorage {
       .from(etaCalculations)
       .where(
         and(
-          eq(etaCalculations.tenant_id, tenantId),
+          eq(etaCalculations.tenantId, tenantId),
           eq(etaCalculations.ticketId, ticketId),
           eq(etaCalculations.technicianId, technicianId),
         ),
@@ -9371,7 +9325,7 @@ export class DatabaseStorage implements IStorage {
         actualArrivalTime: actualTime,
         accuracyMinutes,
       })
-      .where(and(eq(etaCalculations.id, etaId), eq(etaCalculations.tenant_id, tenantId)))
+      .where(and(eq(etaCalculations.id, etaId), eq(etaCalculations.tenantId, tenantId)))
       .returning();
     return updated || null;
   }
@@ -9387,7 +9341,7 @@ export class DatabaseStorage implements IStorage {
     onTimePercentage: number;
   }> {
     const conditions = [
-      eq(etaCalculations.tenant_id, tenantId),
+      eq(etaCalculations.tenantId, tenantId),
       isNotNull(etaCalculations.actualArrivalTime),
     ];
 
@@ -9438,7 +9392,7 @@ export class DatabaseStorage implements IStorage {
     tenantId: string,
     filters?: { geofenceType?: string; isActive?: boolean; customerId?: string },
   ): Promise<Geofence[]> {
-    const conditions = [eq(geofences.tenant_id, tenantId)];
+    const conditions = [eq(geofences.tenantId, tenantId)];
 
     if (filters?.geofenceType) {
       conditions.push(eq(geofences.geofenceType, filters.geofenceType));
@@ -9454,14 +9408,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(geofences)
       .where(and(...conditions))
-      .orderBy(desc(geofences.created_at));
+      .orderBy(desc(geofences.createdAt));
   }
 
   async getGeofence(geofenceId: string, tenantId: string): Promise<Geofence | null> {
     const [geofence] = await db
       .select()
       .from(geofences)
-      .where(and(eq(geofences.id, geofenceId), eq(geofences.tenant_id, tenantId)))
+      .where(and(eq(geofences.id, geofenceId), eq(geofences.tenantId, tenantId)))
       .limit(1);
     return geofence || null;
   }
@@ -9482,7 +9436,7 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db
       .update(geofences)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(geofences.id, geofenceId), eq(geofences.tenant_id, tenantId)))
+      .where(and(eq(geofences.id, geofenceId), eq(geofences.tenantId, tenantId)))
       .returning();
     return updated || null;
   }
@@ -9490,14 +9444,14 @@ export class DatabaseStorage implements IStorage {
   async deleteGeofence(geofenceId: string, tenantId: string): Promise<void> {
     await db
       .delete(geofences)
-      .where(and(eq(geofences.id, geofenceId), eq(geofences.tenant_id, tenantId)));
+      .where(and(eq(geofences.id, geofenceId), eq(geofences.tenantId, tenantId)));
   }
 
   async checkGeofenceProximity(lat: number, lng: number, tenantId: string): Promise<Geofence[]> {
     const activeGeofences = await db
       .select()
       .from(geofences)
-      .where(and(eq(geofences.tenant_id, tenantId), eq(geofences.isActive, true)));
+      .where(and(eq(geofences.tenantId, tenantId), eq(geofences.isActive, true)));
 
     // Check which geofences contain the point
     const matchingGeofences = activeGeofences.filter((geofence) => {
@@ -9528,7 +9482,7 @@ export class DatabaseStorage implements IStorage {
       ticketId?: string;
     },
   ): Promise<GeofenceEvent[]> {
-    const conditions = [eq(geofenceEvents.tenant_id, tenantId)];
+    const conditions = [eq(geofenceEvents.tenantId, tenantId)];
 
     if (filters?.geofenceId) {
       conditions.push(eq(geofenceEvents.geofenceId, filters.geofenceId));
@@ -9547,7 +9501,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(geofenceEvents)
       .where(and(...conditions))
-      .orderBy(desc(geofenceEvents.created_at));
+      .orderBy(desc(geofenceEvents.createdAt));
   }
 
   async createGeofenceEvent(data: InsertGeofenceEvent): Promise<GeofenceEvent> {
@@ -9564,15 +9518,15 @@ export class DatabaseStorage implements IStorage {
     filters?: { startDate?: Date; endDate?: Date; eventType?: string },
   ): Promise<GeofenceEvent[]> {
     const conditions = [
-      eq(geofenceEvents.tenant_id, tenantId),
+      eq(geofenceEvents.tenantId, tenantId),
       eq(geofenceEvents.technicianId, technicianId),
     ];
 
     if (filters?.startDate) {
-      conditions.push(gte(geofenceEvents.created_at, filters.startDate));
+      conditions.push(gte(geofenceEvents.createdAt, filters.startDate));
     }
     if (filters?.endDate) {
-      conditions.push(lte(geofenceEvents.created_at, filters.endDate));
+      conditions.push(lte(geofenceEvents.createdAt, filters.endDate));
     }
     if (filters?.eventType) {
       conditions.push(eq(geofenceEvents.eventType, filters.eventType));
@@ -9582,22 +9536,22 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(geofenceEvents)
       .where(and(...conditions))
-      .orderBy(desc(geofenceEvents.created_at));
+      .orderBy(desc(geofenceEvents.createdAt));
   }
 
   async getGeofenceEventsForTicket(ticketId: string, tenantId: string): Promise<GeofenceEvent[]> {
     return await db
       .select()
       .from(geofenceEvents)
-      .where(and(eq(geofenceEvents.tenant_id, tenantId), eq(geofenceEvents.ticketId, ticketId)))
-      .orderBy(asc(geofenceEvents.created_at));
+      .where(and(eq(geofenceEvents.tenantId, tenantId), eq(geofenceEvents.ticketId, ticketId)))
+      .orderBy(asc(geofenceEvents.createdAt));
   }
 
   async getGeofenceEvent(eventId: string, tenantId: string): Promise<GeofenceEvent | null> {
     const [event] = await db
       .select()
       .from(geofenceEvents)
-      .where(and(eq(geofenceEvents.id, eventId), eq(geofenceEvents.tenant_id, tenantId)))
+      .where(and(eq(geofenceEvents.id, eventId), eq(geofenceEvents.tenantId, tenantId)))
       .limit(1);
     return event || null;
   }
@@ -9656,7 +9610,7 @@ export class DatabaseStorage implements IStorage {
       contractId?: string;
     },
   ): Promise<BillingRule[]> {
-    const conditions = [eq(billingRules.tenant_id, tenantId)];
+    const conditions = [eq(billingRules.tenantId, tenantId)];
 
     if (filters?.ruleType) {
       conditions.push(eq(billingRules.ruleType, filters.ruleType));
@@ -9678,7 +9632,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(billingRules)
       .where(and(...conditions))
-      .orderBy(desc(billingRules.priority), desc(billingRules.created_at));
+      .orderBy(desc(billingRules.priority), desc(billingRules.createdAt));
   }
 
   async getBillingRule(ruleId: string): Promise<BillingRule | null> {
@@ -9699,7 +9653,7 @@ export class DatabaseStorage implements IStorage {
     const [rule] = await db
       .update(billingRules)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenant_id, tenantId)))
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)))
       .returning();
     return rule || null;
   }
@@ -9707,7 +9661,7 @@ export class DatabaseStorage implements IStorage {
   async deleteBillingRule(ruleId: string, tenantId: string): Promise<void> {
     await db
       .delete(billingRules)
-      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenant_id, tenantId)));
+      .where(and(eq(billingRules.id, ruleId), eq(billingRules.tenantId, tenantId)));
   }
 
   async getActiveBillingRules(
@@ -9716,7 +9670,7 @@ export class DatabaseStorage implements IStorage {
     equipmentId?: string,
   ): Promise<BillingRule[]> {
     const conditions = [
-      eq(billingRules.tenant_id, tenantId),
+      eq(billingRules.tenantId, tenantId),
       eq(billingRules.ruleStatus, 'active'),
       lte(billingRules.effectiveStartDate, new Date()),
     ];
@@ -9799,7 +9753,7 @@ export class DatabaseStorage implements IStorage {
       .from(billingRules)
       .where(
         and(
-          eq(billingRules.tenant_id, tenantId),
+          eq(billingRules.tenantId, tenantId),
           or(
             eq(billingRules.customerId, customerId),
             eq(billingRules.applicableToAllCustomers, true),
@@ -9813,7 +9767,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(billingRules)
-      .where(and(eq(billingRules.contractId, contractId), eq(billingRules.tenant_id, tenantId)))
+      .where(and(eq(billingRules.contractId, contractId), eq(billingRules.tenantId, tenantId)))
       .orderBy(desc(billingRules.priority));
   }
 
@@ -9828,7 +9782,7 @@ export class DatabaseStorage implements IStorage {
       customerId?: string;
     },
   ): Promise<MeterAnomaly[]> {
-    const conditions = [eq(meterAnomalies.tenant_id, tenantId)];
+    const conditions = [eq(meterAnomalies.tenantId, tenantId)];
 
     if (filters?.anomalyType) {
       conditions.push(eq(meterAnomalies.anomalyType, filters.anomalyType));
@@ -9875,7 +9829,7 @@ export class DatabaseStorage implements IStorage {
     const [anomaly] = await db
       .update(meterAnomalies)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(meterAnomalies.id, anomalyId), eq(meterAnomalies.tenant_id, tenantId)))
+      .where(and(eq(meterAnomalies.id, anomalyId), eq(meterAnomalies.tenantId, tenantId)))
       .returning();
     return anomaly || null;
   }
@@ -9895,7 +9849,7 @@ export class DatabaseStorage implements IStorage {
         reviewNotes: notes,
         updatedAt: new Date(),
       })
-      .where(and(eq(meterAnomalies.id, anomalyId), eq(meterAnomalies.tenant_id, tenantId)))
+      .where(and(eq(meterAnomalies.id, anomalyId), eq(meterAnomalies.tenantId, tenantId)))
       .returning();
     return anomaly || null;
   }
@@ -9915,7 +9869,7 @@ export class DatabaseStorage implements IStorage {
         resolutionNotes: notes,
         updatedAt: new Date(),
       })
-      .where(and(eq(meterAnomalies.id, anomalyId), eq(meterAnomalies.tenant_id, tenantId)))
+      .where(and(eq(meterAnomalies.id, anomalyId), eq(meterAnomalies.tenantId, tenantId)))
       .returning();
     return anomaly || null;
   }
@@ -9924,7 +9878,7 @@ export class DatabaseStorage implements IStorage {
     tenantId: string,
     filters?: { severity?: string; anomalyType?: string },
   ): Promise<MeterAnomaly[]> {
-    const conditions = [eq(meterAnomalies.tenant_id, tenantId), eq(meterAnomalies.resolved, false)];
+    const conditions = [eq(meterAnomalies.tenantId, tenantId), eq(meterAnomalies.resolved, false)];
 
     if (filters?.severity) {
       conditions.push(eq(meterAnomalies.severity, filters.severity));
@@ -9949,7 +9903,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(meterAnomalies)
       .where(
-        and(eq(meterAnomalies.equipmentId, equipmentId), eq(meterAnomalies.tenant_id, tenantId)),
+        and(eq(meterAnomalies.equipmentId, equipmentId), eq(meterAnomalies.tenantId, tenantId)),
       )
       .orderBy(desc(meterAnomalies.detectedAt));
   }
@@ -9965,7 +9919,7 @@ export class DatabaseStorage implements IStorage {
       invoiceId?: string;
     },
   ): Promise<BillingDispute[]> {
-    const conditions = [eq(billingDisputes.tenant_id, tenantId)];
+    const conditions = [eq(billingDisputes.tenantId, tenantId)];
 
     if (filters?.disputeType) {
       conditions.push(eq(billingDisputes.disputeType, filters.disputeType));
@@ -10012,7 +9966,7 @@ export class DatabaseStorage implements IStorage {
     const [dispute] = await db
       .update(billingDisputes)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenant_id, tenantId)))
+      .where(and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenantId, tenantId)))
       .returning();
     return dispute || null;
   }
@@ -10029,7 +9983,7 @@ export class DatabaseStorage implements IStorage {
         assignedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenant_id, tenantId)))
+      .where(and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenantId, tenantId)))
       .returning();
     return dispute || null;
   }
@@ -10045,7 +9999,7 @@ export class DatabaseStorage implements IStorage {
         disputeStatus: 'under_review',
         updatedAt: new Date(),
       })
-      .where(and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenant_id, tenantId)))
+      .where(and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenantId, tenantId)))
       .returning();
     return dispute || null;
   }
@@ -10071,7 +10025,7 @@ export class DatabaseStorage implements IStorage {
         resolvedBy: userId,
         updatedAt: new Date(),
       })
-      .where(and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenant_id, tenantId)))
+      .where(and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenantId, tenantId)))
       .returning();
     return dispute || null;
   }
@@ -10092,7 +10046,7 @@ export class DatabaseStorage implements IStorage {
         disputeStatus: 'escalated',
         updatedAt: new Date(),
       })
-      .where(and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenant_id, tenantId)))
+      .where(and(eq(billingDisputes.id, disputeId), eq(billingDisputes.tenantId, tenantId)))
       .returning();
     return dispute || null;
   }
@@ -10102,7 +10056,7 @@ export class DatabaseStorage implements IStorage {
     filters?: { severity?: string; priorityLevel?: number },
   ): Promise<BillingDispute[]> {
     const conditions = [
-      eq(billingDisputes.tenant_id, tenantId),
+      eq(billingDisputes.tenantId, tenantId),
       eq(billingDisputes.disputeStatus, 'open'),
     ];
 
@@ -10125,7 +10079,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(billingDisputes)
       .where(
-        and(eq(billingDisputes.customerId, customerId), eq(billingDisputes.tenant_id, tenantId)),
+        and(eq(billingDisputes.customerId, customerId), eq(billingDisputes.tenantId, tenantId)),
       )
       .orderBy(desc(billingDisputes.filedDate));
   }
@@ -10134,7 +10088,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(billingDisputes)
-      .where(and(eq(billingDisputes.invoiceId, invoiceId), eq(billingDisputes.tenant_id, tenantId)))
+      .where(and(eq(billingDisputes.invoiceId, invoiceId), eq(billingDisputes.tenantId, tenantId)))
       .orderBy(desc(billingDisputes.filedDate));
   }
 
@@ -10148,7 +10102,7 @@ export class DatabaseStorage implements IStorage {
       batchId?: string;
     },
   ): Promise<InvoiceGenerationLog[]> {
-    const conditions = [eq(invoiceGenerationLogs.tenant_id, tenantId)];
+    const conditions = [eq(invoiceGenerationLogs.tenantId, tenantId)];
 
     if (filters?.status) {
       conditions.push(eq(invoiceGenerationLogs.status, filters.status));
@@ -10167,7 +10121,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(invoiceGenerationLogs)
       .where(and(...conditions))
-      .orderBy(desc(invoiceGenerationLogs.created_at));
+      .orderBy(desc(invoiceGenerationLogs.createdAt));
   }
 
   async getInvoiceGenerationLog(logId: string): Promise<InvoiceGenerationLog | null> {
@@ -10194,9 +10148,7 @@ export class DatabaseStorage implements IStorage {
     const [log] = await db
       .update(invoiceGenerationLogs)
       .set(data)
-      .where(
-        and(eq(invoiceGenerationLogs.id, logId), eq(invoiceGenerationLogs.tenant_id, tenantId)),
-      )
+      .where(and(eq(invoiceGenerationLogs.id, logId), eq(invoiceGenerationLogs.tenantId, tenantId)))
       .returning();
     return log || null;
   }
@@ -10206,7 +10158,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(invoiceGenerationLogs)
       .where(eq(invoiceGenerationLogs.batchId, batchId))
-      .orderBy(desc(invoiceGenerationLogs.created_at));
+      .orderBy(desc(invoiceGenerationLogs.createdAt));
   }
 
   async getFailedGenerations(
@@ -10214,7 +10166,7 @@ export class DatabaseStorage implements IStorage {
     filters?: { errorType?: string },
   ): Promise<InvoiceGenerationLog[]> {
     const conditions = [
-      eq(invoiceGenerationLogs.tenant_id, tenantId),
+      eq(invoiceGenerationLogs.tenantId, tenantId),
       eq(invoiceGenerationLogs.status, 'failed'),
     ];
 
@@ -10226,7 +10178,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(invoiceGenerationLogs)
       .where(and(...conditions))
-      .orderBy(desc(invoiceGenerationLogs.created_at));
+      .orderBy(desc(invoiceGenerationLogs.createdAt));
   }
 
   async getGenerationStats(
@@ -10244,9 +10196,9 @@ export class DatabaseStorage implements IStorage {
       .from(invoiceGenerationLogs)
       .where(
         and(
-          eq(invoiceGenerationLogs.tenant_id, tenantId),
-          gte(invoiceGenerationLogs.created_at, startDate),
-          lte(invoiceGenerationLogs.created_at, endDate),
+          eq(invoiceGenerationLogs.tenantId, tenantId),
+          gte(invoiceGenerationLogs.createdAt, startDate),
+          lte(invoiceGenerationLogs.createdAt, endDate),
         ),
       );
 
@@ -10274,7 +10226,7 @@ export class DatabaseStorage implements IStorage {
       customerId?: string;
     },
   ): Promise<BillingSchedule[]> {
-    const conditions = [eq(billingSchedules.tenant_id, tenantId)];
+    const conditions = [eq(billingSchedules.tenantId, tenantId)];
 
     if (filters?.scheduleType) {
       conditions.push(eq(billingSchedules.scheduleType, filters.scheduleType));
@@ -10318,7 +10270,7 @@ export class DatabaseStorage implements IStorage {
     const [schedule] = await db
       .update(billingSchedules)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(billingSchedules.id, scheduleId), eq(billingSchedules.tenant_id, tenantId)))
+      .where(and(eq(billingSchedules.id, scheduleId), eq(billingSchedules.tenantId, tenantId)))
       .returning();
     return schedule || null;
   }
@@ -10326,14 +10278,14 @@ export class DatabaseStorage implements IStorage {
   async deleteBillingSchedule(scheduleId: string, tenantId: string): Promise<void> {
     await db
       .delete(billingSchedules)
-      .where(and(eq(billingSchedules.id, scheduleId), eq(billingSchedules.tenant_id, tenantId)));
+      .where(and(eq(billingSchedules.id, scheduleId), eq(billingSchedules.tenantId, tenantId)));
   }
 
   async getActiveSchedules(tenantId: string): Promise<BillingSchedule[]> {
     return await db
       .select()
       .from(billingSchedules)
-      .where(and(eq(billingSchedules.tenant_id, tenantId), eq(billingSchedules.isActive, true)))
+      .where(and(eq(billingSchedules.tenantId, tenantId), eq(billingSchedules.isActive, true)))
       .orderBy(asc(billingSchedules.nextRunDate));
   }
 
@@ -10343,7 +10295,7 @@ export class DatabaseStorage implements IStorage {
       .from(billingSchedules)
       .where(
         and(
-          eq(billingSchedules.tenant_id, tenantId),
+          eq(billingSchedules.tenantId, tenantId),
           eq(billingSchedules.isActive, true),
           lte(billingSchedules.nextRunDate, date),
         ),
@@ -10363,7 +10315,7 @@ export class DatabaseStorage implements IStorage {
         nextRunDate,
         updatedAt: new Date(),
       })
-      .where(and(eq(billingSchedules.id, scheduleId), eq(billingSchedules.tenant_id, tenantId)))
+      .where(and(eq(billingSchedules.id, scheduleId), eq(billingSchedules.tenantId, tenantId)))
       .returning();
     return schedule || null;
   }
@@ -10378,7 +10330,7 @@ export class DatabaseStorage implements IStorage {
       disputeId?: string;
     },
   ): Promise<CreditMemo[]> {
-    const conditions = [eq(creditMemos.tenant_id, tenantId)];
+    const conditions = [eq(creditMemos.tenantId, tenantId)];
 
     if (filters?.creditStatus) {
       conditions.push(eq(creditMemos.creditStatus, filters.creditStatus));
@@ -10422,7 +10374,7 @@ export class DatabaseStorage implements IStorage {
     const [creditMemo] = await db
       .update(creditMemos)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(creditMemos.id, creditMemoId), eq(creditMemos.tenant_id, tenantId)))
+      .where(and(eq(creditMemos.id, creditMemoId), eq(creditMemos.tenantId, tenantId)))
       .returning();
     return creditMemo || null;
   }
@@ -10440,7 +10392,7 @@ export class DatabaseStorage implements IStorage {
         approvedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(and(eq(creditMemos.id, creditMemoId), eq(creditMemos.tenant_id, tenantId)))
+      .where(and(eq(creditMemos.id, creditMemoId), eq(creditMemos.tenantId, tenantId)))
       .returning();
     return creditMemo || null;
   }
@@ -10455,7 +10407,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(creditMemos.id, creditMemoId),
-          eq(creditMemos.tenant_id, tenantId),
+          eq(creditMemos.tenantId, tenantId),
           eq(creditMemos.creditStatus, 'approved'),
         ),
       )
@@ -10477,7 +10429,7 @@ export class DatabaseStorage implements IStorage {
         creditStatus: 'applied',
         updatedAt: new Date(),
       })
-      .where(and(eq(creditMemos.id, creditMemoId), eq(creditMemos.tenant_id, tenantId)))
+      .where(and(eq(creditMemos.id, creditMemoId), eq(creditMemos.tenantId, tenantId)))
       .returning();
     return creditMemo || null;
   }
@@ -10497,7 +10449,7 @@ export class DatabaseStorage implements IStorage {
         voidReason: reason,
         updatedAt: new Date(),
       })
-      .where(and(eq(creditMemos.id, creditMemoId), eq(creditMemos.tenant_id, tenantId)))
+      .where(and(eq(creditMemos.id, creditMemoId), eq(creditMemos.tenantId, tenantId)))
       .returning();
     return creditMemo || null;
   }
@@ -10506,7 +10458,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(creditMemos)
-      .where(and(eq(creditMemos.customerId, customerId), eq(creditMemos.tenant_id, tenantId)))
+      .where(and(eq(creditMemos.customerId, customerId), eq(creditMemos.tenantId, tenantId)))
       .orderBy(desc(creditMemos.issuedDate));
   }
 
@@ -10514,7 +10466,7 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(creditMemos)
-      .where(and(eq(creditMemos.tenant_id, tenantId), eq(creditMemos.creditStatus, 'pending')))
+      .where(and(eq(creditMemos.tenantId, tenantId), eq(creditMemos.creditStatus, 'pending')))
       .orderBy(desc(creditMemos.issuedDate));
   }
 
@@ -10528,7 +10480,7 @@ export class DatabaseStorage implements IStorage {
       maxScore?: number;
     },
   ): Promise<CustomerHealthScore[]> {
-    const conditions = [eq(customerHealthScores.tenant_id, tenantId)];
+    const conditions = [eq(customerHealthScores.tenantId, tenantId)];
 
     if (filters?.healthStatus) {
       conditions.push(eq(customerHealthScores.healthStatus, filters.healthStatus));
@@ -10569,7 +10521,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(customerHealthScores.customerId, customerId),
-          eq(customerHealthScores.tenant_id, tenantId),
+          eq(customerHealthScores.tenantId, tenantId),
         ),
       )
       .orderBy(desc(customerHealthScores.calculatedAt))
@@ -10590,9 +10542,7 @@ export class DatabaseStorage implements IStorage {
     const [score] = await db
       .update(customerHealthScores)
       .set({ ...data, updatedAt: new Date() })
-      .where(
-        and(eq(customerHealthScores.id, scoreId), eq(customerHealthScores.tenant_id, tenantId)),
-      )
+      .where(and(eq(customerHealthScores.id, scoreId), eq(customerHealthScores.tenantId, tenantId)))
       .returning();
     return score || null;
   }
@@ -10603,7 +10553,7 @@ export class DatabaseStorage implements IStorage {
       .from(customerHealthScores)
       .where(
         and(
-          eq(customerHealthScores.tenant_id, tenantId),
+          eq(customerHealthScores.tenantId, tenantId),
           lte(customerHealthScores.nextCalculationDue, new Date()),
         ),
       )
@@ -10616,7 +10566,7 @@ export class DatabaseStorage implements IStorage {
       .from(customerHealthScores)
       .where(
         and(
-          eq(customerHealthScores.tenant_id, tenantId),
+          eq(customerHealthScores.tenantId, tenantId),
           inArray(customerHealthScores.healthStatus, ['critical', 'at_risk']),
         ),
       )
@@ -10634,7 +10584,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(customerHealthScores.customerId, customerId),
-          eq(customerHealthScores.tenant_id, tenantId),
+          eq(customerHealthScores.tenantId, tenantId),
         ),
       )
       .orderBy(desc(customerHealthScores.calculatedAt));
@@ -10654,7 +10604,7 @@ export class DatabaseStorage implements IStorage {
       interventionRequired?: boolean;
     },
   ): Promise<ChurnPrediction[]> {
-    const conditions = [eq(churnPredictions.tenant_id, tenantId)];
+    const conditions = [eq(churnPredictions.tenantId, tenantId)];
 
     if (filters?.churnRisk) {
       conditions.push(eq(churnPredictions.churnRisk, filters.churnRisk));
@@ -10687,7 +10637,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(churnPredictions)
       .where(
-        and(eq(churnPredictions.customerId, customerId), eq(churnPredictions.tenant_id, tenantId)),
+        and(eq(churnPredictions.customerId, customerId), eq(churnPredictions.tenantId, tenantId)),
       )
       .orderBy(desc(churnPredictions.predictedAt))
       .limit(1);
@@ -10707,7 +10657,7 @@ export class DatabaseStorage implements IStorage {
     const [prediction] = await db
       .update(churnPredictions)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(churnPredictions.id, predictionId), eq(churnPredictions.tenant_id, tenantId)))
+      .where(and(eq(churnPredictions.id, predictionId), eq(churnPredictions.tenantId, tenantId)))
       .returning();
     return prediction || null;
   }
@@ -10718,7 +10668,7 @@ export class DatabaseStorage implements IStorage {
       .from(churnPredictions)
       .where(
         and(
-          eq(churnPredictions.tenant_id, tenantId),
+          eq(churnPredictions.tenantId, tenantId),
           inArray(churnPredictions.churnRisk, ['high', 'critical']),
         ),
       )
@@ -10730,7 +10680,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(churnPredictions)
       .where(
-        and(eq(churnPredictions.tenant_id, tenantId), lte(churnPredictions.expiresAt, new Date())),
+        and(eq(churnPredictions.tenantId, tenantId), lte(churnPredictions.expiresAt, new Date())),
       )
       .orderBy(asc(churnPredictions.expiresAt));
   }
@@ -10741,7 +10691,7 @@ export class DatabaseStorage implements IStorage {
       .from(churnPredictions)
       .where(
         and(
-          eq(churnPredictions.tenant_id, tenantId),
+          eq(churnPredictions.tenantId, tenantId),
           eq(churnPredictions.interventionRequired, true),
           eq(churnPredictions.interventionTriggered, false),
         ),
@@ -10759,7 +10709,7 @@ export class DatabaseStorage implements IStorage {
       assignedTo?: string;
     },
   ): Promise<SuccessIntervention[]> {
-    const conditions = [eq(successInterventions.tenant_id, tenantId)];
+    const conditions = [eq(successInterventions.tenantId, tenantId)];
 
     if (filters?.status) {
       conditions.push(eq(successInterventions.status, filters.status));
@@ -10778,7 +10728,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(successInterventions)
       .where(and(...conditions))
-      .orderBy(desc(successInterventions.created_at));
+      .orderBy(desc(successInterventions.createdAt));
   }
 
   async getIntervention(interventionId: string): Promise<SuccessIntervention | null> {
@@ -10800,10 +10750,10 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(successInterventions.customerId, customerId),
-          eq(successInterventions.tenant_id, tenantId),
+          eq(successInterventions.tenantId, tenantId),
         ),
       )
-      .orderBy(desc(successInterventions.created_at));
+      .orderBy(desc(successInterventions.createdAt));
   }
 
   async createIntervention(data: InsertSuccessIntervention): Promise<SuccessIntervention> {
@@ -10822,7 +10772,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(successInterventions.id, interventionId),
-          eq(successInterventions.tenant_id, tenantId),
+          eq(successInterventions.tenantId, tenantId),
         ),
       )
       .returning();
@@ -10844,7 +10794,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(successInterventions.id, interventionId),
-          eq(successInterventions.tenant_id, tenantId),
+          eq(successInterventions.tenantId, tenantId),
         ),
       )
       .returning();
@@ -10869,7 +10819,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(successInterventions.id, interventionId),
-          eq(successInterventions.tenant_id, tenantId),
+          eq(successInterventions.tenantId, tenantId),
         ),
       )
       .returning();
@@ -10882,7 +10832,7 @@ export class DatabaseStorage implements IStorage {
       .from(successInterventions)
       .where(
         and(
-          eq(successInterventions.tenant_id, tenantId),
+          eq(successInterventions.tenantId, tenantId),
           lt(successInterventions.dueDate, new Date()),
           sql`${successInterventions.status} NOT IN ('completed', 'cancelled')`,
         ),
@@ -10897,7 +10847,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(successInterventions.assignedTo, userId),
-          eq(successInterventions.tenant_id, tenantId),
+          eq(successInterventions.tenantId, tenantId),
         ),
       )
       .orderBy(asc(successInterventions.dueDate));
@@ -10918,7 +10868,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(successInterventions.id, interventionId),
-          eq(successInterventions.tenant_id, tenantId),
+          eq(successInterventions.tenantId, tenantId),
         ),
       )
       .returning();
@@ -10934,7 +10884,7 @@ export class DatabaseStorage implements IStorage {
       journeyHealth?: string;
     },
   ): Promise<CustomerJourney[]> {
-    const conditions = [eq(customerJourneys.tenant_id, tenantId)];
+    const conditions = [eq(customerJourneys.tenantId, tenantId)];
 
     if (filters?.currentStage) {
       conditions.push(eq(customerJourneys.currentStage, filters.currentStage));
@@ -10950,7 +10900,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(customerJourneys)
       .where(and(...conditions))
-      .orderBy(desc(customerJourneys.updated_at));
+      .orderBy(desc(customerJourneys.updatedAt));
   }
 
   async getJourney(journeyId: string): Promise<CustomerJourney | null> {
@@ -10970,7 +10920,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(customerJourneys)
       .where(
-        and(eq(customerJourneys.customerId, customerId), eq(customerJourneys.tenant_id, tenantId)),
+        and(eq(customerJourneys.customerId, customerId), eq(customerJourneys.tenantId, tenantId)),
       )
       .limit(1);
     return journey || null;
@@ -10989,7 +10939,7 @@ export class DatabaseStorage implements IStorage {
     const [journey] = await db
       .update(customerJourneys)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(customerJourneys.id, journeyId), eq(customerJourneys.tenant_id, tenantId)))
+      .where(and(eq(customerJourneys.id, journeyId), eq(customerJourneys.tenantId, tenantId)))
       .returning();
     return journey || null;
   }
@@ -11011,7 +10961,7 @@ export class DatabaseStorage implements IStorage {
         daysSinceStageChange: 0,
         updatedAt: new Date(),
       })
-      .where(and(eq(customerJourneys.id, journeyId), eq(customerJourneys.tenant_id, tenantId)))
+      .where(and(eq(customerJourneys.id, journeyId), eq(customerJourneys.tenantId, tenantId)))
       .returning();
     return updatedJourney || null;
   }
@@ -11022,11 +10972,11 @@ export class DatabaseStorage implements IStorage {
       .from(customerJourneys)
       .where(
         and(
-          eq(customerJourneys.tenant_id, tenantId),
+          eq(customerJourneys.tenantId, tenantId),
           inArray(customerJourneys.journeyHealth, ['needs_attention', 'off_track']),
         ),
       )
-      .orderBy(desc(customerJourneys.updated_at));
+      .orderBy(desc(customerJourneys.updatedAt));
   }
 
   async recordJourneyTouchpoint(
@@ -11045,7 +10995,7 @@ export class DatabaseStorage implements IStorage {
         lastTouchpointType: touchpointType,
         updatedAt: new Date(),
       })
-      .where(and(eq(customerJourneys.id, journeyId), eq(customerJourneys.tenant_id, tenantId)))
+      .where(and(eq(customerJourneys.id, journeyId), eq(customerJourneys.tenantId, tenantId)))
       .returning();
     return updatedJourney || null;
   }
@@ -11059,7 +11009,7 @@ export class DatabaseStorage implements IStorage {
       daysUntilMax?: number;
     },
   ): Promise<RenewalOpportunity[]> {
-    const conditions = [eq(renewalOpportunities.tenant_id, tenantId)];
+    const conditions = [eq(renewalOpportunities.tenantId, tenantId)];
 
     if (filters?.renewalStatus) {
       conditions.push(eq(renewalOpportunities.renewalStatus, filters.renewalStatus));
@@ -11094,7 +11044,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(renewalOpportunities.customerId, customerId),
-          eq(renewalOpportunities.tenant_id, tenantId),
+          eq(renewalOpportunities.tenantId, tenantId),
         ),
       )
       .orderBy(asc(renewalOpportunities.daysUntilRenewal));
@@ -11110,7 +11060,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(renewalOpportunities.contractId, contractId),
-          eq(renewalOpportunities.tenant_id, tenantId),
+          eq(renewalOpportunities.tenantId, tenantId),
         ),
       )
       .limit(1);
@@ -11133,7 +11083,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(renewalOpportunities.id, opportunityId),
-          eq(renewalOpportunities.tenant_id, tenantId),
+          eq(renewalOpportunities.tenantId, tenantId),
         ),
       )
       .returning();
@@ -11154,7 +11104,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(renewalOpportunities.id, opportunityId),
-          eq(renewalOpportunities.tenant_id, tenantId),
+          eq(renewalOpportunities.tenantId, tenantId),
         ),
       )
       .returning();
@@ -11178,7 +11128,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(renewalOpportunities.id, opportunityId),
-          eq(renewalOpportunities.tenant_id, tenantId),
+          eq(renewalOpportunities.tenantId, tenantId),
         ),
       )
       .returning();
@@ -11191,7 +11141,7 @@ export class DatabaseStorage implements IStorage {
       .from(renewalOpportunities)
       .where(
         and(
-          eq(renewalOpportunities.tenant_id, tenantId),
+          eq(renewalOpportunities.tenantId, tenantId),
           lte(renewalOpportunities.daysUntilRenewal, days),
         ),
       )
@@ -11204,7 +11154,7 @@ export class DatabaseStorage implements IStorage {
       .from(renewalOpportunities)
       .where(
         and(
-          eq(renewalOpportunities.tenant_id, tenantId),
+          eq(renewalOpportunities.tenantId, tenantId),
           gte(renewalOpportunities.currentMrr, minMrr.toString()),
         ),
       )
@@ -11215,7 +11165,7 @@ export class DatabaseStorage implements IStorage {
 
   async getAssignmentGroups(tenantId: string) {
     return await db.query.assignmentGroups.findMany({
-      where: eq(assignmentGroups.tenant_id, tenantId),
+      where: eq(assignmentGroups.tenantId, tenantId),
       orderBy: (groups, { asc }) => [asc(groups.name)],
     });
   }
@@ -11263,7 +11213,7 @@ export class DatabaseStorage implements IStorage {
   async getUserApprovals(userId: string, tenantId: string, status?: string) {
     // Get user's groups
     const userGroups = await db.query.assignmentGroups.findMany({
-      where: and(eq(assignmentGroups.tenant_id, tenantId), eq(assignmentGroups.isActive, true)),
+      where: and(eq(assignmentGroups.tenantId, tenantId), eq(assignmentGroups.isActive, true)),
     });
 
     const userGroupIds = userGroups
@@ -11273,7 +11223,7 @@ export class DatabaseStorage implements IStorage {
       .map((group) => group.id);
 
     // Build where conditions
-    const conditions = [eq(workflowApprovals.tenant_id, tenantId)];
+    const conditions = [eq(workflowApprovals.tenantId, tenantId)];
 
     if (status) {
       conditions.push(eq(workflowApprovals.status, status));
@@ -11302,7 +11252,7 @@ export class DatabaseStorage implements IStorage {
     return await db.query.workflowApprovals.findMany({
       where: and(
         eq(workflowApprovals.executionId, executionId),
-        eq(workflowApprovals.tenant_id, tenantId),
+        eq(workflowApprovals.tenantId, tenantId),
       ),
       orderBy: (approvals, { asc }) => [asc(approvals.requestedAt)],
     });

@@ -46,12 +46,12 @@ router.get('/sync', async (req: any, res) => {
     // Get assigned tickets (open or in progress)
     const tickets = await db.query.phoneInTickets.findMany({
       where: and(
-        eq(phoneInTickets.tenant_id, tenantId),
+        eq(phoneInTickets.tenantId, tenantId),
         or(
           eq(phoneInTickets.assignedTo, technicianId),
           eq(phoneInTickets.enhancedTicketStatus, 'new'),
         ),
-        since ? gte(phoneInTickets.updated_at, new Date(since)) : undefined,
+        since ? gte(phoneInTickets.updatedAt, new Date(since)) : undefined,
       ),
       with: {
         customer: true,
@@ -62,19 +62,19 @@ router.get('/sync', async (req: any, res) => {
 
     // Get equipment the technician might service
     const equipmentList = await db.query.equipment.findMany({
-      where: eq(equipment.tenant_id, tenantId),
+      where: eq(equipment.tenantId, tenantId),
       limit: 500,
     });
 
     // Get customers
     const customers = await db.query.businessRecords.findMany({
-      where: eq(businessRecords.tenant_id, tenantId),
+      where: eq(businessRecords.tenantId, tenantId),
       limit: 500,
     });
 
     // Get technician's own profile
     const technician = await db.query.users.findFirst({
-      where: and(eq(users.id, technicianId), eq(users.tenant_id, tenantId)),
+      where: and(eq(users.id, technicianId), eq(users.tenantId, tenantId)),
     });
 
     res.json({
@@ -102,11 +102,11 @@ router.get('/sync', async (req: any, res) => {
 router.get('/tickets', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.user_id;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     const status = req.query.status; // Filter by status
 
     let whereConditions: any = and(
-      eq(phoneInTickets.tenant_id, tenantId),
+      eq(phoneInTickets.tenantId, tenantId),
       eq(phoneInTickets.assignedTo, technicianId),
     );
 
@@ -120,7 +120,7 @@ router.get('/tickets', async (req: any, res) => {
         customer: true,
         equipment: true,
       },
-      orderBy: [desc(phoneInTickets.created_at)],
+      orderBy: [desc(phoneInTickets.createdAt)],
       limit: 50,
     });
 
@@ -142,7 +142,7 @@ router.get('/tickets/:id', async (req: any, res) => {
     const { id } = req.params;
 
     const ticket = await db.query.phoneInTickets.findFirst({
-      where: and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenant_id, tenantId)),
+      where: and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenantId, tenantId)),
       with: {
         customer: true,
         equipment: true,
@@ -190,7 +190,7 @@ router.patch('/tickets/:id', async (req: any, res) => {
     const [ticket] = await db
       .update(phoneInTickets)
       .set(updates)
-      .where(and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenant_id, tenantId)))
+      .where(and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenantId, tenantId)))
       .returning();
 
     if (!ticket) {
@@ -212,7 +212,7 @@ router.patch('/tickets/:id', async (req: any, res) => {
 router.post('/tickets/:id/start', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.user_id;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     const { id } = req.params;
     const { latitude, longitude } = req.body;
 
@@ -224,7 +224,7 @@ router.post('/tickets/:id/start', async (req: any, res) => {
         startedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenant_id, tenantId)))
+      .where(and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenantId, tenantId)))
       .returning();
 
     // Log location if provided
@@ -256,7 +256,7 @@ router.post('/tickets/:id/start', async (req: any, res) => {
 router.post('/tickets/:id/complete', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.user_id;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     const { id } = req.params;
     const {
       signature,
@@ -283,7 +283,7 @@ router.post('/tickets/:id/complete', async (req: any, res) => {
         customerSignatureTitle: signatureTitle,
         updatedAt: new Date(),
       })
-      .where(and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenant_id, tenantId)))
+      .where(and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenantId, tenantId)))
       .returning();
 
     // Log completion location
@@ -321,7 +321,7 @@ router.post('/tickets/:id/complete', async (req: any, res) => {
 router.post('/tickets/:id/photos', upload.array('photos', 10), async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.user_id;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     const { id } = req.params;
     const files = req.files as Express.Multer.File[];
 
@@ -377,7 +377,7 @@ router.post('/tickets/:id/photos', upload.array('photos', 10), async (req: any, 
 router.post('/tickets/:id/notes', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.user_id;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     const { id } = req.params;
     const { note, isInternal } = req.body;
 
@@ -387,7 +387,7 @@ router.post('/tickets/:id/notes', async (req: any, res) => {
 
     // Get current notes
     const ticket = await db.query.phoneInTickets.findFirst({
-      where: and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenant_id, tenantId)),
+      where: and(eq(phoneInTickets.id, id), eq(phoneInTickets.tenantId, tenantId)),
     });
 
     if (!ticket) {
@@ -430,7 +430,7 @@ router.get('/equipment/:id', async (req: any, res) => {
     const { id } = req.params;
 
     const equipmentItem = await db.query.equipment.findFirst({
-      where: and(eq(equipment.id, id), eq(equipment.tenant_id, tenantId)),
+      where: and(eq(equipment.id, id), eq(equipment.tenantId, tenantId)),
       with: {
         customer: true,
       },
@@ -442,8 +442,8 @@ router.get('/equipment/:id', async (req: any, res) => {
 
     // Get recent service history for this equipment
     const recentTickets = await db.query.phoneInTickets.findMany({
-      where: and(eq(phoneInTickets.equipmentId, id), eq(phoneInTickets.tenant_id, tenantId)),
-      orderBy: [desc(phoneInTickets.created_at)],
+      where: and(eq(phoneInTickets.equipmentId, id), eq(phoneInTickets.tenantId, tenantId)),
+      orderBy: [desc(phoneInTickets.createdAt)],
       limit: 5,
     });
 
@@ -474,7 +474,7 @@ router.post('/equipment/scan', async (req: any, res) => {
     // Try to find equipment by ID (from QR code) or serial number
     const equipmentItem = await db.query.equipment.findFirst({
       where: and(
-        eq(equipment.tenant_id, tenantId),
+        eq(equipment.tenantId, tenantId),
         or(
           qrCode ? eq(equipment.id, qrCode) : undefined,
           serialNumber ? eq(equipment.serialNumber, serialNumber) : undefined,
@@ -504,7 +504,7 @@ router.post('/equipment/scan', async (req: any, res) => {
 router.post('/location', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.user_id;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
     const { latitude, longitude, accuracy, ticketId, eventType } = req.body;
 
     if (!latitude || !longitude) {
@@ -537,7 +537,7 @@ router.post('/location', async (req: any, res) => {
 router.get('/stats', async (req: any, res) => {
   try {
     const { tenantId } = req;
-    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.user_id;
+    const technicianId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
 
     // Get counts by status
     const stats = await db
@@ -547,7 +547,7 @@ router.get('/stats', async (req: any, res) => {
       })
       .from(phoneInTickets)
       .where(
-        and(eq(phoneInTickets.tenant_id, tenantId), eq(phoneInTickets.assignedTo, technicianId)),
+        and(eq(phoneInTickets.tenantId, tenantId), eq(phoneInTickets.assignedTo, technicianId)),
       )
       .groupBy(phoneInTickets.enhancedTicketStatus);
 

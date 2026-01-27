@@ -30,7 +30,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  */
 router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
@@ -57,7 +57,7 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
       })
       .from(equipment)
       .leftJoin(businessRecords, eq(equipment.customerId, businessRecords.id))
-      .where(and(eq(equipment.tenant_id, tenantId), eq(equipment.status, 'active')))
+      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')))
       .orderBy(equipment.nextServiceDue);
 
     // Calculate health metrics for each equipment
@@ -120,7 +120,7 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
           const recentMetrics = await db.query.clientCollectedMetrics.findMany({
             where: and(
               eq(clientCollectedMetrics.serialNumber, item.serialNumber || ''),
-              eq(clientCollectedMetrics.tenant_id, parseInt(tenantId)),
+              eq(clientCollectedMetrics.tenantId, parseInt(tenantId)),
               gte(clientCollectedMetrics.collectionTimestamp, thirtyDaysAgo),
             ),
             orderBy: [desc(clientCollectedMetrics.collectionTimestamp)],
@@ -244,7 +244,7 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
  */
 router.post('/api/predictive-maintenance/:equipmentId/schedule', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { equipmentId } = req.params;
     const { scheduledDate, priority = 'medium', notes, technicianId } = req.body;
 
@@ -263,7 +263,7 @@ router.post('/api/predictive-maintenance/:equipmentId/schedule', async (req: any
         location: equipment.location,
       })
       .from(equipment)
-      .where(and(eq(equipment.id, equipmentId), eq(equipment.tenant_id, tenantId)))
+      .where(and(eq(equipment.id, equipmentId), eq(equipment.tenantId, tenantId)))
       .limit(1);
 
     if (!equipmentItem) {
@@ -322,7 +322,7 @@ router.post('/api/predictive-maintenance/:equipmentId/schedule', async (req: any
 router.post('/api/predictive-maintenance/analyze/:serialNumber', async (req: any, res) => {
   try {
     const { serialNumber } = req.params;
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID required' });
@@ -362,7 +362,7 @@ router.post('/api/predictive-maintenance/analyze/:serialNumber', async (req: any
 router.post('/api/predictive-maintenance/analyze-batch', async (req: any, res) => {
   try {
     const { serialNumbers } = req.body;
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID required' });
@@ -412,7 +412,7 @@ router.post('/api/predictive-maintenance/analyze-batch', async (req: any, res) =
  */
 router.post('/api/predictive-maintenance/analyze-fleet', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID required' });
@@ -424,7 +424,7 @@ router.post('/api/predictive-maintenance/analyze-fleet', async (req: any, res) =
     const activeEquipment = await db
       .select({ serialNumber: equipment.serialNumber })
       .from(equipment)
-      .where(and(eq(equipment.tenant_id, tenantId), eq(equipment.status, 'active')));
+      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')));
 
     const serialNumbers = activeEquipment
       .map((e) => e.serialNumber)
@@ -483,7 +483,7 @@ router.post('/api/predictive-maintenance/analyze-fleet', async (req: any, res) =
  */
 router.get('/api/predictive-maintenance/parts-forecast', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant ID required' });
@@ -501,7 +501,7 @@ router.get('/api/predictive-maintenance/parts-forecast', async (req: any, res) =
         model: equipment.model,
       })
       .from(equipment)
-      .where(and(eq(equipment.tenant_id, tenantId), eq(equipment.status, 'active')));
+      .where(and(eq(equipment.tenantId, tenantId), eq(equipment.status, 'active')));
 
     const partsForecast: Record<
       string,
@@ -523,7 +523,7 @@ router.get('/api/predictive-maintenance/parts-forecast', async (req: any, res) =
         const metrics = await db.query.clientCollectedMetrics.findMany({
           where: and(
             eq(clientCollectedMetrics.serialNumber, device.serialNumber),
-            eq(clientCollectedMetrics.tenant_id, parseInt(tenantId)),
+            eq(clientCollectedMetrics.tenantId, parseInt(tenantId)),
             gte(clientCollectedMetrics.collectionTimestamp, thirtyDaysAgo),
           ),
           orderBy: [desc(clientCollectedMetrics.collectionTimestamp)],

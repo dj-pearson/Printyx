@@ -26,11 +26,11 @@ router.use(enhanceUserContext);
  */
 router.get('/latest-metrics', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
 
     // Get all metrics for this tenant, ordered by timestamp
     const metrics = await db.query.clientCollectedMetrics.findMany({
-      where: eq(clientCollectedMetrics.tenant_id, tenantId),
+      where: eq(clientCollectedMetrics.tenantId, tenantId),
       orderBy: [desc(clientCollectedMetrics.collectionTimestamp)],
       limit: 1000, // Reasonable limit
     });
@@ -52,12 +52,12 @@ router.get(
   async (req: TenantRequest, res) => {
     try {
       const { serialNumber } = req.params;
-      const tenantId = req.tenant_id!;
+      const tenantId = req.tenantId!;
       const limit = parseInt(req.query.limit as string) || 100;
 
       const metrics = await db.query.clientCollectedMetrics.findMany({
         where: and(
-          eq(clientCollectedMetrics.tenant_id, tenantId),
+          eq(clientCollectedMetrics.tenantId, tenantId),
           eq(clientCollectedMetrics.serialNumber, serialNumber),
         ),
         orderBy: [desc(clientCollectedMetrics.collectionTimestamp)],
@@ -77,11 +77,11 @@ router.get(
  */
 router.get('/active-alerts', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
 
     const alerts = await db.query.tonerAlerts.findMany({
-      where: and(eq(tonerAlerts.tenant_id, tenantId), eq(tonerAlerts.status, 'active')),
-      orderBy: [desc(tonerAlerts.created_at)],
+      where: and(eq(tonerAlerts.tenantId, tenantId), eq(tonerAlerts.status, 'active')),
+      orderBy: [desc(tonerAlerts.createdAt)],
     });
 
     res.json({ alerts });
@@ -101,20 +101,20 @@ router.get(
   async (req: TenantRequest, res) => {
     try {
       const { serialNumber } = req.params;
-      const tenantId = req.tenant_id!;
+      const tenantId = req.tenantId!;
       const includeResolved = req.query.includeResolved === 'true';
 
       const whereClause = includeResolved
-        ? and(eq(tonerAlerts.tenant_id, tenantId), eq(tonerAlerts.serialNumber, serialNumber))
+        ? and(eq(tonerAlerts.tenantId, tenantId), eq(tonerAlerts.serialNumber, serialNumber))
         : and(
-            eq(tonerAlerts.tenant_id, tenantId),
+            eq(tonerAlerts.tenantId, tenantId),
             eq(tonerAlerts.serialNumber, serialNumber),
             eq(tonerAlerts.status, 'active'),
           );
 
       const alerts = await db.query.tonerAlerts.findMany({
         where: whereClause,
-        orderBy: [desc(tonerAlerts.created_at)],
+        orderBy: [desc(tonerAlerts.createdAt)],
       });
 
       res.json({ alerts });
@@ -135,12 +135,12 @@ router.post(
   async (req: TenantRequest, res) => {
     try {
       const { alertId } = req.params;
-      const tenantId = req.tenant_id!;
+      const tenantId = req.tenantId!;
       const userId = req.user?.id;
 
       // Verify alert belongs to tenant
       const alert = await db.query.tonerAlerts.findFirst({
-        where: and(eq(tonerAlerts.id, parseInt(alertId)), eq(tonerAlerts.tenant_id, tenantId)),
+        where: and(eq(tonerAlerts.id, parseInt(alertId)), eq(tonerAlerts.tenantId, tenantId)),
       });
 
       if (!alert) {
@@ -176,11 +176,11 @@ router.post(
   async (req: TenantRequest, res) => {
     try {
       const { alertId } = req.params;
-      const tenantId = req.tenant_id!;
+      const tenantId = req.tenantId!;
 
       // Verify alert belongs to tenant
       const alert = await db.query.tonerAlerts.findFirst({
-        where: and(eq(tonerAlerts.id, parseInt(alertId)), eq(tonerAlerts.tenant_id, tenantId)),
+        where: and(eq(tonerAlerts.id, parseInt(alertId)), eq(tonerAlerts.tenantId, tenantId)),
       });
 
       if (!alert) {
@@ -210,7 +210,7 @@ router.post(
  */
 router.get('/statistics', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
 
     // Get unique device count and total impressions
     const [stats] = await db
@@ -220,7 +220,7 @@ router.get('/statistics', resolveTenant, requireTenant, async (req: TenantReques
         onlineDevices: sql<number>`COUNT(DISTINCT CASE WHEN ${clientCollectedMetrics.deviceStatus} = 'online' THEN ${clientCollectedMetrics.serialNumber} END)::int`,
       })
       .from(clientCollectedMetrics)
-      .where(eq(clientCollectedMetrics.tenant_id, tenantId));
+      .where(eq(clientCollectedMetrics.tenantId, tenantId));
 
     // Get active alert count
     const [alertStats] = await db
@@ -228,7 +228,7 @@ router.get('/statistics', resolveTenant, requireTenant, async (req: TenantReques
         activeAlerts: sql<number>`COUNT(*)::int`,
       })
       .from(tonerAlerts)
-      .where(and(eq(tonerAlerts.tenant_id, tenantId), eq(tonerAlerts.status, 'active')));
+      .where(and(eq(tonerAlerts.tenantId, tenantId), eq(tonerAlerts.status, 'active')));
 
     res.json({
       statistics: {

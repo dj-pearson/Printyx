@@ -10,7 +10,7 @@ import { Request } from 'express';
  * Supports multiple authentication methods in priority order:
  * 1. Supabase JWT (req.supabaseUser.id)
  * 2. User object from isAuthenticated middleware (req.user.id or req.user.claims.sub)
- * 3. Session-based auth (req.session.user_id)
+ * 3. Session-based auth (req.session.userId)
  *
  * @param req Express Request object
  * @returns User ID string or undefined if not authenticated
@@ -34,8 +34,8 @@ export function getUserId(req: Request): string | undefined {
   }
 
   // Priority 4: Session-based auth
-  if (reqAny.session?.user_id) {
-    return reqAny.session.user_id;
+  if (reqAny.session?.userId) {
+    return reqAny.session.userId;
   }
 
   return undefined;
@@ -56,23 +56,23 @@ export function getTenantId(req: Request): string | undefined {
   const reqAny = req as any;
 
   // Priority 1: Already resolved by resolveTenant middleware
-  if (reqAny.tenant_id) {
-    return reqAny.tenant_id;
+  if (reqAny.tenantId) {
+    return reqAny.tenantId;
   }
 
   // Priority 2: Supabase JWT tenant
-  if (reqAny.supabaseUser?.tenant_id) {
-    return reqAny.supabaseUser.tenant_id;
+  if (reqAny.supabaseUser?.tenantId) {
+    return reqAny.supabaseUser.tenantId;
   }
 
   // Priority 3: User object from isAuthenticated middleware
-  if (reqAny.user?.tenant_id) {
-    return reqAny.user.tenant_id;
+  if (reqAny.user?.tenantId) {
+    return reqAny.user.tenantId;
   }
 
   // Priority 4: Session
-  if (reqAny.session?.tenant_id) {
-    return reqAny.session.tenant_id;
+  if (reqAny.session?.tenantId) {
+    return reqAny.session.tenantId;
   }
 
   return undefined;

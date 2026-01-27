@@ -75,7 +75,7 @@ export default function Billing() {
       return (response || []).map((method: any) => ({
         ...method,
         id: method.id,
-        createdAt: method.created_at || method.createdAt || '',
+        createdAt: method.createdAt || method.createdAt || '',
       }));
     },
   });
@@ -88,9 +88,9 @@ export default function Billing() {
       return (response || []).map((invoice: any) => ({
         ...invoice,
         id: invoice.id,
-        invoiceNumber: invoice.invoice_number || invoice.invoiceNumber || '',
-        dueDate: invoice.due_date || invoice.dueDate || '',
-        createdAt: invoice.created_at || invoice.createdAt || '',
+        invoiceNumber: invoice.invoiceNumber || invoice.invoiceNumber || '',
+        dueDate: invoice.dueDate || invoice.dueDate || '',
+        createdAt: invoice.createdAt || invoice.createdAt || '',
       }));
     },
   });

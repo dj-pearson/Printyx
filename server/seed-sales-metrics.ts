@@ -21,11 +21,7 @@ export async function seedSalesMetrics() {
     }
 
     // Get users from this tenant
-    const tenantUsers = await db
-      .select()
-      .from(users)
-      .where(eq(users.tenant_id, tenant.id))
-      .limit(5);
+    const tenantUsers = await db.select().from(users).where(eq(users.tenantId, tenant.id)).limit(5);
 
     if (tenantUsers.length === 0) {
       console.log('No users found for tenant, skipping sales metrics seeding');
@@ -36,7 +32,7 @@ export async function seedSalesMetrics() {
     const teams = await db
       .select()
       .from(salesTeams)
-      .where(eq(salesTeams.tenant_id, tenant.id))
+      .where(eq(salesTeams.tenantId, tenant.id))
       .limit(3);
 
     // Create sample sales metrics for different periods
@@ -140,7 +136,7 @@ export async function seedSalesMetrics() {
         activitiesNeededForGoal: 450,
         projectedRevenue: 147000,
       },
-    ].filter((metric) => metric.user_id && metric.teamId);
+    ].filter((metric) => metric.userId && metric.teamId);
 
     if (metricsData.length > 0) {
       const createdMetrics = await db
@@ -196,7 +192,7 @@ export async function seedSalesMetrics() {
         proposalToWinRate: 25.0,
         overallConversionRate: 0.29,
       },
-    ].filter((funnel) => funnel.user_id && funnel.teamId);
+    ].filter((funnel) => funnel.userId && funnel.teamId);
 
     if (funnelData.length > 0) {
       const createdFunnels = await db
@@ -283,7 +279,7 @@ export async function seedSalesMetrics() {
         isActive: true,
         isRead: false,
       },
-    ].filter((insight) => insight.managerId && insight.user_id && insight.teamId);
+    ].filter((insight) => insight.managerId && insight.userId && insight.teamId);
 
     if (insightsData.length > 0) {
       const createdInsights = await db

@@ -138,7 +138,7 @@ export class TemplateRenderingService {
     if (contextIds.businessRecordId) {
       const record = await db.query.businessRecords.findFirst({
         where: (records, { eq, and }) =>
-          and(eq(records.id, contextIds.businessRecordId!), eq(records.tenant_id, tenantId)),
+          and(eq(records.id, contextIds.businessRecordId!), eq(records.tenantId, tenantId)),
       });
       if (record) {
         dataContext.businessRecord = record;
@@ -150,7 +150,7 @@ export class TemplateRenderingService {
     if (contextIds.quoteId) {
       const quote = await db.query.quotes.findFirst({
         where: (quotes, { eq, and }) =>
-          and(eq(quotes.id, contextIds.quoteId!), eq(quotes.tenant_id, tenantId)),
+          and(eq(quotes.id, contextIds.quoteId!), eq(quotes.tenantId, tenantId)),
         with: {
           lineItems: true,
         },
@@ -164,7 +164,7 @@ export class TemplateRenderingService {
     if (contextIds.dealId) {
       const deal = await db.query.deals.findFirst({
         where: (deals, { eq, and }) =>
-          and(eq(deals.id, contextIds.dealId!), eq(deals.tenant_id, tenantId)),
+          and(eq(deals.id, contextIds.dealId!), eq(deals.tenantId, tenantId)),
       });
       if (deal) {
         dataContext.deal = deal;
@@ -175,7 +175,7 @@ export class TemplateRenderingService {
     if (contextIds.serviceCallId) {
       const serviceCall = await db.query.serviceCalls.findFirst({
         where: (calls, { eq, and }) =>
-          and(eq(calls.id, contextIds.serviceCallId!), eq(calls.tenant_id, tenantId)),
+          and(eq(calls.id, contextIds.serviceCallId!), eq(calls.tenantId, tenantId)),
       });
       if (serviceCall) {
         dataContext.serviceCall = serviceCall;
@@ -186,7 +186,7 @@ export class TemplateRenderingService {
     if (contextIds.invoiceId) {
       const invoice = await db.query.invoices.findFirst({
         where: (invoices, { eq, and }) =>
-          and(eq(invoices.id, contextIds.invoiceId!), eq(invoices.tenant_id, tenantId)),
+          and(eq(invoices.id, contextIds.invoiceId!), eq(invoices.tenantId, tenantId)),
       });
       if (invoice) {
         dataContext.invoice = invoice;
@@ -360,7 +360,7 @@ export class DocumentGenerationService {
     // Fetch template
     const template = await db.query.documentTemplates.findFirst({
       where: (templates, { eq, and }) =>
-        and(eq(templates.id, templateId), eq(templates.tenant_id, tenantId)),
+        and(eq(templates.id, templateId), eq(templates.tenantId, tenantId)),
     });
 
     if (!template) {
@@ -513,7 +513,7 @@ export class DocumentGenerationService {
   ): Promise<string> {
     const template = await db.query.documentTemplates.findFirst({
       where: (templates, { eq, and }) =>
-        and(eq(templates.id, templateId), eq(templates.tenant_id, tenantId)),
+        and(eq(templates.id, templateId), eq(templates.tenantId, tenantId)),
     });
 
     if (!template) {

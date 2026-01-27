@@ -203,7 +203,7 @@ export default function BusinessProcessOptimization() {
         data.workflowTemplates?.map((template: any) => ({
           ...template,
           lastUpdated: new Date(template.lastUpdated || template.last_updated),
-          createdAt: template.created_at || template.createdAt,
+          createdAt: template.createdAt || template.createdAt,
         })) || [],
     }),
     refetchInterval: 300000, // Refresh every 5 minutes

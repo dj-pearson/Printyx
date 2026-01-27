@@ -110,7 +110,7 @@ export class UserLifecycleService {
     if (tenantId) {
       return await db.query.userProvisioningTemplates.findMany({
         where: and(
-          eq(userProvisioningTemplates.tenant_id, tenantId),
+          eq(userProvisioningTemplates.tenantId, tenantId),
           eq(userProvisioningTemplates.isActive, true),
         ),
         orderBy: [desc(userProvisioningTemplates.usageCount)],
@@ -120,7 +120,7 @@ export class UserLifecycleService {
     // Platform-wide templates (tenantId is null)
     return await db.query.userProvisioningTemplates.findMany({
       where: and(
-        sql`${userProvisioningTemplates.tenant_id} IS NULL`,
+        sql`${userProvisioningTemplates.tenantId} IS NULL`,
         eq(userProvisioningTemplates.isActive, true),
       ),
       orderBy: [desc(userProvisioningTemplates.usageCount)],
@@ -151,8 +151,8 @@ export class UserLifecycleService {
         eq(userProvisioningTemplates.isDefault, true),
         eq(userProvisioningTemplates.isActive, true),
         tenantId
-          ? eq(userProvisioningTemplates.tenant_id, tenantId)
-          : sql`${userProvisioningTemplates.tenant_id} IS NULL`,
+          ? eq(userProvisioningTemplates.tenantId, tenantId)
+          : sql`${userProvisioningTemplates.tenantId} IS NULL`,
       ),
     });
 
@@ -524,7 +524,7 @@ export class UserLifecycleService {
 
         results.push({
           row: i + 1,
-          userId: result.user_id,
+          userId: result.userId,
           status: 'success',
         });
         successCount++;
@@ -808,7 +808,7 @@ export class UserLifecycleService {
   ): Promise<AccessReview[]> {
     return await db.query.accessReviews.findMany({
       where: and(
-        eq(accessReviews.tenant_id, tenantId),
+        eq(accessReviews.tenantId, tenantId),
         eq(accessReviews.managerId, managerId),
         inArray(accessReviews.status, ['not_started', 'in_progress', 'overdue']),
       ),
@@ -896,7 +896,7 @@ export class UserLifecycleService {
 
     // Create audit log
     await db.insert(auditLogs).values({
-      tenantId: session.tenant_id,
+      tenantId: session.tenantId,
       userId: session.adminId,
       action: 'USER_IMPERSONATION_ENDED',
       resource: 'users',

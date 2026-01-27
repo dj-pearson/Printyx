@@ -362,16 +362,16 @@ export default function DataEnrichment() {
                         <div className="flex items-center space-x-4">
                           <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                             <span className="text-blue-600 font-medium">
-                              {contact.first_name?.[0]}
-                              {contact.last_name?.[0]}
+                              {contact.firstName?.[0]}
+                              {contact.lastName?.[0]}
                             </span>
                           </div>
                           <div>
                             <div className="font-medium">
-                              {contact.first_name} {contact.last_name}
+                              {contact.firstName} {contact.lastName}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              {contact.job_title} at {contact.company_name}
+                              {contact.job_title} at {contact.companyName}
                             </div>
                             <div className="text-sm text-muted-foreground">{contact.email}</div>
                           </div>
@@ -426,7 +426,7 @@ export default function DataEnrichment() {
                             <Building className="w-5 h-5 text-green-600" />
                           </div>
                           <div>
-                            <div className="font-medium">{company.company_name}</div>
+                            <div className="font-medium">{company.companyName}</div>
                             <div className="text-sm text-muted-foreground">
                               {company.primary_industry}
                             </div>

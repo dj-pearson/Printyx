@@ -113,7 +113,7 @@ export class GdprDataExportService {
   ): Promise<{ success: boolean; data?: any; error?: string }> {
     // Get the export request
     const exportRequest = await db.query.personalDataExports.findFirst({
-      where: and(eq(personalDataExports.id, exportId), eq(personalDataExports.tenant_id, tenantId)),
+      where: and(eq(personalDataExports.id, exportId), eq(personalDataExports.tenantId, tenantId)),
     });
 
     if (!exportRequest) {
@@ -247,7 +247,7 @@ export class GdprDataExportService {
     if (categoriesToInclude.includes('profile')) {
       if (subjectType === 'user') {
         data.user = await db.query.users.findFirst({
-          where: and(eq(users.tenant_id, tenantId), eq(users.id, subjectId)),
+          where: and(eq(users.tenantId, tenantId), eq(users.id, subjectId)),
         });
         // Sanitize sensitive fields
         if (data.user) {
@@ -258,7 +258,7 @@ export class GdprDataExportService {
 
       if (subjectType === 'contact' || subjectType === 'customer' || subjectType === 'lead') {
         data.businessRecord = await db.query.businessRecords.findFirst({
-          where: and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.id, subjectId)),
+          where: and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.id, subjectId)),
         });
       }
     }
@@ -267,7 +267,7 @@ export class GdprDataExportService {
     if (categoriesToInclude.includes('contact')) {
       data.contacts = await db.query.enhancedContacts.findMany({
         where: and(
-          eq(enhancedContacts.tenant_id, tenantId),
+          eq(enhancedContacts.tenantId, tenantId),
           eq(enhancedContacts.companyId, subjectId),
         ),
       });
@@ -276,8 +276,8 @@ export class GdprDataExportService {
     // Activity Data
     if (categoriesToInclude.includes('activity')) {
       const activityConditions = [
-        eq(auditLogs.tenant_id, tenantId),
-        eq(auditLogs.user_id, subjectId),
+        eq(auditLogs.tenantId, tenantId),
+        eq(auditLogs.userId, subjectId),
       ];
 
       if (dateRangeStart) {
@@ -301,7 +301,7 @@ export class GdprDataExportService {
       }));
 
       data.dataAccessLogs = await db.query.dataAccessLogs.findMany({
-        where: and(eq(dataAccessLogs.tenant_id, tenantId), eq(dataAccessLogs.user_id, subjectId)),
+        where: and(eq(dataAccessLogs.tenantId, tenantId), eq(dataAccessLogs.userId, subjectId)),
         orderBy: [desc(dataAccessLogs.accessedAt)],
         limit: 1000,
       });
@@ -315,7 +315,7 @@ export class GdprDataExportService {
       data.consentRecords =
         (await db.query.consentRecords?.findMany?.({
           where: and(
-            eq(consentRecords.tenant_id, tenantId),
+            eq(consentRecords.tenantId, tenantId),
             eq(consentRecords.subjectId, subjectId),
           ),
         })) || [];
@@ -325,7 +325,7 @@ export class GdprDataExportService {
         data.consentAuditTrail =
           (await db.query.consentAuditTrail?.findMany?.({
             where: and(
-              eq(consentAuditTrail.tenant_id, tenantId),
+              eq(consentAuditTrail.tenantId, tenantId),
               inArray(consentAuditTrail.consentRecordId, consentIds),
             ),
           })) || [];
@@ -334,7 +334,7 @@ export class GdprDataExportService {
 
     // GDPR Requests
     data.gdprRequests = await db.query.gdprRequests.findMany({
-      where: and(eq(gdprRequests.tenant_id, tenantId), eq(gdprRequests.subjectId, subjectId)),
+      where: and(eq(gdprRequests.tenantId, tenantId), eq(gdprRequests.subjectId, subjectId)),
     });
 
     return data;
@@ -435,7 +435,7 @@ export class GdprDataExportService {
       (await db.query.personalDataExports.findFirst({
         where: and(
           eq(personalDataExports.id, exportId),
-          eq(personalDataExports.tenant_id, tenantId),
+          eq(personalDataExports.tenantId, tenantId),
         ),
       })) || null
     );
@@ -456,7 +456,7 @@ export class GdprDataExportService {
     const { page = 1, limit = 25, status, subjectId } = options;
     const offset = (page - 1) * limit;
 
-    const conditions = [eq(personalDataExports.tenant_id, tenantId)];
+    const conditions = [eq(personalDataExports.tenantId, tenantId)];
 
     if (status) {
       conditions.push(eq(personalDataExports.status, status as any));
@@ -472,7 +472,7 @@ export class GdprDataExportService {
         .select()
         .from(personalDataExports)
         .where(whereClause)
-        .orderBy(desc(personalDataExports.created_at))
+        .orderBy(desc(personalDataExports.createdAt))
         .limit(limit)
         .offset(offset),
       db
@@ -495,9 +495,7 @@ export class GdprDataExportService {
         lastDownloadedAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(
-        and(eq(personalDataExports.id, exportId), eq(personalDataExports.tenant_id, tenantId)),
-      );
+      .where(and(eq(personalDataExports.id, exportId), eq(personalDataExports.tenantId, tenantId)));
   }
 
   /**
@@ -542,10 +540,10 @@ export class GdprDataExportService {
   async listTemplates(tenantId: string): Promise<DataExportTemplate[]> {
     return await db.query.dataExportTemplates.findMany({
       where: and(
-        eq(dataExportTemplates.tenant_id, tenantId),
+        eq(dataExportTemplates.tenantId, tenantId),
         eq(dataExportTemplates.isActive, true),
       ),
-      orderBy: [desc(dataExportTemplates.isDefault), desc(dataExportTemplates.created_at)],
+      orderBy: [desc(dataExportTemplates.isDefault), desc(dataExportTemplates.createdAt)],
     });
   }
 
@@ -556,7 +554,7 @@ export class GdprDataExportService {
     return (
       (await db.query.dataExportTemplates.findFirst({
         where: and(
-          eq(dataExportTemplates.tenant_id, tenantId),
+          eq(dataExportTemplates.tenantId, tenantId),
           eq(dataExportTemplates.isDefault, true),
           eq(dataExportTemplates.isActive, true),
         ),

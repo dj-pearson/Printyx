@@ -101,8 +101,8 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
 
   private mapFMAuditDevices(devices: any[]): DeviceInfo[] {
     return devices.map((device) => ({
-      deviceId: device.device_id || device.id || device.serial_number,
-      serialNumber: device.serial_number,
+      deviceId: device.device_id || device.id || device.serialNumber,
+      serialNumber: device.serialNumber,
       modelNumber: device.model || device.model_name,
       deviceName: device.device_name || device.name,
       ipAddress: device.ip_address,

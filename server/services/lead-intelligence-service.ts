@@ -82,7 +82,7 @@ class LeadIntelligenceService {
 
     // Get the lead
     const lead = await storage.getBusinessRecord(leadId);
-    if (!lead || lead.tenant_id !== tenantId) {
+    if (!lead || lead.tenantId !== tenantId) {
       throw new Error('Lead not found or access denied');
     }
 
@@ -90,7 +90,7 @@ class LeadIntelligenceService {
     const rules = await db
       .select()
       .from(leadScoringRules)
-      .where(and(eq(leadScoringRules.tenant_id, tenantId), eq(leadScoringRules.isActive, true)))
+      .where(and(eq(leadScoringRules.tenantId, tenantId), eq(leadScoringRules.isActive, true)))
       .orderBy(desc(leadScoringRules.priority));
 
     // Initialize scores
@@ -330,7 +330,7 @@ class LeadIntelligenceService {
     userId?: string,
   ): Promise<EnrichmentResult> {
     const lead = await storage.getBusinessRecord(leadId);
-    if (!lead || lead.tenant_id !== tenantId) {
+    if (!lead || lead.tenantId !== tenantId) {
       throw new Error('Lead not found or access denied');
     }
 
@@ -397,7 +397,7 @@ class LeadIntelligenceService {
           }
 
           if (Object.keys(updates).length > 0) {
-            updates.updated_at = new Date();
+            updates.updatedAt = new Date();
             updates.enrichedFromApollo = true;
             updates.apolloEnrichedAt = new Date();
 
@@ -412,7 +412,7 @@ class LeadIntelligenceService {
             .from(tenantApolloLeads)
             .where(
               and(
-                eq(tenantApolloLeads.tenant_id, tenantId),
+                eq(tenantApolloLeads.tenantId, tenantId),
                 eq(tenantApolloLeads.apolloId, apolloContact.apolloId),
               ),
             )
@@ -483,7 +483,7 @@ class LeadIntelligenceService {
           }
 
           if (Object.keys(updates).length > 0) {
-            updates.updated_at = new Date();
+            updates.updatedAt = new Date();
             await db.update(businessRecords).set(updates).where(eq(businessRecords.id, leadId));
             enriched = true;
           }
@@ -507,7 +507,7 @@ class LeadIntelligenceService {
    */
   async getLeadIntelligence(leadId: string, tenantId: string): Promise<LeadIntelligence> {
     const lead = await storage.getBusinessRecord(leadId);
-    if (!lead || lead.tenant_id !== tenantId) {
+    if (!lead || lead.tenantId !== tenantId) {
       throw new Error('Lead not found or access denied');
     }
 
@@ -560,7 +560,7 @@ class LeadIntelligenceService {
       .from(tenantApolloLeads)
       .where(
         and(
-          eq(tenantApolloLeads.tenant_id, tenantId),
+          eq(tenantApolloLeads.tenantId, tenantId),
           eq(tenantApolloLeads.businessRecordId, leadId),
         ),
       )
@@ -683,7 +683,7 @@ class LeadIntelligenceService {
     const [totalResult] = await db
       .select({ count: sql<number>`count(*)` })
       .from(businessRecords)
-      .where(and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.recordType, 'lead')));
+      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'lead')));
 
     // Get scored leads with latest score
     const scoredLeadsData = await db
@@ -695,7 +695,7 @@ class LeadIntelligenceService {
         calculatedAt: leadScoreCalculations.calculatedAt,
       })
       .from(leadScoreCalculations)
-      .where(eq(leadScoreCalculations.tenant_id, tenantId))
+      .where(eq(leadScoreCalculations.tenantId, tenantId))
       .orderBy(leadScoreCalculations.leadId, desc(leadScoreCalculations.calculatedAt));
 
     // Calculate distributions
@@ -721,7 +721,7 @@ class LeadIntelligenceService {
         totalPoints: sql<number>`sum(${leadScoringFactors.pointsAwarded})`,
       })
       .from(leadScoringFactors)
-      .where(eq(leadScoringFactors.tenant_id, tenantId))
+      .where(eq(leadScoringFactors.tenantId, tenantId))
       .groupBy(leadScoringFactors.factorName)
       .orderBy(desc(sql`count(*)`))
       .limit(10);
@@ -737,7 +737,7 @@ class LeadIntelligenceService {
       .from(leadScoreCalculations)
       .where(
         and(
-          eq(leadScoreCalculations.tenant_id, tenantId),
+          eq(leadScoreCalculations.tenantId, tenantId),
           gte(leadScoreCalculations.calculatedAt, thirtyDaysAgo),
         ),
       )
@@ -783,7 +783,7 @@ class LeadIntelligenceService {
       .from(leadScoreCalculations)
       .where(
         and(
-          eq(leadScoreCalculations.tenant_id, tenantId),
+          eq(leadScoreCalculations.tenantId, tenantId),
           eq(leadScoreCalculations.leadTier, 'hot'),
         ),
       )

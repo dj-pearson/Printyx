@@ -396,8 +396,8 @@ export class DataEnrichmentTransformer {
       return history.map((job) => ({
         company: job.organization_name,
         title: job.title,
-        start_date: job.start_date,
-        end_date: job.end_date,
+        start_date: job.startDate,
+        end_date: job.endDate,
         current: job.current,
       }));
     }

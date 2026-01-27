@@ -22,7 +22,7 @@ router.post('/schedule-request', async (req, res) => {
   try {
     const requestData = {
       ...req.body,
-      tenantId: req.user.tenant_id,
+      tenantId: req.user.tenantId,
       requesterId: req.user.id,
     };
 
@@ -72,7 +72,7 @@ router.get('/meetings', async (req, res) => {
     const meetings = [
       {
         id: 'meeting-1',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         title: 'Q4 Planning Session',
         description: 'Strategic planning for Q4 initiatives and goals',
         startTime: new Date('2025-09-27T10:00:00Z'),
@@ -155,7 +155,7 @@ router.get('/meetings', async (req, res) => {
       },
       {
         id: 'meeting-2',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         title: 'Client Presentation - Global Manufacturing',
         description: 'Product demonstration and proposal presentation',
         startTime: new Date('2025-09-27T14:00:00Z'),
@@ -239,7 +239,7 @@ router.get('/meetings', async (req, res) => {
       },
       {
         id: 'meeting-3',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         title: 'Daily Team Standup',
         description: 'Daily synchronization and progress update',
         startTime: new Date('2025-09-27T09:00:00Z'),
@@ -343,7 +343,7 @@ router.get('/meetings', async (req, res) => {
 
     if (participant) {
       filteredMeetings = filteredMeetings.filter((m) =>
-        m.participants.some((p) => p.user_id === participant),
+        m.participants.some((p) => p.userId === participant),
       );
     }
 
@@ -369,7 +369,7 @@ router.get('/meetings/:meetingId', async (req, res) => {
     // Mock detailed meeting data
     const meeting = {
       id: meetingId,
-      tenantId: req.user.tenant_id,
+      tenantId: req.user.tenantId,
       title: 'Q4 Planning Session',
       description: 'Strategic planning session for Q4 initiatives, goals, and resource allocation',
       startTime: new Date('2025-09-27T10:00:00Z'),
@@ -867,7 +867,7 @@ router.get('/analytics', async (req, res) => {
   try {
     const { timeRange = 'month' } = req.query;
 
-    const analytics = await MeetingSchedulingService.getMeetingAnalytics(req.user.tenant_id, {
+    const analytics = await MeetingSchedulingService.getMeetingAnalytics(req.user.tenantId, {
       start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
       end: new Date(),
     });
@@ -899,7 +899,7 @@ router.post('/optimize-schedule', async (req, res) => {
     } = req.body;
 
     const optimization = await MeetingSchedulingService.optimizeExistingSchedule(
-      req.user.tenant_id,
+      req.user.tenantId,
       timeRange,
       optimizationGoals,
     );

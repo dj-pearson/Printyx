@@ -141,14 +141,14 @@ export default function MeterReadings() {
       return (response || []).map((reading: any) => ({
         ...reading,
         id: reading.id,
-        equipmentId: reading.equipment_id || reading.equipmentId || '',
-        contractId: reading.contract_id || reading.contractId || null,
+        equipmentId: reading.equipmentId || reading.equipmentId || '',
+        contractId: reading.contractId || reading.contractId || null,
         readingDate: reading.reading_date || reading.readingDate || '',
         blackMeter: reading.black_meter || reading.blackMeter || 0,
         colorMeter: reading.color_meter || reading.colorMeter || 0,
         collectionMethod: reading.collection_method || reading.collectionMethod || 'manual',
-        createdAt: reading.created_at || reading.createdAt || '',
-        updatedAt: reading.updated_at || reading.updatedAt || '',
+        createdAt: reading.createdAt || reading.createdAt || '',
+        updatedAt: reading.updatedAt || reading.updatedAt || '',
       }));
     },
   });
@@ -160,12 +160,12 @@ export default function MeterReadings() {
       return (response || []).map((equip: any) => ({
         ...equip,
         id: equip.id,
-        serialNumber: equip.serial_number || equip.serialNumber || '',
-        modelNumber: equip.model_number || equip.modelNumber || '',
-        customerId: equip.customer_id || equip.customerId || '',
-        locationId: equip.location_id || equip.locationId || null,
+        serialNumber: equip.serialNumber || equip.serialNumber || '',
+        modelNumber: equip.modelNumber || equip.modelNumber || '',
+        customerId: equip.customerId || equip.customerId || '',
+        locationId: equip.locationId || equip.locationId || null,
         installDate: equip.install_date || equip.installDate || null,
-        createdAt: equip.created_at || equip.createdAt || '',
+        createdAt: equip.createdAt || equip.createdAt || '',
       }));
     },
   });
@@ -177,8 +177,8 @@ export default function MeterReadings() {
       return (response || []).map((contract: any) => ({
         ...contract,
         id: contract.id,
-        contractNumber: contract.contract_number || contract.contractNumber || '',
-        customerId: contract.customer_id || contract.customerId || '',
+        contractNumber: contract.contractNumber || contract.contractNumber || '',
+        customerId: contract.customerId || contract.customerId || '',
       }));
     },
   });
@@ -190,8 +190,8 @@ export default function MeterReadings() {
       return (response || []).map((location: any) => ({
         ...location,
         id: location.id,
-        customerId: location.customer_id || location.customerId || '',
-        createdAt: location.created_at || location.createdAt || '',
+        customerId: location.customerId || location.customerId || '',
+        createdAt: location.createdAt || location.createdAt || '',
       }));
     },
   });

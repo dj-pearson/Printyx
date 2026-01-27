@@ -229,7 +229,7 @@ class AISearchKnowledgeService {
 
       // Calculate quality and freshness scores
       const qualityScore = this.calculateContentQuality(contentData.text, contentData.title);
-      const freshnessScore = this.calculateFreshnessScore(contentData.created_at);
+      const freshnessScore = this.calculateFreshnessScore(contentData.createdAt);
 
       const embedding: VectorEmbedding = {
         id: `embed-${Date.now()}`,
@@ -247,7 +247,7 @@ class AISearchKnowledgeService {
         contentTags: contentData.tags || [],
         contentLanguage: 'en',
         contentAuthorId: contentData.authorId,
-        contentCreatedAt: contentData.created_at,
+        contentCreatedAt: contentData.createdAt,
         accessLevel: (contentData.accessLevel as any) || 'tenant',
         accessPermissions: contentData.accessPermissions || [],
         contentQualityScore: qualityScore,
@@ -491,7 +491,7 @@ Return JSON format:
 
       const aiAnswer: AIGeneratedAnswer = {
         id: `answer-${Date.now()}`,
-        tenantId: query.tenant_id,
+        tenantId: query.tenantId,
         queryId: query.id,
         answerText: answerData.answerText,
         answerConfidence: answerData.confidenceScore || 0.85,

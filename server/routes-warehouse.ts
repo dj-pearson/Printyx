@@ -98,7 +98,7 @@ export function registerWarehouseRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.WAREHOUSE.VIEW, PERMISSIONS.INVENTORY.ITEM.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenant_id || (req as any).user?.claims?.tenant_id;
+        const tenantId = req.user?.tenantId || (req as any).user?.claims?.tenantId;
         const operations = await storage.getWarehouseOperations(tenantId);
         res.json(operations);
       } catch (error) {
@@ -110,7 +110,7 @@ export function registerWarehouseRoutes(app: Express) {
 
   app.get('/api/warehouse-operations/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
       const { id } = req.params;
 
       const operation = await storage.getWarehouseOperation(id, tenantId);
@@ -127,7 +127,7 @@ export function registerWarehouseRoutes(app: Express) {
 
   app.post('/api/warehouse-operations', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
       const userId = req.user?.id || req.user?.claims?.sub;
 
       const validatedData = warehouseOperationSchema.parse(req.body);
@@ -154,7 +154,7 @@ export function registerWarehouseRoutes(app: Express) {
 
   app.put('/api/warehouse-operations/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
       const { id } = req.params;
 
       const operation = await storage.updateWarehouseOperation(id, req.body, tenantId);
@@ -171,7 +171,7 @@ export function registerWarehouseRoutes(app: Express) {
 
   app.patch('/api/warehouse-operations/:id/status', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
       const { id } = req.params;
       const { status } = req.body;
       const userId = req.user?.id || req.user?.claims?.sub;
@@ -200,7 +200,7 @@ export function registerWarehouseRoutes(app: Express) {
 
   app.delete('/api/warehouse-operations/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
       const { id } = req.params;
 
       const success = await storage.deleteWarehouseOperation(id, tenantId);
@@ -218,7 +218,7 @@ export function registerWarehouseRoutes(app: Express) {
   // Warehouse statistics
   app.get('/api/warehouse-operations/stats', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
       const operations = await storage.getWarehouseOperations(tenantId);
 
       const stats = {
@@ -246,7 +246,7 @@ export function registerWarehouseRoutes(app: Express) {
   // Serial Number Management
   app.get('/api/serial-numbers', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
       const serialNumbers = await storage.getSerialNumbers(tenantId);
       res.json(serialNumbers);
     } catch (error) {
@@ -257,7 +257,7 @@ export function registerWarehouseRoutes(app: Express) {
 
   app.post('/api/serial-numbers', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
 
       const validatedData = serialNumberSchema.parse(req.body);
 
@@ -279,7 +279,7 @@ export function registerWarehouseRoutes(app: Express) {
 
   app.put('/api/serial-numbers/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
       const { id } = req.params;
 
       const serialNumber = await storage.updateSerialNumber(id, req.body, tenantId);
@@ -297,7 +297,7 @@ export function registerWarehouseRoutes(app: Express) {
   // Build Process Management
   app.get('/api/build-processes', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
       const buildProcesses = await storage.getBuildProcesses(tenantId);
       res.json(buildProcesses);
     } catch (error) {
@@ -308,7 +308,7 @@ export function registerWarehouseRoutes(app: Express) {
 
   app.post('/api/build-processes', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
 
       const validatedData = buildProcessSchema.parse({
         ...req.body,
@@ -336,7 +336,7 @@ export function registerWarehouseRoutes(app: Express) {
   // Delivery Scheduling
   app.get('/api/delivery-schedules', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
       const deliverySchedules = await storage.getDeliverySchedules(tenantId);
       res.json(deliverySchedules);
     } catch (error) {
@@ -347,7 +347,7 @@ export function registerWarehouseRoutes(app: Express) {
 
   app.post('/api/delivery-schedules', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
 
       const validatedData = deliveryScheduleSchema.parse({
         ...req.body,
@@ -377,7 +377,7 @@ export function registerWarehouseRoutes(app: Express) {
 
   app.put('/api/delivery-schedules/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
       const { id } = req.params;
 
       const deliverySchedule = await storage.updateDeliverySchedule(id, req.body, tenantId);
@@ -395,7 +395,7 @@ export function registerWarehouseRoutes(app: Express) {
   // Equipment tracking by serial number
   app.get('/api/equipment/:id/lifecycle', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.user?.claims?.tenant_id;
+      const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
       const { id } = req.params;
 
       // Get all operations for this equipment

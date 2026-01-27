@@ -11,7 +11,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
   // Get enhanced tasks with all related data
   app.get('/api/tasks/enhanced', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
 
       if (!tenantId) {
         console.log('Enhanced tasks: Missing tenantId for user:', req.user);
@@ -44,8 +44,8 @@ export function registerEnhancedTaskRoutes(app: Express) {
           tags: tasks.tags,
           customFields: tasks.customFields,
           createdBy: tasks.createdBy,
-          createdAt: tasks.created_at,
-          updatedAt: tasks.updated_at,
+          createdAt: tasks.createdAt,
+          updatedAt: tasks.updatedAt,
           completedAt: tasks.completedAt,
 
           // Assignee details
@@ -56,13 +56,13 @@ export function registerEnhancedTaskRoutes(app: Express) {
           projectName: projects.name,
 
           // Creator details
-          createdByName: sql<string>`creator.first_name || ' ' || creator.last_name`,
+          createdByName: sql<string>`creator.firstName || ' ' || creator.lastName`,
         })
         .from(tasks)
         .leftJoin(users, eq(tasks.assignedTo, users.id))
         .leftJoin(projects, eq(tasks.projectId, projects.id))
         .leftJoin(sql`${users} as creator`, eq(tasks.createdBy, sql`creator.id`))
-        .where(eq(tasks.tenant_id, tenantId));
+        .where(eq(tasks.tenantId, tenantId));
 
       // Apply filters
       if (projectId) {
@@ -78,7 +78,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
         query = query.where(eq(tasks.priority, priority as any));
       }
 
-      const allTasks = await query.orderBy(desc(tasks.updated_at));
+      const allTasks = await query.orderBy(desc(tasks.updatedAt));
 
       // Build task hierarchy (parent tasks with their subtasks)
       const taskMap = new Map();
@@ -111,7 +111,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
   // Get enhanced projects with workflow data
   app.get('/api/projects/enhanced', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
 
       const projectsData = await db
         .select({
@@ -130,10 +130,10 @@ export function registerEnhancedTaskRoutes(app: Express) {
           template: projects.template,
           workflow: projects.workflow,
           tags: projects.tags,
-          createdAt: projects.created_at,
+          createdAt: projects.createdAt,
 
           // Manager details
-          projectManagerName: sql<string>`pm.first_name || ' ' || pm.last_name`,
+          projectManagerName: sql<string>`pm.firstName || ' ' || pm.lastName`,
 
           // Task counts
           taskCount: sql<number>`COUNT(task_tasks.id)`,
@@ -142,7 +142,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
         .from(projects)
         .leftJoin(sql`${users} as pm`, eq(projects.projectManager, sql`pm.id`))
         .leftJoin(sql`${tasks} as task_tasks`, eq(projects.id, sql`task_tasks.project_id`))
-        .where(eq(projects.tenant_id, tenantId))
+        .where(eq(projects.tenantId, tenantId))
         .groupBy(
           projects.id,
           projects.name,
@@ -159,11 +159,11 @@ export function registerEnhancedTaskRoutes(app: Express) {
           projects.template,
           projects.workflow,
           projects.tags,
-          projects.created_at,
-          sql`pm.first_name`,
-          sql`pm.last_name`,
+          projects.createdAt,
+          sql`pm.firstName`,
+          sql`pm.lastName`,
         )
-        .orderBy(desc(projects.updated_at));
+        .orderBy(desc(projects.updatedAt));
 
       res.json(projectsData);
     } catch (error) {
@@ -175,7 +175,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
   // Get team members for task assignment
   app.get('/api/users/team', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
 
       const teamMembers = await db
         .select({
@@ -186,7 +186,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
           role: users.role,
         })
         .from(users)
-        .where(and(eq(users.tenant_id, tenantId), eq(users.isActive, true)))
+        .where(and(eq(users.tenantId, tenantId), eq(users.isActive, true)))
         .orderBy(users.firstName, users.lastName);
 
       res.json(teamMembers);
@@ -199,7 +199,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
   // Create task with enhanced data
   app.post('/api/tasks/enhanced', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const userId = req.user?.claims?.sub;
 
       const taskData = {
@@ -232,7 +232,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
   // Update task with enhanced functionality
   app.patch('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const taskId = req.params.id;
 
       const updateData = {
@@ -249,7 +249,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
       const [updatedTask] = await db
         .update(tasks)
         .set(updateData)
-        .where(and(eq(tasks.id, taskId), eq(tasks.tenant_id, tenantId)))
+        .where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)))
         .returning();
 
       if (!updatedTask) {
@@ -271,7 +271,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
   // Add comment to task
   app.post('/api/tasks/:id/comments', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const taskId = req.params.id;
       const userId = req.user?.claims?.sub;
 
@@ -292,7 +292,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
           commentCount: sql`${tasks.commentCount} + 1`,
           updatedAt: new Date(),
         })
-        .where(and(eq(tasks.id, taskId), eq(tasks.tenant_id, tenantId)));
+        .where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
 
       res.status(201).json(comment);
     } catch (error) {
@@ -304,7 +304,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
   // Add time entry
   app.post('/api/tasks/:id/time', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const taskId = req.params.id;
       const userId = req.user?.claims?.sub;
 
@@ -327,7 +327,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
           timeTracked: sql`${tasks.timeTracked} + ${req.body.minutes}`,
           updatedAt: new Date(),
         })
-        .where(and(eq(tasks.id, taskId), eq(tasks.tenant_id, tenantId)));
+        .where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
 
       res.status(201).json(timeEntry);
     } catch (error) {
@@ -339,7 +339,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
   // Bulk update tasks
   app.patch('/api/tasks/bulk', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const { taskIds, updates } = req.body;
 
       if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
@@ -354,7 +354,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
       const updatedTasks = await db
         .update(tasks)
         .set(updateData)
-        .where(and(inArray(tasks.id, taskIds), eq(tasks.tenant_id, tenantId)))
+        .where(and(inArray(tasks.id, taskIds), eq(tasks.tenantId, tenantId)))
         .returning();
 
       res.json(updatedTasks);
@@ -367,14 +367,14 @@ export function registerEnhancedTaskRoutes(app: Express) {
   // Delete task
   app.delete('/api/tasks/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const taskId = req.params.id;
 
       // First, get the task to check if it has a parent
       const [task] = await db
         .select({ parentTaskId: tasks.parentTaskId })
         .from(tasks)
-        .where(and(eq(tasks.id, taskId), eq(tasks.tenant_id, tenantId)));
+        .where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
 
       if (!task) {
         return res.status(404).json({ error: 'Task not found' });
@@ -383,10 +383,10 @@ export function registerEnhancedTaskRoutes(app: Express) {
       // Delete all subtasks first
       await db
         .delete(tasks)
-        .where(and(eq(tasks.parentTaskId, taskId), eq(tasks.tenant_id, tenantId)));
+        .where(and(eq(tasks.parentTaskId, taskId), eq(tasks.tenantId, tenantId)));
 
       // Delete the task
-      await db.delete(tasks).where(and(eq(tasks.id, taskId), eq(tasks.tenant_id, tenantId)));
+      await db.delete(tasks).where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
 
       // Update parent task progress if this was a subtask
       if (task.parentTaskId) {

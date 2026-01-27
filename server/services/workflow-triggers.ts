@@ -344,8 +344,8 @@ export async function triggerWorkflow(event: TriggerEvent): Promise<void> {
         dueDate,
         estimatedHours: template.estimatedHours,
         status: 'todo' as const,
-        tenantId: event.tenant_id,
-        createdBy: event.user_id,
+        tenantId: event.tenantId,
+        createdBy: event.userId,
         tags: template.tags || [],
         customFields: {
           triggeredBy: event.type,
@@ -375,7 +375,7 @@ export async function triggerWorkflow(event: TriggerEvent): Promise<void> {
  *   type: 'service_call.completed',
  *   entityId: serviceCall.id,
  *   entityType: 'service_call',
- *   tenantId: req.user.tenant_id,
+ *   tenantId: req.user.tenantId,
  *   userId: req.user.id,
  *   metadata: { equipmentId: serviceCall.equipmentId }
  * });

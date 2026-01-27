@@ -44,7 +44,7 @@ router.post('/rules', async (req: Request, res: Response) => {
     const data = insertLeadScoringRuleSchema.parse(req.body);
     const rule = await storage.createLeadScoringRule({
       ...data,
-      tenantId: user.tenant_id,
+      tenantId: user.tenantId,
       createdBy: user.id,
     });
 
@@ -67,7 +67,7 @@ router.get('/rules', async (req: Request, res: Response) => {
 
   try {
     const { category } = req.query;
-    const rules = await storage.getLeadScoringRules(user.tenant_id, category as string);
+    const rules = await storage.getLeadScoringRules(user.tenantId, category as string);
     res.json(rules);
   } catch (error) {
     console.error('Get scoring rules error:', error);
@@ -83,7 +83,7 @@ router.get('/rules/active', async (req: Request, res: Response) => {
   }
 
   try {
-    const rules = await storage.getActiveLeadScoringRules(user.tenant_id);
+    const rules = await storage.getActiveLeadScoringRules(user.tenantId);
     res.json(rules);
   } catch (error) {
     console.error('Get active scoring rules error:', error);
@@ -100,7 +100,7 @@ router.get('/rules/:id', async (req: Request, res: Response) => {
 
   try {
     const rule = await storage.getLeadScoringRule(req.params.id);
-    if (!rule || rule.tenant_id !== user.tenant_id) {
+    if (!rule || rule.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Scoring rule not found' });
     }
 
@@ -127,7 +127,7 @@ router.put('/rules/:id', async (req: Request, res: Response) => {
 
   try {
     const existing = await storage.getLeadScoringRule(req.params.id);
-    if (!existing || existing.tenant_id !== user.tenant_id) {
+    if (!existing || existing.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Scoring rule not found' });
     }
 
@@ -160,7 +160,7 @@ router.delete('/rules/:id', async (req: Request, res: Response) => {
 
   try {
     const rule = await storage.getLeadScoringRule(req.params.id);
-    if (!rule || rule.tenant_id !== user.tenant_id) {
+    if (!rule || rule.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Scoring rule not found' });
     }
 
@@ -186,12 +186,12 @@ router.post('/calculate/:leadId', async (req: Request, res: Response) => {
 
     // Get the lead to verify access
     const lead = await storage.getBusinessRecord(leadId);
-    if (!lead || lead.tenant_id !== user.tenant_id) {
+    if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
     // Get active scoring rules
-    const rules = await storage.getActiveLeadScoringRules(user.tenant_id);
+    const rules = await storage.getActiveLeadScoringRules(user.tenantId);
 
     // Initialize score components
     let demographicScore = 0;
@@ -255,7 +255,7 @@ router.post('/calculate/:leadId', async (req: Request, res: Response) => {
         await storage.createLeadScoringFactor({
           leadId,
           ruleId: rule.id,
-          tenantId: user.tenant_id,
+          tenantId: user.tenantId,
           factorName: rule.ruleName,
           factorCategory: rule.category,
           pointsAwarded: rule.scorePoints,
@@ -338,7 +338,7 @@ router.post('/calculate/:leadId', async (req: Request, res: Response) => {
     // Save calculation
     const calculation = await storage.createLeadScoreCalculation({
       leadId,
-      tenantId: user.tenant_id,
+      tenantId: user.tenantId,
       demographicScore,
       firmographicScore,
       behavioralScore,
@@ -384,7 +384,7 @@ router.get('/score/:leadId', async (req: Request, res: Response) => {
     const { leadId } = req.params;
 
     const lead = await storage.getBusinessRecord(leadId);
-    if (!lead || lead.tenant_id !== user.tenant_id) {
+    if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
@@ -417,7 +417,7 @@ router.get('/score/:leadId/history', async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 50;
 
     const lead = await storage.getBusinessRecord(leadId);
-    if (!lead || lead.tenant_id !== user.tenant_id) {
+    if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
@@ -438,7 +438,7 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
 
   try {
     const limit = parseInt(req.query.limit as string) || 100;
-    const topLeads = await storage.getTopScoredLeads(user.tenant_id, limit);
+    const topLeads = await storage.getTopScoredLeads(user.tenantId, limit);
 
     // Enrich with lead details
     const enrichedLeads = await Promise.all(
@@ -474,7 +474,7 @@ router.get('/grade/:grade', async (req: Request, res: Response) => {
 
   try {
     const { grade } = req.params;
-    const leads = await storage.getLeadsByGrade(user.tenant_id, grade);
+    const leads = await storage.getLeadsByGrade(user.tenantId, grade);
 
     // Enrich with lead details
     const enrichedLeads = await Promise.all(
@@ -514,7 +514,7 @@ router.post('/bant/:leadId', async (req: Request, res: Response) => {
     const { leadId } = req.params;
 
     const lead = await storage.getBusinessRecord(leadId);
-    if (!lead || lead.tenant_id !== user.tenant_id) {
+    if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
@@ -549,7 +549,7 @@ router.post('/bant/:leadId', async (req: Request, res: Response) => {
     const qualificationData = {
       ...data,
       leadId,
-      tenantId: user.tenant_id,
+      tenantId: user.tenantId,
       budgetScore,
       authorityScore,
       needScore,
@@ -578,7 +578,7 @@ router.post('/bant/:leadId', async (req: Request, res: Response) => {
     if (existing && existing.qualificationStatus !== qualificationStatus) {
       await storage.createLeadQualificationHistory({
         leadId,
-        tenantId: user.tenant_id,
+        tenantId: user.tenantId,
         previousStatus: existing.qualificationStatus,
         newStatus: qualificationStatus,
         statusReason: 'BANT assessment updated',
@@ -610,7 +610,7 @@ router.get('/bant/:leadId', async (req: Request, res: Response) => {
     const { leadId } = req.params;
 
     const lead = await storage.getBusinessRecord(leadId);
-    if (!lead || lead.tenant_id !== user.tenant_id) {
+    if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
@@ -635,7 +635,7 @@ router.get('/qualified', async (req: Request, res: Response) => {
 
   try {
     const minScore = parseInt(req.query.minScore as string) || 50;
-    const qualifiedLeads = await storage.getQualifiedLeads(user.tenant_id, minScore);
+    const qualifiedLeads = await storage.getQualifiedLeads(user.tenantId, minScore);
 
     // Enrich with lead details
     const enrichedLeads = await Promise.all(
@@ -675,7 +675,7 @@ router.post('/engagement/:leadId', async (req: Request, res: Response) => {
     const { leadId } = req.params;
 
     const lead = await storage.getBusinessRecord(leadId);
-    if (!lead || lead.tenant_id !== user.tenant_id) {
+    if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
@@ -683,7 +683,7 @@ router.post('/engagement/:leadId', async (req: Request, res: Response) => {
     const engagement = await storage.createLeadEngagement({
       ...data,
       leadId,
-      tenantId: user.tenant_id,
+      tenantId: user.tenantId,
       userId: user.id,
     });
 
@@ -709,7 +709,7 @@ router.get('/engagement/:leadId', async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 100;
 
     const lead = await storage.getBusinessRecord(leadId);
-    if (!lead || lead.tenant_id !== user.tenant_id) {
+    if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
 
@@ -738,7 +738,7 @@ router.get('/analytics', async (req: Request, res: Response) => {
   }
 
   try {
-    const analytics = await storage.getLeadScoringAnalytics(user.tenant_id);
+    const analytics = await storage.getLeadScoringAnalytics(user.tenantId);
     res.json(analytics);
   } catch (error) {
     console.error('Get lead scoring analytics error:', error);
@@ -761,7 +761,7 @@ router.get('/bant-analytics', async (req: Request, res: Response) => {
   }
 
   try {
-    const analytics = await storage.getBantAnalytics(user.tenant_id);
+    const analytics = await storage.getBantAnalytics(user.tenantId);
     res.json(analytics);
   } catch (error) {
     console.error('Get BANT analytics error:', error);
@@ -780,7 +780,7 @@ router.get('/qualification-history/:leadId', async (req: Request, res: Response)
     const { leadId } = req.params;
 
     const lead = await storage.getBusinessRecord(leadId);
-    if (!lead || lead.tenant_id !== user.tenant_id) {
+    if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
 

@@ -72,7 +72,7 @@ export class ApolloStorage {
       offset?: number;
     },
   ): Promise<TenantApolloLead[]> {
-    const conditions = [eq(tenantApolloLeads.tenant_id, tenantId)];
+    const conditions = [eq(tenantApolloLeads.tenantId, tenantId)];
 
     if (filters?.status) {
       conditions.push(eq(tenantApolloLeads.status, filters.status));
@@ -86,7 +86,7 @@ export class ApolloStorage {
       .select()
       .from(tenantApolloLeads)
       .where(and(...conditions))
-      .orderBy(desc(tenantApolloLeads.created_at));
+      .orderBy(desc(tenantApolloLeads.createdAt));
 
     if (filters?.limit) {
       query = query.limit(filters.limit);
@@ -103,7 +103,7 @@ export class ApolloStorage {
     const [lead] = await db
       .select()
       .from(tenantApolloLeads)
-      .where(and(eq(tenantApolloLeads.id, id), eq(tenantApolloLeads.tenant_id, tenantId)))
+      .where(and(eq(tenantApolloLeads.id, id), eq(tenantApolloLeads.tenantId, tenantId)))
       .limit(1);
     return lead || null;
   }
@@ -116,7 +116,7 @@ export class ApolloStorage {
       .select()
       .from(tenantApolloLeads)
       .where(
-        and(eq(tenantApolloLeads.apolloId, apolloId), eq(tenantApolloLeads.tenant_id, tenantId)),
+        and(eq(tenantApolloLeads.apolloId, apolloId), eq(tenantApolloLeads.tenantId, tenantId)),
       )
       .limit(1);
     return lead || null;
@@ -135,7 +135,7 @@ export class ApolloStorage {
     const [updated] = await db
       .update(tenantApolloLeads)
       .set({ ...data, updatedAt: new Date() })
-      .where(and(eq(tenantApolloLeads.id, id), eq(tenantApolloLeads.tenant_id, tenantId)))
+      .where(and(eq(tenantApolloLeads.id, id), eq(tenantApolloLeads.tenantId, tenantId)))
       .returning();
     return updated || null;
   }
@@ -266,9 +266,9 @@ export class ApolloStorage {
       .from(apolloApiUsage)
       .where(
         and(
-          eq(apolloApiUsage.tenant_id, tenantId),
-          gte(apolloApiUsage.created_at, startDate),
-          lt(apolloApiUsage.created_at, endDate),
+          eq(apolloApiUsage.tenantId, tenantId),
+          gte(apolloApiUsage.createdAt, startDate),
+          lt(apolloApiUsage.createdAt, endDate),
         ),
       );
 

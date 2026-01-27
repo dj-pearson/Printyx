@@ -22,7 +22,7 @@ export function registerIntegrationRoutes(app: Express) {
   // Create new integration
   app.post('/api/integrations', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
 
       const validatedData = insertSystemIntegrationSchema.parse({
         ...req.body,
@@ -43,7 +43,7 @@ export function registerIntegrationRoutes(app: Express) {
   // Update integration
   app.put('/api/integrations/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const integrationId = req.params.id;
 
       const integration = await storage.updateSystemIntegration(integrationId, req.body, tenantId);
@@ -62,7 +62,7 @@ export function registerIntegrationRoutes(app: Express) {
   // Test integration connection
   app.post('/api/integrations/:id/test', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const integrationId = req.params.id;
 
       // Mock connection test for now - would implement actual testing logic

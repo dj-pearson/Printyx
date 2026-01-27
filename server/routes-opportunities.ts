@@ -29,7 +29,7 @@ export function registerOpportunitiesRoutes(app: Express) {
     ]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user!.tenant_id;
+        const tenantId = req.user!.tenantId;
 
         // Get high-value leads and prospects
         const opportunities = await db
@@ -48,19 +48,19 @@ export function registerOpportunitiesRoutes(app: Express) {
             lastContactDate: businessRecords.lastContactDate,
             nextFollowUpDate: businessRecords.nextFollowUpDate,
             stage: businessRecords.stage,
-            createdAt: businessRecords.created_at,
-            updatedAt: businessRecords.updated_at,
+            createdAt: businessRecords.createdAt,
+            updatedAt: businessRecords.updatedAt,
             notes: businessRecords.notes,
           })
           .from(businessRecords)
           .leftJoin(users, eq(businessRecords.assignedToId, users.id))
           .where(
             and(
-              eq(businessRecords.tenant_id, tenantId),
+              eq(businessRecords.tenantId, tenantId),
               sql`${businessRecords.estimatedValue} > 0 OR ${businessRecords.priority} IN ('high', 'urgent')`,
             ),
           )
-          .orderBy(desc(businessRecords.estimatedValue), desc(businessRecords.created_at));
+          .orderBy(desc(businessRecords.estimatedValue), desc(businessRecords.createdAt));
 
         res.json(opportunities);
       } catch (error) {
@@ -73,7 +73,7 @@ export function registerOpportunitiesRoutes(app: Express) {
   // Get opportunity by ID
   app.get('/api/opportunities/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const opportunityId = req.params.id;
 
       const [opportunity] = await db
@@ -92,8 +92,8 @@ export function registerOpportunitiesRoutes(app: Express) {
           lastContactDate: businessRecords.lastContactDate,
           nextFollowUpDate: businessRecords.nextFollowUpDate,
           stage: businessRecords.stage,
-          createdAt: businessRecords.created_at,
-          updatedAt: businessRecords.updated_at,
+          createdAt: businessRecords.createdAt,
+          updatedAt: businessRecords.updatedAt,
           notes: businessRecords.notes,
           industry: businessRecords.industry,
           employeeCount: businessRecords.employeeCount,
@@ -101,7 +101,7 @@ export function registerOpportunitiesRoutes(app: Express) {
         })
         .from(businessRecords)
         .leftJoin(users, eq(businessRecords.assignedToId, users.id))
-        .where(and(eq(businessRecords.id, opportunityId), eq(businessRecords.tenant_id, tenantId)));
+        .where(and(eq(businessRecords.id, opportunityId), eq(businessRecords.tenantId, tenantId)));
 
       if (!opportunity) {
         return res.status(404).json({ error: 'Opportunity not found' });
@@ -111,15 +111,15 @@ export function registerOpportunitiesRoutes(app: Express) {
       const relatedQuotes = await db
         .select()
         .from(quotes)
-        .where(and(eq(quotes.customerId, opportunityId), eq(quotes.tenant_id, tenantId)))
-        .orderBy(desc(quotes.created_at));
+        .where(and(eq(quotes.customerId, opportunityId), eq(quotes.tenantId, tenantId)))
+        .orderBy(desc(quotes.createdAt));
 
       // Get related deals
       const relatedDeals = await db
         .select()
         .from(deals)
-        .where(and(eq(deals.customerId, opportunityId), eq(deals.tenant_id, tenantId)))
-        .orderBy(desc(deals.created_at));
+        .where(and(eq(deals.customerId, opportunityId), eq(deals.tenantId, tenantId)))
+        .orderBy(desc(deals.createdAt));
 
       res.json({
         ...opportunity,
@@ -135,7 +135,7 @@ export function registerOpportunitiesRoutes(app: Express) {
   // Update opportunity
   app.put('/api/opportunities/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const opportunityId = req.params.id;
 
       const [updatedOpportunity] = await db
@@ -144,7 +144,7 @@ export function registerOpportunitiesRoutes(app: Express) {
           ...req.body,
           updatedAt: new Date(),
         })
-        .where(and(eq(businessRecords.id, opportunityId), eq(businessRecords.tenant_id, tenantId)))
+        .where(and(eq(businessRecords.id, opportunityId), eq(businessRecords.tenantId, tenantId)))
         .returning();
 
       if (!updatedOpportunity) {
@@ -161,7 +161,7 @@ export function registerOpportunitiesRoutes(app: Express) {
   // Convert opportunity to deal
   app.post('/api/opportunities/:id/convert-to-deal', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const opportunityId = req.params.id;
       const userId = req.user?.id || req.user?.claims?.sub;
 
@@ -169,7 +169,7 @@ export function registerOpportunitiesRoutes(app: Express) {
       const [opportunity] = await db
         .select()
         .from(businessRecords)
-        .where(and(eq(businessRecords.id, opportunityId), eq(businessRecords.tenant_id, tenantId)));
+        .where(and(eq(businessRecords.id, opportunityId), eq(businessRecords.tenantId, tenantId)));
 
       if (!opportunity) {
         return res.status(404).json({ error: 'Opportunity not found' });
@@ -201,7 +201,7 @@ export function registerOpportunitiesRoutes(app: Express) {
           stage: 'converted',
           updatedAt: new Date(),
         })
-        .where(and(eq(businessRecords.id, opportunityId), eq(businessRecords.tenant_id, tenantId)));
+        .where(and(eq(businessRecords.id, opportunityId), eq(businessRecords.tenantId, tenantId)));
 
       res.json(newDeal);
     } catch (error) {
@@ -213,7 +213,7 @@ export function registerOpportunitiesRoutes(app: Express) {
   // Get opportunities dashboard
   app.get('/api/opportunities/dashboard', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
 
       // Get opportunity statistics
       const totalOpportunitiesResult = await db
@@ -221,7 +221,7 @@ export function registerOpportunitiesRoutes(app: Express) {
         .from(businessRecords)
         .where(
           and(
-            eq(businessRecords.tenant_id, tenantId),
+            eq(businessRecords.tenantId, tenantId),
             sql`${businessRecords.estimatedValue} > 0 OR ${businessRecords.priority} IN ('high', 'urgent')`,
           ),
         );
@@ -231,7 +231,7 @@ export function registerOpportunitiesRoutes(app: Express) {
         .from(businessRecords)
         .where(
           and(
-            eq(businessRecords.tenant_id, tenantId),
+            eq(businessRecords.tenantId, tenantId),
             sql`${businessRecords.estimatedValue} >= 10000`,
           ),
         );
@@ -239,9 +239,7 @@ export function registerOpportunitiesRoutes(app: Express) {
       const urgentOpportunitiesResult = await db
         .select({ count: count() })
         .from(businessRecords)
-        .where(
-          and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.priority, 'urgent')),
-        );
+        .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.priority, 'urgent')));
 
       const totalValueResult = await db
         .select({
@@ -249,7 +247,7 @@ export function registerOpportunitiesRoutes(app: Express) {
         })
         .from(businessRecords)
         .where(
-          and(eq(businessRecords.tenant_id, tenantId), sql`${businessRecords.estimatedValue} > 0`),
+          and(eq(businessRecords.tenantId, tenantId), sql`${businessRecords.estimatedValue} > 0`),
         );
 
       const totalOpportunities = totalOpportunitiesResult[0]?.count || 0;
@@ -273,7 +271,7 @@ export function registerOpportunitiesRoutes(app: Express) {
   // Get opportunities by stage
   app.get('/api/opportunities/by-stage', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
 
       const opportunitiesByStage = await db
         .select({
@@ -284,7 +282,7 @@ export function registerOpportunitiesRoutes(app: Express) {
         .from(businessRecords)
         .where(
           and(
-            eq(businessRecords.tenant_id, tenantId),
+            eq(businessRecords.tenantId, tenantId),
             sql`${businessRecords.estimatedValue} > 0 OR ${businessRecords.priority} IN ('high', 'urgent')`,
           ),
         )

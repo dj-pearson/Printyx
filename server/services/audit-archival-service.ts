@@ -68,7 +68,7 @@ export async function createArchive(
     .from(auditLogs)
     .where(
       and(
-        eq(auditLogs.tenant_id, tenantId),
+        eq(auditLogs.tenantId, tenantId),
         gte(auditLogs.timestamp, startDate),
         lte(auditLogs.timestamp, endDate),
       ),
@@ -115,7 +115,7 @@ export async function getArchive(
   const [archive] = await db
     .select()
     .from(auditLogArchives)
-    .where(and(eq(auditLogArchives.id, archiveId), eq(auditLogArchives.tenant_id, tenantId)));
+    .where(and(eq(auditLogArchives.id, archiveId), eq(auditLogArchives.tenantId, tenantId)));
 
   return archive || null;
 }
@@ -134,7 +134,7 @@ export async function listArchives(
     offset?: number;
   } = {},
 ): Promise<{ data: AuditLogArchive[]; total: number }> {
-  const conditions = [eq(auditLogArchives.tenant_id, tenantId)];
+  const conditions = [eq(auditLogArchives.tenantId, tenantId)];
 
   if (options.status?.length) {
     conditions.push(inArray(auditLogArchives.status, options.status as any));
@@ -239,7 +239,7 @@ async function executeArchiveAsync(
         .from(auditLogs)
         .where(
           and(
-            eq(auditLogs.tenant_id, archive.tenant_id),
+            eq(auditLogs.tenantId, archive.tenantId),
             gte(auditLogs.timestamp, archive.startDate),
             lte(auditLogs.timestamp, archive.endDate),
           ),
@@ -313,7 +313,7 @@ async function executeArchiveAsync(
 
     // Optionally delete archived logs from main table
     // This should be controlled by policy
-    // await deleteArchivedLogs(archive.tenant_id, archive.startDate, archive.endDate);
+    // await deleteArchivedLogs(archive.tenantId, archive.startDate, archive.endDate);
   } catch (error: any) {
     await updateJobStatus(jobId, 'failed', {
       errorMessage: error.message,
@@ -520,7 +520,7 @@ export async function setArchiveLegalHold(
   const [updated] = await db
     .update(auditLogArchives)
     .set({ legalHold: hold })
-    .where(and(eq(auditLogArchives.id, archiveId), eq(auditLogArchives.tenant_id, tenantId)))
+    .where(and(eq(auditLogArchives.id, archiveId), eq(auditLogArchives.tenantId, tenantId)))
     .returning();
 
   return updated || null;
@@ -565,7 +565,7 @@ export async function getArchiveJob(
   const [job] = await db
     .select()
     .from(auditArchiveJobs)
-    .where(and(eq(auditArchiveJobs.id, jobId), eq(auditArchiveJobs.tenant_id, tenantId)));
+    .where(and(eq(auditArchiveJobs.id, jobId), eq(auditArchiveJobs.tenantId, tenantId)));
 
   return job || null;
 }
@@ -583,7 +583,7 @@ export async function listArchiveJobs(
     offset?: number;
   } = {},
 ): Promise<{ data: AuditArchiveJob[]; total: number }> {
-  const conditions = [eq(auditArchiveJobs.tenant_id, tenantId)];
+  const conditions = [eq(auditArchiveJobs.tenantId, tenantId)];
 
   if (options.archiveId) {
     conditions.push(eq(auditArchiveJobs.archiveId, options.archiveId));
@@ -600,7 +600,7 @@ export async function listArchiveJobs(
       .select()
       .from(auditArchiveJobs)
       .where(and(...conditions))
-      .orderBy(desc(auditArchiveJobs.created_at))
+      .orderBy(desc(auditArchiveJobs.createdAt))
       .limit(options.limit || 50)
       .offset(options.offset || 0),
     db
@@ -632,7 +632,7 @@ export async function archiveOldAuditLogs(
   const [oldest] = await db
     .select({ minDate: sql<Date>`MIN(${auditLogs.timestamp})` })
     .from(auditLogs)
-    .where(and(eq(auditLogs.tenant_id, tenantId), lt(auditLogs.timestamp, endDate)));
+    .where(and(eq(auditLogs.tenantId, tenantId), lt(auditLogs.timestamp, endDate)));
 
   if (!oldest?.minDate) {
     return null; // No logs to archive
@@ -685,7 +685,7 @@ export async function getArchivalMetrics(tenantId: string): Promise<{
     .select()
     .from(auditLogArchives)
     .where(
-      and(eq(auditLogArchives.tenant_id, tenantId), sql`${auditLogArchives.deletedAt} IS NULL`),
+      and(eq(auditLogArchives.tenantId, tenantId), sql`${auditLogArchives.deletedAt} IS NULL`),
     );
 
   let totalRecordsArchived = 0;
@@ -740,7 +740,7 @@ export async function searchArchivedLogs(
   },
 ): Promise<AuditLogArchive[]> {
   const conditions = [
-    eq(auditLogArchives.tenant_id, tenantId),
+    eq(auditLogArchives.tenantId, tenantId),
     eq(auditLogArchives.status, 'completed'),
   ];
 

@@ -83,7 +83,7 @@ program
             const marker = isSurvivor ? '→ [SURVIVOR]' : '  [DELETE]';
             console.log(`    ${marker} ${company.id}`);
             console.log(`             Name: ${company.businessName}`);
-            console.log(`             Created: ${company.created_at}`);
+            console.log(`             Created: ${company.createdAt}`);
             console.log(`             Phone: ${company.phone || 'N/A'}`);
           }
         }
@@ -220,7 +220,7 @@ program
         console.log(`  City: ${company.billingCity || 'N/A'}`);
         console.log(`  State: ${company.billingState || 'N/A'}`);
         console.log(`  Phone: ${company.phone || 'N/A'}`);
-        console.log(`  Created: ${company.created_at}`);
+        console.log(`  Created: ${company.createdAt}`);
         console.log('');
       }
 
@@ -277,7 +277,7 @@ program
         console.log(`City: ${existing.billingCity || 'N/A'}`);
         console.log(`State: ${existing.billingState || 'N/A'}`);
         console.log(`Phone: ${existing.phone || 'N/A'}`);
-        console.log(`Created: ${existing.created_at}\n`);
+        console.log(`Created: ${existing.createdAt}\n`);
         console.log(
           'Recommendation: Add contacts to the existing company instead of creating a new one.\n',
         );

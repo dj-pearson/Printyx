@@ -715,7 +715,7 @@ export async function seedSubscriptionPlans() {
           displayOrder: sql`excluded.display_order`,
           isPopular: sql`excluded.is_popular`,
           isVisible: sql`excluded.is_visible`,
-          isActive: sql`excluded.is_active`,
+          isActive: sql`excluded.isActive`,
         },
       })
       .returning();

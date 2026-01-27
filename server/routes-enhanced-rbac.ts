@@ -40,12 +40,12 @@ const requireAuth = (req: any, res: any, next: any) => {
       id: userId,
       tenantId: getTenantId(req),
     };
-  } else if (!req.user.tenant_id || !req.user.id) {
+  } else if (!req.user.tenantId || !req.user.id) {
     // Ensure user object has id and tenantId
     req.user = {
       ...req.user,
       id: req.user.id || userId,
-      tenantId: req.user.tenant_id || getTenantId(req),
+      tenantId: req.user.tenantId || getTenantId(req),
     };
   }
 
@@ -58,7 +58,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  */
 router.get('/status', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -89,14 +89,14 @@ router.get('/status', async (req, res) => {
         count: sql<number>`count(*)::int`,
       })
       .from(enhancedRoles)
-      .where(eq(enhancedRoles.tenant_id, tenantId));
+      .where(eq(enhancedRoles.tenantId, tenantId));
 
     const [unitCount] = await db
       .select({
         count: sql<number>`count(*)::int`,
       })
       .from(organizationalUnits)
-      .where(eq(organizationalUnits.tenant_id, tenantId));
+      .where(eq(organizationalUnits.tenantId, tenantId));
 
     res.json({
       initialized: true,
@@ -187,7 +187,7 @@ router.get('/permissions/check', async (req, res) => {
 router.get('/permissions/effective', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'User not authenticated' });
@@ -222,7 +222,7 @@ router.get('/permissions/effective', async (req, res) => {
  */
 router.get('/roles', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -241,7 +241,7 @@ router.get('/roles', async (req, res) => {
     const offset = (pageNum - 1) * limitNum;
 
     // Build WHERE conditions using parameterized queries (SQL injection safe)
-    const conditions: SQL[] = [sql`r.tenant_id = ${tenantId}`];
+    const conditions: SQL[] = [sql`r.tenantId = ${tenantId}`];
 
     if (hierarchyLevel && typeof hierarchyLevel === 'string') {
       conditions.push(sql`r.hierarchy_level = ${hierarchyLevel}`);
@@ -271,7 +271,7 @@ router.get('/roles', async (req, res) => {
       FROM enhanced_roles r
       LEFT JOIN organizational_units ou ON r.organizational_unit_id = ou.id
       WHERE ${whereClause}
-      ORDER BY r.created_at DESC
+      ORDER BY r.createdAt DESC
       LIMIT ${limitNum}
       OFFSET ${offset}
     `);
@@ -310,7 +310,7 @@ router.get('/roles', async (req, res) => {
  */
 router.get('/roles/:id', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const roleId = req.params.id;
 
     if (!tenantId) {
@@ -325,7 +325,7 @@ router.get('/roles/:id', async (req, res) => {
         ou.unit_type as org_unit_tier
       FROM enhanced_roles r
       LEFT JOIN organizational_units ou ON r.organizational_unit_id = ou.id
-      WHERE r.id = ${roleId} AND r.tenant_id = ${tenantId}
+      WHERE r.id = ${roleId} AND r.tenantId = ${tenantId}
       LIMIT 1
     `);
 
@@ -341,7 +341,7 @@ router.get('/roles/:id', async (req, res) => {
       SELECT
         p.*,
         rp.effect,
-        rp.created_at as assigned_at,
+        rp.createdAt as assigned_at,
         rp.is_customized,
         rp.customized_by,
         rp.customization_reason
@@ -376,7 +376,7 @@ router.get('/roles/:id', async (req, res) => {
 router.post('/roles', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'User not authenticated' });
@@ -465,7 +465,7 @@ router.post('/roles', async (req, res) => {
 router.put('/roles/:id/customize', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const roleId = req.params.id;
 
     if (!userId || !tenantId) {
@@ -568,8 +568,8 @@ router.get('/permissions', async (req, res) => {
  */
 router.get('/users/:userId/roles', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
-    const targetUserId = req.params.user_id;
+    const tenantId = req.user?.tenantId;
+    const targetUserId = req.params.userId;
 
     if (!tenantId) {
       return res.status(401).json({ error: 'User not authenticated' });
@@ -589,8 +589,8 @@ router.get('/users/:userId/roles', async (req, res) => {
       )
       .where(
         and(
-          eq(userRoleAssignments.user_id, targetUserId),
-          eq(userRoleAssignments.tenant_id, tenantId),
+          eq(userRoleAssignments.userId, targetUserId),
+          eq(userRoleAssignments.tenantId, tenantId),
           eq(userRoleAssignments.isActive, true),
         ),
       )
@@ -610,8 +610,8 @@ router.get('/users/:userId/roles', async (req, res) => {
 router.post('/users/:userId/roles', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenant_id;
-    const targetUserId = req.params.user_id;
+    const tenantId = req.user?.tenantId;
+    const targetUserId = req.params.userId;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'User not authenticated' });
@@ -655,7 +655,7 @@ router.post('/users/:userId/roles', async (req, res) => {
 router.post('/permission-overrides', async (req, res) => {
   try {
     const userId = req.user?.id;
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'User not authenticated' });
@@ -694,7 +694,7 @@ router.post('/permission-overrides', async (req, res) => {
  */
 router.get('/organizational-units', async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -733,7 +733,7 @@ router.post('/seed', async (req, res) => {
   try {
     const { dealerType = 'standard' } = req.body;
     const userId = req.user?.id;
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
 
     if (!userId || !tenantId) {
       return res.status(401).json({ error: 'User not authenticated' });

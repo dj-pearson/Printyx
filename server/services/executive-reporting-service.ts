@@ -136,7 +136,7 @@ export class ExecutiveReportingService {
     userContext: EnhancedUserContext,
     dateRange?: Partial<DateRange>,
   ): Promise<ExecutiveDashboard> {
-    const cacheKey = `executive-dashboard:${userContext.tenant_id}:${JSON.stringify(dateRange)}`;
+    const cacheKey = `executive-dashboard:${userContext.tenantId}:${JSON.stringify(dateRange)}`;
     const cached = ReportCache.get<ExecutiveDashboard>(cacheKey);
     if (cached) return cached;
 
@@ -153,7 +153,7 @@ export class ExecutiveReportingService {
           SUM(CASE WHEN o.stage = 'Closed Won' AND o.deal_type = 'recurring' THEN o.amount ELSE 0 END)::decimal as arr,
           SUM(CASE WHEN o.stage = 'Closed Won' AND o.deal_type = 'recurring' THEN o.amount / 12 ELSE 0 END)::decimal as mrr
         FROM opportunities o
-        WHERE o.tenant_id = ${userContext.tenant_id}
+        WHERE o.tenantId = ${userContext.tenantId}
           ${dateFilter}
       ),
       operational_metrics AS (
@@ -162,9 +162,9 @@ export class ExecutiveReportingService {
           COUNT(DISTINCT br.id) FILTER (WHERE br.status = 'customer')::int as customer_count,
           AVG(sc.satisfaction_rating)::decimal as csat
         FROM users u, business_records br, service_calls sc
-        WHERE u.tenant_id = ${userContext.tenant_id}
-          AND br.tenant_id = ${userContext.tenant_id}
-          AND sc.tenant_id = ${userContext.tenant_id}
+        WHERE u.tenantId = ${userContext.tenantId}
+          AND br.tenantId = ${userContext.tenantId}
+          AND sc.tenantId = ${userContext.tenantId}
           ${dateFilter}
       )
       SELECT

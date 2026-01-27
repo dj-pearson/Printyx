@@ -125,8 +125,8 @@ router.post('/cohort-analysis/generate', async (req, res) => {
     const cohortCustomers = await db.query.platformBusinessRecords.findMany({
       where: and(
         eq(platformBusinessRecords.recordType, 'tenant'),
-        gte(platformBusinessRecords.created_at, startDate),
-        lte(platformBusinessRecords.created_at, endDate),
+        gte(platformBusinessRecords.createdAt, startDate),
+        lte(platformBusinessRecords.createdAt, endDate),
       ),
     });
 
@@ -204,10 +204,10 @@ router.get('/revenue-metrics', async (req, res) => {
 
     const whereConditions = [];
     if (startDate) {
-      whereConditions.push(gte(platformBusinessRecords.created_at, new Date(startDate as string)));
+      whereConditions.push(gte(platformBusinessRecords.createdAt, new Date(startDate as string)));
     }
     if (endDate) {
-      whereConditions.push(lte(platformBusinessRecords.created_at, new Date(endDate as string)));
+      whereConditions.push(lte(platformBusinessRecords.createdAt, new Date(endDate as string)));
     }
 
     // Get all active tenants
@@ -318,10 +318,10 @@ router.get('/conversion-funnel', async (req, res) => {
 
     const whereConditions = [];
     if (startDate) {
-      whereConditions.push(gte(platformBusinessRecords.created_at, new Date(startDate as string)));
+      whereConditions.push(gte(platformBusinessRecords.createdAt, new Date(startDate as string)));
     }
     if (endDate) {
-      whereConditions.push(lte(platformBusinessRecords.created_at, new Date(endDate as string)));
+      whereConditions.push(lte(platformBusinessRecords.createdAt, new Date(endDate as string)));
     }
 
     // Count by status
@@ -362,8 +362,8 @@ router.get('/conversion-funnel', async (req, res) => {
         whereConditions.length > 0
           ? and(
               ...whereConditions.map((c) => {
-                if ('column' in c && c.column === platformBusinessRecords.created_at) {
-                  return gte(platformDeals.created_at, (c as any).value);
+                if ('column' in c && c.column === platformBusinessRecords.createdAt) {
+                  return gte(platformDeals.createdAt, (c as any).value);
                 }
                 return c;
               }),

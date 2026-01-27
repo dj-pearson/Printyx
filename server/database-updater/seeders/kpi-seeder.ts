@@ -61,9 +61,9 @@ const SALES_KPIS: KPIDefinition[] = [
         (SUM(o.amount) FILTER (WHERE o.stage = 'Closed Won' AND o.close_date >= DATE_TRUNC('month', CURRENT_DATE)) /
          NULLIF(q.quota_amount, 0) * 100) as kpi_value
       FROM opportunities o
-      JOIN quotas q ON q.user_id = :userId AND q.quota_period = 'monthly'
-      WHERE o.owner_id = :userId
-        AND o.tenant_id = :tenantId
+      JOIN quotas q ON q.userId = :userId AND q.quota_period = 'monthly'
+      WHERE o.ownerId = :userId
+        AND o.tenantId = :tenantId
     `,
     targetValue: 100,
     targetType: 'percentage',
@@ -101,8 +101,8 @@ const SALES_KPIS: KPIDefinition[] = [
         (COUNT(o.id) FILTER (WHERE o.stage = 'Closed Won') /
          NULLIF(COUNT(o.id) FILTER (WHERE o.stage IN ('Closed Won', 'Closed Lost')), 0) * 100) as kpi_value
       FROM opportunities o
-      WHERE o.owner_id = :userId
-        AND o.tenant_id = :tenantId
+      WHERE o.ownerId = :userId
+        AND o.tenantId = :tenantId
         AND o.close_date >= :dateFrom
     `,
     targetValue: 30,
@@ -133,8 +133,8 @@ const SALES_KPIS: KPIDefinition[] = [
       SELECT
         SUM(o.amount) as kpi_value
       FROM opportunities o
-      WHERE o.owner_id = :userId
-        AND o.tenant_id = :tenantId
+      WHERE o.ownerId = :userId
+        AND o.tenantId = :tenantId
         AND o.stage NOT IN ('Closed Won', 'Closed Lost')
     `,
     targetValue: null,
@@ -157,9 +157,9 @@ const SALES_KPIS: KPIDefinition[] = [
       SELECT
         (SUM(o.amount) / NULLIF(q.quota_amount, 0)) as kpi_value
       FROM opportunities o
-      JOIN quotas q ON q.user_id = :userId AND q.quota_period = 'monthly'
-      WHERE o.owner_id = :userId
-        AND o.tenant_id = :tenantId
+      JOIN quotas q ON q.userId = :userId AND q.quota_period = 'monthly'
+      WHERE o.ownerId = :userId
+        AND o.tenantId = :tenantId
         AND o.stage NOT IN ('Closed Won', 'Closed Lost')
     `,
     targetValue: 3.0,
@@ -197,8 +197,8 @@ const SALES_KPIS: KPIDefinition[] = [
       SELECT
         AVG(o.amount) as kpi_value
       FROM opportunities o
-      WHERE o.owner_id = :userId
-        AND o.tenant_id = :tenantId
+      WHERE o.ownerId = :userId
+        AND o.tenantId = :tenantId
         AND o.stage = 'Closed Won'
         AND o.close_date >= :dateFrom
     `,
@@ -220,10 +220,10 @@ const SALES_KPIS: KPIDefinition[] = [
     requiredPermissions: ['sales.opportunity.view_own'],
     calculationSql: `
       SELECT
-        AVG(EXTRACT(DAY FROM (o.close_date - o.created_at))) as kpi_value
+        AVG(EXTRACT(DAY FROM (o.close_date - o.createdAt))) as kpi_value
       FROM opportunities o
-      WHERE o.owner_id = :userId
-        AND o.tenant_id = :tenantId
+      WHERE o.ownerId = :userId
+        AND o.tenantId = :tenantId
         AND o.stage = 'Closed Won'
         AND o.close_date >= :dateFrom
     `,
@@ -258,10 +258,10 @@ const SALES_KPIS: KPIDefinition[] = [
       SELECT
         AVG((SUM(o.amount) FILTER (WHERE o.stage = 'Closed Won') / NULLIF(q.quota_amount, 0) * 100)) as kpi_value
       FROM opportunities o
-      JOIN users u ON o.owner_id = u.id
-      JOIN quotas q ON q.user_id = u.id AND q.quota_period = 'monthly'
+      JOIN users u ON o.ownerId = u.id
+      JOIN quotas q ON q.userId = u.id AND q.quota_period = 'monthly'
       WHERE u.manager_id = :userId
-        AND u.tenant_id = :tenantId
+        AND u.tenantId = :tenantId
         AND o.close_date >= DATE_TRUNC('month', CURRENT_DATE)
       GROUP BY u.id, q.quota_amount
     `,
@@ -286,8 +286,8 @@ const SALES_KPIS: KPIDefinition[] = [
       SELECT
         SUM(o.amount) as kpi_value
       FROM opportunities o
-      WHERE o.location_id = :locationId
-        AND o.tenant_id = :tenantId
+      WHERE o.locationId = :locationId
+        AND o.tenantId = :tenantId
         AND o.stage = 'Closed Won'
         AND o.close_date >= DATE_TRUNC('month', CURRENT_DATE)
     `,
@@ -313,8 +313,8 @@ const SALES_KPIS: KPIDefinition[] = [
         (COUNT(o.id) FILTER (WHERE o.stage = 'Closed Won') /
          NULLIF(COUNT(o.id) FILTER (WHERE o.stage IN ('Closed Won', 'Closed Lost')), 0) * 100) as kpi_value
       FROM opportunities o
-      WHERE o.location_id = :locationId
-        AND o.tenant_id = :tenantId
+      WHERE o.locationId = :locationId
+        AND o.tenantId = :tenantId
         AND o.close_date >= :dateFrom
     `,
     targetValue: 30,
@@ -343,7 +343,7 @@ const SALES_KPIS: KPIDefinition[] = [
          NULLIF(SUM(o.amount) FILTER (WHERE o.close_date >= DATE_TRUNC('year', CURRENT_DATE - INTERVAL '1 year')
            AND o.close_date < DATE_TRUNC('year', CURRENT_DATE)), 0) * 100) as kpi_value
       FROM opportunities o
-      WHERE o.tenant_id = :tenantId
+      WHERE o.tenantId = :tenantId
         AND o.stage = 'Closed Won'
     `,
     targetValue: 20,
@@ -367,8 +367,8 @@ const SALES_KPIS: KPIDefinition[] = [
       SELECT
         (SUM(o.amount) / NULLIF(COUNT(DISTINCT u.id), 0)) as kpi_value
       FROM opportunities o
-      JOIN users u ON o.owner_id = u.id
-      WHERE o.tenant_id = :tenantId
+      JOIN users u ON o.ownerId = u.id
+      WHERE o.tenantId = :tenantId
         AND u.role_code LIKE 'SALES_%'
         AND o.stage = 'Closed Won'
         AND o.close_date >= :dateFrom
@@ -401,8 +401,8 @@ const SERVICE_KPIS: KPIDefinition[] = [
       SELECT
         (COUNT(t.id) FILTER (WHERE t.first_time_fix = true) / NULLIF(COUNT(t.id), 0) * 100) as kpi_value
       FROM service_tickets t
-      WHERE t.assigned_to = :userId
-        AND t.tenant_id = :tenantId
+      WHERE t.assignedTo = :userId
+        AND t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
     `,
     targetValue: 85,
@@ -440,9 +440,9 @@ const SERVICE_KPIS: KPIDefinition[] = [
       SELECT
         AVG(sr.rating) as kpi_value
       FROM service_tickets t
-      JOIN satisfaction_ratings sr ON sr.ticket_id = t.id
-      WHERE t.assigned_to = :userId
-        AND t.tenant_id = :tenantId
+      JOIN satisfaction_ratings sr ON sr.ticketId = t.id
+      WHERE t.assignedTo = :userId
+        AND t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
     `,
     targetValue: 4.5,
@@ -474,8 +474,8 @@ const SERVICE_KPIS: KPIDefinition[] = [
       SELECT
         (SUM(t.billable_hours) / NULLIF(SUM(t.total_hours), 0) * 100) as kpi_value
       FROM service_tickets t
-      WHERE t.assigned_to = :userId
-        AND t.tenant_id = :tenantId
+      WHERE t.assignedTo = :userId
+        AND t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
     `,
     targetValue: 75,
@@ -508,10 +508,10 @@ const SERVICE_KPIS: KPIDefinition[] = [
       SELECT
         (COUNT(t.id) FILTER (WHERE t.sla_status = 'Within SLA') / NULLIF(COUNT(t.id), 0) * 100) as kpi_value
       FROM service_tickets t
-      JOIN users u ON t.assigned_to = u.id
+      JOIN users u ON t.assignedTo = u.id
       WHERE u.manager_id = :userId
-        AND u.tenant_id = :tenantId
-        AND t.created_at >= :dateFrom
+        AND u.tenantId = :tenantId
+        AND t.createdAt >= :dateFrom
     `,
     targetValue: 95,
     targetType: 'percentage',
@@ -540,8 +540,8 @@ const SERVICE_KPIS: KPIDefinition[] = [
       SELECT
         SUM(t.billable_amount) as kpi_value
       FROM service_tickets t
-      WHERE t.location_id = :locationId
-        AND t.tenant_id = :tenantId
+      WHERE t.locationId = :locationId
+        AND t.tenantId = :tenantId
         AND t.ticket_type = 'Billable'
         AND t.completed_date >= :dateFrom
     `,
@@ -566,8 +566,8 @@ const SERVICE_KPIS: KPIDefinition[] = [
         ((SUM(t.billable_amount) - SUM(t.labor_cost + t.parts_cost)) /
          NULLIF(SUM(t.billable_amount), 0) * 100) as kpi_value
       FROM service_tickets t
-      WHERE t.location_id = :locationId
-        AND t.tenant_id = :tenantId
+      WHERE t.locationId = :locationId
+        AND t.tenantId = :tenantId
         AND t.ticket_type = 'Billable'
         AND t.completed_date >= :dateFrom
     `,
@@ -594,7 +594,7 @@ const SERVICE_KPIS: KPIDefinition[] = [
       SELECT
         (COUNT(t.id) FILTER (WHERE t.first_time_fix = true) / NULLIF(COUNT(t.id), 0) * 100) as kpi_value
       FROM service_tickets t
-      WHERE t.tenant_id = :tenantId
+      WHERE t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
     `,
     targetValue: 85,
@@ -618,8 +618,8 @@ const SERVICE_KPIS: KPIDefinition[] = [
       SELECT
         AVG(sr.rating) as kpi_value
       FROM service_tickets t
-      JOIN satisfaction_ratings sr ON sr.ticket_id = t.id
-      WHERE t.tenant_id = :tenantId
+      JOIN satisfaction_ratings sr ON sr.ticketId = t.id
+      WHERE t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
     `,
     targetValue: 4.5,
@@ -650,8 +650,8 @@ const OPERATIONS_KPIS: KPIDefinition[] = [
       SELECT
         (COUNT(cc.id) FILTER (WHERE cc.is_accurate = true) / NULLIF(COUNT(cc.id), 0) * 100) as kpi_value
       FROM cycle_counts cc
-      WHERE cc.location_id = :locationId
-        AND cc.tenant_id = :tenantId
+      WHERE cc.locationId = :locationId
+        AND cc.tenantId = :tenantId
         AND cc.count_date >= :dateFrom
     `,
     targetValue: 98,
@@ -696,8 +696,8 @@ const OPERATIONS_KPIS: KPIDefinition[] = [
           AND tenant_id = :tenantId
           AND order_date >= DATE_TRUNC('year', CURRENT_DATE)
       ) cogs
-      WHERE inv.location_id = :locationId
-        AND inv.tenant_id = :tenantId
+      WHERE inv.locationId = :locationId
+        AND inv.tenantId = :tenantId
         AND inv.metric_date >= DATE_TRUNC('year', CURRENT_DATE)
     `,
     targetValue: 6,
@@ -721,8 +721,8 @@ const OPERATIONS_KPIS: KPIDefinition[] = [
       SELECT
         (COUNT(o.id) FILTER (WHERE o.filled_completely = true) / NULLIF(COUNT(o.id), 0) * 100) as kpi_value
       FROM orders o
-      WHERE o.location_id = :locationId
-        AND o.tenant_id = :tenantId
+      WHERE o.locationId = :locationId
+        AND o.tenantId = :tenantId
         AND o.order_date >= :dateFrom
     `,
     targetValue: 95,
@@ -746,8 +746,8 @@ const OPERATIONS_KPIS: KPIDefinition[] = [
       SELECT
         (COUNT(wo.id) FILTER (WHERE wo.first_pass_yield = true) / NULLIF(COUNT(wo.id), 0) * 100) as kpi_value
       FROM work_orders wo
-      WHERE wo.location_id = :locationId
-        AND wo.tenant_id = :tenantId
+      WHERE wo.locationId = :locationId
+        AND wo.tenantId = :tenantId
         AND wo.completed_date >= :dateFrom
     `,
     targetValue: 95,
@@ -771,8 +771,8 @@ const OPERATIONS_KPIS: KPIDefinition[] = [
       SELECT
         (COUNT(d.id) FILTER (WHERE d.delivered_on_time = true) / NULLIF(COUNT(d.id), 0) * 100) as kpi_value
       FROM deliveries d
-      WHERE d.location_id = :locationId
-        AND d.tenant_id = :tenantId
+      WHERE d.locationId = :locationId
+        AND d.tenantId = :tenantId
         AND d.delivery_date >= :dateFrom
     `,
     targetValue: 95,
@@ -795,8 +795,8 @@ const OPERATIONS_KPIS: KPIDefinition[] = [
       SELECT
         (SUM(wm.units_processed) / NULLIF(SUM(wm.labor_hours), 0)) as kpi_value
       FROM warehouse_daily_metrics wm
-      WHERE wm.location_id = :locationId
-        AND wm.tenant_id = :tenantId
+      WHERE wm.locationId = :locationId
+        AND wm.tenantId = :tenantId
         AND wm.metric_date >= :dateFrom
     `,
     targetValue: null,
@@ -938,7 +938,7 @@ const FINANCE_KPIS: KPIDefinition[] = [
         WHERE tenant_id = :tenantId
           AND period_date >= DATE_TRUNC('year', CURRENT_DATE)
       ) fm
-      WHERE inv.tenant_id = :tenantId
+      WHERE inv.tenantId = :tenantId
         AND inv.payment_status != 'Paid'
     `,
     targetValue: 45,
@@ -1048,11 +1048,11 @@ const EXECUTIVE_KPIS: KPIDefinition[] = [
     calculationSql: `
       SELECT
         (SUM(sm.sales_expense + sm.marketing_expense) /
-         NULLIF(COUNT(DISTINCT c.id) FILTER (WHERE c.created_at >= :dateFrom), 0)) as kpi_value
+         NULLIF(COUNT(DISTINCT c.id) FILTER (WHERE c.createdAt >= :dateFrom), 0)) as kpi_value
       FROM sales_marketing_expenses sm
       CROSS JOIN business_records c
-      WHERE sm.tenant_id = :tenantId
-        AND c.tenant_id = :tenantId
+      WHERE sm.tenantId = :tenantId
+        AND c.tenantId = :tenantId
         AND sm.expense_date >= :dateFrom
         AND c.record_type = 'customer'
     `,
@@ -1077,7 +1077,7 @@ const EXECUTIVE_KPIS: KPIDefinition[] = [
       SELECT
         AVG(c.customer_lifetime_value) as kpi_value
       FROM business_records c
-      WHERE c.tenant_id = :tenantId
+      WHERE c.tenantId = :tenantId
         AND c.record_type = 'customer'
         AND c.status = 'Active'
     `,
@@ -1111,9 +1111,9 @@ const EXECUTIVE_KPIS: KPIDefinition[] = [
           NULLIF(COUNT(DISTINCT c.id), 0)) as value
         FROM sales_marketing_expenses sm
         CROSS JOIN business_records c
-        WHERE sm.tenant_id = :tenantId AND c.tenant_id = :tenantId
+        WHERE sm.tenantId = :tenantId AND c.tenantId = :tenantId
           AND sm.expense_date >= DATE_TRUNC('year', CURRENT_DATE)
-          AND c.created_at >= DATE_TRUNC('year', CURRENT_DATE)
+          AND c.createdAt >= DATE_TRUNC('year', CURRENT_DATE)
       ) cac
     `,
     targetValue: 3.0,
@@ -1198,10 +1198,10 @@ const EXECUTIVE_KPIS: KPIDefinition[] = [
     requiredPermissions: ['executive.kpis.view'],
     calculationSql: `
       SELECT
-        (COUNT(DISTINCT c.id) FILTER (WHERE c.status = 'Active' AND c.created_at < DATE_TRUNC('year', CURRENT_DATE)) /
-         NULLIF(COUNT(DISTINCT c.id) FILTER (WHERE c.created_at < DATE_TRUNC('year', CURRENT_DATE)), 0) * 100) as kpi_value
+        (COUNT(DISTINCT c.id) FILTER (WHERE c.status = 'Active' AND c.createdAt < DATE_TRUNC('year', CURRENT_DATE)) /
+         NULLIF(COUNT(DISTINCT c.id) FILTER (WHERE c.createdAt < DATE_TRUNC('year', CURRENT_DATE)), 0) * 100) as kpi_value
       FROM business_records c
-      WHERE c.tenant_id = :tenantId
+      WHERE c.tenantId = :tenantId
         AND c.record_type = 'customer'
     `,
     targetValue: 90,
@@ -1431,7 +1431,7 @@ export async function seedKPIs() {
             createdBy: systemUserId,
           })
           .onConflictDoUpdate({
-            target: [kpiDefinitions.code, kpiDefinitions.tenant_id],
+            target: [kpiDefinitions.code, kpiDefinitions.tenantId],
             set: {
               name: kpi.name,
               description: kpi.description || '',

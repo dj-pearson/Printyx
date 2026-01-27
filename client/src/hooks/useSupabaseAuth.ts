@@ -84,8 +84,8 @@ function transformUser(user: User | null): AuthUser | null {
   return {
     id: user.id,
     email: user.email || '',
-    firstName: metadata.firstName || metadata.first_name,
-    lastName: metadata.lastName || metadata.last_name,
+    firstName: metadata.firstName || metadata.firstName,
+    lastName: metadata.lastName || metadata.lastName,
     tenantId: appMetadata.tenantId,
     roleId: appMetadata.roleId,
     teamId: appMetadata.teamId,
@@ -347,9 +347,9 @@ export function useSupabaseAuth() {
         // Merge profile data with auth user
         return {
           ...authUser,
-          firstName: profile?.first_name || authUser.firstName,
-          lastName: profile?.last_name || authUser.lastName,
-          tenantId: profile?.tenant_id || authUser.tenantId,
+          firstName: profile?.firstName || authUser.firstName,
+          lastName: profile?.lastName || authUser.lastName,
+          tenantId: profile?.tenantId || authUser.tenantId,
           roleId: profile?.role_id || authUser.roleId,
           teamId: profile?.team_id || authUser.teamId,
           accessScope: authUser.accessScope || 'own', // Use auth metadata or default

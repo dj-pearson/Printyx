@@ -186,7 +186,7 @@ export default function CustomerDetailHubspot() {
       company_id: (data as any).id,
 
       // Company fields - now directly on the data object (from companies table)
-      companyName: (data as any).business_name || (data as any).companyName,
+      companyName: (data as any).businessName || (data as any).companyName,
       customerNumber: (data as any).customer_number,
       accountNumber: (data as any).account_number,
       website: (data as any).website,
@@ -211,12 +211,9 @@ export default function CustomerDetailHubspot() {
 
       // Contact fields from company_contacts
       primaryContactName:
-        contactData.first_name && contactData.last_name
-          ? `${contactData.first_name} ${contactData.last_name}`
-          : contactData.first_name ||
-            contactData.last_name ||
-            (data as any).primaryContactName ||
-            '',
+        contactData.firstName && contactData.lastName
+          ? `${contactData.firstName} ${contactData.lastName}`
+          : contactData.firstName || contactData.lastName || (data as any).primaryContactName || '',
       primaryContactEmail: contactData.email || (data as any).primaryContactEmail,
       primaryContactPhone: contactData.phone || (data as any).primaryContactPhone,
       primaryContactTitle: contactData.title,
@@ -224,7 +221,7 @@ export default function CustomerDetailHubspot() {
   }, [customerData, slug]);
 
   console.log('🔍 CustomerDetail - Final customer object:', customer);
-  console.log('🔍 CustomerDetail - Final company_id:', customer?.company_id);
+  console.log('🔍 CustomerDetail - Final company_id:', customer?.companyId);
 
   // Determine if this is a lead or customer based on the record type and stage
   const isLead =
@@ -246,15 +243,15 @@ export default function CustomerDetailHubspot() {
       // Transform snake_case API response to camelCase
       return (response || []).map((c: any) => ({
         id: c.id,
-        firstName: c.first_name || '',
-        lastName: c.last_name || '',
+        firstName: c.firstName || '',
+        lastName: c.lastName || '',
         email: c.email || '',
         phone: c.phone || '',
         mobile: c.mobile || '',
         title: c.title || '',
         department: c.department || '',
         isPrimaryContact: c.is_primary_contact || c.is_primary || false,
-        companyId: c.company_id,
+        companyId: c.companyId,
       }));
     },
   });
@@ -380,7 +377,7 @@ export default function CustomerDetailHubspot() {
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest(
-        `/api/companies/${customer?.company_id || customer?.id}`,
+        `/api/companies/${customer?.companyId || customer?.id}`,
         'PATCH',
         data,
       );
@@ -399,7 +396,7 @@ export default function CustomerDetailHubspot() {
         queryKey: ['/api/customers'],
       });
       queryClient.invalidateQueries({
-        queryKey: [`/api/companies/${customer?.company_id || customer?.id}`],
+        queryKey: [`/api/companies/${customer?.companyId || customer?.id}`],
       });
 
       setIsEditing(false);
@@ -473,12 +470,12 @@ export default function CustomerDetailHubspot() {
             <div className="flex items-center gap-3 min-w-0">
               <Avatar className="h-12 w-12">
                 <AvatarFallback className="bg-green-100 text-green-600 text-lg font-semibold">
-                  {(customer.companyName || (customer as any).company_name || 'C')[0]}
+                  {(customer.companyName || (customer as any).companyName || 'C')[0]}
                 </AvatarFallback>
               </Avatar>
               <div>
                 <h1 className="text-2xl font-semibold text-gray-900 truncate max-w-[75vw] md:max-w-[40vw]">
-                  {customer.companyName || (customer as any).company_name || 'Unnamed Customer'}
+                  {customer.companyName || (customer as any).companyName || 'Unnamed Customer'}
                 </h1>
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Badge variant="default" className="bg-green-100 text-green-800">
@@ -2185,13 +2182,13 @@ export default function CustomerDetailHubspot() {
                       </Button>
                     </div>
                   </div>
-                  <ActivityTimeline businessRecordId={customer?.company_id} />
+                  <ActivityTimeline businessRecordId={customer?.companyId} />
                 </div>
               </TabsContent>
 
               <TabsContent value="contacts" className="mt-6">
                 <ContactManager
-                  companyId={customer?.company_id || ''}
+                  companyId={customer?.companyId || ''}
                   companyName={customer?.companyName || 'Unknown Company'}
                 />
               </TabsContent>
@@ -2771,7 +2768,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.call}
         onClose={() => setDialogs((prev) => ({ ...prev, call: false }))}
-        businessRecordId={customer?.company_id}
+        businessRecordId={customer?.companyId}
         activityType="call"
         recordType="customer"
         recordName={customer.companyName}
@@ -2780,7 +2777,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.email}
         onClose={() => setDialogs((prev) => ({ ...prev, email: false }))}
-        businessRecordId={customer?.company_id}
+        businessRecordId={customer?.companyId}
         activityType="email"
         recordType="customer"
         recordName={customer.companyName}
@@ -2789,7 +2786,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.meeting}
         onClose={() => setDialogs((prev) => ({ ...prev, meeting: false }))}
-        businessRecordId={customer?.company_id}
+        businessRecordId={customer?.companyId}
         activityType="meeting"
         recordType="customer"
         recordName={customer.companyName}
@@ -2798,7 +2795,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.note}
         onClose={() => setDialogs((prev) => ({ ...prev, note: false }))}
-        businessRecordId={customer?.company_id}
+        businessRecordId={customer?.companyId}
         activityType="note"
         recordType="customer"
         recordName={customer.companyName}
@@ -2807,7 +2804,7 @@ export default function CustomerDetailHubspot() {
       <ActivityForm
         isOpen={dialogs.task}
         onClose={() => setDialogs((prev) => ({ ...prev, task: false }))}
-        businessRecordId={customer?.company_id}
+        businessRecordId={customer?.companyId}
         activityType="task"
         recordType="customer"
         recordName={customer.companyName}

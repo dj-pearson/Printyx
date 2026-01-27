@@ -47,7 +47,7 @@ router.get('/warehouse-kitting-operations', async (req, res) => {
     let query = db
       .select()
       .from(warehouseKittingOperations)
-      .where(eq(warehouseKittingOperations.tenant_id, tenantId));
+      .where(eq(warehouseKittingOperations.tenantId, tenantId));
 
     if (status) {
       query = query.where(eq(warehouseKittingOperations.operationStatus, status as string));
@@ -58,14 +58,14 @@ router.get('/warehouse-kitting-operations', async (req, res) => {
     }
 
     if (fromDate) {
-      query = query.where(gte(warehouseKittingOperations.created_at, new Date(fromDate as string)));
+      query = query.where(gte(warehouseKittingOperations.createdAt, new Date(fromDate as string)));
     }
 
     if (toDate) {
-      query = query.where(lte(warehouseKittingOperations.created_at, new Date(toDate as string)));
+      query = query.where(lte(warehouseKittingOperations.createdAt, new Date(toDate as string)));
     }
 
-    const operations = await query.orderBy(desc(warehouseKittingOperations.created_at));
+    const operations = await query.orderBy(desc(warehouseKittingOperations.createdAt));
 
     res.json(operations);
   } catch (error) {
@@ -95,7 +95,7 @@ router.patch('/warehouse-kitting-operations/:id', async (req, res) => {
       .where(
         and(
           eq(warehouseKittingOperations.id, id),
-          eq(warehouseKittingOperations.tenant_id, tenantId),
+          eq(warehouseKittingOperations.tenantId, tenantId),
         ),
       )
       .returning();
@@ -124,7 +124,7 @@ router.post('/warehouse-kitting-operations/:id/complete', async (req, res) => {
       .where(
         and(
           eq(warehouseKittingOperations.id, id),
-          eq(warehouseKittingOperations.tenant_id, tenantId),
+          eq(warehouseKittingOperations.tenantId, tenantId),
         ),
       )
       .limit(1);
@@ -140,7 +140,7 @@ router.post('/warehouse-kitting-operations/:id/complete', async (req, res) => {
       operation.reworkCount === 0;
 
     // Calculate duration
-    const startTime = operation.startedAt || operation.created_at;
+    const startTime = operation.startedAt || operation.createdAt;
     const totalDurationMinutes = Math.round(
       (new Date().getTime() - startTime.getTime()) / (1000 * 60),
     );
@@ -197,8 +197,8 @@ router.get('/fpy-metrics', async (req, res) => {
       .from(warehouseKittingOperations)
       .where(
         and(
-          eq(warehouseKittingOperations.tenant_id, tenantId),
-          gte(warehouseKittingOperations.created_at, startDate),
+          eq(warehouseKittingOperations.tenantId, tenantId),
+          gte(warehouseKittingOperations.createdAt, startDate),
           eq(warehouseKittingOperations.operationStatus, 'completed'),
         ),
       );
@@ -315,7 +315,7 @@ router.get('/auto-invoice/:sourceType/:sourceId', async (req, res) => {
       .from(autoInvoiceGeneration)
       .where(
         and(
-          eq(autoInvoiceGeneration.tenant_id, tenantId),
+          eq(autoInvoiceGeneration.tenantId, tenantId),
           eq(autoInvoiceGeneration.sourceType, sourceType),
           eq(autoInvoiceGeneration.sourceId, sourceId),
         ),
@@ -342,7 +342,7 @@ router.get('/auto-invoices', async (req, res) => {
     let query = db
       .select()
       .from(autoInvoiceGeneration)
-      .where(eq(autoInvoiceGeneration.tenant_id, tenantId));
+      .where(eq(autoInvoiceGeneration.tenantId, tenantId));
 
     if (status) {
       query = query.where(eq(autoInvoiceGeneration.generationStatus, status as string));

@@ -132,7 +132,7 @@ export class DataMapper {
         { source: 'address.line2', target: 'billingAddressLine2' },
         { source: 'address.city', target: 'billingCity' },
         { source: 'address.state', target: 'billingState' },
-        { source: 'address.postal_code', target: 'billingPostalCode' },
+        { source: 'address.postalCode', target: 'billingPostalCode' },
         { source: 'address.country', target: 'billingCountry' },
         { source: 'created', target: 'createdAt', transform: (value) => new Date(value * 1000) },
       ],

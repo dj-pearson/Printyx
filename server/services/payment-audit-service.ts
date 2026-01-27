@@ -92,8 +92,8 @@ export async function logPaymentAction(
   const [auditEntry] = await db
     .insert(paymentAuditTrail)
     .values({
-      tenantId: context.tenant_id,
-      userId: context.user_id,
+      tenantId: context.tenantId,
+      userId: context.userId,
       customerId: context.customerId,
       invoiceId: context.invoiceId,
       ipAddress: context.ipAddress,
@@ -314,8 +314,8 @@ export async function logPaymentMethodAdded(
   const [change] = await db
     .insert(paymentMethodChanges)
     .values({
-      tenantId: context.tenant_id,
-      userId: context.user_id!,
+      tenantId: context.tenantId,
+      userId: context.userId!,
       stripeCustomerId: paymentMethod.customer as string,
       stripePaymentMethodId: paymentMethod.id,
       changeType: 'added',
@@ -357,8 +357,8 @@ export async function logPaymentMethodRemoved(
   const [change] = await db
     .insert(paymentMethodChanges)
     .values({
-      tenantId: context.tenant_id,
-      userId: context.user_id!,
+      tenantId: context.tenantId,
+      userId: context.userId!,
       stripeCustomerId,
       stripePaymentMethodId: paymentMethodId,
       changeType: 'removed',
@@ -396,8 +396,8 @@ export async function logPaymentMethodSetDefault(
   const [change] = await db
     .insert(paymentMethodChanges)
     .values({
-      tenantId: context.tenant_id,
-      userId: context.user_id!,
+      tenantId: context.tenantId,
+      userId: context.userId!,
       stripeCustomerId: paymentMethod.customer as string,
       stripePaymentMethodId: paymentMethod.id,
       changeType: 'set_default',
@@ -580,7 +580,7 @@ export async function getPaymentAuditTrail(
     offset?: number;
   } = {},
 ): Promise<{ data: PaymentAuditTrail[]; total: number }> {
-  const conditions = [eq(paymentAuditTrail.tenant_id, tenantId)];
+  const conditions = [eq(paymentAuditTrail.tenantId, tenantId)];
 
   if (options.actions?.length) {
     conditions.push(inArray(paymentAuditTrail.action, options.actions as any));
@@ -591,8 +591,8 @@ export async function getPaymentAuditTrail(
   if (options.stripeCustomerId) {
     conditions.push(eq(paymentAuditTrail.stripeCustomerId, options.stripeCustomerId));
   }
-  if (options.user_id) {
-    conditions.push(eq(paymentAuditTrail.user_id, options.user_id));
+  if (options.userId) {
+    conditions.push(eq(paymentAuditTrail.userId, options.userId));
   }
   if (options.startDate) {
     conditions.push(gte(paymentAuditTrail.timestamp, options.startDate));
@@ -635,10 +635,10 @@ export async function getPaymentMethodHistory(
     offset?: number;
   } = {},
 ): Promise<{ data: PaymentMethodChange[]; total: number }> {
-  const conditions = [eq(paymentMethodChanges.tenant_id, tenantId)];
+  const conditions = [eq(paymentMethodChanges.tenantId, tenantId)];
 
-  if (options.user_id) {
-    conditions.push(eq(paymentMethodChanges.user_id, options.user_id));
+  if (options.userId) {
+    conditions.push(eq(paymentMethodChanges.userId, options.userId));
   }
   if (options.stripeCustomerId) {
     conditions.push(eq(paymentMethodChanges.stripeCustomerId, options.stripeCustomerId));
@@ -693,7 +693,7 @@ export async function getPaymentMetrics(
     .from(paymentAuditTrail)
     .where(
       and(
-        eq(paymentAuditTrail.tenant_id, tenantId),
+        eq(paymentAuditTrail.tenantId, tenantId),
         gte(paymentAuditTrail.timestamp, startDate),
         lte(paymentAuditTrail.timestamp, endDate),
       ),
@@ -776,8 +776,8 @@ export async function checkSuspiciousActivity(
     .from(paymentAuditTrail)
     .where(
       and(
-        eq(paymentAuditTrail.tenant_id, tenantId),
-        eq(paymentAuditTrail.user_id, userId),
+        eq(paymentAuditTrail.tenantId, tenantId),
+        eq(paymentAuditTrail.userId, userId),
         eq(paymentAuditTrail.status, 'failure'),
         gte(paymentAuditTrail.timestamp, windowStart),
       ),
@@ -796,8 +796,8 @@ export async function checkSuspiciousActivity(
     .from(paymentMethodChanges)
     .where(
       and(
-        eq(paymentMethodChanges.tenant_id, tenantId),
-        eq(paymentMethodChanges.user_id, userId),
+        eq(paymentMethodChanges.tenantId, tenantId),
+        eq(paymentMethodChanges.userId, userId),
         gte(paymentMethodChanges.timestamp, windowStart),
       ),
     );

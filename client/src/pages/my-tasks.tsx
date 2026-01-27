@@ -63,10 +63,10 @@ export default function MyTasks() {
         ...task,
         id: task.id,
         taskName: task.task_name || task.taskName || '',
-        assignedTo: task.assigned_to || task.assignedTo || null,
-        dueDate: task.due_date || task.dueDate || null,
-        createdAt: task.created_at || task.createdAt || '',
-        updatedAt: task.updated_at || task.updatedAt || '',
+        assignedTo: task.assignedTo || task.assignedTo || null,
+        dueDate: task.dueDate || task.dueDate || null,
+        createdAt: task.createdAt || task.createdAt || '',
+        updatedAt: task.updatedAt || task.updatedAt || '',
       }));
     },
   });

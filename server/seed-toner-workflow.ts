@@ -190,7 +190,7 @@ export async function seedTonerWorkflow() {
         .select()
         .from(supplies)
         .where(
-          sql`${supplies.productCode} = ${product.productCode} AND ${supplies.tenant_id} = ${DEFAULT_TENANT_ID}`,
+          sql`${supplies.productCode} = ${product.productCode} AND ${supplies.tenantId} = ${DEFAULT_TENANT_ID}`,
         )
         .limit(1);
 
@@ -224,7 +224,7 @@ export async function seedTonerWorkflow() {
         .select()
         .from(inventoryItems)
         .where(
-          sql`${inventoryItems.partNumber} = ${product.productCode} AND ${inventoryItems.tenant_id} = ${DEFAULT_TENANT_ID}`,
+          sql`${inventoryItems.partNumber} = ${product.productCode} AND ${inventoryItems.tenantId} = ${DEFAULT_TENANT_ID}`,
         )
         .limit(1);
 
@@ -272,7 +272,7 @@ export async function seedTonerWorkflow() {
     const portalUsers = await db
       .select()
       .from(customerPortalAccess)
-      .where(sql`${customerPortalAccess.tenant_id} = ${DEFAULT_TENANT_ID}`)
+      .where(sql`${customerPortalAccess.tenantId} = ${DEFAULT_TENANT_ID}`)
       .limit(5);
 
     if (portalUsers.length === 0) {

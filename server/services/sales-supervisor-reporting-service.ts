@@ -193,7 +193,7 @@ export class SalesSupervisorReportingService {
 
     const dateFilter =
       dateRange?.dateFrom && dateRange?.dateTo
-        ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        ? sql`AND o.createdAt BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
         : sql``;
 
     // Get pipeline by location and stage
@@ -208,12 +208,12 @@ export class SalesSupervisorReportingService {
         COUNT(CASE WHEN o.stage = 'Closed Won' THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as conversion_rate
       FROM locations l
       LEFT JOIN users u ON u.primary_location_id = l.id
-      LEFT JOIN opportunities o ON o.owner_id = u.id
-        AND o.tenant_id = ${userContext.tenant_id}
+      LEFT JOIN opportunities o ON o.ownerId = u.id
+        AND o.tenantId = ${userContext.tenantId}
         AND o.stage NOT IN ('Closed Lost', 'Cancelled')
         ${dateFilter}
       WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND l.tenant_id = ${userContext.tenant_id}
+        AND l.tenantId = ${userContext.tenantId}
       GROUP BY l.id, l.name, o.stage
       ORDER BY l.name, CASE o.stage
         WHEN 'Lead' THEN 1
@@ -226,7 +226,7 @@ export class SalesSupervisorReportingService {
     `);
 
     const pipelines: LocationPipeline[] = result.rows.map((row: any) => ({
-      locationId: row.location_id,
+      locationId: row.locationId,
       locationName: row.location_name,
       stage: row.stage || 'Unknown',
       dealCount: parseInt(row.deal_count || 0),
@@ -311,7 +311,7 @@ export class SalesSupervisorReportingService {
 
     const dateFilter =
       dateRange?.dateFrom && dateRange?.dateTo
-        ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        ? sql`AND o.createdAt BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
         : sql``;
 
     const result = await db.execute(sql`
@@ -326,11 +326,11 @@ export class SalesSupervisorReportingService {
           AVG(CASE WHEN o.stage = 'Closed Won' THEN o.amount ELSE NULL END)::decimal as avg_deal_size,
           COUNT(a.id)::int as total_activities
         FROM locations l
-        LEFT JOIN users u ON u.primary_location_id = l.id AND u.tenant_id = ${userContext.tenant_id}
-        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenant_id} ${dateFilter}
-        LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenant_id} ${dateFilter}
+        LEFT JOIN users u ON u.primary_location_id = l.id AND u.tenantId = ${userContext.tenantId}
+        LEFT JOIN opportunities o ON o.ownerId = u.id AND o.tenantId = ${userContext.tenantId} ${dateFilter}
+        LEFT JOIN activities a ON a.userId = u.id AND a.tenantId = ${userContext.tenantId} ${dateFilter}
         WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
-          AND l.tenant_id = ${userContext.tenant_id}
+          AND l.tenantId = ${userContext.tenantId}
         GROUP BY l.id, l.name
       ),
       location_quotas AS (
@@ -340,8 +340,8 @@ export class SalesSupervisorReportingService {
           SUM(CASE WHEN o.stage = 'Closed Won' THEN o.amount ELSE 0 END)::decimal as actual_revenue
         FROM locations l
         LEFT JOIN users u ON u.primary_location_id = l.id
-        LEFT JOIN quotas q ON q.user_id = u.id AND q.period = 'current'
-        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.stage = 'Closed Won' AND o.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN quotas q ON q.userId = u.id AND q.period = 'current'
+        LEFT JOIN opportunities o ON o.ownerId = u.id AND o.stage = 'Closed Won' AND o.tenantId = ${userContext.tenantId}
         WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
         GROUP BY l.id
       )
@@ -355,12 +355,12 @@ export class SalesSupervisorReportingService {
         END as quota_attainment,
         RANK() OVER (ORDER BY ls.total_revenue DESC) as ranking
       FROM location_stats ls
-      LEFT JOIN location_quotas lq ON lq.location_id = ls.location_id
+      LEFT JOIN location_quotas lq ON lq.locationId = ls.locationId
       ORDER BY ls.total_revenue DESC
     `);
 
     const locations: LocationPerformance[] = result.rows.map((row: any) => ({
-      locationId: row.location_id,
+      locationId: row.locationId,
       locationName: row.location_name,
       teamSize: parseInt(row.team_size || 0),
       totalRevenue: parseFloat(row.total_revenue || 0),
@@ -434,10 +434,10 @@ export class SalesSupervisorReportingService {
           SUM(CASE WHEN o.stage IN ('Proposal', 'Negotiation') THEN o.weighted_amount ELSE 0 END)::decimal as pipeline_forecast
         FROM locations l
         LEFT JOIN users u ON u.primary_location_id = l.id
-        LEFT JOIN quotas q ON q.user_id = u.id AND q.period = ${period}
-        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN quotas q ON q.userId = u.id AND q.period = ${period}
+        LEFT JOIN opportunities o ON o.ownerId = u.id AND o.tenantId = ${userContext.tenantId}
         WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
-          AND l.tenant_id = ${userContext.tenant_id}
+          AND l.tenantId = ${userContext.tenantId}
         GROUP BY l.id, l.name
       )
       SELECT
@@ -459,7 +459,7 @@ export class SalesSupervisorReportingService {
     const quotas: LocationQuota[] = result.rows.map((row: any) => {
       const attainment = parseFloat(row.attainment_percent || 0);
       return {
-        locationId: row.location_id,
+        locationId: row.locationId,
         locationName: row.location_name,
         quotaAmount: parseFloat(row.quota_amount || 0),
         actualRevenue: parseFloat(row.actual_revenue || 0),
@@ -534,10 +534,10 @@ export class SalesSupervisorReportingService {
         COUNT(CASE WHEN a.activity_type = 'proposal' THEN 1 END)::int as proposals,
         COUNT(a.id)::int as total_activities
       FROM locations l
-      LEFT JOIN users u ON u.primary_location_id = l.id AND u.tenant_id = ${userContext.tenant_id}
-      LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenant_id} ${dateFilter}
+      LEFT JOIN users u ON u.primary_location_id = l.id AND u.tenantId = ${userContext.tenantId}
+      LEFT JOIN activities a ON a.userId = u.id AND a.tenantId = ${userContext.tenantId} ${dateFilter}
       WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND l.tenant_id = ${userContext.tenant_id}
+        AND l.tenantId = ${userContext.tenantId}
       GROUP BY l.id, l.name
       ORDER BY total_activities DESC
     `);
@@ -546,7 +546,7 @@ export class SalesSupervisorReportingService {
       const teamSize = parseInt(row.team_size || 1);
       const totalActivities = parseInt(row.total_activities || 0);
       return {
-        locationId: row.location_id,
+        locationId: row.locationId,
         locationName: row.location_name,
         calls: parseInt(row.calls || 0),
         emails: parseInt(row.emails || 0),

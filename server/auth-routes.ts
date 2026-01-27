@@ -273,8 +273,8 @@ router.post('/login', loginLimiter, async (req, res) => {
     });
 
     // Set session
-    req.session.user_id = user.id;
-    req.session.tenant_id = user.tenant_id || undefined;
+    req.session.userId = user.id;
+    req.session.tenantId = user.tenantId || undefined;
 
     // Get user with role information
     const userWithRole = await storage.getUserWithRole(user.id);
@@ -288,7 +288,7 @@ router.post('/login', loginLimiter, async (req, res) => {
         lastName: user.lastName,
         role: userWithRole?.role,
         team: userWithRole?.team,
-        tenantId: user.tenant_id,
+        tenantId: user.tenantId,
       },
     });
   } catch (error) {
@@ -363,7 +363,7 @@ const getCurrentUserHandler = async (req: any, res: any) => {
         lastName: testUser.lastName,
         role: userWithRole?.role || 'admin',
         team: userWithRole?.team,
-        tenantId: testUser.tenant_id,
+        tenantId: testUser.tenantId,
       });
     }
 
@@ -389,8 +389,8 @@ const getCurrentUserHandler = async (req: any, res: any) => {
       role_id: user.roleId,
       team: user.team,
       team_id: user.teamId,
-      tenantId: user.tenant_id,
-      tenant_id: user.tenant_id,
+      tenantId: user.tenantId,
+      tenant_id: user.tenantId,
     });
   } catch (error) {
     console.error('Get user error:', error);
@@ -550,7 +550,7 @@ router.post('/verify-email', async (req, res) => {
       .where(eq(emailVerifications.id, verification.id));
 
     // Get user
-    const [user] = await db.select().from(users).where(eq(users.id, verification.user_id)).limit(1);
+    const [user] = await db.select().from(users).where(eq(users.id, verification.userId)).limit(1);
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -571,8 +571,8 @@ router.post('/verify-email', async (req, res) => {
     });
 
     // Auto-login the user
-    req.session.user_id = user.id;
-    req.session.tenant_id = user.tenant_id || undefined;
+    req.session.userId = user.id;
+    req.session.tenantId = user.tenantId || undefined;
 
     console.log(`[EMAIL VERIFICATION] Email verified for user: ${user.id}`);
 
@@ -583,7 +583,7 @@ router.post('/verify-email', async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        tenantId: user.tenant_id,
+        tenantId: user.tenantId,
       },
     });
   } catch (error) {
@@ -613,8 +613,8 @@ router.post('/resend-verification', async (req, res) => {
     const [existingVerification] = await db
       .select()
       .from(emailVerifications)
-      .where(eq(emailVerifications.user_id, user.id))
-      .orderBy(desc(emailVerifications.created_at))
+      .where(eq(emailVerifications.userId, user.id))
+      .orderBy(desc(emailVerifications.createdAt))
       .limit(1);
 
     if (existingVerification?.verifiedAt) {
@@ -785,7 +785,7 @@ router.post('/reset-password', async (req, res) => {
     }
 
     // Get user
-    const [user] = await db.select().from(users).where(eq(users.id, resetRecord.user_id)).limit(1);
+    const [user] = await db.select().from(users).where(eq(users.id, resetRecord.userId)).limit(1);
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });

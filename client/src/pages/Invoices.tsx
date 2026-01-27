@@ -59,14 +59,14 @@ export default function Invoices() {
       return (response || []).map((inv: any) => ({
         ...inv,
         id: inv.id,
-        invoiceNumber: inv.invoice_number || inv.invoiceNumber || '',
-        contractId: inv.contract_id || inv.contractId || null,
-        customerId: inv.customer_id || inv.customerId || '',
+        invoiceNumber: inv.invoiceNumber || inv.invoiceNumber || '',
+        contractId: inv.contractId || inv.contractId || null,
+        customerId: inv.customerId || inv.customerId || '',
         billingPeriodStart: inv.billing_period_start || inv.billingPeriodStart || '',
         billingPeriodEnd: inv.billing_period_end || inv.billingPeriodEnd || '',
-        dueDate: inv.due_date || inv.dueDate || '',
-        createdAt: inv.created_at || inv.createdAt || '',
-        updatedAt: inv.updated_at || inv.updatedAt || '',
+        dueDate: inv.dueDate || inv.dueDate || '',
+        createdAt: inv.createdAt || inv.createdAt || '',
+        updatedAt: inv.updatedAt || inv.updatedAt || '',
       }));
     },
   });
@@ -78,12 +78,12 @@ export default function Invoices() {
       return (response || []).map((c: any) => ({
         ...c,
         id: c.id,
-        contractNumber: c.contract_number || c.contractNumber || '',
-        customerId: c.customer_id || c.customerId || '',
-        startDate: c.start_date || c.startDate || '',
-        endDate: c.end_date || c.endDate || '',
-        createdAt: c.created_at || c.createdAt || '',
-        updatedAt: c.updated_at || c.updatedAt || '',
+        contractNumber: c.contractNumber || c.contractNumber || '',
+        customerId: c.customerId || c.customerId || '',
+        startDate: c.startDate || c.startDate || '',
+        endDate: c.endDate || c.endDate || '',
+        createdAt: c.createdAt || c.createdAt || '',
+        updatedAt: c.updatedAt || c.updatedAt || '',
       }));
     },
   });
@@ -95,10 +95,10 @@ export default function Invoices() {
       return (response?.records || response || []).map((cust: any) => ({
         ...cust,
         id: cust.id,
-        companyName: cust.company_name || cust.companyName || '',
-        contactId: cust.contact_id || cust.contactId || '',
-        createdAt: cust.created_at || cust.createdAt || '',
-        updatedAt: cust.updated_at || cust.updatedAt || '',
+        companyName: cust.companyName || cust.companyName || '',
+        contactId: cust.contactId || cust.contactId || '',
+        createdAt: cust.createdAt || cust.createdAt || '',
+        updatedAt: cust.updatedAt || cust.updatedAt || '',
       }));
     },
   });

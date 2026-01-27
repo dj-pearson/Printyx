@@ -18,7 +18,7 @@ const router = Router();
 
 // Middleware to require authentication
 const requireAuth = (req: Request, res: Response, next: Function) => {
-  if (!req.session || !req.session.user_id) {
+  if (!req.session || !req.session.userId) {
     return res.status(401).json({ message: 'Authentication required' });
   }
   next();
@@ -27,15 +27,13 @@ const requireAuth = (req: Request, res: Response, next: Function) => {
 // Helper to get tenant ID
 const getTenantId = (req: Request): string => {
   return (
-    (req as any).tenant_id ||
-    (req.session as any).tenant_id ||
-    '00000000-0000-0000-0000-000000000000'
+    (req as any).tenantId || (req.session as any).tenantId || '00000000-0000-0000-0000-000000000000'
   );
 };
 
 // Helper to get user ID
 const getUserId = (req: Request): string => {
-  return req.session?.user_id || (req.session as any).user?.id || '';
+  return req.session?.userId || (req.session as any).user?.id || '';
 };
 
 /**
@@ -59,7 +57,7 @@ router.get('/:articleId', async (req: Request, res: Response) => {
         oneStarCount: sql<number>`count(*) filter (where ${articleRatings.rating} = 1)`,
       })
       .from(articleRatings)
-      .where(and(eq(articleRatings.articleId, articleId), eq(articleRatings.tenant_id, tenantId)));
+      .where(and(eq(articleRatings.articleId, articleId), eq(articleRatings.tenantId, tenantId)));
 
     // Get vote statistics
     const [voteStats] = await db
@@ -70,7 +68,7 @@ router.get('/:articleId', async (req: Request, res: Response) => {
         inaccurateCount: sql<number>`count(*) filter (where ${articleVotes.voteType} = 'inaccurate')`,
       })
       .from(articleVotes)
-      .where(and(eq(articleVotes.articleId, articleId), eq(articleVotes.tenant_id, tenantId)));
+      .where(and(eq(articleVotes.articleId, articleId), eq(articleVotes.tenantId, tenantId)));
 
     // Get recent reviews (ratings with comments)
     const recentReviews = await db
@@ -80,17 +78,17 @@ router.get('/:articleId', async (req: Request, res: Response) => {
         comment: articleRatings.comment,
         verifiedReader: articleRatings.verifiedReader,
         helpfulCount: articleRatings.helpfulCount,
-        createdAt: articleRatings.created_at,
+        createdAt: articleRatings.createdAt,
       })
       .from(articleRatings)
       .where(
         and(
           eq(articleRatings.articleId, articleId),
-          eq(articleRatings.tenant_id, tenantId),
+          eq(articleRatings.tenantId, tenantId),
           sql`${articleRatings.comment} IS NOT NULL`,
         ),
       )
-      .orderBy(desc(articleRatings.created_at))
+      .orderBy(desc(articleRatings.createdAt))
       .limit(10);
 
     res.json({
@@ -155,7 +153,7 @@ router.post('/', async (req: Request, res: Response) => {
       .from(readingHistory)
       .where(
         and(
-          eq(readingHistory.user_id, userId),
+          eq(readingHistory.userId, userId),
           eq(readingHistory.articleId, articleId),
           eq(readingHistory.completed, true),
         ),
@@ -170,7 +168,7 @@ router.post('/', async (req: Request, res: Response) => {
       .from(articleRatings)
       .where(
         and(
-          eq(articleRatings.user_id, userId),
+          eq(articleRatings.userId, userId),
           eq(articleRatings.articleId, articleId),
           eq(articleRatings.ratingType, ratingType),
         ),
@@ -242,7 +240,7 @@ router.get('/user/:articleId', async (req: Request, res: Response) => {
       .from(articleRatings)
       .where(
         and(
-          eq(articleRatings.user_id, userId),
+          eq(articleRatings.userId, userId),
           eq(articleRatings.articleId, articleId),
           eq(articleRatings.ratingType, ratingType as string),
         ),
@@ -293,7 +291,7 @@ router.post('/votes', async (req: Request, res: Response) => {
     const existing = await db
       .select()
       .from(articleVotes)
-      .where(and(eq(articleVotes.user_id, userId), eq(articleVotes.articleId, articleId)))
+      .where(and(eq(articleVotes.userId, userId), eq(articleVotes.articleId, articleId)))
       .limit(1);
 
     let result;
@@ -354,7 +352,7 @@ router.get('/votes/user/:articleId', async (req: Request, res: Response) => {
     const vote = await db
       .select()
       .from(articleVotes)
-      .where(and(eq(articleVotes.user_id, userId), eq(articleVotes.articleId, articleId)))
+      .where(and(eq(articleVotes.userId, userId), eq(articleVotes.articleId, articleId)))
       .limit(1);
 
     res.json({
@@ -385,7 +383,7 @@ router.delete('/:ratingId', async (req: Request, res: Response) => {
     const existing = await db
       .select()
       .from(articleRatings)
-      .where(and(eq(articleRatings.id, ratingId), eq(articleRatings.user_id, userId)))
+      .where(and(eq(articleRatings.id, ratingId), eq(articleRatings.userId, userId)))
       .limit(1);
 
     if (existing.length === 0) {
@@ -424,7 +422,7 @@ router.delete('/votes/:voteId', async (req: Request, res: Response) => {
     const existing = await db
       .select()
       .from(articleVotes)
-      .where(and(eq(articleVotes.id, voteId), eq(articleVotes.user_id, userId)))
+      .where(and(eq(articleVotes.id, voteId), eq(articleVotes.userId, userId)))
       .limit(1);
 
     if (existing.length === 0) {

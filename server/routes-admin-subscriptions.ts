@@ -63,7 +63,7 @@ router.get('/subscriptions', async (req, res) => {
     let query = db
       .select()
       .from(tenantSubscriptions)
-      .orderBy(desc(tenantSubscriptions.created_at))
+      .orderBy(desc(tenantSubscriptions.createdAt))
       .limit(Number(limit))
       .offset(offset);
 
@@ -107,7 +107,7 @@ router.get('/subscriptions/:id', async (req, res) => {
     }
 
     // Get full subscription status
-    const status = await SubscriptionService.getSubscriptionStatus(subscription.tenant_id);
+    const status = await SubscriptionService.getSubscriptionStatus(subscription.tenantId);
 
     res.json({
       subscription,
@@ -261,7 +261,7 @@ router.get('/discounts', async (req, res) => {
     let query = db
       .select()
       .from(discounts)
-      .orderBy(desc(discounts.created_at))
+      .orderBy(desc(discounts.createdAt))
       .limit(Number(limit))
       .offset(offset);
 
@@ -312,7 +312,7 @@ router.get('/discounts/:id', async (req, res) => {
       .select()
       .from(discountRedemptions)
       .where(eq(discountRedemptions.discountId, discount.id))
-      .orderBy(desc(discountRedemptions.created_at))
+      .orderBy(desc(discountRedemptions.createdAt))
       .limit(100);
 
     res.json({

@@ -25,7 +25,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       const { status, salesRepId, csmId } = req.query;
 
-      let conditions = [eq(salesHandoffChecklists.tenant_id, tenantId)];
+      let conditions = [eq(salesHandoffChecklists.tenantId, tenantId)];
 
       if (status) {
         conditions.push(eq(salesHandoffChecklists.status, status as string));
@@ -58,7 +58,7 @@ export function registerSalesHandoffRoutes(app: Express) {
       const handoff = await db.query.salesHandoffChecklists.findFirst({
         where: and(
           eq(salesHandoffChecklists.id, id),
-          eq(salesHandoffChecklists.tenant_id, tenantId),
+          eq(salesHandoffChecklists.tenantId, tenantId),
         ),
       });
 
@@ -145,7 +145,7 @@ export function registerSalesHandoffRoutes(app: Express) {
         .update(salesHandoffChecklists)
         .set({ ...req.body, updatedAt: new Date() })
         .where(
-          and(eq(salesHandoffChecklists.id, id), eq(salesHandoffChecklists.tenant_id, tenantId)),
+          and(eq(salesHandoffChecklists.id, id), eq(salesHandoffChecklists.tenantId, tenantId)),
         )
         .returning();
 
@@ -168,7 +168,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       // Check if all required tasks are completed
       const tasks = await db.query.handoffTasks.findMany({
-        where: and(eq(handoffTasks.handoffId, id), eq(handoffTasks.tenant_id, tenantId)),
+        where: and(eq(handoffTasks.handoffId, id), eq(handoffTasks.tenantId, tenantId)),
       });
 
       const incompleteRequiredTasks = tasks.filter(
@@ -192,7 +192,7 @@ export function registerSalesHandoffRoutes(app: Express) {
           updatedAt: new Date(),
         })
         .where(
-          and(eq(salesHandoffChecklists.id, id), eq(salesHandoffChecklists.tenant_id, tenantId)),
+          and(eq(salesHandoffChecklists.id, id), eq(salesHandoffChecklists.tenantId, tenantId)),
         )
         .returning();
 
@@ -215,7 +215,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       const { handoffType } = req.query;
 
-      let conditions = [eq(handoffTaskTemplates.tenant_id, tenantId)];
+      let conditions = [eq(handoffTaskTemplates.tenantId, tenantId)];
 
       if (handoffType) {
         conditions.push(eq(handoffTaskTemplates.handoffType, handoffType as string));
@@ -264,7 +264,7 @@ export function registerSalesHandoffRoutes(app: Express) {
       const [updated] = await db
         .update(handoffTaskTemplates)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(and(eq(handoffTaskTemplates.id, id), eq(handoffTaskTemplates.tenant_id, tenantId)))
+        .where(and(eq(handoffTaskTemplates.id, id), eq(handoffTaskTemplates.tenantId, tenantId)))
         .returning();
 
       if (!updated) {
@@ -286,7 +286,7 @@ export function registerSalesHandoffRoutes(app: Express) {
       const tenantId = req.headers['x-tenant-id'] as string;
       const { handoffId, assignedTo, status, category } = req.query;
 
-      let conditions = [eq(handoffTasks.tenant_id, tenantId)];
+      let conditions = [eq(handoffTasks.tenantId, tenantId)];
 
       if (handoffId) {
         conditions.push(eq(handoffTasks.handoffId, handoffId as string));
@@ -344,7 +344,7 @@ export function registerSalesHandoffRoutes(app: Express) {
       const [updated] = await db
         .update(handoffTasks)
         .set({ ...req.body, updatedAt: new Date() })
-        .where(and(eq(handoffTasks.id, id), eq(handoffTasks.tenant_id, tenantId)))
+        .where(and(eq(handoffTasks.id, id), eq(handoffTasks.tenantId, tenantId)))
         .returning();
 
       if (!updated) {
@@ -392,7 +392,7 @@ export function registerSalesHandoffRoutes(app: Express) {
           completionNotes,
           updatedAt: new Date(),
         })
-        .where(and(eq(handoffTasks.id, id), eq(handoffTasks.tenant_id, tenantId)))
+        .where(and(eq(handoffTasks.id, id), eq(handoffTasks.tenantId, tenantId)))
         .returning();
 
       if (!updated) {
@@ -436,7 +436,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       const { status, customerId, projectManagerId } = req.query;
 
-      let conditions = [eq(implementationProjects.tenant_id, tenantId)];
+      let conditions = [eq(implementationProjects.tenantId, tenantId)];
 
       if (status) {
         conditions.push(eq(implementationProjects.status, status as string));
@@ -469,7 +469,7 @@ export function registerSalesHandoffRoutes(app: Express) {
       const project = await db.query.implementationProjects.findFirst({
         where: and(
           eq(implementationProjects.id, id),
-          eq(implementationProjects.tenant_id, tenantId),
+          eq(implementationProjects.tenantId, tenantId),
         ),
       });
 
@@ -516,7 +516,7 @@ export function registerSalesHandoffRoutes(app: Express) {
         .update(implementationProjects)
         .set({ ...req.body, updatedAt: new Date() })
         .where(
-          and(eq(implementationProjects.id, id), eq(implementationProjects.tenant_id, tenantId)),
+          and(eq(implementationProjects.id, id), eq(implementationProjects.tenantId, tenantId)),
         )
         .returning();
 
@@ -542,7 +542,7 @@ export function registerSalesHandoffRoutes(app: Express) {
         const project = await db.query.implementationProjects.findFirst({
           where: and(
             eq(implementationProjects.id, id),
-            eq(implementationProjects.tenant_id, tenantId),
+            eq(implementationProjects.tenantId, tenantId),
           ),
         });
 

@@ -21,7 +21,7 @@ const requireTenant = (req: any, res: any, next: any) => {
   if (!tenantId) {
     return res.status(400).json({ message: 'Tenant ID is required' });
   }
-  req.tenant_id = tenantId;
+  req.tenantId = tenantId;
   next();
 };
 
@@ -31,8 +31,8 @@ router.get('/', requireTenant, async (req: any, res) => {
     const docs = await db
       .select()
       .from(documents)
-      .where(eq(documents.tenant_id, req.tenant_id))
-      .orderBy(documents.created_at);
+      .where(eq(documents.tenantId, req.tenantId))
+      .orderBy(documents.createdAt);
 
     res.json(docs);
   } catch (error) {
@@ -48,7 +48,7 @@ router.post('/', requireTenant, async (req: any, res) => {
 
     const documentData = {
       ...req.body,
-      tenantId: req.tenant_id,
+      tenantId: req.tenantId,
       createdBy: userId,
       updatedBy: userId,
       documentNumber: req.body.agreementNumber || `DOC-${Date.now()}`,
@@ -70,7 +70,7 @@ router.get('/:id', requireTenant, async (req: any, res) => {
     const [document] = await db
       .select()
       .from(documents)
-      .where(and(eq(documents.id, req.params.id), eq(documents.tenant_id, req.tenant_id)));
+      .where(and(eq(documents.id, req.params.id), eq(documents.tenantId, req.tenantId)));
 
     if (!document) {
       return res.status(404).json({ message: 'Document not found' });
@@ -89,7 +89,7 @@ router.post('/:id/pdf', requireTenant, async (req: any, res) => {
     const [document] = await db
       .select()
       .from(documents)
-      .where(and(eq(documents.id, req.params.id), eq(documents.tenant_id, req.tenant_id)));
+      .where(and(eq(documents.id, req.params.id), eq(documents.tenantId, req.tenantId)));
 
     if (!document) {
       return res.status(404).json({ message: 'Document not found' });

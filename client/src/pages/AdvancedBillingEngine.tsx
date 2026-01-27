@@ -1215,14 +1215,14 @@ export default function AdvancedBillingEngine() {
                           className="flex items-center justify-between p-3 border rounded-lg"
                         >
                           <div className="flex-1">
-                            <h4 className="font-medium text-sm">{invoice.invoice_number}</h4>
+                            <h4 className="font-medium text-sm">{invoice.invoiceNumber}</h4>
                             <p className="text-xs text-muted-foreground">
                               {invoice.customer_name || invoice.business_record_name}
                             </p>
                           </div>
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium">
-                              ${invoice.total_amount.toFixed(2)}
+                              ${invoice.totalAmount.toFixed(2)}
                             </span>
                             <Badge variant={getStatusColor(invoice.status)} className="text-xs">
                               {getStatusIcon(invoice.status)}
@@ -1262,7 +1262,7 @@ export default function AdvancedBillingEngine() {
                           </div>
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium">
-                              ${cycle.total_amount.toFixed(2)}
+                              ${cycle.totalAmount.toFixed(2)}
                             </span>
                             <Badge variant={getStatusColor(cycle.status)} className="text-xs">
                               {getStatusIcon(cycle.status)}
@@ -1562,7 +1562,7 @@ export default function AdvancedBillingEngine() {
                                 className="font-medium text-base"
                                 data-testid={`invoice-number-${invoice.id}`}
                               >
-                                {invoice.invoice_number}
+                                {invoice.invoiceNumber}
                               </h3>
                               <Badge variant={getStatusColor(invoice.status)}>
                                 {getStatusIcon(invoice.status)}
@@ -1581,7 +1581,7 @@ export default function AdvancedBillingEngine() {
                               </p>
                               <p>
                                 <span className="font-medium">Due:</span>{' '}
-                                {format(new Date(invoice.due_date), 'MMM dd, yyyy')}
+                                {format(new Date(invoice.dueDate), 'MMM dd, yyyy')}
                               </p>
                               <p>
                                 <span className="font-medium">Terms:</span> {invoice.payment_terms}
@@ -1593,7 +1593,7 @@ export default function AdvancedBillingEngine() {
                               className="text-xl font-bold text-green-600"
                               data-testid={`invoice-amount-${invoice.id}`}
                             >
-                              ${invoice.total_amount.toFixed(2)}
+                              ${invoice.totalAmount.toFixed(2)}
                             </p>
                             {invoice.balance_due > 0 && (
                               <p className="text-sm text-red-600 font-medium">
@@ -1727,10 +1727,10 @@ export default function AdvancedBillingEngine() {
                                 </Badge>
                               )}
                               <Badge
-                                variant={config.is_active ? 'default' : 'secondary'}
+                                variant={config.isActive ? 'default' : 'secondary'}
                                 className="text-xs"
                               >
-                                {config.is_active ? 'Active' : 'Inactive'}
+                                {config.isActive ? 'Active' : 'Inactive'}
                               </Badge>
                             </div>
                           </div>
@@ -1812,22 +1812,21 @@ export default function AdvancedBillingEngine() {
                               {cycle.failed_customers > 0 && (
                                 <p className="text-red-600">Failed: {cycle.failed_customers}</p>
                               )}
-                              {cycle.started_at && (
+                              {cycle.startedAt && (
                                 <p>
-                                  Started:{' '}
-                                  {format(new Date(cycle.started_at), 'MMM dd, yyyy HH:mm')}
+                                  Started: {format(new Date(cycle.startedAt), 'MMM dd, yyyy HH:mm')}
                                 </p>
                               )}
-                              {cycle.completed_at && (
+                              {cycle.completedAt && (
                                 <p>
                                   Completed:{' '}
-                                  {format(new Date(cycle.completed_at), 'MMM dd, yyyy HH:mm')}
+                                  {format(new Date(cycle.completedAt), 'MMM dd, yyyy HH:mm')}
                                 </p>
                               )}
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold">${cycle.total_amount.toFixed(2)}</p>
+                            <p className="text-lg font-bold">${cycle.totalAmount.toFixed(2)}</p>
                             <p className="text-sm text-muted-foreground">Total Generated</p>
                           </div>
                         </div>
@@ -1876,7 +1875,7 @@ export default function AdvancedBillingEngine() {
                                 <p>Approved by: {adjustment.approved_by_name}</p>
                               )}
                               <p>
-                                Created: {format(new Date(adjustment.created_at), 'MMM dd, yyyy')}
+                                Created: {format(new Date(adjustment.createdAt), 'MMM dd, yyyy')}
                               </p>
                             </div>
                           </div>

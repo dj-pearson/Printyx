@@ -346,8 +346,8 @@ export default function EquipmentLifecycleHub() {
       return (response || []).map((t: any) => ({
         ...t,
         id: t.id,
-        firstName: t.first_name || t.firstName || '',
-        lastName: t.last_name || t.lastName || '',
+        firstName: t.firstName || t.firstName || '',
+        lastName: t.lastName || t.lastName || '',
       }));
     },
   });
@@ -359,7 +359,7 @@ export default function EquipmentLifecycleHub() {
       return (response?.records || response || []).map((r: any) => ({
         ...r,
         id: r.id,
-        companyName: r.company_name || r.companyName || '',
+        companyName: r.companyName || r.companyName || '',
       }));
     },
   });
@@ -565,7 +565,7 @@ export default function EquipmentLifecycleHub() {
                               <SelectContent>
                                 {businessRecords.map((record: any) => (
                                   <SelectItem key={record.id} value={record.id}>
-                                    {record.company_name || record.companyName}
+                                    {record.companyName || record.companyName}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -647,7 +647,7 @@ export default function EquipmentLifecycleHub() {
                         />
                         <FormField
                           control={poForm.control}
-                          name="items.0.equipment_model"
+                          name="items.0.equipmentModel"
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
@@ -688,7 +688,7 @@ export default function EquipmentLifecycleHub() {
                         />
                         <FormField
                           control={poForm.control}
-                          name="items.0.unit_price"
+                          name="items.0.unitPrice"
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
@@ -1168,7 +1168,7 @@ export default function EquipmentLifecycleHub() {
                             <div className="flex justify-between items-start gap-2">
                               <div className="flex-1">
                                 <p className="font-medium">
-                                  {equipment.equipment_brand} {equipment.equipment_model}
+                                  {equipment.equipment_brand} {equipment.equipmentModel}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {equipment.customer_name} • {equipment.progress_percentage}%
@@ -1184,7 +1184,7 @@ export default function EquipmentLifecycleHub() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedEquipment({
-                                      id: equipment.equipment_id,
+                                      id: equipment.equipmentId,
                                       stage: equipment.current_stage,
                                     });
                                     setTransitionDialogOpen(true);
@@ -1265,7 +1265,7 @@ export default function EquipmentLifecycleHub() {
                             {getStatusIcon(activity.stage_status)}
                             <div className="flex-1 space-y-1 min-w-0">
                               <p className="text-sm font-medium leading-none">
-                                {activity.equipment_brand} {activity.equipment_model}
+                                {activity.equipment_brand} {activity.equipmentModel}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 {activity.customer_name} • {activity.next_action_required}
@@ -1435,7 +1435,7 @@ export default function EquipmentLifecycleHub() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <h3 className="font-medium">
-                                {stage.equipment_brand} {stage.equipment_model}
+                                {stage.equipment_brand} {stage.equipmentModel}
                               </h3>
                               <Badge variant={getStageColor(stage.current_stage)}>
                                 {stage.current_stage.replace('_', ' ')}
@@ -1448,13 +1448,10 @@ export default function EquipmentLifecycleHub() {
                               <p>
                                 Started: {format(new Date(stage.stage_started_at), 'MMM dd, yyyy')}
                               </p>
-                              {stage.estimated_completion_date && (
+                              {stage.estimatedCompletionDate && (
                                 <p>
                                   Est. Completion:{' '}
-                                  {format(
-                                    new Date(stage.estimated_completion_date),
-                                    'MMM dd, yyyy',
-                                  )}
+                                  {format(new Date(stage.estimatedCompletionDate), 'MMM dd, yyyy')}
                                 </p>
                               )}
                               <p>Next Action: {stage.next_action_required}</p>
@@ -1466,7 +1463,7 @@ export default function EquipmentLifecycleHub() {
                                 variant="outline"
                                 onClick={() => {
                                   setSelectedEquipment({
-                                    id: stage.equipment_id,
+                                    id: stage.equipmentId,
                                     stage: stage.current_stage,
                                   });
                                   setTransitionDialogOpen(true);
@@ -1480,7 +1477,7 @@ export default function EquipmentLifecycleHub() {
                                 variant="ghost"
                                 onClick={() => {
                                   setSelectedEquipment({
-                                    id: stage.equipment_id,
+                                    id: stage.equipmentId,
                                     stage: stage.current_stage,
                                   });
                                   setHistoryDialogOpen(true);
@@ -1555,7 +1552,7 @@ export default function EquipmentLifecycleHub() {
                                 {format(new Date(po.requested_delivery_date), 'MMM dd, yyyy')}
                               </p>
                               <p>Items: {po.line_items_count}</p>
-                              {po.tracking_number && <p>Tracking: {po.tracking_number}</p>}
+                              {po.trackingNumber && <p>Tracking: {po.trackingNumber}</p>}
                             </div>
                           </div>
                           <div className="text-right flex-shrink-0">
@@ -1679,7 +1676,7 @@ export default function EquipmentLifecycleHub() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <h3 className="font-medium">
-                                {installation.equipment_brand} {installation.equipment_model}
+                                {installation.equipment_brand} {installation.equipmentModel}
                               </h3>
                               <Badge variant={getStageColor(installation.status)}>
                                 {installation.status}
@@ -1761,11 +1758,11 @@ export default function EquipmentLifecycleHub() {
                               <Badge variant={getStageColor(asset.current_status)}>
                                 {asset.current_status}
                               </Badge>
-                              <Badge variant="outline">{asset.equipment_type}</Badge>
+                              <Badge variant="outline">{asset.equipmentType}</Badge>
                             </div>
                             <div className="text-sm text-muted-foreground space-y-1">
-                              <p>Asset Tag: {asset.asset_tag}</p>
-                              <p>Serial: {asset.serial_number}</p>
+                              <p>Asset Tag: {asset.assetTag}</p>
+                              <p>Serial: {asset.serialNumber}</p>
                               <p>Customer: {asset.customer_name || 'Not assigned'}</p>
                               <p>Location: {asset.current_location_details}</p>
                               <p>

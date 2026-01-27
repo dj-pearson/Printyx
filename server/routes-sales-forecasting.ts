@@ -31,12 +31,12 @@ router.get(
   requireTenant,
   async (req: TenantRequest, res) => {
     try {
-      const tenantId = req.tenant_id!;
+      const tenantId = req.tenantId!;
       const forecasts = await db
         .select()
         .from(salesForecasts)
-        .where(eq(salesForecasts.tenant_id, tenantId))
-        .orderBy(desc(salesForecasts.created_at));
+        .where(eq(salesForecasts.tenantId, tenantId))
+        .orderBy(desc(salesForecasts.createdAt));
       res.json(forecasts);
     } catch (error) {
       console.error('Error fetching sales forecasts:', error);
@@ -49,17 +49,14 @@ router.get(
 router.get('/api/sales-forecasts/:id/pipeline', async (req: any, res) => {
   try {
     const { id } = req.params;
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
 
     const items = await db
       .select()
       .from(forecastPipelineItems)
       .where(
-        and(
-          eq(forecastPipelineItems.tenant_id, tenantId),
-          eq(forecastPipelineItems.forecastId, id),
-        ),
+        and(eq(forecastPipelineItems.tenantId, tenantId), eq(forecastPipelineItems.forecastId, id)),
       )
       .orderBy(asc(forecastPipelineItems.expectedCloseDate));
 
@@ -77,7 +74,7 @@ router.get(
   requireTenant,
   async (req: TenantRequest, res) => {
     try {
-      const tenantId = req.tenant_id!;
+      const tenantId = req.tenantId!;
       const { forecastId } = req.params;
       const { period = 'monthly', startDate, endDate } = req.query;
 
@@ -87,7 +84,7 @@ router.get(
         const forecastData = await db
           .select()
           .from(salesForecasts)
-          .where(and(eq(salesForecasts.tenant_id, tenantId), eq(salesForecasts.id, forecastId)))
+          .where(and(eq(salesForecasts.tenantId, tenantId), eq(salesForecasts.id, forecastId)))
           .limit(1);
         forecast = forecastData[0] || null;
       }
@@ -168,8 +165,8 @@ router.get(
 
       const transformedQuotes = quotesData.map((quote) => ({
         id: quote.id,
-        title: quote.title || `Quote #${quote.quote_number || quote.id}`,
-        value: parseFloat(quote.total_amount?.toString() || '0'),
+        title: quote.title || `Quote #${quote.quoteNumber || quote.id}`,
+        value: parseFloat(quote.totalAmount?.toString() || '0'),
         probability: 50, // Default probability for quotes
         expectedCloseDate: quote.valid_until || new Date().toISOString(),
         status: quote.status || 'sent',
@@ -179,7 +176,7 @@ router.get(
       const transformedProposals = proposalsData.map((proposal) => ({
         id: proposal.id,
         title: proposal.title || `Proposal ${proposal.id}`,
-        value: parseFloat(proposal.total_amount?.toString() || '0'),
+        value: parseFloat(proposal.totalAmount?.toString() || '0'),
         probability: 70, // Default probability for proposals
         expectedCloseDate: proposal.valid_until || new Date().toISOString(),
         status: proposal.status || 'sent',
@@ -286,13 +283,13 @@ router.get(
 // Get sales performance metrics
 router.get('/api/sales-performance-metrics', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
 
     const metrics = await db
       .select()
       .from(forecastMetrics)
-      .where(eq(forecastMetrics.tenant_id, tenantId))
+      .where(eq(forecastMetrics.tenantId, tenantId))
       .orderBy(desc(forecastMetrics.snapshotDate));
 
     res.json(metrics);
@@ -305,7 +302,7 @@ router.get('/api/sales-performance-metrics', async (req: any, res) => {
 // Create new sales forecast
 router.post('/api/sales-forecasts', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const userId = req.user?.id;
 
     if (!tenantId) {
@@ -377,13 +374,13 @@ router.put('/api/sales-pipeline/:id', isAuthenticated, async (req: any, res) => 
 // Get forecasting rules/settings
 router.get('/api/sales-forecasting-rules', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
 
     const rules = await db
       .select()
       .from(forecastRules)
-      .where(eq(forecastRules.tenant_id, tenantId))
+      .where(eq(forecastRules.tenantId, tenantId))
       .orderBy(asc(forecastRules.ruleName));
 
     res.json(rules);
@@ -396,7 +393,7 @@ router.get('/api/sales-forecasting-rules', async (req: any, res) => {
 // Get historical performance for trend analysis
 router.get('/api/sales-trends', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
 
     // Get historical sales metrics from business records and recent forecast metrics
@@ -409,30 +406,27 @@ router.get('/api/sales-trends', async (req: any, res) => {
       // Get recent closed deals from business records
       db
         .select({
-          month: sql<string>`DATE_TRUNC('month', ${businessRecords.updated_at})::text`,
+          month: sql<string>`DATE_TRUNC('month', ${businessRecords.updatedAt})::text`,
           revenue: sql<number>`COALESCE(SUM(CAST(${businessRecords.value} AS decimal)), 0)`,
           deals: sql<number>`COUNT(*)`,
         })
         .from(businessRecords)
         .where(
           and(
-            eq(businessRecords.tenant_id, tenantId),
+            eq(businessRecords.tenantId, tenantId),
             eq(businessRecords.type, 'customer'),
-            gte(businessRecords.updated_at, startDate),
+            gte(businessRecords.updatedAt, startDate),
           ),
         )
-        .groupBy(sql`DATE_TRUNC('month', ${businessRecords.updated_at})`)
-        .orderBy(sql`DATE_TRUNC('month', ${businessRecords.updated_at}) DESC`),
+        .groupBy(sql`DATE_TRUNC('month', ${businessRecords.updatedAt})`)
+        .orderBy(sql`DATE_TRUNC('month', ${businessRecords.updatedAt}) DESC`),
 
       // Get recent forecast metrics
       db
         .select()
         .from(forecastMetrics)
         .where(
-          and(
-            eq(forecastMetrics.tenant_id, tenantId),
-            gte(forecastMetrics.snapshotDate, startDate),
-          ),
+          and(eq(forecastMetrics.tenantId, tenantId), gte(forecastMetrics.snapshotDate, startDate)),
         )
         .orderBy(desc(forecastMetrics.snapshotDate)),
     ]);

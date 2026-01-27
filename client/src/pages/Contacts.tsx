@@ -215,7 +215,7 @@ export default function Contacts() {
 
       return (data || []).map((row: any) => ({
         id: row.id,
-        companyName: row.company_name,
+        companyName: row.companyName,
         recordType: row.record_type,
         status: row.status,
       }));
@@ -234,8 +234,8 @@ export default function Contacts() {
       if (error) throw error;
       return (data || []).map((u: any) => ({
         id: u.id,
-        firstName: u.first_name,
-        lastName: u.last_name,
+        firstName: u.firstName,
+        lastName: u.lastName,
         email: u.email,
       }));
     },
@@ -279,7 +279,7 @@ export default function Contacts() {
 
       return {
         id: data.id,
-        companyName: data.company_name,
+        companyName: data.companyName,
         recordType: data.record_type,
         status: data.status,
       };
@@ -454,22 +454,22 @@ export default function Contacts() {
       return {
         contacts: (data.contacts || []).map((c: any) => ({
           id: c.id,
-          firstName: c.first_name || '',
-          lastName: c.last_name || '',
+          firstName: c.firstName || '',
+          lastName: c.lastName || '',
           email: c.email || '',
           phone: c.phone || '',
           title: c.title || '',
-          companyId: c.company_id,
-          companyName: c.business_records?.company_name || getCompanyName(c.company_id) || '',
+          companyId: c.companyId,
+          companyName: c.business_records?.companyName || getCompanyName(c.companyId) || '',
           leadStatus: c.lead_status || 'new',
           lastContactDate: c.last_contact_date,
           nextFollowUpDate: c.next_follow_up_date,
-          createdAt: c.created_at,
-          ownerId: c.owner_id,
-          ownerName: getUserName(c.owner_id),
+          createdAt: c.createdAt,
+          ownerId: c.ownerId,
+          ownerName: getUserName(c.ownerId),
           favoriteContentType: c.favorite_content_type,
           preferredChannels: c.preferred_channels,
-          tenantId: c.tenant_id,
+          tenantId: c.tenantId,
           salutation: c.salutation,
           department: c.department,
           mobile: c.mobile,

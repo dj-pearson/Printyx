@@ -25,7 +25,7 @@ export function registerCompaniesRoutes(app: Express) {
   app.get('/api/companies', resolveTenant, async (req: any, res) => {
     try {
       const user = req.user as any;
-      const tenantId = user.tenant_id || getTenantId(req);
+      const tenantId = user.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -50,7 +50,7 @@ export function registerCompaniesRoutes(app: Express) {
   app.get('/api/companies/:id', resolveTenant, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -70,7 +70,7 @@ export function registerCompaniesRoutes(app: Express) {
   // POST /api/companies - Create new company
   app.post('/api/companies', resolveTenant, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -97,7 +97,7 @@ export function registerCompaniesRoutes(app: Express) {
   app.put('/api/companies/:id', resolveTenant, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -122,7 +122,7 @@ export function registerCompaniesRoutes(app: Express) {
   app.delete('/api/companies/:id', resolveTenant, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -146,7 +146,7 @@ export function registerCompaniesRoutes(app: Express) {
   // GET /api/companies/duplicates/scan - Scan for duplicate companies
   app.get('/api/companies/duplicates/scan', resolveTenant, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -166,7 +166,7 @@ export function registerCompaniesRoutes(app: Express) {
   // GET /api/companies/duplicates/details - Get details for specific company IDs
   app.get('/api/companies/duplicates/details', resolveTenant, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
       const ids = req.query.ids as string;
 
       if (!tenantId) {
@@ -192,7 +192,7 @@ export function registerCompaniesRoutes(app: Express) {
   // POST /api/companies/merge - Merge duplicate companies
   app.post('/api/companies/merge', resolveTenant, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
       const userId = getUserId(req);
 
       if (!tenantId) {
@@ -241,7 +241,7 @@ export function registerCompaniesRoutes(app: Express) {
   // POST /api/companies/check-duplicate - Check if a company would be a duplicate
   app.post('/api/companies/check-duplicate', resolveTenant, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
