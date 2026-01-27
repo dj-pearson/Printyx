@@ -20,7 +20,7 @@ router.get('/:id/qr-code', async (req: any, res) => {
 
     // Verify equipment exists and belongs to tenant
     const equipmentItem = await db.query.equipment.findFirst({
-      where: and(eq(equipment.id, id), eq(equipment.tenant_id, tenantId)),
+      where: and(eq(equipment.id, id), eq(equipment.tenantId, tenantId)),
     });
 
     if (!equipmentItem) {
@@ -54,7 +54,7 @@ router.get('/:id/asset-label', async (req: any, res) => {
 
     // Get equipment details
     const equipmentItem = await db.query.equipment.findFirst({
-      where: and(eq(equipment.id, id), eq(equipment.tenant_id, tenantId)),
+      where: and(eq(equipment.id, id), eq(equipment.tenantId, tenantId)),
       with: {
         customer: true,
       },
@@ -186,7 +186,7 @@ router.post('/bulk-qr-codes', async (req: any, res) => {
     // Get all equipment
     const equipmentItems = await db.query.equipment.findMany({
       where: and(
-        eq(equipment.tenant_id, tenantId),
+        eq(equipment.tenantId, tenantId),
         // @ts-ignore - inArray type issue
         equipmentIds.length > 0 ? inArray(equipment.id, equipmentIds) : undefined,
       ),

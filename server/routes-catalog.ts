@@ -146,7 +146,7 @@ router.patch('/api/catalog/models/:id', async (req: any, res) => {
     if (category !== undefined) updateData.category = category;
     if (productType !== undefined) updateData.productType = productType;
     if (status !== undefined) updateData.status = status;
-    updateData.updated_at = new Date();
+    updateData.updatedAt = new Date();
 
     await db.update(masterProductModels).set(updateData).where(eq(masterProductModels.id, id));
 

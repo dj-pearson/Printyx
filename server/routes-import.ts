@@ -433,7 +433,7 @@ router.post(
       }
 
       job.status = 'validating';
-      job.updated_at = new Date();
+      job.updatedAt = new Date();
 
       const definition =
         entityTypeDefinitions[job.entityType as keyof typeof entityTypeDefinitions];
@@ -530,7 +530,7 @@ router.post(
         dup.resolution = resolution;
       });
       job.duplicatesResolved = job.duplicates.length;
-      job.updated_at = new Date();
+      job.updatedAt = new Date();
 
       res.json({ message: 'Duplicates resolved' });
     } catch (error) {
@@ -553,10 +553,10 @@ router.post('/api/import/jobs/:jobId/execute', requireAuth, async (req: Request,
     }
 
     job.status = 'processing';
-    job.updated_at = new Date();
+    job.updatedAt = new Date();
 
-    const tenantId = job.tenant_id;
-    const userId = job.user_id;
+    const tenantId = job.tenantId;
+    const userId = job.userId;
 
     let importedRows = 0;
     let skippedRows = 0;
@@ -607,7 +607,7 @@ router.post('/api/import/jobs/:jobId/execute', requireAuth, async (req: Request,
     job.importedRows = importedRows;
     job.skippedRows = skippedRows;
     job.mergedRows = mergedRows;
-    job.updated_at = new Date();
+    job.updatedAt = new Date();
 
     res.json({
       message: 'Import completed',
@@ -847,7 +847,7 @@ async function detectDuplicates(job: ImportJob, definition: any): Promise<Duplic
   const existingRecords = await db
     .select()
     .from(businessRecords)
-    .where(eq(businessRecords.tenant_id, job.tenant_id))
+    .where(eq(businessRecords.tenantId, job.tenantId))
     .limit(1000); // Limit for performance
 
   for (let i = 0; i < job.fileData.length; i++) {

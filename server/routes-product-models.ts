@@ -28,7 +28,7 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user!.tenant_id;
+        const tenantId = req.user!.tenantId;
         const { search, category, manufacturer, status } = req.query;
 
         let query = db
@@ -48,11 +48,11 @@ export function registerProductModelsRoutes(app: Express) {
             weight: productModels.weight,
             dimensions: productModels.dimensions,
             warrantyPeriod: productModels.warrantyPeriod,
-            createdAt: productModels.created_at,
-            updatedAt: productModels.updated_at,
+            createdAt: productModels.createdAt,
+            updatedAt: productModels.updatedAt,
           })
           .from(productModels)
-          .where(eq(productModels.tenant_id, tenantId));
+          .where(eq(productModels.tenantId, tenantId));
 
         // Apply filters
         if (search) {
@@ -89,13 +89,13 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.user.tenantId;
         const modelId = req.params.id;
 
         const [model] = await db
           .select()
           .from(productModels)
-          .where(and(eq(productModels.id, modelId), eq(productModels.tenant_id, tenantId)));
+          .where(and(eq(productModels.id, modelId), eq(productModels.tenantId, tenantId)));
 
         if (!model) {
           return res.status(404).json({ error: 'Product model not found' });
@@ -116,7 +116,7 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.CREATE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.user.tenantId;
 
         const modelData = insertProductModelSchema.parse({
           ...req.body,
@@ -141,7 +141,7 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.EDIT]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.user.tenantId;
         const modelId = req.params.id;
 
         const [updatedModel] = await db
@@ -150,7 +150,7 @@ export function registerProductModelsRoutes(app: Express) {
             ...req.body,
             updatedAt: new Date(),
           })
-          .where(and(eq(productModels.id, modelId), eq(productModels.tenant_id, tenantId)))
+          .where(and(eq(productModels.id, modelId), eq(productModels.tenantId, tenantId)))
           .returning();
 
         if (!updatedModel) {
@@ -172,12 +172,12 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.DELETE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.user.tenantId;
         const modelId = req.params.id;
 
         const [deletedModel] = await db
           .delete(productModels)
-          .where(and(eq(productModels.id, modelId), eq(productModels.tenant_id, tenantId)))
+          .where(and(eq(productModels.id, modelId), eq(productModels.tenantId, tenantId)))
           .returning();
 
         if (!deletedModel) {
@@ -199,13 +199,13 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.user.tenantId;
 
         const categories = await db
           .selectDistinct({ category: productModels.category })
           .from(productModels)
           .where(
-            and(eq(productModels.tenant_id, tenantId), sql`${productModels.category} IS NOT NULL`),
+            and(eq(productModels.tenantId, tenantId), sql`${productModels.category} IS NOT NULL`),
           );
 
         res.json(categories.map((c) => c.category));
@@ -223,14 +223,14 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.user.tenantId;
 
         const manufacturers = await db
           .selectDistinct({ manufacturer: productModels.manufacturer })
           .from(productModels)
           .where(
             and(
-              eq(productModels.tenant_id, tenantId),
+              eq(productModels.tenantId, tenantId),
               sql`${productModels.manufacturer} IS NOT NULL`,
             ),
           );
@@ -250,14 +250,14 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.user.tenantId;
 
         const lowStockModels = await db
           .select()
           .from(productModels)
           .where(
             and(
-              eq(productModels.tenant_id, tenantId),
+              eq(productModels.tenantId, tenantId),
               sql`${productModels.stockQuantity} <= ${productModels.reorderLevel}`,
             ),
           )
@@ -278,24 +278,24 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.user.tenantId;
 
         const totalModelsResult = await db
           .select({ count: count() })
           .from(productModels)
-          .where(eq(productModels.tenant_id, tenantId));
+          .where(eq(productModels.tenantId, tenantId));
 
         const activeModelsResult = await db
           .select({ count: count() })
           .from(productModels)
-          .where(and(eq(productModels.tenant_id, tenantId), eq(productModels.status, 'active')));
+          .where(and(eq(productModels.tenantId, tenantId), eq(productModels.status, 'active')));
 
         const lowStockResult = await db
           .select({ count: count() })
           .from(productModels)
           .where(
             and(
-              eq(productModels.tenant_id, tenantId),
+              eq(productModels.tenantId, tenantId),
               sql`${productModels.stockQuantity} <= ${productModels.reorderLevel}`,
             ),
           );
@@ -305,7 +305,7 @@ export function registerProductModelsRoutes(app: Express) {
             totalValue: sql<number>`COALESCE(SUM(${productModels.price} * ${productModels.stockQuantity}), 0)`,
           })
           .from(productModels)
-          .where(eq(productModels.tenant_id, tenantId));
+          .where(eq(productModels.tenantId, tenantId));
 
         const totalModels = totalModelsResult[0]?.count || 0;
         const activeModels = activeModelsResult[0]?.count || 0;
@@ -333,7 +333,7 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.EDIT]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.user.tenantId;
         const { updates } = req.body; // Array of { id, stockQuantity }
 
         if (!Array.isArray(updates)) {
@@ -348,7 +348,7 @@ export function registerProductModelsRoutes(app: Express) {
                 stockQuantity: update.stockQuantity,
                 updatedAt: new Date(),
               })
-              .where(and(eq(productModels.id, update.id), eq(productModels.tenant_id, tenantId)))
+              .where(and(eq(productModels.id, update.id), eq(productModels.tenantId, tenantId)))
               .returning();
 
             return updatedModel;

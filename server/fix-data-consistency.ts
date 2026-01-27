@@ -103,12 +103,12 @@ export function createTenantAwareRoute(routeFunction: string, entityName: string
 // Replace hardcoded tenant ID with session-based resolution
 app.get("${routeFunction}", resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
     
     // Query actual database instead of returning mock data
     const records = await db.select().from(${entityName})
-      .where(eq(${entityName}.tenant_id, tenantId))
-      .orderBy(desc(${entityName}.created_at));
+      .where(eq(${entityName}.tenantId, tenantId))
+      .orderBy(desc(${entityName}.createdAt));
 
     // Transform database fields to frontend format if needed
     const transformedRecords = records.map(record => 
@@ -153,12 +153,12 @@ export function getValidStatusTransitions(currentStatus: string, recordType: 'le
 // External system data synchronization helpers
 export const EXTERNAL_SYSTEM_SYNC = {
   prepareEAutomateData: (businessRecord: any) => ({
-    CompanyName: businessRecord.company_name,
+    CompanyName: businessRecord.companyName,
     ContactName: businessRecord.primary_contact_name,
     Address1: businessRecord.address_line1,
     City: businessRecord.city,
     State: businessRecord.state,
-    ZipCode: businessRecord.postal_code,
+    ZipCode: businessRecord.postalCode,
     Phone: businessRecord.phone,
     Email: businessRecord.primary_contact_email,
     SalesRep: businessRecord.assigned_sales_rep,
@@ -169,7 +169,7 @@ export const EXTERNAL_SYSTEM_SYNC = {
   }),
 
   prepareSalesforceData: (businessRecord: any) => ({
-    Name: businessRecord.company_name,
+    Name: businessRecord.companyName,
     Type: businessRecord.record_type === 'customer' ? 'Customer' : 'Prospect',
     Phone: businessRecord.phone,
     BillingStreet: businessRecord.billing_address_1,
@@ -210,15 +210,15 @@ export const OPTIMIZED_QUERIES = {
       br.*,
       COUNT(st.id) as service_ticket_count,
       COUNT(e.id) as equipment_count,
-      SUM(i.total_amount) as total_invoice_amount,
+      SUM(i.totalAmount) as total_invoice_amount,
       MAX(st.completed_date) as last_service_date
     FROM business_records br
-    LEFT JOIN service_tickets st ON br.id = st.customer_id
-    LEFT JOIN equipment e ON br.id = e.customer_id  
-    LEFT JOIN invoices i ON br.id = i.customer_id
-    WHERE br.tenant_id = $1
+    LEFT JOIN service_tickets st ON br.id = st.customerId
+    LEFT JOIN equipment e ON br.id = e.customerId  
+    LEFT JOIN invoices i ON br.id = i.customerId
+    WHERE br.tenantId = $1
     GROUP BY br.id
-    ORDER BY br.created_at DESC
+    ORDER BY br.createdAt DESC
   `,
 
   getLeadConversionPipeline: (tenantId: string) => `
@@ -244,7 +244,7 @@ export const OPTIMIZED_QUERIES = {
   getCustomerHealthMetrics: (tenantId: string) => `
     SELECT 
       br.id,
-      br.company_name,
+      br.companyName,
       br.customer_since,
       COUNT(st.id) as service_calls_last_30_days,
       AVG(st.customer_satisfaction) as avg_satisfaction,
@@ -252,11 +252,11 @@ export const OPTIMIZED_QUERIES = {
       br.current_balance,
       br.last_payment_date
     FROM business_records br
-    LEFT JOIN service_tickets st ON br.id = st.customer_id 
-      AND st.created_at >= NOW() - INTERVAL '30 days'
-    WHERE br.tenant_id = $1 AND br.record_type = 'customer'
-    GROUP BY br.id, br.company_name, br.customer_since, br.current_balance, br.last_payment_date
-    ORDER BY br.company_name
+    LEFT JOIN service_tickets st ON br.id = st.customerId 
+      AND st.createdAt >= NOW() - INTERVAL '30 days'
+    WHERE br.tenantId = $1 AND br.record_type = 'customer'
+    GROUP BY br.id, br.companyName, br.customer_since, br.current_balance, br.last_payment_date
+    ORDER BY br.companyName
   `,
 };
 
@@ -265,7 +265,7 @@ export const DATA_VALIDATION = {
   validateBusinessRecord: (record: any) => {
     const errors: string[] = [];
 
-    if (!record.company_name) errors.push('Company name is required');
+    if (!record.companyName) errors.push('Company name is required');
     if (!record.record_type || !['lead', 'customer'].includes(record.record_type)) {
       errors.push('Valid record type (lead/customer) is required');
     }

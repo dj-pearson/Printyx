@@ -50,12 +50,12 @@ export interface RefreshResult {
  * Check if token needs refresh
  */
 export function needsRefresh(tokenData: TokenData): boolean {
-  if (!tokenData.expires_at && !tokenData.expires_in) {
+  if (!tokenData.expiresAt && !tokenData.expires_in) {
     return false; // No expiration info, assume valid
   }
 
-  const expiresAt = tokenData.expires_at
-    ? tokenData.expires_at * 1000 // Convert to milliseconds
+  const expiresAt = tokenData.expiresAt
+    ? tokenData.expiresAt * 1000 // Convert to milliseconds
     : Date.now() + (tokenData.expires_in || 0) * 1000;
 
   const refreshThreshold = TOKEN_REFRESH_CONFIG.refreshBeforeExpiryMinutes * 60 * 1000;
@@ -305,7 +305,7 @@ export async function updateIntegrationTokens(
       tokens: {
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token || integration.config?.tokens?.refresh_token,
-        expires_at: tokens.expires_at,
+        expires_at: tokens.expiresAt,
         expires_in: tokens.expires_in,
         token_type: tokens.token_type,
         scope: tokens.scope,

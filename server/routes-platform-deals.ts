@@ -108,7 +108,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     // Build ORDER BY
     const orderByColumn =
-      platformDeals[sortBy as keyof typeof platformDeals] || platformDeals.created_at;
+      platformDeals[sortBy as keyof typeof platformDeals] || platformDeals.createdAt;
     const orderByClause = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
 
     // Fetch deals with business record info
@@ -253,7 +253,7 @@ router.get('/stats', async (req: Request, res: Response) => {
         break;
     }
 
-    const conditions: SQL[] = [gte(platformDeals.created_at, startDate)];
+    const conditions: SQL[] = [gte(platformDeals.createdAt, startDate)];
     if (ownerId) {
       conditions.push(eq(platformDeals.ownerId, ownerId as string));
     }
@@ -282,10 +282,10 @@ router.get('/stats', async (req: Request, res: Response) => {
     });
 
     const salesCycleDays = closedDeals
-      .filter((d) => d.actualCloseDate && d.created_at)
+      .filter((d) => d.actualCloseDate && d.createdAt)
       .map((d) => {
         const days = Math.floor(
-          (d.actualCloseDate!.getTime() - d.created_at!.getTime()) / (1000 * 60 * 60 * 24),
+          (d.actualCloseDate!.getTime() - d.createdAt!.getTime()) / (1000 * 60 * 60 * 24),
         );
         return days;
       });

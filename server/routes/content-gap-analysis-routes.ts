@@ -11,7 +11,7 @@ const router = Router();
 
 // Middleware to require authentication
 const requireAuth = (req: Request, res: Response, next: Function) => {
-  if (!req.session || !req.session.user_id) {
+  if (!req.session || !req.session.userId) {
     return res.status(401).json({ message: 'Authentication required' });
   }
   next();
@@ -19,7 +19,7 @@ const requireAuth = (req: Request, res: Response, next: Function) => {
 
 // Middleware to require admin role
 const requireAdmin = (req: Request, res: Response, next: Function) => {
-  if (!req.session || !req.session.user_id) {
+  if (!req.session || !req.session.userId) {
     return res.status(401).json({ message: 'Authentication required' });
   }
   const userRole = (req.session as any).role || 'guest';
@@ -33,9 +33,7 @@ const requireAdmin = (req: Request, res: Response, next: Function) => {
 // Helper to get tenant ID
 const getTenantId = (req: Request): string => {
   return (
-    (req as any).tenant_id ||
-    (req.session as any).tenant_id ||
-    '00000000-0000-0000-0000-000000000000'
+    (req as any).tenantId || (req.session as any).tenantId || '00000000-0000-0000-0000-000000000000'
   );
 };
 

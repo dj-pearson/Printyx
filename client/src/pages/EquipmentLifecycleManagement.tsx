@@ -418,7 +418,7 @@ export default function EquipmentLifecycleManagement() {
                               <SelectContent>
                                 {businessRecords.map((record: any) => (
                                   <SelectItem key={record.id} value={record.id}>
-                                    {record.company_name || record.companyName}
+                                    {record.companyName || record.companyName}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -519,7 +519,7 @@ export default function EquipmentLifecycleManagement() {
                           />
                           <FormField
                             control={poForm.control}
-                            name="items.0.equipment_model"
+                            name="items.0.equipmentModel"
                             render={({ field }) => (
                               <FormItem>
                                 <FormControl>
@@ -560,7 +560,7 @@ export default function EquipmentLifecycleManagement() {
                           />
                           <FormField
                             control={poForm.control}
-                            name="items.0.unit_price"
+                            name="items.0.unitPrice"
                             render={({ field }) => (
                               <FormItem>
                                 <FormControl>
@@ -1126,7 +1126,7 @@ export default function EquipmentLifecycleManagement() {
                         >
                           <div className="flex-1">
                             <h4 className="font-medium text-sm">
-                              {stage.equipment_brand} {stage.equipment_model}
+                              {stage.equipment_brand} {stage.equipmentModel}
                             </h4>
                             <p className="text-xs text-muted-foreground">
                               {stage.customer_name} • {stage.next_action_required}
@@ -1199,7 +1199,7 @@ export default function EquipmentLifecycleManagement() {
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
                               <h3 className="font-medium">
-                                {stage.equipment_brand} {stage.equipment_model}
+                                {stage.equipment_brand} {stage.equipmentModel}
                               </h3>
                               <Badge variant={getStageColor(stage.current_stage)}>
                                 {stage.current_stage.replace('_', ' ')}
@@ -1212,13 +1212,10 @@ export default function EquipmentLifecycleManagement() {
                               <p>
                                 Started: {format(new Date(stage.stage_started_at), 'MMM dd, yyyy')}
                               </p>
-                              {stage.estimated_completion_date && (
+                              {stage.estimatedCompletionDate && (
                                 <p>
                                   Est. Completion:{' '}
-                                  {format(
-                                    new Date(stage.estimated_completion_date),
-                                    'MMM dd, yyyy',
-                                  )}
+                                  {format(new Date(stage.estimatedCompletionDate), 'MMM dd, yyyy')}
                                 </p>
                               )}
                               <p>Next Action: {stage.next_action_required}</p>
@@ -1272,7 +1269,7 @@ export default function EquipmentLifecycleManagement() {
                                 {format(new Date(po.requested_delivery_date), 'MMM dd, yyyy')}
                               </p>
                               <p>Items: {po.line_items_count}</p>
-                              {po.tracking_number && <p>Tracking: {po.tracking_number}</p>}
+                              {po.trackingNumber && <p>Tracking: {po.trackingNumber}</p>}
                             </div>
                           </div>
                           <div className="text-right">
@@ -1360,7 +1357,7 @@ export default function EquipmentLifecycleManagement() {
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
                               <h3 className="font-medium">
-                                {installation.equipment_brand} {installation.equipment_model}
+                                {installation.equipment_brand} {installation.equipmentModel}
                               </h3>
                               <Badge variant={getStageColor(installation.status)}>
                                 {installation.status}
@@ -1432,11 +1429,11 @@ export default function EquipmentLifecycleManagement() {
                               <Badge variant={getStageColor(asset.current_status)}>
                                 {asset.current_status}
                               </Badge>
-                              <Badge variant="outline">{asset.equipment_type}</Badge>
+                              <Badge variant="outline">{asset.equipmentType}</Badge>
                             </div>
                             <div className="text-sm text-muted-foreground space-y-1">
-                              <p>Asset Tag: {asset.asset_tag}</p>
-                              <p>Serial: {asset.serial_number}</p>
+                              <p>Asset Tag: {asset.assetTag}</p>
+                              <p>Serial: {asset.serialNumber}</p>
                               <p>Customer: {asset.customer_name}</p>
                               <p>Location: {asset.current_location_details}</p>
                               <p>

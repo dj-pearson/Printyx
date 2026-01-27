@@ -78,7 +78,7 @@ router.get('/alerts/:alertId/triage', async (req, res) => {
   try {
     const triage = await db.query.alertTriageResults.findFirst({
       where: eq(alertTriageResults.alertId, req.params.alertId),
-      orderBy: desc(alertTriageResults.created_at),
+      orderBy: desc(alertTriageResults.createdAt),
     });
 
     if (!triage) {
@@ -179,13 +179,13 @@ router.get('/containment/logs', async (req, res) => {
     const { tenantId, alertId, limit = 50 } = req.query;
 
     let query = db.query.automatedContainmentLogs.findMany({
-      orderBy: desc(automatedContainmentLogs.created_at),
+      orderBy: desc(automatedContainmentLogs.createdAt),
       limit: Number(limit),
     });
 
     const conditions = [];
     if (tenantId) {
-      conditions.push(eq(automatedContainmentLogs.tenant_id, tenantId as string));
+      conditions.push(eq(automatedContainmentLogs.tenantId, tenantId as string));
     }
     if (alertId) {
       conditions.push(eq(automatedContainmentLogs.alertId, alertId as string));
@@ -193,7 +193,7 @@ router.get('/containment/logs', async (req, res) => {
 
     const logs = await db.query.automatedContainmentLogs.findMany({
       where: conditions.length > 0 ? and(...conditions) : undefined,
-      orderBy: desc(automatedContainmentLogs.created_at),
+      orderBy: desc(automatedContainmentLogs.createdAt),
       limit: Number(limit),
     });
 
@@ -254,8 +254,8 @@ router.get('/incidents/correlations', async (req, res) => {
     const { tenantId, limit = 50 } = req.query;
 
     const correlations = await db.query.incidentCorrelations.findMany({
-      where: tenantId ? eq(incidentCorrelations.tenant_id, tenantId as string) : undefined,
-      orderBy: desc(incidentCorrelations.created_at),
+      where: tenantId ? eq(incidentCorrelations.tenantId, tenantId as string) : undefined,
+      orderBy: desc(incidentCorrelations.createdAt),
       limit: Number(limit),
     });
 
@@ -274,7 +274,7 @@ router.get('/incidents/:incidentId/related', async (req, res) => {
   try {
     const correlation = await db.query.incidentCorrelations.findFirst({
       where: eq(incidentCorrelations.masterIncidentId, req.params.incidentId),
-      orderBy: desc(incidentCorrelations.created_at),
+      orderBy: desc(incidentCorrelations.createdAt),
     });
 
     if (!correlation) {
@@ -497,7 +497,7 @@ router.get('/threats', async (req, res) => {
 
     const conditions = [];
     if (tenantId) {
-      conditions.push(eq(proactiveThreatDetection.tenant_id, tenantId as string));
+      conditions.push(eq(proactiveThreatDetection.tenantId, tenantId as string));
     }
     if (status) {
       conditions.push(eq(proactiveThreatDetection.status, status as string));
@@ -562,7 +562,7 @@ router.get('/routing-rules', async (req, res) => {
 
     const conditions = [];
     if (tenantId) {
-      conditions.push(eq(alertRoutingRules.tenant_id, tenantId as string));
+      conditions.push(eq(alertRoutingRules.tenantId, tenantId as string));
     }
     if (isActive !== undefined) {
       conditions.push(eq(alertRoutingRules.isActive, isActive === 'true'));

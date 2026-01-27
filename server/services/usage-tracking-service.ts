@@ -38,10 +38,10 @@ export class UsageTrackingService {
     // Get subscription to determine period boundaries
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
-        eq(tenantSubscriptions.tenant_id, tenantId),
+        eq(tenantSubscriptions.tenantId, tenantId),
         sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`,
       ),
-      orderBy: [desc(tenantSubscriptions.created_at)],
+      orderBy: [desc(tenantSubscriptions.createdAt)],
     });
 
     if (!subscription) {
@@ -51,7 +51,7 @@ export class UsageTrackingService {
     // Check for existing period
     let usage = await db.query.usageMetrics.findFirst({
       where: and(
-        eq(usageMetrics.tenant_id, tenantId),
+        eq(usageMetrics.tenantId, tenantId),
         lte(usageMetrics.periodStart, now),
         gte(usageMetrics.periodEnd, now),
       ),
@@ -170,7 +170,7 @@ export class UsageTrackingService {
       .from(users)
       .where(
         and(
-          eq(users.tenant_id, tenantId),
+          eq(users.tenantId, tenantId),
           eq(users.isActive, true),
           gte(users.lastLoginAt, thirtyDaysAgo),
         ),
@@ -180,19 +180,19 @@ export class UsageTrackingService {
     const [totalUsersCount] = await db
       .select({ count: sql<number>`count(*)` })
       .from(users)
-      .where(and(eq(users.tenant_id, tenantId), eq(users.isActive, true)));
+      .where(and(eq(users.tenantId, tenantId), eq(users.isActive, true)));
 
     // Count active locations
     const [locationsCount] = await db
       .select({ count: sql<number>`count(*)` })
       .from(locations)
-      .where(and(eq(locations.tenant_id, tenantId), eq(locations.isActive, true)));
+      .where(and(eq(locations.tenantId, tenantId), eq(locations.isActive, true)));
 
     // Count business records
     const [recordsCount] = await db
       .select({ count: sql<number>`count(*)` })
       .from(businessRecords)
-      .where(and(eq(businessRecords.tenant_id, tenantId), eq(businessRecords.isDeleted, false)));
+      .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.isDeleted, false)));
 
     // Get storage usage
     // TODO: Implement actual storage calculation from documents, attachments, etc.
@@ -228,10 +228,10 @@ export class UsageTrackingService {
     // Get subscription and plan
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
-        eq(tenantSubscriptions.tenant_id, tenantId),
+        eq(tenantSubscriptions.tenantId, tenantId),
         sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`,
       ),
-      orderBy: [desc(tenantSubscriptions.created_at)],
+      orderBy: [desc(tenantSubscriptions.createdAt)],
     });
 
     if (!subscription) {
@@ -317,7 +317,7 @@ export class UsageTrackingService {
 
     // Check if snapshot already exists for today
     const existing = await db.query.dailyUsageSnapshots.findFirst({
-      where: and(eq(dailyUsageSnapshots.tenant_id, tenantId), eq(dailyUsageSnapshots.date, today)),
+      where: and(eq(dailyUsageSnapshots.tenantId, tenantId), eq(dailyUsageSnapshots.date, today)),
     });
 
     if (existing) {
@@ -355,7 +355,7 @@ export class UsageTrackingService {
       .from(dailyUsageSnapshots)
       .where(
         and(
-          eq(dailyUsageSnapshots.tenant_id, tenantId),
+          eq(dailyUsageSnapshots.tenantId, tenantId),
           gte(dailyUsageSnapshots.date, startDate),
           lte(dailyUsageSnapshots.date, endDate),
         ),
@@ -473,10 +473,10 @@ export class UsageTrackingService {
     // Get subscription and plan
     const subscription = await db.query.tenantSubscriptions.findFirst({
       where: and(
-        eq(tenantSubscriptions.tenant_id, tenantId),
+        eq(tenantSubscriptions.tenantId, tenantId),
         sql`${tenantSubscriptions.status} IN ('active', 'trialing', 'past_due')`,
       ),
-      orderBy: [desc(tenantSubscriptions.created_at)],
+      orderBy: [desc(tenantSubscriptions.createdAt)],
     });
 
     if (!subscription) {

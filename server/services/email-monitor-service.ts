@@ -46,7 +46,7 @@ export class EmailMonitorService {
 
   constructor(config: EmailConfig, tenantId: string) {
     this.config = config;
-    this.tenant_id = tenantId;
+    this.tenantId = tenantId;
   }
 
   /**
@@ -246,7 +246,7 @@ export class EmailMonitorService {
       }));
 
       // Pass to AI parser
-      const aiParserService = new AIEmailParserService(this.tenant_id);
+      const aiParserService = new AIEmailParserService(this.tenantId);
       const parsedData = await aiParserService.parseEmail({
         from,
         subject,
@@ -255,7 +255,7 @@ export class EmailMonitorService {
       });
 
       // Create ticket
-      const ticketService = new TicketCreationService(this.tenant_id);
+      const ticketService = new TicketCreationService(this.tenantId);
       const ticket = await ticketService.createTicket(parsedData);
 
       // Send confirmation email
@@ -268,7 +268,7 @@ export class EmailMonitorService {
 
       // Mark as processed
       await db.insert(processedEmails).values({
-        tenantId: this.tenant_id,
+        tenantId: this.tenantId,
         emailId,
         from,
         to: email.to?.text || '',
@@ -295,7 +295,7 @@ export class EmailMonitorService {
 
       // Mark as failed
       await db.insert(processedEmails).values({
-        tenantId: this.tenant_id,
+        tenantId: this.tenantId,
         emailId,
         from,
         to: email.to?.text || '',
@@ -321,7 +321,7 @@ export class EmailMonitorService {
    */
   private async getMonitorConfig() {
     return await db.query.emailMonitorConfig.findFirst({
-      where: eq(emailMonitorConfig.tenant_id, this.tenant_id),
+      where: eq(emailMonitorConfig.tenantId, this.tenantId),
     });
   }
 
@@ -349,7 +349,7 @@ export class EmailMonitorService {
     await db
       .update(emailMonitorConfig)
       .set(updates)
-      .where(eq(emailMonitorConfig.tenant_id, this.tenant_id));
+      .where(eq(emailMonitorConfig.tenantId, this.tenantId));
   }
 
   /**
@@ -388,7 +388,7 @@ export async function startEmailMonitor(tenantId: string): Promise<void> {
 
   // Get configuration from database
   const config = await db.query.emailMonitorConfig.findFirst({
-    where: eq(emailMonitorConfig.tenant_id, tenantId),
+    where: eq(emailMonitorConfig.tenantId, tenantId),
   });
 
   if (!config || !config.enabled) {
@@ -469,12 +469,9 @@ export async function startAllEmailMonitors(): Promise<void> {
 
   for (const config of configs) {
     try {
-      await startEmailMonitor(config.tenant_id);
+      await startEmailMonitor(config.tenantId);
     } catch (error) {
-      console.error(
-        `[EmailMonitor] Failed to start monitor for tenant ${config.tenant_id}:`,
-        error,
-      );
+      console.error(`[EmailMonitor] Failed to start monitor for tenant ${config.tenantId}:`, error);
     }
   }
 }

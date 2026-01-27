@@ -198,7 +198,7 @@ export class ServiceSupervisorReportingService {
 
     const dateFilter =
       dateRange?.dateFrom && dateRange?.dateTo
-        ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        ? sql`AND sc.createdAt BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
         : sql``;
 
     // Get service calls by location, priority, and status
@@ -209,16 +209,16 @@ export class ServiceSupervisorReportingService {
         sc.priority,
         sc.status,
         COUNT(sc.id)::int as call_count,
-        AVG(EXTRACT(EPOCH FROM (sc.completed_at - sc.created_at)) / 3600)::decimal as avg_duration,
+        AVG(EXTRACT(EPOCH FROM (sc.completedAt - sc.createdAt)) / 3600)::decimal as avg_duration,
         COUNT(CASE WHEN sc.first_time_fix = true THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as ftf_rate,
         AVG(sc.satisfaction_rating)::decimal as avg_satisfaction
       FROM locations l
       LEFT JOIN users u ON u.primary_location_id = l.id
       LEFT JOIN service_calls sc ON sc.technician_id = u.id
-        AND sc.tenant_id = ${userContext.tenant_id}
+        AND sc.tenantId = ${userContext.tenantId}
         ${dateFilter}
       WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND l.tenant_id = ${userContext.tenant_id}
+        AND l.tenantId = ${userContext.tenantId}
       GROUP BY l.id, l.name, sc.priority, sc.status
       ORDER BY l.name, CASE sc.priority
         WHEN 'Critical' THEN 1
@@ -230,7 +230,7 @@ export class ServiceSupervisorReportingService {
     `);
 
     const serviceCalls: LocationServiceCall[] = result.rows.map((row: any) => ({
-      locationId: row.location_id,
+      locationId: row.locationId,
       locationName: row.location_name,
       priority: row.priority || 'Unknown',
       status: row.status || 'Unknown',
@@ -314,7 +314,7 @@ export class ServiceSupervisorReportingService {
 
     const dateFilter =
       dateRange?.dateFrom && dateRange?.dateTo
-        ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        ? sql`AND sc.createdAt BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
         : sql``;
 
     const result = await db.execute(sql`
@@ -325,7 +325,7 @@ export class ServiceSupervisorReportingService {
           COUNT(DISTINCT u.id)::int as technician_count,
           COUNT(sc.id)::int as total_calls,
           COUNT(CASE WHEN sc.status = 'Completed' THEN 1 END)::int as completed_calls,
-          AVG(EXTRACT(EPOCH FROM (sc.first_response_at - sc.created_at)) / 3600)::decimal as avg_response_time,
+          AVG(EXTRACT(EPOCH FROM (sc.first_response_at - sc.createdAt)) / 3600)::decimal as avg_response_time,
           COUNT(CASE WHEN sc.first_time_fix = true THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as ftf_rate,
           AVG(sc.satisfaction_rating)::decimal as avg_satisfaction,
           COUNT(CASE WHEN sc.sla_status = 'on_time' THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as sla_compliance,
@@ -333,13 +333,13 @@ export class ServiceSupervisorReportingService {
         FROM locations l
         LEFT JOIN users u ON u.primary_location_id = l.id
         LEFT JOIN service_calls sc ON sc.technician_id = u.id
-          AND sc.tenant_id = ${userContext.tenant_id}
+          AND sc.tenantId = ${userContext.tenantId}
           ${dateFilter}
-        LEFT JOIN time_entries te ON te.user_id = u.id
-          AND te.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN time_entries te ON te.userId = u.id
+          AND te.tenantId = ${userContext.tenantId}
           ${dateFilter}
         WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
-          AND l.tenant_id = ${userContext.tenant_id}
+          AND l.tenantId = ${userContext.tenantId}
         GROUP BY l.id, l.name
       )
       SELECT
@@ -350,7 +350,7 @@ export class ServiceSupervisorReportingService {
     `);
 
     const locations: LocationServicePerformance[] = result.rows.map((row: any) => ({
-      locationId: row.location_id,
+      locationId: row.locationId,
       locationName: row.location_name,
       technicianCount: parseInt(row.technician_count || 0),
       totalCalls: parseInt(row.total_calls || 0),
@@ -415,7 +415,7 @@ export class ServiceSupervisorReportingService {
 
     const dateFilter =
       dateRange?.dateFrom && dateRange?.dateTo
-        ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        ? sql`AND sc.createdAt BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
         : sql``;
 
     const result = await db.execute(sql`
@@ -427,15 +427,15 @@ export class ServiceSupervisorReportingService {
         COUNT(CASE WHEN sc.sla_status = 'at_risk' THEN 1 END)::int as at_risk_calls,
         COUNT(CASE WHEN sc.sla_status = 'overdue' THEN 1 END)::int as overdue_calls,
         COUNT(CASE WHEN sc.sla_status = 'on_time' THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as sla_compliance,
-        AVG(EXTRACT(EPOCH FROM (sc.first_response_at - sc.created_at)) / 3600)::decimal as avg_response_time,
-        AVG(EXTRACT(EPOCH FROM (sc.completed_at - sc.created_at)) / 3600)::decimal as avg_resolution_time
+        AVG(EXTRACT(EPOCH FROM (sc.first_response_at - sc.createdAt)) / 3600)::decimal as avg_response_time,
+        AVG(EXTRACT(EPOCH FROM (sc.completedAt - sc.createdAt)) / 3600)::decimal as avg_resolution_time
       FROM locations l
       LEFT JOIN users u ON u.primary_location_id = l.id
       LEFT JOIN service_calls sc ON sc.technician_id = u.id
-        AND sc.tenant_id = ${userContext.tenant_id}
+        AND sc.tenantId = ${userContext.tenantId}
         ${dateFilter}
       WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND l.tenant_id = ${userContext.tenant_id}
+        AND l.tenantId = ${userContext.tenantId}
       GROUP BY l.id, l.name
       ORDER BY sla_compliance DESC
     `);
@@ -443,7 +443,7 @@ export class ServiceSupervisorReportingService {
     const slas: LocationSLA[] = result.rows.map((row: any) => {
       const compliance = parseFloat(row.sla_compliance || 0);
       return {
-        locationId: row.location_id,
+        locationId: row.locationId,
         locationName: row.location_name,
         totalCalls: parseInt(row.total_calls || 0),
         onTimeCalls: parseInt(row.on_time_calls || 0),
@@ -518,11 +518,11 @@ export class ServiceSupervisorReportingService {
         COUNT(DISTINCT u.id)::int as tech_count
       FROM locations l
       LEFT JOIN users u ON u.primary_location_id = l.id
-      LEFT JOIN time_entries te ON te.user_id = u.id
-        AND te.tenant_id = ${userContext.tenant_id}
+      LEFT JOIN time_entries te ON te.userId = u.id
+        AND te.tenantId = ${userContext.tenantId}
         ${dateFilter}
       WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND l.tenant_id = ${userContext.tenant_id}
+        AND l.tenantId = ${userContext.tenantId}
       GROUP BY l.id, l.name
       ORDER BY total_hours DESC
     `);
@@ -532,7 +532,7 @@ export class ServiceSupervisorReportingService {
       const billableHours = parseFloat(row.billable_hours || 0);
       const techCount = parseInt(row.tech_count || 1);
       return {
-        locationId: row.location_id,
+        locationId: row.locationId,
         locationName: row.location_name,
         travelHours: parseFloat(row.travel_hours || 0),
         diagnosticHours: parseFloat(row.diagnostic_hours || 0),
@@ -592,7 +592,7 @@ export class ServiceSupervisorReportingService {
       csatTrend: 'up' | 'down' | 'stable';
     };
   }> {
-    const cacheKey = `team-quick-stats-${userContext.user_id}`;
+    const cacheKey = `team-quick-stats-${userContext.userId}`;
     const cached = ReportCache.get(cacheKey);
     if (cached) return cached;
 
@@ -632,7 +632,7 @@ export class ServiceSupervisorReportingService {
           INNER JOIN service_calls sc ON sc.assigned_technician_id = u.id
           WHERE u.id IN (${sql.join(accessibleUserIds, sql`, `)})
             AND sc.completed_date >= CURRENT_DATE - INTERVAL '30 days'
-          GROUP BY u.id, u.first_name, u.last_name
+          GROUP BY u.id, u.firstName, u.lastName
           ORDER BY COUNT(*) DESC
           LIMIT 1
         ) as top_tech

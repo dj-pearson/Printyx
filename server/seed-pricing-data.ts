@@ -7,7 +7,7 @@ import {
 } from '@shared/schema';
 
 export async function seedPricingData() {
-  const tenantId = req.tenant_id!; // From tenant middleware
+  const tenantId = req.tenantId!; // From tenant middleware
   const userId = '6f3224b2-221c-42ad-a7f5-a24a11e33621'; // Default user
 
   try {

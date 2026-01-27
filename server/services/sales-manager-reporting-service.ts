@@ -197,7 +197,7 @@ export class SalesManagerReportingService {
 
     const dateFilter =
       dateRange?.dateFrom && dateRange?.dateTo
-        ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        ? sql`AND o.createdAt BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
         : sql``;
 
     // Get pipeline by region and stage
@@ -214,12 +214,12 @@ export class SalesManagerReportingService {
       FROM regions r
       LEFT JOIN locations l ON l.region_id = r.id
       LEFT JOIN users u ON u.primary_location_id = l.id
-      LEFT JOIN opportunities o ON o.owner_id = u.id
-        AND o.tenant_id = ${userContext.tenant_id}
+      LEFT JOIN opportunities o ON o.ownerId = u.id
+        AND o.tenantId = ${userContext.tenantId}
         AND o.stage NOT IN ('Closed Lost', 'Cancelled')
         ${dateFilter}
       WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND r.tenant_id = ${userContext.tenant_id}
+        AND r.tenantId = ${userContext.tenantId}
       GROUP BY r.id, r.name, o.stage
       ORDER BY r.name, CASE o.stage
         WHEN 'Lead' THEN 1
@@ -326,14 +326,14 @@ export class SalesManagerReportingService {
         FROM regions r
         LEFT JOIN locations l ON l.region_id = r.id
         LEFT JOIN users u ON u.primary_location_id = l.id
-        LEFT JOIN opportunities o ON o.owner_id = u.id
-          AND o.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN opportunities o ON o.ownerId = u.id
+          AND o.tenantId = ${userContext.tenantId}
           ${dateFilter}
-        LEFT JOIN activities a ON a.user_id = u.id
-          AND a.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN activities a ON a.userId = u.id
+          AND a.tenantId = ${userContext.tenantId}
           ${dateFilter}
         WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-          AND r.tenant_id = ${userContext.tenant_id}
+          AND r.tenantId = ${userContext.tenantId}
         GROUP BY r.id, r.name
       ),
       quota_data AS (
@@ -343,10 +343,10 @@ export class SalesManagerReportingService {
         FROM regions r
         LEFT JOIN locations l ON l.region_id = r.id
         LEFT JOIN users u ON u.primary_location_id = l.id
-        LEFT JOIN sales_quotas q ON q.user_id = u.id
-          AND q.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN sales_quotas q ON q.userId = u.id
+          AND q.tenantId = ${userContext.tenantId}
         WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-          AND r.tenant_id = ${userContext.tenant_id}
+          AND r.tenantId = ${userContext.tenantId}
         GROUP BY r.id
       )
       SELECT
@@ -443,10 +443,10 @@ export class SalesManagerReportingService {
         FROM regions r
         LEFT JOIN locations l ON l.region_id = r.id
         LEFT JOIN users u ON u.primary_location_id = l.id
-        LEFT JOIN sales_quotas q ON q.user_id = u.id
-          AND q.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN sales_quotas q ON q.userId = u.id
+          AND q.tenantId = ${userContext.tenantId}
         WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-          AND r.tenant_id = ${userContext.tenant_id}
+          AND r.tenantId = ${userContext.tenantId}
         GROUP BY r.id, r.name
       ),
       regional_revenue AS (
@@ -456,11 +456,11 @@ export class SalesManagerReportingService {
         FROM regions r
         LEFT JOIN locations l ON l.region_id = r.id
         LEFT JOIN users u ON u.primary_location_id = l.id
-        LEFT JOIN opportunities o ON o.owner_id = u.id
-          AND o.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN opportunities o ON o.ownerId = u.id
+          AND o.tenantId = ${userContext.tenantId}
           ${dateFilter}
         WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-          AND r.tenant_id = ${userContext.tenant_id}
+          AND r.tenantId = ${userContext.tenantId}
         GROUP BY r.id
       ),
       regional_pipeline AS (
@@ -470,11 +470,11 @@ export class SalesManagerReportingService {
         FROM regions r
         LEFT JOIN locations l ON l.region_id = r.id
         LEFT JOIN users u ON u.primary_location_id = l.id
-        LEFT JOIN opportunities o ON o.owner_id = u.id
-          AND o.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN opportunities o ON o.ownerId = u.id
+          AND o.tenantId = ${userContext.tenantId}
           AND o.stage NOT IN ('Closed Won', 'Closed Lost', 'Cancelled')
         WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-          AND r.tenant_id = ${userContext.tenant_id}
+          AND r.tenantId = ${userContext.tenantId}
         GROUP BY r.id
       )
       SELECT
@@ -559,7 +559,7 @@ export class SalesManagerReportingService {
 
     const dateFilter =
       dateRange?.dateFrom && dateRange?.dateTo
-        ? sql`AND a.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        ? sql`AND a.createdAt BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
         : sql``;
 
     const result = await db.execute(sql`
@@ -577,11 +577,11 @@ export class SalesManagerReportingService {
       FROM regions r
       LEFT JOIN locations l ON l.region_id = r.id
       LEFT JOIN users u ON u.primary_location_id = l.id
-      LEFT JOIN activities a ON a.user_id = u.id
-        AND a.tenant_id = ${userContext.tenant_id}
+      LEFT JOIN activities a ON a.userId = u.id
+        AND a.tenantId = ${userContext.tenantId}
         ${dateFilter}
       WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND r.tenant_id = ${userContext.tenant_id}
+        AND r.tenantId = ${userContext.tenantId}
       GROUP BY r.id, r.name
       ORDER BY total_activities DESC
     `);

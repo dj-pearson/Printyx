@@ -25,7 +25,7 @@ export async function seedCrmGoals() {
     const tenantUsers = await db
       .select()
       .from(users)
-      .where(eq(users.tenant_id, tenant.id))
+      .where(eq(users.tenantId, tenant.id))
       .limit(10);
 
     if (tenantUsers.length === 0) {
@@ -108,7 +108,7 @@ export async function seedCrmGoals() {
           joinedDate: new Date('2024-02-15'),
           isActive: true,
         },
-      ].filter((member) => member.user_id); // Filter out undefined userIds
+      ].filter((member) => member.userId); // Filter out undefined userIds
 
       if (memberData.length > 0) {
         const createdMembers = await db
@@ -250,7 +250,7 @@ export async function seedCrmGoals() {
           callConnectRate: 36.8,
           emailReplyRate: 8.7,
         },
-      ].filter((report) => report.user_id && report.teamId); // Filter out reports without valid IDs
+      ].filter((report) => report.userId && report.teamId); // Filter out reports without valid IDs
 
       if (reportData.length > 0) {
         const createdReports = await db

@@ -61,7 +61,7 @@ async function generateIncidentNumber(): Promise<string> {
   const result = await db
     .select({ count: sql<number>`count(*)` })
     .from(incidents)
-    .where(sql`DATE(${incidents.created_at}) = CURRENT_DATE`);
+    .where(sql`DATE(${incidents.createdAt}) = CURRENT_DATE`);
 
   const sequence = String((result[0]?.count || 0) + 1).padStart(4, '0');
   return `${INCIDENT_NUMBER_PREFIX}-${year}${month}${day}-${sequence}`;
@@ -108,7 +108,7 @@ export async function getIncident(incidentId: string, tenantId: string): Promise
   const [incident] = await db
     .select()
     .from(incidents)
-    .where(and(eq(incidents.id, incidentId), eq(incidents.tenant_id, tenantId)));
+    .where(and(eq(incidents.id, incidentId), eq(incidents.tenantId, tenantId)));
 
   return incident || null;
 }
@@ -129,7 +129,7 @@ export async function listIncidents(
     offset?: number;
   } = {},
 ): Promise<{ data: Incident[]; total: number }> {
-  const conditions = [eq(incidents.tenant_id, tenantId)];
+  const conditions = [eq(incidents.tenantId, tenantId)];
 
   if (options.status?.length) {
     conditions.push(inArray(incidents.status, options.status as any));
@@ -188,7 +188,7 @@ export async function getActiveIncidents(tenantId: string): Promise<Incident[]> 
     .from(incidents)
     .where(
       and(
-        eq(incidents.tenant_id, tenantId),
+        eq(incidents.tenantId, tenantId),
         inArray(incidents.status, [
           'detected',
           'acknowledged',
@@ -644,7 +644,7 @@ export async function assignTeamMember(
 
   const currentTeam = incident.assignedTeam || [];
   const newTeam = [
-    ...currentTeam.filter((m: any) => m.user_id !== userId),
+    ...currentTeam.filter((m: any) => m.userId !== userId),
     {
       userId,
       userName,
@@ -738,7 +738,7 @@ export async function getIncidentMetrics(
     .from(incidents)
     .where(
       and(
-        eq(incidents.tenant_id, tenantId),
+        eq(incidents.tenantId, tenantId),
         gte(incidents.detectedAt, startDate),
         lte(incidents.detectedAt, endDate),
       ),

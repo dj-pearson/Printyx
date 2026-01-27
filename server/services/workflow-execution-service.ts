@@ -76,7 +76,7 @@ export async function executeWorkflow(executionId: string): Promise<void> {
     for (const step of steps) {
       const stepSuccess = await executeStep(step, {
         executionId: execution.id,
-        tenantId: execution.tenant_id,
+        tenantId: execution.tenantId,
         workflowContext: (execution.context as Record<string, any>) || {},
         userId: execution.initiatedBy || undefined,
       });
@@ -269,13 +269,13 @@ async function createTaskAction(config: Record<string, any>, context: StepContex
   const [task] = await db
     .insert(tasks)
     .values({
-      tenantId: context.tenant_id,
+      tenantId: context.tenantId,
       title,
       description,
       status: 'todo',
       priority: priority as 'low' | 'medium' | 'high' | 'urgent',
       assignedTo,
-      createdBy: context.user_id || 'system',
+      createdBy: context.userId || 'system',
       dueDate,
       customFields: {
         workflowExecutionId: context.executionId,
@@ -312,7 +312,7 @@ async function createApprovalAction(
   // For now, we'll get the latest one
   const stepExecution = await db.query.workflowExecutionSteps.findFirst({
     where: eq(workflowExecutionSteps.executionId, context.executionId),
-    orderBy: (steps, { desc }) => [desc(steps.created_at)],
+    orderBy: (steps, { desc }) => [desc(steps.createdAt)],
   });
 
   if (!stepExecution) {
@@ -323,7 +323,7 @@ async function createApprovalAction(
   const [approval] = await db
     .insert(workflowApprovals)
     .values({
-      tenantId: context.tenant_id,
+      tenantId: context.tenantId,
       executionId: context.executionId,
       stepExecutionId: stepExecution.id,
       assignedToUserId: config.assignToUserId || null,

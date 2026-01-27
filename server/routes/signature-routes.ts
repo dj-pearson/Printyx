@@ -18,7 +18,7 @@ const router = Router();
 // Get all integration credentials for tenant
 router.get('/integration-credentials', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -46,7 +46,7 @@ router.get('/integration-credentials', async (req, res) => {
 // Get single integration credential
 router.get('/integration-credentials/:id', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -76,7 +76,7 @@ router.get('/integration-credentials/:id', async (req, res) => {
 // Create integration credential
 router.post('/integration-credentials', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -112,7 +112,7 @@ router.post('/integration-credentials', async (req, res) => {
 // Update integration credential
 router.patch('/integration-credentials/:id', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -156,7 +156,7 @@ router.patch('/integration-credentials/:id', async (req, res) => {
 // Delete integration credential
 router.delete('/integration-credentials/:id', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -172,7 +172,7 @@ router.delete('/integration-credentials/:id', async (req, res) => {
 // Test integration connection
 router.post('/integration-credentials/:id/test', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -192,7 +192,7 @@ router.post('/integration-credentials/:id/test', async (req, res) => {
 // Get all signature requests
 router.get('/signature-requests', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -209,7 +209,7 @@ router.get('/signature-requests', async (req, res) => {
 // Get single signature request
 router.get('/signature-requests/:id', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -229,7 +229,7 @@ router.get('/signature-requests/:id', async (req, res) => {
 // Get signature requests by customer
 router.get('/customers/:customerId/signature-requests', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -245,7 +245,7 @@ router.get('/customers/:customerId/signature-requests', async (req, res) => {
 // Get expiring signature requests
 router.get('/signature-requests/expiring/soon', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -262,7 +262,7 @@ router.get('/signature-requests/expiring/soon', async (req, res) => {
 // Create signature request
 router.post('/signature-requests', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -300,7 +300,7 @@ router.post('/signature-requests', async (req, res) => {
 // Update signature request
 router.patch('/signature-requests/:id', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -325,7 +325,7 @@ router.patch('/signature-requests/:id', async (req, res) => {
 // Delete signature request
 router.delete('/signature-requests/:id', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -341,7 +341,7 @@ router.delete('/signature-requests/:id', async (req, res) => {
 // Send signature request (initiate with provider)
 router.post('/signature-requests/:id/send', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -380,7 +380,7 @@ router.post('/signature-requests/:id/send', async (req, res) => {
 // Void signature request
 router.post('/signature-requests/:id/void', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -421,7 +421,7 @@ router.post('/signature-requests/:id/void', async (req, res) => {
 // Get signers for a request
 router.get('/signature-requests/:requestId/signers', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -437,7 +437,7 @@ router.get('/signature-requests/:requestId/signers', async (req, res) => {
 // Get single signer
 router.get('/signature-signers/:id', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -457,7 +457,7 @@ router.get('/signature-signers/:id', async (req, res) => {
 // Create signer
 router.post('/signature-signers', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -481,7 +481,7 @@ router.post('/signature-signers', async (req, res) => {
 // Update signer
 router.patch('/signature-signers/:id', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -501,7 +501,7 @@ router.patch('/signature-signers/:id', async (req, res) => {
 // Delete signer
 router.delete('/signature-signers/:id', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -521,7 +521,7 @@ router.delete('/signature-signers/:id', async (req, res) => {
 // Get documents for a request
 router.get('/signature-requests/:requestId/documents', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -537,7 +537,7 @@ router.get('/signature-requests/:requestId/documents', async (req, res) => {
 // Get single document
 router.get('/signature-documents/:id', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -557,7 +557,7 @@ router.get('/signature-documents/:id', async (req, res) => {
 // Create document
 router.post('/signature-documents', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -581,7 +581,7 @@ router.post('/signature-documents', async (req, res) => {
 // Update document
 router.patch('/signature-documents/:id', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -601,7 +601,7 @@ router.patch('/signature-documents/:id', async (req, res) => {
 // Delete document
 router.delete('/signature-documents/:id', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -621,7 +621,7 @@ router.delete('/signature-documents/:id', async (req, res) => {
 // Get audit logs for a request
 router.get('/signature-requests/:requestId/audit-logs', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -637,7 +637,7 @@ router.get('/signature-requests/:requestId/audit-logs', async (req, res) => {
 // Get audit logs by signer
 router.get('/signature-signers/:signerId/audit-logs', async (req, res) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }

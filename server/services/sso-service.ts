@@ -100,7 +100,7 @@ export class SsoService {
     tenantId: string,
     providerId?: string,
   ): Promise<SsoProviderConfig | null> {
-    const conditions = [eq(ssoProviderConfigs.tenant_id, tenantId)];
+    const conditions = [eq(ssoProviderConfigs.tenantId, tenantId)];
 
     if (providerId) {
       conditions.push(eq(ssoProviderConfigs.id, providerId));
@@ -126,8 +126,8 @@ export class SsoService {
     return db
       .select()
       .from(ssoProviderConfigs)
-      .where(eq(ssoProviderConfigs.tenant_id, tenantId))
-      .orderBy(ssoProviderConfigs.created_at);
+      .where(eq(ssoProviderConfigs.tenantId, tenantId))
+      .orderBy(ssoProviderConfigs.createdAt);
   }
 
   /**
@@ -139,7 +139,7 @@ export class SsoService {
       await db
         .update(ssoProviderConfigs)
         .set({ isPrimary: false, updatedAt: new Date() })
-        .where(eq(ssoProviderConfigs.tenant_id, config.tenant_id));
+        .where(eq(ssoProviderConfigs.tenantId, config.tenantId));
     }
 
     // Apply default attribute mappings if not provided
@@ -188,7 +188,7 @@ export class SsoService {
    * Initiate SSO authentication flow
    */
   async initiateAuth(request: SsoAuthRequest): Promise<SsoAuthResponse> {
-    const provider = await this.getProviderConfig(request.tenant_id, request.providerId);
+    const provider = await this.getProviderConfig(request.tenantId, request.providerId);
 
     if (!provider) {
       throw new Error('SSO provider not found or not enabled');
@@ -244,7 +244,7 @@ export class SsoService {
 
     // Log the attempt
     await this.logLoginAttempt({
-      tenantId: request.tenant_id,
+      tenantId: request.tenantId,
       providerId: provider.id,
       requestId,
       protocol: 'saml2',
@@ -302,7 +302,7 @@ export class SsoService {
 
     // Log the attempt
     await this.logLoginAttempt({
-      tenantId: request.tenant_id,
+      tenantId: request.tenantId,
       providerId: provider.id,
       requestId,
       protocol: 'oidc',
@@ -328,7 +328,7 @@ export class SsoService {
     nonce: string,
     redirectUri: string,
   ): URL {
-    const tenantId = provider.providerSettings?.tenant_id || 'common';
+    const tenantId = provider.providerSettings?.tenantId || 'common';
     const baseUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize`;
 
     const url = new URL(baseUrl);
@@ -513,7 +513,7 @@ export class SsoService {
           email: user.email,
           firstName: user.firstName || undefined,
           lastName: user.lastName || undefined,
-          tenantId: provider.tenant_id,
+          tenantId: provider.tenantId,
         },
         session: {
           id: session.sessionId,
@@ -685,7 +685,7 @@ export class SsoService {
 
     switch (provider.providerType) {
       case 'azure_ad':
-        const tenantId = provider.providerSettings?.tenant_id || 'common';
+        const tenantId = provider.providerSettings?.tenantId || 'common';
         tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
         break;
       case 'okta':
@@ -793,7 +793,7 @@ export class SsoService {
 
     if (existingMapping) {
       // Get the existing user
-      const [user] = await db.select().from(users).where(eq(users.id, existingMapping.user_id));
+      const [user] = await db.select().from(users).where(eq(users.id, existingMapping.userId));
 
       if (!user) {
         throw new Error('Mapped user not found');
@@ -845,7 +845,7 @@ export class SsoService {
     if (existingUser) {
       // Link existing user to SSO provider
       await db.insert(ssoUserMappings).values({
-        tenantId: provider.tenant_id,
+        tenantId: provider.tenantId,
         userId: existingUser.id,
         providerId: provider.id,
         externalId: profile.externalId,
@@ -870,7 +870,7 @@ export class SsoService {
         email: profile.email.toLowerCase(),
         firstName: profile.firstName,
         lastName: profile.lastName,
-        tenantId: provider.tenant_id,
+        tenantId: provider.tenantId,
         role: provider.defaultRole || 'user',
         isActive: true,
         emailVerified: true, // Verified by SSO provider
@@ -881,7 +881,7 @@ export class SsoService {
 
     // Create SSO mapping
     await db.insert(ssoUserMappings).values({
-      tenantId: provider.tenant_id,
+      tenantId: provider.tenantId,
       userId: newUser.id,
       providerId: provider.id,
       externalId: profile.externalId,
@@ -907,7 +907,7 @@ export class SsoService {
     const expiresAt = new Date(Date.now() + sessionTimeout);
 
     await db.insert(ssoSessions).values({
-      tenantId: provider.tenant_id,
+      tenantId: provider.tenantId,
       userId,
       providerId: provider.id,
       sessionId,
@@ -960,7 +960,7 @@ export class SsoService {
     }>,
   ): Promise<void> {
     await db.insert(ssoLoginAttempts).values({
-      tenantId: data.tenant_id,
+      tenantId: data.tenantId,
       providerId: data.providerId,
       requestId: data.requestId || randomBytes(16).toString('hex'),
       protocol: data.protocol || 'oidc',
@@ -1139,8 +1139,8 @@ export class SsoService {
 
     return {
       valid: true,
-      userId: session.user_id,
-      tenantId: session.tenant_id,
+      userId: session.userId,
+      tenantId: session.tenantId,
       expiresAt: session.expiresAt,
     };
   }

@@ -234,7 +234,7 @@ const StatusTimeline = memo(
                   {history.new_status.replace('_', ' ').toUpperCase()}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {format(new Date(history.created_at), 'MMM dd, yyyy HH:mm')}
+                  {format(new Date(history.createdAt), 'MMM dd, yyyy HH:mm')}
                 </p>
               </div>
               {history.customer_visible_notes && (

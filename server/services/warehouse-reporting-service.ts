@@ -106,7 +106,7 @@ export class WarehouseReportingService {
     dateRange?: DateRange,
   ): Promise<WarehouseTeamQuickStats> {
     // Generate cache key
-    const cacheKey = `warehouse-team-quick-stats:${userContext.user_id}:${JSON.stringify(dateRange || {})}`;
+    const cacheKey = `warehouse-team-quick-stats:${userContext.userId}:${JSON.stringify(dateRange || {})}`;
 
     // Check cache
     const cached = ReportCache.get<WarehouseTeamQuickStats>(cacheKey);
@@ -128,15 +128,15 @@ export class WarehouseReportingService {
       .from(warehouseKittingOperations)
       .where(
         and(
-          eq(warehouseKittingOperations.tenant_id, userContext.tenant_id),
+          eq(warehouseKittingOperations.tenantId, userContext.tenantId),
           sql`${warehouseKittingOperations.assignedTechnician} IN (${sql.raw(
             accessibleUserIds.map((id) => `'${id}'`).join(',') || "''",
           )})`,
-          gte(warehouseKittingOperations.created_at, dateFrom),
-          lte(warehouseKittingOperations.created_at, dateTo),
+          gte(warehouseKittingOperations.createdAt, dateFrom),
+          lte(warehouseKittingOperations.createdAt, dateTo),
         ),
       )
-      .orderBy(desc(warehouseKittingOperations.created_at));
+      .orderBy(desc(warehouseKittingOperations.createdAt));
 
     // Calculate performance metrics
     const totalKits = operations.length;
@@ -205,12 +205,12 @@ export class WarehouseReportingService {
       .from(warehouseKittingOperations)
       .where(
         and(
-          eq(warehouseKittingOperations.tenant_id, userContext.tenant_id),
+          eq(warehouseKittingOperations.tenantId, userContext.tenantId),
           sql`${warehouseKittingOperations.assignedTechnician} IN (${sql.raw(
             accessibleUserIds.map((id) => `'${id}'`).join(',') || "''",
           )})`,
-          gte(warehouseKittingOperations.created_at, previousDateFrom),
-          lte(warehouseKittingOperations.created_at, dateFrom),
+          gte(warehouseKittingOperations.createdAt, previousDateFrom),
+          lte(warehouseKittingOperations.createdAt, dateFrom),
         ),
       );
 

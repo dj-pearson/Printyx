@@ -17,7 +17,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   // Get all integrations for a tenant
   app.get('/api/manufacturer-integrations', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.tenant_id;
+      const tenantId = req.user?.tenantId || req.tenantId;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -25,8 +25,8 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
       const integrations = await db
         .select()
         .from(manufacturerIntegrations)
-        .where(eq(manufacturerIntegrations.tenant_id, tenantId))
-        .orderBy(desc(manufacturerIntegrations.created_at));
+        .where(eq(manufacturerIntegrations.tenantId, tenantId))
+        .orderBy(desc(manufacturerIntegrations.createdAt));
 
       res.json(integrations);
     } catch (error) {
@@ -38,7 +38,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   // Create a new integration
   app.post('/api/manufacturer-integrations', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.tenant_id;
+      const tenantId = req.user?.tenantId || req.tenantId;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -60,7 +60,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   // Get integration by ID
   app.get('/api/manufacturer-integrations/:id', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.tenant_id;
+      const tenantId = req.user?.tenantId || req.tenantId;
       const { id } = req.params;
 
       if (!tenantId) {
@@ -71,10 +71,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
         .select()
         .from(manufacturerIntegrations)
         .where(
-          and(
-            eq(manufacturerIntegrations.tenant_id, tenantId),
-            eq(manufacturerIntegrations.id, id),
-          ),
+          and(eq(manufacturerIntegrations.tenantId, tenantId), eq(manufacturerIntegrations.id, id)),
         )
         .limit(1);
 
@@ -92,7 +89,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   // Update integration
   app.put('/api/manufacturer-integrations/:id', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.tenant_id;
+      const tenantId = req.user?.tenantId || req.tenantId;
       const { id } = req.params;
 
       if (!tenantId) {
@@ -106,10 +103,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
           updatedAt: new Date(),
         })
         .where(
-          and(
-            eq(manufacturerIntegrations.tenant_id, tenantId),
-            eq(manufacturerIntegrations.id, id),
-          ),
+          and(eq(manufacturerIntegrations.tenantId, tenantId), eq(manufacturerIntegrations.id, id)),
         )
         .returning();
 
@@ -127,7 +121,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   // Delete integration
   app.delete('/api/manufacturer-integrations/:id', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.tenant_id;
+      const tenantId = req.user?.tenantId || req.tenantId;
       const { id } = req.params;
 
       if (!tenantId) {
@@ -137,10 +131,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
       await db
         .delete(manufacturerIntegrations)
         .where(
-          and(
-            eq(manufacturerIntegrations.tenant_id, tenantId),
-            eq(manufacturerIntegrations.id, id),
-          ),
+          and(eq(manufacturerIntegrations.tenantId, tenantId), eq(manufacturerIntegrations.id, id)),
         );
 
       res.json({ message: 'Integration deleted successfully' });
@@ -153,7 +144,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   // Test integration connection
   app.post('/api/manufacturer-integrations/:id/test', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.tenant_id;
+      const tenantId = req.user?.tenantId || req.tenantId;
       const { id } = req.params;
 
       if (!tenantId) {
@@ -178,7 +169,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   // Discover and register devices
   app.post('/api/manufacturer-integrations/:id/discover', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.tenant_id;
+      const tenantId = req.user?.tenantId || req.tenantId;
       const { id } = req.params;
 
       if (!tenantId) {
@@ -200,7 +191,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   // Get devices for an integration
   app.get('/api/manufacturer-integrations/:id/devices', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.tenant_id;
+      const tenantId = req.user?.tenantId || req.tenantId;
       const { id } = req.params;
 
       if (!tenantId) {
@@ -212,7 +203,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
         .from(deviceRegistrations)
         .where(
           and(
-            eq(deviceRegistrations.tenant_id, tenantId),
+            eq(deviceRegistrations.tenantId, tenantId),
             eq(deviceRegistrations.integrationId, id),
           ),
         )
@@ -228,7 +219,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   // Get all devices across integrations
   app.get('/api/devices', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.tenant_id;
+      const tenantId = req.user?.tenantId || req.tenantId;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -243,7 +234,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
           manufacturerIntegrations,
           eq(deviceRegistrations.integrationId, manufacturerIntegrations.id),
         )
-        .where(eq(deviceRegistrations.tenant_id, tenantId))
+        .where(eq(deviceRegistrations.tenantId, tenantId))
         .orderBy(desc(deviceRegistrations.lastSeen));
 
       res.json(devices);
@@ -256,7 +247,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   // Collect metrics from a device
   app.post('/api/devices/:deviceId/collect', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.tenant_id;
+      const tenantId = req.user?.tenantId || req.tenantId;
       const { deviceId } = req.params;
 
       if (!tenantId) {
@@ -275,7 +266,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   // Get device metrics
   app.get('/api/devices/:deviceId/metrics', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.tenant_id;
+      const tenantId = req.user?.tenantId || req.tenantId;
       const { deviceId } = req.params;
       const { days = 7 } = req.query;
 
@@ -291,7 +282,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
         .from(deviceMetrics)
         .where(
           and(
-            eq(deviceMetrics.tenant_id, tenantId),
+            eq(deviceMetrics.tenantId, tenantId),
             eq(deviceMetrics.deviceId, deviceId),
             gte(deviceMetrics.collectionTimestamp, startDate),
           ),
@@ -308,7 +299,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   // Get audit logs
   app.get('/api/manufacturer-integrations/audit-logs', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.tenant_id;
+      const tenantId = req.user?.tenantId || req.tenantId;
       const { integrationId, deviceId, action, status, days = 7 } = req.query;
 
       if (!tenantId) {
@@ -319,7 +310,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
       startDate.setDate(startDate.getDate() - parseInt(days as string));
 
       let whereConditions = [
-        eq(integrationAuditLogs.tenant_id, tenantId),
+        eq(integrationAuditLogs.tenantId, tenantId),
         gte(integrationAuditLogs.timestamp, startDate),
       ];
 
@@ -362,7 +353,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
   // Get integration statistics
   app.get('/api/manufacturer-integrations/stats', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || req.tenant_id;
+      const tenantId = req.user?.tenantId || req.tenantId;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -372,14 +363,14 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
           db
             .select({ count: sql`count(*)` })
             .from(manufacturerIntegrations)
-            .where(eq(manufacturerIntegrations.tenant_id, tenantId)),
+            .where(eq(manufacturerIntegrations.tenantId, tenantId)),
 
           db
             .select({ count: sql`count(*)` })
             .from(manufacturerIntegrations)
             .where(
               and(
-                eq(manufacturerIntegrations.tenant_id, tenantId),
+                eq(manufacturerIntegrations.tenantId, tenantId),
                 eq(manufacturerIntegrations.status, 'active'),
               ),
             ),
@@ -387,14 +378,14 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
           db
             .select({ count: sql`count(*)` })
             .from(deviceRegistrations)
-            .where(eq(deviceRegistrations.tenant_id, tenantId)),
+            .where(eq(deviceRegistrations.tenantId, tenantId)),
 
           db
             .select({ count: sql`count(*)` })
             .from(deviceRegistrations)
             .where(
               and(
-                eq(deviceRegistrations.tenant_id, tenantId),
+                eq(deviceRegistrations.tenantId, tenantId),
                 eq(deviceRegistrations.status, 'online'),
               ),
             ),
@@ -404,7 +395,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
             .from(deviceMetrics)
             .where(
               and(
-                eq(deviceMetrics.tenant_id, tenantId),
+                eq(deviceMetrics.tenantId, tenantId),
                 gte(deviceMetrics.collectionTimestamp, new Date(Date.now() - 24 * 60 * 60 * 1000)),
               ),
             ),

@@ -61,7 +61,7 @@ router.get(
       } = req.query;
 
       const offset = (Number(page) - 1) * Number(limit);
-      const conditions = [eq(auditLogs.tenant_id, req.tenant_id!)];
+      const conditions = [eq(auditLogs.tenantId, req.tenantId!)];
 
       if (startDate) {
         conditions.push(gte(auditLogs.timestamp, new Date(startDate as string)));
@@ -70,7 +70,7 @@ router.get(
         conditions.push(lte(auditLogs.timestamp, new Date(endDate as string)));
       }
       if (userId) {
-        conditions.push(eq(auditLogs.user_id, userId as string));
+        conditions.push(eq(auditLogs.userId, userId as string));
       }
       if (action) {
         conditions.push(like(auditLogs.action, `%${action}%`));
@@ -141,7 +141,7 @@ router.get(
           count: sql`count(*)`,
         })
         .from(auditLogs)
-        .where(and(eq(auditLogs.tenant_id, req.tenant_id!), gte(auditLogs.timestamp, startDate)))
+        .where(and(eq(auditLogs.tenantId, req.tenantId!), gte(auditLogs.timestamp, startDate)))
         .groupBy(auditLogs.category, auditLogs.severity);
 
       res.json({ stats });
@@ -173,7 +173,7 @@ router.get(
       } = req.query;
 
       const offset = (Number(page) - 1) * Number(limit);
-      const conditions = [eq(dataAccessLogs.tenant_id, req.tenant_id!)];
+      const conditions = [eq(dataAccessLogs.tenantId, req.tenantId!)];
 
       if (startDate) {
         conditions.push(gte(dataAccessLogs.accessedAt, new Date(startDate as string)));
@@ -182,7 +182,7 @@ router.get(
         conditions.push(lte(dataAccessLogs.accessedAt, new Date(endDate as string)));
       }
       if (userId) {
-        conditions.push(eq(dataAccessLogs.user_id, userId as string));
+        conditions.push(eq(dataAccessLogs.userId, userId as string));
       }
       if (resource) {
         conditions.push(eq(dataAccessLogs.resource, resource as string));
@@ -237,7 +237,7 @@ router.get(
     try {
       const { page = 1, limit = 25, status, type } = req.query;
       const offset = (Number(page) - 1) * Number(limit);
-      const conditions = [eq(gdprRequests.tenant_id, req.tenant_id!)];
+      const conditions = [eq(gdprRequests.tenantId, req.tenantId!)];
 
       if (status) {
         conditions.push(eq(gdprRequests.status, status as any));
@@ -253,7 +253,7 @@ router.get(
           .select()
           .from(gdprRequests)
           .where(whereClause)
-          .orderBy(desc(gdprRequests.created_at))
+          .orderBy(desc(gdprRequests.createdAt))
           .limit(Number(limit))
           .offset(offset),
         db
@@ -287,7 +287,7 @@ router.post(
     try {
       const requestData = insertGdprRequestSchema.parse({
         ...req.body,
-        tenantId: req.tenant_id,
+        tenantId: req.tenantId,
         requestorId: req.user!.id,
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       });
@@ -316,7 +316,7 @@ router.post(
 
       // Get the request details
       const request = await db.query.gdprRequests.findFirst({
-        where: and(eq(gdprRequests.id, requestId), eq(gdprRequests.tenant_id, req.tenant_id!)),
+        where: and(eq(gdprRequests.id, requestId), eq(gdprRequests.tenantId, req.tenantId!)),
       });
 
       if (!request) {
@@ -328,7 +328,7 @@ router.post(
       }
 
       // Process the access request
-      const personalData = await processDataSubjectAccess(req.tenant_id!, request.subjectId);
+      const personalData = await processDataSubjectAccess(req.tenantId!, request.subjectId);
 
       // Update request status
       await db
@@ -365,12 +365,12 @@ router.get(
       const { page = 1, limit = 25, userId } = req.query;
       const offset = (Number(page) - 1) * Number(limit);
       const conditions = [
-        eq(securitySessions.tenant_id, req.tenant_id!),
+        eq(securitySessions.tenantId, req.tenantId!),
         eq(securitySessions.isActive, true),
       ];
 
       if (userId) {
-        conditions.push(eq(securitySessions.user_id, userId as string));
+        conditions.push(eq(securitySessions.userId, userId as string));
       }
 
       const whereClause = and(...conditions);
@@ -426,7 +426,7 @@ router.post(
         .where(
           and(
             eq(securitySessions.sessionId, sessionId),
-            eq(securitySessions.tenant_id, req.tenant_id!),
+            eq(securitySessions.tenantId, req.tenantId!),
           ),
         );
 
@@ -447,7 +447,7 @@ router.get(
   async (req: TenantRequest, res) => {
     try {
       const settings = await db.query.complianceSettings.findFirst({
-        where: eq(complianceSettings.tenant_id, req.tenant_id!),
+        where: eq(complianceSettings.tenantId, req.tenantId!),
       });
 
       if (!settings) {
@@ -480,19 +480,19 @@ router.put(
     try {
       const settingsData = insertComplianceSettingsSchema.parse({
         ...req.body,
-        tenantId: req.tenant_id,
+        tenantId: req.tenantId,
       });
 
       // Check if settings exist
       const existingSettings = await db.query.complianceSettings.findFirst({
-        where: eq(complianceSettings.tenant_id, req.tenant_id!),
+        where: eq(complianceSettings.tenantId, req.tenantId!),
       });
 
       if (existingSettings) {
         await db
           .update(complianceSettings)
           .set({ ...settingsData, updatedAt: new Date() })
-          .where(eq(complianceSettings.tenant_id, req.tenant_id!));
+          .where(eq(complianceSettings.tenantId, req.tenantId!));
       } else {
         await db.insert(complianceSettings).values(settingsData);
       }
@@ -525,7 +525,7 @@ router.get(
             count: sql`count(*)`,
           })
           .from(auditLogs)
-          .where(and(eq(auditLogs.tenant_id, req.tenant_id!), gte(auditLogs.timestamp, startDate)))
+          .where(and(eq(auditLogs.tenantId, req.tenantId!), gte(auditLogs.timestamp, startDate)))
           .groupBy(auditLogs.category),
 
         // Data access statistics
@@ -537,7 +537,7 @@ router.get(
           .from(dataAccessLogs)
           .where(
             and(
-              eq(dataAccessLogs.tenant_id, req.tenant_id!),
+              eq(dataAccessLogs.tenantId, req.tenantId!),
               gte(dataAccessLogs.accessedAt, startDate),
             ),
           )
@@ -548,10 +548,7 @@ router.get(
           .select({ count: sql`count(*)` })
           .from(securitySessions)
           .where(
-            and(
-              eq(securitySessions.tenant_id, req.tenant_id!),
-              eq(securitySessions.isActive, true),
-            ),
+            and(eq(securitySessions.tenantId, req.tenantId!), eq(securitySessions.isActive, true)),
           ),
 
         // GDPR requests statistics
@@ -561,7 +558,7 @@ router.get(
             count: sql`count(*)`,
           })
           .from(gdprRequests)
-          .where(eq(gdprRequests.tenant_id, req.tenant_id!))
+          .where(eq(gdprRequests.tenantId, req.tenantId!))
           .groupBy(gdprRequests.status),
 
         // Security alerts (suspicious activities)
@@ -570,7 +567,7 @@ router.get(
           .from(dataAccessLogs)
           .where(
             and(
-              eq(dataAccessLogs.tenant_id, req.tenant_id!),
+              eq(dataAccessLogs.tenantId, req.tenantId!),
               eq(dataAccessLogs.suspiciousActivity, true),
               gte(dataAccessLogs.accessedAt, startDate),
             ),

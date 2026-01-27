@@ -310,7 +310,7 @@ export function reportCacheMiddleware(ttlSeconds?: number) {
       return next();
     }
 
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const reportId = req.params.id;
 
     if (!tenantId || !reportId) {

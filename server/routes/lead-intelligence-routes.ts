@@ -15,9 +15,9 @@ const router = express.Router();
 // Middleware to get tenant and user context
 function getTenantContext(req: Request): { tenantId: string; userId: string } | null {
   const user = (req as any).user || req.session?.user;
-  if (!user?.tenant_id) return null;
+  if (!user?.tenantId) return null;
   return {
-    tenantId: user.tenant_id,
+    tenantId: user.tenantId,
     userId: user.id || user.claims?.sub,
   };
 }
@@ -36,7 +36,7 @@ router.get('/:leadId', isAuthenticated, async (req: Request, res: Response) => {
     const { leadId } = req.params;
     const intelligence = await leadIntelligenceService.getLeadIntelligence(
       leadId,
-      context.tenant_id,
+      context.tenantId,
     );
 
     res.json(intelligence);
@@ -60,8 +60,8 @@ router.post('/:leadId/score', isAuthenticated, async (req: Request, res: Respons
     const { leadId } = req.params;
     const score = await leadIntelligenceService.calculateLeadScore(
       leadId,
-      context.tenant_id,
-      context.user_id,
+      context.tenantId,
+      context.userId,
     );
 
     res.json({
@@ -88,8 +88,8 @@ router.post('/:leadId/enrich', isAuthenticated, async (req: Request, res: Respon
     const { leadId } = req.params;
     const enrichment = await leadIntelligenceService.enrichLeadFromApollo(
       leadId,
-      context.tenant_id,
-      context.user_id,
+      context.tenantId,
+      context.userId,
     );
 
     res.json({
@@ -116,8 +116,8 @@ router.post('/:leadId/process', isAuthenticated, async (req: Request, res: Respo
     const { leadId } = req.params;
     const result = await leadIntelligenceService.processNewLead(
       leadId,
-      context.tenant_id,
-      context.user_id,
+      context.tenantId,
+      context.userId,
     );
 
     res.json({
@@ -148,8 +148,8 @@ router.post('/batch/score', isAuthenticated, async (req: Request, res: Response)
     const { leadIds } = schema.parse(req.body);
     const result = await leadIntelligenceService.batchProcessLeads(
       leadIds,
-      context.tenant_id,
-      context.user_id,
+      context.tenantId,
+      context.userId,
     );
 
     res.json(result);
@@ -173,7 +173,7 @@ router.get('/analytics/overview', isAuthenticated, async (req: Request, res: Res
       return res.status(403).json({ error: 'No tenant context found' });
     }
 
-    const analytics = await leadIntelligenceService.getScoringAnalytics(context.tenant_id);
+    const analytics = await leadIntelligenceService.getScoringAnalytics(context.tenantId);
 
     res.json(analytics);
   } catch (error: any) {
@@ -194,10 +194,7 @@ router.get('/attention/required', isAuthenticated, async (req: Request, res: Res
     }
 
     const limit = parseInt(req.query.limit as string) || 20;
-    const leads = await leadIntelligenceService.getLeadsRequiringAttention(
-      context.tenant_id,
-      limit,
-    );
+    const leads = await leadIntelligenceService.getLeadsRequiringAttention(context.tenantId, limit);
 
     res.json(leads);
   } catch (error: any) {

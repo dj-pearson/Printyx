@@ -128,7 +128,7 @@ export class ContractRenewalWorkflow {
       .leftJoin(businessRecords, eq(serviceContracts.customerId, businessRecords.id))
       .where(
         and(
-          eq(serviceContracts.tenant_id, tenantId),
+          eq(serviceContracts.tenantId, tenantId),
           eq(serviceContracts.contractStatus, 'active'),
           // Contract expires in (days ± 1 day) - catches today's milestone
           lte(
@@ -163,7 +163,7 @@ export class ContractRenewalWorkflow {
         .from(tasks)
         .where(
           and(
-            eq(tasks.tenant_id, tenantId),
+            eq(tasks.tenantId, tenantId),
             eq(tasks.relatedRecordId, contract.id),
             sql`${tasks.title} LIKE ${milestone.taskTitle}%`,
           ),

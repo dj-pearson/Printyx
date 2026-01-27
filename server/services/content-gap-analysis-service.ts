@@ -110,8 +110,8 @@ class ContentGapAnalysisService {
       .from(knowledgeSearchQueries)
       .where(
         and(
-          eq(knowledgeSearchQueries.tenant_id, tenantId),
-          sql`${knowledgeSearchQueries.created_at} > ${ninetyDaysAgo}`,
+          eq(knowledgeSearchQueries.tenantId, tenantId),
+          sql`${knowledgeSearchQueries.createdAt} > ${ninetyDaysAgo}`,
         ),
       )
       .groupBy(knowledgeSearchQueries.queryText)
@@ -163,7 +163,7 @@ class ContentGapAnalysisService {
       .innerJoin(knowledgeArticles, eq(articleFeedback.articleId, knowledgeArticles.id))
       .innerJoin(knowledgeCategories, eq(knowledgeArticles.categoryId, knowledgeCategories.id))
       .where(
-        and(eq(articleFeedback.tenant_id, tenantId), eq(articleFeedback.feedbackType, 'unhelpful')),
+        and(eq(articleFeedback.tenantId, tenantId), eq(articleFeedback.feedbackType, 'unhelpful')),
       )
       .groupBy(
         articleFeedback.articleId,
@@ -260,7 +260,7 @@ class ContentGapAnalysisService {
         .from(knowledgeArticles)
         .where(
           and(
-            eq(knowledgeArticles.tenant_id, tenantId),
+            eq(knowledgeArticles.tenantId, tenantId),
             eq(knowledgeArticles.status, 'published'),
             sql`(
               ${knowledgeArticles.title} ILIKE ${`%${feature.name}%`} OR
@@ -305,7 +305,7 @@ class ContentGapAnalysisService {
       })
       .from(knowledgeCategories)
       .where(
-        and(eq(knowledgeCategories.tenant_id, tenantId), eq(knowledgeCategories.isActive, true)),
+        and(eq(knowledgeCategories.tenantId, tenantId), eq(knowledgeCategories.isActive, true)),
       );
 
     const categoryHealth: Record<string, any> = {};
@@ -316,7 +316,7 @@ class ContentGapAnalysisService {
         .from(knowledgeArticles)
         .where(
           and(
-            eq(knowledgeArticles.tenant_id, tenantId),
+            eq(knowledgeArticles.tenantId, tenantId),
             eq(knowledgeArticles.categoryId, category.id),
             eq(knowledgeArticles.status, 'published'),
           ),

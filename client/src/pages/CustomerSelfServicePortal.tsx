@@ -862,7 +862,7 @@ export default function CustomerSelfServicePortal() {
                           <div className="flex-1">
                             <h4 className="font-medium text-sm">{request.subject}</h4>
                             <p className="text-xs text-muted-foreground">
-                              {request.equipment_make} {request.equipment_model}
+                              {request.equipmentMake} {request.equipmentModel}
                             </p>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -960,7 +960,7 @@ export default function CustomerSelfServicePortal() {
                               <strong>Make/Model:</strong> {item.make} {item.model}
                             </p>
                             <p>
-                              <strong>Serial:</strong> {item.serial_number}
+                              <strong>Serial:</strong> {item.serialNumber}
                             </p>
                             <p>
                               <strong>Location:</strong> {item.location}
@@ -1067,7 +1067,7 @@ export default function CustomerSelfServicePortal() {
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
                               <h3 className="font-medium">{article.title}</h3>
-                              {article.is_featured && (
+                              {article.isFeatured && (
                                 <Badge variant="secondary" className="text-xs">
                                   <Star className="w-3 h-3 mr-1" />
                                   Featured
@@ -1131,11 +1131,11 @@ export default function CustomerSelfServicePortal() {
                                     className="font-medium text-sm"
                                     data-testid={`survey-title-${survey.id}`}
                                   >
-                                    {survey.template_name || survey.survey_type}
+                                    {survey.templateName || survey.surveyType}
                                   </h4>
                                   <p className="text-xs text-muted-foreground mt-1">
                                     {survey.description ||
-                                      `Complete your ${survey.survey_type} feedback`}
+                                      `Complete your ${survey.surveyType} feedback`}
                                   </p>
                                   <div className="flex items-center space-x-2 mt-2">
                                     <Badge
@@ -1150,9 +1150,9 @@ export default function CustomerSelfServicePortal() {
                                     >
                                       {survey.status}
                                     </Badge>
-                                    {survey.expires_at && (
+                                    {survey.expiresAt && (
                                       <span className="text-xs text-muted-foreground">
-                                        Expires: {format(new Date(survey.expires_at), 'MMM d')}
+                                        Expires: {format(new Date(survey.expiresAt), 'MMM d')}
                                       </span>
                                     )}
                                   </div>
@@ -1210,12 +1210,12 @@ export default function CustomerSelfServicePortal() {
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <p className="font-medium text-sm">
-                                      {survey.template_name || survey.survey_type}
+                                      {survey.templateName || survey.surveyType}
                                     </p>
                                     <p className="text-xs text-muted-foreground">
                                       Completed:{' '}
-                                      {survey.completed_at
-                                        ? format(new Date(survey.completed_at), 'MMM d, yyyy')
+                                      {survey.completedAt
+                                        ? format(new Date(survey.completedAt), 'MMM d, yyyy')
                                         : 'N/A'}
                                     </p>
                                   </div>

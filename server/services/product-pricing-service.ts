@@ -445,7 +445,7 @@ export class ProductPricingService {
    */
   async getCompanyMarkup(tenantId: string, category?: string): Promise<CompanyMarkupConfig> {
     const settings = await db.query.companyPricingSettings.findFirst({
-      where: eq(companyPricingSettings.tenant_id, tenantId),
+      where: eq(companyPricingSettings.tenantId, tenantId),
     });
 
     if (!settings) {
@@ -476,7 +476,7 @@ export class ProductPricingService {
    */
   async getCompanyPricingSettings(tenantId: string): Promise<CompanyPricingSettings | null> {
     const settings = await db.query.companyPricingSettings.findFirst({
-      where: eq(companyPricingSettings.tenant_id, tenantId),
+      where: eq(companyPricingSettings.tenantId, tenantId),
     });
 
     return settings || null;

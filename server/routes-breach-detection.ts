@@ -45,10 +45,10 @@ router.get('/reports/breaches', async (req: any, res) => {
         .from(businessRecords)
         .where(
           and(
-            eq(businessRecords.tenant_id, tenantId),
+            eq(businessRecords.tenantId, tenantId),
             eq(businessRecords.recordType, 'lead'),
             eq(businessRecords.status, 'new'),
-            lt(businessRecords.created_at, twentyFourHoursAgo),
+            lt(businessRecords.createdAt, twentyFourHoursAgo),
           ),
         );
 
@@ -74,9 +74,9 @@ router.get('/reports/breaches', async (req: any, res) => {
       .from(proposals)
       .where(
         and(
-          eq(proposals.tenant_id, tenantId),
+          eq(proposals.tenantId, tenantId),
           eq(proposals.status, 'draft'),
-          lt(proposals.created_at, fourteenDaysAgo),
+          lt(proposals.createdAt, fourteenDaysAgo),
         ),
       );
 
@@ -99,7 +99,7 @@ router.get('/reports/breaches', async (req: any, res) => {
       .from(purchaseOrders)
       .where(
         and(
-          eq(purchaseOrders.tenant_id, tenantId),
+          eq(purchaseOrders.tenantId, tenantId),
           sql`expected_date IS NOT NULL`,
           sql`approved_date IS NOT NULL`,
         ),
@@ -124,9 +124,9 @@ router.get('/reports/breaches', async (req: any, res) => {
       .from(serviceTickets)
       .where(
         and(
-          eq(serviceTickets.tenant_id, tenantId),
+          eq(serviceTickets.tenantId, tenantId),
           sql`status IN ('open', 'in_progress')`,
-          lt(serviceTickets.created_at, fiveDaysAgo),
+          lt(serviceTickets.createdAt, fiveDaysAgo),
         ),
       );
 
@@ -149,9 +149,9 @@ router.get('/reports/breaches', async (req: any, res) => {
       .from(invoices)
       .where(
         and(
-          eq(invoices.tenant_id, tenantId),
+          eq(invoices.tenantId, tenantId),
           eq(invoices.status, 'draft'),
-          lt(invoices.created_at, twentyFourHoursAgo),
+          lt(invoices.createdAt, twentyFourHoursAgo),
         ),
       );
 
@@ -177,7 +177,7 @@ router.get('/reports/breaches', async (req: any, res) => {
       .from(meterReadings)
       .where(
         and(
-          eq(meterReadings.tenant_id, tenantId),
+          eq(meterReadings.tenantId, tenantId),
           lt(meterReadings.readingDate, sixtyDaysAgo), // Last reading more than 60 days ago
         ),
       );

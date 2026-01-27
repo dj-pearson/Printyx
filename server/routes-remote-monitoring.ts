@@ -11,7 +11,7 @@ const router = express.Router();
 // Get real-time equipment status
 router.get('/api/remote-monitoring/equipment-status', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
@@ -20,7 +20,7 @@ router.get('/api/remote-monitoring/equipment-status', async (req: any, res) => {
     const devices = await db
       .select()
       .from(deviceRegistrations)
-      .where(eq(deviceRegistrations.tenant_id, tenantId));
+      .where(eq(deviceRegistrations.tenantId, tenantId));
 
     // Get latest metrics for each device
     const equipmentStatus = await Promise.all(
@@ -217,7 +217,7 @@ router.get('/api/remote-monitoring/equipment-status', async (req: any, res) => {
 // Get IoT sensor data and environmental metrics
 router.get('/api/remote-monitoring/sensor-data', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { equipmentId, timeRange = '24h' } = req.query;
 
     if (!tenantId) {
@@ -332,7 +332,7 @@ router.get('/api/remote-monitoring/sensor-data', async (req: any, res) => {
       .from(deviceMetrics)
       .where(
         and(
-          eq(deviceMetrics.tenant_id, tenantId),
+          eq(deviceMetrics.tenantId, tenantId),
           gte(deviceMetrics.collectionTimestamp, startTime),
         ),
       );
@@ -423,7 +423,7 @@ router.get('/api/remote-monitoring/sensor-data', async (req: any, res) => {
 // Get fleet overview and analytics
 router.get('/api/remote-monitoring/fleet-overview', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
@@ -432,7 +432,7 @@ router.get('/api/remote-monitoring/fleet-overview', async (req: any, res) => {
     const devices = await db
       .select()
       .from(deviceRegistrations)
-      .where(eq(deviceRegistrations.tenant_id, tenantId));
+      .where(eq(deviceRegistrations.tenantId, tenantId));
 
     const totalEquipment = devices.length;
 
@@ -549,7 +549,7 @@ router.get('/api/remote-monitoring/fleet-overview', async (req: any, res) => {
       .from(deviceMetrics)
       .where(
         and(
-          eq(deviceMetrics.tenant_id, tenantId),
+          eq(deviceMetrics.tenantId, tenantId),
           gte(deviceMetrics.collectionTimestamp, oneDayAgo),
         ),
       );
@@ -602,7 +602,7 @@ router.get('/api/remote-monitoring/fleet-overview', async (req: any, res) => {
         .from(deviceMetrics)
         .where(
           and(
-            eq(deviceMetrics.tenant_id, tenantId),
+            eq(deviceMetrics.tenantId, tenantId),
             gte(deviceMetrics.collectionTimestamp, dayStart),
             lte(deviceMetrics.collectionTimestamp, dayEnd),
           ),
@@ -684,7 +684,7 @@ router.get('/api/remote-monitoring/fleet-overview', async (req: any, res) => {
 // Create or update monitoring alerts
 router.post('/api/remote-monitoring/alerts', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { equipmentId, alertType, threshold, enabled } = req.body;
 
     if (!tenantId) {
@@ -717,7 +717,7 @@ router.post('/api/remote-monitoring/alerts', async (req: any, res) => {
 // Acknowledge alerts
 router.post('/api/remote-monitoring/acknowledge-alert', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { alertId, acknowledgmentNote } = req.body;
 
     if (!tenantId) {

@@ -20,7 +20,7 @@ router.use(enhanceUserContext);
 // Get document library overview
 router.get('/api/document-management/library', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { category, status, dateRange } = req.query;
 
     if (!tenantId) {
@@ -254,7 +254,7 @@ router.get('/api/document-management/library', async (req: any, res) => {
 // Get workflow templates and automation rules
 router.get('/api/document-management/workflows', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID is required' });
     }
@@ -550,7 +550,7 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
 // Get document search and OCR results
 router.get('/api/document-management/search', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { query, category, dateRange, fileType } = req.query;
 
     if (!tenantId) {
@@ -720,7 +720,7 @@ router.get('/api/document-management/search', async (req: any, res) => {
 // Create or update workflow automation rule
 router.post('/api/document-management/automation-rules', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { ruleName, trigger, condition, action, targetRole, templateId } = req.body;
 
     if (!tenantId) {
@@ -757,7 +757,7 @@ router.post('/api/document-management/automation-rules', async (req: any, res) =
 // Upload document with OCR processing
 router.post('/api/document-management/upload', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { fileName, fileSize, fileType, category, tags } = req.body;
 
     if (!tenantId) {

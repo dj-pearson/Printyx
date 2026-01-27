@@ -94,12 +94,12 @@ export default function ServiceHub() {
       return (response || []).map((t: any) => ({
         ...t,
         id: t.id,
-        ticketNumber: t.ticket_number || t.ticketNumber || '',
-        customerId: t.customer_id || t.customerId || '',
-        equipmentId: t.equipment_id || t.equipmentId || null,
-        assignedTo: t.assigned_to || t.assignedTo || null,
-        createdAt: t.created_at || t.createdAt || '',
-        updatedAt: t.updated_at || t.updatedAt || '',
+        ticketNumber: t.ticketNumber || t.ticketNumber || '',
+        customerId: t.customerId || t.customerId || '',
+        equipmentId: t.equipmentId || t.equipmentId || null,
+        assignedTo: t.assignedTo || t.assignedTo || null,
+        createdAt: t.createdAt || t.createdAt || '',
+        updatedAt: t.updatedAt || t.updatedAt || '',
         scheduledDate: t.scheduled_date || t.scheduledDate || null,
         completedDate: t.completed_date || t.completedDate || null,
       }));
@@ -117,7 +117,7 @@ export default function ServiceHub() {
         id: t.id,
         callerName: t.caller_name || t.callerName || '',
         callerPhone: t.caller_phone || t.callerPhone || '',
-        createdAt: t.created_at || t.createdAt || '',
+        createdAt: t.createdAt || t.createdAt || '',
         issueDescription: t.issue_description || t.issueDescription || '',
       }));
     },
@@ -456,8 +456,8 @@ export default function ServiceHub() {
                           </p>
                           <p className="text-xs text-gray-500">
                             <Clock className="h-3 w-3 inline mr-1" />
-                            {ticket.created_at
-                              ? new Date(ticket.created_at).toLocaleTimeString()
+                            {ticket.createdAt
+                              ? new Date(ticket.createdAt).toLocaleTimeString()
                               : new Date(ticket.createdAt).toLocaleTimeString()}
                             <span className="ml-2">
                               <Phone className="h-3 w-3 inline mr-1" />
@@ -605,8 +605,8 @@ export default function ServiceHub() {
                               </span>
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                {ticket.created_at
-                                  ? new Date(ticket.created_at).toLocaleTimeString()
+                                {ticket.createdAt
+                                  ? new Date(ticket.createdAt).toLocaleTimeString()
                                   : new Date(ticket.createdAt).toLocaleTimeString()}
                               </span>
                             </div>

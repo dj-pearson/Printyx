@@ -73,7 +73,7 @@ export async function getRetentionPolicy(
     .select()
     .from(dataRetentionPolicies)
     .where(
-      and(eq(dataRetentionPolicies.id, policyId), eq(dataRetentionPolicies.tenant_id, tenantId)),
+      and(eq(dataRetentionPolicies.id, policyId), eq(dataRetentionPolicies.tenantId, tenantId)),
     );
 
   return policy || null;
@@ -91,7 +91,7 @@ export async function listRetentionPolicies(
     offset?: number;
   } = {},
 ): Promise<{ data: DataRetentionPolicy[]; total: number }> {
-  const conditions = [eq(dataRetentionPolicies.tenant_id, tenantId)];
+  const conditions = [eq(dataRetentionPolicies.tenantId, tenantId)];
 
   if (options.status?.length) {
     conditions.push(inArray(dataRetentionPolicies.status, options.status as any));
@@ -135,7 +135,7 @@ export async function updateRetentionPolicy(
       updatedAt: new Date(),
     })
     .where(
-      and(eq(dataRetentionPolicies.id, policyId), eq(dataRetentionPolicies.tenant_id, tenantId)),
+      and(eq(dataRetentionPolicies.id, policyId), eq(dataRetentionPolicies.tenantId, tenantId)),
     )
     .returning();
 
@@ -149,7 +149,7 @@ export async function deleteRetentionPolicy(policyId: string, tenantId: string):
   const result = await db
     .delete(dataRetentionPolicies)
     .where(
-      and(eq(dataRetentionPolicies.id, policyId), eq(dataRetentionPolicies.tenant_id, tenantId)),
+      and(eq(dataRetentionPolicies.id, policyId), eq(dataRetentionPolicies.tenantId, tenantId)),
     );
 
   return true;
@@ -203,7 +203,7 @@ export async function getPurgeJob(jobId: string, tenantId: string): Promise<Data
   const [job] = await db
     .select()
     .from(dataPurgeJobs)
-    .where(and(eq(dataPurgeJobs.id, jobId), eq(dataPurgeJobs.tenant_id, tenantId)));
+    .where(and(eq(dataPurgeJobs.id, jobId), eq(dataPurgeJobs.tenantId, tenantId)));
 
   return job || null;
 }
@@ -222,7 +222,7 @@ export async function listPurgeJobs(
     offset?: number;
   } = {},
 ): Promise<{ data: DataPurgeJob[]; total: number }> {
-  const conditions = [eq(dataPurgeJobs.tenant_id, tenantId)];
+  const conditions = [eq(dataPurgeJobs.tenantId, tenantId)];
 
   if (options.policyId) {
     conditions.push(eq(dataPurgeJobs.policyId, options.policyId));
@@ -231,10 +231,10 @@ export async function listPurgeJobs(
     conditions.push(inArray(dataPurgeJobs.status, options.status as any));
   }
   if (options.startDate) {
-    conditions.push(gte(dataPurgeJobs.created_at, options.startDate));
+    conditions.push(gte(dataPurgeJobs.createdAt, options.startDate));
   }
   if (options.endDate) {
-    conditions.push(lte(dataPurgeJobs.created_at, options.endDate));
+    conditions.push(lte(dataPurgeJobs.createdAt, options.endDate));
   }
 
   const [data, countResult] = await Promise.all([
@@ -242,7 +242,7 @@ export async function listPurgeJobs(
       .select()
       .from(dataPurgeJobs)
       .where(and(...conditions))
-      .orderBy(desc(dataPurgeJobs.created_at))
+      .orderBy(desc(dataPurgeJobs.createdAt))
       .limit(options.limit || 50)
       .offset(options.offset || 0),
     db
@@ -620,7 +620,7 @@ export async function runScheduledRetention(): Promise<{
 
   for (const policy of policies) {
     try {
-      await executePurge(policy.id, policy.tenant_id, undefined, 'scheduled');
+      await executePurge(policy.id, policy.tenantId, undefined, 'scheduled');
       jobsCreated++;
     } catch (error: any) {
       errors.push(`Policy ${policy.id}: ${error.message}`);
@@ -657,7 +657,7 @@ export async function getRetentionMetrics(tenantId: string): Promise<{
   const policies = await db
     .select()
     .from(dataRetentionPolicies)
-    .where(eq(dataRetentionPolicies.tenant_id, tenantId));
+    .where(eq(dataRetentionPolicies.tenantId, tenantId));
 
   let activePolicies = 0;
   let pausedPolicies = 0;

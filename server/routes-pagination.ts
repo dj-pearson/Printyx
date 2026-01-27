@@ -52,11 +52,11 @@ function createPaginatedResponse<T>(data: T[], totalCount: number, page: number,
 // Paginated business records endpoint
 export async function getPaginatedBusinessRecords(req: TenantRequest, res: Response) {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
     const { page, limit, offset, sortBy, sortDirection, search } = parsePaginationParams(req.query);
 
     // Build where conditions
-    const conditions = [eq(businessRecords.tenant_id, tenantId)];
+    const conditions = [eq(businessRecords.tenantId, tenantId)];
 
     if (search) {
       conditions.push(
@@ -94,7 +94,7 @@ export async function getPaginatedBusinessRecords(req: TenantRequest, res: Respo
       .where(whereClause)
       .orderBy(
         sortDirection(
-          businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.created_at,
+          businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.createdAt,
         ),
       )
       .limit(limit)
@@ -110,10 +110,10 @@ export async function getPaginatedBusinessRecords(req: TenantRequest, res: Respo
 // Paginated service tickets endpoint
 export async function getPaginatedServiceTickets(req: TenantRequest, res: Response) {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
     const { page, limit, offset, sortBy, sortDirection, search } = parsePaginationParams(req.query);
 
-    const conditions = [eq(serviceTickets.tenant_id, tenantId)];
+    const conditions = [eq(serviceTickets.tenantId, tenantId)];
 
     if (search) {
       conditions.push(
@@ -144,7 +144,7 @@ export async function getPaginatedServiceTickets(req: TenantRequest, res: Respon
       .where(whereClause)
       .orderBy(
         sortDirection(
-          serviceTickets[sortBy as keyof typeof serviceTickets] || serviceTickets.created_at,
+          serviceTickets[sortBy as keyof typeof serviceTickets] || serviceTickets.createdAt,
         ),
       )
       .limit(limit)
@@ -160,10 +160,10 @@ export async function getPaginatedServiceTickets(req: TenantRequest, res: Respon
 // Paginated inventory endpoint
 export async function getPaginatedInventory(req: TenantRequest, res: Response) {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
     const { page, limit, offset, sortBy, sortDirection, search } = parsePaginationParams(req.query);
 
-    const conditions = [eq(inventoryItems.tenant_id, tenantId)];
+    const conditions = [eq(inventoryItems.tenantId, tenantId)];
 
     if (search) {
       conditions.push(
@@ -195,7 +195,7 @@ export async function getPaginatedInventory(req: TenantRequest, res: Response) {
       .where(whereClause)
       .orderBy(
         sortDirection(
-          inventoryItems[sortBy as keyof typeof inventoryItems] || inventoryItems.created_at,
+          inventoryItems[sortBy as keyof typeof inventoryItems] || inventoryItems.createdAt,
         ),
       )
       .limit(limit)
@@ -211,10 +211,10 @@ export async function getPaginatedInventory(req: TenantRequest, res: Response) {
 // Paginated invoices endpoint
 export async function getPaginatedInvoices(req: TenantRequest, res: Response) {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
     const { page, limit, offset, sortBy, sortDirection, search } = parsePaginationParams(req.query);
 
-    const conditions = [eq(invoices.tenant_id, tenantId)];
+    const conditions = [eq(invoices.tenantId, tenantId)];
 
     if (search) {
       conditions.push(
@@ -243,7 +243,7 @@ export async function getPaginatedInvoices(req: TenantRequest, res: Response) {
       .select()
       .from(invoices)
       .where(whereClause)
-      .orderBy(sortDirection(invoices[sortBy as keyof typeof invoices] || invoices.created_at))
+      .orderBy(sortDirection(invoices[sortBy as keyof typeof invoices] || invoices.createdAt))
       .limit(limit)
       .offset(offset);
 

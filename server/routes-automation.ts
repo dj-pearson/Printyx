@@ -24,7 +24,7 @@ export function registerAutomationRoutes(app: Express) {
   // GET /api/automation/rules - List automation rules
   app.get('/api/automation/rules', resolveTenant, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -48,7 +48,7 @@ export function registerAutomationRoutes(app: Express) {
   // POST /api/automation/rules - Create automation rule
   app.post('/api/automation/rules', resolveTenant, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
       const userId = req.user?.id || getUserId(req);
 
       if (!tenantId) {
@@ -107,7 +107,7 @@ export function registerAutomationRoutes(app: Express) {
   app.put('/api/automation/rules/:id', resolveTenant, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -180,7 +180,7 @@ export function registerAutomationRoutes(app: Express) {
   app.delete('/api/automation/rules/:id', resolveTenant, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -213,7 +213,7 @@ export function registerAutomationRoutes(app: Express) {
   app.get('/api/automation/tasks', resolveTenant, async (req: any, res) => {
     try {
       const priority = String((req.query as any)?.priority || '');
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -245,7 +245,7 @@ export function registerAutomationRoutes(app: Express) {
   // POST /api/automation/tasks - Create automated task
   app.post('/api/automation/tasks', resolveTenant, async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -297,7 +297,7 @@ export function registerAutomationRoutes(app: Express) {
   app.put('/api/automation/tasks/:id', resolveTenant, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -358,7 +358,7 @@ export function registerAutomationRoutes(app: Express) {
   app.delete('/api/automation/tasks/:id', resolveTenant, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenant_id || getTenantId(req);
+      const tenantId = req.user?.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(401).json({ message: 'Authentication required' });

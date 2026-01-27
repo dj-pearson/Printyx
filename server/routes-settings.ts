@@ -47,7 +47,7 @@ export async function getUserSettings(req: Request, res: Response) {
       settings = {
         id: `settings-${user.id}`,
         userId: user.id,
-        tenantId: user.tenant_id || (req as any).tenant_id || 'demo-tenant',
+        tenantId: user.tenantId || (req as any).tenantId || 'demo-tenant',
         firstName: user.firstName || '',
         lastName: user.lastName || '',
         email: user.email || '',
@@ -248,7 +248,7 @@ export async function exportUserData(req: Request, res: Response) {
         firstName: userData?.firstName,
         lastName: userData?.lastName,
         profileImageUrl: userData?.profileImageUrl,
-        createdAt: userData?.created_at,
+        createdAt: userData?.createdAt,
       },
       settings: userSettings,
       assignments: userAssignments,

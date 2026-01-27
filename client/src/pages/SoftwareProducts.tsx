@@ -81,11 +81,11 @@ export default function SoftwareProducts() {
       return (response || []).map((product: any) => ({
         ...product,
         id: product.id,
-        productName: product.product_name || product.productName || '',
-        productType: product.product_type || product.productType || '',
+        productName: product.productName || product.productName || '',
+        productType: product.productType || product.productType || '',
         baseCost: product.base_cost || product.baseCost || 0,
-        createdAt: product.created_at || product.createdAt || '',
-        updatedAt: product.updated_at || product.updatedAt || '',
+        createdAt: product.createdAt || product.createdAt || '',
+        updatedAt: product.updatedAt || product.updatedAt || '',
       }));
     },
   });

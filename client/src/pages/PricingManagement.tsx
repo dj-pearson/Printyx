@@ -91,10 +91,10 @@ export default function PricingManagement() {
       return (response || []).map((pricing: any) => ({
         ...pricing,
         id: pricing.id,
-        productId: pricing.product_id || pricing.productId || '',
+        productId: pricing.productId || pricing.productId || '',
         baseCost: pricing.base_cost || pricing.baseCost || 0,
-        createdAt: pricing.created_at || pricing.createdAt || '',
-        updatedAt: pricing.updated_at || pricing.updatedAt || '',
+        createdAt: pricing.createdAt || pricing.createdAt || '',
+        updatedAt: pricing.updatedAt || pricing.updatedAt || '',
       }));
     },
   });
@@ -107,7 +107,7 @@ export default function PricingManagement() {
       return (response || []).map((product: any) => ({
         ...product,
         id: product.id,
-        productName: product.product_name || product.productName || '',
+        productName: product.productName || product.productName || '',
       }));
     },
   });

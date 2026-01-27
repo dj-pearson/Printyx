@@ -231,7 +231,7 @@ export const enhanceUserContext = async (
     }
 
     // Get user ID from existing auth (session or JWT)
-    const userId = req.user?.id || req.session?.user_id;
+    const userId = req.user?.id || req.session?.userId;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
@@ -271,7 +271,7 @@ export const enhanceUserContext = async (
     // Create enhanced user context
     const enhancedUser: ReportingUserContext = {
       id: user.id,
-      tenantId: user.tenant_id!,
+      tenantId: user.tenantId!,
       roleId: user.roleId!,
       accessScope,
       permissions,
@@ -367,7 +367,7 @@ export const requireAnyPermission = (permissions: string[]) => {
 
 // Get accessible location IDs based on user's role and scope
 async function getAccessibleLocationIds(user: any, role: any): Promise<string[]> {
-  if (!user.tenant_id) return [];
+  if (!user.tenantId) return [];
 
   // Platform users can access all locations across tenants
   if (user.isPlatformUser && role?.canAccessAllTenants) {
@@ -380,7 +380,7 @@ async function getAccessibleLocationIds(user: any, role: any): Promise<string[]>
     const companyLocations = await db
       .select({ id: locations.id })
       .from(locations)
-      .where(eq(locations.tenant_id, user.tenant_id));
+      .where(eq(locations.tenantId, user.tenantId));
     return companyLocations.map((l) => l.id);
   }
 
@@ -389,7 +389,7 @@ async function getAccessibleLocationIds(user: any, role: any): Promise<string[]>
     const regionalLocations = await db
       .select({ id: locations.id })
       .from(locations)
-      .where(and(eq(locations.tenant_id, user.tenant_id), eq(locations.regionId, user.regionId)));
+      .where(and(eq(locations.tenantId, user.tenantId), eq(locations.regionId, user.regionId)));
     return regionalLocations.map((l) => l.id);
   }
 
@@ -403,7 +403,7 @@ async function getAccessibleLocationIds(user: any, role: any): Promise<string[]>
 
 // Get accessible region IDs based on user's role and scope
 async function getAccessibleRegionIds(user: any, role: any): Promise<string[]> {
-  if (!user.tenant_id) return [];
+  if (!user.tenantId) return [];
 
   // Platform users can access all regions
   if (user.isPlatformUser && role?.canAccessAllTenants) {
@@ -416,7 +416,7 @@ async function getAccessibleRegionIds(user: any, role: any): Promise<string[]> {
     const companyRegions = await db
       .select({ id: regions.id })
       .from(regions)
-      .where(eq(regions.tenant_id, user.tenant_id));
+      .where(eq(regions.tenantId, user.tenantId));
     return companyRegions.map((r) => r.id);
   }
 
@@ -541,13 +541,13 @@ export class HierarchicalQueryBuilder {
 
       case 'company':
         // Company-wide access
-        return baseQuery.where(eq(`${prefix}tenant_id`, this.userContext.tenant_id));
+        return baseQuery.where(eq(`${prefix}tenant_id`, this.userContext.tenantId));
 
       case 'regional':
         // Regional access
         return baseQuery.where(
           and(
-            eq(`${prefix}tenant_id`, this.userContext.tenant_id),
+            eq(`${prefix}tenant_id`, this.userContext.tenantId),
             this.userContext.regionIds.length > 0
               ? inArray(`${prefix}region_id`, this.userContext.regionIds)
               : eq(`${prefix}region_id`, 'none'), // Fallback to prevent data access
@@ -558,7 +558,7 @@ export class HierarchicalQueryBuilder {
         // Location access
         return baseQuery.where(
           and(
-            eq(`${prefix}tenant_id`, this.userContext.tenant_id),
+            eq(`${prefix}tenant_id`, this.userContext.tenantId),
             this.userContext.locationIds.length > 0
               ? inArray(`${prefix}location_id`, this.userContext.locationIds)
               : eq(`${prefix}location_id`, 'none'), // Fallback to prevent data access
@@ -569,7 +569,7 @@ export class HierarchicalQueryBuilder {
         // Team access (location + team filter)
         return baseQuery.where(
           and(
-            eq(`${prefix}tenant_id`, this.userContext.tenant_id),
+            eq(`${prefix}tenant_id`, this.userContext.tenantId),
             this.userContext.locationIds.length > 0
               ? inArray(`${prefix}location_id`, this.userContext.locationIds)
               : eq(`${prefix}location_id`, 'none'),
@@ -583,7 +583,7 @@ export class HierarchicalQueryBuilder {
         // Individual access (user's own data)
         return baseQuery.where(
           and(
-            eq(`${prefix}tenant_id`, this.userContext.tenant_id),
+            eq(`${prefix}tenant_id`, this.userContext.tenantId),
             eq(`${prefix}user_id`, this.userContext.id),
           ),
         );

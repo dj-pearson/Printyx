@@ -21,11 +21,11 @@ const router = Router();
 
 // Middleware to check tenant
 function requireTenant(req: Request, res: Response, next: NextFunction) {
-  const tenantId = (req as any).tenant_id || (req.session as any)?.tenant_id;
+  const tenantId = (req as any).tenantId || (req.session as any)?.tenantId;
   if (!tenantId) {
     return res.status(403).json({ error: 'Tenant context required' });
   }
-  (req as any).tenant_id = tenantId;
+  (req as any).tenantId = tenantId;
   next();
 }
 
@@ -39,7 +39,7 @@ router.use(enhanceUserContext);
  */
 router.get('/dashboard', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const metrics = await supplyService.getDashboardMetrics(tenantId);
     res.json(metrics);
   } catch (error) {
@@ -57,11 +57,11 @@ router.get('/dashboard', async (req: Request, res: Response) => {
  */
 router.get('/supplies', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const { status, priority } = req.query;
 
     let query = db.query.supplyMonitoring.findMany({
-      where: eq(supplyMonitoring.tenant_id, tenantId),
+      where: eq(supplyMonitoring.tenantId, tenantId),
       orderBy: [desc(supplyMonitoring.lastCheckedAt)],
       limit: 100,
     });
@@ -83,7 +83,7 @@ router.get('/supplies', async (req: Request, res: Response) => {
  */
 router.get('/low-supplies', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const lowSupplies = await supplyService.getLowSupplyAlerts(tenantId);
     res.json(lowSupplies);
   } catch (error) {
@@ -101,7 +101,7 @@ router.get('/low-supplies', async (req: Request, res: Response) => {
  */
 router.post('/analyze/:supplyMonitoringId', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const supplyMonitoringId = parseInt(req.params.supplyMonitoringId);
 
     if (isNaN(supplyMonitoringId)) {
@@ -125,7 +125,7 @@ router.post('/analyze/:supplyMonitoringId', async (req: Request, res: Response) 
  */
 router.post('/analyze-all', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const results = await supplyService.analyzeTenantSupplies(tenantId);
     res.json(results);
   } catch (error) {
@@ -143,7 +143,7 @@ router.post('/analyze-all', async (req: Request, res: Response) => {
  */
 router.post('/create-order/:supplyMonitoringId', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const supplyMonitoringId = parseInt(req.params.supplyMonitoringId);
 
     if (isNaN(supplyMonitoringId)) {
@@ -171,7 +171,7 @@ router.post('/create-order/:supplyMonitoringId', async (req: Request, res: Respo
  */
 router.get('/orders', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const limit = parseInt(req.query.limit as string) || 20;
     const orders = await supplyService.getRecentOrders(tenantId, limit);
     res.json(orders);
@@ -190,7 +190,7 @@ router.get('/orders', async (req: Request, res: Response) => {
  */
 router.get('/orders/:orderId', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const orderId = parseInt(req.params.orderId);
 
     if (isNaN(orderId)) {
@@ -198,7 +198,7 @@ router.get('/orders/:orderId', async (req: Request, res: Response) => {
     }
 
     const order = await db.query.autoSupplyOrders.findFirst({
-      where: and(eq(autoSupplyOrders.id, orderId), eq(autoSupplyOrders.tenant_id, tenantId)),
+      where: and(eq(autoSupplyOrders.id, orderId), eq(autoSupplyOrders.tenantId, tenantId)),
     });
 
     if (!order) {
@@ -221,7 +221,7 @@ router.get('/orders/:orderId', async (req: Request, res: Response) => {
  */
 router.patch('/orders/:orderId/status', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const orderId = parseInt(req.params.orderId);
     const { status, trackingNumber, actualDeliveryDate, notes } = req.body;
 
@@ -241,7 +241,7 @@ router.patch('/orders/:orderId/status', async (req: Request, res: Response) => {
     const [updatedOrder] = await db
       .update(autoSupplyOrders)
       .set(updates)
-      .where(and(eq(autoSupplyOrders.id, orderId), eq(autoSupplyOrders.tenant_id, tenantId)))
+      .where(and(eq(autoSupplyOrders.id, orderId), eq(autoSupplyOrders.tenantId, tenantId)))
       .returning();
 
     if (!updatedOrder) {
@@ -264,7 +264,7 @@ router.patch('/orders/:orderId/status', async (req: Request, res: Response) => {
  */
 router.get('/rules', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const rules = await supplyService.getReplenishmentRules(tenantId);
     res.json(rules);
   } catch (error) {
@@ -282,7 +282,7 @@ router.get('/rules', async (req: Request, res: Response) => {
  */
 router.put('/rules', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const updates = req.body;
     const rules = await supplyService.updateReplenishmentRules(tenantId, updates);
     res.json(rules);
@@ -301,7 +301,7 @@ router.put('/rules', async (req: Request, res: Response) => {
  */
 router.get('/supply/:supplyMonitoringId', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const supplyMonitoringId = parseInt(req.params.supplyMonitoringId);
 
     if (isNaN(supplyMonitoringId)) {
@@ -311,7 +311,7 @@ router.get('/supply/:supplyMonitoringId', async (req: Request, res: Response) =>
     const supply = await db.query.supplyMonitoring.findFirst({
       where: and(
         eq(supplyMonitoring.id, supplyMonitoringId),
-        eq(supplyMonitoring.tenant_id, tenantId),
+        eq(supplyMonitoring.tenantId, tenantId),
       ),
       with: {
         orders: {
@@ -345,7 +345,7 @@ router.get('/supply/:supplyMonitoringId', async (req: Request, res: Response) =>
  */
 router.patch('/supply/:supplyMonitoringId', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const supplyMonitoringId = parseInt(req.params.supplyMonitoringId);
     const { reorderThreshold, reorderQuantity, autoOrderEnabled } = req.body;
 
@@ -365,7 +365,7 @@ router.patch('/supply/:supplyMonitoringId', async (req: Request, res: Response) 
       .update(supplyMonitoring)
       .set(updates)
       .where(
-        and(eq(supplyMonitoring.id, supplyMonitoringId), eq(supplyMonitoring.tenant_id, tenantId)),
+        and(eq(supplyMonitoring.id, supplyMonitoringId), eq(supplyMonitoring.tenantId, tenantId)),
       )
       .returning();
 

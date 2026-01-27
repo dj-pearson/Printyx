@@ -53,8 +53,8 @@ export class TeamAlertService {
         .from(alertConfigurations)
         .where(
           and(
-            eq(alertConfigurations.tenant_id, userContext.tenant_id),
-            eq(alertConfigurations.user_id, userContext.user_id),
+            eq(alertConfigurations.tenantId, userContext.tenantId),
+            eq(alertConfigurations.userId, userContext.userId),
             eq(alertConfigurations.enabled, true),
           ),
         );
@@ -131,7 +131,7 @@ export class TeamAlertService {
     if (shouldAlert) {
       await this.createAlert(
         {
-          tenantId: userContext.tenant_id,
+          tenantId: userContext.tenantId,
           configurationId: config.id,
           alertType: config.alertType,
           severity: this.determineSeverity(alertDetails),
@@ -155,8 +155,8 @@ export class TeamAlertService {
         .from(alertConfigurations)
         .where(
           and(
-            eq(alertConfigurations.tenant_id, userContext.tenant_id),
-            eq(alertConfigurations.user_id, userContext.user_id),
+            eq(alertConfigurations.tenantId, userContext.tenantId),
+            eq(alertConfigurations.userId, userContext.userId),
             eq(alertConfigurations.enabled, true),
           ),
         );
@@ -249,7 +249,7 @@ export class TeamAlertService {
     if (shouldAlert) {
       await this.createAlert(
         {
-          tenantId: userContext.tenant_id,
+          tenantId: userContext.tenantId,
           configurationId: config.id,
           alertType: config.alertType,
           severity: this.determineSeverity(alertDetails),
@@ -276,10 +276,10 @@ export class TeamAlertService {
         .from(alertInstances)
         .where(
           and(
-            eq(alertInstances.tenant_id, alertData.tenant_id!),
+            eq(alertInstances.tenantId, alertData.tenantId!),
             eq(alertInstances.alertType, alertData.alertType),
             eq(alertInstances.status, 'active'),
-            gte(alertInstances.created_at, new Date(Date.now() - 24 * 60 * 60 * 1000)), // Last 24 hours
+            gte(alertInstances.createdAt, new Date(Date.now() - 24 * 60 * 60 * 1000)), // Last 24 hours
           ),
         )
         .limit(1);
@@ -344,11 +344,11 @@ export class TeamAlertService {
 
       // Get user email
       const user = await db.query.users.findFirst({
-        where: (users, { eq }) => eq(users.id, config.user_id),
+        where: (users, { eq }) => eq(users.id, config.userId),
       });
 
       if (!user || !user.email) {
-        console.error(`No email found for user ${config.user_id}`);
+        console.error(`No email found for user ${config.userId}`);
         return;
       }
 
@@ -369,7 +369,7 @@ export class TeamAlertService {
 
         // Log notification
         await db.insert(alertNotificationLog).values({
-          tenantId: config.tenant_id,
+          tenantId: config.tenantId,
           alertInstanceId: alert.id,
           channel: 'email',
           recipient,
@@ -544,7 +544,7 @@ export class TeamAlertService {
       This is an automated alert from Printyx Team Performance Monitoring
     </p>
     <p style="margin: 5px 0 0 0;">
-      Alert ID: ${alert.id} | Created: ${new Date(alert.created_at).toLocaleString()}
+      Alert ID: ${alert.id} | Created: ${new Date(alert.createdAt).toLocaleString()}
     </p>
   </div>
 </body>
@@ -574,7 +574,7 @@ export class TeamAlertService {
 
     text += `---\n`;
     text += `Alert ID: ${alert.id}\n`;
-    text += `Created: ${new Date(alert.created_at).toLocaleString()}\n`;
+    text += `Created: ${new Date(alert.createdAt).toLocaleString()}\n`;
 
     return text;
   }
@@ -586,8 +586,8 @@ export class TeamAlertService {
     return await db
       .select()
       .from(alertInstances)
-      .where(and(eq(alertInstances.tenant_id, tenantId), eq(alertInstances.status, 'active')))
-      .orderBy(sql`${alertInstances.created_at} DESC`)
+      .where(and(eq(alertInstances.tenantId, tenantId), eq(alertInstances.status, 'active')))
+      .orderBy(sql`${alertInstances.createdAt} DESC`)
       .limit(50);
   }
 

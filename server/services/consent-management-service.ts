@@ -114,7 +114,7 @@ export class ConsentManagementService {
     // Check for existing consent of same type for this subject
     const existingConsent = await db.query.consentRecords.findFirst({
       where: and(
-        eq(consentRecords.tenant_id, tenantId),
+        eq(consentRecords.tenantId, tenantId),
         eq(consentRecords.subjectId, data.subjectId),
         eq(consentRecords.consentType, data.consentType),
         or(eq(consentRecords.status, 'given'), eq(consentRecords.status, 'pending')),
@@ -189,7 +189,7 @@ export class ConsentManagementService {
     actorId?: string,
   ): Promise<ConsentRecord> {
     const existingConsent = await db.query.consentRecords.findFirst({
-      where: and(eq(consentRecords.id, consentId), eq(consentRecords.tenant_id, tenantId)),
+      where: and(eq(consentRecords.id, consentId), eq(consentRecords.tenantId, tenantId)),
     });
 
     if (!existingConsent) {
@@ -257,7 +257,7 @@ export class ConsentManagementService {
     reason?: string,
   ): Promise<ConsentRecord> {
     const existingConsent = await db.query.consentRecords.findFirst({
-      where: and(eq(consentRecords.id, consentId), eq(consentRecords.tenant_id, tenantId)),
+      where: and(eq(consentRecords.id, consentId), eq(consentRecords.tenantId, tenantId)),
     });
 
     if (!existingConsent) {
@@ -299,11 +299,11 @@ export class ConsentManagementService {
   ): Promise<ConsentRecord[]> {
     return await db.query.consentRecords.findMany({
       where: and(
-        eq(consentRecords.tenant_id, tenantId),
+        eq(consentRecords.tenantId, tenantId),
         eq(consentRecords.subjectType, subjectType),
         eq(consentRecords.subjectId, subjectId),
       ),
-      orderBy: [desc(consentRecords.created_at)],
+      orderBy: [desc(consentRecords.createdAt)],
     });
   }
 
@@ -318,7 +318,7 @@ export class ConsentManagementService {
     return (
       (await db.query.consentRecords.findFirst({
         where: and(
-          eq(consentRecords.tenant_id, tenantId),
+          eq(consentRecords.tenantId, tenantId),
           eq(consentRecords.subjectId, subjectId),
           eq(consentRecords.consentType, consentType),
           eq(consentRecords.status, 'given'),
@@ -350,8 +350,8 @@ export class ConsentManagementService {
     Record<ConsentType, { status: string; givenAt: Date | null; expiresAt: Date | null }>
   > {
     const consents = await db.query.consentRecords.findMany({
-      where: and(eq(consentRecords.tenant_id, tenantId), eq(consentRecords.subjectId, subjectId)),
-      orderBy: [desc(consentRecords.created_at)],
+      where: and(eq(consentRecords.tenantId, tenantId), eq(consentRecords.subjectId, subjectId)),
+      orderBy: [desc(consentRecords.createdAt)],
     });
 
     const summary: Record<
@@ -485,7 +485,7 @@ export class ConsentManagementService {
   async getConsentHistory(tenantId: string, consentId: string): Promise<ConsentAuditTrail[]> {
     return await db.query.consentAuditTrail.findMany({
       where: and(
-        eq(consentAuditTrail.tenant_id, tenantId),
+        eq(consentAuditTrail.tenantId, tenantId),
         eq(consentAuditTrail.consentRecordId, consentId),
       ),
       orderBy: [desc(consentAuditTrail.changedAt)],
@@ -508,7 +508,7 @@ export class ConsentManagementService {
     const { page = 1, limit = 25, status, consentType, subjectType } = options;
     const offset = (page - 1) * limit;
 
-    const conditions = [eq(consentRecords.tenant_id, tenantId)];
+    const conditions = [eq(consentRecords.tenantId, tenantId)];
 
     if (status) {
       conditions.push(eq(consentRecords.status, status as any));
@@ -527,7 +527,7 @@ export class ConsentManagementService {
         .select()
         .from(consentRecords)
         .where(whereClause)
-        .orderBy(desc(consentRecords.created_at))
+        .orderBy(desc(consentRecords.createdAt))
         .limit(limit)
         .offset(offset),
       db
@@ -570,7 +570,7 @@ export class ConsentManagementService {
         .set({ isDefault: false, updatedAt: new Date() })
         .where(
           and(
-            eq(consentPreferencesTemplate.tenant_id, tenantId),
+            eq(consentPreferencesTemplate.tenantId, tenantId),
             eq(consentPreferencesTemplate.isDefault, true),
           ),
         );
@@ -593,12 +593,12 @@ export class ConsentManagementService {
   async listTemplates(tenantId: string): Promise<ConsentPreferencesTemplate[]> {
     return await db.query.consentPreferencesTemplate.findMany({
       where: and(
-        eq(consentPreferencesTemplate.tenant_id, tenantId),
+        eq(consentPreferencesTemplate.tenantId, tenantId),
         eq(consentPreferencesTemplate.isActive, true),
       ),
       orderBy: [
         desc(consentPreferencesTemplate.isDefault),
-        desc(consentPreferencesTemplate.created_at),
+        desc(consentPreferencesTemplate.createdAt),
       ],
     });
   }
@@ -610,7 +610,7 @@ export class ConsentManagementService {
     return (
       (await db.query.consentPreferencesTemplate.findFirst({
         where: and(
-          eq(consentPreferencesTemplate.tenant_id, tenantId),
+          eq(consentPreferencesTemplate.tenantId, tenantId),
           eq(consentPreferencesTemplate.isDefault, true),
           eq(consentPreferencesTemplate.isActive, true),
         ),
@@ -634,23 +634,23 @@ export class ConsentManagementService {
       db
         .select({ count: sql`count(*)` })
         .from(consentRecords)
-        .where(eq(consentRecords.tenant_id, tenantId)),
+        .where(eq(consentRecords.tenantId, tenantId)),
       db
         .select({ status: consentRecords.status, count: sql`count(*)` })
         .from(consentRecords)
-        .where(eq(consentRecords.tenant_id, tenantId))
+        .where(eq(consentRecords.tenantId, tenantId))
         .groupBy(consentRecords.status),
       db
         .select({ type: consentRecords.consentType, count: sql`count(*)` })
         .from(consentRecords)
-        .where(eq(consentRecords.tenant_id, tenantId))
+        .where(eq(consentRecords.tenantId, tenantId))
         .groupBy(consentRecords.consentType),
       db
         .select({ count: sql`count(*)` })
         .from(consentRecords)
         .where(
           and(
-            eq(consentRecords.tenant_id, tenantId),
+            eq(consentRecords.tenantId, tenantId),
             eq(consentRecords.status, 'withdrawn'),
             gte(consentRecords.withdrawnAt, thirtyDaysAgo),
           ),

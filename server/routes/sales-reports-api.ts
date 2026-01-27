@@ -222,7 +222,7 @@ router.get(
         scope as 'team' | 'location' | 'company',
       );
 
-      const myPosition = leaderboard.find((entry) => entry.user_id === req.user!.id);
+      const myPosition = leaderboard.find((entry) => entry.userId === req.user!.id);
 
       res.json({
         leaderboard,
@@ -295,7 +295,7 @@ router.get(
 
       const pipelineData = comparison.map((member) => ({
         userName: member.userName,
-        userId: member.user_id,
+        userId: member.userId,
         pipelineValue: member.pipelineValue,
         dealsInProgress: member.dealsInProgress,
         averageDealSize: member.averageDealSize,

@@ -45,8 +45,8 @@ async function generateChangeNumber(): Promise<string> {
     .select({ count: sql<number>`count(*)` })
     .from(changeRequests)
     .where(
-      sql`EXTRACT(YEAR FROM ${changeRequests.created_at}) = ${year}
-          AND EXTRACT(MONTH FROM ${changeRequests.created_at}) = ${month + 1}`,
+      sql`EXTRACT(YEAR FROM ${changeRequests.createdAt}) = ${year}
+          AND EXTRACT(MONTH FROM ${changeRequests.createdAt}) = ${month + 1}`,
     );
 
   const sequence = String((result[0]?.count || 0) + 1).padStart(4, '0');
@@ -100,7 +100,7 @@ export async function getChangeRequest(
   const [changeRequest] = await db
     .select()
     .from(changeRequests)
-    .where(and(eq(changeRequests.id, changeRequestId), eq(changeRequests.tenant_id, tenantId)));
+    .where(and(eq(changeRequests.id, changeRequestId), eq(changeRequests.tenantId, tenantId)));
 
   return changeRequest || null;
 }
@@ -122,7 +122,7 @@ export async function listChangeRequests(
     offset?: number;
   } = {},
 ): Promise<{ data: ChangeRequest[]; total: number }> {
-  const conditions = [eq(changeRequests.tenant_id, tenantId)];
+  const conditions = [eq(changeRequests.tenantId, tenantId)];
 
   if (options.status?.length) {
     conditions.push(inArray(changeRequests.status, options.status as any));
@@ -140,10 +140,10 @@ export async function listChangeRequests(
     conditions.push(eq(changeRequests.assigneeId, options.assigneeId));
   }
   if (options.startDate) {
-    conditions.push(gte(changeRequests.created_at, options.startDate));
+    conditions.push(gte(changeRequests.createdAt, options.startDate));
   }
   if (options.endDate) {
-    conditions.push(lte(changeRequests.created_at, options.endDate));
+    conditions.push(lte(changeRequests.createdAt, options.endDate));
   }
 
   const [data, countResult] = await Promise.all([
@@ -151,7 +151,7 @@ export async function listChangeRequests(
       .select()
       .from(changeRequests)
       .where(and(...conditions))
-      .orderBy(desc(changeRequests.created_at))
+      .orderBy(desc(changeRequests.createdAt))
       .limit(options.limit || 50)
       .offset(options.offset || 0),
     db
@@ -191,7 +191,7 @@ export async function updateChangeRequest(
       ...updates,
       updatedAt: new Date(),
     })
-    .where(and(eq(changeRequests.id, changeRequestId), eq(changeRequests.tenant_id, tenantId)))
+    .where(and(eq(changeRequests.id, changeRequestId), eq(changeRequests.tenantId, tenantId)))
     .returning();
 
   // Log each changed field
@@ -305,7 +305,7 @@ export async function getPendingApprovals(
       and(
         eq(changeApprovals.approverId, approverId),
         eq(changeApprovals.decision, 'pending'),
-        eq(changeRequests.tenant_id, tenantId),
+        eq(changeRequests.tenantId, tenantId),
         eq(changeRequests.status, 'pending_approval'),
       ),
     );
@@ -749,9 +749,9 @@ export async function getChangeMetrics(
     .from(changeRequests)
     .where(
       and(
-        eq(changeRequests.tenant_id, tenantId),
-        gte(changeRequests.created_at, startDate),
-        lte(changeRequests.created_at, endDate),
+        eq(changeRequests.tenantId, tenantId),
+        gte(changeRequests.createdAt, startDate),
+        lte(changeRequests.createdAt, endDate),
       ),
     );
 
@@ -776,7 +776,7 @@ export async function getChangeMetrics(
     // Calculate approval time
     if (change.submittedAt && change.approvedBy) {
       const approvalTime =
-        new Date(change.actualStartDate || change.updated_at).getTime() -
+        new Date(change.actualStartDate || change.updatedAt).getTime() -
         change.submittedAt.getTime();
       totalApprovalTime += approvalTime;
       approvalTimeCount++;

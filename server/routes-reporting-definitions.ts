@@ -24,14 +24,14 @@ export const SALES_REPORTS = [
       WITH pipeline_data AS (
         SELECT 
           br.id,
-          br.company_name,
+          br.companyName,
           br.estimated_amount,
           br.status,
           br.lead_source,
-          br.owner_id,
-          br.created_at,
-          br.updated_at,
-          u.first_name || ' ' || u.last_name as owner_name,
+          br.ownerId,
+          br.createdAt,
+          br.updatedAt,
+          u.firstName || ' ' || u.lastName as owner_name,
           l.name as location_name,
           r.name as region_name,
           -- Stage progression calculations
@@ -44,19 +44,19 @@ export const SALES_REPORTS = [
             ELSE 'Other'
           END as pipeline_stage,
           -- Aging calculations
-          EXTRACT(DAYS FROM NOW() - br.created_at) as days_in_pipeline,
-          EXTRACT(DAYS FROM NOW() - br.updated_at) as days_since_last_activity
+          EXTRACT(DAYS FROM NOW() - br.createdAt) as days_in_pipeline,
+          EXTRACT(DAYS FROM NOW() - br.updatedAt) as days_since_last_activity
         FROM business_records br
-        LEFT JOIN users u ON br.owner_id = u.id
+        LEFT JOIN users u ON br.ownerId = u.id
         LEFT JOIN locations l ON u.primary_location_id = l.id
         LEFT JOIN regions r ON l.region_id = r.id
-        WHERE br.tenant_id = :tenantId
+        WHERE br.tenantId = :tenantId
           AND br.record_type = 'lead'
           AND br.status NOT IN ('closed_won', 'closed_lost')
           AND (:locationIds IS NULL OR l.id = ANY(:locationIds))
           AND (:regionIds IS NULL OR r.id = ANY(:regionIds))
-          AND (:fromDate IS NULL OR br.created_at >= :fromDate)
-          AND (:toDate IS NULL OR br.created_at <= :toDate)
+          AND (:fromDate IS NULL OR br.createdAt >= :fromDate)
+          AND (:toDate IS NULL OR br.createdAt <= :toDate)
       )
       SELECT 
         *,
@@ -122,7 +122,7 @@ export const SALES_REPORTS = [
       WITH rep_metrics AS (
         SELECT 
           u.id as rep_id,
-          u.first_name || ' ' || u.last_name as rep_name,
+          u.firstName || ' ' || u.lastName as rep_name,
           l.name as location_name,
           
           -- Lead metrics
@@ -144,19 +144,19 @@ export const SALES_REPORTS = [
           -- Time-based metrics
           AVG(EXTRACT(DAYS FROM 
             CASE WHEN br.status IN ('closed_won', 'closed_lost') 
-            THEN br.updated_at - br.created_at 
+            THEN br.updatedAt - br.createdAt 
             END
           )) as avg_sales_cycle_days
           
         FROM users u
-        LEFT JOIN business_records br ON u.id = br.owner_id
+        LEFT JOIN business_records br ON u.id = br.ownerId
         LEFT JOIN locations l ON u.primary_location_id = l.id
-        WHERE u.tenant_id = :tenantId
+        WHERE u.tenantId = :tenantId
           AND u.role_id IN (SELECT id FROM roles WHERE department = 'sales')
           AND (:locationIds IS NULL OR l.id = ANY(:locationIds))
-          AND (:fromDate IS NULL OR br.created_at >= :fromDate)
-          AND (:toDate IS NULL OR br.created_at <= :toDate)
-        GROUP BY u.id, u.first_name, u.last_name, l.name
+          AND (:fromDate IS NULL OR br.createdAt >= :fromDate)
+          AND (:toDate IS NULL OR br.createdAt <= :toDate)
+        GROUP BY u.id, u.firstName, u.lastName, l.name
       )
       SELECT 
         *,
@@ -225,22 +225,22 @@ export const SERVICE_REPORTS = [
       WITH sla_metrics AS (
         SELECT 
           st.id as ticket_id,
-          st.ticket_number,
+          st.ticketNumber,
           st.priority,
           st.status,
-          st.service_type,
-          st.created_at,
+          st.serviceType,
+          st.createdAt,
           st.resolved_at,
           st.assigned_technician_id,
-          u.first_name || ' ' || u.last_name as technician_name,
+          u.firstName || ' ' || u.lastName as technician_name,
           l.name as location_name,
-          c.company_name as customer_name,
+          c.companyName as customer_name,
           
           -- Response time calculation (first technician assignment)
-          EXTRACT(MINUTES FROM st.first_response_at - st.created_at) as response_time_minutes,
+          EXTRACT(MINUTES FROM st.first_response_at - st.createdAt) as response_time_minutes,
           
           -- Resolution time calculation
-          EXTRACT(HOURS FROM st.resolved_at - st.created_at) as resolution_time_hours,
+          EXTRACT(HOURS FROM st.resolved_at - st.createdAt) as resolution_time_hours,
           
           -- SLA targets based on priority
           CASE st.priority
@@ -261,12 +261,12 @@ export const SERVICE_REPORTS = [
           
         FROM service_tickets st
         LEFT JOIN users u ON st.assigned_technician_id = u.id
-        LEFT JOIN locations l ON st.location_id = l.id
-        LEFT JOIN companies c ON st.customer_id = c.id
-        WHERE st.tenant_id = :tenantId
-          AND (:locationIds IS NULL OR st.location_id = ANY(:locationIds))
-          AND (:fromDate IS NULL OR st.created_at >= :fromDate)
-          AND (:toDate IS NULL OR st.created_at <= :toDate)
+        LEFT JOIN locations l ON st.locationId = l.id
+        LEFT JOIN companies c ON st.customerId = c.id
+        WHERE st.tenantId = :tenantId
+          AND (:locationIds IS NULL OR st.locationId = ANY(:locationIds))
+          AND (:fromDate IS NULL OR st.createdAt >= :fromDate)
+          AND (:toDate IS NULL OR st.createdAt <= :toDate)
           AND (:priority IS NULL OR st.priority = :priority)
       )
       SELECT 
@@ -323,7 +323,7 @@ export const SERVICE_REPORTS = [
       WITH tech_metrics AS (
         SELECT 
           u.id as technician_id,
-          u.first_name || ' ' || u.last_name as technician_name,
+          u.firstName || ' ' || u.lastName as technician_name,
           l.name as location_name,
           
           -- Ticket metrics
@@ -332,7 +332,7 @@ export const SERVICE_REPORTS = [
           COUNT(CASE WHEN st.first_time_fix = true THEN 1 END) as first_time_fixes,
           
           -- Time metrics
-          AVG(EXTRACT(HOURS FROM st.resolved_at - st.created_at)) as avg_resolution_time,
+          AVG(EXTRACT(HOURS FROM st.resolved_at - st.createdAt)) as avg_resolution_time,
           SUM(EXTRACT(HOURS FROM st.work_ended_at - st.work_started_at)) as total_work_hours,
           SUM(EXTRACT(HOURS FROM st.travel_ended_at - st.travel_started_at)) as total_travel_hours,
           
@@ -345,12 +345,12 @@ export const SERVICE_REPORTS = [
         FROM users u
         LEFT JOIN service_tickets st ON u.id = st.assigned_technician_id
         LEFT JOIN locations l ON u.primary_location_id = l.id
-        WHERE u.tenant_id = :tenantId
+        WHERE u.tenantId = :tenantId
           AND u.role_id IN (SELECT id FROM roles WHERE department = 'service')
           AND (:locationIds IS NULL OR l.id = ANY(:locationIds))
-          AND (:fromDate IS NULL OR st.created_at >= :fromDate)
-          AND (:toDate IS NULL OR st.created_at <= :toDate)
-        GROUP BY u.id, u.first_name, u.last_name, l.name
+          AND (:fromDate IS NULL OR st.createdAt >= :fromDate)
+          AND (:toDate IS NULL OR st.createdAt <= :toDate)
+        GROUP BY u.id, u.firstName, u.lastName, l.name
       )
       SELECT 
         *,
@@ -426,46 +426,46 @@ export const FINANCE_REPORTS = [
       WITH ar_aging AS (
         SELECT 
           i.id as invoice_id,
-          i.invoice_number,
-          i.customer_id,
-          c.company_name as customer_name,
+          i.invoiceNumber,
+          i.customerId,
+          c.companyName as customer_name,
           c.billing_city,
           c.billing_state,
           i.invoice_date,
-          i.due_date,
-          i.total_amount,
+          i.dueDate,
+          i.totalAmount,
           i.paid_amount,
-          (i.total_amount - COALESCE(i.paid_amount, 0)) as outstanding_balance,
+          (i.totalAmount - COALESCE(i.paid_amount, 0)) as outstanding_balance,
           i.status as invoice_status,
           l.name as location_name,
           
           -- Aging calculations
-          CURRENT_DATE - i.due_date as days_past_due,
+          CURRENT_DATE - i.dueDate as days_past_due,
           
           CASE 
             WHEN i.status = 'paid' THEN 'Paid'
-            WHEN CURRENT_DATE <= i.due_date THEN 'Current'
-            WHEN CURRENT_DATE - i.due_date BETWEEN 1 AND 30 THEN '1-30 Days'
-            WHEN CURRENT_DATE - i.due_date BETWEEN 31 AND 60 THEN '31-60 Days'
-            WHEN CURRENT_DATE - i.due_date BETWEEN 61 AND 90 THEN '61-90 Days'
-            WHEN CURRENT_DATE - i.due_date BETWEEN 91 AND 120 THEN '91-120 Days'
+            WHEN CURRENT_DATE <= i.dueDate THEN 'Current'
+            WHEN CURRENT_DATE - i.dueDate BETWEEN 1 AND 30 THEN '1-30 Days'
+            WHEN CURRENT_DATE - i.dueDate BETWEEN 31 AND 60 THEN '31-60 Days'
+            WHEN CURRENT_DATE - i.dueDate BETWEEN 61 AND 90 THEN '61-90 Days'
+            WHEN CURRENT_DATE - i.dueDate BETWEEN 91 AND 120 THEN '91-120 Days'
             ELSE '120+ Days'
           END as aging_bucket,
           
           -- Risk scoring
           CASE 
             WHEN i.status = 'paid' THEN 0
-            WHEN CURRENT_DATE - i.due_date <= 30 THEN 1
-            WHEN CURRENT_DATE - i.due_date <= 60 THEN 2
-            WHEN CURRENT_DATE - i.due_date <= 90 THEN 3
-            WHEN CURRENT_DATE - i.due_date <= 120 THEN 4
+            WHEN CURRENT_DATE - i.dueDate <= 30 THEN 1
+            WHEN CURRENT_DATE - i.dueDate <= 60 THEN 2
+            WHEN CURRENT_DATE - i.dueDate <= 90 THEN 3
+            WHEN CURRENT_DATE - i.dueDate <= 120 THEN 4
             ELSE 5
           END as risk_score
           
         FROM invoices i
-        LEFT JOIN companies c ON i.customer_id = c.id
-        LEFT JOIN locations l ON c.location_id = l.id
-        WHERE i.tenant_id = :tenantId
+        LEFT JOIN companies c ON i.customerId = c.id
+        LEFT JOIN locations l ON c.locationId = l.id
+        WHERE i.tenantId = :tenantId
           AND i.status != 'void'
           AND (:locationIds IS NULL OR l.id = ANY(:locationIds))
           AND (:fromDate IS NULL OR i.invoice_date >= :fromDate)

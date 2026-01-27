@@ -47,12 +47,12 @@ export function registerDealDeskRoutes(app: Express) {
     requirePermission([PERMISSIONS.SALES.DEAL.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.user.tenantId;
 
         const rules = await db
           .select()
           .from(approvalRules)
-          .where(eq(approvalRules.tenant_id, tenantId))
+          .where(eq(approvalRules.tenantId, tenantId))
           .orderBy(desc(approvalRules.priority), desc(approvalRules.order));
 
         res.json(rules);
@@ -70,7 +70,7 @@ export function registerDealDeskRoutes(app: Express) {
     requireLevel(ROLE_LEVELS.MANAGER),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.user.tenantId;
         const userId = req.user?.id || req.user?.claims?.sub;
 
         const ruleData = insertApprovalRuleSchema.parse({
@@ -95,7 +95,7 @@ export function registerDealDeskRoutes(app: Express) {
   // Update approval rule
   app.put('/api/deal-desk/rules/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const { id } = req.params;
 
       const [updatedRule] = await db
@@ -104,7 +104,7 @@ export function registerDealDeskRoutes(app: Express) {
           ...req.body,
           updatedAt: new Date(),
         })
-        .where(and(eq(approvalRules.id, id), eq(approvalRules.tenant_id, tenantId)))
+        .where(and(eq(approvalRules.id, id), eq(approvalRules.tenantId, tenantId)))
         .returning();
 
       if (!updatedRule) {
@@ -121,12 +121,12 @@ export function registerDealDeskRoutes(app: Express) {
   // Delete approval rule
   app.delete('/api/deal-desk/rules/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const { id } = req.params;
 
       const [deletedRule] = await db
         .delete(approvalRules)
-        .where(and(eq(approvalRules.id, id), eq(approvalRules.tenant_id, tenantId)))
+        .where(and(eq(approvalRules.id, id), eq(approvalRules.tenantId, tenantId)))
         .returning();
 
       if (!deletedRule) {
@@ -145,7 +145,7 @@ export function registerDealDeskRoutes(app: Express) {
   // Check if approval is required
   app.post('/api/deal-desk/check-approval', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const context = req.body;
 
       const result = await ApprovalWorkflowService.checkApprovalRequired(tenantId, context);
@@ -160,7 +160,7 @@ export function registerDealDeskRoutes(app: Express) {
   // Create approval request
   app.post('/api/deal-desk/requests', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const userId = req.user?.id || req.user?.claims?.sub;
       const userName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim();
 
@@ -200,10 +200,10 @@ export function registerDealDeskRoutes(app: Express) {
   // Get all approval requests (with filters)
   app.get('/api/deal-desk/requests', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const { status, requestedBy, dealId, quoteId } = req.query;
 
-      let conditions = [eq(approvalRequests.tenant_id, tenantId)];
+      let conditions = [eq(approvalRequests.tenantId, tenantId)];
 
       if (status) {
         conditions.push(eq(approvalRequests.status, status));
@@ -234,7 +234,7 @@ export function registerDealDeskRoutes(app: Express) {
   // Get my pending approvals
   app.get('/api/deal-desk/my-approvals', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const userId = req.user?.id || req.user?.claims?.sub;
 
       const pendingApprovals = await ApprovalWorkflowService.getPendingApprovalsForUser(
@@ -252,13 +252,13 @@ export function registerDealDeskRoutes(app: Express) {
   // Get approval request by ID
   app.get('/api/deal-desk/requests/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const { id } = req.params;
 
       const [request] = await db
         .select()
         .from(approvalRequests)
-        .where(and(eq(approvalRequests.id, id), eq(approvalRequests.tenant_id, tenantId)));
+        .where(and(eq(approvalRequests.id, id), eq(approvalRequests.tenantId, tenantId)));
 
       if (!request) {
         return res.status(404).json({ error: 'Approval request not found' });
@@ -283,7 +283,7 @@ export function registerDealDeskRoutes(app: Express) {
         .select()
         .from(approvalComments)
         .where(eq(approvalComments.approvalRequestId, id))
-        .orderBy(approvalComments.created_at);
+        .orderBy(approvalComments.createdAt);
 
       res.json({
         ...request,
@@ -325,7 +325,7 @@ export function registerDealDeskRoutes(app: Express) {
   // Add comment to approval request
   app.post('/api/deal-desk/requests/:id/comments', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const userId = req.user?.id || req.user?.claims?.sub;
       const userName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim();
       const { id } = req.params;
@@ -361,7 +361,7 @@ export function registerDealDeskRoutes(app: Express) {
     etag(),
     async (req: any, res) => {
       try {
-        const tenantId = req.user.tenant_id;
+        const tenantId = req.user.tenantId;
         const userId = req.user?.id || req.user?.claims?.sub;
 
         // My pending approvals count
@@ -376,7 +376,7 @@ export function registerDealDeskRoutes(app: Express) {
           .from(approvalRequests)
           .where(
             and(
-              eq(approvalRequests.tenant_id, tenantId),
+              eq(approvalRequests.tenantId, tenantId),
               or(eq(approvalRequests.status, 'pending'), eq(approvalRequests.status, 'in_review')),
             ),
           );
@@ -387,7 +387,7 @@ export function registerDealDeskRoutes(app: Express) {
           .from(approvalRequests)
           .where(
             and(
-              eq(approvalRequests.tenant_id, tenantId),
+              eq(approvalRequests.tenantId, tenantId),
               eq(approvalRequests.slaBreached, true),
               or(eq(approvalRequests.status, 'pending'), eq(approvalRequests.status, 'in_review')),
             ),
@@ -402,7 +402,7 @@ export function registerDealDeskRoutes(app: Express) {
           .from(approvalRequests)
           .where(
             and(
-              eq(approvalRequests.tenant_id, tenantId),
+              eq(approvalRequests.tenantId, tenantId),
               eq(approvalRequests.status, 'approved'),
               gte(approvalRequests.submittedAt, thirtyDaysAgo),
             ),
@@ -413,7 +413,7 @@ export function registerDealDeskRoutes(app: Express) {
           .from(approvalRequests)
           .where(
             and(
-              eq(approvalRequests.tenant_id, tenantId),
+              eq(approvalRequests.tenantId, tenantId),
               eq(approvalRequests.status, 'rejected'),
               gte(approvalRequests.submittedAt, thirtyDaysAgo),
             ),
@@ -432,7 +432,7 @@ export function registerDealDeskRoutes(app: Express) {
           .from(approvalRequests)
           .where(
             and(
-              eq(approvalRequests.tenant_id, tenantId),
+              eq(approvalRequests.tenantId, tenantId),
               or(eq(approvalRequests.status, 'approved'), eq(approvalRequests.status, 'rejected')),
               gte(approvalRequests.submittedAt, thirtyDaysAgo),
             ),
@@ -468,10 +468,10 @@ export function registerDealDeskRoutes(app: Express) {
   // Get discount analytics
   app.get('/api/deal-desk/analytics/discounts', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const { period, startDate, endDate } = req.query;
 
-      let conditions = [eq(discountAnalytics.tenant_id, tenantId)];
+      let conditions = [eq(discountAnalytics.tenantId, tenantId)];
 
       if (period) {
         conditions.push(eq(discountAnalytics.periodType, period as string));
@@ -503,7 +503,7 @@ export function registerDealDeskRoutes(app: Express) {
   // Get delegations
   app.get('/api/deal-desk/delegations', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const userId = req.user?.id || req.user?.claims?.sub;
 
       const delegations = await db
@@ -511,14 +511,14 @@ export function registerDealDeskRoutes(app: Express) {
         .from(approvalDelegations)
         .where(
           and(
-            eq(approvalDelegations.tenant_id, tenantId),
+            eq(approvalDelegations.tenantId, tenantId),
             or(
               eq(approvalDelegations.delegatorId, userId),
               eq(approvalDelegations.delegateId, userId),
             ),
           ),
         )
-        .orderBy(desc(approvalDelegations.created_at));
+        .orderBy(desc(approvalDelegations.createdAt));
 
       res.json(delegations);
     } catch (error) {
@@ -530,7 +530,7 @@ export function registerDealDeskRoutes(app: Express) {
   // Create delegation
   app.post('/api/deal-desk/delegations', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const userId = req.user?.id || req.user?.claims?.sub;
 
       const delegationData = insertApprovalDelegationSchema.parse({
@@ -555,7 +555,7 @@ export function registerDealDeskRoutes(app: Express) {
   // Deactivate delegation
   app.patch('/api/deal-desk/delegations/:id/deactivate', isAuthenticated, async (req: any, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       const userId = req.user?.id || req.user?.claims?.sub;
       const { id } = req.params;
 
@@ -568,7 +568,7 @@ export function registerDealDeskRoutes(app: Express) {
         .where(
           and(
             eq(approvalDelegations.id, id),
-            eq(approvalDelegations.tenant_id, tenantId),
+            eq(approvalDelegations.tenantId, tenantId),
             eq(approvalDelegations.delegatorId, userId),
           ),
         )

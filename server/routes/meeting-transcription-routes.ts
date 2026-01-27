@@ -88,7 +88,7 @@ router.get('/meetings/:meetingId/recordings', async (req, res) => {
       {
         id: 'recording-1',
         meetingId,
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         recordingName: 'Q4 Planning Session Recording',
         recordingUrl: 'https://storage.company.com/recordings/meeting-1/recording.mp4',
         recordingFormat: 'mp4',
@@ -122,7 +122,7 @@ router.get('/meetings/:meetingId/recordings', async (req, res) => {
       {
         id: 'recording-2',
         meetingId,
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         recordingName: 'Audio Recording - Mobile',
         recordingUrl: 'https://storage.company.com/recordings/meeting-1/audio.mp3',
         recordingFormat: 'mp3',
@@ -176,7 +176,7 @@ router.get('/recordings/:recordingId/transcription', async (req, res) => {
       id: 'transcription-1',
       recordingId,
       meetingId: 'meeting-1',
-      tenantId: req.user.tenant_id,
+      tenantId: req.user.tenantId,
 
       // Transcription content
       fullTranscript: `John Smith: Good morning everyone, thank you for joining today's Q4 planning session. Let's start by reviewing our Q3 performance.
@@ -319,7 +319,7 @@ router.get('/meetings/:meetingId/notes', async (req, res) => {
       meetingId,
       recordingId: 'recording-1',
       transcriptionId: 'transcription-1',
-      tenantId: req.user.tenant_id,
+      tenantId: req.user.tenantId,
       title: 'Q4 Planning Session - Meeting Notes',
 
       // Executive summary
@@ -570,7 +570,7 @@ router.get('/meetings/:meetingId/highlights', async (req, res) => {
         meetingId,
         recordingId: 'recording-1',
         transcriptionId: 'transcription-1',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         highlightType: 'key_point',
         title: 'Q3 Revenue Growth Announcement',
         description: '23% revenue increase over Q2 - exceeded all expectations',
@@ -598,7 +598,7 @@ router.get('/meetings/:meetingId/highlights', async (req, res) => {
         meetingId,
         recordingId: 'recording-1',
         transcriptionId: 'transcription-1',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         highlightType: 'decision',
         title: 'Marketing Budget Increase Approved',
         description: '15% marketing budget increase approved to capitalize on Q3 momentum',
@@ -628,7 +628,7 @@ router.get('/meetings/:meetingId/highlights', async (req, res) => {
         meetingId,
         recordingId: 'recording-1',
         transcriptionId: 'transcription-1',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         highlightType: 'action_item',
         title: 'Sales Team Expansion Decision',
         description: 'Hire 3 additional sales representatives to handle increased demand',
@@ -658,7 +658,7 @@ router.get('/meetings/:meetingId/highlights', async (req, res) => {
         meetingId,
         recordingId: 'recording-1',
         transcriptionId: 'transcription-1',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         highlightType: 'opportunity',
         title: 'Pacific Northwest Market Expansion',
         description: 'Strong potential identified for expansion into Pacific Northwest region',
@@ -687,7 +687,7 @@ router.get('/meetings/:meetingId/highlights', async (req, res) => {
         meetingId,
         recordingId: 'recording-1',
         transcriptionId: 'transcription-1',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         highlightType: 'concern',
         title: 'Customer Support Infrastructure Concern',
         description: 'Need to invest in customer support to maintain quality during scaling',
@@ -745,7 +745,7 @@ router.post('/content/search', async (req, res) => {
     }
 
     const searchResults = await MeetingTranscriptionService.searchMeetingContent(
-      req.user.tenant_id,
+      req.user.tenantId,
       query,
       filters,
     );
@@ -785,7 +785,7 @@ router.get('/analytics/content', async (req, res) => {
     } = req.query;
 
     const analytics = await MeetingTranscriptionService.getMeetingContentAnalytics(
-      req.user.tenant_id,
+      req.user.tenantId,
       {
         start: new Date(start_date as string),
         end: new Date(end_date as string),
@@ -813,7 +813,7 @@ router.post('/speakers/profile', async (req, res) => {
 
     const profile = await MeetingTranscriptionService.generateSpeakerProfile(
       req.user.id,
-      req.user.tenant_id,
+      req.user.tenantId,
       voiceSamples,
     );
 

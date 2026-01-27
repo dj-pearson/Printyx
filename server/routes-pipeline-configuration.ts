@@ -57,7 +57,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
         const templates = await db
           .select()
           .from(pipelineTemplates)
-          .where(eq(pipelineTemplates.tenant_id, user.tenant_id))
+          .where(eq(pipelineTemplates.tenantId, user.tenantId))
           .orderBy(desc(pipelineTemplates.isDefault), asc(pipelineTemplates.name));
 
         res.json(templates);
@@ -84,7 +84,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
         const template = await db
           .select()
           .from(pipelineTemplates)
-          .where(and(eq(pipelineTemplates.id, id), eq(pipelineTemplates.tenant_id, user.tenant_id)))
+          .where(and(eq(pipelineTemplates.id, id), eq(pipelineTemplates.tenantId, user.tenantId)))
           .limit(1);
 
         if (template.length === 0) {
@@ -147,7 +147,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
               .set({ isDefault: false })
               .where(
                 and(
-                  eq(pipelineTemplates.tenant_id, user.tenant_id),
+                  eq(pipelineTemplates.tenantId, user.tenantId),
                   eq(pipelineTemplates.pipelineType, pipelineType),
                 ),
               );
@@ -157,7 +157,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
           const [template] = await tx
             .insert(pipelineTemplates)
             .values({
-              tenantId: user.tenant_id,
+              tenantId: user.tenantId,
               name,
               description,
               pipelineType,
@@ -168,7 +168,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
           // Create stages
           const stageData = stages.map((stage: any, index: number) => ({
-            tenantId: user.tenant_id,
+            tenantId: user.tenantId,
             pipelineTemplateId: template.id,
             name: stage.name,
             displayName: stage.displayName || stage.name,
@@ -219,7 +219,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
         const existing = await db
           .select()
           .from(pipelineTemplates)
-          .where(and(eq(pipelineTemplates.id, id), eq(pipelineTemplates.tenant_id, user.tenant_id)))
+          .where(and(eq(pipelineTemplates.id, id), eq(pipelineTemplates.tenantId, user.tenantId)))
           .limit(1);
 
         if (existing.length === 0) {
@@ -233,7 +233,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
             .set({ isDefault: false })
             .where(
               and(
-                eq(pipelineTemplates.tenant_id, user.tenant_id),
+                eq(pipelineTemplates.tenantId, user.tenantId),
                 eq(pipelineTemplates.pipelineType, existing[0].pipelineType),
               ),
             );
@@ -276,7 +276,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
         const dealsCount = await db
           .select({ count: sql<number>`count(*)` })
           .from(deals)
-          .where(and(eq(deals.tenant_id, user.tenant_id), eq(deals.pipelineTemplateId, id)));
+          .where(and(eq(deals.tenantId, user.tenantId), eq(deals.pipelineTemplateId, id)));
 
         if (dealsCount[0].count > 0) {
           return res.status(400).json({
@@ -287,9 +287,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
         await db
           .update(pipelineTemplates)
           .set({ isActive: false, updatedAt: new Date() })
-          .where(
-            and(eq(pipelineTemplates.id, id), eq(pipelineTemplates.tenant_id, user.tenant_id)),
-          );
+          .where(and(eq(pipelineTemplates.id, id), eq(pipelineTemplates.tenantId, user.tenantId)));
 
         res.json({ message: 'Pipeline template deactivated successfully' });
       } catch (error) {
@@ -322,9 +320,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
           const [original] = await tx
             .select()
             .from(pipelineTemplates)
-            .where(
-              and(eq(pipelineTemplates.id, id), eq(pipelineTemplates.tenant_id, user.tenant_id)),
-            )
+            .where(and(eq(pipelineTemplates.id, id), eq(pipelineTemplates.tenantId, user.tenantId)))
             .limit(1);
 
           if (!original) {
@@ -335,7 +331,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
           const [cloned] = await tx
             .insert(pipelineTemplates)
             .values({
-              tenantId: user.tenant_id,
+              tenantId: user.tenantId,
               name,
               description: `Cloned from ${original.name}`,
               pipelineType: original.pipelineType,
@@ -353,7 +349,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
           // Clone stages
           const clonedStageData = originalStages.map((stage) => ({
-            tenantId: user.tenant_id,
+            tenantId: user.tenantId,
             pipelineTemplateId: cloned.id,
             name: stage.name,
             displayName: stage.displayName,
@@ -408,7 +404,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
           .where(
             and(
               eq(pipelineStages.pipelineTemplateId, templateId),
-              eq(pipelineStages.tenant_id, user.tenant_id),
+              eq(pipelineStages.tenantId, user.tenantId),
             ),
           )
           .orderBy(asc(pipelineStages.order));
@@ -431,7 +427,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
       if (!user) return res.status(401).json({ message: 'Unauthorized' });
 
       const stageData = {
-        tenantId: user.tenant_id,
+        tenantId: user.tenantId,
         ...req.body,
       };
 
@@ -463,7 +459,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
             ...req.body,
             updatedAt: new Date(),
           })
-          .where(and(eq(pipelineStages.id, id), eq(pipelineStages.tenant_id, user.tenant_id)))
+          .where(and(eq(pipelineStages.id, id), eq(pipelineStages.tenantId, user.tenantId)))
           .returning();
 
         if (!updated) {
@@ -501,7 +497,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
               .update(pipelineStages)
               .set({ order: stage.order, updatedAt: new Date() })
               .where(
-                and(eq(pipelineStages.id, stage.id), eq(pipelineStages.tenant_id, user.tenant_id)),
+                and(eq(pipelineStages.id, stage.id), eq(pipelineStages.tenantId, user.tenantId)),
               );
           }
         });
@@ -531,7 +527,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
         const dealsCount = await db
           .select({ count: sql<number>`count(*)` })
           .from(deals)
-          .where(and(eq(deals.tenant_id, user.tenant_id), eq(deals.currentStageId, id)));
+          .where(and(eq(deals.tenantId, user.tenantId), eq(deals.currentStageId, id)));
 
         if (dealsCount[0].count > 0) {
           return res.status(400).json({
@@ -541,7 +537,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
         await db
           .delete(pipelineStages)
-          .where(and(eq(pipelineStages.id, id), eq(pipelineStages.tenant_id, user.tenant_id)));
+          .where(and(eq(pipelineStages.id, id), eq(pipelineStages.tenantId, user.tenantId)));
 
         res.json({ message: 'Stage deleted successfully' });
       } catch (error) {
@@ -574,7 +570,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
           const [deal] = await tx
             .select()
             .from(deals)
-            .where(and(eq(deals.id, dealId), eq(deals.tenant_id, user.tenant_id)))
+            .where(and(eq(deals.id, dealId), eq(deals.tenantId, user.tenantId)))
             .limit(1);
 
           if (!deal) {
@@ -604,7 +600,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
           // Record stage history
           await tx.insert(dealStageHistory).values({
-            tenantId: user.tenant_id,
+            tenantId: user.tenantId,
             dealId,
             fromStageId,
             fromStageName: fromStage?.displayName,
@@ -615,7 +611,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
             notes,
             durationDays: fromStage
               ? Math.floor(
-                  (new Date().getTime() - new Date(deal.updatedAt || deal.created_at).getTime()) /
+                  (new Date().getTime() - new Date(deal.updatedAt || deal.createdAt).getTime()) /
                     (1000 * 60 * 60 * 24),
                 )
               : 0,
@@ -638,7 +634,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
               if (trigger.triggerType === 'on_enter' && trigger.isActive) {
                 // Log automation execution
                 await tx.insert(pipelineAutomationLogs).values({
-                  tenantId: user.tenant_id,
+                  tenantId: user.tenantId,
                   dealId,
                   stageId: toStageId,
                   triggerType: trigger.triggerType,
@@ -688,10 +684,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
           .select()
           .from(dealStageHistory)
           .where(
-            and(
-              eq(dealStageHistory.dealId, dealId),
-              eq(dealStageHistory.tenant_id, user.tenant_id),
-            ),
+            and(eq(dealStageHistory.dealId, dealId), eq(dealStageHistory.tenantId, user.tenantId)),
           )
           .orderBy(desc(dealStageHistory.transitionedAt));
 
@@ -731,7 +724,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
             avgDuration: sql<number>`avg(${dealStageHistory.durationDays})`,
           })
           .from(dealStageHistory)
-          .where(eq(dealStageHistory.tenant_id, user.tenant_id))
+          .where(eq(dealStageHistory.tenantId, user.tenantId))
           .groupBy(
             dealStageHistory.fromStageId,
             dealStageHistory.fromStageName,
@@ -770,7 +763,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
             count: sql<number>`count(*)`,
           })
           .from(dealStageHistory)
-          .where(eq(dealStageHistory.tenant_id, user.tenant_id))
+          .where(eq(dealStageHistory.tenantId, user.tenantId))
           .groupBy(dealStageHistory.toStageId, dealStageHistory.toStageName);
 
         res.json(velocityData);

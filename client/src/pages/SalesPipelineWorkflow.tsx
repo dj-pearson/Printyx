@@ -529,9 +529,7 @@ export default function SalesPipelineWorkflow() {
                             >
                               <div className="flex items-start justify-between mb-2">
                                 <div>
-                                  <h4 className="font-medium text-sm">
-                                    {opportunity.company_name}
-                                  </h4>
+                                  <h4 className="font-medium text-sm">{opportunity.companyName}</h4>
                                   <p className="text-xs text-gray-600">
                                     {opportunity.contact_name}
                                   </p>
@@ -840,7 +838,7 @@ export default function SalesPipelineWorkflow() {
                   : `Log ${actionType.charAt(0).toUpperCase() + actionType.slice(1)}`}
               </DialogTitle>
               <DialogDescription>
-                {selectedOpportunity && `For ${selectedOpportunity.company_name}`}
+                {selectedOpportunity && `For ${selectedOpportunity.companyName}`}
               </DialogDescription>
             </DialogHeader>
 

@@ -266,13 +266,13 @@ export const ExternalSystemHelpers = {
   prepareForEAutomate: (businessRecord: Record<string, any>) => {
     return {
       // E-Automate required fields
-      CompanyName: businessRecord.company_name,
+      CompanyName: businessRecord.companyName,
       ContactName: businessRecord.primary_contact_name,
       Address1: businessRecord.address_line1,
       Address2: businessRecord.address_line2,
       City: businessRecord.city,
       State: businessRecord.state,
-      ZipCode: businessRecord.postal_code,
+      ZipCode: businessRecord.postalCode,
       Phone: businessRecord.phone,
       Email: businessRecord.primary_contact_email,
       BillingContact: businessRecord.billing_contact_name,
@@ -297,7 +297,7 @@ export const ExternalSystemHelpers = {
   prepareForSalesforce: (businessRecord: Record<string, any>) => {
     return {
       // Salesforce Account fields
-      Name: businessRecord.company_name,
+      Name: businessRecord.companyName,
       Type: businessRecord.record_type === 'customer' ? 'Customer' : 'Prospect',
       Industry: businessRecord.industry,
       AnnualRevenue: businessRecord.annual_revenue,
@@ -320,7 +320,7 @@ export const ExternalSystemHelpers = {
       // Custom fields
       CustomerPriority__c: businessRecord.customer_priority,
       SLA__c: businessRecord.sla_level,
-      Active__c: businessRecord.is_active,
+      Active__c: businessRecord.isActive,
       UpsellOpportunity__c: businessRecord.upsell_opportunity,
       // External system tracking
       ExternalId__c: businessRecord.external_customer_id,

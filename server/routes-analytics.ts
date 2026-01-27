@@ -259,8 +259,8 @@ router.get('/api/analytics/technician-performance', async (req: any, res) => {
         u.name as technician_name
       FROM technician_performance_analytics tpa
       LEFT JOIN users u ON tpa.technician_id = u.id
-      WHERE tpa.tenant_id = $1
-      ORDER BY tpa.created_at DESC
+      WHERE tpa.tenantId = $1
+      ORDER BY tpa.createdAt DESC
     `;
 
     const result = await db.$client.query(query, [tenantId]);
@@ -290,11 +290,11 @@ router.get('/api/analytics/customer-service', async (req: any, res) => {
     const query = `
       SELECT
         csa.*,
-        br.company_name as customer_name
+        br.companyName as customer_name
       FROM customer_service_analytics csa
       LEFT JOIN business_records br ON csa.business_record_id = br.id
-      WHERE csa.tenant_id = $1
-      ORDER BY csa.created_at DESC
+      WHERE csa.tenantId = $1
+      ORDER BY csa.createdAt DESC
     `;
 
     const result = await db.$client.query(query, [tenantId]);
@@ -365,7 +365,7 @@ router.get('/api/analytics/dashboards', async (req: any, res) => {
 
     const category = String((req.query as any)?.category || '');
 
-    let whereConditions = ['bid.tenant_id = $1'];
+    let whereConditions = ['bid.tenantId = $1'];
     const queryParams = [tenantId];
 
     if (category && category !== 'all') {
@@ -378,9 +378,9 @@ router.get('/api/analytics/dashboards', async (req: any, res) => {
         bid.*,
         u.name as owner_name
       FROM business_intelligence_dashboards bid
-      LEFT JOIN users u ON bid.owner_id = u.id
+      LEFT JOIN users u ON bid.ownerId = u.id
       WHERE ${whereConditions.join(' AND ')}
-      ORDER BY bid.is_featured DESC, bid.created_at DESC
+      ORDER BY bid.isFeatured DESC, bid.createdAt DESC
     `;
 
     const result = await db.$client.query(query, queryParams);

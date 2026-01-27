@@ -144,9 +144,9 @@ export function transformCustomer(raw: RawCustomerAPI): FlatCustomer {
   const flat: FlatCustomer = {
     // Core fields
     id: raw.id,
-    tenantId: raw.tenant_id,
-    companyId: raw.company_id,
-    contactId: raw.contact_id,
+    tenantId: raw.tenantId,
+    companyId: raw.companyId,
+    contactId: raw.contactId,
     leadSource: raw.lead_source || 'unknown',
     leadStatus: raw.lead_status || 'active',
     status: raw.lead_status || 'active',
@@ -154,18 +154,18 @@ export function transformCustomer(raw: RawCustomerAPI): FlatCustomer {
     estimatedAmount: raw.estimated_amount || 0,
     probability: raw.probability || 0,
     closeDate: raw.close_date || null,
-    ownerId: raw.owner_id || null,
+    ownerId: raw.ownerId || null,
     leadScore: raw.lead_score || 0,
     priority: raw.priority || 'medium',
     notes: raw.notes || null,
     lastContactDate: raw.last_contact_date || null,
     nextFollowUpDate: raw.next_follow_up_date || null,
-    createdBy: raw.created_by || '',
-    createdAt: raw.created_at,
-    updatedAt: raw.updated_at,
+    createdBy: raw.createdBy || '',
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
 
     // Company fields
-    companyName: company.business_name || `Customer ${raw.id.slice(0, 8)}`,
+    companyName: company.businessName || `Customer ${raw.id.slice(0, 8)}`,
     customerNumber: company.customer_number || null,
     accountNumber: company.account_number || null,
     phone: company.phone || null,
@@ -186,17 +186,17 @@ export function transformCustomer(raw: RawCustomerAPI): FlatCustomer {
 
     // Primary contact fields
     primaryContactName:
-      primaryContact.first_name && primaryContact.last_name
-        ? `${primaryContact.first_name} ${primaryContact.last_name}`
-        : primaryContact.first_name || primaryContact.last_name || null,
-    primaryContactFirstName: primaryContact.first_name || null,
-    primaryContactLastName: primaryContact.last_name || null,
+      primaryContact.firstName && primaryContact.lastName
+        ? `${primaryContact.firstName} ${primaryContact.lastName}`
+        : primaryContact.firstName || primaryContact.lastName || null,
+    primaryContactFirstName: primaryContact.firstName || null,
+    primaryContactLastName: primaryContact.lastName || null,
     primaryContactEmail: primaryContact.email || null,
     primaryContactPhone: primaryContact.phone || null,
     primaryContactTitle: primaryContact.title || null,
 
     // Display helpers
-    displayName: company.business_name || `Customer ${raw.id.slice(0, 8)}`,
+    displayName: company.businessName || `Customer ${raw.id.slice(0, 8)}`,
     urlSlug: raw.id, // Can be customized later
   };
 
@@ -224,7 +224,7 @@ export function transformCustomerForList(raw: RawCustomerAPI): Partial<FlatCusto
 
   return {
     id: raw.id,
-    companyName: company.business_name || `Customer ${raw.id.slice(0, 8)}`,
+    companyName: company.businessName || `Customer ${raw.id.slice(0, 8)}`,
     status: raw.lead_status || 'active',
     recordType: raw.lead_status === 'customer' ? 'customer' : 'lead',
     location: [company.billing_city, company.billing_state].filter(Boolean).join(', ') || null,
@@ -232,7 +232,7 @@ export function transformCustomerForList(raw: RawCustomerAPI): Partial<FlatCusto
     website: company.website || null,
     industry: company.industry || null,
     primaryContactEmail: primaryContact.email || null,
-    displayName: company.business_name || `Customer ${raw.id.slice(0, 8)}`,
+    displayName: company.businessName || `Customer ${raw.id.slice(0, 8)}`,
     urlSlug: raw.id,
   };
 }

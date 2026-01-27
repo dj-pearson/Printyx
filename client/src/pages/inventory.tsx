@@ -70,14 +70,14 @@ export default function Inventory() {
       return (response || []).map((item: any) => ({
         ...item,
         id: item.id,
-        productId: item.product_id || item.productId || '',
+        productId: item.productId || item.productId || '',
         warehouseId: item.warehouse_id || item.warehouseId || '',
         currentStock: item.current_stock || item.currentStock || 0,
         reorderPoint: item.reorder_point || item.reorderPoint || 0,
         reorderQuantity: item.reorder_quantity || item.reorderQuantity || 0,
         lastRestocked: item.last_restocked || item.lastRestocked || null,
-        createdAt: item.created_at || item.createdAt || '',
-        updatedAt: item.updated_at || item.updatedAt || '',
+        createdAt: item.createdAt || item.createdAt || '',
+        updatedAt: item.updatedAt || item.updatedAt || '',
       }));
     },
   });

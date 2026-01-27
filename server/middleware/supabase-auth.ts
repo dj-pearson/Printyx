@@ -157,14 +157,14 @@ function transformPayloadToUser(payload: JWTPayload): SupabaseUser {
   return {
     id: payload.sub,
     email: payload.email || '',
-    tenantId: appMetadata.tenant_id,
+    tenantId: appMetadata.tenantId,
     roleId: appMetadata.roleId,
     roleLevel: appMetadata.roleLevel,
     teamId: appMetadata.teamId,
     accessScope: appMetadata.accessScope || 'own',
     isPlatformUser: appMetadata.isPlatformUser || false,
-    firstName: userMetadata.firstName || userMetadata.first_name,
-    lastName: userMetadata.lastName || userMetadata.last_name,
+    firstName: userMetadata.firstName || userMetadata.firstName,
+    lastName: userMetadata.lastName || userMetadata.lastName,
     exp: payload.exp,
     iat: payload.iat,
   };
@@ -229,7 +229,7 @@ export const authenticateSupabaseJWT: RequestHandler = async (
         }
 
         // Update other fields from database
-        supabaseUser.tenant_id = userRecord.tenant_id || supabaseUser.tenant_id;
+        supabaseUser.tenantId = userRecord.tenantId || supabaseUser.tenantId;
         supabaseUser.roleId = userRecord.roleId || supabaseUser.roleId;
         supabaseUser.teamId = userRecord.teamId || supabaseUser.teamId;
         supabaseUser.firstName = userRecord.firstName || supabaseUser.firstName;
@@ -264,8 +264,8 @@ export const authenticateSupabaseJWT: RequestHandler = async (
     req.supabaseUser = supabaseUser;
 
     // Also set tenantId on request for backward compatibility
-    if (req.supabaseUser.tenant_id) {
-      (req as any).tenant_id = req.supabaseUser.tenant_id;
+    if (req.supabaseUser.tenantId) {
+      (req as any).tenantId = req.supabaseUser.tenantId;
     }
 
     next();
@@ -331,7 +331,7 @@ export const requireTenantContext: RequestHandler = (
   res: Response,
   next: NextFunction,
 ): void => {
-  const tenantId = req.supabaseUser?.tenant_id || (req as any).tenant_id;
+  const tenantId = req.supabaseUser?.tenantId || (req as any).tenantId;
 
   if (!tenantId) {
     res.status(403).json({
@@ -342,7 +342,7 @@ export const requireTenantContext: RequestHandler = (
   }
 
   // Ensure tenantId is set on request
-  (req as any).tenant_id = tenantId;
+  (req as any).tenantId = tenantId;
   next();
 };
 
@@ -395,12 +395,12 @@ export function isSupabaseAuthenticated(req: Request): boolean {
  * Helper to get user ID from request (supports both Supabase and legacy)
  */
 export function getUserId(req: Request): string | undefined {
-  return req.supabaseUser?.id || (req as any).session?.user_id || (req as any).user?.id;
+  return req.supabaseUser?.id || (req as any).session?.userId || (req as any).user?.id;
 }
 
 /**
  * Helper to get tenant ID from request (supports both Supabase and legacy)
  */
 export function getTenantId(req: Request): string | undefined {
-  return req.supabaseUser?.tenant_id || (req as any).tenant_id || (req as any).session?.tenant_id;
+  return req.supabaseUser?.tenantId || (req as any).tenantId || (req as any).session?.tenantId;
 }

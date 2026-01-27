@@ -25,7 +25,7 @@ async function seedLeaseData() {
       return;
     }
 
-    const tenantId = existingCustomers[0].tenant_id;
+    const tenantId = existingCustomers[0].tenantId;
     console.log(`Using tenant ID: ${tenantId}`);
 
     // Create sample leases in various states

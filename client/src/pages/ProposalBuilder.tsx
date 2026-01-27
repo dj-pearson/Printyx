@@ -280,9 +280,9 @@ export default function ProposalBuilder() {
       return (response || []).map((proposal: any) => ({
         ...proposal,
         id: proposal.id,
-        quoteNumber: proposal.quote_number || proposal.quoteNumber || '',
+        quoteNumber: proposal.quoteNumber || proposal.quoteNumber || '',
         businessRecordId: proposal.business_record_id || proposal.businessRecordId || '',
-        createdAt: proposal.created_at || proposal.createdAt || '',
+        createdAt: proposal.createdAt || proposal.createdAt || '',
       }));
     },
     enabled: true,
@@ -296,7 +296,7 @@ export default function ProposalBuilder() {
       return (response || []).map((record: any) => ({
         ...record,
         id: record.id,
-        businessName: record.business_name || record.businessName || '',
+        businessName: record.businessName || record.businessName || '',
         businessRecordType: record.business_record_type || record.businessRecordType || '',
       }));
     },

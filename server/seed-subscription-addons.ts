@@ -250,7 +250,7 @@ export async function seedSubscriptionAddons() {
           appliesToPlans: sql`excluded.applies_to_plans`,
           displayOrder: sql`excluded.display_order`,
           isVisible: sql`excluded.is_visible`,
-          isActive: sql`excluded.is_active`,
+          isActive: sql`excluded.isActive`,
           metadata: sql`excluded.metadata`,
         },
       })

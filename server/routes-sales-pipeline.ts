@@ -46,7 +46,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   app.get('/api/sales-pipeline/opportunities', async (req: TenantRequest, res: Response) => {
     try {
       const { stage, rep } = req.query;
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
 
       if (!tenantId) {
         return res.status(403).json({ message: 'Access denied' });
@@ -57,7 +57,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         SELECT 
           br.*,
           br.id as id,
-          br.company_name as company_name,
+          br.companyName as company_name,
           br.primary_contact_name as contact_name,
           br.primary_contact_email as contact_email,
           br.primary_contact_phone as contact_phone,
@@ -67,17 +67,17 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
           COALESCE(br.close_date, NOW() + INTERVAL '30 days') as expected_close_date,
           br.source as lead_source,
           br.notes,
-          br.owner_id as assigned_rep,
+          br.ownerId as assigned_rep,
           br.last_contact_date as last_activity,
-          COALESCE(EXTRACT(DAY FROM NOW() - br.updated_at), 0) as days_in_stage,
-          br.created_at as created_at,
+          COALESCE(EXTRACT(DAY FROM NOW() - br.updatedAt), 0) as days_in_stage,
+          br.createdAt as created_at,
           CASE 
             WHEN br.next_follow_up_date IS NOT NULL THEN 
               'Follow up on ' || TO_CHAR(br.next_follow_up_date, 'Mon DD')
             ELSE 'Update required'
           END as next_action
         FROM business_records br
-        WHERE br.tenant_id = $1 
+        WHERE br.tenantId = $1 
           AND br.record_type = 'lead'
           AND br.status NOT IN ('closed_won', 'closed_lost')
       `;
@@ -92,12 +92,12 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
       }
 
       if (rep && rep !== 'all') {
-        query += ` AND br.owner_id = $${paramIndex}`;
+        query += ` AND br.ownerId = $${paramIndex}`;
         params.push(rep);
         paramIndex++;
       }
 
-      query += ` ORDER BY br.updated_at DESC`;
+      query += ` ORDER BY br.updatedAt DESC`;
 
       const result = await db.execute(
         sql.raw(query.replace(/\$(\d+)/g, (match, num) => `'${params[parseInt(num) - 1]}'`)),
@@ -106,7 +106,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
       // Transform the results to match the expected format
       const opportunities = result.rows.map((row: any) => ({
         id: row.id,
-        company_name: row.company_name,
+        company_name: row.companyName,
         contact_name: row.contact_name,
         contact_email: row.contact_email,
         contact_phone: row.contact_phone,
@@ -115,10 +115,10 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         probability: parseInt(row.probability) || 50,
         expected_close_date: row.expected_close_date || new Date().toISOString(),
         assigned_rep: row.assigned_rep,
-        last_activity: row.last_activity || row.created_at,
+        last_activity: row.last_activity || row.createdAt,
         next_action: row.next_action,
         days_in_stage: parseInt(row.days_in_stage) || 0,
-        created_at: row.created_at,
+        created_at: row.createdAt,
         notes: row.notes || '',
         lead_source: row.lead_source || 'Unknown',
       }));
@@ -137,7 +137,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
       try {
         const { id } = req.params;
         const { stage, notes } = stageUpdateSchema.parse(req.body);
-        const tenantId = req.user?.tenant_id;
+        const tenantId = req.user?.tenantId;
         const userId = req.user?.id;
 
         if (!tenantId || !userId) {
@@ -217,7 +217,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
       try {
         const { id } = req.params;
         const { activity_type, notes } = activityLogSchema.parse(req.body);
-        const tenantId = req.user?.tenant_id;
+        const tenantId = req.user?.tenantId;
         const userId = req.user?.id;
 
         if (!tenantId || !userId) {
@@ -268,7 +268,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   // Get sales rep metrics
   app.get('/api/sales-pipeline/rep-metrics', async (req: TenantRequest, res: Response) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
 
       if (!tenantId) {
         return res.status(403).json({ message: 'Access denied' });
@@ -278,7 +278,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         WITH rep_stats AS (
           SELECT 
             u.id as rep_id,
-            CONCAT(u.first_name, ' ', u.last_name) as rep_name,
+            CONCAT(u.firstName, ' ', u.lastName) as rep_name,
             u.manager_id as manager_id,
             
             -- Lead metrics
@@ -294,7 +294,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
             COALESCE(AVG(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won'), 0) as avg_deal_size,
             
             -- Calculate average sales cycle (days from created to closed)
-            COALESCE(AVG(EXTRACT(DAY FROM br.updated_at - br.created_at)) FILTER (WHERE br.status = 'closed_won'), 30) as avg_sales_cycle,
+            COALESCE(AVG(EXTRACT(DAY FROM br.updatedAt - br.createdAt)) FILTER (WHERE br.status = 'closed_won'), 30) as avg_sales_cycle,
             
             -- Activity score based on recent activities
             CASE 
@@ -309,10 +309,10 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
             TO_CHAR(MAX(br.last_contact_date), 'MM/DD/YY') as last_activity
             
           FROM users u
-          LEFT JOIN business_records br ON u.id = br.owner_id AND br.tenant_id = u.tenant_id
-          WHERE u.tenant_id = $1 
+          LEFT JOIN business_records br ON u.id = br.ownerId AND br.tenantId = u.tenantId
+          WHERE u.tenantId = $1 
             AND u.role IN ('sales_rep', 'sales_manager', 'account_manager')
-          GROUP BY u.id, u.first_name, u.last_name, u.manager_id
+          GROUP BY u.id, u.firstName, u.lastName, u.manager_id
         ),
         goals AS (
           SELECT 
@@ -344,7 +344,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
           END as conversion_rate
           
         FROM rep_stats rs
-        LEFT JOIN goals g ON rs.rep_id = g.user_id
+        LEFT JOIN goals g ON rs.rep_id = g.userId
         ORDER BY rs.rep_name
       `;
 
@@ -381,7 +381,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   // Get pipeline summary
   app.get('/api/sales-pipeline/summary', async (req: TenantRequest, res: Response) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
 
       if (!tenantId) {
         return res.status(403).json({ message: 'Access denied' });
@@ -400,7 +400,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
             COUNT(br.id) FILTER (WHERE br.status IN ('qualified', 'demo_scheduled', 'demo_completed', 'proposal_prep', 'proposal_sent', 'negotiation')) as qualified_opportunities,
             
             -- This month closed revenue
-            COALESCE(SUM(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won' AND br.updated_at >= DATE_TRUNC('month', NOW())), 0) as monthly_revenue,
+            COALESCE(SUM(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won' AND br.updatedAt >= DATE_TRUNC('month', NOW())), 0) as monthly_revenue,
             
             -- Conversion rate
             CASE 
@@ -410,18 +410,18 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
             END as conversion_rate,
             
             -- Average sales cycle
-            COALESCE(AVG(EXTRACT(DAY FROM br.updated_at - br.created_at)) FILTER (WHERE br.status = 'closed_won'), 30) as avg_sales_cycle,
+            COALESCE(AVG(EXTRACT(DAY FROM br.updatedAt - br.createdAt)) FILTER (WHERE br.status = 'closed_won'), 30) as avg_sales_cycle,
             
             -- Growth rate (this month vs last month)
             CASE 
-              WHEN LAG(SUM(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won' AND br.updated_at >= DATE_TRUNC('month', NOW()))) OVER () > 0 THEN
-                ROUND(((SUM(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won' AND br.updated_at >= DATE_TRUNC('month', NOW())) / 
-                       LAG(SUM(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won' AND br.updated_at >= DATE_TRUNC('month', NOW()))) OVER ()) - 1) * 100, 1)
+              WHEN LAG(SUM(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won' AND br.updatedAt >= DATE_TRUNC('month', NOW()))) OVER () > 0 THEN
+                ROUND(((SUM(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won' AND br.updatedAt >= DATE_TRUNC('month', NOW())) / 
+                       LAG(SUM(br.estimated_deal_value) FILTER (WHERE br.status = 'closed_won' AND br.updatedAt >= DATE_TRUNC('month', NOW()))) OVER ()) - 1) * 100, 1)
               ELSE 0
             END as growth_rate
             
           FROM business_records br
-          WHERE br.tenant_id = $1
+          WHERE br.tenantId = $1
         ),
         goals_summary AS (
           SELECT 
@@ -479,7 +479,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
   app.post('/api/sales-pipeline/opportunities', async (req: TenantRequest, res: Response) => {
     try {
       const data = pipelineOpportunitySchema.parse(req.body);
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const userId = req.user?.id;
 
       if (!tenantId || !userId) {
@@ -512,7 +512,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         sql.raw(insertQuery, [
           tenantId,
           'lead',
-          data.company_name,
+          data.companyName,
           data.contact_name,
           data.contact_email,
           data.contact_phone || null,

@@ -16,7 +16,7 @@ const router = Router();
  */
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const userId = (req as any).user?.id;
 
     if (!tenantId) {
@@ -53,7 +53,7 @@ router.post('/', async (req: Request, res: Response) => {
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
 
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant context required' });
@@ -90,8 +90,8 @@ router.get('/', async (req: Request, res: Response) => {
       lastUsedAt: key.lastUsedAt,
       usageCount: key.usageCount,
       tags: key.tags,
-      createdAt: key.created_at,
-      updatedAt: key.updated_at,
+      createdAt: key.createdAt,
+      updatedAt: key.updatedAt,
     }));
 
     res.json({
@@ -110,7 +110,7 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const { id } = req.params;
 
     if (!tenantId) {
@@ -139,7 +139,7 @@ router.get('/:id', async (req: Request, res: Response) => {
  */
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const userId = (req as any).user?.id;
     const { id } = req.params;
 
@@ -175,7 +175,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
  */
 router.post('/:id/revoke', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const userId = (req as any).user?.id;
     const { id } = req.params;
     const { reason } = req.body;
@@ -203,7 +203,7 @@ router.post('/:id/revoke', async (req: Request, res: Response) => {
  */
 router.post('/:id/rotate', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const userId = (req as any).user?.id;
     const { id } = req.params;
     const { gracePeriodHours, reason } = req.body;
@@ -238,7 +238,7 @@ router.post('/:id/rotate', async (req: Request, res: Response) => {
  */
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const { id } = req.params;
 
     if (!tenantId) {
@@ -264,7 +264,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
  */
 router.get('/:id/stats', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const { id } = req.params;
     const { startDate, endDate } = req.query;
 

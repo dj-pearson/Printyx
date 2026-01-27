@@ -117,7 +117,7 @@ async function setupAndTest() {
       299.99,
       true
     )
-    ON CONFLICT (contract_number) DO UPDATE SET equipment_id = EXCLUDED.equipment_id
+    ON CONFLICT (contract_number) DO UPDATE SET equipment_id = EXCLUDED.equipmentId
   `);
   console.log('   ✅ Contract created with toner coverage\n');
 

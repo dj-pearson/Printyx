@@ -78,7 +78,7 @@ export class EnhancedRBACSeeder {
       (await db
         .select()
         .from(organizationalUnits)
-        .where(eq(organizationalUnits.tenant_id, tenantId))
+        .where(eq(organizationalUnits.tenantId, tenantId))
         .limit(1)
         .then((rows) => rows[0]))
     );

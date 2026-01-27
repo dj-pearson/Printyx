@@ -26,7 +26,7 @@ export function registerQuickBooksRoutes(app: Express) {
   app.get('/api/quickbooks/connect', isAuthenticated, async (req, res) => {
     try {
       const state = crypto.randomBytes(32).toString('hex');
-      const tenantId = (req.user as any)?.tenant_id;
+      const tenantId = (req.user as any)?.tenantId;
 
       // Store state in session for verification
       req.session.qb_oauth_state = state;
@@ -180,7 +180,7 @@ export function registerQuickBooksRoutes(app: Express) {
       const transformedCustomers = customers.map((customer: any) => {
         const transformed = transformQuickBooksData('Customer', customer);
         // Add tenant isolation
-        transformed.tenant_id = (req.user as any)?.tenant_id;
+        transformed.tenantId = (req.user as any)?.tenantId;
         transformed.recordType = 'customer';
         transformed.leadStatus = 'active';
         // Map QB external system
@@ -240,7 +240,7 @@ export function registerQuickBooksRoutes(app: Express) {
       const transformedItems = items.map((item: any) => {
         const transformed = transformQuickBooksData('Item', item);
         // Add tenant isolation
-        transformed.tenant_id = (req.user as any)?.tenant_id;
+        transformed.tenantId = (req.user as any)?.tenantId;
         transformed.category = 'service'; // Default category
         // Map QB external system
         transformed.external_system_id = 'quickbooks';

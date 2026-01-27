@@ -68,12 +68,12 @@ const requireAuth = (req: any, res: any, next: any) => {
       id: userId,
       tenantId: getTenantId(req),
     };
-  } else if (!req.user.tenant_id || !req.user.id) {
+  } else if (!req.user.tenantId || !req.user.id) {
     // Ensure user object has id and tenantId
     req.user = {
       ...req.user,
       id: req.user.id || userId,
-      tenantId: req.user.tenant_id || getTenantId(req),
+      tenantId: req.user.tenantId || getTenantId(req),
     };
   }
 
@@ -138,7 +138,7 @@ router.get(
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
   async (req: AuthenticatedRequest, res) => {
     try {
-      const tenantId = req.user.tenant_id;
+      const tenantId = req.user.tenantId;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID required' });
       }
@@ -152,21 +152,18 @@ router.get(
         paymentsCount,
         notificationsCount,
       ] = await Promise.all([
-        db.select().from(customerPortalAccess).where(eq(customerPortalAccess.tenant_id, tenantId)),
+        db.select().from(customerPortalAccess).where(eq(customerPortalAccess.tenantId, tenantId)),
         db
           .select()
           .from(customerServiceRequests)
-          .where(eq(customerServiceRequests.tenant_id, tenantId)),
+          .where(eq(customerServiceRequests.tenantId, tenantId)),
         db
           .select()
           .from(customerMeterSubmissions)
-          .where(eq(customerMeterSubmissions.tenant_id, tenantId)),
-        db.select().from(customerSupplyOrders).where(eq(customerSupplyOrders.tenant_id, tenantId)),
-        db.select().from(customerPayments).where(eq(customerPayments.tenant_id, tenantId)),
-        db
-          .select()
-          .from(customerNotifications)
-          .where(eq(customerNotifications.tenant_id, tenantId)),
+          .where(eq(customerMeterSubmissions.tenantId, tenantId)),
+        db.select().from(customerSupplyOrders).where(eq(customerSupplyOrders.tenantId, tenantId)),
+        db.select().from(customerPayments).where(eq(customerPayments.tenantId, tenantId)),
+        db.select().from(customerNotifications).where(eq(customerNotifications.tenantId, tenantId)),
       ]);
 
       const stats = {
@@ -198,7 +195,7 @@ router.get(
 // Get all portal users for a tenant
 router.get('/users', async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user.tenantId;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID required' });
     }
@@ -206,8 +203,8 @@ router.get('/users', async (req, res) => {
     const users = await db
       .select()
       .from(customerPortalAccess)
-      .where(eq(customerPortalAccess.tenant_id, tenantId))
-      .orderBy(desc(customerPortalAccess.created_at));
+      .where(eq(customerPortalAccess.tenantId, tenantId))
+      .orderBy(desc(customerPortalAccess.createdAt));
 
     res.json({ success: true, users });
   } catch (error) {
@@ -223,7 +220,7 @@ router.get('/users', async (req, res) => {
 // Get recent service requests
 router.get('/service-requests/recent', async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user.tenantId;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID required' });
     }
@@ -233,7 +230,7 @@ router.get('/service-requests/recent', async (req, res) => {
     const requests = await db
       .select()
       .from(customerServiceRequests)
-      .where(eq(customerServiceRequests.tenant_id, tenantId))
+      .where(eq(customerServiceRequests.tenantId, tenantId))
       .orderBy(desc(customerServiceRequests.submittedAt))
       .limit(limit);
 
@@ -251,7 +248,7 @@ router.get('/service-requests/recent', async (req, res) => {
 // Get recent meter submissions
 router.get('/meter-submissions/recent', async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user.tenantId;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID required' });
     }
@@ -261,7 +258,7 @@ router.get('/meter-submissions/recent', async (req, res) => {
     const submissions = await db
       .select()
       .from(customerMeterSubmissions)
-      .where(eq(customerMeterSubmissions.tenant_id, tenantId))
+      .where(eq(customerMeterSubmissions.tenantId, tenantId))
       .orderBy(desc(customerMeterSubmissions.submissionDate))
       .limit(limit);
 
@@ -279,7 +276,7 @@ router.get('/meter-submissions/recent', async (req, res) => {
 // Test database connectivity
 router.get('/test', async (req, res) => {
   try {
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user.tenantId;
 
     // Test all customer portal tables exist
     const tableTests = await Promise.all([
@@ -342,7 +339,7 @@ router.get('/equipment-health', requireCustomerPortalAuth, async (req, res) => {
     const { timeRange, equipmentIds, includeAlerts, includeMetrics } = validationResult.data;
 
     // Use authenticated user's context - NO client-provided tenant/customer IDs
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user.tenantId;
     const customerId = req.user.customerId || req.customerPortalUser?.customerId;
 
     if (!tenantId || !customerId) {
@@ -415,7 +412,7 @@ router.post('/equipment-maintenance', requireCustomerPortalAuth, async (req, res
     const { equipmentId, preferredDate, maintenanceType, notes, urgency } = validationResult.data;
 
     // Use authenticated user's context - NO client-provided IDs
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user.tenantId;
     const customerId = req.user.customerId || req.customerPortalUser?.customerId;
     const customerPortalUserId = req.customerPortalUser?.id;
 
@@ -474,7 +471,7 @@ router.get('/equipment-analytics/:equipmentId', requireCustomerPortalAuth, async
     }
 
     // Use authenticated user's context - NO client-provided IDs
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user.tenantId;
     const customerId = req.user.customerId || req.customerPortalUser?.customerId;
 
     if (!tenantId || !customerId) {
@@ -534,7 +531,7 @@ router.get('/usage-analytics', requireCustomerPortalAuth, async (req, res) => {
     const options: UsageAnalyticsRequest = validationResult.data;
 
     // Use authenticated user's context - NO client-provided IDs
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user.tenantId;
     const customerId = req.user.customerId || req.customerPortalUser?.customerId;
 
     if (!tenantId || !customerId) {
@@ -605,7 +602,7 @@ router.get('/equipment-usage/:equipmentId', requireCustomerPortalAuth, async (re
     }
 
     // Use authenticated user's context - NO client-provided IDs
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user.tenantId;
     const customerId = req.user.customerId || req.customerPortalUser?.customerId;
 
     if (!tenantId || !customerId) {
@@ -659,7 +656,7 @@ router.get('/equipment-usage/:equipmentId', requireCustomerPortalAuth, async (re
 // Get available time slots for maintenance scheduling
 router.get('/maintenance-availability', requireCustomerPortalAuth, async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const customerId = req.user?.customerId;
 
     if (!tenantId || !customerId) {
@@ -702,7 +699,7 @@ router.get('/maintenance-availability', requireCustomerPortalAuth, async (req, r
 // Book a maintenance appointment
 router.post('/maintenance-appointments', requireCustomerPortalAuth, async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const customerId = req.user?.customerId;
     const portalUserId = req.customerPortalUser?.id;
 
@@ -748,7 +745,7 @@ router.post('/maintenance-appointments', requireCustomerPortalAuth, async (req, 
 // Get customer maintenance appointments
 router.get('/maintenance-appointments', requireCustomerPortalAuth, async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const customerId = req.user?.customerId;
 
     if (!tenantId || !customerId) {
@@ -791,7 +788,7 @@ router.get(
   requireCustomerPortalAuth,
   async (req, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const customerId = req.user?.customerId;
       const { appointmentId } = req.params;
 
@@ -836,7 +833,7 @@ router.put(
   requireCustomerPortalAuth,
   async (req, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const customerId = req.user?.customerId;
       const portalUserId = req.customerPortalUser?.id;
       const { appointmentId } = req.params;
@@ -905,7 +902,7 @@ router.delete(
   requireCustomerPortalAuth,
   async (req, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const customerId = req.user?.customerId;
       const portalUserId = req.customerPortalUser?.id;
       const { appointmentId } = req.params;
@@ -964,7 +961,7 @@ router.delete(
 // Create a new service request
 router.post('/service-requests', requireCustomerPortalAuth, async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const customerId = req.user?.customerId;
     const portalUserId = req.customerPortalUser?.id;
 
@@ -1017,7 +1014,7 @@ router.post('/service-requests', requireCustomerPortalAuth, async (req, res) => 
 router.get('/service-requests', requireCustomerPortalAuth, async (req, res) => {
   try {
     const startTime = Date.now();
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const customerId = req.user?.customerId;
 
     if (!tenantId || !customerId) {
@@ -1067,7 +1064,7 @@ router.get('/service-requests', requireCustomerPortalAuth, async (req, res) => {
 // Get specific service request by ID
 router.get('/service-requests/:requestId', requireCustomerPortalAuth, async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const customerId = req.user?.customerId;
     const { requestId } = req.params;
 
@@ -1108,7 +1105,7 @@ router.get('/service-requests/:requestId', requireCustomerPortalAuth, async (req
 // Get service request status history timeline (customer facing)
 router.get('/service-requests/:requestId/history', requireCustomerPortalAuth, async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const customerId = req.user?.customerId;
     const { requestId } = req.params;
 
@@ -1155,7 +1152,7 @@ router.get('/service-requests/:requestId/history', requireCustomerPortalAuth, as
 // Get available satisfaction surveys for the customer
 router.get('/satisfaction/surveys', requireCustomerPortalAuth, async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const customerId = req.user?.customerId;
     const portalUserId = req.customerPortalUser?.id;
 
@@ -1192,11 +1189,11 @@ router.get('/satisfaction/surveys', requireCustomerPortalAuth, async (req, res) 
       )
       .where(
         and(
-          eq(customerSatisfactionSurveys.tenant_id, tenantId),
+          eq(customerSatisfactionSurveys.tenantId, tenantId),
           eq(customerSatisfactionSurveys.customerId, customerId),
         ),
       )
-      .orderBy(desc(customerSatisfactionSurveys.created_at));
+      .orderBy(desc(customerSatisfactionSurveys.createdAt));
 
     res.json({
       success: true,
@@ -1216,7 +1213,7 @@ router.get('/satisfaction/surveys', requireCustomerPortalAuth, async (req, res) 
 // Get specific survey details with questions
 router.get('/satisfaction/surveys/:surveyId', requireCustomerPortalAuth, async (req, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const customerId = req.user?.customerId;
     const { surveyId } = req.params;
 
@@ -1234,7 +1231,7 @@ router.get('/satisfaction/surveys/:surveyId', requireCustomerPortalAuth, async (
       .where(
         and(
           eq(customerSatisfactionSurveys.id, surveyId),
-          eq(customerSatisfactionSurveys.tenant_id, tenantId),
+          eq(customerSatisfactionSurveys.tenantId, tenantId),
           eq(customerSatisfactionSurveys.customerId, customerId),
         ),
       )
@@ -1305,7 +1302,7 @@ router.post(
   requireCustomerPortalAuth,
   async (req, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const customerId = req.user?.customerId;
       const { surveyId } = req.params;
 
@@ -1323,7 +1320,7 @@ router.post(
         .where(
           and(
             eq(customerSatisfactionSurveys.id, surveyId),
-            eq(customerSatisfactionSurveys.tenant_id, tenantId),
+            eq(customerSatisfactionSurveys.tenantId, tenantId),
             eq(customerSatisfactionSurveys.customerId, customerId),
           ),
         )
@@ -1389,7 +1386,7 @@ router.post(
   requireCustomerPortalAuth,
   async (req, res) => {
     try {
-      const tenantId = req.user?.tenant_id;
+      const tenantId = req.user?.tenantId;
       const customerId = req.user?.customerId;
       const { surveyId } = req.params;
       const { responses } = req.body;
@@ -1415,7 +1412,7 @@ router.post(
         .where(
           and(
             eq(customerSatisfactionSurveys.id, surveyId),
-            eq(customerSatisfactionSurveys.tenant_id, tenantId),
+            eq(customerSatisfactionSurveys.tenantId, tenantId),
             eq(customerSatisfactionSurveys.customerId, customerId),
           ),
         )
@@ -1563,7 +1560,7 @@ router.post(
 router.get('/satisfaction/analytics', requireCustomerPortalAuth, async (req, res) => {
   try {
     const startTime = Date.now();
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const customerId = req.user?.customerId;
     const { timeRange = '1y' } = req.query;
     const fields = req.query.fields ? (req.query.fields as string).split(',') : undefined;
@@ -1626,7 +1623,7 @@ router.get('/satisfaction/analytics', requireCustomerPortalAuth, async (req, res
       )
       .where(
         and(
-          eq(customerSatisfactionSurveys.tenant_id, tenantId),
+          eq(customerSatisfactionSurveys.tenantId, tenantId),
           eq(customerSatisfactionSurveys.customerId, customerId),
           eq(customerSatisfactionSurveys.status, 'completed'),
           // Add date filter - using string comparison since completedAt is timestamp

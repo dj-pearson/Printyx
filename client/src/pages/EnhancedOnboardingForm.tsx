@@ -461,18 +461,18 @@ export default function EnhancedOnboardingForm() {
 
       form.setValue('businessRecordId', selectedBusinessRecord.id);
       const companyName =
-        selectedBusinessRecord.company_name ||
+        selectedBusinessRecord.companyName ||
         selectedBusinessRecord.companyName ||
         `${selectedBusinessRecord.firstName || ''} ${selectedBusinessRecord.lastName || ''}`.trim() ||
         'Customer Company';
 
       // Handle primary contact name more robustly
       let primaryContactName = 'Primary Contact';
-      if (primaryContact && primaryContact.first_name && primaryContact.last_name) {
-        primaryContactName = `${primaryContact.first_name} ${primaryContact.last_name}`;
-      } else if (primaryContact && (primaryContact.first_name || primaryContact.last_name)) {
+      if (primaryContact && primaryContact.firstName && primaryContact.lastName) {
+        primaryContactName = `${primaryContact.firstName} ${primaryContact.lastName}`;
+      } else if (primaryContact && (primaryContact.firstName || primaryContact.lastName)) {
         primaryContactName =
-          `${primaryContact.first_name || ''} ${primaryContact.last_name || ''}`.trim();
+          `${primaryContact.firstName || ''} ${primaryContact.lastName || ''}`.trim();
       } else if (selectedBusinessRecord.firstName && selectedBusinessRecord.lastName) {
         primaryContactName = `${selectedBusinessRecord.firstName} ${selectedBusinessRecord.lastName}`;
       } else if (selectedBusinessRecord.firstName || selectedBusinessRecord.lastName) {
@@ -491,14 +491,14 @@ export default function EnhancedOnboardingForm() {
       form.setValue('customerData.state', selectedBusinessRecord.state || 'State');
       form.setValue(
         'customerData.zipCode',
-        selectedBusinessRecord.zip_code || selectedBusinessRecord.zipCode || '12345',
+        selectedBusinessRecord.zipCode || selectedBusinessRecord.zipCode || '12345',
       );
       form.setValue('customerData.industry', selectedBusinessRecord.industry || '');
 
       if (primaryContact) {
         form.setValue(
           'customerData.primaryContact',
-          `${primaryContact.first_name} ${primaryContact.last_name}`,
+          `${primaryContact.firstName} ${primaryContact.lastName}`,
         );
         if (!selectedBusinessRecord.phone && primaryContact.phone) {
           form.setValue('customerData.phone', primaryContact.phone);
@@ -513,7 +513,7 @@ export default function EnhancedOnboardingForm() {
         selectedBusinessRecord.address,
         selectedBusinessRecord.city,
         selectedBusinessRecord.state,
-        selectedBusinessRecord.zip_code,
+        selectedBusinessRecord.zipCode,
       ]
         .filter(Boolean)
         .join(', ');
@@ -524,11 +524,11 @@ export default function EnhancedOnboardingForm() {
 
       // Set required site information fields with robust contact name handling
       let siteContactName = 'Site Contact';
-      if (primaryContact && primaryContact.first_name && primaryContact.last_name) {
-        siteContactName = `${primaryContact.first_name} ${primaryContact.last_name}`;
-      } else if (primaryContact && (primaryContact.first_name || primaryContact.last_name)) {
+      if (primaryContact && primaryContact.firstName && primaryContact.lastName) {
+        siteContactName = `${primaryContact.firstName} ${primaryContact.lastName}`;
+      } else if (primaryContact && (primaryContact.firstName || primaryContact.lastName)) {
         siteContactName =
-          `${primaryContact.first_name || ''} ${primaryContact.last_name || ''}`.trim();
+          `${primaryContact.firstName || ''} ${primaryContact.lastName || ''}`.trim();
       } else if (selectedBusinessRecord.firstName && selectedBusinessRecord.lastName) {
         siteContactName = `${selectedBusinessRecord.firstName} ${selectedBusinessRecord.lastName}`;
       } else if (selectedBusinessRecord.firstName || selectedBusinessRecord.lastName) {
@@ -565,8 +565,8 @@ export default function EnhancedOnboardingForm() {
             | 'scanner'
             | 'fax'
             | 'mfp',
-          manufacturer: item.product_name?.split(' ')[0] || '',
-          model: item.product_name || '',
+          manufacturer: item.productName?.split(' ')[0] || '',
+          model: item.productName || '',
           serialNumber: 'TBD-' + Math.random().toString(36).substr(2, 9), // Temporary until installation
           macAddress: '',
           location: 'Main Office',
@@ -961,17 +961,17 @@ export default function EnhancedOnboardingForm() {
                           {businessRecords.map((record: any) => (
                             <CommandItem
                               key={record.id}
-                              value={record.companyName || record.company_name}
+                              value={record.companyName || record.companyName}
                               onSelect={() => {
                                 setSelectedBusinessRecord(record);
-                                setCompanySearchTerm(record.companyName || record.company_name);
+                                setCompanySearchTerm(record.companyName || record.companyName);
                                 setBusinessRecordSearch('');
                                 setIsCompanySelectOpen(false);
                               }}
                             >
                               <div className="flex flex-col">
                                 <span className="font-medium">
-                                  {record.companyName || record.company_name}
+                                  {record.companyName || record.companyName}
                                 </span>
                                 <span className="text-sm text-gray-500">
                                   {record.city || 'N/A'}, {record.state || 'N/A'} •{' '}
@@ -994,12 +994,12 @@ export default function EnhancedOnboardingForm() {
                     </div>
                     <div className="text-sm">
                       <div className="font-medium">
-                        {selectedBusinessRecord.companyName || selectedBusinessRecord.company_name}
+                        {selectedBusinessRecord.companyName || selectedBusinessRecord.companyName}
                       </div>
                       <div>
                         {selectedBusinessRecord.primaryContactName ||
-                          selectedBusinessRecord.first_name}{' '}
-                        {selectedBusinessRecord.last_name}
+                          selectedBusinessRecord.firstName}{' '}
+                        {selectedBusinessRecord.lastName}
                       </div>
                       <div>
                         {selectedBusinessRecord.phone || selectedBusinessRecord.primaryContactPhone}{' '}
@@ -1048,7 +1048,7 @@ export default function EnhancedOnboardingForm() {
                           <div className="font-medium">{quote.title || quote.quoteNumber}</div>
                           <div className="text-sm text-gray-600">
                             Created{' '}
-                            {new Date(quote.createdAt || quote.created_at).toLocaleDateString()}
+                            {new Date(quote.createdAt || quote.createdAt).toLocaleDateString()}
                           </div>
                         </div>
                       ))}

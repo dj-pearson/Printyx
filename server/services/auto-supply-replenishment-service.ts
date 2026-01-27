@@ -57,7 +57,7 @@ export async function analyzeSupplyLevel(
   const supply = await db.query.supplyMonitoring.findFirst({
     where: and(
       eq(supplyMonitoring.id, supplyMonitoringId),
-      eq(supplyMonitoring.tenant_id, tenantId),
+      eq(supplyMonitoring.tenantId, tenantId),
     ),
   });
 
@@ -69,7 +69,7 @@ export async function analyzeSupplyLevel(
   const usageHistory = await db.query.supplyUsageHistory.findMany({
     where: and(
       eq(supplyUsageHistory.supplyMonitoringId, supplyMonitoringId),
-      eq(supplyUsageHistory.tenant_id, tenantId),
+      eq(supplyUsageHistory.tenantId, tenantId),
     ),
     orderBy: [desc(supplyUsageHistory.dateRecorded)],
     limit: 90, // Last 90 days
@@ -256,7 +256,7 @@ export async function createAutoSupplyOrder(
   const supply = await db.query.supplyMonitoring.findFirst({
     where: and(
       eq(supplyMonitoring.id, supplyMonitoringId),
-      eq(supplyMonitoring.tenant_id, tenantId),
+      eq(supplyMonitoring.tenantId, tenantId),
     ),
   });
 
@@ -273,7 +273,7 @@ export async function createAutoSupplyOrder(
   const existingOrder = await db.query.autoSupplyOrders.findFirst({
     where: and(
       eq(autoSupplyOrders.supplyMonitoringId, supplyMonitoringId),
-      eq(autoSupplyOrders.tenant_id, tenantId),
+      eq(autoSupplyOrders.tenantId, tenantId),
       sql`status IN ('order_placed', 'order_confirmed', 'in_transit')`,
     ),
   });
@@ -317,7 +317,7 @@ export async function createAutoSupplyOrder(
       updatedAt: new Date(),
     })
     .where(
-      and(eq(supplyMonitoring.id, supplyMonitoringId), eq(supplyMonitoring.tenant_id, tenantId)),
+      and(eq(supplyMonitoring.id, supplyMonitoringId), eq(supplyMonitoring.tenantId, tenantId)),
     );
 
   return order;
@@ -332,7 +332,7 @@ export async function analyzeTenantSupplies(tenantId: number): Promise<{
   results: any[];
 }> {
   const supplies = await db.query.supplyMonitoring.findMany({
-    where: and(eq(supplyMonitoring.tenant_id, tenantId), eq(supplyMonitoring.status, 'monitoring')),
+    where: and(eq(supplyMonitoring.tenantId, tenantId), eq(supplyMonitoring.status, 'monitoring')),
   });
 
   let ordersCreated = 0;
@@ -397,12 +397,12 @@ export async function getDashboardMetrics(tenantId: number): Promise<DashboardMe
     db
       .select({ count: sql<number>`count(distinct ${supplyMonitoring.equipmentId})` })
       .from(supplyMonitoring)
-      .where(eq(supplyMonitoring.tenant_id, tenantId))
+      .where(eq(supplyMonitoring.tenantId, tenantId))
       .then((res) => res[0]?.count || 0),
     db
       .select({ count: sql<number>`count(*)` })
       .from(supplyMonitoring)
-      .where(eq(supplyMonitoring.tenant_id, tenantId))
+      .where(eq(supplyMonitoring.tenantId, tenantId))
       .then((res) => res[0]?.count || 0),
   ]);
 
@@ -411,14 +411,14 @@ export async function getDashboardMetrics(tenantId: number): Promise<DashboardMe
     db
       .select({ count: sql<number>`count(*)` })
       .from(supplyMonitoring)
-      .where(and(eq(supplyMonitoring.tenant_id, tenantId), lt(supplyMonitoring.currentLevel, 20)))
+      .where(and(eq(supplyMonitoring.tenantId, tenantId), lt(supplyMonitoring.currentLevel, 20)))
       .then((res) => res[0]?.count || 0),
     db
       .select({ count: sql<number>`count(*)` })
       .from(autoSupplyOrders)
       .where(
         and(
-          eq(autoSupplyOrders.tenant_id, tenantId),
+          eq(autoSupplyOrders.tenantId, tenantId),
           sql`priority IN ('urgent', 'critical')`,
           sql`status IN ('order_placed', 'order_confirmed', 'in_transit')`,
         ),
@@ -435,14 +435,14 @@ export async function getDashboardMetrics(tenantId: number): Promise<DashboardMe
     .select({ count: sql<number>`count(*)` })
     .from(autoSupplyOrders)
     .where(
-      and(eq(autoSupplyOrders.tenant_id, tenantId), gte(autoSupplyOrders.orderDate, startOfMonth)),
+      and(eq(autoSupplyOrders.tenantId, tenantId), gte(autoSupplyOrders.orderDate, startOfMonth)),
     )
     .then((res) => res[0]?.count || 0);
 
   // Get analytics for savings calculation
   const analytics = await db.query.supplyReplenishmentAnalytics.findFirst({
     where: and(
-      eq(supplyReplenishmentAnalytics.tenant_id, tenantId),
+      eq(supplyReplenishmentAnalytics.tenantId, tenantId),
       eq(supplyReplenishmentAnalytics.periodType, 'monthly'),
     ),
     orderBy: [desc(supplyReplenishmentAnalytics.periodEnd)],
@@ -475,7 +475,7 @@ export async function getDashboardMetrics(tenantId: number): Promise<DashboardMe
  */
 export async function getLowSupplyAlerts(tenantId: number) {
   return db.query.supplyMonitoring.findMany({
-    where: and(eq(supplyMonitoring.tenant_id, tenantId), lt(supplyMonitoring.currentLevel, 20)),
+    where: and(eq(supplyMonitoring.tenantId, tenantId), lt(supplyMonitoring.currentLevel, 20)),
     orderBy: [supplyMonitoring.currentLevel],
     limit: 50,
   });
@@ -486,7 +486,7 @@ export async function getLowSupplyAlerts(tenantId: number) {
  */
 export async function getRecentOrders(tenantId: number, limit: number = 20) {
   return db.query.autoSupplyOrders.findMany({
-    where: eq(autoSupplyOrders.tenant_id, tenantId),
+    where: eq(autoSupplyOrders.tenantId, tenantId),
     orderBy: [desc(autoSupplyOrders.orderDate)],
     limit,
   });
@@ -497,7 +497,7 @@ export async function getRecentOrders(tenantId: number, limit: number = 20) {
  */
 export async function getReplenishmentRules(tenantId: number) {
   let rules = await db.query.supplyReplenishmentRules.findFirst({
-    where: eq(supplyReplenishmentRules.tenant_id, tenantId),
+    where: eq(supplyReplenishmentRules.tenantId, tenantId),
   });
 
   if (!rules) {

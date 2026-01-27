@@ -619,7 +619,7 @@ export default function DealsManagement() {
         ...stage,
         id: stage.id,
         displayOrder: stage.display_order || stage.displayOrder || 0,
-        createdAt: stage.created_at || stage.createdAt || '',
+        createdAt: stage.createdAt || stage.createdAt || '',
       }));
     },
   });
@@ -635,7 +635,7 @@ export default function DealsManagement() {
       return (response?.records || response || []).map((c: any) => ({
         ...c,
         id: c.id,
-        companyName: c.business_name || c.companyName || '',
+        companyName: c.businessName || c.companyName || '',
         businessRecordType: c.business_record_type || c.businessRecordType || '',
       }));
     },
@@ -650,10 +650,10 @@ export default function DealsManagement() {
       return (response || []).map((c: any) => ({
         ...c,
         id: c.id,
-        firstName: c.first_name || c.firstName || '',
-        lastName: c.last_name || c.lastName || '',
+        firstName: c.firstName || c.firstName || '',
+        lastName: c.lastName || c.lastName || '',
         isPrimaryContact: c.is_primary_contact || c.isPrimaryContact || false,
-        companyId: c.company_id || c.companyId || '',
+        companyId: c.companyId || c.companyId || '',
       }));
     },
     enabled: !!selectedCompanyId,

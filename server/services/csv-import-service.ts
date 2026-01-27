@@ -596,7 +596,7 @@ async function searchBusinessRecords(
   conditions: Array<{ field: string; value: any; operator: string }>,
 ): Promise<Record<string, any>[]> {
   // Build dynamic WHERE conditions
-  const whereConditions: any[] = [eq(businessRecords.tenant_id, tenantId)];
+  const whereConditions: any[] = [eq(businessRecords.tenantId, tenantId)];
 
   if (conditions.length > 0) {
     const orClauses = conditions
@@ -629,7 +629,7 @@ async function searchContacts(
   tenantId: string,
   conditions: Array<{ field: string; value: any; operator: string }>,
 ): Promise<Record<string, any>[]> {
-  const whereConditions: any[] = [eq(enhancedContacts.tenant_id, tenantId)];
+  const whereConditions: any[] = [eq(enhancedContacts.tenantId, tenantId)];
 
   if (conditions.length > 0) {
     const orClauses = conditions
@@ -662,7 +662,7 @@ async function searchEquipment(
   tenantId: string,
   conditions: Array<{ field: string; value: any; operator: string }>,
 ): Promise<Record<string, any>[]> {
-  const whereConditions: any[] = [eq(equipment.tenant_id, tenantId)];
+  const whereConditions: any[] = [eq(equipment.tenantId, tenantId)];
 
   if (conditions.length > 0) {
     const orClauses = conditions
@@ -695,7 +695,7 @@ async function searchInventory(
   tenantId: string,
   conditions: Array<{ field: string; value: any; operator: string }>,
 ): Promise<Record<string, any>[]> {
-  const whereConditions: any[] = [eq(inventoryItems.tenant_id, tenantId)];
+  const whereConditions: any[] = [eq(inventoryItems.tenantId, tenantId)];
 
   if (conditions.length > 0) {
     const orClauses = conditions
@@ -820,8 +820,8 @@ export class CsvImportService {
     const [job] = await db
       .insert(csvImportJobs)
       .values({
-        tenantId: params.tenant_id,
-        userId: params.user_id,
+        tenantId: params.tenantId,
+        userId: params.userId,
         entityType: params.entityType as any,
         fileName: params.fileName,
         fileSize: params.fileSize,
@@ -857,7 +857,7 @@ export class CsvImportService {
     const rawData = job.rawData as Record<string, any>[];
     const mappings = job.columnMappings as ColumnMapping[];
     const entityType = job.entityType;
-    const tenantId = job.tenant_id;
+    const tenantId = job.tenantId;
 
     const errors: ValidationError[] = [];
     const transformedData: Record<string, any>[] = [];
@@ -957,7 +957,7 @@ export class CsvImportService {
       .set({
         resolution: params.resolution,
         mergeStrategy: params.mergeStrategy || null,
-        resolvedBy: params.user_id,
+        resolvedBy: params.userId,
         resolvedAt: new Date(),
       })
       .where(eq(csvImportDuplicates.id, params.duplicateId));
@@ -975,7 +975,7 @@ export class CsvImportService {
       .update(csvImportDuplicates)
       .set({
         resolution: params.resolution,
-        resolvedBy: params.user_id,
+        resolvedBy: params.userId,
         resolvedAt: new Date(),
       })
       .where(
@@ -1023,7 +1023,7 @@ export class CsvImportService {
       Record<string, any> & { _rowNumber: number }
     >;
     const entityType = job.entityType;
-    const tenantId = job.tenant_id;
+    const tenantId = job.tenantId;
 
     let imported = 0;
     let skipped = 0;
@@ -1146,7 +1146,7 @@ export class CsvImportService {
     tenantId: string,
     options?: { entityType?: string; status?: string; limit?: number },
   ): Promise<CsvImportJob[]> {
-    const conditions = [eq(csvImportJobs.tenant_id, tenantId)];
+    const conditions = [eq(csvImportJobs.tenantId, tenantId)];
 
     if (options?.entityType) {
       conditions.push(eq(csvImportJobs.entityType, options.entityType as any));
@@ -1159,7 +1159,7 @@ export class CsvImportService {
       .select()
       .from(csvImportJobs)
       .where(and(...conditions))
-      .orderBy(sql`${csvImportJobs.created_at} DESC`)
+      .orderBy(sql`${csvImportJobs.createdAt} DESC`)
       .limit(options?.limit || 50);
   }
 

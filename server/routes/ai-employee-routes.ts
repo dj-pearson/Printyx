@@ -7,8 +7,8 @@ const router = express.Router();
 
 // Middleware for authentication and tenant/user ID extraction (mock for now)
 router.use((req, res, next) => {
-  (req as any).user_id = 'mock-user-id'; // Replace with actual user ID from auth
-  (req as any).tenant_id = 'mock-tenant-id'; // Replace with actual tenant ID from auth
+  (req as any).userId = 'mock-user-id'; // Replace with actual user ID from auth
+  (req as any).tenantId = 'mock-tenant-id'; // Replace with actual tenant ID from auth
   next();
 });
 
@@ -19,8 +19,8 @@ router.use((req, res, next) => {
  */
 router.post('/ai-employees', async (req, res) => {
   try {
-    const tenantId = (req as any).tenant_id;
-    const userId = (req as any).user_id;
+    const tenantId = (req as any).tenantId;
+    const userId = (req as any).userId;
 
     const employeeData = {
       ...req.body,
@@ -51,7 +51,7 @@ router.post('/ai-employees', async (req, res) => {
  */
 router.get('/ai-employees', async (req, res) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const { employeeType, status, autonomyLevel } = req.query;
 
     const filters = {
@@ -84,7 +84,7 @@ router.get('/ai-employees', async (req, res) => {
  */
 router.get('/ai-employees/:employeeId', async (req, res) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const { employeeId } = req.params;
 
     const employee = await aiEmployeeService.getEmployee(tenantId, employeeId);
@@ -117,7 +117,7 @@ router.get('/ai-employees/:employeeId', async (req, res) => {
  */
 router.post('/ai-employees/tasks', async (req, res) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
 
     const task = await aiEmployeeService.assignTask(tenantId, req.body);
 
@@ -143,7 +143,7 @@ router.post('/ai-employees/tasks', async (req, res) => {
  */
 router.get('/ai-employees/:employeeId/tasks', async (req, res) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const { employeeId } = req.params;
     const { status } = req.query;
 
@@ -171,7 +171,7 @@ router.get('/ai-employees/:employeeId/tasks', async (req, res) => {
  */
 router.get('/ai-employees/:employeeId/performance', async (req, res) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const { employeeId } = req.params;
     const { days } = req.query;
 
@@ -209,7 +209,7 @@ router.get('/ai-employees/:employeeId/performance', async (req, res) => {
  */
 router.post('/ai-employees/workflows/execute', async (req, res) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
 
     const executionId = await aiEmployeeService.executeWorkflow(tenantId, req.body);
 
@@ -235,7 +235,7 @@ router.post('/ai-employees/workflows/execute', async (req, res) => {
  */
 router.get('/ai-employees/workflows', async (req, res) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
     const { workflowType } = req.query;
 
     const workflows = await aiEmployeeService.getWorkflows(tenantId, workflowType as string);
@@ -262,7 +262,7 @@ router.get('/ai-employees/workflows', async (req, res) => {
  */
 router.get('/ai-employees/analytics/overview', async (req, res) => {
   try {
-    const tenantId = (req as any).tenant_id;
+    const tenantId = (req as any).tenantId;
 
     // Mock analytics data - in real implementation, this would aggregate from the database
     const analyticsData = {

@@ -126,7 +126,7 @@ export class ApiKeyService {
       keyType: apiKey.keyType,
       scopes: (apiKey.scopes as string[]) || [],
       expiresAt,
-      createdAt: apiKey.created_at,
+      createdAt: apiKey.createdAt,
     };
   }
 
@@ -546,7 +546,7 @@ export class ApiKeyService {
     const [apiKey] = await db
       .select()
       .from(apiKeys)
-      .where(and(eq(apiKeys.id, id), eq(apiKeys.tenant_id, tenantId)));
+      .where(and(eq(apiKeys.id, id), eq(apiKeys.tenantId, tenantId)));
 
     return apiKey || null;
   }
@@ -563,7 +563,7 @@ export class ApiKeyService {
       offset?: number;
     } = {},
   ): Promise<{ keys: ApiKey[]; total: number }> {
-    const conditions = [eq(apiKeys.tenant_id, tenantId)];
+    const conditions = [eq(apiKeys.tenantId, tenantId)];
 
     if (options.status) {
       conditions.push(eq(apiKeys.status, options.status as any));
@@ -576,7 +576,7 @@ export class ApiKeyService {
       .select()
       .from(apiKeys)
       .where(and(...conditions))
-      .orderBy(desc(apiKeys.created_at))
+      .orderBy(desc(apiKeys.createdAt))
       .limit(options.limit || 50)
       .offset(options.offset || 0);
 
@@ -605,7 +605,7 @@ export class ApiKeyService {
         expiresAt: updates.expiresAt ? new Date(updates.expiresAt) : undefined,
         updatedAt: new Date(),
       })
-      .where(and(eq(apiKeys.id, id), eq(apiKeys.tenant_id, tenantId)))
+      .where(and(eq(apiKeys.id, id), eq(apiKeys.tenantId, tenantId)))
       .returning();
 
     return apiKey || null;
@@ -630,7 +630,7 @@ export class ApiKeyService {
         revokedReason: reason,
         updatedAt: new Date(),
       })
-      .where(and(eq(apiKeys.id, id), eq(apiKeys.tenant_id, tenantId)))
+      .where(and(eq(apiKeys.id, id), eq(apiKeys.tenantId, tenantId)))
       .returning({ id: apiKeys.id });
 
     return result.length > 0;
@@ -709,7 +709,7 @@ export class ApiKeyService {
   async deleteApiKey(id: string, tenantId: string): Promise<boolean> {
     const result = await db
       .delete(apiKeys)
-      .where(and(eq(apiKeys.id, id), eq(apiKeys.tenant_id, tenantId)))
+      .where(and(eq(apiKeys.id, id), eq(apiKeys.tenantId, tenantId)))
       .returning({ id: apiKeys.id });
 
     return result.length > 0;
@@ -742,7 +742,7 @@ export class ApiKeyService {
       .where(
         and(
           eq(apiKeyUsageLogs.apiKeyId, apiKeyId),
-          eq(apiKeyUsageLogs.tenant_id, tenantId),
+          eq(apiKeyUsageLogs.tenantId, tenantId),
           gte(apiKeyUsageLogs.timestamp, startDate),
           lte(apiKeyUsageLogs.timestamp, endDate),
         ),

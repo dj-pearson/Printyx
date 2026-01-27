@@ -60,7 +60,7 @@ export class MileageService {
         .from(mileageReimbursementRates)
         .where(
           and(
-            eq(mileageReimbursementRates.tenant_id, tenantId),
+            eq(mileageReimbursementRates.tenantId, tenantId),
             eq(mileageReimbursementRates.isActive, true),
             lte(mileageReimbursementRates.effectiveStartDate, date),
           ),
@@ -180,7 +180,7 @@ export class MileageService {
       .from(technicianMileage)
       .where(
         and(
-          eq(technicianMileage.tenant_id, tenantId),
+          eq(technicianMileage.tenantId, tenantId),
           eq(technicianMileage.technicianId, technicianId),
           eq(technicianMileage.date, dateOnly),
         ),
@@ -245,7 +245,7 @@ export class MileageService {
       .from(technicianMileage)
       .where(
         and(
-          eq(technicianMileage.tenant_id, tenantId),
+          eq(technicianMileage.tenantId, tenantId),
           eq(technicianMileage.technicianId, technicianId),
           gte(technicianMileage.date, startDate),
           lte(technicianMileage.date, endDate),
@@ -402,7 +402,7 @@ export class MileageService {
         submittedBy,
         updatedAt: new Date(),
       })
-      .where(and(eq(mileageReports.id, reportId), eq(mileageReports.tenant_id, tenantId)))
+      .where(and(eq(mileageReports.id, reportId), eq(mileageReports.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -424,7 +424,7 @@ export class MileageService {
         approvedBy,
         updatedAt: new Date(),
       })
-      .where(and(eq(mileageReports.id, reportId), eq(mileageReports.tenant_id, tenantId)))
+      .where(and(eq(mileageReports.id, reportId), eq(mileageReports.tenantId, tenantId)))
       .returning();
 
     // Update related mileage records
@@ -440,7 +440,7 @@ export class MileageService {
         })
         .where(
           and(
-            eq(technicianMileage.tenant_id, tenantId),
+            eq(technicianMileage.tenantId, tenantId),
             eq(technicianMileage.technicianId, updated.technicianId!),
             gte(technicianMileage.date, updated.periodStart),
             lte(technicianMileage.date, updated.periodEnd),
@@ -467,7 +467,7 @@ export class MileageService {
         rejectionReason: reason,
         updatedAt: new Date(),
       })
-      .where(and(eq(mileageReports.id, reportId), eq(mileageReports.tenant_id, tenantId)))
+      .where(and(eq(mileageReports.id, reportId), eq(mileageReports.tenantId, tenantId)))
       .returning();
 
     return updated || null;
@@ -507,7 +507,7 @@ export class MileageService {
       .from(irsMileageLogs)
       .where(
         and(
-          eq(irsMileageLogs.tenant_id, tenantId),
+          eq(irsMileageLogs.tenantId, tenantId),
           eq(irsMileageLogs.technicianId, technicianId),
           eq(irsMileageLogs.taxYear, taxYear),
         ),

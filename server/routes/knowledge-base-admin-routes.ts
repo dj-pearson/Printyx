@@ -51,7 +51,7 @@ const requireAuth = (req: any, res: any, next: any) => {
  */
 router.get('/dashboard', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
     const { days = 30 } = req.query;
 
     const cutoffDate = new Date();
@@ -67,7 +67,7 @@ router.get('/dashboard', requireSystemAdmin, async (req: Request, res: Response)
         aiGenerated: sql<number>`count(*) filter (where ai_generated = true)::int`,
       })
       .from(knowledgeArticles)
-      .where(eq(knowledgeArticles.tenant_id, tenantId));
+      .where(eq(knowledgeArticles.tenantId, tenantId));
 
     // Get view statistics
     const viewStats = await db
@@ -78,7 +78,7 @@ router.get('/dashboard', requireSystemAdmin, async (req: Request, res: Response)
         completionRate: sql<number>`avg(case when completed_reading then 1.0 else 0.0 end)::numeric`,
       })
       .from(articleViews)
-      .where(eq(articleViews.tenant_id, tenantId));
+      .where(eq(articleViews.tenantId, tenantId));
 
     // Get feedback statistics
     const feedbackStats = await db
@@ -88,7 +88,7 @@ router.get('/dashboard', requireSystemAdmin, async (req: Request, res: Response)
         avgSentiment: sql<number>`avg(ai_sentiment_score)::numeric`,
       })
       .from(articleFeedback)
-      .where(eq(articleFeedback.tenant_id, tenantId));
+      .where(eq(articleFeedback.tenantId, tenantId));
 
     // Get AI generation queue stats
     const aiQueueStats = await db
@@ -99,12 +99,12 @@ router.get('/dashboard', requireSystemAdmin, async (req: Request, res: Response)
         failed: sql<number>`count(*) filter (where status = 'failed')::int`,
       })
       .from(aiContentGenerationQueue)
-      .where(eq(aiContentGenerationQueue.tenant_id, tenantId));
+      .where(eq(aiContentGenerationQueue.tenantId, tenantId));
 
     // Get top performing articles
     const topArticles = await db.query.knowledgeArticles.findMany({
       where: and(
-        eq(knowledgeArticles.tenant_id, tenantId),
+        eq(knowledgeArticles.tenantId, tenantId),
         eq(knowledgeArticles.status, 'published'),
       ),
       orderBy: [desc(knowledgeArticles.viewCount)],
@@ -113,7 +113,7 @@ router.get('/dashboard', requireSystemAdmin, async (req: Request, res: Response)
 
     // Get articles needing review
     const needsReview = await db.query.knowledgeArticles.findMany({
-      where: and(eq(knowledgeArticles.tenant_id, tenantId), eq(knowledgeArticles.status, 'review')),
+      where: and(eq(knowledgeArticles.tenantId, tenantId), eq(knowledgeArticles.status, 'review')),
       limit: 10,
     });
 
@@ -144,8 +144,8 @@ router.get('/dashboard', requireSystemAdmin, async (req: Request, res: Response)
  */
 router.post('/articles/bulk-update', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
-    const userId = (req as any).user_id || 'demo-user';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
+    const userId = (req as any).userId || 'demo-user';
 
     const schema = z.object({
       articleIds: z.array(z.string().uuid()),
@@ -175,7 +175,7 @@ router.post('/articles/bulk-update', requireSystemAdmin, async (req: Request, re
       .update(knowledgeArticles)
       .set(updateData)
       .where(
-        and(eq(knowledgeArticles.tenant_id, tenantId), inArray(knowledgeArticles.id, articleIds)),
+        and(eq(knowledgeArticles.tenantId, tenantId), inArray(knowledgeArticles.id, articleIds)),
       )
       .returning();
 
@@ -202,7 +202,7 @@ router.post('/articles/bulk-update', requireSystemAdmin, async (req: Request, re
  */
 router.delete('/articles/bulk-delete', requireRootAdmin, async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
 
     const schema = z.object({
       articleIds: z.array(z.string().uuid()),
@@ -213,33 +213,25 @@ router.delete('/articles/bulk-delete', requireRootAdmin, async (req: Request, re
     // Delete related records first
     await db
       .delete(articleViews)
-      .where(
-        and(eq(articleViews.tenant_id, tenantId), inArray(articleViews.articleId, articleIds)),
-      );
+      .where(and(eq(articleViews.tenantId, tenantId), inArray(articleViews.articleId, articleIds)));
 
     await db
       .delete(articleFeedback)
       .where(
-        and(
-          eq(articleFeedback.tenant_id, tenantId),
-          inArray(articleFeedback.articleId, articleIds),
-        ),
+        and(eq(articleFeedback.tenantId, tenantId), inArray(articleFeedback.articleId, articleIds)),
       );
 
     await db
       .delete(articleVersions)
       .where(
-        and(
-          eq(articleVersions.tenant_id, tenantId),
-          inArray(articleVersions.articleId, articleIds),
-        ),
+        and(eq(articleVersions.tenantId, tenantId), inArray(articleVersions.articleId, articleIds)),
       );
 
     // Delete articles
     const deleted = await db
       .delete(knowledgeArticles)
       .where(
-        and(eq(knowledgeArticles.tenant_id, tenantId), inArray(knowledgeArticles.id, articleIds)),
+        and(eq(knowledgeArticles.tenantId, tenantId), inArray(knowledgeArticles.id, articleIds)),
       )
       .returning();
 
@@ -265,14 +257,14 @@ router.delete('/articles/bulk-delete', requireRootAdmin, async (req: Request, re
  */
 router.get('/feedback/pending', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
     const { limit = 50, offset = 0 } = req.query;
 
     const feedback = await db.query.articleFeedback.findMany({
-      where: and(eq(articleFeedback.tenant_id, tenantId), eq(articleFeedback.resolved, false)),
+      where: and(eq(articleFeedback.tenantId, tenantId), eq(articleFeedback.resolved, false)),
       limit: Number(limit),
       offset: Number(offset),
-      orderBy: [desc(articleFeedback.created_at)],
+      orderBy: [desc(articleFeedback.createdAt)],
     });
 
     // Get associated articles
@@ -313,8 +305,8 @@ router.get('/feedback/pending', requireSystemAdmin, async (req: Request, res: Re
  */
 router.put('/feedback/:id/resolve', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
-    const userId = (req as any).user_id || 'demo-user';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
+    const userId = (req as any).userId || 'demo-user';
     const { id } = req.params;
 
     const schema = z.object({
@@ -331,7 +323,7 @@ router.put('/feedback/:id/resolve', requireSystemAdmin, async (req: Request, res
         resolvedBy: userId,
         resolutionNotes,
       })
-      .where(and(eq(articleFeedback.id, id), eq(articleFeedback.tenant_id, tenantId)))
+      .where(and(eq(articleFeedback.id, id), eq(articleFeedback.tenantId, tenantId)))
       .returning();
 
     res.json({
@@ -354,10 +346,10 @@ router.put('/feedback/:id/resolve', requireSystemAdmin, async (req: Request, res
  */
 router.get('/ai-queue', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
     const { status, limit = 50 } = req.query;
 
-    const conditions = [eq(aiContentGenerationQueue.tenant_id, tenantId)];
+    const conditions = [eq(aiContentGenerationQueue.tenantId, tenantId)];
 
     if (status) {
       conditions.push(eq(aiContentGenerationQueue.status, status as any));
@@ -366,7 +358,7 @@ router.get('/ai-queue', requireSystemAdmin, async (req: Request, res: Response) 
     const queue = await db.query.aiContentGenerationQueue.findMany({
       where: and(...conditions),
       limit: Number(limit),
-      orderBy: [desc(aiContentGenerationQueue.created_at)],
+      orderBy: [desc(aiContentGenerationQueue.createdAt)],
     });
 
     res.json({
@@ -389,7 +381,7 @@ router.get('/ai-queue', requireSystemAdmin, async (req: Request, res: Response) 
  */
 router.post('/ai-queue/:id/retry', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
     const { id } = req.params;
 
     const [updated] = await db
@@ -399,7 +391,7 @@ router.post('/ai-queue/:id/retry', requireSystemAdmin, async (req: Request, res:
         errorMessage: null,
       })
       .where(
-        and(eq(aiContentGenerationQueue.id, id), eq(aiContentGenerationQueue.tenant_id, tenantId)),
+        and(eq(aiContentGenerationQueue.id, id), eq(aiContentGenerationQueue.tenantId, tenantId)),
       )
       .returning();
 
@@ -423,11 +415,11 @@ router.post('/ai-queue/:id/retry', requireSystemAdmin, async (req: Request, res:
  */
 router.get('/articles/:id/versions', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
     const { id } = req.params;
 
     const versions = await db.query.articleVersions.findMany({
-      where: and(eq(articleVersions.articleId, id), eq(articleVersions.tenant_id, tenantId)),
+      where: and(eq(articleVersions.articleId, id), eq(articleVersions.tenantId, tenantId)),
       orderBy: [desc(articleVersions.version)],
     });
 
@@ -454,8 +446,8 @@ router.post(
   requireSystemAdmin,
   async (req: Request, res: Response) => {
     try {
-      const tenantId = (req as any).tenant_id || 'demo-tenant';
-      const userId = (req as any).user_id || 'demo-user';
+      const tenantId = (req as any).tenantId || 'demo-tenant';
+      const userId = (req as any).userId || 'demo-user';
       const { id } = req.params;
 
       const schema = z.object({
@@ -468,7 +460,7 @@ router.post(
       const versionToRestore = await db.query.articleVersions.findFirst({
         where: and(
           eq(articleVersions.articleId, id),
-          eq(articleVersions.tenant_id, tenantId),
+          eq(articleVersions.tenantId, tenantId),
           eq(articleVersions.version, version),
         ),
       });
@@ -508,8 +500,8 @@ router.post(
  */
 router.post('/import', requireRootAdmin, async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
-    const userId = (req as any).user_id || 'demo-user';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
+    const userId = (req as any).userId || 'demo-user';
 
     const schema = z.object({
       format: z.enum(['json', 'csv', 'markdown']),
@@ -577,10 +569,10 @@ router.post('/import', requireRootAdmin, async (req: Request, res: Response) => 
  */
 router.get('/export', requireRootAdmin, async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
     const { format = 'json', categoryId, status } = req.query;
 
-    const conditions = [eq(knowledgeArticles.tenant_id, tenantId)];
+    const conditions = [eq(knowledgeArticles.tenantId, tenantId)];
 
     if (categoryId) {
       conditions.push(eq(knowledgeArticles.categoryId, categoryId as string));
@@ -611,7 +603,7 @@ router.get('/export', requireRootAdmin, async (req: Request, res: Response) => {
         a.title,
         a.status,
         a.categoryId,
-        a.created_at,
+        a.createdAt,
         a.viewCount,
       ]);
 
@@ -635,7 +627,7 @@ router.get('/export', requireRootAdmin, async (req: Request, res: Response) => {
  */
 router.get('/analytics/detailed', requireManager, async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
     const { startDate, endDate, groupBy = 'day' } = req.query;
 
     const start = startDate
@@ -648,13 +640,13 @@ router.get('/analytics/detailed', requireManager, async (req: Request, res: Resp
       .select({
         date: sql<string>`date_trunc(${groupBy}, ${articleViews.viewedAt})`,
         views: sql<number>`count(*)::int`,
-        uniqueUsers: sql<number>`count(distinct ${articleViews.user_id})::int`,
+        uniqueUsers: sql<number>`count(distinct ${articleViews.userId})::int`,
         avgTimeSpent: sql<number>`avg(${articleViews.timeSpentSeconds})::int`,
       })
       .from(articleViews)
       .where(
         and(
-          eq(articleViews.tenant_id, tenantId),
+          eq(articleViews.tenantId, tenantId),
           gte(articleViews.viewedAt, start),
           lte(articleViews.viewedAt, end),
         ),
@@ -671,17 +663,17 @@ router.get('/analytics/detailed', requireManager, async (req: Request, res: Resp
         avgRating: sql<number>`avg(${knowledgeArticles.averageRating})::numeric`,
       })
       .from(knowledgeArticles)
-      .where(eq(knowledgeArticles.tenant_id, tenantId))
+      .where(eq(knowledgeArticles.tenantId, tenantId))
       .groupBy(knowledgeArticles.categoryId);
 
     // Get search query trends
     const searchTrends = await db.query.knowledgeSearchQueries.findMany({
       where: and(
-        eq(knowledgeArticles.tenant_id, tenantId),
-        gte(articleViews.created_at, start),
-        lte(articleViews.created_at, end),
+        eq(knowledgeArticles.tenantId, tenantId),
+        gte(articleViews.createdAt, start),
+        lte(articleViews.createdAt, end),
       ),
-      orderBy: [desc(articleViews.created_at)],
+      orderBy: [desc(articleViews.createdAt)],
       limit: 100,
     });
 
@@ -709,7 +701,7 @@ router.get('/analytics/detailed', requireManager, async (req: Request, res: Resp
  */
 router.post('/categories/reorder', requireSystemAdmin, async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenant_id || 'demo-tenant';
+    const tenantId = (req as any).tenantId || 'demo-tenant';
 
     const schema = z.object({
       categoryOrders: z.array(
@@ -727,7 +719,7 @@ router.post('/categories/reorder', requireSystemAdmin, async (req: Request, res:
       await db
         .update(knowledgeCategories)
         .set({ categoryOrder: order })
-        .where(and(eq(knowledgeCategories.id, id), eq(knowledgeCategories.tenant_id, tenantId)));
+        .where(and(eq(knowledgeCategories.id, id), eq(knowledgeCategories.tenantId, tenantId)));
     }
 
     res.json({

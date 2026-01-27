@@ -302,7 +302,7 @@ export function apmErrorHandler(): ErrorRequestHandler {
       method: req.method,
       path: req.path,
       query: req.query,
-      userId: (req as Request & { session?: { userId?: string } }).session?.user_id,
+      userId: (req as Request & { session?: { userId?: string } }).session?.userId,
       tenantId: req.header('x-tenant-id'),
     });
 
@@ -318,8 +318,8 @@ export function apmRequestHandler() {
   return (req: Request, res: Response, next: NextFunction) => {
     // Set user context if available
     const session = (req as Request & { session?: { userId?: string } }).session;
-    if (session?.user_id) {
-      apmInstance.setUser({ id: session.user_id });
+    if (session?.userId) {
+      apmInstance.setUser({ id: session.userId });
     }
 
     // Set tenant tag

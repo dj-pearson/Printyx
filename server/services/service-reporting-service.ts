@@ -199,7 +199,7 @@ export class ServiceReportingService {
 
     const dateFilter =
       dateRange?.dateFrom && dateRange?.dateTo
-        ? sql`AND st.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        ? sql`AND st.createdAt BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
         : sql``;
 
     const statusFilter = status ? sql`AND st.status = ${status}` : sql``;
@@ -207,15 +207,15 @@ export class ServiceReportingService {
     const result = await db.execute(sql`
       SELECT
         st.id as ticket_id,
-        st.ticket_number,
+        st.ticketNumber,
         br.name as customer_name,
         COALESCE(e.model_name, 'N/A') as equipment_model,
-        COALESCE(e.serial_number, 'N/A') as serial_number,
+        COALESCE(e.serialNumber, 'N/A') as serial_number,
         st.priority,
         st.status,
         st.scheduled_date,
-        st.completed_at as completed_date,
-        EXTRACT(EPOCH FROM (st.completed_at - st.scheduled_date))/60 as duration,
+        st.completedAt as completed_date,
+        EXTRACT(EPOCH FROM (st.completedAt - st.scheduled_date))/60 as duration,
         st.category,
         st.resolution_type,
         CASE
@@ -224,10 +224,10 @@ export class ServiceReportingService {
         END as first_time_fix_rate,
         st.customer_satisfaction_rating as customer_satisfaction
       FROM service_tickets st
-      LEFT JOIN business_records br ON st.customer_id = br.id
-      LEFT JOIN equipment e ON st.equipment_id = e.id
+      LEFT JOIN business_records br ON st.customerId = br.id
+      LEFT JOIN equipment e ON st.equipmentId = e.id
       WHERE st.assigned_technician_id = ${userContext.id}
-        AND st.tenant_id = ${userContext.tenant_id}
+        AND st.tenantId = ${userContext.tenantId}
         ${dateFilter}
         ${statusFilter}
       ORDER BY
@@ -241,11 +241,11 @@ export class ServiceReportingService {
     `);
 
     const calls: ServiceCall[] = result.rows.map((row: any) => ({
-      ticketId: row.ticket_id,
-      ticketNumber: row.ticket_number,
+      ticketId: row.ticketId,
+      ticketNumber: row.ticketNumber,
       customerName: row.customer_name,
-      equipmentModel: row.equipment_model,
-      serialNumber: row.serial_number,
+      equipmentModel: row.equipmentModel,
+      serialNumber: row.serialNumber,
       priority: row.priority,
       status: row.status,
       scheduledDate: row.scheduled_date ? new Date(row.scheduled_date) : null,
@@ -331,33 +331,33 @@ export class ServiceReportingService {
     const result = await db.execute(sql`
       SELECT
         pu.used_at::date as date,
-        pu.part_number,
+        pu.partNumber,
         pu.part_name,
         pu.category,
         pu.quantity as quantity_used,
         pu.unit_cost,
         (pu.quantity * pu.unit_cost) as total_cost,
-        st.ticket_number,
+        st.ticketNumber,
         br.name as customer_name,
         pu.billable
       FROM parts_usage pu
-      LEFT JOIN service_tickets st ON pu.ticket_id = st.id
-      LEFT JOIN business_records br ON st.customer_id = br.id
+      LEFT JOIN service_tickets st ON pu.ticketId = st.id
+      LEFT JOIN business_records br ON st.customerId = br.id
       WHERE pu.technician_id = ${userContext.id}
-        AND pu.tenant_id = ${userContext.tenant_id}
+        AND pu.tenantId = ${userContext.tenantId}
         ${dateFilter}
       ORDER BY pu.used_at DESC
     `);
 
     const parts: PartsUsage[] = result.rows.map((row: any) => ({
       date: new Date(row.date),
-      partNumber: row.part_number,
+      partNumber: row.partNumber,
       partName: row.part_name,
       category: row.category,
       quantityUsed: parseInt(row.quantity_used),
       unitCost: parseFloat(row.unit_cost),
       totalCost: parseFloat(row.total_cost),
-      ticketNumber: row.ticket_number,
+      ticketNumber: row.ticketNumber,
       customerName: row.customer_name,
       billable: row.billable,
     }));
@@ -433,7 +433,7 @@ export class ServiceReportingService {
     const result = await db.execute(sql`
       SELECT
         te.entry_date::date as date,
-        st.ticket_number,
+        st.ticketNumber,
         br.name as customer_name,
         te.activity_type,
         te.hours,
@@ -441,17 +441,17 @@ export class ServiceReportingService {
         te.status,
         te.notes
       FROM time_entries te
-      LEFT JOIN service_tickets st ON te.ticket_id = st.id
-      LEFT JOIN business_records br ON st.customer_id = br.id
+      LEFT JOIN service_tickets st ON te.ticketId = st.id
+      LEFT JOIN business_records br ON st.customerId = br.id
       WHERE te.technician_id = ${userContext.id}
-        AND te.tenant_id = ${userContext.tenant_id}
+        AND te.tenantId = ${userContext.tenantId}
         ${dateFilter}
       ORDER BY te.entry_date DESC
     `);
 
     const entries: TimeEntry[] = result.rows.map((row: any) => ({
       date: new Date(row.date),
-      ticketNumber: row.ticket_number,
+      ticketNumber: row.ticketNumber,
       customerName: row.customer_name,
       activityType: row.activity_type,
       hours: parseFloat(row.hours),
@@ -552,18 +552,18 @@ export class ServiceReportingService {
     const result = await db.execute(sql`
       SELECT
         st.id as ticket_id,
-        st.ticket_number,
+        st.ticketNumber,
         br.name as customer_name,
         COALESCE(e.model_name, 'N/A') as equipment_model,
         l.name as location,
         st.priority,
         st.status,
         st.assigned_technician_id,
-        u.full_name as assigned_technician_name,
+        u.fullName as assigned_technician_name,
         st.scheduled_date,
         st.estimated_duration,
         st.category,
-        EXTRACT(DAY FROM (CURRENT_TIMESTAMP - st.created_at)) as days_open,
+        EXTRACT(DAY FROM (CURRENT_TIMESTAMP - st.createdAt)) as days_open,
         st.sla_deadline,
         CASE
           WHEN st.sla_deadline IS NULL THEN 'on_time'
@@ -572,11 +572,11 @@ export class ServiceReportingService {
           ELSE 'on_time'
         END as sla_status
       FROM service_tickets st
-      LEFT JOIN business_records br ON st.customer_id = br.id
-      LEFT JOIN equipment e ON st.equipment_id = e.id
-      LEFT JOIN locations l ON br.location_id = l.id
+      LEFT JOIN business_records br ON st.customerId = br.id
+      LEFT JOIN equipment e ON st.equipmentId = e.id
+      LEFT JOIN locations l ON br.locationId = l.id
       LEFT JOIN users u ON st.assigned_technician_id = u.id
-      WHERE st.tenant_id = ${userContext.tenant_id}
+      WHERE st.tenantId = ${userContext.tenantId}
         AND st.status IN ('open', 'scheduled', 'in_progress')
         AND (
           st.assigned_technician_id = ANY(${sql.raw(`ARRAY[${accessibleUserIds.map((id) => `'${id}'`).join(',')}]`)})
@@ -597,10 +597,10 @@ export class ServiceReportingService {
     `);
 
     const queue: DispatchQueueItem[] = result.rows.map((row: any) => ({
-      ticketId: row.ticket_id,
-      ticketNumber: row.ticket_number,
+      ticketId: row.ticketId,
+      ticketNumber: row.ticketNumber,
       customerName: row.customer_name,
-      equipmentModel: row.equipment_model,
+      equipmentModel: row.equipmentModel,
       location: row.location,
       priority: row.priority,
       status: row.status,

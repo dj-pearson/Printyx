@@ -28,7 +28,7 @@ export function registerContactsRoutes(app: Express) {
   app.get('/api/company-contacts', resolveTenant, async (req: any, res) => {
     try {
       const user = req.user as any;
-      const tenantId = user.tenant_id || getTenantId(req);
+      const tenantId = user.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -55,7 +55,7 @@ export function registerContactsRoutes(app: Express) {
   app.get('/api/company-contacts/:companyId', resolveTenant, async (req: any, res) => {
     try {
       const user = req.user as any;
-      const tenantId = user.tenant_id || getTenantId(req);
+      const tenantId = user.tenantId || getTenantId(req);
       const { companyId } = req.params;
 
       if (!tenantId) {
@@ -74,7 +74,7 @@ export function registerContactsRoutes(app: Express) {
   app.post('/api/company-contacts', resolveTenant, async (req: any, res) => {
     try {
       const user = req.user as any;
-      const tenantId = user.tenant_id || getTenantId(req);
+      const tenantId = user.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID is required' });
@@ -104,7 +104,7 @@ export function registerContactsRoutes(app: Express) {
   app.put('/api/company-contacts/:id', resolveTenant, async (req: any, res) => {
     try {
       const user = req.user as any;
-      const tenantId = user.tenant_id || getTenantId(req);
+      const tenantId = user.tenantId || getTenantId(req);
       const { id } = req.params;
 
       if (!tenantId) {
@@ -126,7 +126,7 @@ export function registerContactsRoutes(app: Express) {
   app.delete('/api/company-contacts/:id', resolveTenant, async (req: any, res) => {
     try {
       const user = req.user as any;
-      const tenantId = user.tenant_id || getTenantId(req);
+      const tenantId = user.tenantId || getTenantId(req);
       const { id } = req.params;
 
       if (!tenantId) {
@@ -152,7 +152,7 @@ export function registerContactsRoutes(app: Express) {
   app.get('/api/contacts', resolveTenant, async (req: TenantRequest, res) => {
     try {
       const user = req.user as any;
-      const tenantId = req.tenant_id || user.tenant_id;
+      const tenantId = req.tenantId || user.tenantId;
 
       if (!tenantId) {
         return res.status(401).json({ message: 'Authentication required' });
@@ -208,14 +208,14 @@ export function registerContactsRoutes(app: Express) {
       if (createDate) {
         switch (createDate) {
           case 'today':
-            filters.created_at = {
+            filters.createdAt = {
               gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
             };
             break;
           case 'yesterday':
             const yesterday = new Date(now);
             yesterday.setDate(yesterday.getDate() - 1);
-            filters.created_at = {
+            filters.createdAt = {
               gte: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate()),
               lt: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
             };
@@ -223,12 +223,12 @@ export function registerContactsRoutes(app: Express) {
           case 'last7days':
             const last7Days = new Date(now);
             last7Days.setDate(last7Days.getDate() - 7);
-            filters.created_at = { gte: last7Days };
+            filters.createdAt = { gte: last7Days };
             break;
           case 'last30days':
             const last30Days = new Date(now);
             last30Days.setDate(last30Days.getDate() - 30);
-            filters.created_at = { gte: last30Days };
+            filters.createdAt = { gte: last30Days };
             break;
         }
       }
@@ -295,7 +295,7 @@ export function registerContactsRoutes(app: Express) {
   app.post('/api/contacts', resolveTenant, async (req, res) => {
     try {
       const user = req.user as any;
-      const tenantId = user.tenant_id || getTenantId(req);
+      const tenantId = user.tenantId || getTenantId(req);
 
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID is required' });
@@ -320,7 +320,7 @@ export function registerContactsRoutes(app: Express) {
   app.get('/api/contacts/:id', resolveTenant, async (req, res) => {
     try {
       const user = req.user as any;
-      const tenantId = user.tenant_id || getTenantId(req);
+      const tenantId = user.tenantId || getTenantId(req);
       const { id } = req.params;
 
       if (!tenantId) {
@@ -334,7 +334,7 @@ export function registerContactsRoutes(app: Express) {
       }
 
       // Check tenant access
-      if (contact.tenant_id !== tenantId) {
+      if (contact.tenantId !== tenantId) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
@@ -356,7 +356,7 @@ export function registerContactsRoutes(app: Express) {
   app.put('/api/contacts/:id', resolveTenant, async (req, res) => {
     try {
       const user = req.user as any;
-      const tenantId = user.tenant_id || getTenantId(req);
+      const tenantId = user.tenantId || getTenantId(req);
       const { id } = req.params;
 
       if (!tenantId) {
@@ -370,7 +370,7 @@ export function registerContactsRoutes(app: Express) {
       }
 
       // Check tenant access
-      if (contact.tenant_id !== tenantId) {
+      if (contact.tenantId !== tenantId) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
@@ -393,7 +393,7 @@ export function registerContactsRoutes(app: Express) {
   app.delete('/api/contacts/:id', resolveTenant, async (req, res) => {
     try {
       const user = req.user as any;
-      const tenantId = user.tenant_id || getTenantId(req);
+      const tenantId = user.tenantId || getTenantId(req);
       const { id } = req.params;
 
       if (!tenantId) {
@@ -407,7 +407,7 @@ export function registerContactsRoutes(app: Express) {
       }
 
       // Check tenant access
-      if (contact.tenant_id !== tenantId) {
+      if (contact.tenantId !== tenantId) {
         return res.status(403).json({ error: 'Access denied' });
       }
 
@@ -441,11 +441,11 @@ export function registerContactsRoutes(app: Express) {
       }
 
       const user = await storage.getUser(userId);
-      if (!user?.tenant_id) {
+      if (!user?.tenantId) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
-      const contacts = await storage.getContactsByCompany(companyId, user.tenant_id);
+      const contacts = await storage.getContactsByCompany(companyId, user.tenantId);
       res.json(contacts);
     } catch (error) {
       console.error('Error fetching company contacts:', error);
@@ -465,13 +465,13 @@ export function registerContactsRoutes(app: Express) {
       }
 
       const user = await storage.getUser(userId);
-      if (!user?.tenant_id) {
+      if (!user?.tenantId) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
       const updatedContact = await storage.updateContact(contactId, {
         ...contactData,
-        tenantId: user.tenant_id,
+        tenantId: user.tenantId,
         updatedAt: new Date(),
       });
 
@@ -493,11 +493,11 @@ export function registerContactsRoutes(app: Express) {
       }
 
       const user = await storage.getUser(userId);
-      if (!user?.tenant_id) {
+      if (!user?.tenantId) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
-      await storage.deleteContact(contactId, user.tenant_id);
+      await storage.deleteContact(contactId, user.tenantId);
       res.json({ message: 'Contact deleted successfully' });
     } catch (error) {
       console.error('Error deleting contact:', error);

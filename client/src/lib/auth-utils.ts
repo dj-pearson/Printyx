@@ -267,7 +267,7 @@ export function requiresEmailVerification(): boolean {
  * @returns Error code or null
  */
 export function getAuthErrorCode(error: any): string | null {
-  return error?.code || error?.error_code || null;
+  return error?.code || error?.errorCode || null;
 }
 
 /**

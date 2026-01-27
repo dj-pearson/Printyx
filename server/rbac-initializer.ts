@@ -25,7 +25,7 @@ export class RBACInitializer {
       const existingRoles = await db
         .select()
         .from(enhancedRoles)
-        .where(eq(enhancedRoles.tenant_id, tenantId))
+        .where(eq(enhancedRoles.tenantId, tenantId))
         .limit(1);
 
       if (existingRoles.length > 0) {
@@ -100,7 +100,7 @@ export class RBACInitializer {
       const roles = await db
         .select()
         .from(enhancedRoles)
-        .where(eq(enhancedRoles.tenant_id, tenantId))
+        .where(eq(enhancedRoles.tenantId, tenantId))
         .limit(1);
 
       return roles.length > 0;
@@ -132,10 +132,10 @@ export class RBACInitializer {
 
       // Get system statistics
       const [roleCount] = await db.select({
-        count: db.$count(enhancedRoles, eq(enhancedRoles.tenant_id, tenantId)),
+        count: db.$count(enhancedRoles, eq(enhancedRoles.tenantId, tenantId)),
       });
       const [unitCount] = await db.select({
-        count: db.$count(organizationalUnits, eq(organizationalUnits.tenant_id, tenantId)),
+        count: db.$count(organizationalUnits, eq(organizationalUnits.tenantId, tenantId)),
       });
 
       return {
@@ -187,8 +187,8 @@ export class RBACInitializer {
       // This is a destructive operation - remove all RBAC data for tenant
       await db.transaction(async (tx) => {
         // Remove in correct order to respect foreign key constraints
-        await tx.delete(enhancedRoles).where(eq(enhancedRoles.tenant_id, tenantId));
-        await tx.delete(organizationalUnits).where(eq(organizationalUnits.tenant_id, tenantId));
+        await tx.delete(enhancedRoles).where(eq(enhancedRoles.tenantId, tenantId));
+        await tx.delete(organizationalUnits).where(eq(organizationalUnits.tenantId, tenantId));
       });
 
       console.log(`RBAC system reset for tenant ${tenantId}`);
@@ -214,7 +214,7 @@ export class RBACInitializer {
           organizationalUnits,
           eq(enhancedRoles.organizationalUnitId, organizationalUnits.id),
         )
-        .where(eq(enhancedRoles.tenant_id, tenantId));
+        .where(eq(enhancedRoles.tenantId, tenantId));
 
       rolesWithoutUnits.forEach((row) => {
         if (row.enhanced_roles.organizationalUnitId && !row.organizational_units) {
@@ -228,7 +228,7 @@ export class RBACInitializer {
       const units = await db
         .select()
         .from(organizationalUnits)
-        .where(eq(organizationalUnits.tenant_id, tenantId))
+        .where(eq(organizationalUnits.tenantId, tenantId))
         .orderBy(organizationalUnits.lft);
 
       // Validate nested set model

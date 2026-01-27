@@ -74,12 +74,12 @@ const SALES_REPORTS: ReportDefinition[] = [
         c.name as customer_name,
         p.name as product_category
       FROM opportunities o
-      LEFT JOIN business_records c ON o.customer_id = c.id
-      LEFT JOIN products p ON o.product_id = p.id
-      WHERE o.owner_id = :userId
-        AND o.tenant_id = :tenantId
-        AND (:dateFrom IS NULL OR o.created_at >= :dateFrom)
-        AND (:dateTo IS NULL OR o.created_at <= :dateTo)
+      LEFT JOIN business_records c ON o.customerId = c.id
+      LEFT JOIN products p ON o.productId = p.id
+      WHERE o.ownerId = :userId
+        AND o.tenantId = :tenantId
+        AND (:dateFrom IS NULL OR o.createdAt >= :dateFrom)
+        AND (:dateTo IS NULL OR o.createdAt <= :dateTo)
       ORDER BY o.weighted_amount DESC, o.expected_close_date ASC
     `,
     defaultParameters: {
@@ -143,8 +143,8 @@ const SALES_REPORTS: ReportDefinition[] = [
         c.name as customer_name
       FROM activities a
       LEFT JOIN business_records c ON a.related_to_id = c.id
-      WHERE a.owner_id = :userId
-        AND a.tenant_id = :tenantId
+      WHERE a.ownerId = :userId
+        AND a.tenantId = :tenantId
         AND a.activity_date >= :dateFrom
         AND a.activity_date <= :dateTo
       ORDER BY a.activity_date DESC
@@ -194,12 +194,12 @@ const SALES_REPORTS: ReportDefinition[] = [
         (COALESCE(SUM(o.amount), 0) / NULLIF(q.quota_amount, 0) * 100) as quota_percentage,
         q.quota_amount - COALESCE(SUM(o.amount), 0) as remaining_quota
       FROM quotas q
-      LEFT JOIN opportunities o ON o.owner_id = q.user_id
+      LEFT JOIN opportunities o ON o.ownerId = q.userId
         AND o.stage = 'Closed Won'
         AND o.close_date >= q.period_start
         AND o.close_date <= q.period_end
-      WHERE q.user_id = :userId
-        AND q.tenant_id = :tenantId
+      WHERE q.userId = :userId
+        AND q.tenantId = :tenantId
         AND q.quota_period = :period
       GROUP BY q.id, q.quota_period, q.quota_amount
     `,
@@ -247,7 +247,7 @@ const SALES_REPORTS: ReportDefinition[] = [
       FROM commissions c
       LEFT JOIN opportunities o ON c.deal_id = o.id
       WHERE c.sales_rep_id = :userId
-        AND c.tenant_id = :tenantId
+        AND c.tenantId = :tenantId
         AND (:dateFrom IS NULL OR c.commission_period >= :dateFrom)
         AND (:dateTo IS NULL OR c.commission_period <= :dateTo)
       ORDER BY c.commission_period DESC, c.commission_amount DESC
@@ -279,14 +279,14 @@ const SALES_REPORTS: ReportDefinition[] = [
       WITH rep_stats AS (
         SELECT
           u.id,
-          u.first_name || ' ' || u.last_name as rep_name,
+          u.firstName || ' ' || u.lastName as rep_name,
           COUNT(DISTINCT o.id) FILTER (WHERE o.stage = 'Closed Won') as deals_closed,
           COALESCE(SUM(o.amount) FILTER (WHERE o.stage = 'Closed Won'), 0) as revenue,
           COUNT(DISTINCT a.id) as activities
         FROM users u
-        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = :tenantId
-        LEFT JOIN activities a ON a.owner_id = u.id AND a.tenant_id = :tenantId
-        WHERE u.tenant_id = :tenantId
+        LEFT JOIN opportunities o ON o.ownerId = u.id AND o.tenantId = :tenantId
+        LEFT JOIN activities a ON a.ownerId = u.id AND a.tenantId = :tenantId
+        WHERE u.tenantId = :tenantId
           AND u.role_code LIKE 'SALES_%'
         GROUP BY u.id, rep_name
       ),
@@ -322,19 +322,19 @@ const SALES_REPORTS: ReportDefinition[] = [
     sqlQuery: `
       SELECT
         u.id as rep_id,
-        u.first_name || ' ' || u.last_name as rep_name,
+        u.firstName || ' ' || u.lastName as rep_name,
         COUNT(DISTINCT o.id) as opportunity_count,
         SUM(o.amount) as pipeline_value,
         SUM(o.weighted_amount) as weighted_pipeline,
         AVG(o.amount) as avg_deal_size,
         SUM(o.amount) / NULLIF(q.quota_amount, 0) * 100 as pipeline_coverage
       FROM users u
-      LEFT JOIN opportunities o ON o.owner_id = u.id
-        AND o.tenant_id = :tenantId
+      LEFT JOIN opportunities o ON o.ownerId = u.id
+        AND o.tenantId = :tenantId
         AND o.stage NOT IN ('Closed Won', 'Closed Lost')
-      LEFT JOIN quotas q ON q.user_id = u.id AND q.quota_period = 'monthly'
+      LEFT JOIN quotas q ON q.userId = u.id AND q.quota_period = 'monthly'
       WHERE u.manager_id = :userId
-        AND u.tenant_id = :tenantId
+        AND u.tenantId = :tenantId
       GROUP BY u.id, rep_name, q.quota_amount
       ORDER BY weighted_pipeline DESC
     `,
@@ -363,19 +363,19 @@ const SALES_REPORTS: ReportDefinition[] = [
     sqlQuery: `
       SELECT
         u.id as rep_id,
-        u.first_name || ' ' || u.last_name as rep_name,
+        u.firstName || ' ' || u.lastName as rep_name,
         COUNT(a.id) as total_activities,
         COUNT(a.id) FILTER (WHERE a.activity_type = 'Call') as calls,
         COUNT(a.id) FILTER (WHERE a.activity_type = 'Meeting') as meetings,
         COUNT(a.id) FILTER (WHERE a.activity_type = 'Email') as emails,
         COUNT(a.id) FILTER (WHERE a.completed = true) / NULLIF(COUNT(a.id), 0) * 100 as completion_rate
       FROM users u
-      LEFT JOIN activities a ON a.owner_id = u.id
-        AND a.tenant_id = :tenantId
+      LEFT JOIN activities a ON a.ownerId = u.id
+        AND a.tenantId = :tenantId
         AND a.activity_date >= :dateFrom
         AND a.activity_date <= :dateTo
       WHERE u.manager_id = :userId
-        AND u.tenant_id = :tenantId
+        AND u.tenantId = :tenantId
       GROUP BY u.id, rep_name
       ORDER BY total_activities DESC
     `,
@@ -409,12 +409,12 @@ const SALES_REPORTS: ReportDefinition[] = [
         (SUM(o.amount) FILTER (WHERE o.stage = 'Closed Won') / NULLIF(SUM(q.quota_amount), 0) * 100) as quota_attainment,
         COUNT(DISTINCT o.id) FILTER (WHERE o.stage = 'Closed Won') /
           NULLIF(COUNT(DISTINCT o.id) FILTER (WHERE o.stage IN ('Closed Won', 'Closed Lost')), 0) * 100 as win_rate,
-        AVG(EXTRACT(DAY FROM (o.close_date - o.created_at))) as avg_sales_cycle_days
+        AVG(EXTRACT(DAY FROM (o.close_date - o.createdAt))) as avg_sales_cycle_days
       FROM opportunities o
-      JOIN users u ON o.owner_id = u.id
-      LEFT JOIN quotas q ON q.user_id = u.id
+      JOIN users u ON o.ownerId = u.id
+      LEFT JOIN quotas q ON q.userId = u.id
       WHERE u.manager_id = :userId
-        AND u.tenant_id = :tenantId
+        AND u.tenantId = :tenantId
         AND o.close_date >= :dateFrom
         AND o.close_date <= :dateTo
       GROUP BY period
@@ -447,15 +447,15 @@ const SALES_REPORTS: ReportDefinition[] = [
         COUNT(l.id) as lead_count,
         COUNT(l.id) FILTER (WHERE l.status = 'Converted') as converted_count,
         COUNT(l.id) FILTER (WHERE l.status = 'Converted') / NULLIF(COUNT(l.id), 0) * 100 as conversion_rate,
-        AVG(EXTRACT(DAY FROM (CURRENT_DATE - l.created_at))) as avg_age_days,
-        COUNT(l.id) FILTER (WHERE l.owner_id IS NULL) as unassigned_count,
+        AVG(EXTRACT(DAY FROM (CURRENT_DATE - l.createdAt))) as avg_age_days,
+        COUNT(l.id) FILTER (WHERE l.ownerId IS NULL) as unassigned_count,
         COUNT(l.id) FILTER (WHERE l.next_follow_up_date < CURRENT_DATE AND l.status NOT IN ('Converted', 'Lost')) as overdue_count
       FROM business_records l
-      WHERE l.tenant_id = :tenantId
-        AND l.location_id = :locationId
+      WHERE l.tenantId = :tenantId
+        AND l.locationId = :locationId
         AND l.record_type = 'lead'
-        AND l.created_at >= :dateFrom
-        AND l.created_at <= :dateTo
+        AND l.createdAt >= :dateFrom
+        AND l.createdAt <= :dateTo
       GROUP BY l.lead_source, l.status
       ORDER BY lead_count DESC
     `,
@@ -492,19 +492,19 @@ const SALES_REPORTS: ReportDefinition[] = [
     sqlQuery: `
       SELECT
         u.id as rep_id,
-        u.first_name || ' ' || u.last_name as rep_name,
+        u.firstName || ' ' || u.lastName as rep_name,
         COUNT(DISTINCT a.id) as call_volume,
         SUM(a.duration_minutes) FILTER (WHERE a.activity_type = 'Call') as call_talk_time,
         COUNT(DISTINCT a.id) FILTER (WHERE a.activity_type = 'Meeting' AND a.completed = true) as meetings_held,
         COUNT(DISTINCT q.id) as quotes_generated,
         COUNT(DISTINCT q.id) FILTER (WHERE q.status = 'Accepted') / NULLIF(COUNT(DISTINCT q.id), 0) * 100 as quote_win_rate,
-        COUNT(DISTINCT o.id) FILTER (WHERE o.updated_at < CURRENT_DATE - INTERVAL '30 days' AND o.stage NOT IN ('Closed Won', 'Closed Lost')) as deals_stuck
+        COUNT(DISTINCT o.id) FILTER (WHERE o.updatedAt < CURRENT_DATE - INTERVAL '30 days' AND o.stage NOT IN ('Closed Won', 'Closed Lost')) as deals_stuck
       FROM users u
-      LEFT JOIN activities a ON a.owner_id = u.id AND a.tenant_id = :tenantId
-      LEFT JOIN quotes q ON q.owner_id = u.id AND q.tenant_id = :tenantId
-      LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = :tenantId
+      LEFT JOIN activities a ON a.ownerId = u.id AND a.tenantId = :tenantId
+      LEFT JOIN quotes q ON q.ownerId = u.id AND q.tenantId = :tenantId
+      LEFT JOIN opportunities o ON o.ownerId = u.id AND o.tenantId = :tenantId
       WHERE u.manager_id = :userId
-        AND u.tenant_id = :tenantId
+        AND u.tenantId = :tenantId
       GROUP BY u.id, rep_name
       ORDER BY rep_name
     `,
@@ -534,13 +534,13 @@ const SALES_REPORTS: ReportDefinition[] = [
         COUNT(DISTINCT o.id) FILTER (WHERE o.stage = 'Closed Won') /
           NULLIF(COUNT(DISTINCT o.id) FILTER (WHERE o.stage IN ('Closed Won', 'Closed Lost')), 0) * 100 as win_rate,
         AVG(o.amount) FILTER (WHERE o.stage = 'Closed Won') as avg_deal_size,
-        AVG(EXTRACT(DAY FROM (o.close_date - o.created_at))) FILTER (WHERE o.stage = 'Closed Won') as avg_sales_cycle_days,
+        AVG(EXTRACT(DAY FROM (o.close_date - o.createdAt))) FILTER (WHERE o.stage = 'Closed Won') as avg_sales_cycle_days,
         SUM(op.amount) FILTER (WHERE op.stage NOT IN ('Closed Won', 'Closed Lost')) / NULLIF(SUM(q.quota_amount), 0) * 100 as pipeline_coverage
       FROM opportunities o
-      LEFT JOIN opportunities op ON op.location_id = o.location_id
-      LEFT JOIN quotas q ON q.location_id = o.location_id
-      WHERE o.location_id = :locationId
-        AND o.tenant_id = :tenantId
+      LEFT JOIN opportunities op ON op.locationId = o.locationId
+      LEFT JOIN quotas q ON q.locationId = o.locationId
+      WHERE o.locationId = :locationId
+        AND o.tenantId = :tenantId
         AND o.close_date >= :dateFrom
         AND o.close_date <= :dateTo
       GROUP BY period
@@ -570,7 +570,7 @@ const SALES_REPORTS: ReportDefinition[] = [
     sqlQuery: `
       SELECT
         DATE_TRUNC('month', o.expected_close_date) as forecast_month,
-        u.first_name || ' ' || u.last_name as rep_name,
+        u.firstName || ' ' || u.lastName as rep_name,
         p.category as product_category,
         SUM(o.weighted_amount) as weighted_forecast,
         SUM(o.amount) FILTER (WHERE o.probability >= 80) as commit_forecast,
@@ -579,11 +579,11 @@ const SALES_REPORTS: ReportDefinition[] = [
         q.quota_amount,
         (SUM(o.weighted_amount) / NULLIF(q.quota_amount, 0) * 100) as forecast_vs_quota
       FROM opportunities o
-      LEFT JOIN users u ON o.owner_id = u.id
-      LEFT JOIN products p ON o.product_id = p.id
-      LEFT JOIN quotas q ON q.user_id = u.id AND q.quota_period = 'monthly'
-      WHERE o.location_id = :locationId
-        AND o.tenant_id = :tenantId
+      LEFT JOIN users u ON o.ownerId = u.id
+      LEFT JOIN products p ON o.productId = p.id
+      LEFT JOIN quotas q ON q.userId = u.id AND q.quota_period = 'monthly'
+      WHERE o.locationId = :locationId
+        AND o.tenantId = :tenantId
         AND o.stage NOT IN ('Closed Won', 'Closed Lost')
         AND o.expected_close_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '3 months'
       GROUP BY forecast_month, rep_name, product_category, q.quota_amount
@@ -620,13 +620,13 @@ const SALES_REPORTS: ReportDefinition[] = [
         o.competitor,
         AVG(o.amount) FILTER (WHERE o.stage = 'Closed Won') as avg_won_deal_size,
         AVG(o.amount) FILTER (WHERE o.stage = 'Closed Lost') as avg_lost_deal_size,
-        AVG(EXTRACT(DAY FROM (o.close_date - o.created_at))) FILTER (WHERE o.stage = 'Closed Won') as avg_won_sales_cycle,
-        AVG(EXTRACT(DAY FROM (o.close_date - o.created_at))) FILTER (WHERE o.stage = 'Closed Lost') as avg_lost_sales_cycle,
+        AVG(EXTRACT(DAY FROM (o.close_date - o.createdAt))) FILTER (WHERE o.stage = 'Closed Won') as avg_won_sales_cycle,
+        AVG(EXTRACT(DAY FROM (o.close_date - o.createdAt))) FILTER (WHERE o.stage = 'Closed Lost') as avg_lost_sales_cycle,
         AVG(o.discount_percentage) FILTER (WHERE o.stage = 'Closed Won') as avg_won_discount,
         AVG(o.discount_percentage) FILTER (WHERE o.stage = 'Closed Lost') as avg_lost_discount
       FROM opportunities o
-      WHERE o.location_id = :locationId
-        AND o.tenant_id = :tenantId
+      WHERE o.locationId = :locationId
+        AND o.tenantId = :tenantId
         AND o.stage IN ('Closed Won', 'Closed Lost')
         AND o.close_date >= :dateFrom
         AND o.close_date <= :dateTo
@@ -656,7 +656,7 @@ const SALES_REPORTS: ReportDefinition[] = [
       SELECT
         t.id as territory_id,
         t.name as territory_name,
-        u.first_name || ' ' || u.last_name as rep_assigned,
+        u.firstName || ' ' || u.lastName as rep_assigned,
         COUNT(DISTINCT c.id) as customer_count,
         SUM(o.amount) FILTER (WHERE o.stage = 'Closed Won') as revenue,
         SUM(op.amount) FILTER (WHERE op.stage NOT IN ('Closed Won', 'Closed Lost')) as pipeline_value,
@@ -668,9 +668,9 @@ const SALES_REPORTS: ReportDefinition[] = [
       LEFT JOIN business_records c ON c.territory_id = t.id
       LEFT JOIN opportunities o ON o.territory_id = t.id
       LEFT JOIN opportunities op ON op.territory_id = t.id
-      LEFT JOIN quotas q ON q.user_id = u.id
-      WHERE t.location_id = :locationId
-        AND t.tenant_id = :tenantId
+      LEFT JOIN quotas q ON q.userId = u.id
+      WHERE t.locationId = :locationId
+        AND t.tenantId = :tenantId
       GROUP BY t.id, t.name, rep_assigned, t.market_potential, q.quota_amount
       ORDER BY revenue DESC
     `,
@@ -694,14 +694,14 @@ const SALES_REPORTS: ReportDefinition[] = [
         p.name as product_name,
         COUNT(ol.id) as units_sold,
         SUM(ol.amount) as revenue,
-        AVG(ol.unit_price) as avg_selling_price,
-        AVG(ol.margin_percentage) as avg_margin,
+        AVG(ol.unitPrice) as avg_selling_price,
+        AVG(ol.marginPercentage) as avg_margin,
         COUNT(DISTINCT ol.bundle_id) / NULLIF(COUNT(DISTINCT ol.order_id), 0) * 100 as attach_rate
       FROM order_lines ol
-      JOIN products p ON ol.product_id = p.id
+      JOIN products p ON ol.productId = p.id
       JOIN orders ord ON ol.order_id = ord.id
-      WHERE ord.location_id = :locationId
-        AND ord.tenant_id = :tenantId
+      WHERE ord.locationId = :locationId
+        AND ord.tenantId = :tenantId
         AND ord.order_date >= :dateFrom
         AND ord.order_date <= :dateTo
       GROUP BY p.category, p.name
@@ -744,12 +744,12 @@ const SALES_REPORTS: ReportDefinition[] = [
         (SUM(o.amount) FILTER (WHERE o.stage = 'Closed Won') / NULLIF(SUM(q.quota_amount), 0) * 100) as quota_attainment,
         COUNT(DISTINCT o.id) FILTER (WHERE o.stage = 'Closed Won') /
           NULLIF(COUNT(DISTINCT o.id) FILTER (WHERE o.stage IN ('Closed Won', 'Closed Lost')), 0) * 100 as win_rate,
-        AVG(EXTRACT(DAY FROM (o.close_date - o.created_at))) FILTER (WHERE o.stage = 'Closed Won') as avg_sales_cycle
+        AVG(EXTRACT(DAY FROM (o.close_date - o.createdAt))) FILTER (WHERE o.stage = 'Closed Won') as avg_sales_cycle
       FROM opportunities o
-      JOIN organizational_units loc ON o.location_id = loc.id
-      LEFT JOIN quotas q ON q.location_id = loc.id
+      JOIN organizational_units loc ON o.locationId = loc.id
+      LEFT JOIN quotas q ON q.locationId = loc.id
       WHERE loc.region_id = :regionId
-        AND loc.tenant_id = :tenantId
+        AND loc.tenantId = :tenantId
         AND o.close_date >= :dateFrom
         AND o.close_date <= :dateTo
       GROUP BY period, location_name
@@ -783,17 +783,17 @@ const SALES_REPORTS: ReportDefinition[] = [
         COUNT(DISTINCT o.id) FILTER (WHERE o.stage = 'Closed Won') /
           NULLIF(COUNT(DISTINCT o.id) FILTER (WHERE o.stage IN ('Closed Won', 'Closed Lost')), 0) * 100 as win_rate,
         SUM(op.amount) FILTER (WHERE op.stage NOT IN ('Closed Won', 'Closed Lost')) / NULLIF(SUM(q.quota_amount), 0) * 100 as pipeline_coverage,
-        AVG(EXTRACT(DAY FROM (o.close_date - o.created_at))) FILTER (WHERE o.stage = 'Closed Won') as avg_sales_cycle,
+        AVG(EXTRACT(DAY FROM (o.close_date - o.createdAt))) FILTER (WHERE o.stage = 'Closed Won') as avg_sales_cycle,
         AVG(o.amount) FILTER (WHERE o.stage = 'Closed Won') as avg_deal_size,
         COUNT(DISTINCT u.id) as rep_count,
         SUM(o.amount) FILTER (WHERE o.stage = 'Closed Won') / NULLIF(COUNT(DISTINCT u.id), 0) as revenue_per_rep
       FROM organizational_units loc
-      LEFT JOIN opportunities o ON o.location_id = loc.id
-      LEFT JOIN opportunities op ON op.location_id = loc.id
-      LEFT JOIN quotas q ON q.location_id = loc.id
-      LEFT JOIN users u ON u.location_id = loc.id AND u.role_code LIKE 'SALES_%'
+      LEFT JOIN opportunities o ON o.locationId = loc.id
+      LEFT JOIN opportunities op ON op.locationId = loc.id
+      LEFT JOIN quotas q ON q.locationId = loc.id
+      LEFT JOIN users u ON u.locationId = loc.id AND u.role_code LIKE 'SALES_%'
       WHERE loc.region_id = :regionId
-        AND loc.tenant_id = :tenantId
+        AND loc.tenantId = :tenantId
       GROUP BY loc.id, loc.name
       ORDER BY revenue DESC
     `,
@@ -823,12 +823,12 @@ const SALES_REPORTS: ReportDefinition[] = [
         fa.actual_amount as historical_actual,
         (ABS(fa.forecast_amount - fa.actual_amount) / NULLIF(fa.forecast_amount, 0) * 100) as forecast_accuracy
       FROM opportunities o
-      JOIN organizational_units loc ON o.location_id = loc.id
-      LEFT JOIN quotas q ON q.location_id = loc.id
-      LEFT JOIN forecast_accuracy fa ON fa.location_id = loc.id
+      JOIN organizational_units loc ON o.locationId = loc.id
+      LEFT JOIN quotas q ON q.locationId = loc.id
+      LEFT JOIN forecast_accuracy fa ON fa.locationId = loc.id
         AND DATE_TRUNC('month', fa.forecast_date) = DATE_TRUNC('month', o.expected_close_date)
       WHERE loc.region_id = :regionId
-        AND loc.tenant_id = :tenantId
+        AND loc.tenantId = :tenantId
         AND o.stage NOT IN ('Closed Won', 'Closed Lost')
         AND o.expected_close_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '3 months'
       GROUP BY forecast_month, location_name, fa.forecast_amount, fa.actual_amount
@@ -857,10 +857,10 @@ const SALES_REPORTS: ReportDefinition[] = [
         ms.competitor_name,
         ms.competitor_market_share
       FROM market_share_data ms
-      JOIN organizational_units loc ON ms.location_id = loc.id
-      LEFT JOIN opportunities o ON o.location_id = loc.id
+      JOIN organizational_units loc ON ms.locationId = loc.id
+      LEFT JOIN opportunities o ON o.locationId = loc.id
       WHERE loc.region_id = :regionId
-        AND loc.tenant_id = :tenantId
+        AND loc.tenantId = :tenantId
         AND ms.analysis_date >= :dateFrom
         AND ms.analysis_date <= :dateTo
       GROUP BY period, location_name, ms.estimated_market_size, ms.competitor_name, ms.competitor_market_share
@@ -900,10 +900,10 @@ const SALES_REPORTS: ReportDefinition[] = [
         COUNT(DISTINCT u.id) as sales_headcount,
         SUM(o.amount) FILTER (WHERE o.stage = 'Closed Won') / NULLIF(COUNT(DISTINCT u.id), 0) as revenue_per_rep
       FROM opportunities o
-      LEFT JOIN opportunities op ON op.tenant_id = o.tenant_id
-      LEFT JOIN quotas q ON q.tenant_id = o.tenant_id
-      LEFT JOIN users u ON u.tenant_id = o.tenant_id AND u.role_code LIKE 'SALES_%'
-      WHERE o.tenant_id = :tenantId
+      LEFT JOIN opportunities op ON op.tenantId = o.tenantId
+      LEFT JOIN quotas q ON q.tenantId = o.tenantId
+      LEFT JOIN users u ON u.tenantId = o.tenantId AND u.role_code LIKE 'SALES_%'
+      WHERE o.tenantId = :tenantId
         AND o.close_date >= :dateFrom
         AND o.close_date <= :dateTo
       GROUP BY period
@@ -939,17 +939,17 @@ const SALES_REPORTS: ReportDefinition[] = [
         COUNT(DISTINCT o.id) FILTER (WHERE o.stage = 'Closed Won') as deals_won,
         SUM(o.amount) FILTER (WHERE o.stage = 'Closed Won') as revenue,
         AVG(o.amount) FILTER (WHERE o.stage = 'Closed Won') as avg_deal_size,
-        AVG(EXTRACT(DAY FROM (o.close_date - o.created_at))) FILTER (WHERE o.stage = 'Closed Won') as avg_sales_cycle_days,
+        AVG(EXTRACT(DAY FROM (o.close_date - o.createdAt))) FILTER (WHERE o.stage = 'Closed Won') as avg_sales_cycle_days,
         COUNT(DISTINCT o.id) FILTER (WHERE o.stage = 'Closed Won') /
           NULLIF(COUNT(DISTINCT o.id) FILTER (WHERE o.stage IN ('Closed Won', 'Closed Lost')), 0) * 100 as conversion_rate,
         SUM(o.amount * 12) FILTER (WHERE o.is_recurring = true) as arr_from_deals,
         AVG(c.customer_lifetime_value) as avg_ltv
       FROM opportunities o
-      LEFT JOIN organizational_units loc ON o.location_id = loc.id
+      LEFT JOIN organizational_units loc ON o.locationId = loc.id
       LEFT JOIN organizational_units reg ON loc.region_id = reg.id
-      LEFT JOIN products p ON o.product_id = p.id
-      LEFT JOIN business_records c ON o.customer_id = c.id
-      WHERE o.tenant_id = :tenantId
+      LEFT JOIN products p ON o.productId = p.id
+      LEFT JOIN business_records c ON o.customerId = c.id
+      WHERE o.tenantId = :tenantId
         AND o.close_date >= :dateFrom
         AND o.close_date <= :dateTo
       GROUP BY ROLLUP(reg.name, loc.name, p.category, c.segment)
@@ -986,15 +986,15 @@ const SALES_REPORTS: ReportDefinition[] = [
       LEFT JOIN LATERAL (
         SELECT SUM(o.amount) as total_revenue
         FROM opportunities o
-        WHERE o.owner_id = u.id AND o.stage = 'Closed Won'
+        WHERE o.ownerId = u.id AND o.stage = 'Closed Won'
       ) rev ON true
       LEFT JOIN LATERAL (
         SELECT (SUM(o.amount) / NULLIF(q.quota_amount, 0) * 100) as quota_attainment
         FROM opportunities o
-        JOIN quotas q ON q.user_id = u.id
-        WHERE o.owner_id = u.id AND o.stage = 'Closed Won'
+        JOIN quotas q ON q.userId = u.id
+        WHERE o.ownerId = u.id AND o.stage = 'Closed Won'
       ) qa ON true
-      WHERE u.tenant_id = :tenantId
+      WHERE u.tenantId = :tenantId
         AND u.role_code LIKE 'SALES_%'
       GROUP BY u.role_code
       ORDER BY u.role_code
@@ -1031,10 +1031,10 @@ const SALES_REPORTS: ReportDefinition[] = [
         COUNT(DISTINCT op.id) FILTER (WHERE op.stage NOT IN ('Closed Won', 'Closed Lost') AND op.opportunity_type = 'Expansion') as expansion_opportunities,
         c.risk_level
       FROM business_records c
-      LEFT JOIN opportunities o ON o.customer_id = c.id
-      LEFT JOIN opportunities op ON op.customer_id = c.id
-      LEFT JOIN products p ON o.product_id = p.id
-      WHERE c.tenant_id = :tenantId
+      LEFT JOIN opportunities o ON o.customerId = c.id
+      LEFT JOIN opportunities op ON op.customerId = c.id
+      LEFT JOIN products p ON o.productId = p.id
+      WHERE c.tenantId = :tenantId
         AND c.is_strategic_account = true
       GROUP BY c.id, c.name, c.account_owner, c.is_strategic_account, c.health_score, c.next_renewal_date, c.risk_level
       ORDER BY revenue_12m DESC
@@ -1059,16 +1059,16 @@ const SALES_REPORTS: ReportDefinition[] = [
         SUM(o.amount) FILTER (WHERE o.stage = 'Closed Won') as revenue,
         SUM(q.quota_amount) as plan,
         (SUM(o.amount) FILTER (WHERE o.stage = 'Closed Won') / NULLIF(SUM(q.quota_amount), 0) * 100) as revenue_vs_plan,
-        COUNT(DISTINCT c.id) FILTER (WHERE c.created_at >= DATE_TRUNC('month', CURRENT_DATE)) as new_customers,
+        COUNT(DISTINCT c.id) FILTER (WHERE c.createdAt >= DATE_TRUNC('month', CURRENT_DATE)) as new_customers,
         COUNT(DISTINCT c.id) FILTER (WHERE c.status = 'Active') / NULLIF(COUNT(DISTINCT c.id), 0) * 100 as customer_retention_rate,
         AVG(o.amount) FILTER (WHERE o.stage = 'Closed Won' AND o.contract_type = 'New') as avg_new_contract_value,
         SUM(sm.sales_expense + sm.marketing_expense) as sales_marketing_expense,
         (SUM(o.amount) FILTER (WHERE o.stage = 'Closed Won') / NULLIF(SUM(sm.sales_expense + sm.marketing_expense), 0)) as sales_efficiency_ratio
       FROM opportunities o
-      LEFT JOIN quotas q ON q.tenant_id = o.tenant_id
-      LEFT JOIN business_records c ON o.customer_id = c.id
-      LEFT JOIN sales_marketing_expenses sm ON sm.tenant_id = o.tenant_id AND DATE_TRUNC('month', sm.expense_date) = DATE_TRUNC('month', o.close_date)
-      WHERE o.tenant_id = :tenantId
+      LEFT JOIN quotas q ON q.tenantId = o.tenantId
+      LEFT JOIN business_records c ON o.customerId = c.id
+      LEFT JOIN sales_marketing_expenses sm ON sm.tenantId = o.tenantId AND DATE_TRUNC('month', sm.expense_date) = DATE_TRUNC('month', o.close_date)
+      WHERE o.tenantId = :tenantId
         AND o.close_date >= :dateFrom
         AND o.close_date <= :dateTo
       GROUP BY period
@@ -1111,10 +1111,10 @@ const SERVICE_REPORTS: ReportDefinition[] = [
         AVG(sr.rating) as avg_csat_score,
         (SUM(t.billable_hours) / NULLIF(SUM(t.total_hours), 0) * 100) as utilization_rate
       FROM service_tickets t
-      LEFT JOIN work_orders wo ON wo.technician_id = t.assigned_to
-      LEFT JOIN satisfaction_ratings sr ON sr.ticket_id = t.id
-      WHERE t.assigned_to = :userId
-        AND t.tenant_id = :tenantId
+      LEFT JOIN work_orders wo ON wo.technician_id = t.assignedTo
+      LEFT JOIN satisfaction_ratings sr ON sr.ticketId = t.id
+      WHERE t.assignedTo = :userId
+        AND t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
     `,
     defaultParameters: {
@@ -1140,17 +1140,17 @@ const SERVICE_REPORTS: ReportDefinition[] = [
         a.appointment_time_start,
         a.appointment_time_end,
         a.status,
-        t.ticket_number,
+        t.ticketNumber,
         c.name as customer_name,
         c.address,
         a.estimated_duration_minutes,
         a.drive_time_minutes,
         a.appointment_type
       FROM service_appointments a
-      JOIN service_tickets t ON a.ticket_id = t.id
-      JOIN business_records c ON t.customer_id = c.id
+      JOIN service_tickets t ON a.ticketId = t.id
+      JOIN business_records c ON t.customerId = c.id
       WHERE a.technician_id = :userId
-        AND a.tenant_id = :tenantId
+        AND a.tenantId = :tenantId
         AND a.appointment_date BETWEEN :dateFrom AND :dateTo
       ORDER BY a.appointment_date, a.appointment_time_start
     `,
@@ -1182,7 +1182,7 @@ const SERVICE_REPORTS: ReportDefinition[] = [
       JOIN parts p ON pu.part_id = p.id
       LEFT JOIN parts_returns pr ON pr.parts_usage_id = pu.id
       WHERE pu.technician_id = :userId
-        AND pu.tenant_id = :tenantId
+        AND pu.tenantId = :tenantId
         AND pu.usage_date >= :dateFrom
         AND pu.usage_date <= :dateTo
       GROUP BY period
@@ -1211,15 +1211,15 @@ const SERVICE_REPORTS: ReportDefinition[] = [
     sqlQuery: `
       SELECT
         u.id as tech_id,
-        u.first_name || ' ' || u.last_name as tech_name,
+        u.firstName || ' ' || u.lastName as tech_name,
         COUNT(t.id) FILTER (WHERE t.status NOT IN ('Completed', 'Cancelled')) as open_tickets,
         COUNT(a.id) FILTER (WHERE a.appointment_date = CURRENT_DATE) as appointments_today,
         (SUM(t.billable_hours) / NULLIF(SUM(t.total_hours), 0) * 100) as utilization_rate,
         COUNT(t.id) FILTER (WHERE t.sla_status = 'Breached') as sla_breaches
       FROM users u
-      LEFT JOIN service_tickets t ON t.assigned_to = u.id AND t.tenant_id = :tenantId
-      LEFT JOIN service_appointments a ON a.technician_id = u.id AND a.tenant_id = :tenantId
-      WHERE u.tenant_id = :tenantId
+      LEFT JOIN service_tickets t ON t.assignedTo = u.id AND t.tenantId = :tenantId
+      LEFT JOIN service_appointments a ON a.technician_id = u.id AND a.tenantId = :tenantId
+      WHERE u.tenantId = :tenantId
         AND u.role_code LIKE 'SERVICE_%'
         AND u.team_id = :teamId
       GROUP BY u.id, tech_name
@@ -1244,22 +1244,22 @@ const SERVICE_REPORTS: ReportDefinition[] = [
     cacheDuration: 3600,
     sqlQuery: `
       SELECT
-        u.first_name || ' ' || u.last_name as tech_name,
+        u.firstName || ' ' || u.lastName as tech_name,
         COUNT(t.id) FILTER (WHERE t.status = 'Completed') as tickets_completed,
         (COUNT(t.id) FILTER (WHERE t.status = 'Completed') / NULLIF(COUNT(DISTINCT u.id), 0)) as avg_tickets_per_tech,
         (SUM(t.billable_hours) / NULLIF(SUM(t.total_hours), 0) * 100) as team_utilization,
         COUNT(t.id) FILTER (WHERE t.first_time_fix = true) / NULLIF(COUNT(t.id), 0) * 100 as ftf_rate,
         AVG(sr.rating) as avg_csat,
-        AVG(EXTRACT(EPOCH FROM (t.first_response_date - t.created_at)) / 3600) as avg_response_hours,
-        AVG(EXTRACT(EPOCH FROM (t.completed_date - t.created_at)) / 3600) as avg_resolution_hours
+        AVG(EXTRACT(EPOCH FROM (t.first_response_date - t.createdAt)) / 3600) as avg_response_hours,
+        AVG(EXTRACT(EPOCH FROM (t.completed_date - t.createdAt)) / 3600) as avg_resolution_hours
       FROM users u
-      LEFT JOIN service_tickets t ON t.assigned_to = u.id
-        AND t.tenant_id = :tenantId
+      LEFT JOIN service_tickets t ON t.assignedTo = u.id
+        AND t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
         AND t.completed_date <= :dateTo
-      LEFT JOIN satisfaction_ratings sr ON sr.ticket_id = t.id
+      LEFT JOIN satisfaction_ratings sr ON sr.ticketId = t.id
       WHERE u.manager_id = :userId
-        AND u.tenant_id = :tenantId
+        AND u.tenantId = :tenantId
       GROUP BY u.id, tech_name
       ORDER BY tech_name
     `,
@@ -1284,23 +1284,23 @@ const SERVICE_REPORTS: ReportDefinition[] = [
     sqlQuery: `
       SELECT
         t.priority,
-        u.first_name || ' ' || u.last_name as tech_name,
+        u.firstName || ' ' || u.lastName as tech_name,
         c.segment as customer_segment,
         COUNT(t.id) as total_tickets,
         COUNT(t.id) FILTER (WHERE t.sla_status = 'Within SLA') / NULLIF(COUNT(t.id), 0) * 100 as sla_compliance_pct,
         COUNT(t.id) FILTER (WHERE t.sla_status = 'Breached') as breached_tickets,
-        AVG(EXTRACT(EPOCH FROM (t.first_response_date - t.created_at)) / 3600) as avg_response_hours,
-        AVG(EXTRACT(EPOCH FROM (t.completed_date - t.created_at)) / 3600) as avg_resolution_hours,
+        AVG(EXTRACT(EPOCH FROM (t.first_response_date - t.createdAt)) / 3600) as avg_response_hours,
+        AVG(EXTRACT(EPOCH FROM (t.completed_date - t.createdAt)) / 3600) as avg_resolution_hours,
         sla.response_time_hours as sla_response_target,
         sla.resolution_time_hours as sla_resolution_target
       FROM service_tickets t
-      JOIN users u ON t.assigned_to = u.id
-      JOIN business_records c ON t.customer_id = c.id
+      JOIN users u ON t.assignedTo = u.id
+      JOIN business_records c ON t.customerId = c.id
       JOIN sla_definitions sla ON sla.priority = t.priority AND sla.customer_segment = c.segment
       WHERE u.manager_id = :userId
-        AND u.tenant_id = :tenantId
-        AND t.created_at >= :dateFrom
-        AND t.created_at <= :dateTo
+        AND u.tenantId = :tenantId
+        AND t.createdAt >= :dateFrom
+        AND t.createdAt <= :dateTo
       GROUP BY t.priority, tech_name, customer_segment, sla.response_time_hours, sla.resolution_time_hours
       ORDER BY breached_tickets DESC
     `,
@@ -1324,22 +1324,22 @@ const SERVICE_REPORTS: ReportDefinition[] = [
     cacheDuration: 300,
     sqlQuery: `
       SELECT
-        DATE_TRUNC(:period, t.created_at) as period,
+        DATE_TRUNC(:period, t.createdAt) as period,
         COUNT(t.id) as tickets_assigned,
-        AVG(EXTRACT(EPOCH FROM (t.assigned_date - t.created_at)) / 60) as avg_assignment_minutes,
-        STDDEV(EXTRACT(EPOCH FROM (t.assigned_date - t.created_at)) / 60) as assignment_time_variance,
-        COUNT(DISTINCT t.assigned_to) as techs_utilized,
+        AVG(EXTRACT(EPOCH FROM (t.assigned_date - t.createdAt)) / 60) as avg_assignment_minutes,
+        STDDEV(EXTRACT(EPOCH FROM (t.assigned_date - t.createdAt)) / 60) as assignment_time_variance,
+        COUNT(DISTINCT t.assignedTo) as techs_utilized,
         AVG(dr.total_drive_time_minutes) as avg_drive_time,
         AVG(dr.total_service_time_minutes) as avg_service_time,
         (AVG(dr.total_service_time_minutes) / NULLIF(AVG(dr.total_drive_time_minutes), 0)) as service_to_drive_ratio,
         COUNT(t.id) FILTER (WHERE t.priority = 'Emergency') as emergency_tickets,
-        AVG(EXTRACT(EPOCH FROM (t.first_response_date - t.created_at)) / 60) FILTER (WHERE t.priority = 'Emergency') as avg_emergency_response_minutes
+        AVG(EXTRACT(EPOCH FROM (t.first_response_date - t.createdAt)) / 60) FILTER (WHERE t.priority = 'Emergency') as avg_emergency_response_minutes
       FROM service_tickets t
-      LEFT JOIN dispatch_routes dr ON dr.ticket_id = t.id
+      LEFT JOIN dispatch_routes dr ON dr.ticketId = t.id
       WHERE t.team_id = :teamId
-        AND t.tenant_id = :tenantId
-        AND t.created_at >= :dateFrom
-        AND t.created_at <= :dateTo
+        AND t.tenantId = :tenantId
+        AND t.createdAt >= :dateFrom
+        AND t.createdAt <= :dateTo
       GROUP BY period
       ORDER BY period DESC
     `,
@@ -1380,9 +1380,9 @@ const SERVICE_REPORTS: ReportDefinition[] = [
         COUNT(t.id) FILTER (WHERE t.first_time_fix = true) / NULLIF(COUNT(t.id), 0) * 100 as ftf_rate,
         AVG(sr.rating) as avg_csat
       FROM service_tickets t
-      LEFT JOIN satisfaction_ratings sr ON sr.ticket_id = t.id
-      WHERE t.location_id = :locationId
-        AND t.tenant_id = :tenantId
+      LEFT JOIN satisfaction_ratings sr ON sr.ticketId = t.id
+      WHERE t.locationId = :locationId
+        AND t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
         AND t.completed_date <= :dateTo
       GROUP BY period
@@ -1411,7 +1411,7 @@ const SERVICE_REPORTS: ReportDefinition[] = [
     sqlQuery: `
       SELECT
         u.id as tech_id,
-        u.first_name || ' ' || u.last_name as tech_name,
+        u.firstName || ' ' || u.lastName as tech_name,
         COUNT(t.id) FILTER (WHERE t.status = 'Completed') as tickets_completed,
         COUNT(t.id) FILTER (WHERE t.first_time_fix = true) / NULLIF(COUNT(t.id), 0) * 100 as ftf_rate,
         AVG(sr.rating) as avg_csat,
@@ -1421,16 +1421,16 @@ const SERVICE_REPORTS: ReportDefinition[] = [
         SUM(t.billable_amount) as billable_revenue_generated,
         STRING_AGG(DISTINCT cert.certification_name, ', ') as certifications
       FROM users u
-      LEFT JOIN service_tickets t ON t.assigned_to = u.id
-        AND t.tenant_id = :tenantId
+      LEFT JOIN service_tickets t ON t.assignedTo = u.id
+        AND t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
         AND t.completed_date <= :dateTo
-      LEFT JOIN satisfaction_ratings sr ON sr.ticket_id = t.id
-      LEFT JOIN parts_usage pu ON pu.ticket_id = t.id
+      LEFT JOIN satisfaction_ratings sr ON sr.ticketId = t.id
+      LEFT JOIN parts_usage pu ON pu.ticketId = t.id
       LEFT JOIN parts p ON pu.part_id = p.id
-      LEFT JOIN technician_certifications cert ON cert.user_id = u.id
-      WHERE u.location_id = :locationId
-        AND u.tenant_id = :tenantId
+      LEFT JOIN technician_certifications cert ON cert.userId = u.id
+      WHERE u.locationId = :locationId
+        AND u.tenantId = :tenantId
         AND u.role_code LIKE 'SERVICE_%'
       GROUP BY u.id, tech_name
       ORDER BY tickets_completed DESC
@@ -1457,7 +1457,7 @@ const SERVICE_REPORTS: ReportDefinition[] = [
       SELECT
         c.name as customer_name,
         t.ticket_type,
-        u.first_name || ' ' || u.last_name as tech_name,
+        u.firstName || ' ' || u.lastName as tech_name,
         COUNT(t.id) as ticket_count,
         SUM(t.billable_amount) as service_revenue,
         SUM(t.labor_cost) as labor_costs,
@@ -1466,10 +1466,10 @@ const SERVICE_REPORTS: ReportDefinition[] = [
         (SUM(t.billable_amount) - SUM(t.labor_cost + t.parts_cost + t.overhead_allocation)) as gross_profit,
         ((SUM(t.billable_amount) - SUM(t.labor_cost + t.parts_cost + t.overhead_allocation)) / NULLIF(SUM(t.billable_amount), 0) * 100) as gross_margin_pct
       FROM service_tickets t
-      JOIN business_records c ON t.customer_id = c.id
-      JOIN users u ON t.assigned_to = u.id
-      WHERE t.location_id = :locationId
-        AND t.tenant_id = :tenantId
+      JOIN business_records c ON t.customerId = c.id
+      JOIN users u ON t.assignedTo = u.id
+      WHERE t.locationId = :locationId
+        AND t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
         AND t.completed_date <= :dateTo
       GROUP BY CUBE(c.name, t.ticket_type, tech_name)
@@ -1497,24 +1497,24 @@ const SERVICE_REPORTS: ReportDefinition[] = [
     sqlQuery: `
       SELECT
         e.id as equipment_id,
-        e.serial_number,
+        e.serialNumber,
         e.model_name,
         c.name as customer_name,
         e.warranty_status,
-        (SUM(EXTRACT(EPOCH FROM (t.completed_date - t.created_at)) / 3600) / NULLIF(24 * 365, 0) * 100) as uptime_pct,
-        COUNT(t.id) FILTER (WHERE t.created_at >= CURRENT_DATE - INTERVAL '90 days') as recent_service_calls,
+        (SUM(EXTRACT(EPOCH FROM (t.completed_date - t.createdAt)) / 3600) / NULLIF(24 * 365, 0) * 100) as uptime_pct,
+        COUNT(t.id) FILTER (WHERE t.createdAt >= CURRENT_DATE - INTERVAL '90 days') as recent_service_calls,
         MAX(pm.next_pm_date) as next_pm_due,
         CASE
-          WHEN COUNT(t.id) FILTER (WHERE t.created_at >= CURRENT_DATE - INTERVAL '90 days') >= 5 THEN true
+          WHEN COUNT(t.id) FILTER (WHERE t.createdAt >= CURRENT_DATE - INTERVAL '90 days') >= 5 THEN true
           ELSE false
         END as is_at_risk
       FROM equipment e
-      LEFT JOIN service_tickets t ON t.equipment_id = e.id
-      LEFT JOIN business_records c ON e.customer_id = c.id
-      LEFT JOIN preventive_maintenance pm ON pm.equipment_id = e.id
-      WHERE e.location_id = :locationId
-        AND e.tenant_id = :tenantId
-      GROUP BY e.id, e.serial_number, e.model_name, c.name, e.warranty_status
+      LEFT JOIN service_tickets t ON t.equipmentId = e.id
+      LEFT JOIN business_records c ON e.customerId = c.id
+      LEFT JOIN preventive_maintenance pm ON pm.equipmentId = e.id
+      WHERE e.locationId = :locationId
+        AND e.tenantId = :tenantId
+      GROUP BY e.id, e.serialNumber, e.model_name, c.name, e.warranty_status
       ORDER BY recent_service_calls DESC
     `,
     tags: ['service', 'equipment', 'health', 'location', 'level-4'],
@@ -1534,9 +1534,9 @@ const SERVICE_REPORTS: ReportDefinition[] = [
     sqlQuery: `
       SELECT
         DATE_TRUNC(:period, pu.usage_date) as period,
-        u.first_name || ' ' || u.last_name as tech_name,
+        u.firstName || ' ' || u.lastName as tech_name,
         c.name as customer_name,
-        p.part_number,
+        p.partNumber,
         p.description as part_description,
         p.category as part_category,
         SUM(pu.quantity) as total_quantity_used,
@@ -1547,15 +1547,15 @@ const SERVICE_REPORTS: ReportDefinition[] = [
         COUNT(DISTINCT pu.id) FILTER (WHERE pu.is_warranty_part = true) / NULLIF(COUNT(DISTINCT pu.id), 0) * 100 as warranty_parts_pct
       FROM parts_usage pu
       JOIN parts p ON pu.part_id = p.id
-      JOIN service_tickets t ON pu.ticket_id = t.id
+      JOIN service_tickets t ON pu.ticketId = t.id
       JOIN users u ON pu.technician_id = u.id
-      JOIN business_records c ON t.customer_id = c.id
+      JOIN business_records c ON t.customerId = c.id
       LEFT JOIN parts_returns pr ON pr.parts_usage_id = pu.id
-      WHERE pu.location_id = :locationId
-        AND pu.tenant_id = :tenantId
+      WHERE pu.locationId = :locationId
+        AND pu.tenantId = :tenantId
         AND pu.usage_date >= :dateFrom
         AND pu.usage_date <= :dateTo
-      GROUP BY CUBE(period, tech_name, customer_name, p.part_number, p.description, p.category)
+      GROUP BY CUBE(period, tech_name, customer_name, p.partNumber, p.description, p.category)
       ORDER BY total_parts_cost DESC NULLS LAST
     `,
     defaultParameters: {
@@ -1591,10 +1591,10 @@ const SERVICE_REPORTS: ReportDefinition[] = [
         COUNT(t.id) FILTER (WHERE t.first_time_fix = true) / NULLIF(COUNT(t.id), 0) * 100 as ftf_rate,
         AVG(sr.rating) as avg_csat
       FROM service_tickets t
-      JOIN organizational_units loc ON t.location_id = loc.id
-      LEFT JOIN satisfaction_ratings sr ON sr.ticket_id = t.id
+      JOIN organizational_units loc ON t.locationId = loc.id
+      LEFT JOIN satisfaction_ratings sr ON sr.ticketId = t.id
       WHERE loc.region_id = :regionId
-        AND loc.tenant_id = :tenantId
+        AND loc.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
         AND t.completed_date <= :dateTo
       GROUP BY period, location_name
@@ -1631,11 +1631,11 @@ const SERVICE_REPORTS: ReportDefinition[] = [
         COUNT(DISTINCT u.id) as technician_count,
         (COUNT(t.id) / NULLIF(COUNT(DISTINCT u.id), 0)) as tickets_per_technician
       FROM organizational_units loc
-      LEFT JOIN service_tickets t ON t.location_id = loc.id
-      LEFT JOIN satisfaction_ratings sr ON sr.ticket_id = t.id
-      LEFT JOIN users u ON u.location_id = loc.id AND u.role_code LIKE 'SERVICE_%'
+      LEFT JOIN service_tickets t ON t.locationId = loc.id
+      LEFT JOIN satisfaction_ratings sr ON sr.ticketId = t.id
+      LEFT JOIN users u ON u.locationId = loc.id AND u.role_code LIKE 'SERVICE_%'
       WHERE loc.region_id = :regionId
-        AND loc.tenant_id = :tenantId
+        AND loc.tenantId = :tenantId
       GROUP BY loc.id, loc.name
       ORDER BY ticket_volume DESC
     `,
@@ -1664,25 +1664,25 @@ const SERVICE_REPORTS: ReportDefinition[] = [
         (COUNT(t.id) FILTER (WHERE t.status IN ('Open', 'Assigned')) -
          (COUNT(DISTINCT u.id) * 20)) as backlog_vs_capacity
       FROM organizational_units loc
-      LEFT JOIN users u ON u.location_id = loc.id AND u.role_code LIKE 'SERVICE_%'
-      LEFT JOIN service_tickets t ON t.location_id = loc.id
+      LEFT JOIN users u ON u.locationId = loc.id AND u.role_code LIKE 'SERVICE_%'
+      LEFT JOIN service_tickets t ON t.locationId = loc.id
       LEFT JOIN LATERAL (
         SELECT (SUM(billable_hours) / NULLIF(SUM(total_hours), 0) * 100) as utilization_rate
         FROM service_tickets st
-        WHERE st.assigned_to = u.id
+        WHERE st.assignedTo = u.id
       ) util ON true
       LEFT JOIN LATERAL (
         SELECT AVG(monthly_count) as forecasted_volume
         FROM (
           SELECT COUNT(st.id) as monthly_count
           FROM service_tickets st
-          WHERE st.location_id = loc.id
-            AND st.created_at >= CURRENT_DATE - INTERVAL '12 months'
-          GROUP BY DATE_TRUNC('month', st.created_at)
+          WHERE st.locationId = loc.id
+            AND st.createdAt >= CURRENT_DATE - INTERVAL '12 months'
+          GROUP BY DATE_TRUNC('month', st.createdAt)
         ) historical
       ) ticket_forecast ON true
       WHERE loc.region_id = :regionId
-        AND loc.tenant_id = :tenantId
+        AND loc.tenantId = :tenantId
       GROUP BY loc.id, loc.name
       ORDER BY hiring_need DESC NULLS LAST
     `,
@@ -1715,9 +1715,9 @@ const SERVICE_REPORTS: ReportDefinition[] = [
         AVG(sr.rating) as company_avg_csat,
         COUNT(DISTINCT u.id) as total_technicians
       FROM service_tickets t
-      LEFT JOIN satisfaction_ratings sr ON sr.ticket_id = t.id
-      LEFT JOIN users u ON u.tenant_id = t.tenant_id AND u.role_code LIKE 'SERVICE_%'
-      WHERE t.tenant_id = :tenantId
+      LEFT JOIN satisfaction_ratings sr ON sr.ticketId = t.id
+      LEFT JOIN users u ON u.tenantId = t.tenantId AND u.role_code LIKE 'SERVICE_%'
+      WHERE t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
         AND t.completed_date <= :dateTo
       GROUP BY period
@@ -1752,23 +1752,23 @@ const SERVICE_REPORTS: ReportDefinition[] = [
         c.segment as customer_segment,
         e.equipment_category,
         COUNT(t.id) as ticket_count,
-        AVG(EXTRACT(EPOCH FROM (t.completed_date - t.created_at)) / 3600) as avg_resolution_hours,
+        AVG(EXTRACT(EPOCH FROM (t.completed_date - t.createdAt)) / 3600) as avg_resolution_hours,
         COUNT(t.id) FILTER (WHERE t.first_time_fix = true) / NULLIF(COUNT(t.id), 0) * 100 as ftf_rate,
         AVG((pu.quantity * p.unit_cost)) as avg_parts_cost,
         forecast.predicted_volume as forecasted_next_month_tickets,
         churn.churn_correlation as service_quality_churn_correlation
       FROM service_tickets t
-      LEFT JOIN organizational_units loc ON t.location_id = loc.id
+      LEFT JOIN organizational_units loc ON t.locationId = loc.id
       LEFT JOIN organizational_units reg ON loc.region_id = reg.id
-      LEFT JOIN business_records c ON t.customer_id = c.id
-      LEFT JOIN equipment e ON t.equipment_id = e.id
-      LEFT JOIN parts_usage pu ON pu.ticket_id = t.id
+      LEFT JOIN business_records c ON t.customerId = c.id
+      LEFT JOIN equipment e ON t.equipmentId = e.id
+      LEFT JOIN parts_usage pu ON pu.ticketId = t.id
       LEFT JOIN parts p ON pu.part_id = p.id
       LEFT JOIN LATERAL (
         SELECT COUNT(*) * 1.1 as predicted_volume
         FROM service_tickets st
-        WHERE st.location_id = loc.id
-          AND st.created_at >= CURRENT_DATE - INTERVAL '30 days'
+        WHERE st.locationId = loc.id
+          AND st.createdAt >= CURRENT_DATE - INTERVAL '30 days'
       ) forecast ON true
       LEFT JOIN LATERAL (
         SELECT CORR(
@@ -1776,11 +1776,11 @@ const SERVICE_REPORTS: ReportDefinition[] = [
           COALESCE(sr.rating, 3)
         ) as churn_correlation
         FROM business_records c2
-        LEFT JOIN service_tickets st ON st.customer_id = c2.id
-        LEFT JOIN satisfaction_ratings sr ON sr.ticket_id = st.id
-        WHERE c2.location_id = loc.id
+        LEFT JOIN service_tickets st ON st.customerId = c2.id
+        LEFT JOIN satisfaction_ratings sr ON sr.ticketId = st.id
+        WHERE c2.locationId = loc.id
       ) churn ON true
-      WHERE t.tenant_id = :tenantId
+      WHERE t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
         AND t.completed_date <= :dateTo
       GROUP BY ROLLUP(reg.name, loc.name, t.ticket_type, c.segment, e.equipment_category), forecast.predicted_volume, churn.churn_correlation
@@ -1820,13 +1820,13 @@ const SERVICE_REPORTS: ReportDefinition[] = [
         COUNT(t.id) FILTER (WHERE t.first_time_fix = true AND u.experience_level = 'Senior') /
           NULLIF(COUNT(t.id) FILTER (WHERE u.experience_level = 'Senior'), 0) * 100 as ftf_rate_senior_techs
       FROM service_tickets t
-      LEFT JOIN organizational_units loc ON t.location_id = loc.id
+      LEFT JOIN organizational_units loc ON t.locationId = loc.id
       LEFT JOIN organizational_units reg ON loc.region_id = reg.id
-      LEFT JOIN satisfaction_ratings sr ON sr.ticket_id = t.id
+      LEFT JOIN satisfaction_ratings sr ON sr.ticketId = t.id
       LEFT JOIN repeat_tickets rt ON rt.repeat_ticket_id = t.id
-      LEFT JOIN complaints comp ON comp.ticket_id = t.id
-      LEFT JOIN users u ON t.assigned_to = u.id
-      WHERE t.tenant_id = :tenantId
+      LEFT JOIN complaints comp ON comp.ticketId = t.id
+      LEFT JOIN users u ON t.assignedTo = u.id
+      WHERE t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
         AND t.completed_date <= :dateTo
       GROUP BY period, reg.name, loc.name, u.experience_level
@@ -1865,9 +1865,9 @@ const SERVICE_REPORTS: ReportDefinition[] = [
         (COUNT(DISTINCT u.id) - LAG(COUNT(DISTINCT u.id)) OVER (ORDER BY DATE_TRUNC('month', t.completed_date))) as headcount_change,
         (SUM(t.total_hours) / NULLIF(COUNT(DISTINCT u.id), 0)) as service_capacity_hours_per_tech
       FROM service_tickets t
-      LEFT JOIN satisfaction_ratings sr ON sr.ticket_id = t.id
-      LEFT JOIN users u ON u.tenant_id = t.tenant_id AND u.role_code LIKE 'SERVICE_%'
-      WHERE t.tenant_id = :tenantId
+      LEFT JOIN satisfaction_ratings sr ON sr.ticketId = t.id
+      LEFT JOIN users u ON u.tenantId = t.tenantId AND u.role_code LIKE 'SERVICE_%'
+      WHERE t.tenantId = :tenantId
         AND t.completed_date >= :dateFrom
         AND t.completed_date <= :dateTo
       GROUP BY period
@@ -1908,12 +1908,12 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
         (COUNT(cc.id) FILTER (WHERE cc.is_accurate = true) / NULLIF(COUNT(cc.id), 0) * 100) as accuracy_rate,
         (COUNT(pick.id) / NULLIF(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - DATE_TRUNC('day', CURRENT_DATE))) / 3600, 0)) as productivity_units_per_hour
       FROM users u
-      LEFT JOIN inventory_receipts ir ON ir.received_by = u.id AND ir.tenant_id = :tenantId
-      LEFT JOIN pick_tickets pick ON pick.picked_by = u.id AND pick.tenant_id = :tenantId
-      LEFT JOIN pack_orders pack ON pack.packed_by = u.id AND pack.tenant_id = :tenantId
-      LEFT JOIN cycle_counts cc ON cc.counted_by = u.id AND cc.tenant_id = :tenantId
+      LEFT JOIN inventory_receipts ir ON ir.received_by = u.id AND ir.tenantId = :tenantId
+      LEFT JOIN pick_tickets pick ON pick.picked_by = u.id AND pick.tenantId = :tenantId
+      LEFT JOIN pack_orders pack ON pack.packed_by = u.id AND pack.tenantId = :tenantId
+      LEFT JOIN cycle_counts cc ON cc.counted_by = u.id AND cc.tenantId = :tenantId
       WHERE u.id = :userId
-        AND u.tenant_id = :tenantId
+        AND u.tenantId = :tenantId
     `,
     tags: ['operations', 'productivity', 'warehouse', 'personal', 'level-1'],
   },
@@ -1932,7 +1932,7 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
     cacheDuration: 3600,
     sqlQuery: `
       SELECT
-        u.first_name || ' ' || u.last_name as associate_name,
+        u.firstName || ' ' || u.lastName as associate_name,
         (COUNT(pick.id) / NULLIF(SUM(EXTRACT(EPOCH FROM (u.shift_end - u.shift_start)) / 3600), 0)) as productivity_units_per_hour,
         (COUNT(cc.id) FILTER (WHERE cc.is_accurate = true) / NULLIF(COUNT(cc.id), 0) * 100) as accuracy_rate,
         COUNT(ir.id) + COUNT(pick.id) + COUNT(pack.id) as total_tasks_completed,
@@ -1943,7 +1943,7 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
       LEFT JOIN pack_orders pack ON pack.packed_by = u.id AND pack.packed_date >= :dateFrom
       LEFT JOIN cycle_counts cc ON cc.counted_by = u.id AND cc.count_date >= :dateFrom
       WHERE u.manager_id = :userId
-        AND u.tenant_id = :tenantId
+        AND u.tenantId = :tenantId
         AND u.role_code LIKE 'WAREHOUSE_%'
       GROUP BY u.id, associate_name
       ORDER BY productivity_units_per_hour DESC
@@ -1975,11 +1975,11 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
         (SUM(CASE WHEN ia.adjustment_type = 'Shrinkage' THEN ia.adjustment_value ELSE 0 END) /
           NULLIF(SUM(inv.total_inventory_value), 0) * 100) as shrinkage_rate
       FROM cycle_counts cc
-      JOIN inventory inv ON cc.product_id = inv.product_id
-      JOIN products p ON inv.product_id = p.id
-      LEFT JOIN inventory_adjustments ia ON ia.product_id = p.id AND ia.location_id = cc.location_id
-      WHERE cc.location_id = :locationId
-        AND cc.tenant_id = :tenantId
+      JOIN inventory inv ON cc.productId = inv.productId
+      JOIN products p ON inv.productId = p.id
+      LEFT JOIN inventory_adjustments ia ON ia.productId = p.id AND ia.locationId = cc.locationId
+      WHERE cc.locationId = :locationId
+        AND cc.tenantId = :tenantId
         AND cc.count_date >= :dateFrom
         AND cc.count_date <= :dateTo
       GROUP BY p.category
@@ -2007,7 +2007,7 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
       SELECT
         DATE_TRUNC(:period, wo.completed_date) as period,
         p.name as product_name,
-        u.first_name || ' ' || u.last_name as associate_name,
+        u.firstName || ' ' || u.lastName as associate_name,
         COUNT(wo.id) as total_orders,
         COUNT(wo.id) FILTER (WHERE wo.first_pass_yield = true) as fpy_success,
         (COUNT(wo.id) FILTER (WHERE wo.first_pass_yield = true) / NULLIF(COUNT(wo.id), 0) * 100) as fpy_rate,
@@ -2016,11 +2016,11 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
         SUM(wo.rework_time_minutes) as total_rework_time,
         SUM(wo.rework_cost) as total_rework_cost
       FROM work_orders wo
-      JOIN products p ON wo.product_id = p.id
+      JOIN products p ON wo.productId = p.id
       JOIN users u ON wo.assembled_by = u.id
       LEFT JOIN fpy_failure_types fft ON fft.work_order_id = wo.id
-      WHERE wo.location_id = :locationId
-        AND wo.tenant_id = :tenantId
+      WHERE wo.locationId = :locationId
+        AND wo.tenantId = :tenantId
         AND wo.completed_date >= :dateFrom
         AND wo.completed_date <= :dateTo
       GROUP BY period, p.name, associate_name, fft.failure_type
@@ -2097,9 +2097,9 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
         SUM(inv.quantity_on_hand * p.unit_cost) FILTER (WHERE inv.days_on_hand > 365) as obsolete_inventory_value,
         SUM(inv.quantity_on_hand * p.unit_cost * 0.25) as annual_carrying_cost
       FROM inventory inv
-      JOIN products p ON inv.product_id = p.id
-      WHERE inv.location_id = :locationId
-        AND inv.tenant_id = :tenantId
+      JOIN products p ON inv.productId = p.id
+      WHERE inv.locationId = :locationId
+        AND inv.tenantId = :tenantId
       GROUP BY p.category
       ORDER BY total_inventory_value DESC
     `,
@@ -2136,8 +2136,8 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
         END as delivery_status
       FROM purchase_orders po
       JOIN vendors v ON po.vendor_id = v.id
-      WHERE po.location_id = :locationId
-        AND po.tenant_id = :tenantId
+      WHERE po.locationId = :locationId
+        AND po.tenantId = :tenantId
         AND po.po_status IN ('Open', 'Partially Received')
       ORDER BY po_age_days DESC
     `,
@@ -2169,8 +2169,8 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
       FROM deliveries d
       LEFT JOIN delivery_routes r ON d.route_id = r.id
       LEFT JOIN delivery_satisfaction dsat ON dsat.delivery_id = d.id
-      WHERE d.location_id = :locationId
-        AND d.tenant_id = :tenantId
+      WHERE d.locationId = :locationId
+        AND d.tenantId = :tenantId
         AND d.delivery_date >= :dateFrom
         AND d.delivery_date <= :dateTo
       GROUP BY period
@@ -2207,12 +2207,12 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
         RANK() OVER (ORDER BY AVG(ia.accuracy_pct) DESC) as accuracy_rank,
         RANK() OVER (ORDER BY AVG(inv.inventory_turns) DESC) as turns_rank
       FROM organizational_units loc
-      LEFT JOIN inventory_accuracy_metrics ia ON ia.location_id = loc.id
-      LEFT JOIN inventory_metrics inv ON inv.location_id = loc.id
-      LEFT JOIN fpy_metrics fpy ON fpy.location_id = loc.id
-      LEFT JOIN warehouse_productivity_metrics wp ON wp.location_id = loc.id
+      LEFT JOIN inventory_accuracy_metrics ia ON ia.locationId = loc.id
+      LEFT JOIN inventory_metrics inv ON inv.locationId = loc.id
+      LEFT JOIN fpy_metrics fpy ON fpy.locationId = loc.id
+      LEFT JOIN warehouse_productivity_metrics wp ON wp.locationId = loc.id
       WHERE loc.region_id = :regionId
-        AND loc.tenant_id = :tenantId
+        AND loc.tenantId = :tenantId
       GROUP BY loc.id, loc.name
       ORDER BY avg_warehouse_productivity DESC
     `,
@@ -2245,7 +2245,7 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
       LEFT JOIN inventory inv ON inv.vendor_id = v.id
       LEFT JOIN backorders bo ON bo.vendor_id = v.id
       WHERE v.region_id = :regionId
-        AND v.tenant_id = :tenantId
+        AND v.tenantId = :tenantId
         AND po.po_date >= :dateFrom
         AND po.po_date <= :dateTo
       GROUP BY v.id, v.vendor_name
@@ -2280,10 +2280,10 @@ const OPERATIONS_REPORTS: ReportDefinition[] = [
         SUM(wh.total_labor_cost + wh.total_overhead_cost) as total_operations_costs,
         (SUM(wh.units_processed) / NULLIF(SUM(wh.labor_hours), 0)) as company_warehouse_productivity
       FROM warehouse_daily_metrics wh
-      LEFT JOIN inventory_metrics inv ON inv.location_id = wh.location_id AND inv.metric_date = wh.metric_date
-      LEFT JOIN orders ON orders.location_id = wh.location_id AND DATE_TRUNC('day', orders.order_date) = wh.metric_date
-      LEFT JOIN shipments ON shipments.location_id = wh.location_id AND DATE_TRUNC('day', shipments.ship_date) = wh.metric_date
-      WHERE wh.tenant_id = :tenantId
+      LEFT JOIN inventory_metrics inv ON inv.locationId = wh.locationId AND inv.metric_date = wh.metric_date
+      LEFT JOIN orders ON orders.locationId = wh.locationId AND DATE_TRUNC('day', orders.order_date) = wh.metric_date
+      LEFT JOIN shipments ON shipments.locationId = wh.locationId AND DATE_TRUNC('day', shipments.ship_date) = wh.metric_date
+      WHERE wh.tenantId = :tenantId
         AND wh.metric_date >= :dateFrom
         AND wh.metric_date <= :dateTo
       GROUP BY period
@@ -2323,7 +2323,7 @@ const FINANCE_REPORTS: ReportDefinition[] = [
         COUNT(t.id) FILTER (WHERE t.has_error = true) / NULLIF(COUNT(t.id), 0) * 100 as error_rate
       FROM accounting_transactions t
       WHERE t.entered_by = :userId
-        AND t.tenant_id = :tenantId
+        AND t.tenantId = :tenantId
         AND t.transaction_date >= :dateFrom
       GROUP BY period, t.transaction_type
       ORDER BY period DESC
@@ -2359,9 +2359,9 @@ const FINANCE_REPORTS: ReportDefinition[] = [
         AVG(inv.days_outstanding) as avg_days_outstanding,
         SUM(inv.balance_due) FILTER (WHERE inv.days_outstanding > 60) as collection_priority
       FROM invoices inv
-      JOIN business_records c ON inv.customer_id = c.id
-      WHERE inv.location_id = :locationId
-        AND inv.tenant_id = :tenantId
+      JOIN business_records c ON inv.customerId = c.id
+      WHERE inv.locationId = :locationId
+        AND inv.tenantId = :tenantId
         AND inv.payment_status != 'Paid'
       GROUP BY c.id, c.name
       ORDER BY total_ar_balance DESC
@@ -2387,12 +2387,12 @@ const FINANCE_REPORTS: ReportDefinition[] = [
         SUM(bill.balance_due) FILTER (WHERE bill.days_outstanding BETWEEN 31 AND 60) as ap_31_60_days,
         SUM(bill.balance_due) FILTER (WHERE bill.days_outstanding BETWEEN 61 AND 90) as ap_61_90_days,
         SUM(bill.balance_due) FILTER (WHERE bill.days_outstanding > 90) as ap_over_90_days,
-        SUM(bill.balance_due) FILTER (WHERE bill.due_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days') as due_next_7_days,
-        SUM(bill.balance_due) FILTER (WHERE bill.due_date < CURRENT_DATE) as overdue_amount
+        SUM(bill.balance_due) FILTER (WHERE bill.dueDate BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days') as due_next_7_days,
+        SUM(bill.balance_due) FILTER (WHERE bill.dueDate < CURRENT_DATE) as overdue_amount
       FROM bills bill
       JOIN vendors v ON bill.vendor_id = v.id
-      WHERE bill.location_id = :locationId
-        AND bill.tenant_id = :tenantId
+      WHERE bill.locationId = :locationId
+        AND bill.tenantId = :tenantId
         AND bill.payment_status != 'Paid'
       GROUP BY v.id, v.vendor_name
       ORDER BY total_ap_balance DESC
@@ -2426,22 +2426,22 @@ const FINANCE_REPORTS: ReportDefinition[] = [
         SELECT SUM(projected_receipts - projected_disbursements) + cf.ending_balance as forecasted_balance
         FROM cash_flow_forecast
         WHERE forecast_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'
-          AND location_id = cf.location_id
+          AND location_id = cf.locationId
       ) forecast_30 ON true
       LEFT JOIN LATERAL (
         SELECT SUM(projected_receipts - projected_disbursements) + cf.ending_balance as forecasted_balance
         FROM cash_flow_forecast
         WHERE forecast_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '60 days'
-          AND location_id = cf.location_id
+          AND location_id = cf.locationId
       ) forecast_60 ON true
       LEFT JOIN LATERAL (
         SELECT SUM(projected_receipts - projected_disbursements) + cf.ending_balance as forecasted_balance
         FROM cash_flow_forecast
         WHERE forecast_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days'
-          AND location_id = cf.location_id
+          AND location_id = cf.locationId
       ) forecast_90 ON true
-      WHERE cf.location_id = :locationId
-        AND cf.tenant_id = :tenantId
+      WHERE cf.locationId = :locationId
+        AND cf.tenantId = :tenantId
         AND cf.transaction_date >= :dateFrom
         AND cf.transaction_date <= :dateTo
       GROUP BY period, cf.beginning_balance, cf.ending_balance, forecast_30.forecasted_balance, forecast_60.forecasted_balance, forecast_90.forecasted_balance
@@ -2478,8 +2478,8 @@ const FINANCE_REPORTS: ReportDefinition[] = [
         fs.prior_year_amount,
         ((fs.actual_amount - fs.prior_year_amount) / NULLIF(fs.prior_year_amount, 0) * 100) as yoy_change_pct
       FROM financial_statements fs
-      WHERE fs.location_id = :locationId
-        AND fs.tenant_id = :tenantId
+      WHERE fs.locationId = :locationId
+        AND fs.tenantId = :tenantId
         AND fs.period_end_date = :periodEndDate
       ORDER BY fs.statement_type, fs.display_order
     `,
@@ -2515,8 +2515,8 @@ const FINANCE_REPORTS: ReportDefinition[] = [
         ((SUM(bva.actual_expenses) - SUM(bva.budget_expenses)) / NULLIF(SUM(bva.budget_expenses), 0) * 100) as expense_variance_pct,
         bva.variance_explanation
       FROM budget_vs_actual bva
-      WHERE bva.location_id = :locationId
-        AND bva.tenant_id = :tenantId
+      WHERE bva.locationId = :locationId
+        AND bva.tenantId = :tenantId
         AND bva.period_date >= :dateFrom
         AND bva.period_date <= :dateTo
       GROUP BY period, bva.category, bva.subcategory, bva.variance_explanation
@@ -2556,7 +2556,7 @@ const FINANCE_REPORTS: ReportDefinition[] = [
         SUM(fm.accounts_receivable) as total_ar,
         SUM(fm.accounts_payable) as total_ap
       FROM financial_metrics fm
-      WHERE fm.tenant_id = :tenantId
+      WHERE fm.tenantId = :tenantId
         AND fm.period_date >= :dateFrom
         AND fm.period_date <= :dateTo
       GROUP BY period
@@ -2594,11 +2594,11 @@ const FINANCE_REPORTS: ReportDefinition[] = [
         (SUM(rev.revenue) - SUM(rev.cogs)) as gross_profit,
         ((SUM(rev.revenue) - SUM(rev.cogs)) / NULLIF(SUM(rev.revenue), 0) * 100) as gross_margin_pct
       FROM revenue_detail rev
-      LEFT JOIN organizational_units loc ON rev.location_id = loc.id
+      LEFT JOIN organizational_units loc ON rev.locationId = loc.id
       LEFT JOIN departments dept ON rev.department_id = dept.id
-      LEFT JOIN business_records c ON rev.customer_id = c.id
-      LEFT JOIN products p ON rev.product_id = p.id
-      WHERE rev.tenant_id = :tenantId
+      LEFT JOIN business_records c ON rev.customerId = c.id
+      LEFT JOIN products p ON rev.productId = p.id
+      WHERE rev.tenantId = :tenantId
         AND rev.transaction_date >= :dateFrom
         AND rev.transaction_date <= :dateTo
       GROUP BY ROLLUP(loc.name, dept.department_name, c.name, p.category)
@@ -2637,7 +2637,7 @@ const FINANCE_REPORTS: ReportDefinition[] = [
           ELSE 'Below Target'
         END as performance_status
       FROM financial_kpis kpi
-      WHERE kpi.tenant_id = :tenantId
+      WHERE kpi.tenantId = :tenantId
         AND kpi.period_date >= :dateFrom
         AND kpi.period_date <= :dateTo
         AND kpi.kpi_name IN (
@@ -2686,7 +2686,7 @@ const FINANCE_REPORTS: ReportDefinition[] = [
         AVG(fs.cash_balance) as cash_balance,
         fs.strategic_commentary
       FROM financial_summary fs
-      WHERE fs.tenant_id = :tenantId
+      WHERE fs.tenantId = :tenantId
         AND fs.period_date >= :dateFrom
         AND fs.period_date <= :dateTo
       GROUP BY period, fs.strategic_commentary
@@ -2724,7 +2724,7 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
         DATE_TRUNC(:period, ed.metric_date) as period,
         SUM(ed.total_revenue) as revenue,
         SUM(ed.sales_pipeline_value) as pipeline,
-        (SUM(ed.sales_quota_attainment) / NULLIF(COUNT(DISTINCT ed.location_id), 0)) as avg_quota_attainment,
+        (SUM(ed.sales_quota_attainment) / NULLIF(COUNT(DISTINCT ed.locationId), 0)) as avg_quota_attainment,
         COUNT(DISTINCT ed.service_tickets) as total_service_tickets,
         AVG(ed.service_sla_compliance) as avg_sla_compliance,
         AVG(ed.service_csat) as avg_csat,
@@ -2740,7 +2740,7 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
         AVG(ed.customer_retention_rate) as avg_retention_rate,
         AVG(ed.nps_score) as avg_nps
       FROM executive_dashboard_metrics ed
-      WHERE ed.tenant_id = :tenantId
+      WHERE ed.tenantId = :tenantId
         AND ed.metric_date >= :dateFrom
         AND ed.metric_date <= :dateTo
       GROUP BY period
@@ -2826,7 +2826,7 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
         ((kpi.current_value - kpi.target_value) / NULLIF(kpi.target_value, 0) * 100) as target_variance_pct,
         ((kpi.current_value - kpi.prior_year_value) / NULLIF(kpi.prior_year_value, 0) * 100) as yoy_growth_pct
       FROM strategic_kpis kpi
-      WHERE kpi.tenant_id = :tenantId
+      WHERE kpi.tenantId = :tenantId
         AND kpi.period = :period
         AND kpi.kpi_name IN (
           'Company Revenue Growth Rate',
@@ -2872,7 +2872,7 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
         br.risks_and_opportunities,
         br.strategic_initiatives_status
       FROM board_report_data br
-      WHERE br.tenant_id = :tenantId
+      WHERE br.tenantId = :tenantId
         AND br.report_period = :reportPeriod
       ORDER BY br.section_order, br.metric_order
     `,
@@ -2898,8 +2898,8 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
     sqlQuery: `
       SELECT
         DATE_TRUNC(:period, pm.metric_timestamp) as period,
-        COUNT(DISTINCT pm.tenant_id) as active_tenants,
-        COUNT(DISTINCT pm.user_id) as total_active_users,
+        COUNT(DISTINCT pm.tenantId) as active_tenants,
+        COUNT(DISTINCT pm.userId) as total_active_users,
         AVG(pm.system_uptime_pct) as avg_uptime_pct,
         AVG(pm.api_response_time_ms) as avg_api_response_ms,
         PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY pm.api_response_time_ms) as p95_api_response_ms,
@@ -2933,7 +2933,7 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
     cacheDuration: 3600,
     sqlQuery: `
       SELECT
-        t.tenant_id,
+        t.tenantId,
         t.tenant_name,
         t.subscription_tier,
         COUNT(DISTINCT u.id) as user_count,
@@ -2945,13 +2945,13 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
         t.billing_status,
         t.subscription_renewal_date
       FROM tenants t
-      LEFT JOIN users u ON u.tenant_id = t.id AND u.status = 'Active'
-      LEFT JOIN tenant_usage tu ON tu.tenant_id = t.id
+      LEFT JOIN users u ON u.tenantId = t.id AND u.status = 'Active'
+      LEFT JOIN tenant_usage tu ON tu.tenantId = t.id
         AND tu.usage_date >= :dateFrom
         AND tu.usage_date <= :dateTo
-      LEFT JOIN tenant_features tf ON tf.tenant_id = t.id AND tf.is_enabled = true
+      LEFT JOIN tenant_features tf ON tf.tenantId = t.id AND tf.isEnabled = true
       LEFT JOIN features f ON tf.feature_id = f.id
-      GROUP BY t.id, t.tenant_id, t.tenant_name, t.subscription_tier, t.storage_limit_gb, t.billing_status, t.subscription_renewal_date
+      GROUP BY t.id, t.tenantId, t.tenant_name, t.subscription_tier, t.storage_limit_gb, t.billing_status, t.subscription_renewal_date
       ORDER BY total_api_calls DESC
     `,
     defaultParameters: {
@@ -2977,8 +2977,8 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
         DATE_TRUNC(:period, pb.billing_date) as period,
         SUM(pb.subscription_revenue) as mrr,
         SUM(pb.subscription_revenue) * 12 as arr,
-        COUNT(DISTINCT pb.tenant_id) FILTER (WHERE pb.is_churned = true) /
-          NULLIF(COUNT(DISTINCT pb.tenant_id), 0) * 100 as churn_rate_pct,
+        COUNT(DISTINCT pb.tenantId) FILTER (WHERE pb.is_churned = true) /
+          NULLIF(COUNT(DISTINCT pb.tenantId), 0) * 100 as churn_rate_pct,
         SUM(pb.expansion_revenue) as expansion_revenue,
         pb.subscription_tier,
         SUM(pb.subscription_revenue) as revenue_by_tier,
@@ -3023,7 +3023,7 @@ const EXECUTIVE_AND_PLATFORM_REPORTS: ReportDefinition[] = [
         sa.source_ip,
         COUNT(sa.id) as events_per_ip
       FROM security_audit_log sa
-      LEFT JOIN users u ON sa.user_id = u.id
+      LEFT JOIN users u ON sa.userId = u.id
       WHERE sa.event_timestamp >= :dateFrom
         AND sa.event_timestamp <= :dateTo
       GROUP BY period, sa.source_ip
@@ -3073,9 +3073,9 @@ const CROSS_DEPARTMENT_REPORTS: ReportDefinition[] = [
         -- Service Data
         COUNT(DISTINCT e.id) as total_equipment,
         COUNT(DISTINCT t.id) as total_service_tickets,
-        COUNT(DISTINCT t.id) FILTER (WHERE t.created_at >= CURRENT_DATE - INTERVAL '90 days') as recent_tickets,
+        COUNT(DISTINCT t.id) FILTER (WHERE t.createdAt >= CURRENT_DATE - INTERVAL '90 days') as recent_tickets,
         AVG(sr.rating) as avg_service_csat,
-        MAX(t.created_at) as last_service_date,
+        MAX(t.createdAt) as last_service_date,
         -- Finance Data
         SUM(inv.balance_due) as current_ar_balance,
         AVG(inv.days_outstanding) as avg_days_outstanding,
@@ -3085,16 +3085,16 @@ const CROSS_DEPARTMENT_REPORTS: ReportDefinition[] = [
         COUNT(DISTINCT d.id) as total_deliveries,
         AVG(dsat.rating) as avg_delivery_satisfaction
       FROM business_records c
-      LEFT JOIN opportunities o ON o.customer_id = c.id
-      LEFT JOIN quotes q ON q.customer_id = c.id
-      LEFT JOIN equipment e ON e.customer_id = c.id
-      LEFT JOIN service_tickets t ON t.customer_id = c.id
-      LEFT JOIN satisfaction_ratings sr ON sr.ticket_id = t.id
-      LEFT JOIN invoices inv ON inv.customer_id = c.id AND inv.payment_status != 'Paid'
-      LEFT JOIN deliveries d ON d.customer_id = c.id
+      LEFT JOIN opportunities o ON o.customerId = c.id
+      LEFT JOIN quotes q ON q.customerId = c.id
+      LEFT JOIN equipment e ON e.customerId = c.id
+      LEFT JOIN service_tickets t ON t.customerId = c.id
+      LEFT JOIN satisfaction_ratings sr ON sr.ticketId = t.id
+      LEFT JOIN invoices inv ON inv.customerId = c.id AND inv.payment_status != 'Paid'
+      LEFT JOIN deliveries d ON d.customerId = c.id
       LEFT JOIN delivery_satisfaction dsat ON dsat.delivery_id = d.id
       WHERE c.id = :customerId
-        AND c.tenant_id = :tenantId
+        AND c.tenantId = :tenantId
       GROUP BY c.id, c.name, c.segment, c.account_status, c.payment_terms, c.credit_limit
     `,
     tags: [
@@ -3122,7 +3122,7 @@ const CROSS_DEPARTMENT_REPORTS: ReportDefinition[] = [
     sqlQuery: `
       SELECT
         e.id as employee_id,
-        e.first_name || ' ' || e.last_name as employee_name,
+        e.firstName || ' ' || e.lastName as employee_name,
         e.role_code,
         e.department,
         e.hire_date,
@@ -3139,15 +3139,15 @@ const CROSS_DEPARTMENT_REPORTS: ReportDefinition[] = [
         COUNT(tr.id) as training_courses_completed,
         STRING_AGG(DISTINCT cert.certification_name, ', ') as certifications
       FROM users e
-      LEFT JOIN opportunities o ON o.owner_id = e.id
-      LEFT JOIN quotas q ON q.user_id = e.id
-      LEFT JOIN service_tickets t ON t.assigned_to = e.id
-      LEFT JOIN satisfaction_ratings sr ON sr.ticket_id = t.id
+      LEFT JOIN opportunities o ON o.ownerId = e.id
+      LEFT JOIN quotas q ON q.userId = e.id
+      LEFT JOIN service_tickets t ON t.assignedTo = e.id
+      LEFT JOIN satisfaction_ratings sr ON sr.ticketId = t.id
       LEFT JOIN employee_goals g ON g.employee_id = e.id
       LEFT JOIN training_records tr ON tr.employee_id = e.id
       LEFT JOIN employee_certifications cert ON cert.employee_id = e.id
       WHERE e.manager_id = :userId
-        AND e.tenant_id = :tenantId
+        AND e.tenantId = :tenantId
       GROUP BY e.id, employee_name, e.role_code, e.department, e.hire_date, q.quota_amount
       ORDER BY employee_name
     `,
@@ -3263,7 +3263,7 @@ export async function seedReports() {
             createdBy: systemUserId,
           })
           .onConflictDoUpdate({
-            target: [reportDefinitions.code, reportDefinitions.tenant_id],
+            target: [reportDefinitions.code, reportDefinitions.tenantId],
             set: {
               name: report.name,
               description: report.description || '',

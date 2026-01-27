@@ -127,7 +127,7 @@ export default function DocumentBuilder() {
       setDocumentForm((prev) => ({
         ...prev,
         customerId: quote.customerId,
-        customerName: customer?.company_name || customer?.primary_contact_name || '',
+        customerName: customer?.companyName || customer?.primary_contact_name || '',
         lineItems: quoteLineItems,
         agreementNumber: `PA-${Date.now()}`,
       }));

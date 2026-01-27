@@ -59,10 +59,10 @@ export default function MyApprovals() {
       return (response || []).map((approval: any) => ({
         ...approval,
         id: approval.id,
-        requestType: approval.request_type || approval.requestType || '',
-        requestedBy: approval.requested_by || approval.requestedBy || '',
+        requestType: approval.requestType || approval.requestType || '',
+        requestedBy: approval.requestedBy || approval.requestedBy || '',
         requestedAt: approval.requested_at || approval.requestedAt || '',
-        createdAt: approval.created_at || approval.createdAt || '',
+        createdAt: approval.createdAt || approval.createdAt || '',
       }));
     },
   });

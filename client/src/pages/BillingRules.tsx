@@ -65,8 +65,8 @@ export default function BillingRules() {
           id: rule.id,
           ruleName: rule.rule_name || rule.ruleName || '',
           ruleType: rule.rule_type || rule.ruleType || '',
-          createdAt: rule.created_at || rule.createdAt || '',
-          updatedAt: rule.updated_at || rule.updatedAt || '',
+          createdAt: rule.createdAt || rule.createdAt || '',
+          updatedAt: rule.updatedAt || rule.updatedAt || '',
         })),
       };
     },

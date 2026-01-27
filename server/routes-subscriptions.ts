@@ -103,7 +103,7 @@ router.get('/plans/:slug', async (req, res) => {
  */
 router.get('/current', softCheckSubscription, async (req, res) => {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'No tenant context' });
     }
@@ -142,7 +142,7 @@ router.get('/current', softCheckSubscription, async (req, res) => {
  */
 router.post('/create', async (req, res) => {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'No tenant context' });
     }
@@ -164,7 +164,7 @@ router.post('/create', async (req, res) => {
     // Check if tenant already has an active subscription
     const existing = await db.query.tenantSubscriptions.findFirst({
       where: and(
-        eq(tenantSubscriptions.tenant_id, tenantId),
+        eq(tenantSubscriptions.tenantId, tenantId),
         sql`${tenantSubscriptions.status} IN ('active', 'trialing')`,
       ),
     });
@@ -204,7 +204,7 @@ router.post('/create', async (req, res) => {
  */
 router.post('/upgrade', requireActiveSubscription, async (req, res) => {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
     const { newPlanSlug, billingCycle, immediate } = req.body;
 
     if (!newPlanSlug) {
@@ -237,7 +237,7 @@ router.post('/upgrade', requireActiveSubscription, async (req, res) => {
  */
 router.post('/cancel', requireActiveSubscription, async (req, res) => {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
     const { immediate } = req.body;
 
     await SubscriptionService.cancelSubscription(tenantId, immediate === true);
@@ -262,7 +262,7 @@ router.post('/cancel', requireActiveSubscription, async (req, res) => {
  */
 router.post('/convert-trial', async (req, res) => {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'No tenant context' });
     }
@@ -294,7 +294,7 @@ router.post('/convert-trial', async (req, res) => {
  */
 router.get('/usage', requireActiveSubscription, async (req, res) => {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
 
     const summary = await UsageTrackingService.getUsageSummary(tenantId);
 
@@ -315,7 +315,7 @@ router.get('/usage', requireActiveSubscription, async (req, res) => {
  */
 router.get('/usage/history', requireActiveSubscription, async (req, res) => {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
     const { startDate, endDate } = req.query;
 
     if (!startDate || !endDate) {
@@ -346,7 +346,7 @@ router.get('/usage/history', requireActiveSubscription, async (req, res) => {
  */
 router.post('/usage/recalculate', requireActiveSubscription, async (req, res) => {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
 
     await UsageTrackingService.recalculateUsage(tenantId);
 
@@ -367,7 +367,7 @@ router.post('/usage/recalculate', requireActiveSubscription, async (req, res) =>
  */
 router.get('/features', requireActiveSubscription, async (req, res) => {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
 
     const status = await SubscriptionService.getSubscriptionStatus(tenantId);
     if (!status) {
@@ -412,7 +412,7 @@ router.get('/features', requireActiveSubscription, async (req, res) => {
  */
 router.get('/features/check/:slug', async (req, res) => {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'No tenant context' });
     }
@@ -440,7 +440,7 @@ router.get('/features/check/:slug', async (req, res) => {
  */
 router.get('/notifications', async (req, res) => {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'No tenant context' });
     }
@@ -452,12 +452,12 @@ router.get('/notifications', async (req, res) => {
       .from(subscriptionNotifications)
       .where(
         and(
-          eq(subscriptionNotifications.tenant_id, tenantId),
-          userId ? eq(subscriptionNotifications.user_id, userId) : sql`true`,
+          eq(subscriptionNotifications.tenantId, tenantId),
+          userId ? eq(subscriptionNotifications.userId, userId) : sql`true`,
           sql`${subscriptionNotifications.status} != 'dismissed'`,
         ),
       )
-      .orderBy(desc(subscriptionNotifications.created_at))
+      .orderBy(desc(subscriptionNotifications.createdAt))
       .limit(50);
 
     res.json({ notifications });
@@ -473,7 +473,7 @@ router.get('/notifications', async (req, res) => {
  */
 router.post('/notifications/:id/dismiss', async (req, res) => {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'No tenant context' });
     }
@@ -490,7 +490,7 @@ router.post('/notifications/:id/dismiss', async (req, res) => {
       .where(
         and(
           eq(subscriptionNotifications.id, notificationId),
-          eq(subscriptionNotifications.tenant_id, tenantId),
+          eq(subscriptionNotifications.tenantId, tenantId),
         ),
       );
 
@@ -507,7 +507,7 @@ router.post('/notifications/:id/dismiss', async (req, res) => {
  */
 router.post('/notifications/:id/read', async (req, res) => {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'No tenant context' });
     }
@@ -524,7 +524,7 @@ router.post('/notifications/:id/read', async (req, res) => {
       .where(
         and(
           eq(subscriptionNotifications.id, notificationId),
-          eq(subscriptionNotifications.tenant_id, tenantId),
+          eq(subscriptionNotifications.tenantId, tenantId),
         ),
       );
 
@@ -545,13 +545,13 @@ router.post('/notifications/:id/read', async (req, res) => {
  */
 router.get('/history', requireActiveSubscription, async (req, res) => {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
 
     const events = await db
       .select()
       .from(subscriptionEvents)
-      .where(eq(subscriptionEvents.tenant_id, tenantId))
-      .orderBy(desc(subscriptionEvents.created_at))
+      .where(eq(subscriptionEvents.tenantId, tenantId))
+      .orderBy(desc(subscriptionEvents.createdAt))
       .limit(100);
 
     res.json({ events });
@@ -672,7 +672,7 @@ router.get('/stripe/config', (req, res) => {
  */
 router.post('/checkout', async (req, res) => {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'No tenant context' });
     }
@@ -762,7 +762,7 @@ router.post('/checkout', async (req, res) => {
  */
 router.post('/checkout/addon', async (req, res) => {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'No tenant context' });
     }
@@ -840,7 +840,7 @@ router.post('/checkout/addon', async (req, res) => {
  */
 router.get('/checkout/session/:sessionId', async (req, res) => {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'No tenant context' });
     }
@@ -852,7 +852,7 @@ router.get('/checkout/session/:sessionId', async (req, res) => {
     const session = await StripeService.retrieveCheckoutSession(req.params.sessionId);
 
     // Verify this session belongs to the requesting tenant
-    if (session.metadata?.tenant_id !== tenantId) {
+    if (session.metadata?.tenantId !== tenantId) {
       return res.status(403).json({ error: 'Access denied to this session' });
     }
 
@@ -876,7 +876,7 @@ router.get('/checkout/session/:sessionId', async (req, res) => {
  */
 router.post('/portal', async (req, res) => {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'No tenant context' });
     }
@@ -921,7 +921,7 @@ router.post('/portal', async (req, res) => {
  */
 router.post('/setup-intent', async (req, res) => {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'No tenant context' });
     }
@@ -953,7 +953,7 @@ router.post('/setup-intent', async (req, res) => {
  */
 router.get('/preview-upgrade', requireActiveSubscription, async (req, res) => {
   try {
-    const tenantId = req.tenant_id!;
+    const tenantId = req.tenantId!;
     const { newPlanSlug, billingCycle } = req.query;
 
     if (!newPlanSlug) {
@@ -966,7 +966,7 @@ router.get('/preview-upgrade', requireActiveSubscription, async (req, res) => {
 
     // Get current subscription
     const subscription = await db.query.tenantSubscriptions.findFirst({
-      where: eq(tenantSubscriptions.tenant_id, tenantId),
+      where: eq(tenantSubscriptions.tenantId, tenantId),
     });
 
     if (!subscription?.stripeSubscriptionId) {
@@ -998,7 +998,7 @@ router.get('/preview-upgrade', requireActiveSubscription, async (req, res) => {
 
     // Get Stripe customer ID from tenant metadata
     const tenant = await db.query.tenants.findFirst({
-      where: eq(tenantSubscriptions.tenant_id, tenantId),
+      where: eq(tenantSubscriptions.tenantId, tenantId),
     });
 
     const stripeCustomerId = (tenant?.metadata as any)?.stripeCustomerId;

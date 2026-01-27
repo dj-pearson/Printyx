@@ -202,7 +202,7 @@ export class ServiceManagerReportingService {
 
     const dateFilter =
       dateRange?.dateFrom && dateRange?.dateTo
-        ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        ? sql`AND sc.createdAt BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
         : sql``;
 
     // Get service calls by region, priority, and status
@@ -213,7 +213,7 @@ export class ServiceManagerReportingService {
         sc.priority,
         sc.status,
         COUNT(sc.id)::int as call_count,
-        AVG(EXTRACT(EPOCH FROM (sc.completed_at - sc.created_at)) / 3600)::decimal as avg_duration,
+        AVG(EXTRACT(EPOCH FROM (sc.completedAt - sc.createdAt)) / 3600)::decimal as avg_duration,
         COUNT(CASE WHEN sc.first_time_fix = true THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as ftf_rate,
         AVG(sc.satisfaction_rating)::decimal as avg_satisfaction,
         COUNT(DISTINCT l.id)::int as location_count
@@ -221,10 +221,10 @@ export class ServiceManagerReportingService {
       LEFT JOIN locations l ON l.region_id = r.id
       LEFT JOIN users u ON u.primary_location_id = l.id
       LEFT JOIN service_calls sc ON sc.technician_id = u.id
-        AND sc.tenant_id = ${userContext.tenant_id}
+        AND sc.tenantId = ${userContext.tenantId}
         ${dateFilter}
       WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND r.tenant_id = ${userContext.tenant_id}
+        AND r.tenantId = ${userContext.tenantId}
       GROUP BY r.id, r.name, sc.priority, sc.status
       ORDER BY r.name, CASE sc.priority
         WHEN 'Critical' THEN 1
@@ -321,7 +321,7 @@ export class ServiceManagerReportingService {
 
     const dateFilter =
       dateRange?.dateFrom && dateRange?.dateTo
-        ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        ? sql`AND sc.createdAt BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
         : sql``;
 
     const result = await db.execute(sql`
@@ -333,7 +333,7 @@ export class ServiceManagerReportingService {
           COUNT(DISTINCT u.id)::int as technician_count,
           COUNT(sc.id)::int as total_calls,
           COUNT(CASE WHEN sc.status = 'Completed' THEN 1 END)::int as completed_calls,
-          AVG(EXTRACT(EPOCH FROM (sc.first_response_at - sc.created_at)) / 3600)::decimal as avg_response_time,
+          AVG(EXTRACT(EPOCH FROM (sc.first_response_at - sc.createdAt)) / 3600)::decimal as avg_response_time,
           COUNT(CASE WHEN sc.first_time_fix = true THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as ftf_rate,
           AVG(sc.satisfaction_rating)::decimal as avg_satisfaction,
           COUNT(CASE WHEN sc.sla_status = 'on_time' THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as sla_compliance,
@@ -342,13 +342,13 @@ export class ServiceManagerReportingService {
         LEFT JOIN locations l ON l.region_id = r.id
         LEFT JOIN users u ON u.primary_location_id = l.id
         LEFT JOIN service_calls sc ON sc.technician_id = u.id
-          AND sc.tenant_id = ${userContext.tenant_id}
+          AND sc.tenantId = ${userContext.tenantId}
           ${dateFilter}
-        LEFT JOIN time_entries te ON te.user_id = u.id
-          AND te.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN time_entries te ON te.userId = u.id
+          AND te.tenantId = ${userContext.tenantId}
           ${dateFilter}
         WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-          AND r.tenant_id = ${userContext.tenant_id}
+          AND r.tenantId = ${userContext.tenantId}
         GROUP BY r.id, r.name
       )
       SELECT
@@ -425,7 +425,7 @@ export class ServiceManagerReportingService {
 
     const dateFilter =
       dateRange?.dateFrom && dateRange?.dateTo
-        ? sql`AND sc.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        ? sql`AND sc.createdAt BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
         : sql``;
 
     const result = await db.execute(sql`
@@ -438,16 +438,16 @@ export class ServiceManagerReportingService {
         COUNT(CASE WHEN sc.sla_status = 'at_risk' THEN 1 END)::int as at_risk_calls,
         COUNT(CASE WHEN sc.sla_status = 'overdue' THEN 1 END)::int as overdue_calls,
         COUNT(CASE WHEN sc.sla_status = 'on_time' THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as sla_compliance,
-        AVG(EXTRACT(EPOCH FROM (sc.first_response_at - sc.created_at)) / 3600)::decimal as avg_response_time,
-        AVG(EXTRACT(EPOCH FROM (sc.completed_at - sc.created_at)) / 3600)::decimal as avg_resolution_time
+        AVG(EXTRACT(EPOCH FROM (sc.first_response_at - sc.createdAt)) / 3600)::decimal as avg_response_time,
+        AVG(EXTRACT(EPOCH FROM (sc.completedAt - sc.createdAt)) / 3600)::decimal as avg_resolution_time
       FROM regions r
       LEFT JOIN locations l ON l.region_id = r.id
       LEFT JOIN users u ON u.primary_location_id = l.id
       LEFT JOIN service_calls sc ON sc.technician_id = u.id
-        AND sc.tenant_id = ${userContext.tenant_id}
+        AND sc.tenantId = ${userContext.tenantId}
         ${dateFilter}
       WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND r.tenant_id = ${userContext.tenant_id}
+        AND r.tenantId = ${userContext.tenantId}
       GROUP BY r.id, r.name
       ORDER BY sla_compliance DESC
     `);
@@ -533,11 +533,11 @@ export class ServiceManagerReportingService {
       FROM regions r
       LEFT JOIN locations l ON l.region_id = r.id
       LEFT JOIN users u ON u.primary_location_id = l.id
-      LEFT JOIN time_entries te ON te.user_id = u.id
-        AND te.tenant_id = ${userContext.tenant_id}
+      LEFT JOIN time_entries te ON te.userId = u.id
+        AND te.tenantId = ${userContext.tenantId}
         ${dateFilter}
       WHERE r.id = ANY(${sql.raw(`ARRAY[${accessibleRegionIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND r.tenant_id = ${userContext.tenant_id}
+        AND r.tenantId = ${userContext.tenantId}
       GROUP BY r.id, r.name
       ORDER BY total_hours DESC
     `);

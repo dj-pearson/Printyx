@@ -57,14 +57,14 @@ function createOtpKey(userId: string, method: MfaMethod): string {
  * Store OTP record
  */
 function storeOtp(record: OtpRecord): void {
-  const key = createOtpKey(record.user_id, record.method);
+  const key = createOtpKey(record.userId, record.method);
   otpStore.set(key, record);
 
   // Auto-cleanup after expiration
   const ttl = OTP_CONFIG.expirationMinutes * 60 * 1000;
   setTimeout(() => {
     const current = otpStore.get(key);
-    if (current && current.created_at.getTime() === record.created_at.getTime()) {
+    if (current && current.createdAt.getTime() === record.createdAt.getTime()) {
       otpStore.delete(key);
     }
   }, ttl + 1000);
@@ -110,7 +110,7 @@ export async function sendEmailOtp(
     // Check for existing unexpired OTP (cooldown)
     const existingOtp = getOtp(userId, 'email');
     if (existingOtp && !existingOtp.verified) {
-      const timeSinceCreated = Date.now() - existingOtp.created_at.getTime();
+      const timeSinceCreated = Date.now() - existingOtp.createdAt.getTime();
       const cooldownMs = OTP_CONFIG.resendCooldownMinutes * 60 * 1000;
 
       if (timeSinceCreated < cooldownMs) {
@@ -191,7 +191,7 @@ export async function sendSmsOtp(
     // Check for existing unexpired OTP (cooldown)
     const existingOtp = getOtp(userId, 'sms');
     if (existingOtp && !existingOtp.verified) {
-      const timeSinceCreated = Date.now() - existingOtp.created_at.getTime();
+      const timeSinceCreated = Date.now() - existingOtp.createdAt.getTime();
       const cooldownMs = OTP_CONFIG.resendCooldownMinutes * 60 * 1000;
 
       if (timeSinceCreated < cooldownMs) {

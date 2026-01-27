@@ -107,8 +107,8 @@ export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
   try {
     await db.insert(auditLogs).values({
       id: crypto.randomUUID(),
-      tenantId: entry.tenant_id,
-      userId: entry.user_id,
+      tenantId: entry.tenantId,
+      userId: entry.userId,
       action: entry.action,
       resource: entry.resource,
       resourceId: entry.resourceId,
@@ -150,9 +150,9 @@ export function auditLogMiddleware(
       const responseTime = Date.now() - startTime;
 
       // Log the audit event
-      if (req.tenant_id && req.user?.id) {
+      if (req.tenantId && req.user?.id) {
         logAuditEvent({
-          tenantId: req.tenant_id,
+          tenantId: req.tenantId,
           userId: req.user.id,
           action: `${req.method} ${action}`,
           resource,
@@ -193,8 +193,8 @@ export async function logDataAccess(entry: DataAccessEntry): Promise<void> {
   try {
     await db.insert(dataAccessLogs).values({
       id: crypto.randomUUID(),
-      tenantId: entry.tenant_id,
-      userId: entry.user_id,
+      tenantId: entry.tenantId,
+      userId: entry.userId,
       resource: entry.resource,
       resourceId: entry.resourceId,
       accessType: entry.accessType,
@@ -216,12 +216,12 @@ export function dataAccessLogMiddleware(
   classification: DataAccessEntry['dataClassification'] = 'internal',
 ) {
   return async (req: TenantRequest, res: Response, next: NextFunction) => {
-    if (req.tenant_id && req.user?.id) {
+    if (req.tenantId && req.user?.id) {
       const accessType: DataAccessEntry['accessType'] =
         req.method === 'GET' ? 'read' : req.method === 'DELETE' ? 'delete' : 'write';
 
       await logDataAccess({
-        tenantId: req.tenant_id,
+        tenantId: req.tenantId,
         userId: req.user.id,
         resource,
         resourceId: req.params.id,
@@ -270,7 +270,7 @@ export async function createGDPRRequest(
   await db.insert(gdprRequests).values({
     id: requestId,
     type: request.type,
-    tenantId: request.tenant_id,
+    tenantId: request.tenantId,
     subjectId: request.subjectId,
     subjectEmail: request.subjectEmail,
     requestorId: request.requestorId,
@@ -289,7 +289,7 @@ export async function createGDPRRequest(
 
   // Log the GDPR request creation
   await logAuditEvent({
-    tenantId: request.tenant_id,
+    tenantId: request.tenantId,
     userId: request.requestorId,
     action: 'CREATE_GDPR_REQUEST',
     resource: 'gdpr_requests',
@@ -309,18 +309,18 @@ export async function processDataSubjectAccess(tenantId: string, subjectId: stri
   // Collect all personal data across the system
   const personalData = {
     user: await db.query.users.findFirst({
-      where: (users, { eq, and }) => and(eq(users.tenant_id, tenantId), eq(users.id, subjectId)),
+      where: (users, { eq, and }) => and(eq(users.tenantId, tenantId), eq(users.id, subjectId)),
     }),
     businessRecords: await db.query.businessRecords.findMany({
       where: (records, { eq, and }) =>
-        and(eq(records.tenant_id, tenantId), eq(records.primaryContactEmail, subjectId)),
+        and(eq(records.tenantId, tenantId), eq(records.primaryContactEmail, subjectId)),
     }),
     serviceTickets: await db.query.serviceTickets.findMany({
       where: (tickets, { eq, and }) =>
-        and(eq(tickets.tenant_id, tenantId), eq(tickets.customerId, subjectId)),
+        and(eq(tickets.tenantId, tenantId), eq(tickets.customerId, subjectId)),
     }),
     auditLogs: await db.query.auditLogs.findMany({
-      where: (logs, { eq, and }) => and(eq(logs.tenant_id, tenantId), eq(logs.user_id, subjectId)),
+      where: (logs, { eq, and }) => and(eq(logs.tenantId, tenantId), eq(logs.userId, subjectId)),
     }),
     // Add other relevant tables
   };

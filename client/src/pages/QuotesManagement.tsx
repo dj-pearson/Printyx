@@ -152,12 +152,12 @@ export default function QuotesManagement() {
       return response.map((proposal: any) => ({
         ...proposal,
         id: proposal.id,
-        quoteNumber: proposal.quote_number || proposal.quoteNumber || '',
-        customerId: proposal.customer_id || proposal.customerId || '',
+        quoteNumber: proposal.quoteNumber || proposal.quoteNumber || '',
+        customerId: proposal.customerId || proposal.customerId || '',
         validUntil: proposal.valid_until || proposal.validUntil || null,
-        createdAt: proposal.created_at || proposal.createdAt || '',
-        updatedAt: proposal.updated_at || proposal.updatedAt || '',
-        createdBy: proposal.created_by || proposal.createdBy || null,
+        createdAt: proposal.createdAt || proposal.createdAt || '',
+        updatedAt: proposal.updatedAt || proposal.updatedAt || '',
+        createdBy: proposal.createdBy || proposal.createdBy || null,
         // Map proposal fields to quote fields for consistency
         status:
           proposal.status === 'draft'

@@ -14,7 +14,7 @@ const router = Router();
 // Get all leases for tenant
 router.get('/leases', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -29,7 +29,7 @@ router.get('/leases', async (req, res, next) => {
 // Get lease by ID
 router.get('/leases/:id', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -48,7 +48,7 @@ router.get('/leases/:id', async (req, res, next) => {
 // Get leases by customer
 router.get('/customers/:customerId/leases', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -63,7 +63,7 @@ router.get('/customers/:customerId/leases', async (req, res, next) => {
 // Get leases by status
 router.get('/leases/status/:status', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -78,7 +78,7 @@ router.get('/leases/status/:status', async (req, res, next) => {
 // Create new lease
 router.post('/leases', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     const userId = req.session.user?.id;
     if (!tenantId || !userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -100,7 +100,7 @@ router.post('/leases', async (req, res, next) => {
 // Update lease
 router.patch('/leases/:id', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     const userId = req.session.user?.id;
     if (!tenantId || !userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -124,7 +124,7 @@ router.patch('/leases/:id', async (req, res, next) => {
 // Delete lease
 router.delete('/leases/:id', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -141,7 +141,7 @@ router.delete('/leases/:id', async (req, res, next) => {
 // Get payments for a lease
 router.get('/leases/:leaseId/payments', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -156,7 +156,7 @@ router.get('/leases/:leaseId/payments', async (req, res, next) => {
 // Get upcoming payments
 router.get('/lease-payments/upcoming', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -172,7 +172,7 @@ router.get('/lease-payments/upcoming', async (req, res, next) => {
 // Get past due payments
 router.get('/lease-payments/past-due', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -187,7 +187,7 @@ router.get('/lease-payments/past-due', async (req, res, next) => {
 // Create lease payment
 router.post('/lease-payments', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -207,7 +207,7 @@ router.post('/lease-payments', async (req, res, next) => {
 // Update lease payment (e.g., mark as paid)
 router.patch('/lease-payments/:id', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -226,7 +226,7 @@ router.patch('/lease-payments/:id', async (req, res, next) => {
 // Delete lease payment
 router.delete('/lease-payments/:id', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -243,7 +243,7 @@ router.delete('/lease-payments/:id', async (req, res, next) => {
 // Get all lease renewals
 router.get('/lease-renewals', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -258,7 +258,7 @@ router.get('/lease-renewals', async (req, res, next) => {
 // Get lease renewal by lease ID
 router.get('/leases/:leaseId/renewal', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -273,7 +273,7 @@ router.get('/leases/:leaseId/renewal', async (req, res, next) => {
 // Get leases needing renewal action
 router.get('/lease-renewals/action-needed', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -289,7 +289,7 @@ router.get('/lease-renewals/action-needed', async (req, res, next) => {
 // Create lease renewal
 router.post('/lease-renewals', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     const userId = req.session.user?.id;
     if (!tenantId || !userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -311,7 +311,7 @@ router.post('/lease-renewals', async (req, res, next) => {
 // Update lease renewal
 router.patch('/lease-renewals/:id', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -330,7 +330,7 @@ router.patch('/lease-renewals/:id', async (req, res, next) => {
 // Delete lease renewal
 router.delete('/lease-renewals/:id', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -347,7 +347,7 @@ router.delete('/lease-renewals/:id', async (req, res, next) => {
 // Get all lease dispositions
 router.get('/lease-dispositions', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -362,7 +362,7 @@ router.get('/lease-dispositions', async (req, res, next) => {
 // Get disposition by lease ID
 router.get('/leases/:leaseId/disposition', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -377,7 +377,7 @@ router.get('/leases/:leaseId/disposition', async (req, res, next) => {
 // Create lease disposition
 router.post('/lease-dispositions', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     const userId = req.session.user?.id;
     if (!tenantId || !userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -399,7 +399,7 @@ router.post('/lease-dispositions', async (req, res, next) => {
 // Update lease disposition
 router.patch('/lease-dispositions/:id', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -422,7 +422,7 @@ router.patch('/lease-dispositions/:id', async (req, res, next) => {
 // Delete lease disposition
 router.delete('/lease-dispositions/:id', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -439,7 +439,7 @@ router.delete('/lease-dispositions/:id', async (req, res, next) => {
 // Generate lease payment schedule
 router.post('/leases/:id/generate-payment-schedule', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -478,7 +478,7 @@ router.post('/leases/:id/generate-payment-schedule', async (req, res, next) => {
 // Process lease payment
 router.post('/lease-payments/:id/process', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     if (!tenantId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -514,7 +514,7 @@ router.post('/lease-payments/:id/process', async (req, res, next) => {
 // Initiate lease renewal
 router.post('/leases/:id/initiate-renewal', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     const userId = req.session.user?.id;
     if (!tenantId || !userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -555,7 +555,7 @@ router.post('/leases/:id/initiate-renewal', async (req, res, next) => {
 // Complete lease disposition
 router.post('/leases/:id/complete-disposition', async (req, res, next) => {
   try {
-    const tenantId = req.session.user?.tenant_id;
+    const tenantId = req.session.user?.tenantId;
     const userId = req.session.user?.id;
     if (!tenantId || !userId) {
       return res.status(401).json({ error: 'Unauthorized' });

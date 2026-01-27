@@ -169,7 +169,7 @@ router.post('/enroll/verify', async (req: Request, res: Response) => {
       // Log attempt without pending secret for audit trail
       await storage.createMfaAuditLog({
         userId: user.id,
-        tenantId: user.tenant_id || null,
+        tenantId: user.tenantId || null,
         eventType: 'enrollment',
         success: false,
         failureReason: 'no_pending_secret',
@@ -190,7 +190,7 @@ router.post('/enroll/verify', async (req: Request, res: Response) => {
 
       await storage.createMfaAuditLog({
         userId: user.id,
-        tenantId: user.tenant_id || null,
+        tenantId: user.tenantId || null,
         eventType: 'enrollment',
         success: false,
         failureReason: 'secret_expired',
@@ -209,7 +209,7 @@ router.post('/enroll/verify', async (req: Request, res: Response) => {
       // Log failed enrollment attempt
       await storage.createMfaAuditLog({
         userId: user.id,
-        tenantId: user.tenant_id || null,
+        tenantId: user.tenantId || null,
         eventType: 'enrollment',
         success: false,
         failureReason: 'invalid_token',
@@ -227,12 +227,12 @@ router.post('/enroll/verify', async (req: Request, res: Response) => {
     delete req.session.pendingMfaTimestamp;
 
     // Generate backup codes
-    const { codes } = await storage.generateBackupCodes(user.id, user.tenant_id || null, 10);
+    const { codes } = await storage.generateBackupCodes(user.id, user.tenantId || null, 10);
 
     // Log successful enrollment
     await storage.createMfaAuditLog({
       userId: user.id,
-      tenantId: user.tenant_id || null,
+      tenantId: user.tenantId || null,
       eventType: 'enrollment',
       success: true,
       ...getRequestMetadata(req),
@@ -281,7 +281,7 @@ router.post('/verify', async (req: Request, res: Response) => {
       if (isValid) {
         await storage.createMfaAuditLog({
           userId,
-          tenantId: user.tenant_id || null,
+          tenantId: user.tenantId || null,
           eventType: 'backup_code_used',
           success: true,
           ...getRequestMetadata(req),
@@ -295,7 +295,7 @@ router.post('/verify', async (req: Request, res: Response) => {
     if (!isValid) {
       await storage.createMfaAuditLog({
         userId,
-        tenantId: user.tenant_id || null,
+        tenantId: user.tenantId || null,
         eventType: 'verification_failure',
         success: false,
         failureReason: useBackupCode ? 'invalid_backup_code' : 'invalid_token',
@@ -308,7 +308,7 @@ router.post('/verify', async (req: Request, res: Response) => {
     // Log successful verification
     await storage.createMfaAuditLog({
       userId,
-      tenantId: user.tenant_id || null,
+      tenantId: user.tenantId || null,
       eventType: 'verification_success',
       success: true,
       eventDetails: { usedBackupCode },
@@ -375,7 +375,7 @@ router.post('/disable', async (req: Request, res: Response) => {
     // Log the action
     await storage.createMfaAuditLog({
       userId: user.id,
-      tenantId: user.tenant_id || null,
+      tenantId: user.tenantId || null,
       eventType: 'disabled',
       success: true,
       performedBy: user.id,
@@ -421,7 +421,7 @@ router.post('/backup-codes/regenerate', async (req: Request, res: Response) => {
     }
 
     // Generate new backup codes
-    const { codes } = await storage.generateBackupCodes(user.id, user.tenant_id || null, 10);
+    const { codes } = await storage.generateBackupCodes(user.id, user.tenantId || null, 10);
 
     res.json({
       success: true,
@@ -472,7 +472,7 @@ router.post('/admin/reset/:userId', requireRootAdmin, async (req: Request, res: 
     // Log the admin action
     await storage.createMfaAuditLog({
       userId,
-      tenantId: user.tenant_id || null,
+      tenantId: user.tenantId || null,
       eventType: 'admin_reset',
       success: true,
       performedBy: user.id,
@@ -493,12 +493,12 @@ router.get('/admin/compliance-report', async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  if (!user.tenant_id) {
+  if (!user.tenantId) {
     return res.status(400).json({ error: 'User must belong to a tenant' });
   }
 
   try {
-    const report = await storage.getMfaComplianceReport(user.tenant_id);
+    const report = await storage.getMfaComplianceReport(user.tenantId);
     res.json(report);
   } catch (error) {
     console.error('Get compliance report error:', error);
@@ -513,12 +513,12 @@ router.get('/admin/users-without-mfa', async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  if (!user.tenant_id) {
+  if (!user.tenantId) {
     return res.status(400).json({ error: 'User must belong to a tenant' });
   }
 
   try {
-    const users = await storage.getUsersWithoutMfa(user.tenant_id);
+    const users = await storage.getUsersWithoutMfa(user.tenantId);
     res.json(users);
   } catch (error) {
     console.error('Get users without MFA error:', error);
@@ -559,7 +559,7 @@ router.get('/admin/audit-logs', async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
-  if (!user.tenant_id) {
+  if (!user.tenantId) {
     return res.status(400).json({ error: 'User must belong to a tenant' });
   }
 
@@ -574,7 +574,7 @@ router.get('/admin/audit-logs', async (req: Request, res: Response) => {
       filters.success = success === 'true';
     }
 
-    const logs = await storage.getMfaAuditLogsByTenant(user.tenant_id, filters);
+    const logs = await storage.getMfaAuditLogsByTenant(user.tenantId, filters);
     res.json(logs);
   } catch (error) {
     console.error('Get tenant audit logs error:', error);
@@ -616,7 +616,7 @@ router.post('/otp/email/send', async (req: Request, res: Response) => {
     const result = await sendEmailOtp(
       user.id,
       userEmail,
-      user.tenant_id || null,
+      user.tenantId || null,
       user.firstName || user.email,
     );
 
@@ -660,7 +660,7 @@ router.post('/otp/sms/send', async (req: Request, res: Response) => {
       });
     }
 
-    const result = await sendSmsOtp(user.id, phoneNumber, user.tenant_id || null);
+    const result = await sendSmsOtp(user.id, phoneNumber, user.tenantId || null);
 
     if (!result.success) {
       return res.status(429).json({ error: result.message });
@@ -702,7 +702,7 @@ router.post('/otp/verify', async (req: Request, res: Response) => {
       // Log failed verification
       await storage.createMfaAuditLog({
         userId: user.id,
-        tenantId: user.tenant_id || null,
+        tenantId: user.tenantId || null,
         eventType: 'otp_verification_failure',
         success: false,
         failureReason: 'invalid_code',
@@ -716,7 +716,7 @@ router.post('/otp/verify', async (req: Request, res: Response) => {
     // Log successful verification
     await storage.createMfaAuditLog({
       userId: user.id,
-      tenantId: user.tenant_id || null,
+      tenantId: user.tenantId || null,
       eventType: 'otp_verification_success',
       success: true,
       eventDetails: { method },
@@ -809,7 +809,7 @@ router.post('/challenge', async (req: Request, res: Response) => {
         const emailResult = await sendEmailOtp(
           user.id,
           user.email,
-          user.tenant_id || null,
+          user.tenantId || null,
           user.firstName,
         );
         return res.json({
@@ -823,7 +823,7 @@ router.post('/challenge', async (req: Request, res: Response) => {
         if (!phoneNumber) {
           return res.status(400).json({ error: 'Phone number required for SMS challenge' });
         }
-        const smsResult = await sendSmsOtp(user.id, phoneNumber, user.tenant_id || null);
+        const smsResult = await sendSmsOtp(user.id, phoneNumber, user.tenantId || null);
         return res.json({
           success: smsResult.success,
           method: 'sms',

@@ -243,7 +243,7 @@ export class ErrorMonitor {
     const delay = Math.min(exponentialDelay + jitter, policy.maxDelayMs);
 
     error.nextRetryAt = new Date(Date.now() + delay);
-    error.updated_at = new Date();
+    error.updatedAt = new Date();
 
     console.log(
       `Scheduling retry for error ${error.id} in ${delay}ms (attempt ${error.retryCount + 1}/${error.maxRetries})`,
@@ -273,7 +273,7 @@ export class ErrorMonitor {
     }
 
     error.retryCount++;
-    error.updated_at = new Date();
+    error.updatedAt = new Date();
     error.nextRetryAt = undefined;
 
     console.log(
@@ -426,7 +426,7 @@ export class ErrorMonitor {
       );
 
       const recentErrors = errors.filter(
-        (error) => error.created_at > new Date(Date.now() - 24 * 60 * 60 * 1000),
+        (error) => error.createdAt > new Date(Date.now() - 24 * 60 * 60 * 1000),
       );
 
       const totalAttempts = recentErrors.length;
@@ -449,7 +449,7 @@ export class ErrorMonitor {
         status,
         uptime: this.calculateUptime(errors),
         errorRate,
-        lastError: errors.length > 0 ? errors[errors.length - 1].created_at : undefined,
+        lastError: errors.length > 0 ? errors[errors.length - 1].createdAt : undefined,
         lastSuccess: integration[0].lastSync || undefined,
         responseTime: this.calculateAverageResponseTime(integrationId),
         errorCount,
@@ -466,7 +466,7 @@ export class ErrorMonitor {
    */
   private static calculateUptime(errors: IntegrationError[]): number {
     const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const recentErrors = errors.filter((error) => error.created_at > last24Hours);
+    const recentErrors = errors.filter((error) => error.createdAt > last24Hours);
 
     // Simple uptime calculation: assume 5 minutes downtime per unresolved error
     const downtime = recentErrors.filter((error) => !error.resolved).length * 5;
@@ -489,7 +489,7 @@ export class ErrorMonitor {
   static getErrorsForIntegration(integrationId: string): IntegrationError[] {
     return Array.from(this.errors.values())
       .filter((error) => error.integrationId === integrationId)
-      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   /**
@@ -498,7 +498,7 @@ export class ErrorMonitor {
   static getUnresolvedErrors(): IntegrationError[] {
     return Array.from(this.errors.values())
       .filter((error) => !error.resolved)
-      .sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   /**
@@ -508,7 +508,7 @@ export class ErrorMonitor {
     const error = this.errors.get(errorId);
     if (error) {
       error.resolved = true;
-      error.updated_at = new Date();
+      error.updatedAt = new Date();
 
       // Cancel any pending retries
       const timeout = this.retryQueue.get(errorId);
@@ -537,7 +537,7 @@ export class ErrorMonitor {
     let deletedCount = 0;
 
     for (const [id, error] of this.errors.entries()) {
-      if (error.created_at < cutoffDate && error.resolved) {
+      if (error.createdAt < cutoffDate && error.resolved) {
         this.errors.delete(id);
         deletedCount++;
       }

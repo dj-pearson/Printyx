@@ -91,8 +91,8 @@ export function registerSalesforceRoutes(app: Express) {
 
               // Transform Salesforce record to Printyx format
               const tenantId =
-                (req as AuthenticatedRequest).user?.tenant_id ||
-                (req as any).session?.user?.tenant_id;
+                (req as AuthenticatedRequest).user?.tenantId ||
+                (req as any).session?.user?.tenantId;
               if (!tenantId) {
                 return res.status(403).json({ error: 'No tenant context found' });
               }
@@ -344,7 +344,7 @@ async function checkForDuplicate(
           .where(
             and(
               eq(businessRecords.externalSalesforceId, salesforceRecord.Id),
-              eq(businessRecords.tenant_id, transformedRecord.tenant_id),
+              eq(businessRecords.tenantId, transformedRecord.tenantId),
             ),
           )
           .limit(1);
@@ -357,7 +357,7 @@ async function checkForDuplicate(
           .where(
             and(
               eq(enhancedContacts.externalContactId, salesforceRecord.Id),
-              eq(enhancedContacts.tenant_id, transformedRecord.tenant_id),
+              eq(enhancedContacts.tenantId, transformedRecord.tenantId),
             ),
           )
           .limit(1);
@@ -370,7 +370,7 @@ async function checkForDuplicate(
           .where(
             and(
               eq(opportunities.externalOpportunityId, salesforceRecord.Id),
-              eq(opportunities.tenant_id, transformedRecord.tenant_id),
+              eq(opportunities.tenantId, transformedRecord.tenantId),
             ),
           )
           .limit(1);
@@ -383,7 +383,7 @@ async function checkForDuplicate(
           .where(
             and(
               eq(enhancedProducts.externalProductId, salesforceRecord.Id),
-              eq(enhancedProducts.tenant_id, transformedRecord.tenant_id),
+              eq(enhancedProducts.tenantId, transformedRecord.tenantId),
             ),
           )
           .limit(1);

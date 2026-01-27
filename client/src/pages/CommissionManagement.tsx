@@ -179,8 +179,8 @@ export default function CommissionManagement() {
       data.map((plan) => ({
         ...plan,
         effectiveDate: new Date(plan.effectiveDate || plan.effective_date),
-        createdAt: new Date(plan.createdAt || plan.created_at),
-        updatedAt: new Date(plan.updatedAt || plan.updated_at),
+        createdAt: new Date(plan.createdAt || plan.createdAt),
+        updatedAt: new Date(plan.updatedAt || plan.updatedAt),
       })),
   });
 
@@ -196,10 +196,8 @@ export default function CommissionManagement() {
         ...calc,
         calculationPeriod: {
           ...calc.calculationPeriod,
-          startDate: new Date(
-            calc.calculationPeriod.startDate || calc.calculationPeriod.start_date,
-          ),
-          endDate: new Date(calc.calculationPeriod.endDate || calc.calculationPeriod.end_date),
+          startDate: new Date(calc.calculationPeriod.startDate || calc.calculationPeriod.startDate),
+          endDate: new Date(calc.calculationPeriod.endDate || calc.calculationPeriod.endDate),
         },
         summary: {
           ...calc.summary,
@@ -227,7 +225,7 @@ export default function CommissionManagement() {
       return (response || []).map((dispute: any) => ({
         ...dispute,
         id: dispute.id,
-        createdAt: dispute.created_at || dispute.createdAt || '',
+        createdAt: dispute.createdAt || dispute.createdAt || '',
       }));
     },
   });

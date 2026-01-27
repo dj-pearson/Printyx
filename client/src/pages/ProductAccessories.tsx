@@ -63,8 +63,8 @@ export default function ProductAccessories() {
         id: accessory.id,
         accessoryName: accessory.accessory_name || accessory.accessoryName || '',
         modelId: accessory.model_id || accessory.modelId || null,
-        createdAt: accessory.created_at || accessory.createdAt || '',
-        updatedAt: accessory.updated_at || accessory.updatedAt || '',
+        createdAt: accessory.createdAt || accessory.createdAt || '',
+        updatedAt: accessory.updatedAt || accessory.updatedAt || '',
       }));
     },
   });
@@ -76,7 +76,7 @@ export default function ProductAccessories() {
       return (response || []).map((model: any) => ({
         ...model,
         id: model.id,
-        modelNumber: model.model_number || model.modelNumber || '',
+        modelNumber: model.modelNumber || model.modelNumber || '',
         modelName: model.model_name || model.modelName || '',
       }));
     },

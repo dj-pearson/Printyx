@@ -197,13 +197,13 @@ export function enforceSessionTimeout(options?: {
 
     // Skip for unauthenticated requests
     const session = req.session as any;
-    if (!session?.user_id) {
+    if (!session?.userId) {
       return next();
     }
 
     try {
       // Get tenant-specific config
-      const config = await getSessionConfig(session.tenant_id);
+      const config = await getSessionConfig(session.tenantId);
 
       // Check if session is expired
       const { expired, reason } = isSessionExpired(session);
@@ -211,7 +211,7 @@ export function enforceSessionTimeout(options?: {
       if (expired) {
         // Log the timeout
         console.log(
-          `[SESSION] Session expired due to ${reason} timeout for user ${session.user_id}`,
+          `[SESSION] Session expired due to ${reason} timeout for user ${session.userId}`,
         );
 
         // Call custom callback if provided
@@ -283,11 +283,11 @@ async function recordSessionTermination(session: any, reason: string): Promise<v
       .insert(securitySessions)
       .values({
         sessionId: session.id || 'unknown',
-        userId: metadata.user_id,
-        tenantId: metadata.tenant_id || '',
+        userId: metadata.userId,
+        tenantId: metadata.tenantId || '',
         ipAddress: metadata.deviceInfo?.ip || 'unknown',
         userAgent: metadata.deviceInfo?.userAgent,
-        createdAt: new Date(metadata.created_at),
+        createdAt: new Date(metadata.createdAt),
         lastActivity: new Date(metadata.lastActivity),
         expiresAt: new Date(Math.min(metadata.absoluteExpiry, metadata.idleExpiry)),
         terminatedAt: new Date(),
@@ -310,9 +310,9 @@ export function extendSessionOnActivity() {
   return async (req: Request, res: Response, next: NextFunction) => {
     const session = req.session as any;
 
-    if (session?.sessionMetadata && session?.user_id) {
+    if (session?.sessionMetadata && session?.userId) {
       try {
-        const config = await getSessionConfig(session.tenant_id);
+        const config = await getSessionConfig(session.tenantId);
         updateSessionActivity(session, config);
 
         // Reset warning flag on activity
@@ -347,7 +347,7 @@ export async function logoutOtherSessions(
       })
       .where(
         and(
-          eq(securitySessions.user_id, userId),
+          eq(securitySessions.userId, userId),
           eq(securitySessions.isActive, true),
           // Don't terminate current session
           // Note: We can't easily compare session IDs here, so we terminate all
@@ -404,14 +404,14 @@ export async function getActiveSessions(userId: string): Promise<
     const sessions = await db
       .select()
       .from(securitySessions)
-      .where(and(eq(securitySessions.user_id, userId), eq(securitySessions.isActive, true)));
+      .where(and(eq(securitySessions.userId, userId), eq(securitySessions.isActive, true)));
 
     return sessions.map((session) => ({
       id: session.id,
       deviceInfo: session.userAgent || 'Unknown device',
       ipAddress: session.ipAddress,
       lastActivity: session.lastActivity,
-      createdAt: session.created_at,
+      createdAt: session.createdAt,
       isCurrent: false, // Will be set by the caller based on current session ID
     }));
   } catch (error) {
@@ -437,7 +437,7 @@ export async function terminateSession(
         terminationReason: 'user_terminated',
         terminatedBy,
       })
-      .where(and(eq(securitySessions.id, sessionId), eq(securitySessions.user_id, userId)));
+      .where(and(eq(securitySessions.id, sessionId), eq(securitySessions.userId, userId)));
 
     return true;
   } catch (error) {

@@ -118,7 +118,7 @@ async function checkDuplicateRecord(
     company?: string;
   },
 ) {
-  const conditions = [eq(businessRecords.tenant_id, tenantId)];
+  const conditions = [eq(businessRecords.tenantId, tenantId)];
 
   // Primary check: LinkedIn URL (most reliable)
   if (params.linkedinUrl) {
@@ -132,7 +132,7 @@ async function checkDuplicateRecord(
       .from(businessRecords)
       .where(
         and(
-          eq(businessRecords.tenant_id, tenantId),
+          eq(businessRecords.tenantId, tenantId),
           sql`LOWER(REPLACE(REPLACE(${businessRecords.linkedinUrl}, 'https://', ''), 'www.', '')) = ${normalizedUrl}`,
         ),
       )
@@ -150,7 +150,7 @@ async function checkDuplicateRecord(
       .from(businessRecords)
       .where(
         and(
-          eq(businessRecords.tenant_id, tenantId),
+          eq(businessRecords.tenantId, tenantId),
           eq(businessRecords.email, params.email.toLowerCase()),
         ),
       )
@@ -168,7 +168,7 @@ async function checkDuplicateRecord(
       .from(businessRecords)
       .where(
         and(
-          eq(businessRecords.tenant_id, tenantId),
+          eq(businessRecords.tenantId, tenantId),
           sql`LOWER(${businessRecords.companyName}) = LOWER(${params.company})`,
           sql`(LOWER(CONCAT(${businessRecords.firstName}, ' ', ${businessRecords.lastName})) = LOWER(${params.name}) OR
                LOWER(CONCAT(${businessRecords.lastName}, ' ', ${businessRecords.firstName})) = LOWER(${params.name}))`,
@@ -202,7 +202,7 @@ async function checkDuplicateRecord(
  */
 router.post('/leads/quick-import', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user.tenantId;
     const userId = req.user.claims?.sub || req.user.id;
 
     if (!tenantId || !userId) {
@@ -400,7 +400,7 @@ router.post('/leads/quick-import', isAuthenticated, async (req: any, res) => {
  */
 router.get('/leads/check-duplicate', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user.tenantId;
 
     if (!tenantId) {
       return res.status(403).json({ error: 'No tenant ID found' });
@@ -422,7 +422,7 @@ router.get('/leads/check-duplicate', isAuthenticated, async (req: any, res) => {
             company: duplicateCheck.record.companyName,
             jobTitle: duplicateCheck.record.jobTitle,
             status: duplicateCheck.record.status,
-            createdAt: duplicateCheck.record.created_at,
+            createdAt: duplicateCheck.record.createdAt,
           }
         : null,
     });
@@ -451,7 +451,7 @@ router.get('/leads/check-duplicate', isAuthenticated, async (req: any, res) => {
  */
 router.post('/auth/generate-key', isAuthenticated, async (req: any, res) => {
   try {
-    const tenantId = req.user.tenant_id;
+    const tenantId = req.user.tenantId;
     const userId = req.user.claims?.sub || req.user.id;
 
     if (!tenantId || !userId) {
@@ -494,7 +494,7 @@ router.post('/auth/generate-key', isAuthenticated, async (req: any, res) => {
  * Health check endpoint for extension to verify API connectivity
  */
 router.get('/health', isAuthenticated, async (req: any, res) => {
-  const tenantId = req.user.tenant_id;
+  const tenantId = req.user.tenantId;
   const userId = req.user.claims?.sub || req.user.id;
 
   // Check Apollo.io integration status

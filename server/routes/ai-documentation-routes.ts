@@ -27,7 +27,7 @@ router.post('/documents', async (req, res) => {
       return res.status(400).json({ error: 'Document title is required' });
     }
 
-    const document = await AIDocumentationService.createDocument(req.user.tenant_id, req.user.id, {
+    const document = await AIDocumentationService.createDocument(req.user.tenantId, req.user.id, {
       title,
       description,
       documentTypeId,
@@ -56,7 +56,7 @@ router.get('/documents', async (req, res) => {
     const documents = [
       {
         id: 'doc-1',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         title: 'Q4 Strategic Planning Meeting Minutes',
         description: 'Comprehensive minutes from Q4 strategic planning session',
         status: 'published',
@@ -92,7 +92,7 @@ router.get('/documents', async (req, res) => {
       },
       {
         id: 'doc-2',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         title: 'Enterprise Client Proposal - TechCorp Solutions',
         description: 'Comprehensive proposal for TechCorp enterprise engagement',
         status: 'review',
@@ -126,7 +126,7 @@ router.get('/documents', async (req, res) => {
       },
       {
         id: 'doc-3',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         title: 'Project Status Report - Q3 Implementation',
         description: 'Detailed progress report for Q3 implementation milestones',
         status: 'draft',
@@ -206,7 +206,7 @@ router.get('/documents/:documentId', async (req, res) => {
     // Mock document retrieval
     const document = {
       id: documentId,
-      tenantId: req.user.tenant_id,
+      tenantId: req.user.tenantId,
       title: 'Q4 Strategic Planning Meeting Minutes',
       description: 'Comprehensive minutes from Q4 strategic planning session',
       status: 'published',
@@ -427,7 +427,7 @@ router.post('/documents/from-meeting', async (req, res) => {
     }
 
     const document = await AIDocumentationService.generateDocumentFromMeeting(
-      req.user.tenant_id,
+      req.user.tenantId,
       req.user.id,
       meetingId,
       transcriptionData,
@@ -508,7 +508,7 @@ router.post('/knowledge/articles', async (req, res) => {
     }
 
     const result = await AIDocumentationService.createKnowledgeArticle(
-      req.user.tenant_id,
+      req.user.tenantId,
       req.user.id,
       { title, category, subcategory, content, tags, targetAudience },
     );
@@ -532,7 +532,7 @@ router.get('/knowledge/articles', async (req, res) => {
     const articles = [
       {
         id: 'article-1',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         title: 'How to Set Up AI-Powered Meeting Transcription',
         slug: 'how-to-set-up-ai-powered-meeting-transcription',
         category: 'tutorials',
@@ -580,7 +580,7 @@ router.get('/knowledge/articles', async (req, res) => {
       },
       {
         id: 'article-2',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         title: 'Best Practices for AI Document Generation',
         slug: 'best-practices-for-ai-document-generation',
         category: 'best_practices',
@@ -683,7 +683,7 @@ router.post('/documents/search', async (req, res) => {
     }
 
     const searchResults = await AIDocumentationService.searchDocuments(
-      req.user.tenant_id,
+      req.user.tenantId,
       query,
       filters,
       options,
@@ -707,7 +707,7 @@ router.get('/analytics/writing', async (req, res) => {
       end_date = new Date().toISOString(),
     } = req.query;
 
-    const analytics = await AIDocumentationService.getWritingAnalytics(req.user.tenant_id, {
+    const analytics = await AIDocumentationService.getWritingAnalytics(req.user.tenantId, {
       start: new Date(start_date as string),
       end: new Date(end_date as string),
     });

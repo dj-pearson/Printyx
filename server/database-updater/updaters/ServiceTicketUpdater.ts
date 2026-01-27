@@ -111,7 +111,7 @@ export class ServiceTicketUpdater extends BaseUpdater {
         for (const ticket of tickets) {
           await tx.insert(serviceTickets).values({
             id: ticket.id,
-            tenantId: ticket.tenant_id,
+            tenantId: ticket.tenantId,
             customerId: ticket.customerId,
             equipmentId: ticket.equipmentId,
             ticketNumber: ticket.ticketNumber,
@@ -128,8 +128,8 @@ export class ServiceTicketUpdater extends BaseUpdater {
             requiredParts: ticket.requiredParts,
             workOrderNotes: ticket.workOrderNotes,
             createdBy: ticket.createdBy,
-            createdAt: ticket.created_at,
-            updatedAt: ticket.updated_at,
+            createdAt: ticket.createdAt,
+            updatedAt: ticket.updatedAt,
           });
         }
       });
@@ -152,7 +152,7 @@ export class ServiceTicketUpdater extends BaseUpdater {
 
     const ticket: ServiceTicketData = {
       id: this.generateUuid(),
-      tenantId: this.tenant_id,
+      tenantId: this.tenantId,
       customerId: this.customerId!,
       ticketNumber: `ST-${this.ticketCounter++}`,
       title: this.generateTitle(ticketType),
@@ -495,8 +495,8 @@ export class ServiceTicketUpdater extends BaseUpdater {
       const latestTicket = await db
         .select({ ticketNumber: serviceTickets.ticketNumber })
         .from(serviceTickets)
-        .where(eq(serviceTickets.tenant_id, this.tenant_id))
-        .orderBy(serviceTickets.created_at)
+        .where(eq(serviceTickets.tenantId, this.tenantId))
+        .orderBy(serviceTickets.createdAt)
         .limit(1);
 
       if (latestTicket.length > 0) {
@@ -523,7 +523,7 @@ export class ServiceTicketUpdater extends BaseUpdater {
         .select({ id: equipment.id })
         .from(equipment)
         .where(
-          and(eq(equipment.tenant_id, this.tenant_id), eq(equipment.customerId, this.customerId!)),
+          and(eq(equipment.tenantId, this.tenantId), eq(equipment.customerId, this.customerId!)),
         )
         .limit(20);
 

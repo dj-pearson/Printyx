@@ -22,7 +22,7 @@ function requireAuth(req: any, res: any, next: any) {
     return res.status(401).json({ message: 'Not authenticated' });
   }
   // Store tenantId on request for easy access
-  req.tenant_id = tenantId;
+  req.tenantId = tenantId;
   next();
 }
 
@@ -38,11 +38,11 @@ export function registerServiceAnalysisRoutes(app: Express) {
         .from(serviceCallAnalysis)
         .where(
           and(
-            eq(serviceCallAnalysis.tenant_id, tenantId),
+            eq(serviceCallAnalysis.tenantId, tenantId),
             eq(serviceCallAnalysis.serviceTicketId, ticketId),
           ),
         )
-        .orderBy(desc(serviceCallAnalysis.created_at));
+        .orderBy(desc(serviceCallAnalysis.createdAt));
 
       res.json(analysis);
     } catch (error) {
@@ -69,12 +69,12 @@ export function registerServiceAnalysisRoutes(app: Express) {
         await db
           .update(serviceTickets)
           .set({ status: 'completed', updatedAt: new Date() })
-          .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenant_id, tenantId)));
+          .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
       } else if (analysisData.outcome === 'requires_parts') {
         await db
           .update(serviceTickets)
           .set({ status: 'awaiting_parts', updatedAt: new Date() })
-          .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenant_id, tenantId)));
+          .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
       }
 
       res.status(201).json(newAnalysis);
@@ -94,7 +94,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
       const [updatedAnalysis] = await db
         .update(serviceCallAnalysis)
         .set({ ...updateData, updatedAt: new Date() })
-        .where(and(eq(serviceCallAnalysis.id, id), eq(serviceCallAnalysis.tenant_id, tenantId)))
+        .where(and(eq(serviceCallAnalysis.id, id), eq(serviceCallAnalysis.tenantId, tenantId)))
         .returning();
 
       if (!updatedAnalysis) {
@@ -118,10 +118,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
         .select()
         .from(servicePartsUsed)
         .where(
-          and(
-            eq(servicePartsUsed.tenant_id, tenantId),
-            eq(servicePartsUsed.analysisId, analysisId),
-          ),
+          and(eq(servicePartsUsed.tenantId, tenantId), eq(servicePartsUsed.analysisId, analysisId)),
         );
 
       res.json(parts);
@@ -162,7 +159,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
         .select()
         .from(serviceCallAnalysis)
         .where(
-          and(eq(serviceCallAnalysis.id, analysisId), eq(serviceCallAnalysis.tenant_id, tenantId)),
+          and(eq(serviceCallAnalysis.id, analysisId), eq(serviceCallAnalysis.tenantId, tenantId)),
         )
         .limit(1);
 
@@ -196,8 +193,8 @@ export function registerServiceAnalysisRoutes(app: Express) {
       const orders = await db
         .select()
         .from(partsOrders)
-        .where(and(eq(partsOrders.tenant_id, tenantId), eq(partsOrders.analysisId, analysisId)))
-        .orderBy(desc(partsOrders.created_at));
+        .where(and(eq(partsOrders.tenantId, tenantId), eq(partsOrders.analysisId, analysisId)))
+        .orderBy(desc(partsOrders.createdAt));
 
       res.json(orders);
     } catch (error) {
@@ -221,7 +218,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
           actualDeliveryDate: actualDeliveryDate ? new Date(actualDeliveryDate) : undefined,
           updatedAt: new Date(),
         })
-        .where(and(eq(partsOrders.id, orderId), eq(partsOrders.tenant_id, tenantId)))
+        .where(and(eq(partsOrders.id, orderId), eq(partsOrders.tenantId, tenantId)))
         .returning();
 
       if (!updatedOrder) {
@@ -268,7 +265,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
       const items = await db
         .select()
         .from(partsOrderItems)
-        .where(and(eq(partsOrderItems.tenant_id, tenantId), eq(partsOrderItems.orderId, orderId)));
+        .where(and(eq(partsOrderItems.tenantId, tenantId), eq(partsOrderItems.orderId, orderId)));
 
       res.json(items);
     } catch (error) {
@@ -291,7 +288,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
           partsRequiredCount: sql<number>`count(*) filter (where ${serviceCallAnalysis.outcome} = 'requires_parts')`,
         })
         .from(serviceCallAnalysis)
-        .where(eq(serviceCallAnalysis.tenant_id, tenantId));
+        .where(eq(serviceCallAnalysis.tenantId, tenantId));
 
       const partsOrderStats = await db
         .select({
@@ -301,7 +298,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
           deliveredOrders: sql<number>`count(*) filter (where ${partsOrders.status} = 'delivered')`,
         })
         .from(partsOrders)
-        .where(eq(partsOrders.tenant_id, tenantId));
+        .where(eq(partsOrders.tenantId, tenantId));
 
       res.json({
         serviceStats: stats[0],
@@ -327,14 +324,14 @@ export function registerServiceAnalysisRoutes(app: Express) {
           onSiteTime: serviceCallAnalysis.onSiteTime,
           customerSatisfactionScore: serviceCallAnalysis.customerSatisfactionScore,
           totalLaborCost: serviceCallAnalysis.totalLaborCost,
-          createdAt: serviceCallAnalysis.created_at,
+          createdAt: serviceCallAnalysis.createdAt,
           ticketTitle: serviceTickets.title,
           ticketPriority: serviceTickets.priority,
         })
         .from(serviceCallAnalysis)
         .leftJoin(serviceTickets, eq(serviceCallAnalysis.serviceTicketId, serviceTickets.id))
-        .where(eq(serviceCallAnalysis.tenant_id, tenantId))
-        .orderBy(desc(serviceCallAnalysis.created_at))
+        .where(eq(serviceCallAnalysis.tenantId, tenantId))
+        .orderBy(desc(serviceCallAnalysis.createdAt))
         .limit(limit);
 
       res.json(recentAnalyses);

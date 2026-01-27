@@ -181,11 +181,11 @@ export class SalesReportingService {
           ELSE 0
         END as conversion_rate
       FROM opportunities o
-      WHERE o.owner_id = ${userContext.id}
-        AND o.tenant_id = ${userContext.tenant_id}
+      WHERE o.ownerId = ${userContext.id}
+        AND o.tenantId = ${userContext.tenantId}
         AND o.stage NOT IN ('Closed Lost', 'Cancelled')
-        ${dateRange?.dateFrom ? sql`AND o.created_at >= ${dateRange.dateFrom}` : sql``}
-        ${dateRange?.dateTo ? sql`AND o.created_at <= ${dateRange.dateTo}` : sql``}
+        ${dateRange?.dateFrom ? sql`AND o.createdAt >= ${dateRange.dateFrom}` : sql``}
+        ${dateRange?.dateTo ? sql`AND o.createdAt <= ${dateRange.dateTo}` : sql``}
       GROUP BY o.stage
       ORDER BY
         CASE o.stage
@@ -236,8 +236,8 @@ export class SalesReportingService {
         SUM(CASE WHEN a.activity_type = 'demo' THEN 1 ELSE 0 END)::int as demos,
         SUM(CASE WHEN a.activity_type = 'proposal' THEN 1 ELSE 0 END)::int as proposals
       FROM activities a
-      WHERE a.user_id = ${userContext.id}
-        AND a.tenant_id = ${userContext.tenant_id}
+      WHERE a.userId = ${userContext.id}
+        AND a.tenantId = ${userContext.tenantId}
         AND a.activity_date >= ${dateRange.dateFrom}
         AND a.activity_date <= ${dateRange.dateTo}
       GROUP BY TO_CHAR(a.activity_date, ${dateFormat})
@@ -286,10 +286,10 @@ export class SalesReportingService {
       WITH quota_data AS (
         SELECT
           u.id as user_id,
-          CONCAT(u.first_name, ' ', u.last_name) as user_name,
+          CONCAT(u.firstName, ' ', u.lastName) as user_name,
           COALESCE(q.quota_amount, 0) as quota_amount
         FROM users u
-        LEFT JOIN quotas q ON q.user_id = u.id
+        LEFT JOIN quotas q ON q.userId = u.id
           AND q.quota_period = ${period === 'ytd' ? 'yearly' : 'monthly'}
           AND q.quota_year = EXTRACT(YEAR FROM CURRENT_DATE)
           ${period !== 'ytd' ? sql`AND q.quota_month = EXTRACT(MONTH FROM ${dateFilter})` : sql``}
@@ -301,14 +301,14 @@ export class SalesReportingService {
           COUNT(o.id)::int as deals_won,
           AVG(o.amount) as avg_deal_size
         FROM opportunities o
-        WHERE o.owner_id = ${userContext.id}
-          AND o.tenant_id = ${userContext.tenant_id}
+        WHERE o.ownerId = ${userContext.id}
+          AND o.tenantId = ${userContext.tenantId}
           AND o.stage = 'Closed Won'
           AND o.close_date >= ${dateFilter}
           ${period !== 'ytd' ? sql`AND o.close_date < ${dateFilter} + INTERVAL '1 month'` : sql``}
       )
       SELECT
-        qd.user_id,
+        qd.userId,
         qd.user_name,
         qd.quota_amount,
         COALESCE(rd.actual_revenue, 0)::decimal as actual_revenue,
@@ -326,7 +326,7 @@ export class SalesReportingService {
     const row = result.rows[0] as any;
 
     const attainment: QuotaAttainment = {
-      userId: row.user_id,
+      userId: row.userId,
       userName: row.user_name,
       quotaAmount: parseFloat(row.quota_amount || 0),
       actualRevenue: parseFloat(row.actual_revenue || 0),
@@ -366,11 +366,11 @@ export class SalesReportingService {
         COALESCE(cp.status, 'pending') as status,
         cp.payment_date
       FROM opportunities o
-      JOIN business_records c ON o.customer_id = c.id
-      LEFT JOIN commission_plans cp ON cp.user_id = ${userContext.id}
+      JOIN business_records c ON o.customerId = c.id
+      LEFT JOIN commission_plans cp ON cp.userId = ${userContext.id}
         AND cp.opportunity_id = o.id
-      WHERE o.owner_id = ${userContext.id}
-        AND o.tenant_id = ${userContext.tenant_id}
+      WHERE o.ownerId = ${userContext.id}
+        AND o.tenantId = ${userContext.tenantId}
         AND o.stage = 'Closed Won'
         AND o.close_date >= ${dateRange.dateFrom}
         AND o.close_date <= ${dateRange.dateTo}
@@ -403,7 +403,7 @@ export class SalesReportingService {
     metric: 'revenue' | 'deals' | 'pipeline' | 'activities' = 'revenue',
     scope: 'team' | 'location' | 'company' = 'location',
   ): Promise<LeaderboardEntry[]> {
-    const cacheKey = `leaderboard:${metric}:${scope}:${userContext.tenant_id}`;
+    const cacheKey = `leaderboard:${metric}:${scope}:${userContext.tenantId}`;
     const cached = ReportCache.get<LeaderboardEntry[]>(cacheKey);
     if (cached) return cached;
 
@@ -440,15 +440,15 @@ export class SalesReportingService {
       WITH current_period AS (
         SELECT
           u.id as user_id,
-          CONCAT(u.first_name, ' ', u.last_name) as user_name,
+          CONCAT(u.firstName, ' ', u.lastName) as user_name,
           u.profile_image_url as user_avatar,
           ${metricSql} as metric_value
         FROM users u
-        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenant_id}
-        LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN opportunities o ON o.ownerId = u.id AND o.tenantId = ${userContext.tenantId}
+        LEFT JOIN activities a ON a.userId = u.id AND a.tenantId = ${userContext.tenantId}
         WHERE u.id = ANY(${userIds})
-          AND u.tenant_id = ${userContext.tenant_id}
-        GROUP BY u.id, u.first_name, u.last_name, u.profile_image_url
+          AND u.tenantId = ${userContext.tenantId}
+        GROUP BY u.id, u.firstName, u.lastName, u.profile_image_url
       ),
       ranked AS (
         SELECT
@@ -470,7 +470,7 @@ export class SalesReportingService {
 
     const leaderboard: LeaderboardEntry[] = result.rows.map((row: any) => ({
       rank: parseInt(row.rank),
-      userId: row.user_id,
+      userId: row.userId,
       userName: row.user_name,
       userAvatar: row.user_avatar,
       metricValue: parseFloat(row.metric_value || 0),
@@ -496,7 +496,7 @@ export class SalesReportingService {
     const teamMemberIds = await db.execute(sql`
       SELECT id FROM users
       WHERE manager_id = ${userContext.id}
-        AND tenant_id = ${userContext.tenant_id}
+        AND tenant_id = ${userContext.tenantId}
         AND is_active = true
     `);
 
@@ -506,7 +506,7 @@ export class SalesReportingService {
       WITH metrics AS (
         SELECT
           u.id as user_id,
-          CONCAT(u.first_name, ' ', u.last_name) as user_name,
+          CONCAT(u.firstName, ' ', u.lastName) as user_name,
           COALESCE(SUM(o.amount) FILTER (WHERE o.stage NOT IN ('Closed Won', 'Closed Lost')), 0) as pipeline_value,
           COUNT(o.id) FILTER (WHERE o.stage NOT IN ('Closed Won', 'Closed Lost'))::int as deals_in_progress,
           CASE
@@ -523,12 +523,12 @@ export class SalesReportingService {
             ELSE 0
           END as quota_attainment
         FROM users u
-        LEFT JOIN opportunities o ON o.owner_id = u.id AND o.tenant_id = ${userContext.tenant_id}
-        LEFT JOIN activities a ON a.user_id = u.id AND a.tenant_id = ${userContext.tenant_id}
-        LEFT JOIN quotas q ON q.user_id = u.id AND q.quota_period = 'monthly'
+        LEFT JOIN opportunities o ON o.ownerId = u.id AND o.tenantId = ${userContext.tenantId}
+        LEFT JOIN activities a ON a.userId = u.id AND a.tenantId = ${userContext.tenantId}
+        LEFT JOIN quotas q ON q.userId = u.id AND q.quota_period = 'monthly'
         WHERE u.id = ANY(${userIds})
-          AND u.tenant_id = ${userContext.tenant_id}
-        GROUP BY u.id, u.first_name, u.last_name, q.quota_amount
+          AND u.tenantId = ${userContext.tenantId}
+        GROUP BY u.id, u.firstName, u.lastName, q.quota_amount
       )
       SELECT
         user_id,
@@ -544,7 +544,7 @@ export class SalesReportingService {
     `);
 
     const comparison: TeamComparison[] = result.rows.map((row: any) => ({
-      userId: row.user_id,
+      userId: row.userId,
       userName: row.user_name,
       pipelineValue: parseFloat(row.pipeline_value || 0),
       dealsInProgress: parseInt(row.deals_in_progress),
@@ -603,7 +603,7 @@ export class SalesReportingService {
 
     const dateFilter =
       dateRange?.dateFrom && dateRange?.dateTo
-        ? sql`AND o.created_at BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
+        ? sql`AND o.createdAt BETWEEN ${dateRange.dateFrom.toISOString()} AND ${dateRange.dateTo.toISOString()}`
         : sql``;
 
     // Get aggregated team pipeline
@@ -616,8 +616,8 @@ export class SalesReportingService {
         AVG(o.amount)::decimal as average_deal_size,
         COUNT(CASE WHEN o.stage = 'Closed Won' THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as conversion_rate
       FROM opportunities o
-      WHERE o.owner_id = ANY(${sql.raw(`ARRAY[${accessibleUserIds.map((id) => `'${id}'`).join(',')}]`)})
-        AND o.tenant_id = ${userContext.tenant_id}
+      WHERE o.ownerId = ANY(${sql.raw(`ARRAY[${accessibleUserIds.map((id) => `'${id}'`).join(',')}]`)})
+        AND o.tenantId = ${userContext.tenantId}
         AND o.stage NOT IN ('Closed Lost', 'Cancelled')
         ${dateFilter}
       GROUP BY o.stage
@@ -653,17 +653,17 @@ export class SalesReportingService {
       const userResult = await db.execute(sql`
         SELECT
           u.id as user_id,
-          u.full_name as user_name,
+          u.fullName as user_name,
           o.stage,
           COUNT(o.id)::int as count,
           SUM(o.amount)::decimal as total_value
         FROM users u
-        LEFT JOIN opportunities o ON o.owner_id = u.id
-          AND o.tenant_id = ${userContext.tenant_id}
+        LEFT JOIN opportunities o ON o.ownerId = u.id
+          AND o.tenantId = ${userContext.tenantId}
           AND o.stage NOT IN ('Closed Lost', 'Cancelled')
           ${dateFilter}
         WHERE u.id = ${userId}
-        GROUP BY u.id, u.full_name, o.stage
+        GROUP BY u.id, u.fullName, o.stage
         ORDER BY CASE o.stage
           WHEN 'Lead' THEN 1
           WHEN 'Qualified' THEN 2
@@ -708,7 +708,7 @@ export class SalesReportingService {
     const topPerformer =
       individualPipelines.length > 0
         ? {
-            userId: individualPipelines[0].user_id,
+            userId: individualPipelines[0].userId,
             userName: individualPipelines[0].userName,
             value: individualPipelines[0].totalValue,
           }

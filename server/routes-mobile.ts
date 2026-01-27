@@ -22,7 +22,7 @@ const router = express.Router();
 // Get mobile dashboard data for technicians
 router.get('/api/mobile/dashboard', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const technicianId = req.user?.id;
 
     if (!tenantId) {
@@ -267,7 +267,7 @@ router.get('/api/mobile/dashboard', async (req: any, res) => {
 // Get detailed job information for mobile view
 router.get('/api/mobile/jobs/:jobId', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { jobId } = req.params;
 
     if (!tenantId) {
@@ -413,7 +413,7 @@ router.get('/api/mobile/jobs/:jobId', async (req: any, res) => {
 // Update job status from mobile app
 router.post('/api/mobile/jobs/:jobId/status', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { jobId } = req.params;
     const { status, notes, location, photos, timeSpent, partsUsed } = req.body;
 
@@ -493,7 +493,7 @@ router.post('/api/mobile/jobs/:jobId/status', async (req: any, res) => {
 // Get technician location and route optimization
 router.get('/api/mobile/route-optimization', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const technicianId = req.user?.id;
 
     if (!tenantId) {
@@ -590,7 +590,7 @@ router.get('/api/mobile/route-optimization', async (req: any, res) => {
 // Submit service report with photos and signature
 router.post('/api/mobile/service-report', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const {
       jobId,
       workPerformed,
@@ -687,7 +687,7 @@ router.post('/api/mobile/service-report', async (req: any, res) => {
 // Generate and download PDF service report
 router.get('/api/mobile/service-report/:reportId/pdf', async (req: any, res) => {
   try {
-    const tenantId = req.user?.tenant_id;
+    const tenantId = req.user?.tenantId;
     const { reportId } = req.params;
 
     if (!tenantId) {

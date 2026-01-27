@@ -462,7 +462,7 @@ export class DocumentProcessingService {
         where: eq(documentUploads.id, uploadId),
       });
 
-      if (!upload || upload.tenant_id !== tenantId) {
+      if (!upload || upload.tenantId !== tenantId) {
         throw new Error('Document not found');
       }
 

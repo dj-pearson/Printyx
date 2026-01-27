@@ -105,7 +105,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
   private mapCanonDevices(devices: any[]): DeviceInfo[] {
     return devices.map((device) => ({
       deviceId: device.device_id || device.id,
-      serialNumber: device.serial_number,
+      serialNumber: device.serialNumber,
       modelNumber: device.model || device.model_name,
       deviceName: device.name || device.device_name,
       ipAddress: device.ip_address,

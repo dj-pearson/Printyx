@@ -75,7 +75,7 @@ export async function emitWorkflowEvent(
       const workflow = trigger.workflow;
 
       // Skip if workflow is not active or doesn't belong to this tenant
-      if (!workflow || workflow.status !== 'active' || workflow.tenant_id !== tenantId) {
+      if (!workflow || workflow.status !== 'active' || workflow.tenantId !== tenantId) {
         console.log(`[Workflow Event] Skipping inactive or mismatched workflow: ${workflow?.id}`);
         continue;
       }
@@ -329,7 +329,7 @@ async function processQueuedExecutions(tenantId: string): Promise<void> {
   console.log(`[Workflow Execution] Processing queued executions for tenant: ${tenantId}`);
 
   const queuedExecutions = await db.query.workflowExecutions.findMany({
-    where: and(eq(workflowExecutions.tenant_id, tenantId), eq(workflowExecutions.status, 'queued')),
+    where: and(eq(workflowExecutions.tenantId, tenantId), eq(workflowExecutions.status, 'queued')),
     limit: 10, // Process in batches
   });
 

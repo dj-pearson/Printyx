@@ -37,7 +37,7 @@ router.post('/search/semantic', async (req, res) => {
     }
 
     const searchResults = await AISearchKnowledgeService.semanticSearch(
-      req.user.tenant_id,
+      req.user.tenantId,
       req.user.id,
       query.trim(),
       {
@@ -126,7 +126,7 @@ router.post('/search/feedback', async (req, res) => {
       queryId,
       answerId,
       userId: req.user.id,
-      tenantId: req.user.tenant_id,
+      tenantId: req.user.tenantId,
       rating: rating ? Number(rating) : undefined,
       feedback: feedback || null,
       clickedResults: clickedResults || [],
@@ -160,7 +160,7 @@ router.post('/knowledge/entities', async (req, res) => {
       return res.status(400).json({ error: 'Entity name and type are required' });
     }
 
-    const entity = await AISearchKnowledgeService.createKnowledgeEntity(req.user.tenant_id, {
+    const entity = await AISearchKnowledgeService.createKnowledgeEntity(req.user.tenantId, {
       name,
       type,
       description,
@@ -197,7 +197,7 @@ router.get('/knowledge/entities', async (req, res) => {
     const allEntities = [
       {
         id: 'entity-1',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         entityName: 'Motion AI',
         entityType: 'product',
         entityDescription: 'Advanced AI-powered productivity and automation platform',
@@ -229,7 +229,7 @@ router.get('/knowledge/entities', async (req, res) => {
       },
       {
         id: 'entity-2',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         entityName: 'Claude AI',
         entityType: 'technology',
         entityDescription: 'Large language model for AI-powered content generation and analysis',
@@ -261,7 +261,7 @@ router.get('/knowledge/entities', async (req, res) => {
       },
       {
         id: 'entity-3',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         entityName: 'Team Collaboration',
         entityType: 'concept',
         entityDescription: 'Methods and tools for effective team collaboration and communication',
@@ -293,7 +293,7 @@ router.get('/knowledge/entities', async (req, res) => {
       },
       {
         id: 'entity-4',
-        tenantId: req.user.tenant_id,
+        tenantId: req.user.tenantId,
         entityName: 'Vector Database',
         entityType: 'technology',
         entityDescription: 'Database optimized for storing and searching high-dimensional vectors',
@@ -367,8 +367,8 @@ router.get('/knowledge/entities', async (req, res) => {
           bValue = b.mentionFrequency;
           break;
         case 'updated':
-          aValue = a.updated_at.getTime();
-          bValue = b.updated_at.getTime();
+          aValue = a.updatedAt.getTime();
+          bValue = b.updatedAt.getTime();
           break;
         default:
           aValue = a.importanceScore;
@@ -415,7 +415,7 @@ router.get('/knowledge/entities/:entityId', async (req, res) => {
     // Mock entity retrieval - in production, this would query the database
     const entity = {
       id: entityId,
-      tenantId: req.user.tenant_id,
+      tenantId: req.user.tenantId,
       entityName: 'Motion AI',
       entityType: 'product',
       entityAliases: ['Motion', 'Motion AI Platform', 'AI Assistant'],
@@ -583,7 +583,7 @@ router.post('/search/embeddings', async (req, res) => {
     }
 
     const embedding = await AISearchKnowledgeService.createContentEmbedding(
-      req.user.tenant_id,
+      req.user.tenantId,
       contentId,
       contentType,
       {
@@ -619,7 +619,7 @@ router.get('/search/analytics', async (req, res) => {
       end_date = new Date().toISOString(),
     } = req.query;
 
-    const analytics = await AISearchKnowledgeService.getSearchAnalytics(req.user.tenant_id, {
+    const analytics = await AISearchKnowledgeService.getSearchAnalytics(req.user.tenantId, {
       start: new Date(start_date as string),
       end: new Date(end_date as string),
     });

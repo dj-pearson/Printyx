@@ -23,7 +23,7 @@ declare global {
  */
 export async function trackApiCall(req: Request, res: Response, next: NextFunction) {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (tenantId) {
       // Track asynchronously to not block the request
       UsageTrackingService.trackApiCall(tenantId, req.path).catch((error) => {
@@ -44,7 +44,7 @@ export async function trackApiCall(req: Request, res: Response, next: NextFuncti
  */
 export async function requireActiveSubscription(req: Request, res: Response, next: NextFunction) {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({
         error: 'No tenant context',
@@ -107,7 +107,7 @@ export async function requireActiveSubscription(req: Request, res: Response, nex
 export function requireFeature(featureSlug: string) {
   return async function (req: Request, res: Response, next: NextFunction) {
     try {
-      const tenantId = req.tenant_id;
+      const tenantId = req.tenantId;
       if (!tenantId) {
         return res.status(401).json({
           error: 'No tenant context',
@@ -166,7 +166,7 @@ export function requireFeature(featureSlug: string) {
  */
 export async function checkUsageLimits(req: Request, res: Response, next: NextFunction) {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return next();
     }
@@ -213,7 +213,7 @@ export async function checkUsageLimits(req: Request, res: Response, next: NextFu
  */
 export async function softCheckSubscription(req: Request, res: Response, next: NextFunction) {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (tenantId) {
       const status = await SubscriptionService.getSubscriptionStatus(tenantId);
       req.subscriptionStatus = status;
@@ -247,7 +247,7 @@ export async function softCheckSubscription(req: Request, res: Response, next: N
  */
 export async function requireTrialOrPaid(req: Request, res: Response, next: NextFunction) {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({
         error: 'No tenant context',
@@ -296,7 +296,7 @@ export async function requireTrialOrPaid(req: Request, res: Response, next: Next
  */
 export async function blockExpiredTrial(req: Request, res: Response, next: NextFunction) {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return next();
     }
@@ -326,7 +326,7 @@ export async function blockExpiredTrial(req: Request, res: Response, next: NextF
  */
 export async function requirePremiumPlan(req: Request, res: Response, next: NextFunction) {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({
         error: 'No tenant context',
@@ -382,7 +382,7 @@ export async function requirePremiumPlan(req: Request, res: Response, next: Next
  */
 export async function requireEnterprisePlan(req: Request, res: Response, next: NextFunction) {
   try {
-    const tenantId = req.tenant_id;
+    const tenantId = req.tenantId;
     if (!tenantId) {
       return res.status(401).json({
         error: 'No tenant context',

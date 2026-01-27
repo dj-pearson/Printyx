@@ -61,8 +61,8 @@ export default function WorkflowAutomation() {
         id: workflow.id,
         workflowName: workflow.workflow_name || workflow.workflowName || '',
         triggerType: workflow.trigger_type || workflow.triggerType || '',
-        createdAt: workflow.created_at || workflow.createdAt || '',
-        updatedAt: workflow.updated_at || workflow.updatedAt || '',
+        createdAt: workflow.createdAt || workflow.createdAt || '',
+        updatedAt: workflow.updatedAt || workflow.updatedAt || '',
       }));
     },
   });

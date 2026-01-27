@@ -42,7 +42,7 @@ router.post(
   auditLogMiddleware('CREATE_TERRITORY', 'sales_territories', 'medium', 'data_modification'),
   async (req: TenantRequest, res: Response) => {
     try {
-      const territory = await territoryManagementService.createTerritory(req.tenant_id!, req.body);
+      const territory = await territoryManagementService.createTerritory(req.tenantId!, req.body);
 
       res.status(201).json({
         message: 'Territory created successfully',
@@ -64,7 +64,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const { page, limit, type, ownerId, isActive, search } = req.query;
-      const result = await territoryManagementService.listTerritories(req.tenant_id!, {
+      const result = await territoryManagementService.listTerritories(req.tenantId!, {
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
         type: type as string,
@@ -89,10 +89,7 @@ router.get(
   requireRole(['admin', 'manager', 'sales_rep']),
   async (req: TenantRequest, res: Response) => {
     try {
-      const territory = await territoryManagementService.getTerritory(
-        req.tenant_id!,
-        req.params.id,
-      );
+      const territory = await territoryManagementService.getTerritory(req.tenantId!, req.params.id);
 
       if (!territory) {
         return res.status(404).json({ message: 'Territory not found' });
@@ -116,7 +113,7 @@ router.put(
   async (req: TenantRequest, res: Response) => {
     try {
       const territory = await territoryManagementService.updateTerritory(
-        req.tenant_id!,
+        req.tenantId!,
         req.params.id,
         req.body,
         req.user!.id,
@@ -142,7 +139,7 @@ router.delete(
   auditLogMiddleware('DELETE_TERRITORY', 'sales_territories', 'medium', 'data_modification'),
   async (req: TenantRequest, res: Response) => {
     try {
-      await territoryManagementService.deleteTerritory(req.tenant_id!, req.params.id, req.user!.id);
+      await territoryManagementService.deleteTerritory(req.tenantId!, req.params.id, req.user!.id);
 
       res.json({ message: 'Territory deleted successfully' });
     } catch (error) {
@@ -161,7 +158,7 @@ router.post(
   async (req: TenantRequest, res: Response) => {
     try {
       const territory = await territoryManagementService.findMatchingTerritory(
-        req.tenant_id!,
+        req.tenantId!,
         req.body,
       );
 
@@ -185,7 +182,7 @@ router.post(
       const { leadId } = req.body;
 
       await territoryManagementService.assignLeadToTerritory(
-        req.tenant_id!,
+        req.tenantId!,
         leadId,
         req.params.id,
         req.user!.id,
@@ -220,7 +217,7 @@ router.post(
   async (req: TenantRequest, res: Response) => {
     try {
       const rule = await territoryManagementService.createAssignmentRule(
-        req.tenant_id!,
+        req.tenantId!,
         req.body,
         req.user!.id,
       );
@@ -245,7 +242,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const { page, limit, isActive } = req.query;
-      const result = await territoryManagementService.listAssignmentRules(req.tenant_id!, {
+      const result = await territoryManagementService.listAssignmentRules(req.tenantId!, {
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
         isActive: isActive ? isActive === 'true' : undefined,
@@ -267,10 +264,7 @@ router.get(
   requireRole(['admin', 'manager']),
   async (req: TenantRequest, res: Response) => {
     try {
-      const rule = await territoryManagementService.getAssignmentRule(
-        req.tenant_id!,
-        req.params.id,
-      );
+      const rule = await territoryManagementService.getAssignmentRule(req.tenantId!, req.params.id);
 
       if (!rule) {
         return res.status(404).json({ message: 'Assignment rule not found' });
@@ -299,7 +293,7 @@ router.put(
   async (req: TenantRequest, res: Response) => {
     try {
       const rule = await territoryManagementService.updateAssignmentRule(
-        req.tenant_id!,
+        req.tenantId!,
         req.params.id,
         req.body,
       );
@@ -329,7 +323,7 @@ router.delete(
   ),
   async (req: TenantRequest, res: Response) => {
     try {
-      await territoryManagementService.deleteAssignmentRule(req.tenant_id!, req.params.id);
+      await territoryManagementService.deleteAssignmentRule(req.tenantId!, req.params.id);
 
       res.json({ message: 'Assignment rule deleted successfully' });
     } catch (error) {
@@ -352,8 +346,8 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const capacity = await territoryManagementService.getOrCreateRepCapacity(
-        req.tenant_id!,
-        req.params.user_id,
+        req.tenantId!,
+        req.params.userId,
       );
 
       res.json(capacity);
@@ -374,8 +368,8 @@ router.put(
   async (req: TenantRequest, res: Response) => {
     try {
       const capacity = await territoryManagementService.updateRepCapacity(
-        req.tenant_id!,
-        req.params.user_id,
+        req.tenantId!,
+        req.params.userId,
         req.body,
       );
 
@@ -399,7 +393,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const { page, limit, isAvailable } = req.query;
-      const result = await territoryManagementService.listRepCapacities(req.tenant_id!, {
+      const result = await territoryManagementService.listRepCapacities(req.tenantId!, {
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
         isAvailable: isAvailable ? isAvailable === 'true' : undefined,
@@ -423,7 +417,7 @@ router.post(
     try {
       const { skills, territoryId } = req.body;
       const rep = await territoryManagementService.getAvailableRep(
-        req.tenant_id!,
+        req.tenantId!,
         skills,
         territoryId,
       );
@@ -449,7 +443,7 @@ router.get(
   async (req: TenantRequest, res: Response) => {
     try {
       const history = await territoryManagementService.getLeadAssignmentHistory(
-        req.tenant_id!,
+        req.tenantId!,
         req.params.leadId,
       );
 
@@ -471,8 +465,8 @@ router.get(
     try {
       const { page, limit } = req.query;
       const result = await territoryManagementService.getRepAssignmentHistory(
-        req.tenant_id!,
-        req.params.user_id,
+        req.tenantId!,
+        req.params.userId,
         {
           page: page ? Number(page) : undefined,
           limit: limit ? Number(limit) : undefined,
@@ -499,7 +493,7 @@ router.get(
   requireRole(['admin', 'manager']),
   async (req: TenantRequest, res: Response) => {
     try {
-      const stats = await territoryManagementService.getStats(req.tenant_id!);
+      const stats = await territoryManagementService.getStats(req.tenantId!);
       res.json(stats);
     } catch (error) {
       console.error('Error fetching territory stats:', error);

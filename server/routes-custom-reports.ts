@@ -155,8 +155,8 @@ export function registerCustomReportsRoutes(app: Express) {
     isAuthenticated,
     async (req: CustomReportRequest, res: Response) => {
       try {
-        const tenantId = req.tenant_id!;
-        const userId = req.user?.id || req.session?.user_id;
+        const tenantId = req.tenantId!;
+        const userId = req.user?.id || req.session?.userId;
 
         if (!userId) {
           return res.status(401).json({ message: 'User not authenticated' });
@@ -173,20 +173,20 @@ export function registerCustomReportsRoutes(app: Express) {
             defaultVisualization: reportDefinitions.defaultVisualization,
             isActive: reportDefinitions.isActive,
             createdBy: reportDefinitions.createdBy,
-            createdAt: reportDefinitions.created_at,
-            updatedAt: reportDefinitions.updated_at,
+            createdAt: reportDefinitions.createdAt,
+            updatedAt: reportDefinitions.updatedAt,
           })
           .from(reportDefinitions)
           .where(
             and(
-              eq(reportDefinitions.tenant_id, tenantId),
+              eq(reportDefinitions.tenantId, tenantId),
               or(
                 eq(reportDefinitions.createdBy, userId),
                 sql`${reportDefinitions.requiredPermissions}::jsonb @> '["reports.custom.view_public"]'::jsonb`,
               ),
             ),
           )
-          .orderBy(desc(reportDefinitions.updated_at));
+          .orderBy(desc(reportDefinitions.updatedAt));
 
         res.json(reports);
       } catch (error: any) {
@@ -204,7 +204,7 @@ export function registerCustomReportsRoutes(app: Express) {
     isAuthenticated,
     async (req: CustomReportRequest, res: Response) => {
       try {
-        const tenantId = req.tenant_id!;
+        const tenantId = req.tenantId!;
         const { dataSource, columns, filters, groupings, limit = 100 } = req.body;
 
         if (!dataSource || !columns || columns.length === 0) {
@@ -255,7 +255,7 @@ export function registerCustomReportsRoutes(app: Express) {
         }
 
         // Build where conditions
-        const conditions: any[] = [eq(table.tenant_id, tenantId)];
+        const conditions: any[] = [eq(table.tenantId, tenantId)];
 
         if (filters && filters.length > 0) {
           for (const filter of filters) {
@@ -319,8 +319,8 @@ export function registerCustomReportsRoutes(app: Express) {
     isAuthenticated,
     async (req: CustomReportRequest, res: Response) => {
       try {
-        const tenantId = req.tenant_id!;
-        const userId = req.user?.id || req.session?.user_id;
+        const tenantId = req.tenantId!;
+        const userId = req.user?.id || req.session?.userId;
 
         if (!userId) {
           return res.status(401).json({ message: 'User not authenticated' });
@@ -405,8 +405,8 @@ export function registerCustomReportsRoutes(app: Express) {
     isAuthenticated,
     async (req: CustomReportRequest, res: Response) => {
       try {
-        const tenantId = req.tenant_id!;
-        const userId = req.user?.id || req.session?.user_id;
+        const tenantId = req.tenantId!;
+        const userId = req.user?.id || req.session?.userId;
         const reportId = req.params.id;
 
         if (!userId) {
@@ -420,7 +420,7 @@ export function registerCustomReportsRoutes(app: Express) {
           .where(
             and(
               eq(reportDefinitions.id, reportId),
-              eq(reportDefinitions.tenant_id, tenantId),
+              eq(reportDefinitions.tenantId, tenantId),
               eq(reportDefinitions.createdBy, userId),
             ),
           );
@@ -483,8 +483,8 @@ export function registerCustomReportsRoutes(app: Express) {
     isAuthenticated,
     async (req: CustomReportRequest, res: Response) => {
       try {
-        const tenantId = req.tenant_id!;
-        const userId = req.user?.id || req.session?.user_id;
+        const tenantId = req.tenantId!;
+        const userId = req.user?.id || req.session?.userId;
         const reportId = req.params.id;
 
         if (!userId) {
@@ -497,7 +497,7 @@ export function registerCustomReportsRoutes(app: Express) {
           .where(
             and(
               eq(reportDefinitions.id, reportId),
-              eq(reportDefinitions.tenant_id, tenantId),
+              eq(reportDefinitions.tenantId, tenantId),
               eq(reportDefinitions.createdBy, userId),
             ),
           )
@@ -523,8 +523,8 @@ export function registerCustomReportsRoutes(app: Express) {
     isAuthenticated,
     async (req: CustomReportRequest, res: Response) => {
       try {
-        const tenantId = req.tenant_id!;
-        const userId = req.user?.id || req.session?.user_id;
+        const tenantId = req.tenantId!;
+        const userId = req.user?.id || req.session?.userId;
         const identifier = req.params.identifier;
 
         if (!userId) {
@@ -536,7 +536,7 @@ export function registerCustomReportsRoutes(app: Express) {
           .from(reportDefinitions)
           .where(
             and(
-              eq(reportDefinitions.tenant_id, tenantId),
+              eq(reportDefinitions.tenantId, tenantId),
               or(eq(reportDefinitions.id, identifier), eq(reportDefinitions.code, identifier)),
               or(
                 eq(reportDefinitions.createdBy, userId),
@@ -565,8 +565,8 @@ export function registerCustomReportsRoutes(app: Express) {
     isAuthenticated,
     async (req: CustomReportRequest, res: Response) => {
       try {
-        const tenantId = req.tenant_id!;
-        const userId = req.user?.id || req.session?.user_id;
+        const tenantId = req.tenantId!;
+        const userId = req.user?.id || req.session?.userId;
         const identifier = req.params.identifier;
         const { filters: runtimeFilters, limit = 1000, offset = 0 } = req.body;
 
@@ -580,7 +580,7 @@ export function registerCustomReportsRoutes(app: Express) {
           .from(reportDefinitions)
           .where(
             and(
-              eq(reportDefinitions.tenant_id, tenantId),
+              eq(reportDefinitions.tenantId, tenantId),
               or(eq(reportDefinitions.id, identifier), eq(reportDefinitions.code, identifier)),
             ),
           );
@@ -643,7 +643,7 @@ export function registerCustomReportsRoutes(app: Express) {
         }
 
         // Build conditions
-        const conditions: any[] = [eq(table.tenant_id, tenantId)];
+        const conditions: any[] = [eq(table.tenantId, tenantId)];
 
         // Apply stored filters
         for (const filter of storedFilters) {

@@ -13,7 +13,7 @@ const router = Router();
 
 // Middleware to require authentication
 const requireAuth = (req: Request, res: Response, next: Function) => {
-  if (!req.session || !req.session.user_id) {
+  if (!req.session || !req.session.userId) {
     return res.status(401).json({ message: 'Authentication required' });
   }
   next();
@@ -22,15 +22,13 @@ const requireAuth = (req: Request, res: Response, next: Function) => {
 // Helper to get tenant ID
 const getTenantId = (req: Request): string => {
   return (
-    (req as any).tenant_id ||
-    (req.session as any).tenant_id ||
-    '00000000-0000-0000-0000-000000000000'
+    (req as any).tenantId || (req.session as any).tenantId || '00000000-0000-0000-0000-000000000000'
   );
 };
 
 // Helper to get user ID
 const getUserId = (req: Request): string => {
-  return req.session?.user_id || (req.session as any).user?.id || '';
+  return req.session?.userId || (req.session as any).user?.id || '';
 };
 
 /**
@@ -58,8 +56,8 @@ router.get('/', async (req: Request, res: Response) => {
       })
       .from(articleBookmarks)
       .innerJoin(knowledgeArticles, eq(articleBookmarks.articleId, knowledgeArticles.id))
-      .where(and(eq(articleBookmarks.tenant_id, tenantId), eq(articleBookmarks.user_id, userId)))
-      .orderBy(desc(articleBookmarks.created_at))
+      .where(and(eq(articleBookmarks.tenantId, tenantId), eq(articleBookmarks.userId, userId)))
+      .orderBy(desc(articleBookmarks.createdAt))
       .limit(Number(limit))
       .offset(Number(offset));
 
@@ -67,8 +65,8 @@ router.get('/', async (req: Request, res: Response) => {
     if (collection && typeof collection === 'string') {
       query = query.where(
         and(
-          eq(articleBookmarks.tenant_id, tenantId),
-          eq(articleBookmarks.user_id, userId),
+          eq(articleBookmarks.tenantId, tenantId),
+          eq(articleBookmarks.userId, userId),
           eq(articleBookmarks.collectionName, collection),
         ),
       );
@@ -82,8 +80,8 @@ router.get('/', async (req: Request, res: Response) => {
       .from(articleBookmarks)
       .where(
         and(
-          eq(articleBookmarks.tenant_id, tenantId),
-          eq(articleBookmarks.user_id, userId),
+          eq(articleBookmarks.tenantId, tenantId),
+          eq(articleBookmarks.userId, userId),
           collection && typeof collection === 'string'
             ? eq(articleBookmarks.collectionName, collection)
             : sql`true`,
@@ -133,7 +131,7 @@ router.post('/', async (req: Request, res: Response) => {
     const existing = await db
       .select()
       .from(articleBookmarks)
-      .where(and(eq(articleBookmarks.user_id, userId), eq(articleBookmarks.articleId, articleId)))
+      .where(and(eq(articleBookmarks.userId, userId), eq(articleBookmarks.articleId, articleId)))
       .limit(1);
 
     if (existing.length > 0) {
@@ -186,7 +184,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     const existing = await db
       .select()
       .from(articleBookmarks)
-      .where(and(eq(articleBookmarks.id, id), eq(articleBookmarks.user_id, userId)))
+      .where(and(eq(articleBookmarks.id, id), eq(articleBookmarks.userId, userId)))
       .limit(1);
 
     if (existing.length === 0) {
@@ -236,7 +234,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     const existing = await db
       .select()
       .from(articleBookmarks)
-      .where(and(eq(articleBookmarks.id, id), eq(articleBookmarks.user_id, userId)))
+      .where(and(eq(articleBookmarks.id, id), eq(articleBookmarks.userId, userId)))
       .limit(1);
 
     if (existing.length === 0) {
@@ -281,8 +279,8 @@ router.get('/collections', async (req: Request, res: Response) => {
       .from(articleBookmarks)
       .where(
         and(
-          eq(articleBookmarks.tenant_id, tenantId),
-          eq(articleBookmarks.user_id, userId),
+          eq(articleBookmarks.tenantId, tenantId),
+          eq(articleBookmarks.userId, userId),
           sql`${articleBookmarks.collectionName} IS NOT NULL`,
         ),
       )
@@ -318,7 +316,7 @@ router.get('/check/:articleId', async (req: Request, res: Response) => {
     const bookmark = await db
       .select()
       .from(articleBookmarks)
-      .where(and(eq(articleBookmarks.user_id, userId), eq(articleBookmarks.articleId, articleId)))
+      .where(and(eq(articleBookmarks.userId, userId), eq(articleBookmarks.articleId, articleId)))
       .limit(1);
 
     res.json({
