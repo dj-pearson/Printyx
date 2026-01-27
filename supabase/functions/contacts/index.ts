@@ -63,6 +63,18 @@ export default async function handler(req: Request) {
 
       const offset = (page - 1) * limit;
 
+      console.log('[CONTACTS] Fetching contacts:', {
+        tenantId,
+        page,
+        limit,
+        offset,
+        search,
+        status,
+        ownerId,
+        sortBy,
+        sortOrder,
+      });
+
       // Build query
       let query = admin
         .from('company_contacts')
@@ -93,7 +105,16 @@ export default async function handler(req: Request) {
 
       if (error) {
         console.error('Error fetching all contacts:', error);
-        return createCorsResponse({ error: 'Failed to fetch contacts' }, 500, req);
+        return createCorsResponse(
+          {
+            error: 'Failed to fetch contacts',
+            details: error.message,
+            code: error.code,
+            hint: error.hint,
+          },
+          500,
+          req,
+        );
       }
 
       return createCorsResponse(
