@@ -92,6 +92,7 @@ const AIServiceIntelligence = React.lazy(() => import('@/pages/AIServiceIntellig
 
 // Core app pages - lazy load everything for optimal bundle splitting
 const Dashboard = React.lazy(() => import('@/pages/dashboard'));
+const ExecutiveDashboard = React.lazy(() => import('@/pages/ExecutiveDashboard'));
 const Customers = React.lazy(() => import('@/pages/customers'));
 const LeadDetail = React.lazy(() => import('@/pages/LeadDetail'));
 // Removed placeholder report imports - using Reports page instead
@@ -493,6 +494,7 @@ function Router() {
           <Route path="/forgot-password" component={RedirectToDashboard} />
           <Route path="/auth/callback" component={AuthCallback} />
           <Route path="/" component={Dashboard} />
+          <Route path="/executive-dashboard" component={ExecutiveDashboard} />
           <Route path="/today" component={TodayDashboard} />
           <Route path="/dashboard/today" component={TodayDashboard} />
           <Route path="/customers" component={Customers} />
