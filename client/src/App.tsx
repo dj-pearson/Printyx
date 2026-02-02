@@ -191,6 +191,9 @@ const ProductCatalog = React.lazy(() => import('@/pages/ProductCatalog'));
 const VendorManagement = React.lazy(() => import('@/pages/VendorManagement'));
 const CustomerNumberSettings = React.lazy(() => import('@/pages/CustomerNumberSettings'));
 const FinancialForecasting = React.lazy(() => import('@/pages/FinancialForecasting'));
+const FinancialIntelligenceDashboard = React.lazy(
+  () => import('@/pages/FinancialIntelligenceDashboard'),
+);
 const EquipmentLifecycleManagement = React.lazy(
   () => import('@/pages/EquipmentLifecycleManagement'),
 );
@@ -537,6 +540,10 @@ function Router() {
           <Route path="/customer-portal" component={CustomerSelfServicePortal} />
           <Route path="/advanced-billing" component={AdvancedBillingEngine} />
           <Route path="/financial-forecasting" component={FinancialForecasting} />
+          <Route
+            path="/financial-intelligence-dashboard"
+            component={FinancialIntelligenceDashboard}
+          />
           {/* Equipment Lifecycle Management - now redirects to unified hub */}
           <Route path="/equipment-lifecycle-management" component={EquipmentLifecycleHub} />
           {/* Legacy Equipment Lifecycle Management (keeping for reference during transition) */}
