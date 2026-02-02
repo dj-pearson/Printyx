@@ -298,7 +298,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
         {
           title: 'Preventive Maintenance',
-          path: '/preventive-maintenance-scheduling',
+          path: '/preventive-maintenance',
           icon: Calendar,
         },
         { title: 'Maintenance Automation', path: '/preventive-maintenance-automation', icon: Zap },
