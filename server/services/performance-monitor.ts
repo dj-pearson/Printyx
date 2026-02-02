@@ -399,13 +399,29 @@ class PerformanceMonitor {
   }
 
   private async getMemoryUsage(): Promise<number> {
-    // Mock memory usage - in production, use process.memoryUsage()
-    return Math.floor(Math.random() * 200) + 100; // 100-300 MB
+    // Use real memory usage from Node.js process
+    const memUsage = process.memoryUsage();
+    // Return heap used in MB
+    return Math.round(memUsage.heapUsed / 1024 / 1024);
   }
 
   private async getCPUUsage(): Promise<number> {
-    // Mock CPU usage - in production, use system monitoring
-    return Math.floor(Math.random() * 30) + 20; // 20-50%
+    // Get CPU usage by measuring over a short interval
+    const startUsage = process.cpuUsage();
+    const startTime = Date.now();
+
+    // Wait 100ms to measure CPU usage
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const endUsage = process.cpuUsage(startUsage);
+    const endTime = Date.now();
+
+    const elapsedTime = (endTime - startTime) * 1000; // Convert to microseconds
+    const totalCpuTime = endUsage.user + endUsage.system;
+
+    // Calculate percentage (capped at 100)
+    const cpuPercent = Math.min(100, Math.round((totalCpuTime / elapsedTime) * 100));
+    return cpuPercent;
   }
 
   private analyzeTrends(): Array<{
