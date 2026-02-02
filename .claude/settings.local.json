@@ -41,7 +41,9 @@
       "Bash(git stash:*)",
       "Bash(git checkout:*)",
       "Bash(powershell -ExecutionPolicy Bypass -File \"scripts\\\\audit-edge-functions.ps1\" -Verbose)",
-      "Bash(powershell -ExecutionPolicy Bypass -File \"scripts\\\\audit-edge-functions.ps1\" -ExportJson)"
+      "Bash(powershell -ExecutionPolicy Bypass -File \"scripts\\\\audit-edge-functions.ps1\" -ExportJson)",
+      "Bash(npm run seed:demo:*)",
+      "Bash(npm run db:push:*)"
     ],
     "deny": [],
     "ask": []
