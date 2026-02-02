@@ -199,7 +199,6 @@ const EquipmentLifecycleManagement = React.lazy(
   () => import('@/pages/EquipmentLifecycleManagement'),
 );
 const CommissionManagement = React.lazy(() => import('@/pages/CommissionManagement'));
-const SalesCommandCenter = React.lazy(() => import('@/pages/SalesCommandCenter'));
 const SalesPerformanceAnalytics = React.lazy(() => import('@/pages/SalesPerformanceAnalytics'));
 const ServiceAnalytics = React.lazy(() => import('@/pages/ServiceAnalytics'));
 const MobileFieldOperations = React.lazy(() => import('@/pages/MobileFieldOperations'));
