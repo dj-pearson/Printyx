@@ -199,6 +199,8 @@ const EquipmentLifecycleManagement = React.lazy(
   () => import('@/pages/EquipmentLifecycleManagement'),
 );
 const CommissionManagement = React.lazy(() => import('@/pages/CommissionManagement'));
+const SalesCommandCenter = React.lazy(() => import('@/pages/SalesCommandCenter'));
+const SalesPerformanceAnalytics = React.lazy(() => import('@/pages/SalesPerformanceAnalytics'));
 const ServiceAnalytics = React.lazy(() => import('@/pages/ServiceAnalytics'));
 const MobileFieldOperations = React.lazy(() => import('@/pages/MobileFieldOperations'));
 const RemoteMonitoring = React.lazy(() => import('@/pages/RemoteMonitoring'));
@@ -554,6 +556,8 @@ function Router() {
             component={EquipmentLifecycleManagement}
           />
           <Route path="/commission-management" component={CommissionManagement} />
+          <Route path="/sales-command-center" component={SalesCommandCenter} />
+          <Route path="/sales-performance-analytics" component={SalesPerformanceAnalytics} />
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/fleet-monitoring" component={FleetMonitoringDashboard} />
           {/* Removed duplicate route - use /mobile-service-app as primary */}
