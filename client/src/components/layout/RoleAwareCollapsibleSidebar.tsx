@@ -241,6 +241,8 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         '/data-enrichment*',
         '/document-builder*',
         '/deal-desk*',
+        '/crm-goals*',
+        '/pipeline-config*',
       ],
       children: [
         { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
@@ -278,6 +280,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         '/technician*',
         '/preventive*',
         '/mobile-service*',
+        '/mobile-field*',
         '/remote-monitoring*',
         '/fleet-monitoring*',
         '/vehicle*',
@@ -326,6 +329,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         '/professional-services*',
         '/managed-services*',
         '/software-products*',
+        '/service-products*',
       ],
       children: [
         { title: 'Product Hub', path: '/product-hub', icon: Package },
@@ -376,6 +380,8 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         '/chart-of-accounts*',
         '/financial*',
         '/leases*',
+        '/advanced-billing*',
+        '/vendors*',
       ],
       children: [
         { title: 'Billing Hub', path: '/billing', icon: DollarSign },
@@ -405,6 +411,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         '/advanced-reporting*',
         '/performance-monitoring*',
         '/analytics*',
+        '/advanced-analytics*',
         '/executive*',
         '/financial-intelligence*',
         '/predictive*',
@@ -445,7 +452,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
     title: 'AI Hub',
     icon: Brain,
     path: '/ai-hub',
-    matchPatterns: ['/ai*', '/calendar*', '/meeting*', '/search*'],
+    matchPatterns: ['/ai*', '/calendar*', '/meeting*', '/search*', '/conversational-ai*'],
     children: [
       { title: 'AI Employees', path: '/ai-employees', icon: Bot },
       { title: 'Calendar Integration', path: '/calendar', icon: Calendar },
