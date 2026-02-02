@@ -352,7 +352,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       children: [
         { title: 'Equipment Lifecycle', path: '/equipment-lifecycle', icon: Truck },
         { title: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
-        { title: 'PO Optimization', path: '/purchase-orders-optimization', icon: ShoppingCart },
+        { title: 'PO Optimization', path: '/purchase-orders', icon: ShoppingCart },
         { title: 'Warehouse Operations', path: '/warehouse-operations', icon: Building2 },
         { title: 'Inventory Management', path: '/inventory', icon: Package },
         { title: 'Equipment Management', path: '/equipment-lifecycle-management', icon: Cog },

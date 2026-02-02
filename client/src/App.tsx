@@ -99,6 +99,7 @@ const Contracts = React.lazy(() => import('@/pages/contracts'));
 const ContractRenewalDashboard = React.lazy(() => import('@/pages/ContractRenewalDashboard'));
 const ProactiveServiceDashboard = React.lazy(() => import('@/pages/ProactiveServiceDashboard'));
 const ServiceDispatchOptimization = React.lazy(() => import('@/pages/ServiceDispatchOptimization'));
+const ServiceForecastingAnalytics = React.lazy(() => import('@/pages/ServiceForecastingAnalytics'));
 const Inventory = React.lazy(() => import('@/pages/inventory'));
 const Billing = React.lazy(() => import('@/pages/Billing'));
 const Reports = React.lazy(() => import('@/pages/EnhancedReportsHub'));
@@ -586,6 +587,7 @@ function Router() {
           <Route path="/invoices" component={Invoices} />
           <Route path="/service-dispatch" component={ServiceDispatchOptimization} />
           <Route path="/proactive-service" component={ProactiveServiceDashboard} />
+          <Route path="/service-forecasting-analytics" component={ServiceForecastingAnalytics} />
           <Route path="/technician-management" component={TechnicianManagement} />
           <Route path="/vehicle-management" component={VehicleManagement} />
           <Route path="/asset-management" component={AssetManagement} />
