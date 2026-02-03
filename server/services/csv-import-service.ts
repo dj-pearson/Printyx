@@ -28,7 +28,18 @@ import {
   type MergeStrategy,
   type TemplateColumn,
 } from '@shared/csv-import-schema';
-import { businessRecords, enhancedContacts, equipment, inventoryItems } from '@shared/schema';
+import {
+  businessRecords,
+  enhancedContacts,
+  equipment,
+  inventoryItems,
+  productModels,
+  productAccessories,
+  serviceProducts,
+  softwareProducts,
+  supplies,
+  managedServices,
+} from '@shared/schema';
 import { storage } from '../storage';
 
 // ============= CSV PARSING =============
@@ -586,6 +597,24 @@ async function searchExistingRecords(
     case 'inventory':
       return await searchInventory(tenantId, orConditions);
 
+    case 'product_models':
+      return await searchProductModels(tenantId, orConditions);
+
+    case 'product_accessories':
+      return await searchProductAccessories(tenantId, orConditions);
+
+    case 'service_products':
+      return await searchServiceProducts(tenantId, orConditions);
+
+    case 'software_products':
+      return await searchSoftwareProducts(tenantId, orConditions);
+
+    case 'supplies':
+      return await searchSupplies(tenantId, orConditions);
+
+    case 'managed_services':
+      return await searchManagedServices(tenantId, orConditions);
+
     default:
       return [];
   }
@@ -718,6 +747,204 @@ async function searchInventory(
   const results = await db
     .select()
     .from(inventoryItems)
+    .where(and(...whereConditions))
+    .limit(50);
+
+  return results;
+}
+
+async function searchProductModels(
+  tenantId: string,
+  conditions: Array<{ field: string; value: any; operator: string }>,
+): Promise<Record<string, any>[]> {
+  const whereConditions: any[] = [eq(productModels.tenantId, tenantId)];
+
+  if (conditions.length > 0) {
+    const orClauses = conditions
+      .map((c) => {
+        const column = (productModels as any)[c.field];
+        if (!column) return null;
+        if (c.operator === 'eq') {
+          return eq(column, c.value);
+        } else {
+          return ilike(column, c.value);
+        }
+      })
+      .filter(Boolean);
+
+    if (orClauses.length > 0) {
+      whereConditions.push(or(...orClauses));
+    }
+  }
+
+  const results = await db
+    .select()
+    .from(productModels)
+    .where(and(...whereConditions))
+    .limit(50);
+
+  return results;
+}
+
+async function searchProductAccessories(
+  tenantId: string,
+  conditions: Array<{ field: string; value: any; operator: string }>,
+): Promise<Record<string, any>[]> {
+  const whereConditions: any[] = [eq(productAccessories.tenantId, tenantId)];
+
+  if (conditions.length > 0) {
+    const orClauses = conditions
+      .map((c) => {
+        const column = (productAccessories as any)[c.field];
+        if (!column) return null;
+        if (c.operator === 'eq') {
+          return eq(column, c.value);
+        } else {
+          return ilike(column, c.value);
+        }
+      })
+      .filter(Boolean);
+
+    if (orClauses.length > 0) {
+      whereConditions.push(or(...orClauses));
+    }
+  }
+
+  const results = await db
+    .select()
+    .from(productAccessories)
+    .where(and(...whereConditions))
+    .limit(50);
+
+  return results;
+}
+
+async function searchServiceProducts(
+  tenantId: string,
+  conditions: Array<{ field: string; value: any; operator: string }>,
+): Promise<Record<string, any>[]> {
+  const whereConditions: any[] = [eq(serviceProducts.tenantId, tenantId)];
+
+  if (conditions.length > 0) {
+    const orClauses = conditions
+      .map((c) => {
+        const column = (serviceProducts as any)[c.field];
+        if (!column) return null;
+        if (c.operator === 'eq') {
+          return eq(column, c.value);
+        } else {
+          return ilike(column, c.value);
+        }
+      })
+      .filter(Boolean);
+
+    if (orClauses.length > 0) {
+      whereConditions.push(or(...orClauses));
+    }
+  }
+
+  const results = await db
+    .select()
+    .from(serviceProducts)
+    .where(and(...whereConditions))
+    .limit(50);
+
+  return results;
+}
+
+async function searchSoftwareProducts(
+  tenantId: string,
+  conditions: Array<{ field: string; value: any; operator: string }>,
+): Promise<Record<string, any>[]> {
+  const whereConditions: any[] = [eq(softwareProducts.tenantId, tenantId)];
+
+  if (conditions.length > 0) {
+    const orClauses = conditions
+      .map((c) => {
+        const column = (softwareProducts as any)[c.field];
+        if (!column) return null;
+        if (c.operator === 'eq') {
+          return eq(column, c.value);
+        } else {
+          return ilike(column, c.value);
+        }
+      })
+      .filter(Boolean);
+
+    if (orClauses.length > 0) {
+      whereConditions.push(or(...orClauses));
+    }
+  }
+
+  const results = await db
+    .select()
+    .from(softwareProducts)
+    .where(and(...whereConditions))
+    .limit(50);
+
+  return results;
+}
+
+async function searchSupplies(
+  tenantId: string,
+  conditions: Array<{ field: string; value: any; operator: string }>,
+): Promise<Record<string, any>[]> {
+  const whereConditions: any[] = [eq(supplies.tenantId, tenantId)];
+
+  if (conditions.length > 0) {
+    const orClauses = conditions
+      .map((c) => {
+        const column = (supplies as any)[c.field];
+        if (!column) return null;
+        if (c.operator === 'eq') {
+          return eq(column, c.value);
+        } else {
+          return ilike(column, c.value);
+        }
+      })
+      .filter(Boolean);
+
+    if (orClauses.length > 0) {
+      whereConditions.push(or(...orClauses));
+    }
+  }
+
+  const results = await db
+    .select()
+    .from(supplies)
+    .where(and(...whereConditions))
+    .limit(50);
+
+  return results;
+}
+
+async function searchManagedServices(
+  tenantId: string,
+  conditions: Array<{ field: string; value: any; operator: string }>,
+): Promise<Record<string, any>[]> {
+  const whereConditions: any[] = [eq(managedServices.tenantId, tenantId)];
+
+  if (conditions.length > 0) {
+    const orClauses = conditions
+      .map((c) => {
+        const column = (managedServices as any)[c.field];
+        if (!column) return null;
+        if (c.operator === 'eq') {
+          return eq(column, c.value);
+        } else {
+          return ilike(column, c.value);
+        }
+      })
+      .filter(Boolean);
+
+    if (orClauses.length > 0) {
+      whereConditions.push(or(...orClauses));
+    }
+  }
+
+  const results = await db
+    .select()
+    .from(managedServices)
     .where(and(...whereConditions))
     .limit(50);
 
@@ -1261,6 +1488,78 @@ async function createNewRecord(
         .returning({ id: inventoryItems.id });
       return inv.id;
 
+    case 'product_models':
+      const [pm] = await db
+        .insert(productModels)
+        .values({
+          ...data,
+          tenantId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning({ id: productModels.id });
+      return pm.id;
+
+    case 'product_accessories':
+      const [pa] = await db
+        .insert(productAccessories)
+        .values({
+          ...data,
+          tenantId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning({ id: productAccessories.id });
+      return pa.id;
+
+    case 'service_products':
+      const [sp] = await db
+        .insert(serviceProducts)
+        .values({
+          ...data,
+          tenantId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning({ id: serviceProducts.id });
+      return sp.id;
+
+    case 'software_products':
+      const [sw] = await db
+        .insert(softwareProducts)
+        .values({
+          ...data,
+          tenantId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning({ id: softwareProducts.id });
+      return sw.id;
+
+    case 'supplies':
+      const [sup] = await db
+        .insert(supplies)
+        .values({
+          ...data,
+          tenantId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning({ id: supplies.id });
+      return sup.id;
+
+    case 'managed_services':
+      const [ms] = await db
+        .insert(managedServices)
+        .values({
+          ...data,
+          tenantId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning({ id: managedServices.id });
+      return ms.id;
+
     default:
       throw new Error(`Unsupported entity type for import: ${entityType}`);
   }
@@ -1301,6 +1600,48 @@ async function updateExistingRecord(
         .update(inventoryItems)
         .set({ ...updateData, updatedAt: new Date() })
         .where(eq(inventoryItems.id, recordId));
+      break;
+
+    case 'product_models':
+      await db
+        .update(productModels)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(eq(productModels.id, recordId));
+      break;
+
+    case 'product_accessories':
+      await db
+        .update(productAccessories)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(eq(productAccessories.id, recordId));
+      break;
+
+    case 'service_products':
+      await db
+        .update(serviceProducts)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(eq(serviceProducts.id, recordId));
+      break;
+
+    case 'software_products':
+      await db
+        .update(softwareProducts)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(eq(softwareProducts.id, recordId));
+      break;
+
+    case 'supplies':
+      await db
+        .update(supplies)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(eq(supplies.id, recordId));
+      break;
+
+    case 'managed_services':
+      await db
+        .update(managedServices)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(eq(managedServices.id, recordId));
       break;
 
     default:

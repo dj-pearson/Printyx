@@ -107,6 +107,7 @@ const Reports = React.lazy(() => import('@/pages/EnhancedReportsHub'));
 const CustomReportBuilder = React.lazy(() => import('@/pages/CustomReportBuilder'));
 const CustomDashboard = React.lazy(() => import('@/pages/CustomDashboard'));
 const CSVImportWizard = React.lazy(() => import('@/pages/CSVImportWizard'));
+const UniversalProductImport = React.lazy(() => import('@/pages/UniversalProductImport'));
 const MeterReadings = React.lazy(() => import('@/pages/MeterReadings'));
 const ProductModels = React.lazy(() => import('@/pages/ProductModels'));
 const EnhancedProductModels = React.lazy(() => import('@/pages/EnhancedProductModels'));
@@ -640,6 +641,7 @@ function Router() {
           <Route path="/reports/custom/new" component={CustomReportBuilder} />
           <Route path="/custom-dashboard" component={CustomDashboard} />
           <Route path="/import" component={CSVImportWizard} />
+          <Route path="/import/products" component={UniversalProductImport} />
           <Route path="/advanced-reporting" component={AdvancedReporting} />
           <Route path="/advanced-analytics" component={AdvancedAnalytics} />
           <Route path="/workflow-automation" component={WorkflowAutomation} />
