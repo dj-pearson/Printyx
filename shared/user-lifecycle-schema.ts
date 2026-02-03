@@ -389,6 +389,7 @@ export const accessReviews = pgTable('access_reviews', {
 
 export const accessReviewCertifications = pgTable('access_review_certifications', {
   id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
 
   // Certification Identity
   accessReviewId: uuid('access_review_id').notNull(),

@@ -4,19 +4,21 @@
  * Run this once to merge duplicate companies.
  * Duplicates are identified by: business_name + billing_city + billing_state (case-insensitive)
  *
+ * REQUIRES: Platform Admin or Service Role authentication
+ *
  * Usage:
  *   POST /dedup-companies
- *   Body: { "dryRun": true }  - Preview what would be merged
- *   Body: { "dryRun": false } - Execute the merge
+ *   Headers: Authorization: Bearer <jwt>
+ *   Body: { "dryRun": true, "tenantId": "..." }  - Preview what would be merged
+ *   Body: { "dryRun": false, "tenantId": "..." } - Execute the merge
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { createSupabaseClient } from '../_shared/supabase.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://api.printyx.net';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-
-// Tenant ID to process
-const TENANT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
 interface Company {
   id: string;
@@ -57,38 +59,107 @@ function selectSurvivor(companies: Company[]): Company {
 
 export default async function handler(req: Request): Promise<Response> {
   // CORS
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
-    });
-  }
+  const corsResponse = handleCors(req);
+  if (corsResponse) return corsResponse;
 
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return createCorsResponse({ error: 'Method not allowed' }, 405, req);
   }
 
   try {
+    // ============================================================================
+    // AUTHENTICATION - Require Platform Admin or Service Role
+    // ============================================================================
+    const authHeader = req.headers.get('Authorization');
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+    if (!jwt) {
+      return createCorsResponse({ error: 'Authorization header required' }, 401, req);
+    }
+
+    // Check if using service role key
+    let isServiceRoleAuth = false;
+    let isAuthorized = false;
+    let tenantId: string | null = null;
+
+    // Method 1: Check if JWT is the service role key itself
+    if (jwt.trim() === SUPABASE_SERVICE_ROLE_KEY.trim()) {
+      isServiceRoleAuth = true;
+      isAuthorized = true;
+    }
+
+    // Method 2: Decode JWT and check for service_role claim
+    if (!isServiceRoleAuth && jwt) {
+      try {
+        const payloadBase64 = jwt.split('.')[1];
+        if (payloadBase64) {
+          const payload = JSON.parse(atob(payloadBase64));
+          if (payload.role === 'service_role') {
+            isServiceRoleAuth = true;
+            isAuthorized = true;
+          }
+        }
+      } catch {
+        // Not a valid JWT format, will check user auth below
+      }
+    }
+
+    // Method 3: User JWT auth - check if platform admin
+    if (!isAuthorized) {
+      const supabase = createSupabaseClient(req);
+      const { data: userData, error: userError } = await supabase.auth.getUser(jwt);
+
+      if (userError || !userData.user) {
+        return createCorsResponse({ error: 'Unauthorized - invalid token' }, 401, req);
+      }
+
+      const user = userData.user;
+      const roleLevel = user.app_metadata?.roleLevel || user.user_metadata?.roleLevel || 0;
+
+      // Require platform admin (level 8) for this destructive operation
+      if (roleLevel < 8) {
+        return createCorsResponse(
+          { error: 'Forbidden - Platform Admin access required for company deduplication' },
+          403,
+          req,
+        );
+      }
+
+      isAuthorized = true;
+      tenantId =
+        user.app_metadata?.tenantId ||
+        user.app_metadata?.tenant_id ||
+        user.user_metadata?.tenantId ||
+        user.user_metadata?.tenant_id;
+    }
+
     const body = await req.json().catch(() => ({}));
     const dryRun = body.dryRun !== false; // Default to dry run for safety
+
+    // Get tenant ID from body if service role, otherwise use authenticated user's tenant
+    if (isServiceRoleAuth) {
+      tenantId = body.tenantId || body.tenant_id || req.headers.get('x-tenant-id');
+    }
+
+    if (!tenantId) {
+      return createCorsResponse(
+        { error: 'tenantId required in request body or x-tenant-id header' },
+        400,
+        req,
+      );
+    }
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false },
     });
 
-    console.log(`[DEDUP] Starting deduplication for tenant ${TENANT_ID}, dryRun=${dryRun}`);
+    console.log(`[DEDUP] Starting deduplication for tenant ${tenantId}, dryRun=${dryRun}`);
 
     // 1. Fetch all companies
     const { data: allCompanies, error: fetchError } = await admin
       .from('companies')
       .select('*')
-      .eq('tenant_id', TENANT_ID)
+      .eq('tenant_id', tenantId)
       .order('created_at', { ascending: true });
 
     if (fetchError) {
@@ -147,7 +218,7 @@ export default async function handler(req: Request): Promise<Response> {
             .from('company_contacts')
             .update({ company_id: group.survivorId, updated_at: new Date().toISOString() })
             .in('company_id', group.duplicateIds)
-            .eq('tenant_id', TENANT_ID)
+            .eq('tenant_id', tenantId)
             .select('id');
 
           if (contactError) {
@@ -159,7 +230,7 @@ export default async function handler(req: Request): Promise<Response> {
             .from('business_record_activities')
             .update({ company_id: group.survivorId, updated_at: new Date().toISOString() })
             .in('company_id', group.duplicateIds)
-            .eq('tenant_id', TENANT_ID)
+            .eq('tenant_id', tenantId)
             .select('id');
 
           if (activityError) {
@@ -171,7 +242,7 @@ export default async function handler(req: Request): Promise<Response> {
             .from('companies')
             .delete()
             .in('id', group.duplicateIds)
-            .eq('tenant_id', TENANT_ID);
+            .eq('tenant_id', tenantId);
 
           if (deleteError) {
             console.error(`[DEDUP] Error deleting duplicates: ${deleteError.message}`);
@@ -198,21 +269,9 @@ export default async function handler(req: Request): Promise<Response> {
       }
     }
 
-    return new Response(JSON.stringify(results, null, 2), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-    });
+    return createCorsResponse(results, 200, req);
   } catch (error: any) {
     console.error('[DEDUP] Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-    });
+    return createCorsResponse({ error: error.message }, 500, req);
   }
 }

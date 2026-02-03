@@ -6004,6 +6004,7 @@ export const proposalAnalytics = pgTable('proposal_analytics', {
   id: varchar('id')
     .primaryKey()
     .default(sql`gen_random_uuid()`),
+  tenantId: varchar('tenant_id').notNull(),
   proposalId: varchar('proposal_id').notNull(),
 
   // Event Details

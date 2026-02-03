@@ -4961,8 +4961,15 @@ export class DatabaseStorage implements IStorage {
     return result[0]?.count ?? 0;
   }
 
-  async getContactById(id: string): Promise<CompanyContact | undefined> {
-    const [contact] = await db.select().from(companyContacts).where(eq(companyContacts.id, id));
+  async getContactById(id: string, tenantId?: string): Promise<CompanyContact | undefined> {
+    const conditions = [eq(companyContacts.id, id)];
+    if (tenantId) {
+      conditions.push(eq(companyContacts.tenantId, tenantId));
+    }
+    const [contact] = await db
+      .select()
+      .from(companyContacts)
+      .where(and(...conditions));
     return contact;
   }
 

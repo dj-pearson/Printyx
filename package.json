@@ -72,7 +72,15 @@
     "fix:schema:apply": "tsx tests/schema-fixer.ts --apply",
     "fix:schema:auto": "tsx tests/schema-fixer.ts --apply --auto",
     "audit:pages": "tsx scripts/page-error-audit.ts",
-    "audit:pages:warnings": "cross-env CAPTURE_WARNINGS=true tsx scripts/page-error-audit.ts"
+    "audit:pages:warnings": "cross-env CAPTURE_WARNINGS=true tsx scripts/page-error-audit.ts",
+    "audit:all": "tsx scripts/audit/run-all.ts",
+    "audit:api": "tsx scripts/audit/api-endpoint-audit.ts",
+    "audit:edge": "tsx scripts/audit/edge-function-audit.ts",
+    "audit:contracts": "tsx scripts/audit/api-contract-audit.ts",
+    "audit:overlaps": "tsx scripts/audit/route-overlap-audit.ts",
+    "audit:rls": "tsx scripts/audit/database-rls-audit.ts",
+    "audit:security": "tsx scripts/audit/security-audit.ts",
+    "audit:errors": "tsx scripts/audit/error-tracker.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
