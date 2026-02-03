@@ -89,6 +89,35 @@ services:
       - printyx-network
 
   # =============================================================================
+  # Logflare Analytics (for Supabase Dashboard logs)
+  # =============================================================================
+  analytics:
+    image: supabase/logflare:1.4.0
+    container_name: printyx-analytics
+    restart: unless-stopped
+    ports:
+      - '4000:4000'
+    environment:
+      LOGFLARE_NODE_HOST: 127.0.0.1
+      LOGFLARE_API_KEY: ${LOGFLARE_API_KEY:-your-super-secret-logflare-api-key}
+      LOGFLARE_SINGLE_TENANT: true
+      LOGFLARE_SUPABASE_MODE: true
+      LOGFLARE_MIN_CLUSTER_SIZE: 1
+      POSTGRES_BACKEND_URL: postgresql://printyx:printyx_password@postgres:5432/printyx
+      POSTGRES_BACKEND_SCHEMA: _analytics
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:4000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - printyx-network
+
+  # =============================================================================
   # Development Services (use with --profile dev)
   # =============================================================================
 
