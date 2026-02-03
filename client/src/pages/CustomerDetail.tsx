@@ -2188,7 +2188,7 @@ export default function CustomerDetailHubspot() {
 
               <TabsContent value="contacts" className="mt-6">
                 <ContactManager
-                  companyId={customer?.companyId || ''}
+                  companyId={customer?.id || ''}
                   companyName={customer?.companyName || 'Unknown Company'}
                 />
               </TabsContent>
