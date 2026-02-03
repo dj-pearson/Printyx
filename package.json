@@ -52,6 +52,8 @@
     "seed:reports": "tsx server/database-updater/seeders/report-seeder.ts",
     "seed:kpis": "tsx server/database-updater/seeders/kpi-seeder.ts",
     "seed:plans": "tsx server/seed-subscription-plans.ts",
+    "seed:demo": "tsx server/seeds/seed-all-demo-data.ts",
+    "seed:all": "npm run seed:rbac && npm run seed:reports && npm run seed:kpis && npm run seed:plans && npm run seed:demo",
     "stripe:setup": "tsx scripts/setup-stripe-products.ts",
     "stripe:setup:live": "tsx scripts/setup-stripe-products.ts --live",
     "stripe:setup:dry-run": "tsx scripts/setup-stripe-products.ts --dry-run",

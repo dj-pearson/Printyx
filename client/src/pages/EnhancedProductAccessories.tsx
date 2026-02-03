@@ -216,9 +216,10 @@ export default function EnhancedProductAccessories() {
   };
 
   const filteredAccessories = accessories.filter((accessory) => {
+    const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
-      accessory.accessoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      accessory.accessoryCode.toLowerCase().includes(searchTerm.toLowerCase());
+      (accessory.accessoryName ?? '').toLowerCase().includes(searchLower) ||
+      (accessory.accessoryCode ?? '').toLowerCase().includes(searchLower);
     const matchesManufacturer =
       selectedManufacturer === 'all' || accessory.manufacturer === selectedManufacturer;
     const matchesType = selectedType === 'all' || accessory.accessoryType === selectedType;

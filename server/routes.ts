@@ -8389,6 +8389,10 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   app.use('/api/subscriptions', subscriptionRoutes.default);
   app.use('/api/admin/subscriptions', adminSubscriptionRoutes.default);
 
+  // Admin Seed Routes (demo data seeding)
+  const adminSeedRoutes = await import('./routes/admin-seed-routes');
+  app.use('/api/admin/seed', adminSeedRoutes.default);
+
   // Signup & Trial CRM Routes
   app.use('/api/root-admin/crm', signupCrmRoutes);
 
