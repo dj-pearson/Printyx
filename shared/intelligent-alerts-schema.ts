@@ -459,6 +459,7 @@ export const alertRoutingRules = pgTable('alert_routing_rules', {
 
 export const resolutionSuggestionFeedback = pgTable('resolution_suggestion_feedback', {
   id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: text('tenant_id').notNull(),
 
   // Reference
   suggestionId: varchar('suggestion_id', { length: 255 }).notNull(),

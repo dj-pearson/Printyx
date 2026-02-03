@@ -21,8 +21,44 @@ export default async function handler(req: Request) {
     const authHeader = req.headers.get('Authorization');
     const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-    // GET /printer-monitoring/oid-presets - Get all OID presets
+    // ============================================================================
+    // AUTHENTICATION CHECK - Require some form of auth for all endpoints
+    // ============================================================================
+    if (!apiKey && !jwt) {
+      return createCorsResponse(
+        {
+          error: 'Authentication required. Provide x-api-key header or Authorization Bearer token.',
+        },
+        401,
+        req,
+      );
+    }
+
+    // GET /printer-monitoring/oid-presets - Get all OID presets (requires auth)
     if (req.method === 'GET' && resource === 'oid-presets' && !resourceId) {
+      // Verify user has valid JWT for OID presets access
+      if (jwt) {
+        const supabase = createSupabaseClient(req);
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser(jwt);
+        if (userError || !user) {
+          return createCorsResponse({ error: 'Unauthorized' }, 401, req);
+        }
+      } else if (apiKey) {
+        // Also allow API key authenticated clients to access presets
+        const { data: client } = await admin
+          .from('monitoring_clients')
+          .select('id')
+          .eq('api_key', apiKey)
+          .eq('status', 'active')
+          .single();
+        if (!client) {
+          return createCorsResponse({ error: 'Invalid or inactive API key' }, 401, req);
+        }
+      }
+
       const { data: presets, error } = await admin
         .from('oid_presets')
         .select('*')
@@ -51,8 +87,30 @@ export default async function handler(req: Request) {
       );
     }
 
-    // GET /printer-monitoring/oid-presets/:manufacturer - Get manufacturer-specific presets
+    // GET /printer-monitoring/oid-presets/:manufacturer - Get manufacturer-specific presets (requires auth)
     if (req.method === 'GET' && resource === 'oid-presets' && resourceId) {
+      // Verify user has valid JWT or API key
+      if (jwt) {
+        const supabase = createSupabaseClient(req);
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser(jwt);
+        if (userError || !user) {
+          return createCorsResponse({ error: 'Unauthorized' }, 401, req);
+        }
+      } else if (apiKey) {
+        const { data: client } = await admin
+          .from('monitoring_clients')
+          .select('id')
+          .eq('api_key', apiKey)
+          .eq('status', 'active')
+          .single();
+        if (!client) {
+          return createCorsResponse({ error: 'Invalid or inactive API key' }, 401, req);
+        }
+      }
+
       const { data: presets, error } = await admin
         .from('oid_presets')
         .select('*')

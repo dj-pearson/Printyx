@@ -38,6 +38,7 @@ export const parsingCorrections = pgTable('parsing_corrections', {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
+  tenantId: text('tenant_id').notNull(),
   emailId: text('email_id').notNull(),
   aiParsedData: jsonb('ai_parsed_data').notNull(),
   correctedData: jsonb('corrected_data').notNull(),

@@ -1,13 +1,19 @@
 /**
  * Database Updater API Routes
  * REST endpoints for Root Admin control of the database updater system
+ *
+ * SECURITY: All endpoints require Platform Admin authentication (roleLevel >= 8)
  */
 
 import express from 'express';
 import { DatabaseUpdaterManager } from '../DatabaseUpdaterManager';
 import { Logger } from '../core/Logger';
+import { platformAdminRoute } from '../../middleware/supabase-auth';
 
 const router = express.Router();
+
+// Apply platform admin authentication to all routes in this router
+router.use(platformAdminRoute);
 
 // Global updater manager instance
 let updaterManager: DatabaseUpdaterManager | null = null;
