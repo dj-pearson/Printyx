@@ -41,6 +41,7 @@ import {
   Download,
   Bell,
 } from 'lucide-react';
+import MainLayout from '@/components/layout/main-layout';
 
 interface Vehicle {
   id: string;
@@ -189,12 +190,16 @@ const VehicleManagement: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <MainLayout>
+      <div className="space-y-6">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Vehicle Fleet Management</h1>
-          <p className="text-gray-600">Manage your service and delivery vehicle fleet</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            Vehicle Fleet Management
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Manage your service and delivery vehicle fleet
+          </p>
         </div>
 
         {/* Quick Stats */}
@@ -646,7 +651,7 @@ const VehicleManagement: React.FC = () => {
           </Dialog>
         )}
       </div>
-    </div>
+    </MainLayout>
   );
 };
 

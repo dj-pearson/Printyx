@@ -6,7 +6,11 @@ import { BookOpen, HelpCircle, ArrowRight, CheckCircle, AlertTriangle, Clock } f
 import SOPModal from './SOPModal';
 
 interface ProcessHelpBannerProps {
-  processType: 'lead-to-quote' | 'quote-to-proposal' | 'proposal-to-contract';
+  processType:
+    | 'lead-to-quote'
+    | 'quote-to-proposal'
+    | 'proposal-to-contract'
+    | 'advanced-analytics';
   currentStage?: string;
   nextStage?: string;
   estimatedTime?: string;
@@ -31,6 +35,12 @@ const processInfo = {
     description: 'Execute signed contracts from approved proposals',
     stages: ['contract-preparation', 'signature-collection', 'contract-activation'],
     color: 'purple',
+  },
+  'advanced-analytics': {
+    title: 'Advanced Analytics Process',
+    description: 'Analyze data patterns and generate actionable insights',
+    stages: ['data-collection', 'data-analysis', 'pattern-detection', 'actionable-insights'],
+    color: 'blue',
   },
 };
 

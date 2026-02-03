@@ -34,7 +34,10 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    const settingType = pathParts[1]; // 'user', 'tenant', 'dashboard'
+    // Handle both path formats:
+    // - If pathname includes function name: /settings/user → pathParts[1]
+    // - If pathname is just the setting type (server.ts strips function name): /user → pathParts[0]
+    const settingType = pathParts[0] === 'settings' ? pathParts[1] : pathParts[0];
 
     // GET /settings/user - Get user settings
     if (req.method === 'GET' && settingType === 'user') {

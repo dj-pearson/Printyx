@@ -92,6 +92,7 @@ const AIServiceIntelligence = React.lazy(() => import('@/pages/AIServiceIntellig
 
 // Core app pages - lazy load everything for optimal bundle splitting
 const Dashboard = React.lazy(() => import('@/pages/dashboard'));
+const ExecutiveDashboard = React.lazy(() => import('@/pages/ExecutiveDashboard'));
 const Customers = React.lazy(() => import('@/pages/customers'));
 const LeadDetail = React.lazy(() => import('@/pages/LeadDetail'));
 // Removed placeholder report imports - using Reports page instead
@@ -99,6 +100,7 @@ const Contracts = React.lazy(() => import('@/pages/contracts'));
 const ContractRenewalDashboard = React.lazy(() => import('@/pages/ContractRenewalDashboard'));
 const ProactiveServiceDashboard = React.lazy(() => import('@/pages/ProactiveServiceDashboard'));
 const ServiceDispatchOptimization = React.lazy(() => import('@/pages/ServiceDispatchOptimization'));
+const ServiceForecastingAnalytics = React.lazy(() => import('@/pages/ServiceForecastingAnalytics'));
 const Inventory = React.lazy(() => import('@/pages/inventory'));
 const Billing = React.lazy(() => import('@/pages/Billing'));
 const Reports = React.lazy(() => import('@/pages/EnhancedReportsHub'));
@@ -190,10 +192,14 @@ const ProductCatalog = React.lazy(() => import('@/pages/ProductCatalog'));
 const VendorManagement = React.lazy(() => import('@/pages/VendorManagement'));
 const CustomerNumberSettings = React.lazy(() => import('@/pages/CustomerNumberSettings'));
 const FinancialForecasting = React.lazy(() => import('@/pages/FinancialForecasting'));
+const FinancialIntelligenceDashboard = React.lazy(
+  () => import('@/pages/FinancialIntelligenceDashboard'),
+);
 const EquipmentLifecycleManagement = React.lazy(
   () => import('@/pages/EquipmentLifecycleManagement'),
 );
 const CommissionManagement = React.lazy(() => import('@/pages/CommissionManagement'));
+const SalesPerformanceAnalytics = React.lazy(() => import('@/pages/SalesPerformanceAnalytics'));
 const ServiceAnalytics = React.lazy(() => import('@/pages/ServiceAnalytics'));
 const MobileFieldOperations = React.lazy(() => import('@/pages/MobileFieldOperations'));
 const RemoteMonitoring = React.lazy(() => import('@/pages/RemoteMonitoring'));
@@ -489,6 +495,7 @@ function Router() {
           <Route path="/forgot-password" component={RedirectToDashboard} />
           <Route path="/auth/callback" component={AuthCallback} />
           <Route path="/" component={Dashboard} />
+          <Route path="/executive-dashboard" component={ExecutiveDashboard} />
           <Route path="/today" component={TodayDashboard} />
           <Route path="/dashboard/today" component={TodayDashboard} />
           <Route path="/customers" component={Customers} />
@@ -536,6 +543,10 @@ function Router() {
           <Route path="/customer-portal" component={CustomerSelfServicePortal} />
           <Route path="/advanced-billing" component={AdvancedBillingEngine} />
           <Route path="/financial-forecasting" component={FinancialForecasting} />
+          <Route
+            path="/financial-intelligence-dashboard"
+            component={FinancialIntelligenceDashboard}
+          />
           {/* Equipment Lifecycle Management - now redirects to unified hub */}
           <Route path="/equipment-lifecycle-management" component={EquipmentLifecycleHub} />
           {/* Legacy Equipment Lifecycle Management (keeping for reference during transition) */}
@@ -544,6 +555,8 @@ function Router() {
             component={EquipmentLifecycleManagement}
           />
           <Route path="/commission-management" component={CommissionManagement} />
+          <Route path="/sales-command-center" component={SalesCommandCenter} />
+          <Route path="/sales-performance-analytics" component={SalesPerformanceAnalytics} />
           <Route path="/remote-monitoring" component={RemoteMonitoring} />
           <Route path="/fleet-monitoring" component={FleetMonitoringDashboard} />
           {/* Removed duplicate route - use /mobile-service-app as primary */}
@@ -586,6 +599,7 @@ function Router() {
           <Route path="/invoices" component={Invoices} />
           <Route path="/service-dispatch" component={ServiceDispatchOptimization} />
           <Route path="/proactive-service" component={ProactiveServiceDashboard} />
+          <Route path="/service-forecasting-analytics" component={ServiceForecastingAnalytics} />
           <Route path="/technician-management" component={TechnicianManagement} />
           <Route path="/vehicle-management" component={VehicleManagement} />
           <Route path="/asset-management" component={AssetManagement} />

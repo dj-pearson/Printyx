@@ -29,7 +29,10 @@ export default async function handler(req: Request) {
 
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1]; // /user/profile, /user/preferences, etc.
+    // Handle both path formats:
+    // - If pathname includes function name: /user/profile → pathParts[1]
+    // - If pathname is just the endpoint (server.ts strips function name): /profile → pathParts[0]
+    const endpoint = pathParts[0] === 'user' ? pathParts[1] : pathParts[0];
 
     // GET /user or /user/profile - Get current user profile
     if (req.method === 'GET' && (!endpoint || endpoint === 'profile')) {
@@ -263,6 +266,206 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ success: true }, 200, req);
+    }
+
+    // GET /user/settings - Get all user settings (combined profile + preferences)
+    if (req.method === 'GET' && endpoint === 'settings') {
+      // Get user profile
+      const { data: profile } = await admin
+        .from('users')
+        .select('id, email, name, phone, department, job_title, timezone, avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      // Get user preferences/settings
+      const { data: settings } = await admin
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      // Combine into expected format
+      const userSettings = {
+        id: user.id,
+        firstName: profile?.name?.split(' ')[0] || '',
+        lastName: profile?.name?.split(' ').slice(1).join(' ') || '',
+        email: profile?.email || user.email,
+        phone: profile?.phone || '',
+        jobTitle: profile?.job_title || '',
+        department: profile?.department || '',
+        bio: settings?.bio || '',
+        avatar: profile?.avatar_url || '',
+        theme: settings?.theme || 'system',
+        language: settings?.language || 'en',
+        timezone: profile?.timezone || 'America/New_York',
+        dateFormat: settings?.date_format || 'MM/dd/yyyy',
+        timeFormat: settings?.time_format || '12',
+        currency: settings?.currency || 'USD',
+        notifications: settings?.notifications || {
+          email: true,
+          push: true,
+          sms: false,
+          marketing: false,
+        },
+        accessibility: settings?.accessibility || {
+          highContrast: false,
+          reducedMotion: false,
+          fontSize: 'medium',
+          screenReader: false,
+          keyboardNavigation: false,
+          colorBlind: 'none',
+          soundEnabled: true,
+          voiceCommands: false,
+        },
+        twoFactorEnabled: settings?.two_factor_enabled || false,
+      };
+
+      return createCorsResponse(userSettings, 200, req);
+    }
+
+    // PUT /user/password - Update user password
+    if (req.method === 'PUT' && endpoint === 'password') {
+      const body = await req.json();
+      const { currentPassword, newPassword } = body;
+
+      if (!currentPassword || !newPassword) {
+        return createCorsResponse(
+          { error: 'Current password and new password are required' },
+          400,
+          req,
+        );
+      }
+
+      // Use Supabase Auth to update password
+      const supabaseWithAuth = createSupabaseClient(req);
+
+      // First verify the current password by trying to sign in
+      const { error: signInError } = await supabaseWithAuth.auth.signInWithPassword({
+        email: user.email!,
+        password: currentPassword,
+      });
+
+      if (signInError) {
+        return createCorsResponse({ error: 'Current password is incorrect' }, 400, req);
+      }
+
+      // Update to new password
+      const { error: updateError } = await supabaseWithAuth.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        console.error('Error updating password:', updateError);
+        return createCorsResponse({ error: 'Failed to update password' }, 500, req);
+      }
+
+      return createCorsResponse({ message: 'Password updated successfully' }, 200, req);
+    }
+
+    // PUT /user/accessibility - Update accessibility settings
+    if (req.method === 'PUT' && endpoint === 'accessibility') {
+      const body = await req.json();
+
+      // Check if settings exist
+      const { data: existingSettings } = await admin
+        .from('user_settings')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existingSettings) {
+        const { data: settings, error } = await admin
+          .from('user_settings')
+          .update({
+            accessibility: body.accessibility || body,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error updating accessibility:', error);
+          return createCorsResponse({ error: 'Failed to update accessibility settings' }, 500, req);
+        }
+
+        return createCorsResponse(settings, 200, req);
+      } else {
+        // Create new settings record
+        const { data: settings, error } = await admin
+          .from('user_settings')
+          .insert({
+            user_id: user.id,
+            accessibility: body.accessibility || body,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating accessibility settings:', error);
+          return createCorsResponse({ error: 'Failed to create accessibility settings' }, 500, req);
+        }
+
+        return createCorsResponse(settings, 201, req);
+      }
+    }
+
+    // GET /user/export - Export all user data
+    if (req.method === 'GET' && endpoint === 'export') {
+      // Get user profile
+      const { data: profile } = await admin.from('users').select('*').eq('id', user.id).single();
+
+      // Get user settings
+      const { data: settings } = await admin
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      // Get user preferences
+      const { data: preferences } = await admin
+        .from('user_preferences')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        profile: profile || {},
+        settings: settings || {},
+        preferences: preferences || {},
+      };
+
+      return createCorsResponse(exportData, 200, req);
+    }
+
+    // DELETE /user or /user/delete - Delete user account
+    if (req.method === 'DELETE' && (!endpoint || endpoint === 'delete')) {
+      // Delete user settings
+      await admin.from('user_settings').delete().eq('user_id', user.id);
+
+      // Delete user preferences
+      await admin.from('user_preferences').delete().eq('user_id', user.id);
+
+      // Delete the user from the users table
+      const { error: deleteError } = await admin.from('users').delete().eq('id', user.id);
+
+      if (deleteError) {
+        console.error('Error deleting user:', deleteError);
+        return createCorsResponse({ error: 'Failed to delete account' }, 500, req);
+      }
+
+      // Delete from Supabase Auth
+      const { error: authDeleteError } = await admin.auth.admin.deleteUser(user.id);
+
+      if (authDeleteError) {
+        console.error('Error deleting auth user:', authDeleteError);
+        // User data is already deleted, so we return success
+      }
+
+      return createCorsResponse({ message: 'Account deleted successfully' }, 200, req);
     }
 
     // Method/endpoint not found
