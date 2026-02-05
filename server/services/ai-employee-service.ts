@@ -170,21 +170,24 @@ class AIEmployeeService {
     },
   ): Promise<AIEmployee[]> {
     try {
-      let query = `SELECT * FROM ai_employees WHERE tenant_id = '${tenantId}'`;
+      // Build conditions array for dynamic WHERE clause
+      const conditions = [sql`tenant_id = ${tenantId}`];
 
       if (filters?.employeeType) {
-        query += ` AND employee_type = '${filters.employeeType}'`;
+        conditions.push(sql`employee_type = ${filters.employeeType}`);
       }
       if (filters?.status) {
-        query += ` AND status = '${filters.status}'`;
+        conditions.push(sql`status = ${filters.status}`);
       }
       if (filters?.autonomyLevel) {
-        query += ` AND autonomy_level = '${filters.autonomyLevel}'`;
+        conditions.push(sql`autonomy_level = ${filters.autonomyLevel}`);
       }
 
-      query += ' ORDER BY created_at DESC';
-
-      const result = await db.execute(sql.raw(query));
+      const result = await db.execute(sql`
+        SELECT * FROM ai_employees
+        WHERE ${sql.join(conditions, sql` AND `)}
+        ORDER BY created_at DESC
+      `);
       return result.rows as AIEmployee[];
     } catch (error) {
       console.error('Error fetching AI employees:', error);
@@ -840,15 +843,17 @@ class AIEmployeeService {
     status?: string,
   ): Promise<AIEmployeeTask[]> {
     try {
-      let query = `SELECT * FROM ai_employee_tasks WHERE tenant_id = '${tenantId}' AND employee_id = '${employeeId}'`;
+      const conditions = [sql`tenant_id = ${tenantId}`, sql`employee_id = ${employeeId}`];
 
       if (status) {
-        query += ` AND status = '${status}'`;
+        conditions.push(sql`status = ${status}`);
       }
 
-      query += ' ORDER BY assigned_at DESC';
-
-      const result = await db.execute(sql.raw(query));
+      const result = await db.execute(sql`
+        SELECT * FROM ai_employee_tasks
+        WHERE ${sql.join(conditions, sql` AND `)}
+        ORDER BY assigned_at DESC
+      `);
       return result.rows as AIEmployeeTask[];
     } catch (error) {
       console.error('Error fetching employee tasks:', error);
@@ -859,7 +864,7 @@ class AIEmployeeService {
   async getEmployeePerformance(tenantId: string, employeeId: string, days = 30): Promise<any> {
     try {
       const result = await db.execute(sql`
-        SELECT 
+        SELECT
           COUNT(*) as total_tasks,
           COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_tasks,
           COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed_tasks,
@@ -868,7 +873,7 @@ class AIEmployeeService {
           AVG(ai_confidence_score) as avg_confidence
         FROM ai_employee_tasks
         WHERE employee_id = ${employeeId} AND tenant_id = ${tenantId}
-        AND assigned_at >= CURRENT_DATE - INTERVAL '${days} days'
+        AND assigned_at >= CURRENT_DATE - (${days} || ' days')::interval
       `);
 
       return (
@@ -889,15 +894,17 @@ class AIEmployeeService {
 
   async getWorkflows(tenantId: string, workflowType?: string): Promise<any[]> {
     try {
-      let query = `SELECT * FROM ai_employee_workflows WHERE tenant_id = '${tenantId}' AND status = 'active'`;
+      const conditions = [sql`tenant_id = ${tenantId}`, sql`status = 'active'`];
 
       if (workflowType) {
-        query += ` AND workflow_type = '${workflowType}'`;
+        conditions.push(sql`workflow_type = ${workflowType}`);
       }
 
-      query += ' ORDER BY created_at DESC';
-
-      const result = await db.execute(sql.raw(query));
+      const result = await db.execute(sql`
+        SELECT * FROM ai_employee_workflows
+        WHERE ${sql.join(conditions, sql` AND `)}
+        ORDER BY created_at DESC
+      `);
       return result.rows;
     } catch (error) {
       console.error('Error fetching workflows:', error);
