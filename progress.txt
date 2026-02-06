@@ -407,3 +407,47 @@ import { requireAuth } from '../auth-setup';
 
 ---
 
+## Iteration 8 - US-001: Set up Drizzle migration system replacing db:push
+**Started**: 2026-02-06
+**Status**: COMPLETE
+
+### What Was Done:
+1. Updated `drizzle.config.ts` to output to `drizzle/migrations/` and include ALL 51+ schema files
+2. Created `server/lib/migrate.ts` - Migration runner with PostgreSQL advisory lock
+3. Added npm scripts: `db:generate`, `db:migrate`, `db:migrate:status`
+4. Migration lock uses `__migration_lock` table with 5-minute auto-expiry
+5. Updated CLAUDE.md Database section with new migration workflow
+6. Updated CLAUDE.md Migration Workflow section with generate+migrate instructions
+7. Typecheck passes (no new errors)
+8. Build passes (Vite build successful)
+9. Existing tests unaffected (all pre-existing failures remain, no new failures)
+
+### Migration Lock Details:
+- Table: `__migration_lock` with single-row constraint
+- Auto-expires after 5 minutes (handles crash recovery)
+- Records hostname of lock holder
+- `db:migrate:status` shows lock status + applied migrations
+
+### Files Created:
+- server/lib/migrate.ts - Migration runner with lock mechanism
+- drizzle/migrations/.gitkeep - Empty directory placeholder
+
+### Files Modified:
+- drizzle.config.ts - Updated output dir and added all 51+ schema files
+- package.json - Added db:generate, db:migrate, db:migrate:status scripts
+- CLAUDE.md - Updated Database and Migration Workflow sections
+- prd.json - Marked US-001 as passes: true
+
+### Notes:
+- `db:push` is still available for quick dev iteration
+- `db:generate` uses drizzle-kit generate to create SQL migration files
+- `db:migrate` runs migrations programmatically via drizzle-orm migrator
+- First `db:generate` will create a baseline migration from the current schema
+- Old `migrations/` directory with ad-hoc SQL files is preserved (not deleted)
+
+### Story Status:
+- US-001: **COMPLETE**
+- passes: true
+
+---
+

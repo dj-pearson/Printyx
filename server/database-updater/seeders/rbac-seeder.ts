@@ -2099,8 +2099,12 @@ export async function seedRBAC() {
   }
 }
 
-// Allow direct execution
-if (require.main === module) {
+// Allow direct execution (ESM compatible)
+const isMainModule =
+  import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}` ||
+  import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/').replace(/^\//, '')}`;
+
+if (isMainModule) {
   seedRBAC()
     .then(() => {
       console.log('\n✅ Seeding completed successfully');

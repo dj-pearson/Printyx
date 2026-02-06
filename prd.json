@@ -18,7 +18,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Currently using db:push which is not safe for production. Drizzle supports generate+migrate workflow. Main schema: shared/schema.ts (293KB) with 43 additional files in shared/*-schema.ts. Forecasting DB config: drizzle.forecasting.config.ts. See drizzle.config.ts for current setup."
     },
     {
