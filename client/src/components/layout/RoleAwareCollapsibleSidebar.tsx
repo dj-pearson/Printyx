@@ -243,6 +243,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         '/deal-desk*',
         '/crm-goals*',
         '/pipeline-config*',
+        '/sales-rep-assignments*',
       ],
       children: [
         { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
@@ -263,6 +264,7 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
         { title: 'Sales Command Center', path: '/sales-command-center', icon: Monitor },
         { title: 'Sales Performance', path: '/sales-performance-analytics', icon: BarChart3 },
         { title: 'Commission Management', path: '/commission-management', icon: DollarSign },
+        { title: 'Rep Assignments', path: '/sales-rep-assignments', icon: MapPin },
       ],
     });
   }

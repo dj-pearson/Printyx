@@ -44,7 +44,8 @@
       "Bash(powershell -ExecutionPolicy Bypass -File \"scripts\\\\audit-edge-functions.ps1\" -ExportJson)",
       "Bash(wc:*)",
       "Bash(npm run audit:all:*)",
-      "Bash(npm run audit:security:*)"
+      "Bash(npm run audit:security:*)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npx tsc:*)"
     ],
     "deny": [],
     "ask": []
