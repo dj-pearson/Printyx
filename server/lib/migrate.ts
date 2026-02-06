@@ -4,6 +4,8 @@ const { Pool } = pg;
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -12,6 +14,7 @@ const __dirname = path.dirname(__filename);
 const LOCK_TABLE = '__migration_lock';
 const LOCK_ID = 1;
 const LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const MIGRATIONS_FOLDER = path.resolve(__dirname, '../../drizzle/migrations');
 
 function buildDatabaseUrl(): string {
   if (process.env.DATABASE_URL?.startsWith('postgres')) {
@@ -28,6 +31,22 @@ function buildDatabaseUrl(): string {
     );
   }
   return `postgresql://${user}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
+}
+
+function createPool(): pg.Pool {
+  const databaseUrl = buildDatabaseUrl();
+  const sslConfig =
+    process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production'
+      ? process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false'
+        ? { rejectUnauthorized: false }
+        : true
+      : undefined;
+
+  return new Pool({
+    connectionString: databaseUrl,
+    ssl: sslConfig as any,
+    max: 1,
+  });
 }
 
 async function ensureLockTable(pool: pg.Pool): Promise<void> {
@@ -88,22 +107,9 @@ async function getLockStatus(pool: pg.Pool): Promise<{
 }
 
 async function runMigrations(): Promise<void> {
-  const databaseUrl = buildDatabaseUrl();
-  const sslConfig =
-    process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production'
-      ? process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false'
-        ? { rejectUnauthorized: false }
-        : true
-      : undefined;
-
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: sslConfig as any,
-    max: 1,
-  });
+  const pool = createPool();
 
   try {
-    // Acquire migration lock
     console.log('[Migrate] Acquiring migration lock...');
     const acquired = await acquireLock(pool);
     if (!acquired) {
@@ -115,19 +121,16 @@ async function runMigrations(): Promise<void> {
     }
     console.log('[Migrate] Lock acquired.');
 
-    // Run migrations
-    const migrationsFolder = path.resolve(__dirname, '../../drizzle/migrations');
-    console.log(`[Migrate] Running migrations from: ${migrationsFolder}`);
+    console.log(`[Migrate] Running migrations from: ${MIGRATIONS_FOLDER}`);
 
     const db = drizzle({ client: pool });
-    await migrate(db, { migrationsFolder });
+    await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
 
     console.log('[Migrate] Migrations completed successfully.');
   } catch (error) {
     console.error('[Migrate] Migration failed:', error);
     process.exit(1);
   } finally {
-    // Always release lock
     try {
       await releaseLock(pool);
       console.log('[Migrate] Lock released.');
@@ -138,23 +141,87 @@ async function runMigrations(): Promise<void> {
   }
 }
 
-async function showStatus(): Promise<void> {
-  const databaseUrl = buildDatabaseUrl();
-  const sslConfig =
-    process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production'
-      ? process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false'
-        ? { rejectUnauthorized: false }
-        : true
-      : undefined;
-
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    ssl: sslConfig as any,
-    max: 1,
-  });
+/**
+ * Mark all existing migrations as applied WITHOUT executing them.
+ * Use this when initializing drizzle migrations against an existing database
+ * that was previously managed with db:push.
+ *
+ * Usage: npm run db:migrate:baseline
+ */
+async function markBaseline(): Promise<void> {
+  const pool = createPool();
 
   try {
-    // Check lock status
+    // Read the meta journal to find all migrations
+    const journalPath = path.join(MIGRATIONS_FOLDER, 'meta', '_journal.json');
+    if (!fs.existsSync(journalPath)) {
+      console.error('[Migrate] No migrations found. Run `npm run db:generate` first.');
+      process.exit(1);
+    }
+
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf-8'));
+    const entries: Array<{ tag: string }> = journal.entries || [];
+
+    if (entries.length === 0) {
+      console.error('[Migrate] No migration entries in journal.');
+      process.exit(1);
+    }
+
+    // Create the drizzle migrations table if it doesn't exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS __drizzle_migrations (
+        id SERIAL PRIMARY KEY,
+        hash TEXT NOT NULL,
+        created_at BIGINT
+      )
+    `);
+
+    // Check what's already applied
+    const applied = await pool.query(`SELECT hash FROM __drizzle_migrations`);
+    const appliedHashes = new Set(applied.rows.map((r: { hash: string }) => r.hash));
+
+    let marked = 0;
+    for (const entry of entries) {
+      const sqlFile = path.join(MIGRATIONS_FOLDER, `${entry.tag}.sql`);
+      if (!fs.existsSync(sqlFile)) {
+        console.warn(`[Migrate] Warning: SQL file not found for ${entry.tag}, skipping`);
+        continue;
+      }
+
+      const sqlContent = fs.readFileSync(sqlFile, 'utf-8');
+      const hash = crypto.createHash('sha256').update(sqlContent).digest('hex');
+
+      if (appliedHashes.has(hash)) {
+        console.log(`[Migrate] Already applied: ${entry.tag}`);
+        continue;
+      }
+
+      await pool.query(`INSERT INTO __drizzle_migrations (hash, created_at) VALUES ($1, $2)`, [
+        hash,
+        Date.now(),
+      ]);
+      marked++;
+      console.log(`[Migrate] Marked as applied: ${entry.tag}`);
+    }
+
+    if (marked === 0) {
+      console.log('[Migrate] All migrations already marked as applied.');
+    } else {
+      console.log(`[Migrate] Baseline complete. Marked ${marked} migration(s) as applied.`);
+    }
+    console.log('[Migrate] Future schema changes will generate incremental migrations.');
+  } catch (error) {
+    console.error('[Migrate] Baseline failed:', error);
+    process.exit(1);
+  } finally {
+    await pool.end();
+  }
+}
+
+async function showStatus(): Promise<void> {
+  const pool = createPool();
+
+  try {
     const lockStatus = await getLockStatus(pool);
     console.log('[Migrate] Lock status:', lockStatus.locked ? 'LOCKED' : 'FREE');
     if (lockStatus.locked) {
@@ -162,7 +229,6 @@ async function showStatus(): Promise<void> {
       console.log(`  Locked at: ${lockStatus.lockedAt}`);
     }
 
-    // Check applied migrations from drizzle's __drizzle_migrations table
     try {
       const result = await pool.query(
         `SELECT * FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 20`,
@@ -189,6 +255,8 @@ async function showStatus(): Promise<void> {
 const command = process.argv[2];
 if (command === 'status') {
   showStatus();
+} else if (command === 'baseline') {
+  markBaseline();
 } else {
   runMigrations();
 }
