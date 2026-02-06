@@ -13,6 +13,9 @@ import passport from 'passport';
 import session from 'express-session';
 import type { Express, RequestHandler } from 'express';
 import { storage } from './storage';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('replitAuth');
+
 import {
   authenticateSupabaseJWT,
   isSupabaseAuthenticated,
@@ -52,7 +55,7 @@ export async function setupAuth(app: Express) {
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
-  console.log('[Auth] Authentication middleware initialized (Supabase JWT + session fallback)');
+  log.info('[Auth] Authentication middleware initialized (Supabase JWT + session fallback)');
 }
 
 /**
@@ -87,13 +90,13 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
           // SECURITY: Require explicit DEMO_TENANT_ID - no hardcoded fallback
           const demoTenantId = process.env.DEMO_TENANT_ID;
           if (!demoTenantId) {
-            console.error('[Auth] User not in database and DEMO_TENANT_ID not configured');
+            log.error('[Auth] User not in database and DEMO_TENANT_ID not configured');
             return res.status(401).json({ message: 'User not properly configured' });
           }
           tenantId = tenantId || demoTenantId;
         }
       } catch (error) {
-        console.error('[Auth] Error looking up user:', error);
+        log.error('[Auth] Error looking up user:', error);
         const demoTenantId = process.env.DEMO_TENANT_ID;
         if (!demoTenantId) {
           return res.status(500).json({ message: 'Authentication configuration error' });
@@ -132,7 +135,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   // SECURITY: Both TEST_AUTH_SECRET and DEMO_TENANT_ID must be explicitly set
   if (isTestMode && testAuthSecret && req.headers['x-test-auth'] === testAuthSecret) {
     if (!demoTenantId) {
-      console.error('[SECURITY] Test mode requires DEMO_TENANT_ID to be set');
+      log.error('[SECURITY] Test mode requires DEMO_TENANT_ID to be set');
       return res.status(500).json({ message: 'Test mode configuration error' });
     }
 
@@ -180,7 +183,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
       req.isAuthenticated = () => true;
       return next();
     } catch (error) {
-      console.error('Test auth bypass error:', error);
+      log.error('Test auth bypass error:', error);
       return res.status(500).json({ message: 'Test authentication setup failed' });
     }
   }

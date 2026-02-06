@@ -55,7 +55,13 @@
       "Bash(done)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "Bash(npm ci:*)"
+      "Bash(npm ci:*)",
+      "Bash(for f in routes-sample-data.ts routes-products-crud.ts routes-catalog-csv.ts routes-seo-core.ts routes-financial-forecasting.ts routes-operations-extended.ts routes-workflow-mobile.ts)",
+      "Bash(do if [ -f \"C:/Users/dpearson/Documents/Printyx/server/$f\" ])",
+      "Bash(else echo \"$f: NOT CREATED\")",
+      "Bash(fi)",
+      "Bash(for f in routes-sample-data.ts routes-seo-core.ts routes-workflow-mobile.ts)",
+      "Bash(npm ls:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,9 @@
 import express, { Request, Response } from 'express';
 import { storage } from '../storage';
 import { z } from 'zod';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('advanced-billing-routes');
+
 import {
   insertBillingRuleSchema,
   insertMeterAnomalySchema,
@@ -44,7 +47,7 @@ router.get('/rules', async (req: Request, res: Response) => {
     const rules = await storage.getBillingRules(user.tenantId, filters);
     res.json(rules);
   } catch (error) {
-    console.error('Get billing rules error:', error);
+    log.error('Get billing rules error:', error);
     res.status(500).json({ error: 'Failed to fetch billing rules' });
   }
 });
@@ -65,7 +68,7 @@ router.get('/rules/:id', async (req: Request, res: Response) => {
 
     res.json(rule);
   } catch (error) {
-    console.error('Get billing rule error:', error);
+    log.error('Get billing rule error:', error);
     res.status(500).json({ error: 'Failed to fetch billing rule' });
   }
 });
@@ -96,7 +99,7 @@ router.post('/rules', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create billing rule error:', error);
+    log.error('Create billing rule error:', error);
     res.status(500).json({ error: 'Failed to create billing rule' });
   }
 });
@@ -128,7 +131,7 @@ router.put('/rules/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update billing rule error:', error);
+    log.error('Update billing rule error:', error);
     res.status(500).json({ error: 'Failed to update billing rule' });
   }
 });
@@ -155,7 +158,7 @@ router.delete('/rules/:id', async (req: Request, res: Response) => {
     await storage.deleteBillingRule(req.params.id, user.tenantId);
     res.status(204).send();
   } catch (error) {
-    console.error('Delete billing rule error:', error);
+    log.error('Delete billing rule error:', error);
     res.status(500).json({ error: 'Failed to delete billing rule' });
   }
 });
@@ -171,7 +174,7 @@ router.get('/rules/customer/:customerId', async (req: Request, res: Response) =>
     const rules = await storage.getBillingRulesByCustomer(req.params.customerId, user.tenantId);
     res.json(rules);
   } catch (error) {
-    console.error('Get billing rules by customer error:', error);
+    log.error('Get billing rules by customer error:', error);
     res.status(500).json({ error: 'Failed to fetch billing rules for customer' });
   }
 });
@@ -187,7 +190,7 @@ router.get('/rules/contract/:contractId', async (req: Request, res: Response) =>
     const rules = await storage.getBillingRulesByContract(req.params.contractId, user.tenantId);
     res.json(rules);
   } catch (error) {
-    console.error('Get billing rules by contract error:', error);
+    log.error('Get billing rules by contract error:', error);
     res.status(500).json({ error: 'Failed to fetch billing rules for contract' });
   }
 });
@@ -214,7 +217,7 @@ router.get('/anomalies', async (req: Request, res: Response) => {
     const anomalies = await storage.getMeterAnomalies(user.tenantId, filters);
     res.json(anomalies);
   } catch (error) {
-    console.error('Get meter anomalies error:', error);
+    log.error('Get meter anomalies error:', error);
     res.status(500).json({ error: 'Failed to fetch meter anomalies' });
   }
 });
@@ -230,7 +233,7 @@ router.get('/anomalies/unresolved', async (req: Request, res: Response) => {
     const anomalies = await storage.getUnresolvedMeterAnomalies(user.tenantId);
     res.json(anomalies);
   } catch (error) {
-    console.error('Get unresolved anomalies error:', error);
+    log.error('Get unresolved anomalies error:', error);
     res.status(500).json({ error: 'Failed to fetch unresolved anomalies' });
   }
 });
@@ -251,7 +254,7 @@ router.get('/anomalies/:id', async (req: Request, res: Response) => {
 
     res.json(anomaly);
   } catch (error) {
-    console.error('Get meter anomaly error:', error);
+    log.error('Get meter anomaly error:', error);
     res.status(500).json({ error: 'Failed to fetch meter anomaly' });
   }
 });
@@ -275,7 +278,7 @@ router.post('/anomalies', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create meter anomaly error:', error);
+    log.error('Create meter anomaly error:', error);
     res.status(500).json({ error: 'Failed to create meter anomaly' });
   }
 });
@@ -304,7 +307,7 @@ router.post('/anomalies/:id/review', async (req: Request, res: Response) => {
 
     res.json(reviewed);
   } catch (error) {
-    console.error('Review meter anomaly error:', error);
+    log.error('Review meter anomaly error:', error);
     res.status(500).json({ error: 'Failed to review meter anomaly' });
   }
 });
@@ -336,7 +339,7 @@ router.post('/anomalies/:id/resolve', async (req: Request, res: Response) => {
 
     res.json(resolved);
   } catch (error) {
-    console.error('Resolve meter anomaly error:', error);
+    log.error('Resolve meter anomaly error:', error);
     res.status(500).json({ error: 'Failed to resolve meter anomaly' });
   }
 });
@@ -353,7 +356,7 @@ router.get('/anomalies/equipment/:equipmentId', async (req: Request, res: Respon
 
     res.json(anomalies);
   } catch (error) {
-    console.error('Get anomalies by equipment error:', error);
+    log.error('Get anomalies by equipment error:', error);
     res.status(500).json({ error: 'Failed to fetch anomalies for equipment' });
   }
 });
@@ -380,7 +383,7 @@ router.get('/disputes', async (req: Request, res: Response) => {
     const disputes = await storage.getBillingDisputes(user.tenantId, filters);
     res.json(disputes);
   } catch (error) {
-    console.error('Get billing disputes error:', error);
+    log.error('Get billing disputes error:', error);
     res.status(500).json({ error: 'Failed to fetch billing disputes' });
   }
 });
@@ -396,7 +399,7 @@ router.get('/disputes/open', async (req: Request, res: Response) => {
     const disputes = await storage.getOpenBillingDisputes(user.tenantId);
     res.json(disputes);
   } catch (error) {
-    console.error('Get open disputes error:', error);
+    log.error('Get open disputes error:', error);
     res.status(500).json({ error: 'Failed to fetch open disputes' });
   }
 });
@@ -417,7 +420,7 @@ router.get('/disputes/:id', async (req: Request, res: Response) => {
 
     res.json(dispute);
   } catch (error) {
-    console.error('Get billing dispute error:', error);
+    log.error('Get billing dispute error:', error);
     res.status(500).json({ error: 'Failed to fetch billing dispute' });
   }
 });
@@ -442,7 +445,7 @@ router.post('/disputes', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create billing dispute error:', error);
+    log.error('Create billing dispute error:', error);
     res.status(500).json({ error: 'Failed to create billing dispute' });
   }
 });
@@ -468,7 +471,7 @@ router.put('/disputes/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update billing dispute error:', error);
+    log.error('Update billing dispute error:', error);
     res.status(500).json({ error: 'Failed to update billing dispute' });
   }
 });
@@ -501,7 +504,7 @@ router.post('/disputes/:id/assign', async (req: Request, res: Response) => {
 
     res.json(assigned);
   } catch (error) {
-    console.error('Assign billing dispute error:', error);
+    log.error('Assign billing dispute error:', error);
     res.status(500).json({ error: 'Failed to assign billing dispute' });
   }
 });
@@ -523,7 +526,7 @@ router.post('/disputes/:id/acknowledge', async (req: Request, res: Response) => 
 
     res.json(acknowledged);
   } catch (error) {
-    console.error('Acknowledge billing dispute error:', error);
+    log.error('Acknowledge billing dispute error:', error);
     res.status(500).json({ error: 'Failed to acknowledge billing dispute' });
   }
 });
@@ -562,7 +565,7 @@ router.post('/disputes/:id/resolve', async (req: Request, res: Response) => {
 
     res.json(resolved);
   } catch (error) {
-    console.error('Resolve billing dispute error:', error);
+    log.error('Resolve billing dispute error:', error);
     res.status(500).json({ error: 'Failed to resolve billing dispute' });
   }
 });
@@ -600,7 +603,7 @@ router.post('/disputes/:id/escalate', async (req: Request, res: Response) => {
 
     res.json(escalated);
   } catch (error) {
-    console.error('Escalate billing dispute error:', error);
+    log.error('Escalate billing dispute error:', error);
     res.status(500).json({ error: 'Failed to escalate billing dispute' });
   }
 });
@@ -620,7 +623,7 @@ router.get('/disputes/customer/:customerId', async (req: Request, res: Response)
 
     res.json(disputes);
   } catch (error) {
-    console.error('Get disputes by customer error:', error);
+    log.error('Get disputes by customer error:', error);
     res.status(500).json({ error: 'Failed to fetch disputes for customer' });
   }
 });
@@ -637,7 +640,7 @@ router.get('/disputes/invoice/:invoiceId', async (req: Request, res: Response) =
 
     res.json(disputes);
   } catch (error) {
-    console.error('Get disputes by invoice error:', error);
+    log.error('Get disputes by invoice error:', error);
     res.status(500).json({ error: 'Failed to fetch disputes for invoice' });
   }
 });
@@ -663,7 +666,7 @@ router.get('/generation/logs', async (req: Request, res: Response) => {
     const logs = await storage.getInvoiceGenerationLogs(user.tenantId, filters);
     res.json(logs);
   } catch (error) {
-    console.error('Get invoice generation logs error:', error);
+    log.error('Get invoice generation logs error:', error);
     res.status(500).json({ error: 'Failed to fetch invoice generation logs' });
   }
 });
@@ -684,7 +687,7 @@ router.get('/generation/logs/:id', async (req: Request, res: Response) => {
 
     res.json(log);
   } catch (error) {
-    console.error('Get invoice generation log error:', error);
+    log.error('Get invoice generation log error:', error);
     res.status(500).json({ error: 'Failed to fetch invoice generation log' });
   }
 });
@@ -722,7 +725,7 @@ router.post('/generation/generate', async (req: Request, res: Response) => {
 
     res.status(201).json(result);
   } catch (error) {
-    console.error('Generate invoice error:', error);
+    log.error('Generate invoice error:', error);
     res.status(500).json({ error: 'Failed to generate invoice' });
   }
 });
@@ -759,7 +762,7 @@ router.post('/generation/batch', async (req: Request, res: Response) => {
 
     res.status(201).json(results);
   } catch (error) {
-    console.error('Generate invoice batch error:', error);
+    log.error('Generate invoice batch error:', error);
     res.status(500).json({ error: 'Failed to generate invoice batch' });
   }
 });
@@ -775,7 +778,7 @@ router.get('/generation/failed', async (req: Request, res: Response) => {
     const failedLogs = await storage.getFailedInvoiceGenerations(user.tenantId);
     res.json(failedLogs);
   } catch (error) {
-    console.error('Get failed invoice generations error:', error);
+    log.error('Get failed invoice generations error:', error);
     res.status(500).json({ error: 'Failed to fetch failed invoice generations' });
   }
 });
@@ -798,7 +801,7 @@ router.get('/generation/stats', async (req: Request, res: Response) => {
 
     res.json(stats);
   } catch (error) {
-    console.error('Get invoice generation stats error:', error);
+    log.error('Get invoice generation stats error:', error);
     res.status(500).json({ error: 'Failed to fetch invoice generation statistics' });
   }
 });
@@ -824,7 +827,7 @@ router.get('/schedules', async (req: Request, res: Response) => {
     const schedules = await storage.getBillingSchedules(user.tenantId, filters);
     res.json(schedules);
   } catch (error) {
-    console.error('Get billing schedules error:', error);
+    log.error('Get billing schedules error:', error);
     res.status(500).json({ error: 'Failed to fetch billing schedules' });
   }
 });
@@ -840,7 +843,7 @@ router.get('/schedules/active', async (req: Request, res: Response) => {
     const schedules = await storage.getActiveBillingSchedules(user.tenantId);
     res.json(schedules);
   } catch (error) {
-    console.error('Get active billing schedules error:', error);
+    log.error('Get active billing schedules error:', error);
     res.status(500).json({ error: 'Failed to fetch active billing schedules' });
   }
 });
@@ -856,7 +859,7 @@ router.get('/schedules/due', async (req: Request, res: Response) => {
     const schedules = await storage.getDueBillingSchedules(user.tenantId);
     res.json(schedules);
   } catch (error) {
-    console.error('Get due billing schedules error:', error);
+    log.error('Get due billing schedules error:', error);
     res.status(500).json({ error: 'Failed to fetch due billing schedules' });
   }
 });
@@ -877,7 +880,7 @@ router.get('/schedules/:id', async (req: Request, res: Response) => {
 
     res.json(schedule);
   } catch (error) {
-    console.error('Get billing schedule error:', error);
+    log.error('Get billing schedule error:', error);
     res.status(500).json({ error: 'Failed to fetch billing schedule' });
   }
 });
@@ -908,7 +911,7 @@ router.post('/schedules', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create billing schedule error:', error);
+    log.error('Create billing schedule error:', error);
     res.status(500).json({ error: 'Failed to create billing schedule' });
   }
 });
@@ -940,7 +943,7 @@ router.put('/schedules/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update billing schedule error:', error);
+    log.error('Update billing schedule error:', error);
     res.status(500).json({ error: 'Failed to update billing schedule' });
   }
 });
@@ -967,7 +970,7 @@ router.delete('/schedules/:id', async (req: Request, res: Response) => {
     await storage.deleteBillingSchedule(req.params.id, user.tenantId);
     res.status(204).send();
   } catch (error) {
-    console.error('Delete billing schedule error:', error);
+    log.error('Delete billing schedule error:', error);
     res.status(500).json({ error: 'Failed to delete billing schedule' });
   }
 });
@@ -993,7 +996,7 @@ router.get('/credit-memos', async (req: Request, res: Response) => {
     const creditMemos = await storage.getCreditMemos(user.tenantId, filters);
     res.json(creditMemos);
   } catch (error) {
-    console.error('Get credit memos error:', error);
+    log.error('Get credit memos error:', error);
     res.status(500).json({ error: 'Failed to fetch credit memos' });
   }
 });
@@ -1009,7 +1012,7 @@ router.get('/credit-memos/pending', async (req: Request, res: Response) => {
     const creditMemos = await storage.getPendingCreditMemos(user.tenantId);
     res.json(creditMemos);
   } catch (error) {
-    console.error('Get pending credit memos error:', error);
+    log.error('Get pending credit memos error:', error);
     res.status(500).json({ error: 'Failed to fetch pending credit memos' });
   }
 });
@@ -1030,7 +1033,7 @@ router.get('/credit-memos/:id', async (req: Request, res: Response) => {
 
     res.json(creditMemo);
   } catch (error) {
-    console.error('Get credit memo error:', error);
+    log.error('Get credit memo error:', error);
     res.status(500).json({ error: 'Failed to fetch credit memo' });
   }
 });
@@ -1061,7 +1064,7 @@ router.post('/credit-memos', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create credit memo error:', error);
+    log.error('Create credit memo error:', error);
     res.status(500).json({ error: 'Failed to create credit memo' });
   }
 });
@@ -1087,7 +1090,7 @@ router.put('/credit-memos/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update credit memo error:', error);
+    log.error('Update credit memo error:', error);
     res.status(500).json({ error: 'Failed to update credit memo' });
   }
 });
@@ -1115,7 +1118,7 @@ router.post('/credit-memos/:id/approve', async (req: Request, res: Response) => 
 
     res.json(approved);
   } catch (error) {
-    console.error('Approve credit memo error:', error);
+    log.error('Approve credit memo error:', error);
     res.status(500).json({ error: 'Failed to approve credit memo' });
   }
 });
@@ -1143,7 +1146,7 @@ router.post('/credit-memos/:id/issue', async (req: Request, res: Response) => {
 
     res.json(issued);
   } catch (error) {
-    console.error('Issue credit memo error:', error);
+    log.error('Issue credit memo error:', error);
     res.status(500).json({ error: 'Failed to issue credit memo' });
   }
 });
@@ -1176,7 +1179,7 @@ router.post('/credit-memos/:id/apply', async (req: Request, res: Response) => {
 
     res.json(applied);
   } catch (error) {
-    console.error('Apply credit memo error:', error);
+    log.error('Apply credit memo error:', error);
     res.status(500).json({ error: 'Failed to apply credit memo' });
   }
 });
@@ -1209,7 +1212,7 @@ router.post('/credit-memos/:id/void', async (req: Request, res: Response) => {
 
     res.json(voided);
   } catch (error) {
-    console.error('Void credit memo error:', error);
+    log.error('Void credit memo error:', error);
     res.status(500).json({ error: 'Failed to void credit memo' });
   }
 });
@@ -1228,7 +1231,7 @@ router.get('/credit-memos/customer/:customerId', async (req: Request, res: Respo
     );
     res.json(creditMemos);
   } catch (error) {
-    console.error('Get credit memos by customer error:', error);
+    log.error('Get credit memos by customer error:', error);
     res.status(500).json({ error: 'Failed to fetch credit memos for customer' });
   }
 });

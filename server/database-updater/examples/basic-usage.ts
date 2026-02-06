@@ -4,12 +4,14 @@
  */
 
 import { DatabaseUpdaterManager, startDatabaseUpdater } from '../index';
+import { createModuleLogger } from '../../lib/logger';
+const log = createModuleLogger('basic-usage');
 
 /**
  * Example 1: Basic startup
  */
 async function basicStartup() {
-  console.log('🚀 Starting Database Updater with basic configuration...');
+  log.info('🚀 Starting Database Updater with basic configuration...');
 
   try {
     const manager = await startDatabaseUpdater({
@@ -17,20 +19,20 @@ async function basicStartup() {
       enableScheduling: true,
     });
 
-    console.log('✅ Database Updater started successfully!');
+    log.info('✅ Database Updater started successfully!');
 
     // Get status
     const status = manager.getStatus();
-    console.log('Status:', status);
+    log.info('Status:', status);
 
     // Stop after 30 seconds (for example)
     setTimeout(async () => {
       await manager.stop();
-      console.log('✅ Database Updater stopped');
+      log.info('✅ Database Updater stopped');
       process.exit(0);
     }, 30000);
   } catch (error) {
-    console.error('❌ Failed to start:', error);
+    log.error('❌ Failed to start:', error);
     process.exit(1);
   }
 }
@@ -39,7 +41,7 @@ async function basicStartup() {
  * Example 2: Dry-run mode
  */
 async function dryRunExample() {
-  console.log('🧪 Running in dry-run mode...');
+  log.info('🧪 Running in dry-run mode...');
 
   try {
     const manager = new DatabaseUpdaterManager({
@@ -53,9 +55,9 @@ async function dryRunExample() {
     await manager.executeUpdater('service_tickets');
     await manager.executeUpdater('business_records');
 
-    console.log('✅ Dry-run completed successfully!');
+    log.info('✅ Dry-run completed successfully!');
   } catch (error) {
-    console.error('❌ Dry-run failed:', error);
+    log.error('❌ Dry-run failed:', error);
     process.exit(1);
   }
 }
@@ -64,7 +66,7 @@ async function dryRunExample() {
  * Example 3: Custom configuration
  */
 async function customConfigExample() {
-  console.log('⚙️ Starting with custom configuration...');
+  log.info('⚙️ Starting with custom configuration...');
 
   try {
     const manager = new DatabaseUpdaterManager({
@@ -89,14 +91,14 @@ async function customConfigExample() {
     });
 
     await manager.start();
-    console.log('✅ Started with custom configuration!');
+    log.info('✅ Started with custom configuration!');
 
     // Show configuration
     const status = manager.getStatus();
-    console.log('Custom Schedule Config:', status.config.scheduleConfig);
-    console.log('Custom Execution Config:', status.config.executionConfig);
+    log.info('Custom Schedule Config:', status.config.scheduleConfig);
+    log.info('Custom Execution Config:', status.config.executionConfig);
   } catch (error) {
-    console.error('❌ Failed to start with custom config:', error);
+    log.error('❌ Failed to start with custom config:', error);
     process.exit(1);
   }
 }
@@ -105,7 +107,7 @@ async function customConfigExample() {
  * Example 4: Manual execution
  */
 async function manualExecutionExample() {
-  console.log('🔧 Manual execution example...');
+  log.info('🔧 Manual execution example...');
 
   try {
     const manager = new DatabaseUpdaterManager({
@@ -114,24 +116,24 @@ async function manualExecutionExample() {
     });
 
     // Execute updaters manually
-    console.log('Executing business activities updater...');
+    log.info('Executing business activities updater...');
     await manager.executeUpdater('business_record_activities');
 
-    console.log('Executing service tickets updater...');
+    log.info('Executing service tickets updater...');
     await manager.executeUpdater('service_tickets');
 
-    console.log('Executing business records updater...');
+    log.info('Executing business records updater...');
     await manager.executeUpdater('business_records');
 
-    console.log('✅ Manual execution completed!');
+    log.info('✅ Manual execution completed!');
 
     // Get execution metrics
     const status = manager.getStatus();
     status.updaters.forEach((updater) => {
-      console.log(`${updater.name}: Last execution - ${updater.lastExecution}`);
+      log.info(`${updater.name}: Last execution - ${updater.lastExecution}`);
     });
   } catch (error) {
-    console.error('❌ Manual execution failed:', error);
+    log.error('❌ Manual execution failed:', error);
     process.exit(1);
   }
 }
@@ -140,7 +142,7 @@ async function manualExecutionExample() {
  * Example 5: Configuration updates
  */
 async function configUpdateExample() {
-  console.log('🔄 Configuration update example...');
+  log.info('🔄 Configuration update example...');
 
   try {
     const manager = new DatabaseUpdaterManager({
@@ -149,13 +151,13 @@ async function configUpdateExample() {
     });
 
     await manager.start();
-    console.log('✅ Initial startup complete');
+    log.info('✅ Initial startup complete');
 
     // Wait a bit
     await new Promise((resolve) => setTimeout(resolve, 5000));
 
     // Update configuration
-    console.log('Updating configuration...');
+    log.info('Updating configuration...');
     await manager.updateConfiguration({
       scheduleConfig: {
         businessActivities: '0 */3 9-17 * * 1-5', // Change to every 3 hours
@@ -164,13 +166,13 @@ async function configUpdateExample() {
       },
     });
 
-    console.log('✅ Configuration updated successfully!');
+    log.info('✅ Configuration updated successfully!');
 
     // Show updated configuration
     const status = manager.getStatus();
-    console.log('Updated Schedule:', status.config.scheduleConfig);
+    log.info('Updated Schedule:', status.config.scheduleConfig);
   } catch (error) {
-    console.error('❌ Configuration update failed:', error);
+    log.error('❌ Configuration update failed:', error);
     process.exit(1);
   }
 }
@@ -195,10 +197,10 @@ switch (example) {
     configUpdateExample();
     break;
   default:
-    console.log('Available examples:');
-    console.log('  npm run example basic        - Basic startup');
-    console.log('  npm run example dry-run      - Dry-run mode');
-    console.log('  npm run example custom       - Custom configuration');
-    console.log('  npm run example manual       - Manual execution');
-    console.log('  npm run example config-update - Configuration updates');
+    log.info('Available examples:');
+    log.info('  npm run example basic        - Basic startup');
+    log.info('  npm run example dry-run      - Dry-run mode');
+    log.info('  npm run example custom       - Custom configuration');
+    log.info('  npm run example manual       - Manual execution');
+    log.info('  npm run example config-update - Configuration updates');
 }

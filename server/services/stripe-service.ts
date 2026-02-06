@@ -2,6 +2,8 @@ import Stripe from 'stripe';
 import { db } from '../db';
 import { tenants, tenantSubscriptions, users } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('stripe-service');
 
 /**
  * STRIPE PAYMENT SERVICE
@@ -14,7 +16,7 @@ import { eq } from 'drizzle-orm';
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
 if (!stripeSecretKey) {
-  console.warn(
+  log.warn(
     '⚠️  STRIPE_SECRET_KEY not found in environment. Stripe integration will be in test mode.',
   );
 }
@@ -125,7 +127,7 @@ export class StripeService {
       })
       .where(eq(tenants.id, tenantId));
 
-    console.log(`✅ Created Stripe customer ${customer.id} for tenant ${tenantId}`);
+    log.info(`✅ Created Stripe customer ${customer.id} for tenant ${tenantId}`);
     return customer.id;
   }
 
@@ -188,7 +190,7 @@ export class StripeService {
       });
     }
 
-    console.log(`✅ Added payment method ${paymentMethodId} to customer ${stripeCustomerId}`);
+    log.info(`✅ Added payment method ${paymentMethodId} to customer ${stripeCustomerId}`);
     return paymentMethod;
   }
 
@@ -201,7 +203,7 @@ export class StripeService {
     }
 
     await stripe.paymentMethods.detach(paymentMethodId);
-    console.log(`✅ Removed payment method ${paymentMethodId}`);
+    log.info(`✅ Removed payment method ${paymentMethodId}`);
   }
 
   /**
@@ -248,9 +250,7 @@ export class StripeService {
 
     const subscription = await stripe.subscriptions.create(subscriptionParams);
 
-    console.log(
-      `✅ Created Stripe subscription ${subscription.id} for customer ${stripeCustomerId}`,
-    );
+    log.info(`✅ Created Stripe subscription ${subscription.id} for customer ${stripeCustomerId}`);
     return subscription;
   }
 
@@ -384,7 +384,7 @@ export class StripeService {
    * Handle Stripe webhook events
    */
   static async handleWebhookEvent(event: Stripe.Event): Promise<void> {
-    console.log(`📨 Received Stripe webhook: ${event.type}`);
+    log.info(`📨 Received Stripe webhook: ${event.type}`);
 
     switch (event.type) {
       case 'customer.subscription.created':
@@ -416,7 +416,7 @@ export class StripeService {
         break;
 
       default:
-        console.log(`⚠️  Unhandled webhook event type: ${event.type}`);
+        log.info(`⚠️  Unhandled webhook event type: ${event.type}`);
     }
   }
 
@@ -428,11 +428,11 @@ export class StripeService {
     const tenantId = subscription.metadata.tenantId;
 
     if (!tenantId) {
-      console.error('❌ No tenantId in subscription metadata');
+      log.error('❌ No tenantId in subscription metadata');
       return;
     }
 
-    console.log(`✅ Subscription created for tenant ${tenantId}`);
+    log.info(`✅ Subscription created for tenant ${tenantId}`);
     // Additional logic can be added here
   }
 
@@ -443,7 +443,7 @@ export class StripeService {
     const tenantId = subscription.metadata.tenantId;
 
     if (!tenantId) {
-      console.error('❌ No tenantId in subscription metadata');
+      log.error('❌ No tenantId in subscription metadata');
       return;
     }
 
@@ -456,7 +456,7 @@ export class StripeService {
       })
       .where(eq(tenantSubscriptions.tenantId, tenantId));
 
-    console.log(`✅ Subscription updated for tenant ${tenantId}: status=${subscription.status}`);
+    log.info(`✅ Subscription updated for tenant ${tenantId}: status=${subscription.status}`);
   }
 
   /**
@@ -466,7 +466,7 @@ export class StripeService {
     const tenantId = subscription.metadata.tenantId;
 
     if (!tenantId) {
-      console.error('❌ No tenantId in subscription metadata');
+      log.error('❌ No tenantId in subscription metadata');
       return;
     }
 
@@ -479,7 +479,7 @@ export class StripeService {
       })
       .where(eq(tenantSubscriptions.tenantId, tenantId));
 
-    console.log(`✅ Subscription deleted for tenant ${tenantId}`);
+    log.info(`✅ Subscription deleted for tenant ${tenantId}`);
   }
 
   /**
@@ -487,7 +487,7 @@ export class StripeService {
    */
   private static async handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
     const customerId = invoice.customer as string;
-    console.log(`✅ Invoice paid for customer ${customerId}: ${invoice.id}`);
+    log.info(`✅ Invoice paid for customer ${customerId}: ${invoice.id}`);
     // Additional logic: send receipt email, update billing status, etc.
   }
 
@@ -496,7 +496,7 @@ export class StripeService {
    */
   private static async handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
     const customerId = invoice.customer as string;
-    console.log(`❌ Invoice payment failed for customer ${customerId}: ${invoice.id}`);
+    log.info(`❌ Invoice payment failed for customer ${customerId}: ${invoice.id}`);
     // Additional logic: send failure notification, update status, etc.
   }
 
@@ -506,7 +506,7 @@ export class StripeService {
   private static async handlePaymentMethodAttached(
     paymentMethod: Stripe.PaymentMethod,
   ): Promise<void> {
-    console.log(`✅ Payment method attached: ${paymentMethod.id}`);
+    log.info(`✅ Payment method attached: ${paymentMethod.id}`);
   }
 
   /**
@@ -515,7 +515,7 @@ export class StripeService {
   private static async handlePaymentMethodDetached(
     paymentMethod: Stripe.PaymentMethod,
   ): Promise<void> {
-    console.log(`✅ Payment method detached: ${paymentMethod.id}`);
+    log.info(`✅ Payment method detached: ${paymentMethod.id}`);
   }
 
   /**
@@ -621,9 +621,7 @@ export class StripeService {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    console.log(
-      `✅ Created checkout session ${session.id} for tenant ${tenantId} (${billingCycle})`,
-    );
+    log.info(`✅ Created checkout session ${session.id} for tenant ${tenantId} (${billingCycle})`);
 
     return session;
   }
@@ -679,7 +677,7 @@ export class StripeService {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    console.log(`✅ Created one-time checkout session ${session.id} for tenant ${tenantId}`);
+    log.info(`✅ Created one-time checkout session ${session.id} for tenant ${tenantId}`);
 
     return session;
   }
@@ -701,7 +699,7 @@ export class StripeService {
       return_url: returnUrl,
     });
 
-    console.log(`✅ Created customer portal session for customer ${stripeCustomerId}`);
+    log.info(`✅ Created customer portal session for customer ${stripeCustomerId}`);
 
     return session;
   }
@@ -859,7 +857,7 @@ export class StripeService {
     message: string;
     data?: any;
   }> {
-    console.log(`📨 Processing Stripe webhook: ${event.type}`);
+    log.info(`📨 Processing Stripe webhook: ${event.type}`);
 
     try {
       switch (event.type) {
@@ -920,11 +918,11 @@ export class StripeService {
           return await this.handlePaymentIntentFailed(event.data.object as Stripe.PaymentIntent);
 
         default:
-          console.log(`⚠️  Unhandled webhook event type: ${event.type}`);
+          log.info(`⚠️  Unhandled webhook event type: ${event.type}`);
           return { success: true, message: `Unhandled event type: ${event.type}` };
       }
     } catch (error) {
-      console.error(`❌ Error handling webhook ${event.type}:`, error);
+      log.error(`❌ Error handling webhook ${event.type}:`, error);
       return {
         success: false,
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -941,11 +939,11 @@ export class StripeService {
     const tenantId = session.metadata?.tenantId;
 
     if (!tenantId) {
-      console.error('❌ No tenantId in checkout session metadata');
+      log.error('❌ No tenantId in checkout session metadata');
       return { success: false, message: 'No tenantId in session metadata' };
     }
 
-    console.log(`✅ Checkout completed for tenant ${tenantId}`);
+    log.info(`✅ Checkout completed for tenant ${tenantId}`);
 
     // Handle subscription checkout
     if (session.mode === 'subscription' && session.subscription) {
@@ -993,7 +991,7 @@ export class StripeService {
     session: Stripe.Checkout.Session,
   ): Promise<{ success: boolean; message: string }> {
     const tenantId = session.metadata?.tenantId;
-    console.log(`⚠️  Checkout session expired for tenant ${tenantId || 'unknown'}`);
+    log.info(`⚠️  Checkout session expired for tenant ${tenantId || 'unknown'}`);
 
     return { success: true, message: 'Checkout session expired' };
   }
@@ -1007,11 +1005,11 @@ export class StripeService {
     const tenantId = subscription.metadata.tenantId;
 
     if (!tenantId) {
-      console.error('❌ No tenantId in subscription metadata');
+      log.error('❌ No tenantId in subscription metadata');
       return { success: false, message: 'No tenantId in metadata' };
     }
 
-    console.log(`⚠️  Trial will end for tenant ${tenantId}`);
+    log.info(`⚠️  Trial will end for tenant ${tenantId}`);
 
     // TODO: Send trial ending notification email
 
@@ -1025,7 +1023,7 @@ export class StripeService {
     invoice: Stripe.Invoice,
   ): Promise<{ success: boolean; message: string }> {
     const customerId = invoice.customer as string;
-    console.log(`📬 Upcoming invoice for customer ${customerId}`);
+    log.info(`📬 Upcoming invoice for customer ${customerId}`);
 
     // TODO: Send upcoming invoice notification
 
@@ -1041,7 +1039,7 @@ export class StripeService {
     const tenantId = paymentIntent.metadata?.tenantId;
     const purchaseType = paymentIntent.metadata?.type;
 
-    console.log(`✅ Payment succeeded for tenant ${tenantId || 'unknown'}: ${paymentIntent.id}`);
+    log.info(`✅ Payment succeeded for tenant ${tenantId || 'unknown'}: ${paymentIntent.id}`);
 
     if (purchaseType === 'one_time_purchase') {
       // Handle add-on purchase activation
@@ -1063,7 +1061,7 @@ export class StripeService {
   ): Promise<{ success: boolean; message: string }> {
     const tenantId = paymentIntent.metadata?.tenantId;
 
-    console.log(`❌ Payment failed for tenant ${tenantId || 'unknown'}: ${paymentIntent.id}`);
+    log.info(`❌ Payment failed for tenant ${tenantId || 'unknown'}: ${paymentIntent.id}`);
 
     // TODO: Send payment failed notification
 

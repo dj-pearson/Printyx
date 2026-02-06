@@ -5,6 +5,8 @@
 
 import express from 'express';
 import CalendarService from '../services/calendar-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('calendar-routes');
 
 const router = express.Router();
 
@@ -36,7 +38,7 @@ router.get('/connections', async (req, res) => {
 
     res.json(connections);
   } catch (error) {
-    console.error('Error fetching calendar connections:', error);
+    log.error('Error fetching calendar connections:', error);
     res.status(500).json({ error: 'Failed to fetch calendar connections' });
   }
 });
@@ -66,7 +68,7 @@ router.post('/connections', async (req, res) => {
 
     res.json(connection);
   } catch (error) {
-    console.error('Error creating calendar connection:', error);
+    log.error('Error creating calendar connection:', error);
     res.status(500).json({ error: 'Failed to create calendar connection' });
   }
 });
@@ -92,7 +94,7 @@ router.post('/sync/:connectionId', async (req, res) => {
 
     res.json(syncResult);
   } catch (error) {
-    console.error('Error syncing calendar:', error);
+    log.error('Error syncing calendar:', error);
     res.status(500).json({ error: 'Failed to sync calendar' });
   }
 });
@@ -154,7 +156,7 @@ router.get('/events', async (req, res) => {
 
     res.json(events);
   } catch (error) {
-    console.error('Error fetching calendar events:', error);
+    log.error('Error fetching calendar events:', error);
     res.status(500).json({ error: 'Failed to fetch calendar events' });
   }
 });
@@ -186,7 +188,7 @@ router.post('/events', async (req, res) => {
 
     res.json(event);
   } catch (error) {
-    console.error('Error creating calendar event:', error);
+    log.error('Error creating calendar event:', error);
     res.status(500).json({ error: 'Failed to create calendar event' });
   }
 });
@@ -209,7 +211,7 @@ router.put('/events/:eventId', async (req, res) => {
 
     res.json(updatedEvent);
   } catch (error) {
-    console.error('Error updating calendar event:', error);
+    log.error('Error updating calendar event:', error);
     res.status(500).json({ error: 'Failed to update calendar event' });
   }
 });
@@ -225,7 +227,7 @@ router.delete('/events/:eventId', async (req, res) => {
     // Mock event deletion
     res.json({ success: true, deletedEventId: eventId });
   } catch (error) {
-    console.error('Error deleting calendar event:', error);
+    log.error('Error deleting calendar event:', error);
     res.status(500).json({ error: 'Failed to delete calendar event' });
   }
 });
@@ -253,7 +255,7 @@ router.get('/availability/:userId', async (req, res) => {
 
     res.json(availability);
   } catch (error) {
-    console.error('Error fetching availability:', error);
+    log.error('Error fetching availability:', error);
     res.status(500).json({ error: 'Failed to fetch availability' });
   }
 });
@@ -283,7 +285,7 @@ router.post('/find-meeting-time', async (req, res) => {
 
     res.json({ suggestions });
   } catch (error) {
-    console.error('Error finding meeting time:', error);
+    log.error('Error finding meeting time:', error);
     res.status(500).json({ error: 'Failed to find meeting time' });
   }
 });

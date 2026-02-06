@@ -11,6 +11,8 @@ import { storage } from './storage';
 import { isAuthenticated } from './replitAuth';
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-activities');
 
 export function registerActivitiesRoutes(app: Express) {
   // Apply authentication to all activities routes
@@ -33,7 +35,7 @@ export function registerActivitiesRoutes(app: Express) {
       const allActivities = await storage.getAllActivities(tenantId);
       res.json(allActivities);
     } catch (error) {
-      console.error('Error fetching all activities:', error);
+      log.error('Error fetching all activities:', error);
       res.status(500).json({ message: 'Failed to fetch activities' });
     }
   });
@@ -58,7 +60,7 @@ export function registerActivitiesRoutes(app: Express) {
 
       res.json(activities);
     } catch (error) {
-      console.error('Error fetching recent activities:', error);
+      log.error('Error fetching recent activities:', error);
       res.status(500).json({ message: 'Failed to fetch recent activities' });
     }
   });
@@ -83,7 +85,7 @@ export function registerActivitiesRoutes(app: Express) {
       const newActivity = await storage.createActivity(activityData);
       res.status(201).json(newActivity);
     } catch (error) {
-      console.error('Error creating activity:', error);
+      log.error('Error creating activity:', error);
       res.status(500).json({ message: 'Failed to create activity' });
     }
   });
@@ -106,7 +108,7 @@ export function registerActivitiesRoutes(app: Express) {
 
       res.json(activity);
     } catch (error) {
-      console.error('Error fetching activity:', error);
+      log.error('Error fetching activity:', error);
       res.status(500).json({ message: 'Failed to fetch activity' });
     }
   });
@@ -129,7 +131,7 @@ export function registerActivitiesRoutes(app: Express) {
 
       res.json(updatedActivity);
     } catch (error) {
-      console.error('Error updating activity:', error);
+      log.error('Error updating activity:', error);
       res.status(500).json({ message: 'Failed to update activity' });
     }
   });
@@ -152,7 +154,7 @@ export function registerActivitiesRoutes(app: Express) {
 
       res.status(204).send();
     } catch (error) {
-      console.error('Error deleting activity:', error);
+      log.error('Error deleting activity:', error);
       res.status(500).json({ message: 'Failed to delete activity' });
     }
   });
@@ -176,7 +178,7 @@ export function registerActivitiesRoutes(app: Express) {
 
       res.json(activities);
     } catch (error) {
-      console.error('Error fetching user activities:', error);
+      log.error('Error fetching user activities:', error);
       res.status(500).json({ message: 'Failed to fetch user activities' });
     }
   });

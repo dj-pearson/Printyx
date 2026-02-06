@@ -14,6 +14,9 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-platform-activities');
+
 import {
   platformActivities,
   platformBusinessRecords,
@@ -125,7 +128,7 @@ router.get('/', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching activities:', error);
+    log.error('Error fetching activities:', error);
     res.status(500).json({
       error: 'Failed to fetch activities',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -209,7 +212,7 @@ router.get('/stats', async (req: Request, res: Response) => {
       meetingMetrics: meetingMetrics[0] || {},
     });
   } catch (error) {
-    console.error('Error fetching activity stats:', error);
+    log.error('Error fetching activity stats:', error);
     res.status(500).json({
       error: 'Failed to fetch activity statistics',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -257,7 +260,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       deal,
     });
   } catch (error) {
-    console.error('Error fetching activity:', error);
+    log.error('Error fetching activity:', error);
     res.status(500).json({
       error: 'Failed to fetch activity',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -323,7 +326,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     res.status(201).json(newActivity);
   } catch (error) {
-    console.error('Error creating activity:', error);
+    log.error('Error creating activity:', error);
     res.status(500).json({
       error: 'Failed to create activity',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -384,7 +387,7 @@ router.post('/log-call', async (req: Request, res: Response) => {
 
     res.status(201).json(activity);
   } catch (error) {
-    console.error('Error logging call:', error);
+    log.error('Error logging call:', error);
     res.status(500).json({
       error: 'Failed to log call',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -454,7 +457,7 @@ router.post('/log-email', async (req: Request, res: Response) => {
 
     res.status(201).json(activity);
   } catch (error) {
-    console.error('Error logging email:', error);
+    log.error('Error logging email:', error);
     res.status(500).json({
       error: 'Failed to log email',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -519,7 +522,7 @@ router.post('/log-meeting', async (req: Request, res: Response) => {
 
     res.status(201).json(activity);
   } catch (error) {
-    console.error('Error logging meeting:', error);
+    log.error('Error logging meeting:', error);
     res.status(500).json({
       error: 'Failed to log meeting',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -578,7 +581,7 @@ router.post('/log-demo', async (req: Request, res: Response) => {
 
     res.status(201).json(activity);
   } catch (error) {
-    console.error('Error logging demo:', error);
+    log.error('Error logging demo:', error);
     res.status(500).json({
       error: 'Failed to log demo',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -614,7 +617,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
 
     res.json(updatedActivity);
   } catch (error) {
-    console.error('Error updating activity:', error);
+    log.error('Error updating activity:', error);
     res.status(500).json({
       error: 'Failed to update activity',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -646,7 +649,7 @@ router.patch('/:id/complete-task', async (req: Request, res: Response) => {
 
     res.json(completedTask);
   } catch (error) {
-    console.error('Error completing task:', error);
+    log.error('Error completing task:', error);
     res.status(500).json({
       error: 'Failed to complete task',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -677,7 +680,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     res.json({ message: 'Activity deleted successfully', activity: deletedActivity });
   } catch (error) {
-    console.error('Error deleting activity:', error);
+    log.error('Error deleting activity:', error);
     res.status(500).json({
       error: 'Failed to delete activity',
       message: error instanceof Error ? error.message : 'Unknown error',

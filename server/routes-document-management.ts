@@ -2,6 +2,9 @@ import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { requireAuth } from './auth-setup';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-document-management');
+
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -246,7 +249,7 @@ router.get('/api/document-management/library', async (req: any, res) => {
 
     res.json(filteredData);
   } catch (error) {
-    console.error('Error fetching document library:', error);
+    log.error('Error fetching document library:', error);
     res.status(500).json({ message: 'Failed to fetch document library' });
   }
 });
@@ -542,7 +545,7 @@ router.get('/api/document-management/workflows', async (req: any, res) => {
 
     res.json(workflowTemplates);
   } catch (error) {
-    console.error('Error fetching workflow templates:', error);
+    log.error('Error fetching workflow templates:', error);
     res.status(500).json({ message: 'Failed to fetch workflow templates' });
   }
 });
@@ -712,7 +715,7 @@ router.get('/api/document-management/search', async (req: any, res) => {
 
     res.json(searchResults);
   } catch (error) {
-    console.error('Error performing document search:', error);
+    log.error('Error performing document search:', error);
     res.status(500).json({ message: 'Failed to perform document search' });
   }
 });
@@ -749,7 +752,7 @@ router.post('/api/document-management/automation-rules', async (req: any, res) =
       message: 'Automation rule created successfully',
     });
   } catch (error) {
-    console.error('Error creating automation rule:', error);
+    log.error('Error creating automation rule:', error);
     res.status(500).json({ message: 'Failed to create automation rule' });
   }
 });
@@ -816,7 +819,7 @@ router.post('/api/document-management/upload', async (req: any, res) => {
 
     res.json(uploadResult);
   } catch (error) {
-    console.error('Error uploading document:', error);
+    log.error('Error uploading document:', error);
     res.status(500).json({ message: 'Failed to upload document' });
   }
 });

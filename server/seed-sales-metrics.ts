@@ -1,4 +1,7 @@
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-sales-metrics');
+
 import {
   salesMetrics,
   conversionFunnel,
@@ -10,13 +13,13 @@ import {
 import { eq } from 'drizzle-orm';
 
 export async function seedSalesMetrics() {
-  console.log('Seeding Sales Metrics data...');
+  log.info('Seeding Sales Metrics data...');
 
   try {
     // Get the first tenant
     const [tenant] = await db.select().from(tenants).limit(1);
     if (!tenant) {
-      console.log('No tenant found, skipping sales metrics seeding');
+      log.info('No tenant found, skipping sales metrics seeding');
       return;
     }
 
@@ -24,7 +27,7 @@ export async function seedSalesMetrics() {
     const tenantUsers = await db.select().from(users).where(eq(users.tenantId, tenant.id)).limit(5);
 
     if (tenantUsers.length === 0) {
-      console.log('No users found for tenant, skipping sales metrics seeding');
+      log.info('No users found for tenant, skipping sales metrics seeding');
       return;
     }
 
@@ -145,7 +148,7 @@ export async function seedSalesMetrics() {
         .onConflictDoNothing()
         .returning();
 
-      console.log(`Created ${createdMetrics.length} sales metrics records`);
+      log.info(`Created ${createdMetrics.length} sales metrics records`);
     }
 
     // Create conversion funnel data
@@ -201,7 +204,7 @@ export async function seedSalesMetrics() {
         .onConflictDoNothing()
         .returning();
 
-      console.log(`Created ${createdFunnels.length} conversion funnel records`);
+      log.info(`Created ${createdFunnels.length} conversion funnel records`);
     }
 
     // Create manager insights based on the metrics
@@ -288,12 +291,12 @@ export async function seedSalesMetrics() {
         .onConflictDoNothing()
         .returning();
 
-      console.log(`Created ${createdInsights.length} manager insights`);
+      log.info(`Created ${createdInsights.length} manager insights`);
     }
 
-    console.log('Sales Metrics seeding completed successfully!');
+    log.info('Sales Metrics seeding completed successfully!');
   } catch (error) {
-    console.error('Error seeding Sales Metrics:', error);
+    log.error('Error seeding Sales Metrics:', error);
   }
 }
 
@@ -301,11 +304,11 @@ export async function seedSalesMetrics() {
 if (import.meta.main) {
   seedSalesMetrics()
     .then(() => {
-      console.log('Seeding completed');
+      log.info('Seeding completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Seeding failed:', error);
+      log.error('Seeding failed:', error);
       process.exit(1);
     });
 }

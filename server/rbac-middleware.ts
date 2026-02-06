@@ -1,5 +1,7 @@
 import type { RequestHandler } from 'express';
 import { storage } from './storage';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('rbac-middleware');
 
 // Enhanced authentication middleware with role-based access control
 export interface AuthenticatedRequest extends Express.Request {
@@ -66,7 +68,7 @@ export const requireRole = (minimumLevel: number, department?: string): RequestH
 
       next();
     } catch (error) {
-      console.error('Role-based access control error:', error);
+      log.error('Role-based access control error:', error);
       res.status(500).json({ message: 'Internal server error during authorization' });
     }
   };
@@ -170,7 +172,7 @@ export const applyScopeFilter: RequestHandler = async (req: any, res, next) => {
 
     next();
   } catch (error) {
-    console.error('Data scope filtering error:', error);
+    log.error('Data scope filtering error:', error);
     res.status(500).json({ message: 'Internal server error during data scoping' });
   }
 };

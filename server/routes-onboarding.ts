@@ -2,6 +2,8 @@ import type { Express, Request, Response } from 'express';
 import { z } from 'zod';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-onboarding');
 
 // Alias for backward compatibility
 const getRequestTenantId = getTenantId;
@@ -63,7 +65,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
 
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    log.error('Authentication error:', error);
     return res.status(500).json({ message: 'Authentication error' });
   }
 };
@@ -407,7 +409,7 @@ class OnboardingPDFService {
 
       return objectPath;
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      log.error('Error generating PDF:', error);
       throw error;
     }
   }
@@ -442,7 +444,7 @@ async function searchBusinessRecords(req: Request, res: Response) {
     const records = await query.execute();
     res.json(records);
   } catch (error) {
-    console.error('Error searching business records:', error);
+    log.error('Error searching business records:', error);
     res.status(500).json({ error: 'Failed to search business records' });
   }
 }
@@ -485,7 +487,7 @@ async function searchQuotes(req: Request, res: Response) {
     const quotesData = await query.execute();
     res.json(quotesData);
   } catch (error) {
-    console.error('Error searching quotes:', error);
+    log.error('Error searching quotes:', error);
     res.status(500).json({ error: 'Failed to search quotes' });
   }
 }
@@ -509,7 +511,7 @@ async function getQuoteLineItems(req: Request, res: Response) {
 
     res.json(lineItems);
   } catch (error) {
-    console.error('Error fetching quote line items:', error);
+    log.error('Error fetching quote line items:', error);
     res.status(500).json({ error: 'Failed to fetch quote line items' });
   }
 }
@@ -550,7 +552,7 @@ async function getCompanyContacts(req: Request, res: Response) {
 
     res.json([primaryContact]);
   } catch (error) {
-    console.error('Error fetching company contacts:', error);
+    log.error('Error fetching company contacts:', error);
     res.status(500).json({ error: 'Failed to fetch company contacts' });
   }
 }
@@ -577,7 +579,7 @@ export function registerOnboardingRoutes(app: Express): void {
       const checklists = await storage.getOnboardingChecklists(tenantId);
       res.json(checklists);
     } catch (error) {
-      console.error('Error fetching onboarding checklists:', error);
+      log.error('Error fetching onboarding checklists:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -623,7 +625,7 @@ export function registerOnboardingRoutes(app: Express): void {
         tasks,
       });
     } catch (error) {
-      console.error('Error fetching onboarding checklist:', error);
+      log.error('Error fetching onboarding checklist:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -644,7 +646,7 @@ export function registerOnboardingRoutes(app: Express): void {
 
       const tenantId = user.tenantId;
 
-      console.log('[DEBUG] Raw request body:', JSON.stringify(req.body, null, 2));
+      log.info('[DEBUG] Raw request body:', JSON.stringify(req.body, null, 2));
 
       const validatedData = insertOnboardingChecklistSchema.parse({
         ...req.body,
@@ -652,7 +654,7 @@ export function registerOnboardingRoutes(app: Express): void {
         createdBy: userId,
       });
 
-      console.log('[DEBUG] Validated data:', JSON.stringify(validatedData, null, 2));
+      log.info('[DEBUG] Validated data:', JSON.stringify(validatedData, null, 2));
 
       const checklist = await storage.createOnboardingChecklist(validatedData);
       res.status(201).json(checklist);
@@ -660,7 +662,7 @@ export function registerOnboardingRoutes(app: Express): void {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: 'Validation error', details: error.errors });
       }
-      console.error('Error creating onboarding checklist:', error);
+      log.error('Error creating onboarding checklist:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -694,7 +696,7 @@ export function registerOnboardingRoutes(app: Express): void {
 
       res.json(checklist);
     } catch (error) {
-      console.error('Error updating onboarding checklist:', error);
+      log.error('Error updating onboarding checklist:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -719,7 +721,7 @@ export function registerOnboardingRoutes(app: Express): void {
       await storage.deleteOnboardingChecklist(id, tenantId);
       res.status(204).send();
     } catch (error) {
-      console.error('Error deleting onboarding checklist:', error);
+      log.error('Error deleting onboarding checklist:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -744,7 +746,7 @@ export function registerOnboardingRoutes(app: Express): void {
       const pdfUrl = await pdfService.generatePDF(id, tenantId);
       res.json({ pdfUrl });
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      log.error('Error generating PDF:', error);
       res.status(500).json({ error: 'Failed to generate PDF' });
     }
   });
@@ -778,7 +780,7 @@ export function registerOnboardingRoutes(app: Express): void {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: 'Validation error', details: error.errors });
       }
-      console.error('Error creating equipment:', error);
+      log.error('Error creating equipment:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -812,7 +814,7 @@ export function registerOnboardingRoutes(app: Express): void {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: 'Validation error', details: error.errors });
       }
-      console.error('Error creating dynamic section:', error);
+      log.error('Error creating dynamic section:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -832,7 +834,7 @@ export function registerOnboardingRoutes(app: Express): void {
 
       res.json(section);
     } catch (error) {
-      console.error('Error updating dynamic section:', error);
+      log.error('Error updating dynamic section:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -848,7 +850,7 @@ export function registerOnboardingRoutes(app: Express): void {
       await storage.deleteOnboardingDynamicSection(id, tenantId);
       res.status(204).send();
     } catch (error) {
-      console.error('Error deleting dynamic section:', error);
+      log.error('Error deleting dynamic section:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -874,7 +876,7 @@ export function registerOnboardingRoutes(app: Express): void {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: 'Validation error', details: error.errors });
       }
-      console.error('Error creating task:', error);
+      log.error('Error creating task:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -894,7 +896,7 @@ export function registerOnboardingRoutes(app: Express): void {
 
       res.json(task);
     } catch (error) {
-      console.error('Error updating task:', error);
+      log.error('Error updating task:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -910,7 +912,7 @@ export function registerOnboardingRoutes(app: Express): void {
       await storage.deleteOnboardingTask(id, tenantId);
       res.status(204).send();
     } catch (error) {
-      console.error('Error deleting task:', error);
+      log.error('Error deleting task:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });

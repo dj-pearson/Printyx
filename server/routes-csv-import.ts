@@ -13,6 +13,9 @@ import type { Express, Request, Response } from 'express';
 import multer from 'multer';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
 import { isAuthenticated } from './replitAuth';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-csv-import');
+
 import {
   enhanceUserContext,
   requirePermission,
@@ -69,7 +72,7 @@ export function registerCsvImportRoutes(app: Express) {
 
         res.json(entityTypes);
       } catch (error: any) {
-        console.error('Error fetching entity types:', error);
+        log.error('Error fetching entity types:', error);
         res.status(500).json({ message: 'Failed to fetch entity types' });
       }
     },
@@ -97,7 +100,7 @@ export function registerCsvImportRoutes(app: Express) {
           requiredColumns: columns.filter((c) => c.required).map((c) => c.name),
         });
       } catch (error: any) {
-        console.error('Error fetching template:', error);
+        log.error('Error fetching template:', error);
         res.status(500).json({ message: 'Failed to fetch template' });
       }
     },
@@ -122,7 +125,7 @@ export function registerCsvImportRoutes(app: Express) {
         );
         res.send(csvContent);
       } catch (error: any) {
-        console.error('Error generating template:', error);
+        log.error('Error generating template:', error);
         res.status(500).json({ message: error.message || 'Failed to generate template' });
       }
     },
@@ -186,7 +189,7 @@ export function registerCsvImportRoutes(app: Express) {
           message: 'Import job created. Please review column mappings.',
         });
       } catch (error: any) {
-        console.error('Error creating import job:', error);
+        log.error('Error creating import job:', error);
         res.status(500).json({ message: error.message || 'Failed to create import job' });
       }
     },
@@ -229,7 +232,7 @@ export function registerCsvImportRoutes(app: Express) {
           sampleData: rows.slice(0, 5), // First 5 rows for preview
         });
       } catch (error: any) {
-        console.error('Error previewing mapping:', error);
+        log.error('Error previewing mapping:', error);
         res.status(500).json({ message: error.message || 'Failed to preview mapping' });
       }
     },
@@ -265,7 +268,7 @@ export function registerCsvImportRoutes(app: Express) {
           hasTransformedData: !!transformedData,
         });
       } catch (error: any) {
-        console.error('Error fetching import job:', error);
+        log.error('Error fetching import job:', error);
         res.status(500).json({ message: 'Failed to fetch import job' });
       }
     },
@@ -297,7 +300,7 @@ export function registerCsvImportRoutes(app: Express) {
 
         res.json(jobList);
       } catch (error: any) {
-        console.error('Error fetching import jobs:', error);
+        log.error('Error fetching import jobs:', error);
         res.status(500).json({ message: 'Failed to fetch import jobs' });
       }
     },
@@ -351,7 +354,7 @@ export function registerCsvImportRoutes(app: Express) {
 
         res.json({ message: 'Column mappings updated' });
       } catch (error: any) {
-        console.error('Error updating mappings:', error);
+        log.error('Error updating mappings:', error);
         res.status(500).json({ message: error.message || 'Failed to update mappings' });
       }
     },
@@ -394,7 +397,7 @@ export function registerCsvImportRoutes(app: Express) {
           needsDuplicateReview: result.duplicatesDetected > 0 && job.duplicateStrategy === 'prompt',
         });
       } catch (error: any) {
-        console.error('Error validating import:', error);
+        log.error('Error validating import:', error);
         res.status(500).json({ message: error.message || 'Failed to validate import' });
       }
     },
@@ -429,7 +432,7 @@ export function registerCsvImportRoutes(app: Express) {
           duplicates,
         });
       } catch (error: any) {
-        console.error('Error fetching duplicates:', error);
+        log.error('Error fetching duplicates:', error);
         res.status(500).json({ message: 'Failed to fetch duplicates' });
       }
     },
@@ -474,7 +477,7 @@ export function registerCsvImportRoutes(app: Express) {
 
         res.json({ message: 'Duplicate resolved' });
       } catch (error: any) {
-        console.error('Error resolving duplicate:', error);
+        log.error('Error resolving duplicate:', error);
         res.status(500).json({ message: error.message || 'Failed to resolve duplicate' });
       }
     },
@@ -518,7 +521,7 @@ export function registerCsvImportRoutes(app: Express) {
 
         res.json({ message: `Resolved ${count} duplicates`, count });
       } catch (error: any) {
-        console.error('Error resolving duplicates:', error);
+        log.error('Error resolving duplicates:', error);
         res.status(500).json({ message: error.message || 'Failed to resolve duplicates' });
       }
     },
@@ -561,7 +564,7 @@ export function registerCsvImportRoutes(app: Express) {
           ...result,
         });
       } catch (error: any) {
-        console.error('Error executing import:', error);
+        log.error('Error executing import:', error);
         res.status(500).json({ message: error.message || 'Failed to execute import' });
       }
     },
@@ -597,7 +600,7 @@ export function registerCsvImportRoutes(app: Express) {
 
         res.json({ message: 'Import job cancelled' });
       } catch (error: any) {
-        console.error('Error cancelling import:', error);
+        log.error('Error cancelling import:', error);
         res.status(500).json({ message: error.message || 'Failed to cancel import' });
       }
     },
@@ -667,7 +670,7 @@ export function registerCsvImportRoutes(app: Express) {
           sampleData: rows.slice(0, 5),
         });
       } catch (error: any) {
-        console.error('Error with AI mapping:', error);
+        log.error('Error with AI mapping:', error);
         res.status(500).json({ message: error.message || 'AI mapping failed' });
       }
     },
@@ -719,7 +722,7 @@ export function registerCsvImportRoutes(app: Express) {
           estimatedCost: `$${(result.totalTokensUsed * 0.000003).toFixed(4)}`,
         });
       } catch (error: any) {
-        console.error('Error with AI processing:', error);
+        log.error('Error with AI processing:', error);
         res.status(500).json({ message: error.message || 'AI processing failed' });
       }
     },

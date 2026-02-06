@@ -1,4 +1,7 @@
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('usage-tracking-service');
+
 import {
   usageMetrics,
   dailyUsageSnapshots,
@@ -409,17 +412,17 @@ export class UsageTrackingService {
       .from(tenants)
       .where(eq(tenants.isActive, true));
 
-    console.log(`♻️ Recalculating usage for ${activeTenants.length} tenants...`);
+    log.info(`♻️ Recalculating usage for ${activeTenants.length} tenants...`);
 
     for (const tenant of activeTenants) {
       try {
         await this.recalculateUsage(tenant.id);
       } catch (error) {
-        console.error(`Failed to recalculate usage for tenant ${tenant.id}:`, error);
+        log.error(`Failed to recalculate usage for tenant ${tenant.id}:`, error);
       }
     }
 
-    console.log('✅ Usage recalculation complete');
+    log.info('✅ Usage recalculation complete');
   }
 
   /**
@@ -431,17 +434,17 @@ export class UsageTrackingService {
       .from(tenants)
       .where(eq(tenants.isActive, true));
 
-    console.log(`📸 Creating daily snapshots for ${activeTenants.length} tenants...`);
+    log.info(`📸 Creating daily snapshots for ${activeTenants.length} tenants...`);
 
     for (const tenant of activeTenants) {
       try {
         await this.createDailySnapshot(tenant.id);
       } catch (error) {
-        console.error(`Failed to create snapshot for tenant ${tenant.id}:`, error);
+        log.error(`Failed to create snapshot for tenant ${tenant.id}:`, error);
       }
     }
 
-    console.log('✅ Daily snapshots complete');
+    log.info('✅ Daily snapshots complete');
   }
 
   /**

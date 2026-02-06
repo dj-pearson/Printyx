@@ -6,6 +6,9 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('security-compliance');
+
 import {
   auditLogs,
   dataAccessLogs,
@@ -22,7 +25,7 @@ const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
 
 // SECURITY FIX: Validate encryption key is properly set
 if (!process.env.ENCRYPTION_KEY) {
-  console.warn('WARNING: ENCRYPTION_KEY not set. Encrypted data features will be disabled.');
+  log.warn('WARNING: ENCRYPTION_KEY not set. Encrypted data features will be disabled.');
 }
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
@@ -122,7 +125,7 @@ export async function logAuditEvent(entry: AuditLogEntry): Promise<void> {
       timestamp: new Date(),
     });
   } catch (error) {
-    console.error('Failed to log audit event:', error);
+    log.error('Failed to log audit event:', error);
     // Don't throw - audit logging should not break application flow
   }
 }
@@ -207,7 +210,7 @@ export async function logDataAccess(entry: DataAccessEntry): Promise<void> {
       accessedAt: new Date(),
     });
   } catch (error) {
-    console.error('Failed to log data access:', error);
+    log.error('Failed to log data access:', error);
   }
 }
 
@@ -334,7 +337,7 @@ export async function processDataSubjectErasure(
 ): Promise<void> {
   // Implement data erasure while maintaining referential integrity
   // This should be carefully implemented based on business requirements
-  console.warn('Data erasure requested for subject:', subjectId);
+  log.warn('Data erasure requested for subject:', subjectId);
   // Implementation would go here based on specific requirements
 }
 

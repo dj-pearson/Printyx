@@ -12,6 +12,8 @@ import { Router, type Express } from 'express';
 import { storage } from './storage';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { insertDealSchema, insertDealStageSchema } from '@shared/schema';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-deals');
 
 const router = Router();
 
@@ -47,7 +49,7 @@ router.get('/api/deals/:id', async (req: any, res) => {
 
     res.json(deal);
   } catch (error) {
-    console.error('Error fetching deal:', error);
+    log.error('Error fetching deal:', error);
     res.status(500).json({ message: 'Failed to fetch deal' });
   }
 });
@@ -169,7 +171,7 @@ router.post('/api/deals', async (req: any, res) => {
     const deal = await storage.createDeal(dealData);
     res.status(201).json(deal);
   } catch (error) {
-    console.error('Error creating deal:', error);
+    log.error('Error creating deal:', error);
     res.status(500).json({ message: 'Failed to create deal' });
   }
 });
@@ -212,7 +214,7 @@ router.put('/api/deals/:id', async (req: any, res) => {
 
     res.json(deal);
   } catch (error) {
-    console.error('Error updating deal:', error);
+    log.error('Error updating deal:', error);
     res.status(500).json({ message: 'Failed to update deal' });
   }
 });

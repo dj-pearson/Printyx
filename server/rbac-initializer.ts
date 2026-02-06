@@ -3,6 +3,8 @@ import { rbacSeeder } from './enhanced-rbac-seeder';
 import { db } from './db';
 import { eq } from 'drizzle-orm';
 import { enhancedRoles, organizationalUnits } from './enhanced-rbac-schema';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('rbac-initializer');
 
 /**
  * RBAC System Initializer
@@ -79,7 +81,7 @@ export class RBACInitializer {
         updatedAt: new Date(),
       });
 
-      console.log(`RBAC system initialized for tenant ${tenantId} (${dealerType})`);
+      log.info(`RBAC system initialized for tenant ${tenantId} (${dealerType})`);
       return {
         success: true,
         tenantId,
@@ -87,7 +89,7 @@ export class RBACInitializer {
         companyUnitId: companyUnit.id,
       };
     } catch (error) {
-      console.error('RBAC initialization error:', error);
+      log.error('RBAC initialization error:', error);
       throw error;
     }
   }
@@ -105,7 +107,7 @@ export class RBACInitializer {
 
       return roles.length > 0;
     } catch (error) {
-      console.error('Error checking RBAC initialization:', error);
+      log.error('Error checking RBAC initialization:', error);
       return false;
     }
   }
@@ -147,7 +149,7 @@ export class RBACInitializer {
         recommendation: 'RBAC system is active and ready for management',
       };
     } catch (error) {
-      console.error('Error getting RBAC status:', error);
+      log.error('Error getting RBAC status:', error);
       throw error;
     }
   }
@@ -167,10 +169,10 @@ export class RBACInitializer {
         await rbacSeeder.addEnterpriseFeatures(tenantId, userId);
       }
 
-      console.log(`RBAC system upgraded to ${targetLevel} for tenant ${tenantId}`);
+      log.info(`RBAC system upgraded to ${targetLevel} for tenant ${tenantId}`);
       return { success: true, targetLevel };
     } catch (error) {
-      console.error('RBAC upgrade error:', error);
+      log.error('RBAC upgrade error:', error);
       throw error;
     }
   }
@@ -191,10 +193,10 @@ export class RBACInitializer {
         await tx.delete(organizationalUnits).where(eq(organizationalUnits.tenantId, tenantId));
       });
 
-      console.log(`RBAC system reset for tenant ${tenantId}`);
+      log.info(`RBAC system reset for tenant ${tenantId}`);
       return { success: true, action: 'reset' };
     } catch (error) {
-      console.error('RBAC reset error:', error);
+      log.error('RBAC reset error:', error);
       throw error;
     }
   }
@@ -246,7 +248,7 @@ export class RBACInitializer {
         testedComponents: ['role-unit-references', 'hierarchy-integrity', 'nested-set-model'],
       };
     } catch (error) {
-      console.error('RBAC validation error:', error);
+      log.error('RBAC validation error:', error);
       throw error;
     }
   }

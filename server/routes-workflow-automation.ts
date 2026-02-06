@@ -1,6 +1,8 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-workflow-automation');
 
 // Using inline auth middleware since requireAuth is not available
 const requireAuth = (req: any, res: any, next: any) => {
@@ -620,7 +622,7 @@ router.get('/api/workflow-automation/dashboard', async (req: any, res) => {
 
     res.json(workflowAutomationData);
   } catch (error) {
-    console.error('Error fetching workflow automation dashboard:', error);
+    log.error('Error fetching workflow automation dashboard:', error);
     res.status(500).json({ message: 'Failed to fetch workflow automation dashboard' });
   }
 });
@@ -684,7 +686,7 @@ router.get('/api/workflow-automation/workflows/:workflowId/executions', async (r
 
     res.json(executionHistory);
   } catch (error) {
-    console.error('Error fetching execution history:', error);
+    log.error('Error fetching execution history:', error);
     res.status(500).json({ message: 'Failed to fetch execution history' });
   }
 });
@@ -715,7 +717,7 @@ router.post('/api/workflow-automation/workflows/:workflowId/execute', async (req
 
     res.status(202).json(execution);
   } catch (error) {
-    console.error('Error executing workflow:', error);
+    log.error('Error executing workflow:', error);
     res.status(500).json({ message: 'Failed to execute workflow' });
   }
 });

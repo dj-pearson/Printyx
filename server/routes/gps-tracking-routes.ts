@@ -1,6 +1,9 @@
 import express, { Request, Response } from 'express';
 import { storage } from '../storage';
 import { z } from 'zod';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('gps-tracking-routes');
+
 import {
   insertTechnicianLocationSchema,
   insertLocationHistorySchema,
@@ -52,7 +55,7 @@ router.get('/technicians/locations', async (req: Request, res: Response) => {
     const locations = await storage.getActiveTechnicianLocations(user.tenantId);
     res.json(locations);
   } catch (error) {
-    console.error('Get active technician locations error:', error);
+    log.error('Get active technician locations error:', error);
     res.status(500).json({ error: 'Failed to fetch active technician locations' });
   }
 });
@@ -73,7 +76,7 @@ router.get('/technicians/:id/location', async (req: Request, res: Response) => {
 
     res.json(location);
   } catch (error) {
-    console.error('Get technician location error:', error);
+    log.error('Get technician location error:', error);
     res.status(500).json({ error: 'Failed to fetch technician location' });
   }
 });
@@ -98,7 +101,7 @@ router.put('/technicians/:id/location', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update technician location error:', error);
+    log.error('Update technician location error:', error);
     res.status(500).json({ error: 'Failed to update technician location' });
   }
 });
@@ -118,7 +121,7 @@ router.get('/technicians/status/:status', async (req: Request, res: Response) =>
 
     res.json(locations);
   } catch (error) {
-    console.error('Get technicians by status error:', error);
+    log.error('Get technicians by status error:', error);
     res.status(500).json({ error: 'Failed to fetch technicians by status' });
   }
 });
@@ -163,7 +166,7 @@ router.get('/technicians/nearby', async (req: Request, res: Response) => {
 
     res.json(nearbyTechnicians);
   } catch (error) {
-    console.error('Find nearby technicians error:', error);
+    log.error('Find nearby technicians error:', error);
     res.status(500).json({ error: 'Failed to find nearby technicians' });
   }
 });
@@ -190,7 +193,7 @@ router.get('/technicians/:id/history', async (req: Request, res: Response) => {
 
     res.json(history);
   } catch (error) {
-    console.error('Get location history error:', error);
+    log.error('Get location history error:', error);
     res.status(500).json({ error: 'Failed to fetch location history' });
   }
 });
@@ -214,7 +217,7 @@ router.post('/location-history', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create location history error:', error);
+    log.error('Create location history error:', error);
     res.status(500).json({ error: 'Failed to create location history' });
   }
 });
@@ -231,7 +234,7 @@ router.get('/tickets/:ticketId/activity-timeline', async (req: Request, res: Res
 
     res.json(timeline);
   } catch (error) {
-    console.error('Get ticket activity timeline error:', error);
+    log.error('Get ticket activity timeline error:', error);
     res.status(500).json({ error: 'Failed to fetch ticket activity timeline' });
   }
 });
@@ -267,7 +270,7 @@ router.get('/technicians/:id/distance', async (req: Request, res: Response) => {
       totalDistanceMeters: distance,
     });
   } catch (error) {
-    console.error('Calculate distance traveled error:', error);
+    log.error('Calculate distance traveled error:', error);
     res.status(500).json({ error: 'Failed to calculate distance traveled' });
   }
 });
@@ -293,7 +296,7 @@ router.get('/routes', async (req: Request, res: Response) => {
 
     res.json(routes);
   } catch (error) {
-    console.error('Get route assignments error:', error);
+    log.error('Get route assignments error:', error);
     res.status(500).json({ error: 'Failed to fetch route assignments' });
   }
 });
@@ -314,7 +317,7 @@ router.get('/routes/:id', async (req: Request, res: Response) => {
 
     res.json(route);
   } catch (error) {
-    console.error('Get route assignment error:', error);
+    log.error('Get route assignment error:', error);
     res.status(500).json({ error: 'Failed to fetch route assignment' });
   }
 });
@@ -339,7 +342,7 @@ router.post('/routes', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create route assignment error:', error);
+    log.error('Create route assignment error:', error);
     res.status(500).json({ error: 'Failed to create route assignment' });
   }
 });
@@ -365,7 +368,7 @@ router.put('/routes/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update route assignment error:', error);
+    log.error('Update route assignment error:', error);
     res.status(500).json({ error: 'Failed to update route assignment' });
   }
 });
@@ -386,7 +389,7 @@ router.delete('/routes/:id', async (req: Request, res: Response) => {
     await storage.deleteRouteAssignment(req.params.id, user.tenantId);
     res.status(204).send();
   } catch (error) {
-    console.error('Delete route assignment error:', error);
+    log.error('Delete route assignment error:', error);
     res.status(500).json({ error: 'Failed to delete route assignment' });
   }
 });
@@ -421,7 +424,7 @@ router.post('/routes/:id/start', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Start route error:', error);
+    log.error('Start route error:', error);
     res.status(500).json({ error: 'Failed to start route' });
   }
 });
@@ -462,7 +465,7 @@ router.post('/routes/:id/complete', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Complete route error:', error);
+    log.error('Complete route error:', error);
     res.status(500).json({ error: 'Failed to complete route' });
   }
 });
@@ -494,7 +497,7 @@ router.patch('/routes/:id/progress', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update route progress error:', error);
+    log.error('Update route progress error:', error);
     res.status(500).json({ error: 'Failed to update route progress' });
   }
 });
@@ -522,7 +525,7 @@ router.get('/deviations', async (req: Request, res: Response) => {
 
     res.json(deviations);
   } catch (error) {
-    console.error('Get route deviations error:', error);
+    log.error('Get route deviations error:', error);
     res.status(500).json({ error: 'Failed to fetch route deviations' });
   }
 });
@@ -539,7 +542,7 @@ router.get('/deviations/unresolved', async (req: Request, res: Response) => {
 
     res.json(deviations);
   } catch (error) {
-    console.error('Get unresolved deviations error:', error);
+    log.error('Get unresolved deviations error:', error);
     res.status(500).json({ error: 'Failed to fetch unresolved deviations' });
   }
 });
@@ -560,7 +563,7 @@ router.get('/deviations/:id', async (req: Request, res: Response) => {
 
     res.json(deviation);
   } catch (error) {
-    console.error('Get route deviation error:', error);
+    log.error('Get route deviation error:', error);
     res.status(500).json({ error: 'Failed to fetch route deviation' });
   }
 });
@@ -584,7 +587,7 @@ router.post('/deviations', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create route deviation error:', error);
+    log.error('Create route deviation error:', error);
     res.status(500).json({ error: 'Failed to create route deviation' });
   }
 });
@@ -619,7 +622,7 @@ router.post('/deviations/:id/acknowledge', async (req: Request, res: Response) =
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Acknowledge deviation error:', error);
+    log.error('Acknowledge deviation error:', error);
     res.status(500).json({ error: 'Failed to acknowledge deviation' });
   }
 });
@@ -656,7 +659,7 @@ router.post('/deviations/:id/resolve', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Resolve deviation error:', error);
+    log.error('Resolve deviation error:', error);
     res.status(500).json({ error: 'Failed to resolve deviation' });
   }
 });
@@ -682,7 +685,7 @@ router.get('/etas', async (req: Request, res: Response) => {
 
     res.json(etas);
   } catch (error) {
-    console.error('Get ETA calculations error:', error);
+    log.error('Get ETA calculations error:', error);
     res.status(500).json({ error: 'Failed to fetch ETA calculations' });
   }
 });
@@ -703,7 +706,7 @@ router.get('/etas/:id', async (req: Request, res: Response) => {
 
     res.json(eta);
   } catch (error) {
-    console.error('Get ETA calculation error:', error);
+    log.error('Get ETA calculation error:', error);
     res.status(500).json({ error: 'Failed to fetch ETA calculation' });
   }
 });
@@ -727,7 +730,7 @@ router.post('/etas', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create ETA calculation error:', error);
+    log.error('Create ETA calculation error:', error);
     res.status(500).json({ error: 'Failed to create ETA calculation' });
   }
 });
@@ -748,7 +751,7 @@ router.get('/tickets/:ticketId/eta', async (req: Request, res: Response) => {
 
     res.json(eta);
   } catch (error) {
-    console.error('Get latest ETA for ticket error:', error);
+    log.error('Get latest ETA for ticket error:', error);
     res.status(500).json({ error: 'Failed to fetch latest ETA for ticket' });
   }
 });
@@ -779,7 +782,7 @@ router.patch('/etas/:id/arrival', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update ETA arrival error:', error);
+    log.error('Update ETA arrival error:', error);
     res.status(500).json({ error: 'Failed to update ETA arrival' });
   }
 });
@@ -801,7 +804,7 @@ router.get('/technicians/:id/eta-accuracy', async (req: Request, res: Response) 
 
     res.json(accuracy);
   } catch (error) {
-    console.error('Get ETA accuracy metrics error:', error);
+    log.error('Get ETA accuracy metrics error:', error);
     res.status(500).json({ error: 'Failed to fetch ETA accuracy metrics' });
   }
 });
@@ -827,7 +830,7 @@ router.get('/geofences', async (req: Request, res: Response) => {
 
     res.json(geofences);
   } catch (error) {
-    console.error('Get geofences error:', error);
+    log.error('Get geofences error:', error);
     res.status(500).json({ error: 'Failed to fetch geofences' });
   }
 });
@@ -848,7 +851,7 @@ router.get('/geofences/:id', async (req: Request, res: Response) => {
 
     res.json(geofence);
   } catch (error) {
-    console.error('Get geofence error:', error);
+    log.error('Get geofence error:', error);
     res.status(500).json({ error: 'Failed to fetch geofence' });
   }
 });
@@ -879,7 +882,7 @@ router.post('/geofences', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create geofence error:', error);
+    log.error('Create geofence error:', error);
     res.status(500).json({ error: 'Failed to create geofence' });
   }
 });
@@ -911,7 +914,7 @@ router.put('/geofences/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update geofence error:', error);
+    log.error('Update geofence error:', error);
     res.status(500).json({ error: 'Failed to update geofence' });
   }
 });
@@ -938,7 +941,7 @@ router.delete('/geofences/:id', async (req: Request, res: Response) => {
     await storage.deleteGeofence(req.params.id, user.tenantId);
     res.status(204).send();
   } catch (error) {
-    console.error('Delete geofence error:', error);
+    log.error('Delete geofence error:', error);
     res.status(500).json({ error: 'Failed to delete geofence' });
   }
 });
@@ -971,7 +974,7 @@ router.post('/geofences/check', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Check geofence error:', error);
+    log.error('Check geofence error:', error);
     res.status(500).json({ error: 'Failed to check geofence' });
   }
 });
@@ -998,7 +1001,7 @@ router.get('/geofence-events', async (req: Request, res: Response) => {
 
     res.json(events);
   } catch (error) {
-    console.error('Get geofence events error:', error);
+    log.error('Get geofence events error:', error);
     res.status(500).json({ error: 'Failed to fetch geofence events' });
   }
 });
@@ -1022,7 +1025,7 @@ router.post('/geofence-events', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create geofence event error:', error);
+    log.error('Create geofence event error:', error);
     res.status(500).json({ error: 'Failed to create geofence event' });
   }
 });
@@ -1050,7 +1053,7 @@ router.get('/technicians/:id/geofence-events', async (req: Request, res: Respons
 
     res.json(events);
   } catch (error) {
-    console.error('Get technician geofence events error:', error);
+    log.error('Get technician geofence events error:', error);
     res.status(500).json({ error: 'Failed to fetch technician geofence events' });
   }
 });
@@ -1067,7 +1070,7 @@ router.get('/tickets/:ticketId/geofence-events', async (req: Request, res: Respo
 
     res.json(events);
   } catch (error) {
-    console.error('Get ticket geofence events error:', error);
+    log.error('Get ticket geofence events error:', error);
     res.status(500).json({ error: 'Failed to fetch ticket geofence events' });
   }
 });

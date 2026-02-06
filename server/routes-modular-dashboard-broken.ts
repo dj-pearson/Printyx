@@ -1,6 +1,9 @@
 import type { Express } from 'express';
 import { db } from './db';
 import { eq, and, sql, desc, sum, count, gte, lte } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-modular-dashboard-broken');
+
 import {
   businessRecords,
   serviceTickets,
@@ -372,7 +375,7 @@ export function registerModularDashboardRoutes(app: Express) {
 
       res.json({ modules, userRole });
     } catch (error) {
-      console.error('Error fetching dashboard modules:', error);
+      log.error('Error fetching dashboard modules:', error);
       res.status(500).json({ message: 'Failed to fetch dashboard modules' });
     }
   });

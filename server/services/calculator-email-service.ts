@@ -1,4 +1,8 @@
 /**
+
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('calculator-email-service');
+
  * Print Cost Calculator Email Service
  * Handles email sequence delivery for calculator leads
  */
@@ -171,7 +175,7 @@ export async function sendEmail(
   try {
     // TODO: Implement actual email sending using Resend or SendGrid
     // For now, log the email that would be sent
-    console.log('📧 Email would be sent:', {
+    log.info('📧 Email would be sent:', {
       to,
       subject,
       hasAttachments: !!attachments?.length,
@@ -201,7 +205,7 @@ export async function sendEmail(
     };
     */
   } catch (error: any) {
-    console.error('Failed to send email:', error);
+    log.error('Failed to send email:', error);
     return {
       success: false,
       error: error.message,
@@ -251,5 +255,5 @@ export async function processScheduledEmails(): Promise<void> {
   // TODO: Implement cron job to send scheduled emails
   // Query database for pending emails where scheduledFor <= now
   // Send emails and update status
-  console.log('Processing scheduled emails...');
+  log.info('Processing scheduled emails...');
 }

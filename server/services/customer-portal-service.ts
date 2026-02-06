@@ -2,6 +2,9 @@ import { eq, and, desc, gte, lte, sql, isNull, or, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('customer-portal-service');
+
 import {
   customerPortalAccess,
   customerServiceRequests,
@@ -154,7 +157,7 @@ export class CustomerPortalService {
         },
       };
     } catch (error) {
-      console.error('Authentication error:', error);
+      log.error('Authentication error:', error);
       return { success: false, error: 'Authentication failed' };
     }
   }
@@ -177,7 +180,7 @@ export class CustomerPortalService {
 
       return customer || null;
     } catch (error) {
-      console.error('Session validation error:', error);
+      log.error('Session validation error:', error);
       return null;
     }
   }
@@ -960,7 +963,7 @@ export class CustomerPortalService {
       // For now, we'll just return success
       return { success: true, message: 'Password reset email sent' };
     } catch (error) {
-      console.error('Password reset error:', error);
+      log.error('Password reset error:', error);
       return { success: false, message: 'Failed to process password reset' };
     }
   }
@@ -1018,7 +1021,7 @@ export class CustomerPortalService {
       if (error.message === 'CUSTOMER_ACCESS_DENIED') {
         throw error;
       }
-      console.error('Error verifying customer access:', error);
+      log.error('Error verifying customer access:', error);
       throw new Error('CUSTOMER_ACCESS_DENIED');
     }
   }
@@ -1057,7 +1060,7 @@ export class CustomerPortalService {
       ) {
         throw error;
       }
-      console.error('Error verifying equipment ownership:', error);
+      log.error('Error verifying equipment ownership:', error);
       throw new Error('EQUIPMENT_ACCESS_DENIED');
     }
   }
@@ -2082,7 +2085,7 @@ export class CustomerPortalService {
         availableSlots: timeSlots,
       };
     } catch (error) {
-      console.error('Error getting available time slots:', error);
+      log.error('Error getting available time slots:', error);
       throw new Error('Failed to get available time slots');
     }
   }
@@ -2134,7 +2137,7 @@ export class CustomerPortalService {
 
       return appointment;
     } catch (error) {
-      console.error('Error booking maintenance appointment:', error);
+      log.error('Error booking maintenance appointment:', error);
       throw new Error('Failed to book maintenance appointment');
     }
   }
@@ -2187,7 +2190,7 @@ export class CustomerPortalService {
 
       return appointments;
     } catch (error) {
-      console.error('Error getting customer appointments:', error);
+      log.error('Error getting customer appointments:', error);
       throw new Error('Failed to get customer appointments');
     }
   }
@@ -2252,7 +2255,7 @@ export class CustomerPortalService {
 
       return updatedAppointment;
     } catch (error) {
-      console.error('Error rescheduling appointment:', error);
+      log.error('Error rescheduling appointment:', error);
       throw new Error('Failed to reschedule appointment');
     }
   }
@@ -2308,7 +2311,7 @@ export class CustomerPortalService {
 
       return cancelledAppointment;
     } catch (error) {
-      console.error('Error cancelling appointment:', error);
+      log.error('Error cancelling appointment:', error);
       throw new Error('Failed to cancel appointment');
     }
   }
@@ -2335,7 +2338,7 @@ export class CustomerPortalService {
 
       return appointment || null;
     } catch (error) {
-      console.error('Error getting appointment by ID:', error);
+      log.error('Error getting appointment by ID:', error);
       throw new Error('Failed to get appointment details');
     }
   }

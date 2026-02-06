@@ -6,6 +6,9 @@
 
 import { db } from '../db';
 import { eq, and, desc, gte, lte, lt, sql, inArray } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('data-retention-service');
+
 import {
   dataRetentionPolicies,
   dataPurgeJobs,
@@ -54,7 +57,7 @@ export async function createRetentionPolicy(
   // Validate table name exists
   const validTables = Object.keys(DEFAULT_RETENTION_PERIODS);
   if (!validTables.includes(data.tableName) && !data.tableName.startsWith('custom_')) {
-    console.warn(`Warning: Table ${data.tableName} is not in the standard list`);
+    log.warn(`Warning: Table ${data.tableName} is not in the standard list`);
   }
 
   const [policy] = await db.insert(dataRetentionPolicies).values(data).returning();
@@ -415,7 +418,7 @@ async function executePurgeAsync(
         recordsArchived = archiveResult.count;
         archiveLocation = archiveResult.location;
       } catch (error: any) {
-        console.error(`Failed to archive records: ${error.message}`);
+        log.error(`Failed to archive records: ${error.message}`);
         errorLog.push({
           recordId: 'archive',
           error: error.message,

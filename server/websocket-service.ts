@@ -7,6 +7,8 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import { v4 as uuidv4 } from 'uuid';
 import { reportingCache } from './cache-service';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('websocket-service');
 
 interface WebSocketClient {
   id: string;
@@ -56,7 +58,7 @@ export class WebSocketService {
 
   // Initialize WebSocket server
   public initialize(server: Server): void {
-    console.log('🚀 Initializing WebSocket service for real-time updates...');
+    log.info('🚀 Initializing WebSocket service for real-time updates...');
 
     this.wss = new WebSocketServer({
       server,
@@ -71,7 +73,7 @@ export class WebSocketService {
     this.startHeartbeat();
     this.startDataUpdateLoop();
 
-    console.log('✅ WebSocket service initialized on /ws/reporting');
+    log.info('✅ WebSocket service initialized on /ws/reporting');
   }
 
   // Handle new WebSocket connection
@@ -100,7 +102,7 @@ export class WebSocketService {
 
     this.clients.set(clientId, client);
 
-    console.log(
+    log.info(
       `📡 New WebSocket client connected: ${clientId} (user: ${userId}, tenant: ${tenantId})`,
     );
 
@@ -124,7 +126,7 @@ export class WebSocketService {
     });
 
     socket.on('error', (error) => {
-      console.error(`WebSocket error for client ${clientId}:`, error);
+      log.error(`WebSocket error for client ${clientId}:`, error);
       this.clients.delete(clientId);
     });
   }
@@ -159,7 +161,7 @@ export class WebSocketService {
           });
       }
     } catch (error) {
-      console.error('Error parsing client message:', error);
+      log.error('Error parsing client message:', error);
       this.sendToClient(client, {
         type: 'error',
         error: 'Invalid message format',
@@ -206,7 +208,7 @@ export class WebSocketService {
     }
 
     client.subscriptions.add(channel);
-    console.log(`📊 Client ${client.id} subscribed to: ${channel}`);
+    log.info(`📊 Client ${client.id} subscribed to: ${channel}`);
 
     // Send current data immediately
     this.sendCurrentData(client, channel, data);
@@ -224,7 +226,7 @@ export class WebSocketService {
 
     if (channel) {
       client.subscriptions.delete(channel);
-      console.log(`📊 Client ${client.id} unsubscribed from: ${channel}`);
+      log.info(`📊 Client ${client.id} unsubscribed from: ${channel}`);
     }
   }
 
@@ -232,7 +234,7 @@ export class WebSocketService {
   private handleClientDisconnect(clientId: string): void {
     const client = this.clients.get(clientId);
     if (client) {
-      console.log(`📡 Client disconnected: ${clientId}`);
+      log.info(`📡 Client disconnected: ${clientId}`);
       this.clients.delete(clientId);
     }
   }
@@ -271,7 +273,7 @@ export class WebSocketService {
         });
       }
     } catch (error) {
-      console.error('Error sending current data:', error);
+      log.error('Error sending current data:', error);
       this.sendToClient(client, {
         type: 'error',
         channel,
@@ -295,7 +297,7 @@ export class WebSocketService {
       }
     });
 
-    console.log(
+    log.info(
       `📡 Broadcasted update to channel: ${channel} (${this.getSubscriberCount(channel)} subscribers)`,
     );
   }
@@ -306,7 +308,7 @@ export class WebSocketService {
       try {
         client.socket.send(JSON.stringify(message));
       } catch (error) {
-        console.error(`Failed to send message to client ${client.id}:`, error);
+        log.error(`Failed to send message to client ${client.id}:`, error);
       }
     }
   }
@@ -319,7 +321,7 @@ export class WebSocketService {
 
       this.clients.forEach((client, clientId) => {
         if (now - client.lastHeartbeat > timeout) {
-          console.log(`💀 Client ${clientId} timed out`);
+          log.info(`💀 Client ${clientId} timed out`);
           client.socket.close();
           this.clients.delete(clientId);
         }
@@ -367,7 +369,7 @@ export class WebSocketService {
           this.broadcastDataUpdate(channel, kpiData);
         }
       } catch (error) {
-        console.error(`Error updating KPI ${channel}:`, error);
+        log.error(`Error updating KPI ${channel}:`, error);
       }
     }
   }
@@ -405,7 +407,7 @@ export class WebSocketService {
           }
         }
       } catch (error) {
-        console.error(`Error updating report ${channel}:`, error);
+        log.error(`Error updating report ${channel}:`, error);
       }
     }
   }
@@ -532,7 +534,7 @@ export class WebSocketService {
       this.wss.close();
     }
 
-    console.log('🔌 WebSocket service destroyed');
+    log.info('🔌 WebSocket service destroyed');
   }
 }
 

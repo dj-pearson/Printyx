@@ -7,6 +7,8 @@
 
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import * as jose from 'jose';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('supabase-auth');
 
 // Extend Express Request to include Supabase user data
 declare global {
@@ -83,13 +85,13 @@ function getJwtSecret(): Uint8Array | null {
       const isProduction = process.env.NODE_ENV === 'production';
 
       if (isProduction) {
-        console.error(
+        log.error(
           '[Auth] CRITICAL: SUPABASE_JWT_SECRET is not set. JWT authentication will not work!',
         );
-        console.error('[Auth] Please set SUPABASE_JWT_SECRET in your environment variables.');
+        log.error('[Auth] Please set SUPABASE_JWT_SECRET in your environment variables.');
       } else {
-        console.warn('[Auth] SUPABASE_JWT_SECRET is not set. JWT authentication is disabled.');
-        console.warn('[Auth] Set SUPABASE_JWT_SECRET to enable Supabase JWT authentication.');
+        log.warn('[Auth] SUPABASE_JWT_SECRET is not set. JWT authentication is disabled.');
+        log.warn('[Auth] Set SUPABASE_JWT_SECRET to enable Supabase JWT authentication.');
       }
     }
     return null;
@@ -223,7 +225,7 @@ export const authenticateSupabaseJWT: RequestHandler = async (
           // Override isPlatformUser based on role
           supabaseUser.isPlatformUser = isPlatformAdmin || userRecord.isPlatformUser || false;
 
-          console.log(
+          log.info(
             `[Auth] User ${supabaseUser.email} has role '${roleString}', isPlatformUser: ${supabaseUser.isPlatformUser}`,
           );
         }
@@ -252,12 +254,12 @@ export const authenticateSupabaseJWT: RequestHandler = async (
               }
             }
           } catch (roleError) {
-            console.warn('[Auth] Could not fetch role level:', roleError);
+            log.warn('[Auth] Could not fetch role level:', roleError);
           }
         }
       }
     } catch (dbError) {
-      console.warn('[Auth] Could not fetch user from database:', dbError);
+      log.warn('[Auth] Could not fetch user from database:', dbError);
       // Continue with JWT data only
     }
 
@@ -276,11 +278,11 @@ export const authenticateSupabaseJWT: RequestHandler = async (
       // This allows the server to start without JWT configured in dev mode
       console.debug('[Auth] JWT verification skipped: secret not configured');
     } else if (error instanceof jose.errors.JWTExpired) {
-      console.warn('[Auth] Supabase JWT expired');
+      log.warn('[Auth] Supabase JWT expired');
     } else if (error instanceof jose.errors.JWTInvalid) {
-      console.warn('[Auth] Invalid Supabase JWT:', (error as Error).message);
+      log.warn('[Auth] Invalid Supabase JWT:', (error as Error).message);
     } else {
-      console.error('[Auth] JWT verification error:', error);
+      log.error('[Auth] JWT verification error:', error);
     }
 
     // Clear any partial user data

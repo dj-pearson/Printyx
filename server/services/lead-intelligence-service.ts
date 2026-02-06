@@ -15,6 +15,9 @@
 
 import { db } from '../db';
 import { businessRecords } from '@shared/schema';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('lead-intelligence-service');
+
 import {
   leadScoringRules,
   leadScoreCalculations,
@@ -490,7 +493,7 @@ class LeadIntelligenceService {
         }
       }
     } catch (error) {
-      console.error('Apollo enrichment error:', error);
+      log.error('Apollo enrichment error:', error);
     }
 
     return {

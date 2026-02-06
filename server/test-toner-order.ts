@@ -18,15 +18,17 @@ import { deviceRegistrations, deviceMetrics } from '../shared/manufacturer-integ
 import { serviceContracts } from '../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('test-toner-order');
 
 const TEST_TENANT_ID = '550e8400-e29b-41d4-a716-446655440000';
 const TEST_CUSTOMER_ID = '650e8400-e29b-41d4-a716-446655440001';
 
 async function setupTestData() {
-  console.log('\n🔧 Setting up test data...\n');
+  log.info('\n🔧 Setting up test data...\n');
 
   // 1. Create test customer portal user
-  console.log('1️⃣  Creating test portal user...');
+  log.info('1️⃣  Creating test portal user...');
   const existingUser = await db
     .select()
     .from(customerPortalAccess)
@@ -35,7 +37,7 @@ async function setupTestData() {
 
   let portalUser;
   if (existingUser.length > 0) {
-    console.log('   ✅ Test user already exists');
+    log.info('   ✅ Test user already exists');
     portalUser = existingUser[0];
   } else {
     const passwordHash = await bcrypt.hash('test123', 10);
@@ -54,11 +56,11 @@ async function setupTestData() {
       .returning();
 
     portalUser = newUser[0];
-    console.log('   ✅ Created test user:', portalUser.id);
+    log.info('   ✅ Created test user:', portalUser.id);
   }
 
   // 2. Create test device registration
-  console.log('2️⃣  Creating test device...');
+  log.info('2️⃣  Creating test device...');
   const existingDevice = await db
     .select()
     .from(deviceRegistrations)
@@ -72,7 +74,7 @@ async function setupTestData() {
 
   let device;
   if (existingDevice.length > 0) {
-    console.log('   ✅ Test device already exists');
+    log.info('   ✅ Test device already exists');
     device = existingDevice[0];
   } else {
     const newDevice = await db
@@ -90,11 +92,11 @@ async function setupTestData() {
       .returning();
 
     device = newDevice[0];
-    console.log('   ✅ Created test device:', device.id);
+    log.info('   ✅ Created test device:', device.id);
   }
 
   // 3. Create device metrics with low toner levels
-  console.log('3️⃣  Creating device metrics with low toner...');
+  log.info('3️⃣  Creating device metrics with low toner...');
   await db
     .insert(deviceMetrics)
     .values({
@@ -123,10 +125,10 @@ async function setupTestData() {
       },
     });
 
-  console.log('   ✅ Created metrics with black toner at 15%');
+  log.info('   ✅ Created metrics with black toner at 15%');
 
   // 4. Create service contract (optional - for testing contract coverage)
-  console.log('4️⃣  Creating service contract with toner coverage...');
+  log.info('4️⃣  Creating service contract with toner coverage...');
   const existingContract = await db
     .select()
     .from(serviceContracts)
@@ -139,7 +141,7 @@ async function setupTestData() {
     .limit(1);
 
   if (existingContract.length > 0) {
-    console.log('   ✅ Test contract already exists');
+    log.info('   ✅ Test contract already exists');
   } else {
     await db.insert(serviceContracts).values({
       tenantId: TEST_TENANT_ID,
@@ -157,16 +159,16 @@ async function setupTestData() {
       autoRenewal: true,
     });
 
-    console.log('   ✅ Created contract with toner coverage');
+    log.info('   ✅ Created contract with toner coverage');
   }
 
-  console.log('\n✅ Test data setup complete!\n');
+  log.info('\n✅ Test data setup complete!\n');
 
   return { portalUser, device };
 }
 
 async function testTonerOrderAPI(deviceId: string, userId: string) {
-  console.log('\n🧪 Testing Toner Order API...\n');
+  log.info('\n🧪 Testing Toner Order API...\n');
 
   try {
     // Simulate API request
@@ -189,79 +191,79 @@ async function testTonerOrderAPI(deviceId: string, userId: string) {
 
     const data = await response.json();
 
-    console.log('📋 API Response:');
-    console.log(JSON.stringify(data, null, 2));
+    log.info('📋 API Response:');
+    log.info(JSON.stringify(data, null, 2));
 
     // Verify response structure
-    console.log('\n✅ Verification:\n');
+    log.info('\n✅ Verification:\n');
 
     if (data.success) {
-      console.log('   ✅ Order created successfully');
+      log.info('   ✅ Order created successfully');
     } else {
-      console.error('   ❌ Order creation failed');
+      log.error('   ❌ Order creation failed');
       return false;
     }
 
     if (data.order) {
-      console.log('   ✅ Order object present');
-      console.log('      Order Number:', data.order.orderNumber);
-      console.log('      Order Status:', data.order.status);
-      console.log('      Device:', data.order.deviceName);
-      console.log('      Colors:', data.order.colors);
+      log.info('   ✅ Order object present');
+      log.info('      Order Number:', data.order.orderNumber);
+      log.info('      Order Status:', data.order.status);
+      log.info('      Device:', data.order.deviceName);
+      log.info('      Colors:', data.order.colors);
     } else {
-      console.error('   ❌ Order object missing');
+      log.error('   ❌ Order object missing');
       return false;
     }
 
     if (data.notifications) {
-      console.log('   ✅ Notification status present');
-      console.log('      Email Sent:', data.notifications.emailSent);
-      console.log('      SMS Sent:', data.notifications.smsSent);
+      log.info('   ✅ Notification status present');
+      log.info('      Email Sent:', data.notifications.emailSent);
+      log.info('      SMS Sent:', data.notifications.smsSent);
 
       // Expected: both false because EMAIL_ENABLED and SMS_ENABLED are not set
       if (!data.notifications.emailSent && !data.notifications.smsSent) {
-        console.log('   ℹ️  Notifications disabled (expected - EMAIL_ENABLED/SMS_ENABLED not set)');
+        log.info('   ℹ️  Notifications disabled (expected - EMAIL_ENABLED/SMS_ENABLED not set)');
       } else {
-        console.log('   ℹ️  Notifications enabled and sent');
+        log.info('   ℹ️  Notifications enabled and sent');
       }
     } else {
-      console.error('   ❌ Notification status missing from response');
+      log.error('   ❌ Notification status missing from response');
       return false;
     }
 
-    console.log('\n✅ All tests passed!');
+    log.info('\n✅ All tests passed!');
     return true;
   } catch (error) {
-    console.error('\n❌ Test failed:', error);
+    log.error('\n❌ Test failed:', error);
     return false;
   }
 }
 
 async function cleanupTestData() {
-  console.log('\n🧹 Cleanup (optional - keeping test data for manual inspection)');
-  console.log('   Run these commands to clean up:');
-  console.log("   DELETE FROM customer_portal_access WHERE username = 'test-fleet-user';");
-  console.log("   DELETE FROM device_registrations WHERE serial_number = 'TEST-HP-P4015-001';");
-  console.log("   DELETE FROM service_contracts WHERE contract_number = 'TEST-SVC-2025-001';");
+  log.info('\n🧹 Cleanup (optional - keeping test data for manual inspection)');
+  log.info('   Run these commands to clean up:');
+  log.info("   DELETE FROM customer_portal_access WHERE username = 'test-fleet-user';");
+  log.info("   DELETE FROM device_registrations WHERE serial_number = 'TEST-HP-P4015-001';");
+  log.info("   DELETE FROM service_contracts WHERE contract_number = 'TEST-SVC-2025-001';");
 }
 
 async function main() {
-  console.log('═══════════════════════════════════════════════════════════');
-  console.log('  Fleet Monitoring Toner Order - End-to-End Test');
-  console.log('═══════════════════════════════════════════════════════════');
+  log.info('═══════════════════════════════════════════════════════════');
+  log.info('  Fleet Monitoring Toner Order - End-to-End Test');
+  log.info('═══════════════════════════════════════════════════════════');
 
   const { portalUser, device } = await setupTestData();
   const success = await testTonerOrderAPI(device.id, portalUser.id);
   await cleanupTestData();
 
-  console.log('\n═══════════════════════════════════════════════════════════');
+  log.info('\n═══════════════════════════════════════════════════════════');
   if (success) {
-    console.log('  ✅ TEST SUITE PASSED');
+    log.info('  ✅ TEST SUITE PASSED');
   } else {
-    console.log('  ❌ TEST SUITE FAILED');
+    log.info('  ❌ TEST SUITE FAILED');
     process.exit(1);
   }
-  console.log('═══════════════════════════════════════════════════════════\n');
+  log.info('═══════════════════════════════════════════════════════════\n');
 }
 
 main().catch(console.error);

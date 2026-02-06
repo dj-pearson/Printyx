@@ -11,6 +11,8 @@
 import { Router, Request, Response } from 'express';
 import { EquipmentLifecycleStateMachine } from './services/equipment-lifecycle-state-machine';
 import { z } from 'zod';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-equipment-lifecycle-state-machine');
 
 const router = Router();
 
@@ -99,7 +101,7 @@ router.post(
         });
       }
     } catch (error: any) {
-      console.error('Transition endpoint error:', error);
+      log.error('Transition endpoint error:', error);
       return res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -134,7 +136,7 @@ router.get(
         data: history,
       });
     } catch (error: any) {
-      console.error('Get history endpoint error:', error);
+      log.error('Get history endpoint error:', error);
       return res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -222,7 +224,7 @@ router.get(
         },
       });
     } catch (error: any) {
-      console.error('Can transition endpoint error:', error);
+      log.error('Can transition endpoint error:', error);
       return res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -293,7 +295,7 @@ router.get(
         },
       });
     } catch (error: any) {
-      console.error('Available transitions endpoint error:', error);
+      log.error('Available transitions endpoint error:', error);
       return res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -377,7 +379,7 @@ router.post(
         });
       }
     } catch (error: any) {
-      console.error('Rollback endpoint error:', error);
+      log.error('Rollback endpoint error:', error);
       return res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -417,7 +419,7 @@ router.get(
         },
       });
     } catch (error: any) {
-      console.error('Can rollback endpoint error:', error);
+      log.error('Can rollback endpoint error:', error);
       return res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -450,7 +452,7 @@ router.get('/api/equipment-lifecycle/stages', async (req: TenantRequest, res: Re
       data: stages,
     });
   } catch (error: any) {
-    console.error('Get stages endpoint error:', error);
+    log.error('Get stages endpoint error:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error',

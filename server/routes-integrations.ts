@@ -1,26 +1,25 @@
 import type { Express } from 'express';
 import { storage } from './storage';
 import { isAuthenticated } from './replitAuth';
-import { z } from 'zod';
 import { insertSystemIntegrationSchema } from '@shared/schema';
+import { NotFoundError } from './lib/api-errors';
 
 // System integrations routes using real database data
 export function registerIntegrationRoutes(app: Express) {
   // Get all integrations
-  app.get('/api/integrations', async (req: any, res) => {
+  app.get('/api/integrations', async (req: any, res, next) => {
     try {
       // Use hardcoded tenant ID for demo since authentication middleware isn't working properly
       const tenantId = '1d4522ad-b3d8-4018-8890-f9294b2efbe6';
       const integrations = await storage.getSystemIntegrations(tenantId);
       res.json(integrations);
     } catch (error) {
-      console.error('Error fetching integrations:', error);
-      res.status(500).json({ error: 'Failed to fetch integrations' });
+      next(error);
     }
   });
 
-  // Create new integration
-  app.post('/api/integrations', isAuthenticated, async (req: any, res) => {
+  // Create new integration (ZodError caught by global error handler)
+  app.post('/api/integrations', isAuthenticated, async (req: any, res, next) => {
     try {
       const tenantId = req.user?.tenantId;
 
@@ -32,16 +31,12 @@ export function registerIntegrationRoutes(app: Express) {
       const integration = await storage.createSystemIntegration(validatedData);
       res.status(201).json(integration);
     } catch (error) {
-      console.error('Error creating integration:', error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Invalid integration data', details: error.errors });
-      }
-      res.status(500).json({ error: 'Failed to create integration' });
+      next(error);
     }
   });
 
   // Update integration
-  app.put('/api/integrations/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/integrations/:id', isAuthenticated, async (req: any, res, next) => {
     try {
       const tenantId = req.user?.tenantId;
       const integrationId = req.params.id;
@@ -49,18 +44,17 @@ export function registerIntegrationRoutes(app: Express) {
       const integration = await storage.updateSystemIntegration(integrationId, req.body, tenantId);
 
       if (!integration) {
-        return res.status(404).json({ error: 'Integration not found' });
+        throw new NotFoundError('Integration');
       }
 
       res.json(integration);
     } catch (error) {
-      console.error('Error updating integration:', error);
-      res.status(500).json({ error: 'Failed to update integration' });
+      next(error);
     }
   });
 
   // Test integration connection
-  app.post('/api/integrations/:id/test', isAuthenticated, async (req: any, res) => {
+  app.post('/api/integrations/:id/test', isAuthenticated, async (req: any, res, next) => {
     try {
       const tenantId = req.user?.tenantId;
       const integrationId = req.params.id;
@@ -77,18 +71,17 @@ export function registerIntegrationRoutes(app: Express) {
       );
 
       if (!integration) {
-        return res.status(404).json({ error: 'Integration not found' });
+        throw new NotFoundError('Integration');
       }
 
       res.json({ success: true, message: 'Connection test successful' });
     } catch (error) {
-      console.error('Error testing integration:', error);
-      res.status(500).json({ error: 'Failed to test integration' });
+      next(error);
     }
   });
 
   // Get deployment readiness metrics (placeholder for now)
-  app.get('/api/deployment-readiness', isAuthenticated, async (req: any, res) => {
+  app.get('/api/deployment-readiness', isAuthenticated, async (req: any, res, next) => {
     try {
       // Calculate deployment readiness based on actual system state
       const mockMetrics = {
@@ -102,13 +95,12 @@ export function registerIntegrationRoutes(app: Express) {
 
       res.json(mockMetrics);
     } catch (error) {
-      console.error('Error fetching deployment readiness:', error);
-      res.status(500).json({ error: 'Failed to fetch deployment readiness' });
+      next(error);
     }
   });
 
   // Get integration webhooks (placeholder for now)
-  app.get('/api/webhooks', async (req: any, res) => {
+  app.get('/api/webhooks', async (req: any, res, next) => {
     try {
       // Return sample webhook data based on integrations
       const webhooks = [
@@ -133,8 +125,7 @@ export function registerIntegrationRoutes(app: Express) {
       ];
       res.json(webhooks);
     } catch (error) {
-      console.error('Error fetching webhooks:', error);
-      res.status(500).json({ error: 'Failed to fetch webhooks' });
+      next(error);
     }
   });
 }

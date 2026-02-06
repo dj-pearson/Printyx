@@ -6,6 +6,9 @@
  */
 
 import { Request, Response } from 'express';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('apiErrorHandler.example');
+
 import {
   handleApiError,
   sendSuccess,
@@ -234,7 +237,7 @@ export async function oldGetCustomer(req: Request, res: Response) {
     }
     return res.json(customer);
   } catch (error) {
-    console.error('Error:', error);
+    log.error('Error:', error);
     return res.status(500).json({ message: 'Failed to get customer' });
   }
 }

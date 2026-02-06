@@ -5,6 +5,9 @@
 
 import express from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-reporting-architecture');
+
 import {
   reportDefinitions,
   kpiDefinitions,
@@ -68,7 +71,7 @@ router.get('/reports', async (req: any, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching reports:', error);
+    log.error('Error fetching reports:', error);
     res.status(500).json({
       error: 'Failed to fetch reports',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -101,7 +104,7 @@ router.get('/reports/:id', async (req: any, res) => {
       data: report[0],
     });
   } catch (error) {
-    console.error('Error fetching report:', error);
+    log.error('Error fetching report:', error);
     res.status(500).json({
       error: 'Failed to fetch report',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -168,7 +171,7 @@ router.post('/reports/:code/execute', async (req: any, res) => {
         resultRows: 0,
       });
     } catch (logError) {
-      console.warn('Failed to log report execution:', logError);
+      log.warn('Failed to log report execution:', logError);
     }
 
     res.json({
@@ -176,7 +179,7 @@ router.post('/reports/:code/execute', async (req: any, res) => {
       data: executionResult,
     });
   } catch (error) {
-    console.error('Error executing report:', error);
+    log.error('Error executing report:', error);
     res.status(500).json({
       error: 'Failed to execute report',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -228,7 +231,7 @@ router.get('/kpis', async (req: any, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching KPIs:', error);
+    log.error('Error fetching KPIs:', error);
     res.status(500).json({
       error: 'Failed to fetch KPIs',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -276,7 +279,7 @@ router.get('/kpis/:id/current-value', async (req: any, res) => {
       data: result,
     });
   } catch (error) {
-    console.error('Error fetching KPI value:', error);
+    log.error('Error fetching KPI value:', error);
     res.status(500).json({
       error: 'Failed to fetch KPI value',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -314,7 +317,7 @@ router.get('/reports/categories', async (req: any, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching report categories:', error);
+    log.error('Error fetching report categories:', error);
     res.status(500).json({
       error: 'Failed to fetch report categories',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -355,7 +358,7 @@ router.get('/kpis/categories', async (req: any, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching KPI categories:', error);
+    log.error('Error fetching KPI categories:', error);
     res.status(500).json({
       error: 'Failed to fetch KPI categories',
       message: error instanceof Error ? error.message : 'Unknown error',

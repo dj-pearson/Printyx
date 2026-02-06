@@ -12,6 +12,8 @@ import { db } from './db';
 import { isAuthenticated } from './replitAuth';
 import { resolveTenant, requireTenant } from './middleware/tenancy';
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-automation');
 
 export function registerAutomationRoutes(app: Express) {
   // Apply authentication to all automation routes
@@ -40,7 +42,7 @@ export function registerAutomationRoutes(app: Express) {
       const result = await db.$client.query(query, [tenantId]);
       res.json(result.rows);
     } catch (error) {
-      console.error('Error fetching automation rules:', error);
+      log.error('Error fetching automation rules:', error);
       res.status(500).json({ error: 'Failed to fetch automation rules' });
     }
   });
@@ -98,7 +100,7 @@ export function registerAutomationRoutes(app: Express) {
 
       res.status(201).json(result.rows[0]);
     } catch (error) {
-      console.error('Error creating automation rule:', error);
+      log.error('Error creating automation rule:', error);
       res.status(500).json({ error: 'Failed to create automation rule' });
     }
   });
@@ -171,7 +173,7 @@ export function registerAutomationRoutes(app: Express) {
 
       res.json(result.rows[0]);
     } catch (error) {
-      console.error('Error updating automation rule:', error);
+      log.error('Error updating automation rule:', error);
       res.status(500).json({ error: 'Failed to update automation rule' });
     }
   });
@@ -200,7 +202,7 @@ export function registerAutomationRoutes(app: Express) {
 
       res.status(204).send();
     } catch (error) {
-      console.error('Error deleting automation rule:', error);
+      log.error('Error deleting automation rule:', error);
       res.status(500).json({ error: 'Failed to delete automation rule' });
     }
   });
@@ -237,7 +239,7 @@ export function registerAutomationRoutes(app: Express) {
       const result = await db.$client.query(query, queryParams);
       res.json(result.rows);
     } catch (error) {
-      console.error('Error fetching automated tasks:', error);
+      log.error('Error fetching automated tasks:', error);
       res.status(500).json({ error: 'Failed to fetch automated tasks' });
     }
   });
@@ -288,7 +290,7 @@ export function registerAutomationRoutes(app: Express) {
 
       res.status(201).json(result.rows[0]);
     } catch (error) {
-      console.error('Error creating automated task:', error);
+      log.error('Error creating automated task:', error);
       res.status(500).json({ error: 'Failed to create automated task' });
     }
   });
@@ -349,7 +351,7 @@ export function registerAutomationRoutes(app: Express) {
 
       res.json(result.rows[0]);
     } catch (error) {
-      console.error('Error updating automated task:', error);
+      log.error('Error updating automated task:', error);
       res.status(500).json({ error: 'Failed to update automated task' });
     }
   });
@@ -378,7 +380,7 @@ export function registerAutomationRoutes(app: Express) {
 
       res.status(204).send();
     } catch (error) {
-      console.error('Error deleting automated task:', error);
+      log.error('Error deleting automated task:', error);
       res.status(500).json({ error: 'Failed to delete automated task' });
     }
   });

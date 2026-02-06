@@ -1,13 +1,15 @@
 import { storage } from './storage';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-workflow-automation');
 
 async function seedWorkflowAutomation() {
-  console.log('🔄 Seeding workflow automation data...');
+  log.info('🔄 Seeding workflow automation data...');
 
   try {
     // Get test tenant and user
     const tenants = await storage.getAllTenants();
     if (tenants.length === 0) {
-      console.error('❌ No tenants found. Please create a tenant first.');
+      log.error('❌ No tenants found. Please create a tenant first.');
       return;
     }
 
@@ -15,10 +17,10 @@ async function seedWorkflowAutomation() {
     const users = await storage.getUsers(tenantId);
     const userId = users.length > 0 ? users[0].id : 'system';
 
-    console.log(`✅ Using tenant: ${tenantId}`);
+    log.info(`✅ Using tenant: ${tenantId}`);
 
     // ==================== Seed Event Registry ====================
-    console.log('📋 Seeding workflow event registry...');
+    log.info('📋 Seeding workflow event registry...');
 
     const events = [
       {
@@ -197,10 +199,10 @@ async function seedWorkflowAutomation() {
       await storage.createEventRegistryEntry(event);
     }
 
-    console.log(`✅ Created ${events.length} workflow events`);
+    log.info(`✅ Created ${events.length} workflow events`);
 
     // ==================== Seed Workflow Templates ====================
-    console.log('📋 Seeding workflow templates...');
+    log.info('📋 Seeding workflow templates...');
 
     const customerOnboardingTemplate = await storage.createWorkflowTemplate({
       name: 'Customer Onboarding Automation',
@@ -458,10 +460,10 @@ async function seedWorkflowAutomation() {
       previewImage: null,
     });
 
-    console.log('✅ Created 4 workflow templates');
+    log.info('✅ Created 4 workflow templates');
 
     // ==================== Create Sample Workflow from Template ====================
-    console.log('📋 Creating sample workflow from template...');
+    log.info('📋 Creating sample workflow from template...');
 
     const sampleWorkflow = await storage.createWorkflow({
       tenantId,
@@ -567,10 +569,10 @@ async function seedWorkflowAutomation() {
       });
     }
 
-    console.log('✅ Created sample workflow with triggers and steps');
+    log.info('✅ Created sample workflow with triggers and steps');
 
     // ==================== Create Sample Executions ====================
-    console.log('📋 Creating sample workflow executions...');
+    log.info('📋 Creating sample workflow executions...');
 
     const execution1 = await storage.createWorkflowExecution({
       workflowId: sampleWorkflow.id,
@@ -664,11 +666,11 @@ async function seedWorkflowAutomation() {
       eventData: { userId },
     });
 
-    console.log('✅ Created 3 sample workflow executions');
+    log.info('✅ Created 3 sample workflow executions');
 
-    console.log('✅ Workflow automation seeding completed successfully!');
+    log.info('✅ Workflow automation seeding completed successfully!');
   } catch (error) {
-    console.error('❌ Error seeding workflow automation:', error);
+    log.error('❌ Error seeding workflow automation:', error);
     throw error;
   }
 }
@@ -677,11 +679,11 @@ async function seedWorkflowAutomation() {
 if (require.main === module) {
   seedWorkflowAutomation()
     .then(() => {
-      console.log('✅ Seeding complete');
+      log.info('✅ Seeding complete');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ Seeding failed:', error);
+      log.error('❌ Seeding failed:', error);
       process.exit(1);
     });
 }

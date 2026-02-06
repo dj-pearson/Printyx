@@ -1,5 +1,8 @@
 import { db } from '../db';
 import { eq, and, lt, gte, desc, sql, between } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('contract-renewal-service');
+
 import {
   contractRenewalTracking,
   renewalProposals,
@@ -161,7 +164,7 @@ Format response as JSON:
       confidenceScore: aiResponse.confidenceScore || 70,
     };
   } catch (error) {
-    console.error('AI analysis error:', error);
+    log.error('AI analysis error:', error);
 
     // Fallback to heuristic analysis
     let renewalProbability = 70; // Base probability
@@ -350,7 +353,7 @@ Format as JSON:
       upsellOpportunities: aiResponse.upsellOpportunities || [],
     };
   } catch (error) {
-    console.error('AI pricing error:', error);
+    log.error('AI pricing error:', error);
 
     // Fallback to rule-based pricing
     let proposedMrr = currentMrr;
@@ -559,7 +562,7 @@ export async function analyzeExpiringContracts(tenantId: number): Promise<{
         proposalCreated: analysis.recommendedAction === 'send_proposal',
       });
     } catch (error) {
-      console.error(`Error analyzing contract ${contract.id}:`, error);
+      log.error(`Error analyzing contract ${contract.id}:`, error);
       results.push({
         contractId: contract.id,
         contractNumber: contract.contractNumber,

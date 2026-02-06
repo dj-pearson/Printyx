@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { geofenceAlertsService } from '../services/geofence-alerts-service';
 import { db } from '../db';
 import { eq, and, desc } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('geofence-alerts-routes');
+
 import {
   geofenceAlertRules,
   geofenceAlerts,
@@ -58,7 +61,7 @@ router.get('/rules', async (req: Request, res: Response) => {
 
     res.json(rules);
   } catch (error) {
-    console.error('Get alert rules error:', error);
+    log.error('Get alert rules error:', error);
     res.status(500).json({ error: 'Failed to fetch alert rules' });
   }
 });
@@ -88,7 +91,7 @@ router.get('/rules/:id', async (req: Request, res: Response) => {
 
     res.json(rule);
   } catch (error) {
-    console.error('Get alert rule error:', error);
+    log.error('Get alert rule error:', error);
     res.status(500).json({ error: 'Failed to fetch alert rule' });
   }
 });
@@ -123,7 +126,7 @@ router.post('/rules', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create alert rule error:', error);
+    log.error('Create alert rule error:', error);
     res.status(500).json({ error: 'Failed to create alert rule' });
   }
 });
@@ -171,7 +174,7 @@ router.put('/rules/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update alert rule error:', error);
+    log.error('Update alert rule error:', error);
     res.status(500).json({ error: 'Failed to update alert rule' });
   }
 });
@@ -207,7 +210,7 @@ router.delete('/rules/:id', async (req: Request, res: Response) => {
 
     res.status(204).send();
   } catch (error) {
-    console.error('Delete alert rule error:', error);
+    log.error('Delete alert rule error:', error);
     res.status(500).json({ error: 'Failed to delete alert rule' });
   }
 });
@@ -259,7 +262,7 @@ router.get('/alerts', async (req: Request, res: Response) => {
     const alerts = await query;
     res.json(alerts);
   } catch (error) {
-    console.error('Get alerts error:', error);
+    log.error('Get alerts error:', error);
     res.status(500).json({ error: 'Failed to fetch alerts' });
   }
 });
@@ -281,7 +284,7 @@ router.get('/alerts/unacknowledged', async (req: Request, res: Response) => {
 
     res.json(alerts);
   } catch (error) {
-    console.error('Get unacknowledged alerts error:', error);
+    log.error('Get unacknowledged alerts error:', error);
     res.status(500).json({ error: 'Failed to fetch unacknowledged alerts' });
   }
 });
@@ -306,7 +309,7 @@ router.get('/alerts/:id', async (req: Request, res: Response) => {
 
     res.json(alert);
   } catch (error) {
-    console.error('Get alert error:', error);
+    log.error('Get alert error:', error);
     res.status(500).json({ error: 'Failed to fetch alert' });
   }
 });
@@ -341,7 +344,7 @@ router.post('/alerts/:id/acknowledge', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Acknowledge alert error:', error);
+    log.error('Acknowledge alert error:', error);
     res.status(500).json({ error: 'Failed to acknowledge alert' });
   }
 });
@@ -378,7 +381,7 @@ router.post('/alerts/:id/resolve', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Resolve alert error:', error);
+    log.error('Resolve alert error:', error);
     res.status(500).json({ error: 'Failed to resolve alert' });
   }
 });
@@ -414,7 +417,7 @@ router.post('/alerts/:id/escalate', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Escalate alert error:', error);
+    log.error('Escalate alert error:', error);
     res.status(500).json({ error: 'Failed to escalate alert' });
   }
 });
@@ -465,7 +468,7 @@ router.post('/process-event', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Process geofence event error:', error);
+    log.error('Process geofence event error:', error);
     res.status(500).json({ error: 'Failed to process geofence event' });
   }
 });
@@ -481,7 +484,7 @@ router.post('/check-dwell', async (req: Request, res: Response) => {
     const alerts = await geofenceAlertsService.checkDwellAlerts(user.tenantId);
     res.json({ alertsTriggered: alerts.length, alerts });
   } catch (error) {
-    console.error('Check dwell alerts error:', error);
+    log.error('Check dwell alerts error:', error);
     res.status(500).json({ error: 'Failed to check dwell alerts' });
   }
 });
@@ -520,7 +523,7 @@ router.get('/dwell-sessions', async (req: Request, res: Response) => {
 
     res.json(sessions);
   } catch (error) {
-    console.error('Get dwell sessions error:', error);
+    log.error('Get dwell sessions error:', error);
     res.status(500).json({ error: 'Failed to fetch dwell sessions' });
   }
 });
@@ -568,7 +571,7 @@ router.post('/dwell-sessions/start', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Start dwell session error:', error);
+    log.error('Start dwell session error:', error);
     res.status(500).json({ error: 'Failed to start dwell session' });
   }
 });
@@ -610,7 +613,7 @@ router.post('/dwell-sessions/end', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('End dwell session error:', error);
+    log.error('End dwell session error:', error);
     res.status(500).json({ error: 'Failed to end dwell session' });
   }
 });
@@ -637,7 +640,7 @@ router.get('/subscriptions', async (req: Request, res: Response) => {
 
     res.json(subscriptions);
   } catch (error) {
-    console.error('Get subscriptions error:', error);
+    log.error('Get subscriptions error:', error);
     res.status(500).json({ error: 'Failed to fetch subscriptions' });
   }
 });
@@ -668,7 +671,7 @@ router.post('/subscriptions', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create subscription error:', error);
+    log.error('Create subscription error:', error);
     res.status(500).json({ error: 'Failed to create subscription' });
   }
 });
@@ -703,7 +706,7 @@ router.delete('/subscriptions/:id', async (req: Request, res: Response) => {
 
     res.status(204).send();
   } catch (error) {
-    console.error('Delete subscription error:', error);
+    log.error('Delete subscription error:', error);
     res.status(500).json({ error: 'Failed to delete subscription' });
   }
 });
@@ -732,7 +735,7 @@ router.get('/statistics', async (req: Request, res: Response) => {
 
     res.json(statistics);
   } catch (error) {
-    console.error('Get statistics error:', error);
+    log.error('Get statistics error:', error);
     res.status(500).json({ error: 'Failed to fetch statistics' });
   }
 });

@@ -4,6 +4,9 @@ import { emailMonitorConfig, processedEmails, parsingCorrections } from '@shared
 import { eq, and, desc, gte, lte, count } from 'drizzle-orm';
 import { startEmailMonitor, stopEmailMonitor } from './services/email-monitor-service';
 import { z } from 'zod';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-email-parser');
+
 import {
   encryptCredential,
   decryptCredential,
@@ -81,7 +84,7 @@ router.get('/config', async (req: any, res) => {
 
     res.json(safeConfig);
   } catch (error) {
-    console.error('[EmailParserAPI] Error getting config:', error);
+    log.error('[EmailParserAPI] Error getting config:', error);
     res.status(500).json({ message: 'Failed to get configuration' });
   }
 });
@@ -191,7 +194,7 @@ router.post('/config', async (req: any, res) => {
       config: safeConfig,
     });
   } catch (error) {
-    console.error('[EmailParserAPI] Error saving config:', error);
+    log.error('[EmailParserAPI] Error saving config:', error);
     res.status(500).json({ message: 'Failed to save configuration' });
   }
 });
@@ -232,7 +235,7 @@ router.post('/test-connection', async (req: any, res) => {
       });
     }
   } catch (error) {
-    console.error('[EmailParserAPI] Error testing connection:', error);
+    log.error('[EmailParserAPI] Error testing connection:', error);
     res.status(500).json({
       success: false,
       message: 'Connection test failed',
@@ -283,7 +286,7 @@ router.get('/processed-emails', async (req: any, res) => {
       },
     });
   } catch (error) {
-    console.error('[EmailParserAPI] Error getting processed emails:', error);
+    log.error('[EmailParserAPI] Error getting processed emails:', error);
     res.status(500).json({ message: 'Failed to get processed emails' });
   }
 });
@@ -360,7 +363,7 @@ router.get('/stats', async (req: any, res) => {
       },
     });
   } catch (error) {
-    console.error('[EmailParserAPI] Error getting stats:', error);
+    log.error('[EmailParserAPI] Error getting stats:', error);
     res.status(500).json({ message: 'Failed to get statistics' });
   }
 });
@@ -395,7 +398,7 @@ router.post('/corrections', async (req: any, res) => {
 
     res.json({ message: 'Correction saved successfully' });
   } catch (error) {
-    console.error('[EmailParserAPI] Error saving correction:', error);
+    log.error('[EmailParserAPI] Error saving correction:', error);
     res.status(500).json({ message: 'Failed to save correction' });
   }
 });
@@ -417,7 +420,7 @@ router.post('/enable', async (req: any, res) => {
 
     res.json({ message: 'Email monitoring enabled' });
   } catch (error) {
-    console.error('[EmailParserAPI] Error enabling monitor:', error);
+    log.error('[EmailParserAPI] Error enabling monitor:', error);
     res.status(500).json({ message: 'Failed to enable monitoring' });
   }
 });
@@ -439,7 +442,7 @@ router.post('/disable', async (req: any, res) => {
 
     res.json({ message: 'Email monitoring disabled' });
   } catch (error) {
-    console.error('[EmailParserAPI] Error disabling monitor:', error);
+    log.error('[EmailParserAPI] Error disabling monitor:', error);
     res.status(500).json({ message: 'Failed to disable monitoring' });
   }
 });

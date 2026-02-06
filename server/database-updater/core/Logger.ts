@@ -5,6 +5,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { createModuleLogger } from '../../lib/logger';
+const log = createModuleLogger('Logger');
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -133,10 +135,10 @@ export class Logger {
     const color = colors[entry.level] || colors.reset;
     const message = `${colors.reset}[${timestamp}] ${color}${level}${colors.reset} ${entry.message}`;
 
-    console.log(message);
+    log.info(message);
 
     if (entry.data) {
-      console.log('  Data:', entry.data);
+      log.info('  Data:', entry.data);
     }
   }
 
@@ -159,7 +161,7 @@ export class Logger {
       const logLine = this.formatLogEntry(entry);
       fs.appendFileSync(filepath, logLine + '\n', 'utf8');
     } catch (error) {
-      console.error('Failed to write to log file:', error);
+      log.error('Failed to write to log file:', error);
     }
   }
 
@@ -212,7 +214,7 @@ export class Logger {
       fs.renameSync(filepath, rotatedPath);
       this.cleanupOldLogFiles();
     } catch (error) {
-      console.error('Failed to rotate log file:', error);
+      log.error('Failed to rotate log file:', error);
     }
   }
 
@@ -236,11 +238,11 @@ export class Logger {
         const filesToDelete = files.slice(this.options.maxFiles);
         for (const file of filesToDelete) {
           fs.unlinkSync(file.path);
-          console.log(`Cleaned up old log file: ${file.name}`);
+          log.info(`Cleaned up old log file: ${file.name}`);
         }
       }
     } catch (error) {
-      console.error('Failed to cleanup old log files:', error);
+      log.error('Failed to cleanup old log files:', error);
     }
   }
 
@@ -253,7 +255,7 @@ export class Logger {
         fs.mkdirSync(this.options.logDirectory, { recursive: true });
       }
     } catch (error) {
-      console.error('Failed to create log directory:', error);
+      log.error('Failed to create log directory:', error);
       // Disable file logging if directory cannot be created
       this.options.enableFile = false;
     }
@@ -279,7 +281,7 @@ export class Logger {
 
       return recentLines.map((line) => this.parseLogLine(line)).filter(Boolean) as LogEntry[];
     } catch (error) {
-      console.error('Failed to read recent logs:', error);
+      log.error('Failed to read recent logs:', error);
       return [];
     }
   }

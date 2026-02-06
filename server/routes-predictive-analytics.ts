@@ -1,6 +1,8 @@
 import { Router } from 'express';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-predictive-analytics');
 
 // Basic authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -354,7 +356,7 @@ router.get('/dashboard', async (req, res) => {
 
     res.json(analyticsData);
   } catch (error) {
-    console.error('Error fetching predictive analytics data:', error);
+    log.error('Error fetching predictive analytics data:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -453,7 +455,7 @@ router.get('/models', async (req, res) => {
 
     res.json(modelsData);
   } catch (error) {
-    console.error('Error fetching models data:', error);
+    log.error('Error fetching models data:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -549,7 +551,7 @@ router.get('/data-sources', async (req, res) => {
 
     res.json(dataSourcesData);
   } catch (error) {
-    console.error('Error fetching data sources:', error);
+    log.error('Error fetching data sources:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

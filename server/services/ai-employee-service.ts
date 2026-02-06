@@ -2,6 +2,8 @@
 import { db } from '../db';
 import { eq, and, sql, desc, asc } from 'drizzle-orm';
 import ClaudeAIService from './claude-ai-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('ai-employee-service');
 
 // Mock schemas - in real implementation these would come from shared/ai-employee-schema.ts
 const aiEmployees = {
@@ -142,7 +144,7 @@ class AIEmployeeService {
 
       return result.rows[0] as AIEmployee;
     } catch (error) {
-      console.error('Error creating AI employee:', error);
+      log.error('Error creating AI employee:', error);
       throw new Error('Failed to create AI employee');
     }
   }
@@ -156,7 +158,7 @@ class AIEmployeeService {
 
       return (result.rows[0] as AIEmployee) || null;
     } catch (error) {
-      console.error('Error fetching AI employee:', error);
+      log.error('Error fetching AI employee:', error);
       return null;
     }
   }
@@ -190,7 +192,7 @@ class AIEmployeeService {
       `);
       return result.rows as AIEmployee[];
     } catch (error) {
-      console.error('Error fetching AI employees:', error);
+      log.error('Error fetching AI employees:', error);
       return [];
     }
   }
@@ -239,7 +241,7 @@ class AIEmployeeService {
 
       return task;
     } catch (error) {
-      console.error('Error assigning task:', error);
+      log.error('Error assigning task:', error);
       throw new Error('Failed to assign task');
     }
   }
@@ -288,7 +290,7 @@ class AIEmployeeService {
       // Update employee statistics
       await this.updateEmployeeStats(taskData.employee_id, tenantId, executionResult.success);
     } catch (error) {
-      console.error('Error executing task:', error);
+      log.error('Error executing task:', error);
 
       // Mark task as failed
       await db.execute(sql`
@@ -568,7 +570,7 @@ class AIEmployeeService {
 
       return executionId;
     } catch (error) {
-      console.error('Error starting workflow execution:', error);
+      log.error('Error starting workflow execution:', error);
       throw new Error('Failed to start workflow execution');
     }
   }
@@ -655,7 +657,7 @@ class AIEmployeeService {
         WHERE id = ${executionId}
       `);
     } catch (error) {
-      console.error('Error processing workflow:', error);
+      log.error('Error processing workflow:', error);
 
       await db.execute(sql`
         UPDATE ai_workflow_executions 
@@ -856,7 +858,7 @@ class AIEmployeeService {
       `);
       return result.rows as AIEmployeeTask[];
     } catch (error) {
-      console.error('Error fetching employee tasks:', error);
+      log.error('Error fetching employee tasks:', error);
       return [];
     }
   }
@@ -887,7 +889,7 @@ class AIEmployeeService {
         }
       );
     } catch (error) {
-      console.error('Error fetching employee performance:', error);
+      log.error('Error fetching employee performance:', error);
       return null;
     }
   }
@@ -907,7 +909,7 @@ class AIEmployeeService {
       `);
       return result.rows;
     } catch (error) {
-      console.error('Error fetching workflows:', error);
+      log.error('Error fetching workflows:', error);
       return [];
     }
   }

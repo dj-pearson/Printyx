@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-mobile-technician');
+
 import {
   phoneInTickets,
   equipment,
@@ -86,7 +89,7 @@ router.get('/sync', async (req: any, res) => {
       hasMore: false, // For pagination in future
     });
   } catch (error) {
-    console.error('[MobileAPI] Sync error:', error);
+    log.error('[MobileAPI] Sync error:', error);
     res.status(500).json({
       message: 'Sync failed',
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -126,7 +129,7 @@ router.get('/tickets', async (req: any, res) => {
 
     res.json({ tickets });
   } catch (error) {
-    console.error('[MobileAPI] Error fetching tickets:', error);
+    log.error('[MobileAPI] Error fetching tickets:', error);
     res.status(500).json({ message: 'Failed to fetch tickets' });
   }
 });
@@ -161,7 +164,7 @@ router.get('/tickets/:id', async (req: any, res) => {
 
     res.json({ ticket, photos });
   } catch (error) {
-    console.error('[MobileAPI] Error fetching ticket:', error);
+    log.error('[MobileAPI] Error fetching ticket:', error);
     res.status(500).json({ message: 'Failed to fetch ticket' });
   }
 });
@@ -199,7 +202,7 @@ router.patch('/tickets/:id', async (req: any, res) => {
 
     res.json({ ticket });
   } catch (error) {
-    console.error('[MobileAPI] Ticket update error:', error);
+    log.error('[MobileAPI] Ticket update error:', error);
     res.status(500).json({ message: 'Update failed' });
   }
 });
@@ -243,7 +246,7 @@ router.post('/tickets/:id/start', async (req: any, res) => {
 
     res.json({ ticket });
   } catch (error) {
-    console.error('[MobileAPI] Start ticket error:', error);
+    log.error('[MobileAPI] Start ticket error:', error);
     res.status(500).json({ message: 'Failed to start ticket' });
   }
 });
@@ -308,7 +311,7 @@ router.post('/tickets/:id/complete', async (req: any, res) => {
       message: 'Ticket completed successfully',
     });
   } catch (error) {
-    console.error('[MobileAPI] Complete ticket error:', error);
+    log.error('[MobileAPI] Complete ticket error:', error);
     res.status(500).json({ message: 'Failed to complete ticket' });
   }
 });
@@ -364,7 +367,7 @@ router.post('/tickets/:id/photos', upload.array('photos', 10), async (req: any, 
       message: `${uploadedPhotos.length} photo(s) uploaded successfully`,
     });
   } catch (error) {
-    console.error('[MobileAPI] Photo upload error:', error);
+    log.error('[MobileAPI] Photo upload error:', error);
     res.status(500).json({ message: 'Photo upload failed' });
   }
 });
@@ -414,7 +417,7 @@ router.post('/tickets/:id/notes', async (req: any, res) => {
       message: 'Note added successfully',
     });
   } catch (error) {
-    console.error('[MobileAPI] Add note error:', error);
+    log.error('[MobileAPI] Add note error:', error);
     res.status(500).json({ message: 'Failed to add note' });
   }
 });
@@ -452,7 +455,7 @@ router.get('/equipment/:id', async (req: any, res) => {
       recentTickets,
     });
   } catch (error) {
-    console.error('[MobileAPI] Equipment fetch error:', error);
+    log.error('[MobileAPI] Equipment fetch error:', error);
     res.status(500).json({ message: 'Failed to fetch equipment' });
   }
 });
@@ -491,7 +494,7 @@ router.post('/equipment/scan', async (req: any, res) => {
 
     res.json({ equipment: equipmentItem });
   } catch (error) {
-    console.error('[MobileAPI] Equipment scan error:', error);
+    log.error('[MobileAPI] Equipment scan error:', error);
     res.status(500).json({ message: 'Scan failed' });
   }
 });
@@ -524,7 +527,7 @@ router.post('/location', async (req: any, res) => {
 
     res.json({ message: 'Location tracked successfully' });
   } catch (error) {
-    console.error('[MobileAPI] Location tracking error:', error);
+    log.error('[MobileAPI] Location tracking error:', error);
     res.status(500).json({ message: 'Location tracking failed' });
   }
 });
@@ -563,7 +566,7 @@ router.get('/stats', async (req: any, res) => {
       total: Object.values(statsByStatus).reduce((sum: number, count: any) => sum + count, 0),
     });
   } catch (error) {
-    console.error('[MobileAPI] Stats error:', error);
+    log.error('[MobileAPI] Stats error:', error);
     res.status(500).json({ message: 'Failed to fetch stats' });
   }
 });

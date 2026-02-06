@@ -1,6 +1,9 @@
 import { Storage, File } from '@google-cloud/storage';
 import { Response } from 'express';
 import { randomUUID } from 'crypto';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('objectStorage');
+
 import {
   ObjectAclPolicy,
   ObjectPermission,
@@ -113,7 +116,7 @@ export class ObjectStorageService {
       const stream = file.createReadStream();
 
       stream.on('error', (err) => {
-        console.error('Stream error:', err);
+        log.error('Stream error:', err);
         if (!res.headersSent) {
           res.status(500).json({ error: 'Error streaming file' });
         }
@@ -121,7 +124,7 @@ export class ObjectStorageService {
 
       stream.pipe(res);
     } catch (error) {
-      console.error('Error downloading file:', error);
+      log.error('Error downloading file:', error);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Error downloading file' });
       }

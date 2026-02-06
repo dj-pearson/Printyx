@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { IntelligentAlertsService } from './services/intelligent-alerts-service';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-intelligent-alerts');
+
 import {
   alertTriageResults,
   automatedContainmentLogs,
@@ -62,7 +65,7 @@ router.post('/alerts/triage', async (req, res) => {
       triage: result,
     });
   } catch (error) {
-    console.error('Failed to triage alert:', error);
+    log.error('Failed to triage alert:', error);
     res.status(500).json({
       error: 'Failed to triage alert',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -87,7 +90,7 @@ router.get('/alerts/:alertId/triage', async (req, res) => {
 
     res.json({ triage });
   } catch (error) {
-    console.error('Failed to fetch triage result:', error);
+    log.error('Failed to fetch triage result:', error);
     res.status(500).json({ error: 'Failed to fetch triage result' });
   }
 });
@@ -123,7 +126,7 @@ router.put('/alerts/:alertId/triage/:triageId/review', async (req, res) => {
       triage: updated,
     });
   } catch (error) {
-    console.error('Failed to review triage:', error);
+    log.error('Failed to review triage:', error);
     res.status(500).json({ error: 'Failed to save review' });
   }
 });
@@ -162,7 +165,7 @@ router.post('/containment/execute', async (req, res) => {
       containmentLog: result,
     });
   } catch (error) {
-    console.error('Failed to execute containment action:', error);
+    log.error('Failed to execute containment action:', error);
     res.status(500).json({
       error: 'Failed to execute containment action',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -199,7 +202,7 @@ router.get('/containment/logs', async (req, res) => {
 
     res.json({ logs });
   } catch (error) {
-    console.error('Failed to fetch containment logs:', error);
+    log.error('Failed to fetch containment logs:', error);
     res.status(500).json({ error: 'Failed to fetch containment logs' });
   }
 });
@@ -236,7 +239,7 @@ router.post('/containment/:logId/reverse', async (req, res) => {
       log: updated,
     });
   } catch (error) {
-    console.error('Failed to reverse containment action:', error);
+    log.error('Failed to reverse containment action:', error);
     res.status(500).json({ error: 'Failed to reverse containment action' });
   }
 });
@@ -261,7 +264,7 @@ router.get('/incidents/correlations', async (req, res) => {
 
     res.json({ correlations });
   } catch (error) {
-    console.error('Failed to fetch incident correlations:', error);
+    log.error('Failed to fetch incident correlations:', error);
     res.status(500).json({ error: 'Failed to fetch incident correlations' });
   }
 });
@@ -289,7 +292,7 @@ router.get('/incidents/:incidentId/related', async (req, res) => {
       correlation,
     });
   } catch (error) {
-    console.error('Failed to fetch related incidents:', error);
+    log.error('Failed to fetch related incidents:', error);
     res.status(500).json({ error: 'Failed to fetch related incidents' });
   }
 });
@@ -314,7 +317,7 @@ router.get('/patterns', async (req, res) => {
 
     res.json({ patterns });
   } catch (error) {
-    console.error('Failed to fetch resolution patterns:', error);
+    log.error('Failed to fetch resolution patterns:', error);
     res.status(500).json({ error: 'Failed to fetch resolution patterns' });
   }
 });
@@ -345,7 +348,7 @@ router.post('/patterns', async (req, res) => {
       message: 'Resolution pattern recorded',
     });
   } catch (error) {
-    console.error('Failed to record resolution pattern:', error);
+    log.error('Failed to record resolution pattern:', error);
     res.status(500).json({ error: 'Failed to record resolution pattern' });
   }
 });
@@ -376,7 +379,7 @@ router.post('/incidents/:incidentId/execute-suggestion', async (req, res) => {
       message: 'Suggestion execution started',
     });
   } catch (error) {
-    console.error('Failed to execute suggestion:', error);
+    log.error('Failed to execute suggestion:', error);
     res.status(500).json({ error: 'Failed to execute suggestion' });
   }
 });
@@ -436,7 +439,7 @@ router.post('/suggestions/:suggestionId/feedback', async (req, res) => {
       feedback: feedbackRecord,
     });
   } catch (error) {
-    console.error('Failed to submit feedback:', error);
+    log.error('Failed to submit feedback:', error);
     res.status(500).json({ error: 'Failed to submit suggestion feedback' });
   }
 });
@@ -482,7 +485,7 @@ router.post('/threats/detect', async (req, res) => {
       message: 'Anomaly detected and recorded',
     });
   } catch (error) {
-    console.error('Failed to detect anomaly:', error);
+    log.error('Failed to detect anomaly:', error);
     res.status(500).json({ error: 'Failed to record anomaly detection' });
   }
 });
@@ -511,7 +514,7 @@ router.get('/threats', async (req, res) => {
 
     res.json({ threats });
   } catch (error) {
-    console.error('Failed to fetch threats:', error);
+    log.error('Failed to fetch threats:', error);
     res.status(500).json({ error: 'Failed to fetch threat detections' });
   }
 });
@@ -543,7 +546,7 @@ router.put('/threats/:threatId', async (req, res) => {
       threat: updated,
     });
   } catch (error) {
-    console.error('Failed to update threat:', error);
+    log.error('Failed to update threat:', error);
     res.status(500).json({ error: 'Failed to update threat status' });
   }
 });
@@ -575,7 +578,7 @@ router.get('/routing-rules', async (req, res) => {
 
     res.json({ rules });
   } catch (error) {
-    console.error('Failed to fetch routing rules:', error);
+    log.error('Failed to fetch routing rules:', error);
     res.status(500).json({ error: 'Failed to fetch routing rules' });
   }
 });
@@ -620,7 +623,7 @@ router.post('/routing-rules', async (req, res) => {
       rule,
     });
   } catch (error) {
-    console.error('Failed to create routing rule:', error);
+    log.error('Failed to create routing rule:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
@@ -648,7 +651,7 @@ router.put('/routing-rules/:ruleId', async (req, res) => {
       rule: updated,
     });
   } catch (error) {
-    console.error('Failed to update routing rule:', error);
+    log.error('Failed to update routing rule:', error);
     res.status(500).json({ error: 'Failed to update routing rule' });
   }
 });
@@ -666,7 +669,7 @@ router.delete('/routing-rules/:ruleId', async (req, res) => {
       message: 'Routing rule deleted',
     });
   } catch (error) {
-    console.error('Failed to delete routing rule:', error);
+    log.error('Failed to delete routing rule:', error);
     res.status(500).json({ error: 'Failed to delete routing rule' });
   }
 });

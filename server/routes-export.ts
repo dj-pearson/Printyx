@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { db } from './db';
 import { onboardingChecklists, onboardingEquipment } from '../shared/schema';
 import { eq } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-export');
 
 export async function exportChecklistPDF(req: Request, res: Response) {
   try {
@@ -34,7 +36,7 @@ export async function exportChecklistPDF(req: Request, res: Response) {
     res.setHeader('Content-Disposition', `attachment; filename="checklist-${checklist.id}.pdf"`);
     res.send(pdfContent);
   } catch (error) {
-    console.error('Error exporting PDF:', error);
+    log.error('Error exporting PDF:', error);
     res.status(500).json({ error: 'Failed to export PDF' });
   }
 }
@@ -73,7 +75,7 @@ export async function exportChecklistExcel(req: Request, res: Response) {
     res.setHeader('Content-Disposition', `attachment; filename="checklist-${checklist.id}.xlsx"`);
     res.send(excelContent);
   } catch (error) {
-    console.error('Error exporting Excel:', error);
+    log.error('Error exporting Excel:', error);
     res.status(500).json({ error: 'Failed to export Excel' });
   }
 }
@@ -109,7 +111,7 @@ export async function exportChecklistCSV(req: Request, res: Response) {
     res.setHeader('Content-Disposition', `attachment; filename="checklist-${checklist.id}.csv"`);
     res.send(csvContent);
   } catch (error) {
-    console.error('Error exporting CSV:', error);
+    log.error('Error exporting CSV:', error);
     res.status(500).json({ error: 'Failed to export CSV' });
   }
 }

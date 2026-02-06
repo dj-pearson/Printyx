@@ -16,6 +16,9 @@
  */
 
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('product-pricing-service');
+
 import {
   enhancedProductPricing,
   companyPricingSettings,
@@ -651,7 +654,7 @@ export class ProductPricingService {
         );
         updatedCount++;
       } catch (error) {
-        console.error(
+        log.error(
           `Failed to update pricing for ${update.productId} (${update.productType}/${update.pricingTier}):`,
           error,
         );

@@ -2,6 +2,8 @@ import { db } from '../db';
 import { serviceContracts, tasks, businessRecords } from '../../shared/schema';
 import { eq, and, sql, lte, gte } from 'drizzle-orm';
 import { emailService } from './email-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('contract-renewal-workflow');
 
 /**
  * Contract Renewal Workflow Automation
@@ -97,13 +99,13 @@ export class ContractRenewalWorkflow {
         }
       }
 
-      console.log(
+      log.info(
         `[RENEWAL WORKFLOW] Processed ${processedContracts.length} contracts for tenant ${tenantId}`,
       );
 
       return processedContracts;
     } catch (error) {
-      console.error('[RENEWAL WORKFLOW] Error processing milestones:', error);
+      log.error('[RENEWAL WORKFLOW] Error processing milestones:', error);
       throw error;
     }
   }
@@ -192,7 +194,7 @@ export class ContractRenewalWorkflow {
         });
 
         tasksCreated++;
-        console.log(
+        log.info(
           `[RENEWAL WORKFLOW] Created task for contract ${contract.contractNumber} at ${milestone.daysBeforeExpiration}-day milestone`,
         );
       }
@@ -202,7 +204,7 @@ export class ContractRenewalWorkflow {
         // In production, fetch user email and send notification
         // For now, just log the intent
         notificationsSent = true;
-        console.log(
+        log.info(
           `[RENEWAL WORKFLOW] Notification triggered for sales rep ${contract.assignedSalesRepId}`,
         );
 
@@ -228,10 +230,7 @@ export class ContractRenewalWorkflow {
         notificationsSent,
       };
     } catch (error) {
-      console.error(
-        `[RENEWAL WORKFLOW] Error processing contract ${contract.contractNumber}:`,
-        error,
-      );
+      log.error(`[RENEWAL WORKFLOW] Error processing contract ${contract.contractNumber}:`, error);
       throw error;
     }
   }

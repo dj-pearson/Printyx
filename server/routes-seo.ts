@@ -3,6 +3,9 @@ import { desc, eq, and, sql, asc, gte, lte, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-seo');
+
 import {
   seoSettings,
   seoAuditHistory,
@@ -63,7 +66,7 @@ router.get('/api/seo/settings', async (req: any, res) => {
 
     res.json(settings || {});
   } catch (error: any) {
-    console.error('Error fetching SEO settings:', error);
+    log.error('Error fetching SEO settings:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -116,7 +119,7 @@ router.post('/api/seo/settings', async (req: any, res) => {
 
     res.json(result);
   } catch (error: any) {
-    console.error('Error updating SEO settings:', error);
+    log.error('Error updating SEO settings:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
@@ -169,7 +172,7 @@ router.post('/api/seo/audit', async (req: any, res) => {
 
     res.json(updatedAudit);
   } catch (error: any) {
-    console.error('Error running SEO audit:', error);
+    log.error('Error running SEO audit:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -195,7 +198,7 @@ router.get('/api/seo/audit/history', async (req: any, res) => {
 
     res.json(audits);
   } catch (error: any) {
-    console.error('Error fetching audit history:', error);
+    log.error('Error fetching audit history:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -220,7 +223,7 @@ router.get('/api/seo/audit/:id', async (req: any, res) => {
 
     res.json(audit);
   } catch (error: any) {
-    console.error('Error fetching audit:', error);
+    log.error('Error fetching audit:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -258,7 +261,7 @@ router.post('/api/seo/audit/:id/apply-fixes', async (req: any, res) => {
 
     res.json(appliedFixes);
   } catch (error: any) {
-    console.error('Error applying fixes:', error);
+    log.error('Error applying fixes:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -281,7 +284,7 @@ router.get('/api/seo/keywords', async (req: any, res) => {
 
     res.json(keywords);
   } catch (error: any) {
-    console.error('Error fetching keywords:', error);
+    log.error('Error fetching keywords:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -301,7 +304,7 @@ router.post('/api/seo/keywords', async (req: any, res) => {
 
     res.json(keyword);
   } catch (error: any) {
-    console.error('Error adding keyword:', error);
+    log.error('Error adding keyword:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -322,7 +325,7 @@ router.put('/api/seo/keywords/:id', async (req: any, res) => {
 
     res.json(keyword);
   } catch (error: any) {
-    console.error('Error updating keyword:', error);
+    log.error('Error updating keyword:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -341,7 +344,7 @@ router.delete('/api/seo/keywords/:id', async (req: any, res) => {
 
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Error deleting keyword:', error);
+    log.error('Error deleting keyword:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -358,7 +361,7 @@ router.get('/api/seo/keywords/:id/history', async (req: any, res) => {
 
     res.json(history);
   } catch (error: any) {
-    console.error('Error fetching keyword history:', error);
+    log.error('Error fetching keyword history:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -406,7 +409,7 @@ router.post('/api/seo/keywords/check-positions', async (req: any, res) => {
 
     res.json(results);
   } catch (error: any) {
-    console.error('Error checking keyword positions:', error);
+    log.error('Error checking keyword positions:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -450,7 +453,7 @@ router.post('/api/seo/crawl', async (req: any, res) => {
 
     res.json({ crawlId, results: storedResults });
   } catch (error: any) {
-    console.error('Error starting crawl:', error);
+    log.error('Error starting crawl:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -476,7 +479,7 @@ router.get('/api/seo/crawl/:crawlId', async (req: any, res) => {
 
     res.json(results);
   } catch (error: any) {
-    console.error('Error fetching crawl results:', error);
+    log.error('Error fetching crawl results:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -514,7 +517,7 @@ router.post('/api/seo/core-web-vitals', async (req: any, res) => {
 
     res.json(stored);
   } catch (error: any) {
-    console.error('Error checking Core Web Vitals:', error);
+    log.error('Error checking Core Web Vitals:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -544,7 +547,7 @@ router.get('/api/seo/core-web-vitals', async (req: any, res) => {
 
     res.json(vitals);
   } catch (error: any) {
-    console.error('Error fetching Core Web Vitals:', error);
+    log.error('Error fetching Core Web Vitals:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -579,7 +582,7 @@ router.post('/api/seo/analyze/page', async (req: any, res) => {
 
     res.json(stored);
   } catch (error: any) {
-    console.error('Error analyzing page:', error);
+    log.error('Error analyzing page:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -601,7 +604,7 @@ router.get('/api/seo/page-scores', async (req: any, res) => {
 
     res.json(scores);
   } catch (error: any) {
-    console.error('Error fetching page scores:', error);
+    log.error('Error fetching page scores:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -641,7 +644,7 @@ router.post('/api/seo/analyze/images', async (req: any, res) => {
 
     res.json(storedImages);
   } catch (error: any) {
-    console.error('Error analyzing images:', error);
+    log.error('Error analyzing images:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -670,7 +673,7 @@ router.get('/api/seo/images', async (req: any, res) => {
 
     res.json(images);
   } catch (error: any) {
-    console.error('Error fetching image analysis:', error);
+    log.error('Error fetching image analysis:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -710,7 +713,7 @@ router.post('/api/seo/check/broken-links', async (req: any, res) => {
 
     res.json(storedLinks);
   } catch (error: any) {
-    console.error('Error checking broken links:', error);
+    log.error('Error checking broken links:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -732,7 +735,7 @@ router.get('/api/seo/broken-links', async (req: any, res) => {
 
     res.json(brokenLinks);
   } catch (error: any) {
-    console.error('Error fetching broken links:', error);
+    log.error('Error fetching broken links:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -767,7 +770,7 @@ router.post('/api/seo/check/security', async (req: any, res) => {
 
     res.json(stored);
   } catch (error: any) {
-    console.error('Error checking security:', error);
+    log.error('Error checking security:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -802,7 +805,7 @@ router.post('/api/seo/check/mobile', async (req: any, res) => {
 
     res.json(stored);
   } catch (error: any) {
-    console.error('Error checking mobile friendliness:', error);
+    log.error('Error checking mobile friendliness:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -842,7 +845,7 @@ router.post('/api/seo/validate/structured-data', async (req: any, res) => {
 
     res.json(storedSchemas);
   } catch (error: any) {
-    console.error('Error validating structured data:', error);
+    log.error('Error validating structured data:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -877,7 +880,7 @@ router.post('/api/seo/detect/redirect-chains', async (req: any, res) => {
 
     res.json(stored);
   } catch (error: any) {
-    console.error('Error detecting redirect chains:', error);
+    log.error('Error detecting redirect chains:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -913,7 +916,7 @@ router.post('/api/seo/detect/duplicate-content', async (req: any, res) => {
 
     res.json(stored);
   } catch (error: any) {
-    console.error('Error detecting duplicate content:', error);
+    log.error('Error detecting duplicate content:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -946,7 +949,7 @@ router.post('/api/seo/optimize/content', async (req: any, res) => {
 
     res.json(stored);
   } catch (error: any) {
-    console.error('Error optimizing content:', error);
+    log.error('Error optimizing content:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -968,7 +971,7 @@ router.get('/api/seo/content-optimizations', async (req: any, res) => {
 
     res.json(optimizations);
   } catch (error: any) {
-    console.error('Error fetching content optimizations:', error);
+    log.error('Error fetching content optimizations:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -1003,7 +1006,7 @@ router.post('/api/seo/analyze/semantic', async (req: any, res) => {
 
     res.json(stored);
   } catch (error: any) {
-    console.error('Error analyzing semantic keywords:', error);
+    log.error('Error analyzing semantic keywords:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -1034,7 +1037,7 @@ router.get('/api/seo/alerts', async (req: any, res) => {
 
     res.json(alerts);
   } catch (error: any) {
-    console.error('Error fetching alerts:', error);
+    log.error('Error fetching alerts:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -1060,7 +1063,7 @@ router.post('/api/seo/alerts/:id/acknowledge', async (req: any, res) => {
 
     res.json(alert);
   } catch (error: any) {
-    console.error('Error acknowledging alert:', error);
+    log.error('Error acknowledging alert:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -1089,7 +1092,7 @@ router.post('/api/seo/alerts/:id/resolve', async (req: any, res) => {
 
     res.json(alert);
   } catch (error: any) {
-    console.error('Error resolving alert:', error);
+    log.error('Error resolving alert:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -1127,7 +1130,7 @@ router.get('/api/seo/monitoring/log', async (req: any, res) => {
 
     res.json(logs);
   } catch (error: any) {
-    console.error('Error fetching monitoring log:', error);
+    log.error('Error fetching monitoring log:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -1163,7 +1166,7 @@ router.post('/api/seo/analyze/competitor', async (req: any, res) => {
 
     res.json(stored);
   } catch (error: any) {
-    console.error('Error analyzing competitor:', error);
+    log.error('Error analyzing competitor:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -1185,7 +1188,7 @@ router.get('/api/seo/competitors', async (req: any, res) => {
 
     res.json(competitors);
   } catch (error: any) {
-    console.error('Error fetching competitors:', error);
+    log.error('Error fetching competitors:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -1224,7 +1227,7 @@ async function checkKeywordPosition(keyword: string, targetUrl: string | null, t
         return result[0].currentPosition;
       }
     } catch (error) {
-      console.error('Error checking keyword position:', error);
+      log.error('Error checking keyword position:', error);
     }
   }
 
@@ -1369,7 +1372,7 @@ router.get('/sitemap.xml', async (req: any, res) => {
       // const posts = await db.select().from(contentMarketingPosts).where(eq(status, 'published'));
       // blogPosts = posts.map(p => ({ slug: p.slug, updatedAt: p.updatedAt }));
     } catch (error) {
-      console.log('Blog posts table not available for sitemap');
+      log.info('Blog posts table not available for sitemap');
     }
 
     // Build XML sitemap
@@ -1405,7 +1408,7 @@ router.get('/sitemap.xml', async (req: any, res) => {
     res.header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
     res.send(xml);
   } catch (error: any) {
-    console.error('Error generating sitemap:', error);
+    log.error('Error generating sitemap:', error);
     res.status(500).json({ message: 'Error generating sitemap' });
   }
 });
@@ -1578,7 +1581,7 @@ router.get('/image-sitemap.xml', async (req: any, res) => {
     res.header('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
     res.send(xml);
   } catch (error: any) {
-    console.error('Error generating image sitemap:', error);
+    log.error('Error generating image sitemap:', error);
     res.status(500).json({ message: 'Error generating image sitemap' });
   }
 });
@@ -1620,7 +1623,7 @@ Crawl-delay: 10
     res.header('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
     res.send(robotsTxt);
   } catch (error: any) {
-    console.error('Error generating robots.txt:', error);
+    log.error('Error generating robots.txt:', error);
     res.status(500).send('Error generating robots.txt');
   }
 });

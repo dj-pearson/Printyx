@@ -1,6 +1,9 @@
 import type { Express } from 'express';
 import { db } from './db';
 import { eq, and, sql, desc, gte, lte } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-manufacturer-integration');
+
 import {
   manufacturerIntegrations,
   deviceRegistrations,
@@ -30,7 +33,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
 
       res.json(integrations);
     } catch (error) {
-      console.error('Error fetching manufacturer integrations:', error);
+      log.error('Error fetching manufacturer integrations:', error);
       res.status(500).json({ message: 'Failed to fetch integrations' });
     }
   });
@@ -52,7 +55,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
 
       res.json(integration);
     } catch (error) {
-      console.error('Error creating manufacturer integration:', error);
+      log.error('Error creating manufacturer integration:', error);
       res.status(500).json({ message: 'Failed to create integration' });
     }
   });
@@ -81,7 +84,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
 
       res.json(integration[0]);
     } catch (error) {
-      console.error('Error fetching integration:', error);
+      log.error('Error fetching integration:', error);
       res.status(500).json({ message: 'Failed to fetch integration' });
     }
   });
@@ -113,7 +116,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
 
       res.json(updatedIntegration);
     } catch (error) {
-      console.error('Error updating integration:', error);
+      log.error('Error updating integration:', error);
       res.status(500).json({ message: 'Failed to update integration' });
     }
   });
@@ -136,7 +139,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
 
       res.json({ message: 'Integration deleted successfully' });
     } catch (error) {
-      console.error('Error deleting integration:', error);
+      log.error('Error deleting integration:', error);
       res.status(500).json({ message: 'Failed to delete integration' });
     }
   });
@@ -161,7 +164,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('Error testing connection:', error);
+      log.error('Error testing connection:', error);
       res.status(500).json({ message: 'Failed to test connection' });
     }
   });
@@ -183,7 +186,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
         devices,
       });
     } catch (error) {
-      console.error('Error discovering devices:', error);
+      log.error('Error discovering devices:', error);
       res.status(500).json({ message: 'Failed to discover devices' });
     }
   });
@@ -211,7 +214,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
 
       res.json(devices);
     } catch (error) {
-      console.error('Error fetching devices:', error);
+      log.error('Error fetching devices:', error);
       res.status(500).json({ message: 'Failed to fetch devices' });
     }
   });
@@ -239,7 +242,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
 
       res.json(devices);
     } catch (error) {
-      console.error('Error fetching devices:', error);
+      log.error('Error fetching devices:', error);
       res.status(500).json({ message: 'Failed to fetch devices' });
     }
   });
@@ -258,7 +261,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
 
       res.json(metrics);
     } catch (error) {
-      console.error('Error collecting device metrics:', error);
+      log.error('Error collecting device metrics:', error);
       res.status(500).json({ message: 'Failed to collect device metrics' });
     }
   });
@@ -291,7 +294,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
 
       res.json(metrics);
     } catch (error) {
-      console.error('Error fetching device metrics:', error);
+      log.error('Error fetching device metrics:', error);
       res.status(500).json({ message: 'Failed to fetch device metrics' });
     }
   });
@@ -345,7 +348,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
 
       res.json(logs);
     } catch (error) {
-      console.error('Error fetching audit logs:', error);
+      log.error('Error fetching audit logs:', error);
       res.status(500).json({ message: 'Failed to fetch audit logs' });
     }
   });
@@ -409,7 +412,7 @@ export function registerManufacturerIntegrationRoutes(app: Express) {
         todayMetrics: Number(todayMetrics[0]?.count || 0),
       });
     } catch (error) {
-      console.error('Error fetching integration stats:', error);
+      log.error('Error fetching integration stats:', error);
       res.status(500).json({ message: 'Failed to fetch integration statistics' });
     }
   });

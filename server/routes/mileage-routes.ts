@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { mileageService } from '../services/mileage-service';
 import { db } from '../db';
 import { eq, and, gte, lte, desc } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('mileage-routes');
+
 import {
   technicianMileage,
   mileageReimbursementRates,
@@ -57,7 +60,7 @@ router.get('/records', async (req: Request, res: Response) => {
 
     res.json(records);
   } catch (error) {
-    console.error('Get mileage records error:', error);
+    log.error('Get mileage records error:', error);
     res.status(500).json({ error: 'Failed to fetch mileage records' });
   }
 });
@@ -102,7 +105,7 @@ router.post('/records', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create mileage record error:', error);
+    log.error('Create mileage record error:', error);
     res.status(500).json({ error: 'Failed to create mileage record' });
   }
 });
@@ -137,7 +140,7 @@ router.get('/summary', async (req: Request, res: Response) => {
 
     res.json(summary);
   } catch (error) {
-    console.error('Get mileage summary error:', error);
+    log.error('Get mileage summary error:', error);
     res.status(500).json({ error: 'Failed to get mileage summary' });
   }
 });
@@ -168,7 +171,7 @@ router.post('/auto-generate', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Auto-generate mileage error:', error);
+    log.error('Auto-generate mileage error:', error);
     res.status(500).json({ error: 'Failed to auto-generate mileage' });
   }
 });
@@ -201,7 +204,7 @@ router.get('/reports', async (req: Request, res: Response) => {
     const reports = await query;
     res.json(reports);
   } catch (error) {
-    console.error('Get mileage reports error:', error);
+    log.error('Get mileage reports error:', error);
     res.status(500).json({ error: 'Failed to fetch mileage reports' });
   }
 });
@@ -243,7 +246,7 @@ router.post('/reports', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Generate mileage report error:', error);
+    log.error('Generate mileage report error:', error);
     res.status(500).json({ error: 'Failed to generate mileage report' });
   }
 });
@@ -273,7 +276,7 @@ router.get('/reports/:id', async (req: Request, res: Response) => {
 
     res.json(report);
   } catch (error) {
-    console.error('Get mileage report error:', error);
+    log.error('Get mileage report error:', error);
     res.status(500).json({ error: 'Failed to fetch mileage report' });
   }
 });
@@ -294,7 +297,7 @@ router.post('/reports/:id/submit', async (req: Request, res: Response) => {
 
     res.json(report);
   } catch (error) {
-    console.error('Submit mileage report error:', error);
+    log.error('Submit mileage report error:', error);
     res.status(500).json({ error: 'Failed to submit mileage report' });
   }
 });
@@ -319,7 +322,7 @@ router.post('/reports/:id/approve', async (req: Request, res: Response) => {
 
     res.json(report);
   } catch (error) {
-    console.error('Approve mileage report error:', error);
+    log.error('Approve mileage report error:', error);
     res.status(500).json({ error: 'Failed to approve mileage report' });
   }
 });
@@ -353,7 +356,7 @@ router.post('/reports/:id/reject', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Reject mileage report error:', error);
+    log.error('Reject mileage report error:', error);
     res.status(500).json({ error: 'Failed to reject mileage report' });
   }
 });
@@ -376,7 +379,7 @@ router.get('/rates', async (req: Request, res: Response) => {
 
     res.json(rates);
   } catch (error) {
-    console.error('Get reimbursement rates error:', error);
+    log.error('Get reimbursement rates error:', error);
     res.status(500).json({ error: 'Failed to fetch reimbursement rates' });
   }
 });
@@ -411,7 +414,7 @@ router.post('/rates', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create reimbursement rate error:', error);
+    log.error('Create reimbursement rate error:', error);
     res.status(500).json({ error: 'Failed to create reimbursement rate' });
   }
 });
@@ -439,7 +442,7 @@ router.get('/irs-log', async (req: Request, res: Response) => {
     const log = await mileageService.getIrsMileageLog(user.tenantId, targetTechnicianId, year);
     res.json(log);
   } catch (error) {
-    console.error('Get IRS mileage log error:', error);
+    log.error('Get IRS mileage log error:', error);
     res.status(500).json({ error: 'Failed to fetch IRS mileage log' });
   }
 });
@@ -468,7 +471,7 @@ router.get('/irs-log/export', async (req: Request, res: Response) => {
     res.setHeader('Content-Disposition', `attachment; filename="irs-mileage-log-${year}.csv"`);
     res.send(csv);
   } catch (error) {
-    console.error('Export IRS mileage log error:', error);
+    log.error('Export IRS mileage log error:', error);
     res.status(500).json({ error: 'Failed to export IRS mileage log' });
   }
 });
@@ -530,7 +533,7 @@ router.post('/irs-log', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create IRS log entry error:', error);
+    log.error('Create IRS log entry error:', error);
     res.status(500).json({ error: 'Failed to create IRS log entry' });
   }
 });
@@ -552,7 +555,7 @@ router.get('/vehicles', async (req: Request, res: Response) => {
 
     res.json(vehicles);
   } catch (error) {
-    console.error('Get vehicles error:', error);
+    log.error('Get vehicles error:', error);
     res.status(500).json({ error: 'Failed to fetch vehicles' });
   }
 });
@@ -584,7 +587,7 @@ router.post('/vehicles', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create vehicle error:', error);
+    log.error('Create vehicle error:', error);
     res.status(500).json({ error: 'Failed to create vehicle' });
   }
 });

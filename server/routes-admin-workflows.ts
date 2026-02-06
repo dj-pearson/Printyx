@@ -3,6 +3,9 @@ import { db } from './db';
 import { requireRootAdmin } from './routes-root-admin';
 import { activityReports } from '../shared/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-admin-workflows');
+
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -120,7 +123,7 @@ router.get('/pending-tasks', requireRootAdmin, async (req, res) => {
 
     res.json(pendingTasks);
   } catch (error) {
-    console.error('Error fetching pending tasks:', error);
+    log.error('Error fetching pending tasks:', error);
     res.status(500).json({ message: 'Failed to fetch pending tasks' });
   }
 });
@@ -219,7 +222,7 @@ router.post('/execute-action', requireRootAdmin, async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Error executing action:', error);
+    log.error('Error executing action:', error);
     res.status(500).json({ message: 'Failed to execute action' });
   }
 });
@@ -264,7 +267,7 @@ router.post(
         ],
       });
     } catch (error) {
-      console.error('Error in tenant provisioning:', error);
+      log.error('Error in tenant provisioning:', error);
       res.status(500).json({ message: 'Failed to initiate tenant provisioning' });
     }
   },
@@ -307,7 +310,7 @@ router.post(
         },
       });
     } catch (error) {
-      console.error('Error in bulk user import:', error);
+      log.error('Error in bulk user import:', error);
       res.status(500).json({ message: 'Failed to import users' });
     }
   },
@@ -337,7 +340,7 @@ router.get(
         ],
       });
     } catch (error) {
-      console.error('Error fetching workflow status:', error);
+      log.error('Error fetching workflow status:', error);
       res.status(500).json({ message: 'Failed to fetch workflow status' });
     }
   },
@@ -380,7 +383,7 @@ router.post(
         errors: [],
       });
     } catch (error) {
-      console.error('Error in bulk user operation:', error);
+      log.error('Error in bulk user operation:', error);
       res.status(500).json({ message: 'Failed to execute bulk operation' });
     }
   },
@@ -412,7 +415,7 @@ router.post(
         checks,
       });
     } catch (error) {
-      console.error('Error in health check:', error);
+      log.error('Error in health check:', error);
       res.status(500).json({ message: 'Failed to complete health check' });
     }
   },

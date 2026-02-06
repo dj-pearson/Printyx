@@ -4,6 +4,8 @@
  */
 import express from 'express';
 import { WebhookService } from './webhook-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('webhook-routes');
 
 const router = express.Router();
 
@@ -19,7 +21,7 @@ router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
     const payload = JSON.parse(req.body.toString());
     const headers = req.headers as Record<string, string>;
 
-    console.log(`Received webhook from ${provider}:`, {
+    log.info(`Received webhook from ${provider}:`, {
       headers: headers,
       payload: JSON.stringify(payload, null, 2),
     });
@@ -38,7 +40,7 @@ router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error(`Webhook error for ${req.params.provider}:`, error);
+    log.error(`Webhook error for ${req.params.provider}:`, error);
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -63,7 +65,7 @@ router.post('/api/webhooks/salesforce', express.json(), async (req, res) => {
       res.status(400).json({ error: result.message });
     }
   } catch (error) {
-    console.error('Salesforce webhook error:', error);
+    log.error('Salesforce webhook error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -86,7 +88,7 @@ router.post('/api/webhooks/stripe', rawBodyParser, async (req, res) => {
       res.status(400).json({ error: result.message });
     }
   } catch (error) {
-    console.error('Stripe webhook error:', error);
+    log.error('Stripe webhook error:', error);
     res.status(400).json({ error: 'Invalid payload' });
   }
 });
@@ -115,7 +117,7 @@ router.post('/api/webhooks/microsoft-calendar', express.json(), async (req, res)
       res.status(400).json({ error: result.message });
     }
   } catch (error) {
-    console.error('Microsoft webhook error:', error);
+    log.error('Microsoft webhook error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -137,7 +139,7 @@ router.post('/api/webhooks/google-calendar', express.json(), async (req, res) =>
       res.status(400).json({ error: result.message });
     }
   } catch (error) {
-    console.error('Google Calendar webhook error:', error);
+    log.error('Google Calendar webhook error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -160,7 +162,7 @@ router.post('/api/webhooks/quickbooks', rawBodyParser, async (req, res) => {
       res.status(400).json({ error: result.message });
     }
   } catch (error) {
-    console.error('QuickBooks webhook error:', error);
+    log.error('QuickBooks webhook error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

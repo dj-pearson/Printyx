@@ -5,6 +5,9 @@
 import { db } from '../db';
 import { systemIntegrations } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('webhook-service');
+
 import {
   createSalesforceClient,
   createStripeClient,
@@ -68,7 +71,7 @@ export class WebhookService {
           };
       }
     } catch (error) {
-      console.error(`Webhook processing error for ${provider}:`, error);
+      log.error(`Webhook processing error for ${provider}:`, error);
       return {
         success: false,
         message: 'Webhook processing failed',
@@ -259,7 +262,7 @@ export class WebhookService {
         Buffer.from(expectedSignature, 'hex'),
       );
     } catch (error) {
-      console.error('Stripe signature verification error:', error);
+      log.error('Stripe signature verification error:', error);
       return false;
     }
   }
@@ -294,7 +297,7 @@ export class WebhookService {
 
       return signature === expectedSignature;
     } catch (error) {
-      console.error('QuickBooks signature verification error:', error);
+      log.error('QuickBooks signature verification error:', error);
       return false;
     }
   }

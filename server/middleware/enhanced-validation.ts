@@ -7,6 +7,8 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { z, ZodSchema, ZodError, ZodIssue } from 'zod';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('enhanced-validation');
 
 // ============================================================================
 // Common Schema Building Blocks
@@ -445,7 +447,7 @@ export function validate(
 
       next();
     } catch (error) {
-      console.error('Validation middleware error:', error);
+      log.error('Validation middleware error:', error);
       next(error);
     }
   };
@@ -463,10 +465,10 @@ function handleValidationError(
   const formattedErrors = formatZodErrors(error);
 
   return res.status(400).json({
-    error: 'Validation failed',
+    message: 'Validation error',
     code: 'VALIDATION_ERROR',
     location,
-    details: formattedErrors,
+    details: error.flatten(),
   });
 }
 

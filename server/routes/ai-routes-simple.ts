@@ -4,6 +4,8 @@
 
 import express from 'express';
 import ClaudeAIService from '../services/claude-ai-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('ai-routes-simple');
 
 const router = express.Router();
 
@@ -40,7 +42,7 @@ router.post('/leads/analyze', async (req, res) => {
     const analysis = await ClaudeAIService.analyzeLeadData(mockLeadData);
     res.json(analysis);
   } catch (error) {
-    console.error('Error analyzing lead:', error);
+    log.error('Error analyzing lead:', error);
     res.status(500).json({ error: 'Failed to analyze lead' });
   }
 });

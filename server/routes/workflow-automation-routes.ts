@@ -1,6 +1,9 @@
 import express, { Request, Response } from 'express';
 import { storage } from '../storage';
 import { z } from 'zod';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('workflow-automation-routes');
+
 import {
   insertWorkflowSchema,
   insertWorkflowVersionSchema,
@@ -38,7 +41,7 @@ router.post('/workflows', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Create workflow error:', error);
+    log.error('Create workflow error:', error);
     res.status(500).json({ error: 'Failed to create workflow' });
   }
 });
@@ -55,7 +58,7 @@ router.get('/workflows', async (req: Request, res: Response) => {
     const workflows = await storage.getWorkflows(user.tenantId, status as string);
     res.json(workflows);
   } catch (error) {
-    console.error('Get workflows error:', error);
+    log.error('Get workflows error:', error);
     res.status(500).json({ error: 'Failed to fetch workflows' });
   }
 });
@@ -87,7 +90,7 @@ router.get('/workflows/:id', async (req: Request, res: Response) => {
       versions,
     });
   } catch (error) {
-    console.error('Get workflow error:', error);
+    log.error('Get workflow error:', error);
     res.status(500).json({ error: 'Failed to fetch workflow' });
   }
 });
@@ -116,7 +119,7 @@ router.put('/workflows/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Update workflow error:', error);
+    log.error('Update workflow error:', error);
     res.status(500).json({ error: 'Failed to update workflow' });
   }
 });
@@ -137,7 +140,7 @@ router.delete('/workflows/:id', async (req: Request, res: Response) => {
     await storage.deleteWorkflow(req.params.id);
     res.json({ success: true });
   } catch (error) {
-    console.error('Delete workflow error:', error);
+    log.error('Delete workflow error:', error);
     res.status(500).json({ error: 'Failed to delete workflow' });
   }
 });
@@ -179,7 +182,7 @@ router.post('/workflows/:workflowId/triggers', async (req: Request, res: Respons
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Create trigger error:', error);
+    log.error('Create trigger error:', error);
     res.status(500).json({ error: 'Failed to create trigger' });
   }
 });
@@ -212,7 +215,7 @@ router.get('/workflows/:workflowId/triggers', async (req: Request, res: Response
 
     res.json(triggersWithSchedules);
   } catch (error) {
-    console.error('Get triggers error:', error);
+    log.error('Get triggers error:', error);
     res.status(500).json({ error: 'Failed to fetch triggers' });
   }
 });
@@ -243,7 +246,7 @@ router.put('/triggers/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Update trigger error:', error);
+    log.error('Update trigger error:', error);
     res.status(500).json({ error: 'Failed to update trigger' });
   }
 });
@@ -269,7 +272,7 @@ router.delete('/triggers/:id', async (req: Request, res: Response) => {
     await storage.deleteWorkflowTrigger(req.params.id);
     res.json({ success: true });
   } catch (error) {
-    console.error('Delete trigger error:', error);
+    log.error('Delete trigger error:', error);
     res.status(500).json({ error: 'Failed to delete trigger' });
   }
 });
@@ -300,7 +303,7 @@ router.post('/workflows/:workflowId/steps', async (req: Request, res: Response) 
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Create step error:', error);
+    log.error('Create step error:', error);
     res.status(500).json({ error: 'Failed to create step' });
   }
 });
@@ -321,7 +324,7 @@ router.get('/workflows/:workflowId/steps', async (req: Request, res: Response) =
     const steps = await storage.getWorkflowSteps(req.params.workflowId);
     res.json(steps);
   } catch (error) {
-    console.error('Get steps error:', error);
+    log.error('Get steps error:', error);
     res.status(500).json({ error: 'Failed to fetch steps' });
   }
 });
@@ -341,7 +344,7 @@ router.put('/steps/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Update step error:', error);
+    log.error('Update step error:', error);
     res.status(500).json({ error: 'Failed to update step' });
   }
 });
@@ -357,7 +360,7 @@ router.delete('/steps/:id', async (req: Request, res: Response) => {
     await storage.deleteWorkflowStep(req.params.id);
     res.json({ success: true });
   } catch (error) {
-    console.error('Delete step error:', error);
+    log.error('Delete step error:', error);
     res.status(500).json({ error: 'Failed to delete step' });
   }
 });
@@ -413,7 +416,7 @@ router.post('/workflows/:id/execute', async (req: Request, res: Response) => {
 
     res.json(execution);
   } catch (error) {
-    console.error('Execute workflow error:', error);
+    log.error('Execute workflow error:', error);
     res.status(500).json({ error: 'Failed to execute workflow' });
   }
 });
@@ -435,7 +438,7 @@ router.get('/workflows/:id/executions', async (req: Request, res: Response) => {
     const executions = await storage.getWorkflowExecutions(req.params.id, limit);
     res.json(executions);
   } catch (error) {
-    console.error('Get executions error:', error);
+    log.error('Get executions error:', error);
     res.status(500).json({ error: 'Failed to fetch executions' });
   }
 });
@@ -464,7 +467,7 @@ router.get('/executions/:id', async (req: Request, res: Response) => {
       events,
     });
   } catch (error) {
-    console.error('Get execution error:', error);
+    log.error('Get execution error:', error);
     res.status(500).json({ error: 'Failed to fetch execution' });
   }
 });
@@ -481,7 +484,7 @@ router.get('/executions', async (req: Request, res: Response) => {
     const executions = await storage.getWorkflowExecutionsByTenant(user.tenantId, limit);
     res.json(executions);
   } catch (error) {
-    console.error('Get tenant executions error:', error);
+    log.error('Get tenant executions error:', error);
     res.status(500).json({ error: 'Failed to fetch executions' });
   }
 });
@@ -500,7 +503,7 @@ router.get('/workflow-templates', async (req: Request, res: Response) => {
     const templates = await storage.getWorkflowTemplates(category as string);
     res.json(templates);
   } catch (error) {
-    console.error('Get templates error:', error);
+    log.error('Get templates error:', error);
     res.status(500).json({ error: 'Failed to fetch templates' });
   }
 });
@@ -525,7 +528,7 @@ router.get('/workflow-templates/:id', async (req: Request, res: Response) => {
       variables,
     });
   } catch (error) {
-    console.error('Get template error:', error);
+    log.error('Get template error:', error);
     res.status(500).json({ error: 'Failed to fetch template' });
   }
 });
@@ -581,7 +584,7 @@ router.post('/workflow-templates/:id/clone', async (req: Request, res: Response)
       version,
     });
   } catch (error) {
-    console.error('Clone template error:', error);
+    log.error('Clone template error:', error);
     res.status(500).json({ error: 'Failed to clone template' });
   }
 });
@@ -600,7 +603,7 @@ router.get('/workflow-events', async (req: Request, res: Response) => {
     const events = await storage.getEventRegistryEntries(category as string);
     res.json(events);
   } catch (error) {
-    console.error('Get workflow events error:', error);
+    log.error('Get workflow events error:', error);
     res.status(500).json({ error: 'Failed to fetch workflow events' });
   }
 });
@@ -623,7 +626,7 @@ router.get('/workflows/:id/stats', async (req: Request, res: Response) => {
     const stats = await storage.getWorkflowExecutionStats(req.params.id);
     res.json(stats);
   } catch (error) {
-    console.error('Get workflow stats error:', error);
+    log.error('Get workflow stats error:', error);
     res.status(500).json({ error: 'Failed to fetch workflow statistics' });
   }
 });
@@ -660,7 +663,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       recentExecutions: executions.slice(0, 10),
     });
   } catch (error) {
-    console.error('Get dashboard error:', error);
+    log.error('Get dashboard error:', error);
     res.status(500).json({ error: 'Failed to fetch dashboard data' });
   }
 });
@@ -678,7 +681,7 @@ router.get('/assignment-groups', async (req: Request, res: Response) => {
     const groups = await storage.getAssignmentGroups(user.tenantId);
     res.json(groups);
   } catch (error) {
-    console.error('Get assignment groups error:', error);
+    log.error('Get assignment groups error:', error);
     res.status(500).json({ error: 'Failed to fetch assignment groups' });
   }
 });
@@ -698,7 +701,7 @@ router.get('/assignment-groups/:id', async (req: Request, res: Response) => {
 
     res.json(group);
   } catch (error) {
-    console.error('Get assignment group error:', error);
+    log.error('Get assignment group error:', error);
     res.status(500).json({ error: 'Failed to fetch assignment group' });
   }
 });
@@ -729,7 +732,7 @@ router.post('/assignment-groups', async (req: Request, res: Response) => {
 
     res.status(201).json(group);
   } catch (error) {
-    console.error('Create assignment group error:', error);
+    log.error('Create assignment group error:', error);
     res.status(500).json({ error: 'Failed to create assignment group' });
   }
 });
@@ -759,7 +762,7 @@ router.put('/assignment-groups/:id', async (req: Request, res: Response) => {
 
     res.json(updated);
   } catch (error) {
-    console.error('Update assignment group error:', error);
+    log.error('Update assignment group error:', error);
     res.status(500).json({ error: 'Failed to update assignment group' });
   }
 });
@@ -780,7 +783,7 @@ router.delete('/assignment-groups/:id', async (req: Request, res: Response) => {
     await storage.deleteAssignmentGroup(req.params.id);
     res.json({ success: true });
   } catch (error) {
-    console.error('Delete assignment group error:', error);
+    log.error('Delete assignment group error:', error);
     res.status(500).json({ error: 'Failed to delete assignment group' });
   }
 });
@@ -799,7 +802,7 @@ router.get('/approvals', async (req: Request, res: Response) => {
     const approvals = await storage.getUserApprovals(user.id, user.tenantId, status as string);
     res.json(approvals);
   } catch (error) {
-    console.error('Get approvals error:', error);
+    log.error('Get approvals error:', error);
     res.status(500).json({ error: 'Failed to fetch approvals' });
   }
 });
@@ -819,7 +822,7 @@ router.get('/approvals/:id', async (req: Request, res: Response) => {
 
     res.json(approval);
   } catch (error) {
-    console.error('Get approval error:', error);
+    log.error('Get approval error:', error);
     res.status(500).json({ error: 'Failed to fetch approval' });
   }
 });
@@ -863,7 +866,7 @@ router.post('/approvals/:id/respond', async (req: Request, res: Response) => {
     const updated = await storage.getWorkflowApproval(req.params.id);
     res.json(updated);
   } catch (error) {
-    console.error('Respond to approval error:', error);
+    log.error('Respond to approval error:', error);
     res.status(500).json({ error: 'Failed to respond to approval' });
   }
 });
@@ -879,7 +882,7 @@ router.get('/approvals/execution/:executionId', async (req: Request, res: Respon
     const approvals = await storage.getExecutionApprovals(req.params.executionId, user.tenantId);
     res.json(approvals);
   } catch (error) {
-    console.error('Get execution approvals error:', error);
+    log.error('Get execution approvals error:', error);
     res.status(500).json({ error: 'Failed to fetch execution approvals' });
   }
 });

@@ -6,6 +6,9 @@
 import express from 'express';
 import { eq, and, desc, gte, lte, sql, count } from 'drizzle-orm';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-reports');
+
 import {
   serviceTickets,
   deals,
@@ -74,7 +77,7 @@ router.get('/api/reports/service-sla-compliance', async (req: any, res) => {
       byTechnician,
     });
   } catch (error) {
-    console.error('Error generating SLA report:', error);
+    log.error('Error generating SLA report:', error);
     res.status(500).json({ error: 'Failed to generate SLA report' });
   }
 });
@@ -124,7 +127,7 @@ router.get('/api/reports/sales-pipeline', async (req: any, res) => {
         .slice(0, 5),
     });
   } catch (error) {
-    console.error('Error generating pipeline report:', error);
+    log.error('Error generating pipeline report:', error);
     res.status(500).json({ error: 'Failed to generate pipeline report' });
   }
 });
@@ -160,7 +163,7 @@ router.get('/api/reports/revenue-recognition', async (req: any, res) => {
       outstandingInvoices: invoiceList.length - paidInvoices.length,
     });
   } catch (error) {
-    console.error('Error generating revenue report:', error);
+    log.error('Error generating revenue report:', error);
     res.status(500).json({ error: 'Failed to generate revenue report' });
   }
 });
@@ -376,7 +379,7 @@ router.get('/api/reports/customer-health', async (req: any, res) => {
       },
     });
   } catch (error) {
-    console.error('Error generating health report:', error);
+    log.error('Error generating health report:', error);
     res.status(500).json({ error: 'Failed to generate health report' });
   }
 });
@@ -561,7 +564,7 @@ router.get('/api/reports/technician-utilization', async (req: any, res) => {
       byTechnician: byTechnician.slice(0, 10),
     });
   } catch (error) {
-    console.error('Error generating utilization report:', error);
+    log.error('Error generating utilization report:', error);
     res.status(500).json({ error: 'Failed to generate utilization report' });
   }
 });

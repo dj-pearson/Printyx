@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { SubscriptionService } from '../services/subscription-service';
 import { UsageTrackingService } from '../services/usage-tracking-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('subscription');
 
 /**
  * SUBSCRIPTION MIDDLEWARE
@@ -27,13 +29,13 @@ export async function trackApiCall(req: Request, res: Response, next: NextFuncti
     if (tenantId) {
       // Track asynchronously to not block the request
       UsageTrackingService.trackApiCall(tenantId, req.path).catch((error) => {
-        console.error('Failed to track API call:', error);
+        log.error('Failed to track API call:', error);
       });
     }
     next();
   } catch (error) {
     // Don't block requests if tracking fails
-    console.error('API tracking error:', error);
+    log.error('API tracking error:', error);
     next();
   }
 }
@@ -92,7 +94,7 @@ export async function requireActiveSubscription(req: Request, res: Response, nex
     req.subscriptionStatus = status;
     next();
   } catch (error) {
-    console.error('Subscription validation error:', error);
+    log.error('Subscription validation error:', error);
     return res.status(500).json({
       error: 'Failed to validate subscription',
       code: 'SUBSCRIPTION_CHECK_FAILED',
@@ -151,7 +153,7 @@ export function requireFeature(featureSlug: string) {
 
       next();
     } catch (error) {
-      console.error('Feature validation error:', error);
+      log.error('Feature validation error:', error);
       return res.status(500).json({
         error: 'Failed to validate feature access',
         code: 'FEATURE_CHECK_FAILED',
@@ -195,12 +197,12 @@ export async function checkUsageLimits(req: Request, res: Response, next: NextFu
 
       // For critical overages, might want to block
       // For now, just warn
-      console.warn(`Tenant ${tenantId} is over usage limits:`, status.overageDetails);
+      log.warn(`Tenant ${tenantId} is over usage limits:`, status.overageDetails);
     }
 
     next();
   } catch (error) {
-    console.error('Usage limit check error:', error);
+    log.error('Usage limit check error:', error);
     // Don't block on errors
     next();
   }
@@ -235,7 +237,7 @@ export async function softCheckSubscription(req: Request, res: Response, next: N
     }
     next();
   } catch (error) {
-    console.error('Soft subscription check error:', error);
+    log.error('Soft subscription check error:', error);
     // Don't block on errors
     next();
   }
@@ -282,7 +284,7 @@ export async function requireTrialOrPaid(req: Request, res: Response, next: Next
     req.subscriptionStatus = status;
     next();
   } catch (error) {
-    console.error('Trial/paid validation error:', error);
+    log.error('Trial/paid validation error:', error);
     return res.status(500).json({
       error: 'Failed to validate subscription',
       code: 'SUBSCRIPTION_CHECK_FAILED',
@@ -315,7 +317,7 @@ export async function blockExpiredTrial(req: Request, res: Response, next: NextF
 
     next();
   } catch (error) {
-    console.error('Trial expiration check error:', error);
+    log.error('Trial expiration check error:', error);
     next();
   }
 }
@@ -368,7 +370,7 @@ export async function requirePremiumPlan(req: Request, res: Response, next: Next
 
     next();
   } catch (error) {
-    console.error('Premium plan validation error:', error);
+    log.error('Premium plan validation error:', error);
     return res.status(500).json({
       error: 'Failed to validate plan',
       code: 'PLAN_CHECK_FAILED',
@@ -424,7 +426,7 @@ export async function requireEnterprisePlan(req: Request, res: Response, next: N
 
     next();
   } catch (error) {
-    console.error('Enterprise plan validation error:', error);
+    log.error('Enterprise plan validation error:', error);
     return res.status(500).json({
       error: 'Failed to validate plan',
       code: 'PLAN_CHECK_FAILED',

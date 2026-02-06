@@ -5,6 +5,8 @@
 
 import express from 'express';
 import AISearchKnowledgeService from '../services/ai-search-knowledge-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('ai-search-knowledge-routes');
 
 const router = express.Router();
 
@@ -59,7 +61,7 @@ router.post('/search/semantic', async (req, res) => {
 
     res.json(searchResults);
   } catch (error) {
-    console.error('Error performing semantic search:', error);
+    log.error('Error performing semantic search:', error);
     res.status(500).json({ error: 'Failed to perform semantic search' });
   }
 });
@@ -103,7 +105,7 @@ router.get('/search/suggestions', async (req, res) => {
       ],
     });
   } catch (error) {
-    console.error('Error fetching search suggestions:', error);
+    log.error('Error fetching search suggestions:', error);
     res.status(500).json({ error: 'Failed to fetch search suggestions' });
   }
 });
@@ -135,7 +137,7 @@ router.post('/search/feedback', async (req, res) => {
       submittedAt: new Date(),
     };
 
-    console.log('Search feedback received:', feedbackData);
+    log.info('Search feedback received:', feedbackData);
 
     res.json({
       success: true,
@@ -143,7 +145,7 @@ router.post('/search/feedback', async (req, res) => {
       feedbackId: `feedback-${Date.now()}`,
     });
   } catch (error) {
-    console.error('Error submitting search feedback:', error);
+    log.error('Error submitting search feedback:', error);
     res.status(500).json({ error: 'Failed to submit feedback' });
   }
 });
@@ -172,7 +174,7 @@ router.post('/knowledge/entities', async (req, res) => {
 
     res.status(201).json(entity);
   } catch (error) {
-    console.error('Error creating knowledge entity:', error);
+    log.error('Error creating knowledge entity:', error);
     res.status(500).json({ error: 'Failed to create knowledge entity' });
   }
 });
@@ -398,7 +400,7 @@ router.get('/knowledge/entities', async (req, res) => {
       filters: { type, category, search, sortBy, sortOrder },
     });
   } catch (error) {
-    console.error('Error fetching knowledge entities:', error);
+    log.error('Error fetching knowledge entities:', error);
     res.status(500).json({ error: 'Failed to fetch knowledge entities' });
   }
 });
@@ -551,7 +553,7 @@ router.get('/knowledge/entities/:entityId', async (req, res) => {
 
     res.json(entity);
   } catch (error) {
-    console.error('Error fetching knowledge entity:', error);
+    log.error('Error fetching knowledge entity:', error);
     res.status(500).json({ error: 'Failed to fetch knowledge entity' });
   }
 });
@@ -603,7 +605,7 @@ router.post('/search/embeddings', async (req, res) => {
 
     res.status(201).json(embedding);
   } catch (error) {
-    console.error('Error creating content embedding:', error);
+    log.error('Error creating content embedding:', error);
     res.status(500).json({ error: 'Failed to create content embedding' });
   }
 });
@@ -626,7 +628,7 @@ router.get('/search/analytics', async (req, res) => {
 
     res.json(analytics);
   } catch (error) {
-    console.error('Error fetching search analytics:', error);
+    log.error('Error fetching search analytics:', error);
     res.status(500).json({ error: 'Failed to fetch search analytics' });
   }
 });
@@ -740,7 +742,7 @@ router.get('/knowledge/graph', async (req, res) => {
 
     res.json(graphData);
   } catch (error) {
-    console.error('Error fetching knowledge graph:', error);
+    log.error('Error fetching knowledge graph:', error);
     res.status(500).json({ error: 'Failed to fetch knowledge graph' });
   }
 });

@@ -9,6 +9,8 @@ import { users, tenants } from '../../shared/schema';
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { EmailTemplates } from './email-templates';
 import { emailService } from './email-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('trial-management-service');
 
 export interface TrialStatus {
   userId: string;
@@ -70,13 +72,13 @@ export class TrialManagementService {
       const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
       if (!user) {
-        console.error(`[TRIAL EMAIL] User not found: ${userId}`);
+        log.error(`[TRIAL EMAIL] User not found: ${userId}`);
         return false;
       }
 
       const trialStatus = await this.getTrialStatus(userId);
       if (!trialStatus) {
-        console.error(`[TRIAL EMAIL] Could not get trial status for user: ${userId}`);
+        log.error(`[TRIAL EMAIL] Could not get trial status for user: ${userId}`);
         return false;
       }
 
@@ -109,7 +111,7 @@ export class TrialManagementService {
           emailTemplate = EmailTemplates.trialEndingSoon(templateData); // Use existing template
           break;
         default:
-          console.error(`[TRIAL EMAIL] Unknown email type: ${emailType}`);
+          log.error(`[TRIAL EMAIL] Unknown email type: ${emailType}`);
           return false;
       }
 
@@ -120,10 +122,10 @@ export class TrialManagementService {
         text: emailTemplate.text,
       });
 
-      console.log(`[TRIAL EMAIL] Sent ${emailType} email to ${user.email}`);
+      log.info(`[TRIAL EMAIL] Sent ${emailType} email to ${user.email}`);
       return true;
     } catch (error) {
-      console.error(`[TRIAL EMAIL] Error sending ${emailType} email:`, error);
+      log.error(`[TRIAL EMAIL] Error sending ${emailType} email:`, error);
       return false;
     }
   }
@@ -190,17 +192,17 @@ export class TrialManagementService {
             results.sent++;
           }
         } catch (error) {
-          console.error(`[TRIAL PROCESSING] Error processing user ${user.id}:`, error);
+          log.error(`[TRIAL PROCESSING] Error processing user ${user.id}:`, error);
           results.errors++;
         }
       }
 
-      console.log(
+      log.info(
         `[TRIAL PROCESSING] Completed: ${results.processed} processed, ${results.sent} sent, ${results.errors} errors`,
       );
       return results;
     } catch (error) {
-      console.error('[TRIAL PROCESSING] Fatal error:', error);
+      log.error('[TRIAL PROCESSING] Fatal error:', error);
       throw error;
     }
   }

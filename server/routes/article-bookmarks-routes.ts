@@ -8,6 +8,8 @@ import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { articleBookmarks, knowledgeArticles } from '../../shared/knowledge-base-schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('article-bookmarks-routes');
 
 const router = Router();
 
@@ -101,7 +103,7 @@ router.get('/', async (req: Request, res: Response) => {
       offset: Number(offset),
     });
   } catch (error) {
-    console.error('Error fetching bookmarks:', error);
+    log.error('Error fetching bookmarks:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch bookmarks',
@@ -161,7 +163,7 @@ router.post('/', async (req: Request, res: Response) => {
       bookmark,
     });
   } catch (error) {
-    console.error('Error creating bookmark:', error);
+    log.error('Error creating bookmark:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create bookmark',
@@ -212,7 +214,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       bookmark: updated,
     });
   } catch (error) {
-    console.error('Error updating bookmark:', error);
+    log.error('Error updating bookmark:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update bookmark',
@@ -252,7 +254,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
       message: 'Bookmark removed successfully',
     });
   } catch (error) {
-    console.error('Error deleting bookmark:', error);
+    log.error('Error deleting bookmark:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete bookmark',
@@ -295,7 +297,7 @@ router.get('/collections', async (req: Request, res: Response) => {
       })),
     });
   } catch (error) {
-    console.error('Error fetching collections:', error);
+    log.error('Error fetching collections:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch collections',
@@ -325,7 +327,7 @@ router.get('/check/:articleId', async (req: Request, res: Response) => {
       bookmark: bookmark[0] || null,
     });
   } catch (error) {
-    console.error('Error checking bookmark:', error);
+    log.error('Error checking bookmark:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to check bookmark status',

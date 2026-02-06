@@ -4,6 +4,9 @@
 // =====================================================================
 
 import { Router, Response } from 'express';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('service-reports-api');
+
 import {
   enhanceUserContext,
   requirePermission,
@@ -61,7 +64,7 @@ router.get(
         performance,
       });
     } catch (error) {
-      console.error('Error fetching personal service calls:', error);
+      log.error('Error fetching personal service calls:', error);
       res.status(500).json({ message: 'Failed to fetch service calls' });
     }
   },
@@ -110,7 +113,7 @@ router.get(
         metrics,
       });
     } catch (error) {
-      console.error('Error fetching personal parts usage:', error);
+      log.error('Error fetching personal parts usage:', error);
       res.status(500).json({ message: 'Failed to fetch parts usage' });
     }
   },
@@ -164,7 +167,7 @@ router.get(
         metrics,
       });
     } catch (error) {
-      console.error('Error fetching personal time tracking:', error);
+      log.error('Error fetching personal time tracking:', error);
       res.status(500).json({ message: 'Failed to fetch time tracking' });
     }
   },
@@ -227,7 +230,7 @@ router.get(
         workloadMetrics,
       });
     } catch (error) {
-      console.error('Error fetching team dispatch queue:', error);
+      log.error('Error fetching team dispatch queue:', error);
       res.status(500).json({ message: 'Failed to fetch dispatch queue' });
     }
   },
@@ -261,7 +264,7 @@ router.get(
         ticketId,
       });
     } catch (error) {
-      console.error('Error fetching service call details:', error);
+      log.error('Error fetching service call details:', error);
       res.status(500).json({ message: 'Failed to fetch service call details' });
     }
   },
@@ -289,7 +292,7 @@ router.post(
         pattern: pattern || 'all',
       });
     } catch (error) {
-      console.error('Error invalidating cache:', error);
+      log.error('Error invalidating cache:', error);
       res.status(500).json({ message: 'Failed to invalidate cache' });
     }
   },
@@ -321,7 +324,7 @@ router.get(
 
       res.json(stats);
     } catch (error) {
-      console.error('Error fetching service team quick stats:', error);
+      log.error('Error fetching service team quick stats:', error);
       res.status(500).json({
         message: 'Failed to fetch service team stats',
         error: error instanceof Error ? error.message : 'Unknown error',

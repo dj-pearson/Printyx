@@ -1,5 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-knowledge-base');
+
 import {
   knowledgeCategories,
   knowledgeArticles,
@@ -85,7 +88,7 @@ router.get('/categories', async (req: Request, res: Response) => {
 
     res.json(categories);
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    log.error('Error fetching categories:', error);
     res.status(500).json({ message: 'Failed to fetch categories' });
   }
 });
@@ -114,7 +117,7 @@ router.get('/categories/:id', async (req: Request, res: Response) => {
 
     res.json(category);
   } catch (error) {
-    console.error('Error fetching category:', error);
+    log.error('Error fetching category:', error);
     res.status(500).json({ message: 'Failed to fetch category' });
   }
 });
@@ -140,7 +143,7 @@ router.post('/categories', requireAdmin, async (req: Request, res: Response) => 
 
     res.status(201).json(category);
   } catch (error) {
-    console.error('Error creating category:', error);
+    log.error('Error creating category:', error);
     res.status(400).json({ message: 'Failed to create category', error });
   }
 });
@@ -167,7 +170,7 @@ router.put('/categories/:id', requireAdmin, async (req: Request, res: Response) 
 
     res.json(updated);
   } catch (error) {
-    console.error('Error updating category:', error);
+    log.error('Error updating category:', error);
     res.status(400).json({ message: 'Failed to update category', error });
   }
 });
@@ -193,7 +196,7 @@ router.delete('/categories/:id', requireAdmin, async (req: Request, res: Respons
 
     res.json({ message: 'Category deleted successfully' });
   } catch (error) {
-    console.error('Error deleting category:', error);
+    log.error('Error deleting category:', error);
     res.status(500).json({ message: 'Failed to delete category' });
   }
 });
@@ -301,7 +304,7 @@ router.get('/articles', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching articles:', error);
+    log.error('Error fetching articles:', error);
     res.status(500).json({ message: 'Failed to fetch articles' });
   }
 });
@@ -364,7 +367,7 @@ router.get('/articles/:slugOrId', async (req: Request, res: Response) => {
           })
           .where(eq(knowledgeArticles.id, article.id));
       })
-      .catch((err) => console.error('Error tracking article view:', err));
+      .catch((err) => log.error('Error tracking article view:', err));
 
     // Generate table of contents if content is structured
     let tableOfContents = null;
@@ -378,7 +381,7 @@ router.get('/articles/:slugOrId', async (req: Request, res: Response) => {
         }
       }
     } catch (tocError) {
-      console.error('Error generating table of contents:', tocError);
+      log.error('Error generating table of contents:', tocError);
       // Continue without TOC if generation fails
     }
 
@@ -387,7 +390,7 @@ router.get('/articles/:slugOrId', async (req: Request, res: Response) => {
       tableOfContents,
     });
   } catch (error) {
-    console.error('Error fetching article:', error);
+    log.error('Error fetching article:', error);
     res.status(500).json({ message: 'Failed to fetch article' });
   }
 });
@@ -439,7 +442,7 @@ router.post('/articles', requireAdmin, async (req: Request, res: Response) => {
 
     res.status(201).json(article);
   } catch (error) {
-    console.error('Error creating article:', error);
+    log.error('Error creating article:', error);
     res.status(400).json({ message: 'Failed to create article', error });
   }
 });
@@ -508,7 +511,7 @@ router.put('/articles/:id', requireAdmin, async (req: Request, res: Response) =>
 
     res.json(updated);
   } catch (error) {
-    console.error('Error updating article:', error);
+    log.error('Error updating article:', error);
     res.status(400).json({ message: 'Failed to update article', error });
   }
 });
@@ -540,7 +543,7 @@ router.patch(
 
       res.json(published);
     } catch (error) {
-      console.error('Error publishing article:', error);
+      log.error('Error publishing article:', error);
       res.status(500).json({ message: 'Failed to publish article' });
     }
   },
@@ -572,7 +575,7 @@ router.patch(
 
       res.json(archived);
     } catch (error) {
-      console.error('Error archiving article:', error);
+      log.error('Error archiving article:', error);
       res.status(500).json({ message: 'Failed to archive article' });
     }
   },
@@ -601,7 +604,7 @@ router.delete('/articles/:id', requireAdmin, async (req: Request, res: Response)
 
     res.json({ message: 'Article deleted successfully' });
   } catch (error) {
-    console.error('Error deleting article:', error);
+    log.error('Error deleting article:', error);
     res.status(500).json({ message: 'Failed to delete article' });
   }
 });
@@ -674,7 +677,7 @@ router.get('/search', async (req: Request, res: Response) => {
         topResultIds: articles.slice(0, 5).map((a) => a.id),
         createdAt: new Date(),
       })
-      .catch((err) => console.error('Error tracking search query:', err));
+      .catch((err) => log.error('Error tracking search query:', err));
 
     res.json({
       results: articles,
@@ -682,7 +685,7 @@ router.get('/search', async (req: Request, res: Response) => {
       count: articles.length,
     });
   } catch (error) {
-    console.error('Error searching articles:', error);
+    log.error('Error searching articles:', error);
     res.status(500).json({ message: 'Failed to search articles' });
   }
 });
@@ -731,7 +734,7 @@ router.post('/articles/:id/feedback', async (req: Request, res: Response) => {
 
     res.status(201).json(feedback);
   } catch (error) {
-    console.error('Error submitting feedback:', error);
+    log.error('Error submitting feedback:', error);
     res.status(400).json({ message: 'Failed to submit feedback', error });
   }
 });
@@ -754,7 +757,7 @@ router.get(
 
       res.json(feedback);
     } catch (error) {
-      console.error('Error fetching feedback:', error);
+      log.error('Error fetching feedback:', error);
       res.status(500).json({ message: 'Failed to fetch feedback' });
     }
   },
@@ -824,7 +827,7 @@ router.get('/analytics', requireAdmin, async (req: Request, res: Response) => {
       recentSearches,
     });
   } catch (error) {
-    console.error('Error fetching analytics:', error);
+    log.error('Error fetching analytics:', error);
     res.status(500).json({ message: 'Failed to fetch analytics' });
   }
 });

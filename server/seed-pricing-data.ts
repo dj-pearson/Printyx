@@ -1,4 +1,7 @@
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-pricing-data');
+
 import {
   companyPricingSettings,
   productPricing,
@@ -12,7 +15,7 @@ export async function seedPricingData() {
 
   try {
     // 1. Create company pricing settings
-    console.log('Creating company pricing settings...');
+    log.info('Creating company pricing settings...');
     const [companySettings] = await db
       .insert(companyPricingSettings)
       .values({
@@ -26,10 +29,10 @@ export async function seedPricingData() {
       .onConflictDoNothing()
       .returning();
 
-    console.log('Company settings created:', companySettings?.id);
+    log.info('Company settings created:', companySettings?.id);
 
     // 2. Create product pricing for various product types
-    console.log('Creating product pricing entries...');
+    log.info('Creating product pricing entries...');
 
     const productPricingData = [
       // Equipment Models
@@ -167,10 +170,10 @@ export async function seedPricingData() {
       await db.insert(productPricing).values(pricing).onConflictDoNothing();
     }
 
-    console.log(`Created ${productPricingData.length} product pricing entries`);
+    log.info(`Created ${productPricingData.length} product pricing entries`);
 
     // 3. Create sample quote pricing with line items
-    console.log('Creating sample quote pricing...');
+    log.info('Creating sample quote pricing...');
 
     const [sampleQuote] = await db
       .insert(quotePricing)
@@ -197,7 +200,7 @@ export async function seedPricingData() {
       .returning();
 
     if (sampleQuote) {
-      console.log('Created sample quote:', sampleQuote.id);
+      log.info('Created sample quote:', sampleQuote.id);
 
       // Create line items for the quote
       const lineItems = [
@@ -249,10 +252,10 @@ export async function seedPricingData() {
         await db.insert(quotePricingLineItems).values(lineItem).onConflictDoNothing();
       }
 
-      console.log(`Created ${lineItems.length} quote line items`);
+      log.info(`Created ${lineItems.length} quote line items`);
     }
 
-    console.log('✅ Pricing data seeding completed successfully!');
+    log.info('✅ Pricing data seeding completed successfully!');
 
     return {
       companySettings: companySettings?.id,
@@ -261,7 +264,7 @@ export async function seedPricingData() {
       lineItemsCount: 3,
     };
   } catch (error) {
-    console.error('❌ Error seeding pricing data:', error);
+    log.error('❌ Error seeding pricing data:', error);
     throw error;
   }
 }
@@ -270,11 +273,11 @@ export async function seedPricingData() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   seedPricingData()
     .then((result) => {
-      console.log('Seeding result:', result);
+      log.info('Seeding result:', result);
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Seeding failed:', error);
+      log.error('Seeding failed:', error);
       process.exit(1);
     });
 }

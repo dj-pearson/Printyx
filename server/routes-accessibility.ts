@@ -7,6 +7,9 @@
 import { Router, Request, Response } from 'express';
 import { db } from './db';
 import { eq, and } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-accessibility');
+
 import {
   userAccessibilityPreferences,
   accessibilityFeedback,
@@ -68,7 +71,7 @@ router.get('/preferences', async (req: Request, res: Response) => {
 
     return res.json(preferences);
   } catch (error) {
-    console.error('Error fetching accessibility preferences:', error);
+    log.error('Error fetching accessibility preferences:', error);
     return res.status(500).json({ message: 'Failed to fetch accessibility preferences' });
   }
 });
@@ -128,7 +131,7 @@ router.put('/preferences', async (req: Request, res: Response) => {
 
     return res.json(result);
   } catch (error) {
-    console.error('Error updating accessibility preferences:', error);
+    log.error('Error updating accessibility preferences:', error);
     return res.status(500).json({ message: 'Failed to update accessibility preferences' });
   }
 });
@@ -151,7 +154,7 @@ router.delete('/preferences', async (req: Request, res: Response) => {
 
     return res.json({ message: 'Preferences reset to defaults' });
   } catch (error) {
-    console.error('Error resetting accessibility preferences:', error);
+    log.error('Error resetting accessibility preferences:', error);
     return res.status(500).json({ message: 'Failed to reset accessibility preferences' });
   }
 });
@@ -195,7 +198,7 @@ router.post('/feedback', async (req: Request, res: Response) => {
       feedbackId: feedback[0].id,
     });
   } catch (error) {
-    console.error('Error submitting accessibility feedback:', error);
+    log.error('Error submitting accessibility feedback:', error);
     return res.status(500).json({ message: 'Failed to submit feedback' });
   }
 });
@@ -240,7 +243,7 @@ router.get('/feedback', async (req: Request, res: Response) => {
       limit: limitNum,
     });
   } catch (error) {
-    console.error('Error fetching accessibility feedback:', error);
+    log.error('Error fetching accessibility feedback:', error);
     return res.status(500).json({ message: 'Failed to fetch feedback' });
   }
 });
@@ -292,7 +295,7 @@ router.patch('/feedback/:id', async (req: Request, res: Response) => {
 
     return res.json(updated[0]);
   } catch (error) {
-    console.error('Error updating feedback:', error);
+    log.error('Error updating feedback:', error);
     return res.status(500).json({ message: 'Failed to update feedback' });
   }
 });
@@ -327,7 +330,7 @@ router.post('/audit', async (req: Request, res: Response) => {
 
     return res.status(201).json(audit[0]);
   } catch (error) {
-    console.error('Error logging accessibility audit:', error);
+    log.error('Error logging accessibility audit:', error);
     return res.status(500).json({ message: 'Failed to log audit' });
   }
 });
@@ -373,7 +376,7 @@ router.get('/audit', async (req: Request, res: Response) => {
       limit: limitNum,
     });
   } catch (error) {
-    console.error('Error fetching accessibility audits:', error);
+    log.error('Error fetching accessibility audits:', error);
     return res.status(500).json({ message: 'Failed to fetch audits' });
   }
 });
@@ -400,7 +403,7 @@ router.get('/vpat', async (req: Request, res: Response) => {
       requestVpat: 'POST /api/accessibility/feedback with category: "vpat_request"',
     });
   } catch (error) {
-    console.error('Error fetching VPAT info:', error);
+    log.error('Error fetching VPAT info:', error);
     return res.status(500).json({ message: 'Failed to fetch VPAT information' });
   }
 });
@@ -453,7 +456,7 @@ router.get('/statement', async (_req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching accessibility statement:', error);
+    log.error('Error fetching accessibility statement:', error);
     return res.status(500).json({ message: 'Failed to fetch accessibility statement' });
   }
 });

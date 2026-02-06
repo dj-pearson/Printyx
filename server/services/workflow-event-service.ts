@@ -1,5 +1,8 @@
 import { db } from '../db';
 import { eq, and } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('workflow-event-service');
+
 import {
   workflowTriggers,
   workflowConditions,
@@ -45,7 +48,7 @@ export async function emitWorkflowEvent(
   payload: EventPayload,
   userId?: string,
 ): Promise<string[]> {
-  console.log(`[Workflow Event] Emitting event: ${eventName} for tenant: ${tenantId}`);
+  log.info(`[Workflow Event] Emitting event: ${eventName} for tenant: ${tenantId}`);
 
   try {
     // Find all active workflows with triggers for this event
@@ -61,11 +64,11 @@ export async function emitWorkflowEvent(
     });
 
     if (triggers.length === 0) {
-      console.log(`[Workflow Event] No triggers found for event: ${eventName}`);
+      log.info(`[Workflow Event] No triggers found for event: ${eventName}`);
       return [];
     }
 
-    console.log(`[Workflow Event] Found ${triggers.length} triggers for event: ${eventName}`);
+    log.info(`[Workflow Event] Found ${triggers.length} triggers for event: ${eventName}`);
 
     const executionIds: string[] = [];
 
@@ -76,14 +79,14 @@ export async function emitWorkflowEvent(
 
       // Skip if workflow is not active or doesn't belong to this tenant
       if (!workflow || workflow.status !== 'active' || workflow.tenantId !== tenantId) {
-        console.log(`[Workflow Event] Skipping inactive or mismatched workflow: ${workflow?.id}`);
+        log.info(`[Workflow Event] Skipping inactive or mismatched workflow: ${workflow?.id}`);
         continue;
       }
 
       // Check if trigger conditions are met
       const conditionsMet = await evaluateTriggerConditions(trigger.id, payload);
       if (!conditionsMet) {
-        console.log(`[Workflow Event] Conditions not met for trigger: ${trigger.id}`);
+        log.info(`[Workflow Event] Conditions not met for trigger: ${trigger.id}`);
         continue;
       }
 
@@ -93,7 +96,7 @@ export async function emitWorkflowEvent(
       });
 
       if (!version) {
-        console.log(`[Workflow Event] No version found for workflow: ${workflow.id}`);
+        log.info(`[Workflow Event] No version found for workflow: ${workflow.id}`);
         continue;
       }
 
@@ -128,7 +131,7 @@ export async function emitWorkflowEvent(
       });
 
       executionIds.push(execution.id);
-      console.log(
+      log.info(
         `[Workflow Event] Created execution: ${execution.id} for workflow: ${workflow.name}`,
       );
     }
@@ -142,7 +145,7 @@ export async function emitWorkflowEvent(
 
     return executionIds;
   } catch (error) {
-    console.error(`[Workflow Event] Error emitting event ${eventName}:`, error);
+    log.error(`[Workflow Event] Error emitting event ${eventName}:`, error);
     throw error;
   }
 }
@@ -270,7 +273,7 @@ function evaluateCondition(
     case 'matches_regex':
       return new RegExp(String(right)).test(String(left));
     default:
-      console.warn(`Unknown operator: ${operator}`);
+      log.warn(`Unknown operator: ${operator}`);
       return false;
   }
 }
@@ -326,7 +329,7 @@ function mapPayloadToContext(
  * In production, this would be handled by a job queue (Bull, BullMQ, etc.)
  */
 async function processQueuedExecutions(tenantId: string): Promise<void> {
-  console.log(`[Workflow Execution] Processing queued executions for tenant: ${tenantId}`);
+  log.info(`[Workflow Execution] Processing queued executions for tenant: ${tenantId}`);
 
   const queuedExecutions = await db.query.workflowExecutions.findMany({
     where: and(eq(workflowExecutions.tenantId, tenantId), eq(workflowExecutions.status, 'queued')),
@@ -337,7 +340,7 @@ async function processQueuedExecutions(tenantId: string): Promise<void> {
     try {
       await executeWorkflow(execution.id);
     } catch (error) {
-      console.error(`[Workflow Execution] Error executing workflow ${execution.id}:`, error);
+      log.error(`[Workflow Execution] Error executing workflow ${execution.id}:`, error);
     }
   }
 }
@@ -347,7 +350,7 @@ async function processQueuedExecutions(tenantId: string): Promise<void> {
  * This is a placeholder - the full implementation would go in a separate service
  */
 async function executeWorkflow(executionId: string): Promise<void> {
-  console.log(`[Workflow Execution] Executing workflow: ${executionId}`);
+  log.info(`[Workflow Execution] Executing workflow: ${executionId}`);
   // This will be implemented in the workflow-execution-service.ts
   // For now, we'll import and call it when that service is created
 }

@@ -1,4 +1,7 @@
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('predictive-service-dispatch-service');
+
 import {
   clientCollectedMetrics,
   monitoredDevices,
@@ -24,7 +27,7 @@ async function getUserName(userId: string): Promise<string> {
       return [firstName, lastName].filter(Boolean).join(' ') || userId;
     }
   } catch (error) {
-    console.error('Error fetching user name:', error);
+    log.error('Error fetching user name:', error);
   }
   return userId;
 }
@@ -160,7 +163,7 @@ export class PredictiveServiceDispatchService {
         processingTimeMs,
       };
     } catch (error) {
-      console.error('Predictive dispatch failed:', error);
+      log.error('Predictive dispatch failed:', error);
       throw error;
     }
   }
@@ -371,7 +374,7 @@ Format as JSON:
         recommendations: ['Schedule preventive maintenance', 'Monitor device closely'],
       };
     } catch (error) {
-      console.error('AI analysis failed:', error);
+      log.error('AI analysis failed:', error);
       return {
         failureRisk: 30,
         daysUntilFailure: null,
@@ -479,7 +482,7 @@ Format as JSON:
   ): Promise<void> {
     // TODO: Create service call in database
     // For now, just log
-    console.log(`📅 Service call created:
+    log.info(`📅 Service call created:
       Device: ${device.serialNumber}
       Technician: ${technician.technicianName}
       Scheduled: ${scheduledDate.toISOString()}
@@ -516,7 +519,7 @@ Format as JSON:
 
     // TODO: Actually create purchase orders
     if (partsToOrder.length > 0) {
-      console.log(`🛒 Auto-ordering parts: ${partsToOrder.join(', ')}`);
+      log.info(`🛒 Auto-ordering parts: ${partsToOrder.join(', ')}`);
     }
 
     return partsToOrder;

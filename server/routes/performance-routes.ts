@@ -5,6 +5,8 @@
 
 import express from 'express';
 import PerformanceMonitor from '../services/performance-monitor';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('performance-routes');
 
 const router = express.Router();
 
@@ -23,7 +25,7 @@ router.get('/health', async (req, res) => {
     const systemHealth = await PerformanceMonitor.getSystemHealth();
     res.json(systemHealth);
   } catch (error) {
-    console.error('Error fetching system health:', error);
+    log.error('Error fetching system health:', error);
     res.status(500).json({ error: 'Failed to fetch system health' });
   }
 });
@@ -62,7 +64,7 @@ router.get('/metrics', async (req, res) => {
 
     res.json(metrics);
   } catch (error) {
-    console.error('Error fetching performance metrics:', error);
+    log.error('Error fetching performance metrics:', error);
     res.status(500).json({ error: 'Failed to fetch performance metrics' });
   }
 });
@@ -76,7 +78,7 @@ router.get('/insights', async (req, res) => {
     const insights = PerformanceMonitor.getPerformanceInsights();
     res.json(insights);
   } catch (error) {
-    console.error('Error fetching performance insights:', error);
+    log.error('Error fetching performance insights:', error);
     res.status(500).json({ error: 'Failed to fetch performance insights' });
   }
 });
@@ -103,7 +105,7 @@ router.post('/record-metric', async (req, res) => {
       metric: { name, value, unit, timestamp: new Date() },
     });
   } catch (error) {
-    console.error('Error recording metric:', error);
+    log.error('Error recording metric:', error);
     res.status(500).json({ error: 'Failed to record metric' });
   }
 });
@@ -117,7 +119,7 @@ router.get('/database', async (req, res) => {
     const dbPerformance = await PerformanceMonitor.getDatabasePerformance();
     res.json(dbPerformance);
   } catch (error) {
-    console.error('Error fetching database performance:', error);
+    log.error('Error fetching database performance:', error);
     res.status(500).json({ error: 'Failed to fetch database performance' });
   }
 });
@@ -131,7 +133,7 @@ router.get('/ai', async (req, res) => {
     const aiPerformance = await PerformanceMonitor.getAIPerformance();
     res.json(aiPerformance);
   } catch (error) {
-    console.error('Error fetching AI performance:', error);
+    log.error('Error fetching AI performance:', error);
     res.status(500).json({ error: 'Failed to fetch AI performance' });
   }
 });
@@ -145,7 +147,7 @@ router.get('/cache', async (req, res) => {
     const cachePerformance = await PerformanceMonitor.getCachePerformance();
     res.json(cachePerformance);
   } catch (error) {
-    console.error('Error fetching cache performance:', error);
+    log.error('Error fetching cache performance:', error);
     res.status(500).json({ error: 'Failed to fetch cache performance' });
   }
 });
@@ -204,7 +206,7 @@ router.post('/run-tests', async (req, res) => {
 
     res.json(testResults);
   } catch (error) {
-    console.error('Error running tests:', error);
+    log.error('Error running tests:', error);
     res.status(500).json({ error: 'Failed to run tests' });
   }
 });
@@ -295,7 +297,7 @@ router.post('/optimize', async (req, res) => {
 
     res.json(optimizationResults);
   } catch (error) {
-    console.error('Error running optimization:', error);
+    log.error('Error running optimization:', error);
     res.status(500).json({ error: 'Failed to run optimization' });
   }
 });
@@ -383,7 +385,7 @@ router.get('/alerts', async (req, res) => {
 
     res.json(alerts);
   } catch (error) {
-    console.error('Error fetching alerts:', error);
+    log.error('Error fetching alerts:', error);
     res.status(500).json({ error: 'Failed to fetch alerts' });
   }
 });
@@ -408,7 +410,7 @@ router.post('/alerts/:alertId/resolve', async (req, res) => {
 
     res.json(resolvedAlert);
   } catch (error) {
-    console.error('Error resolving alert:', error);
+    log.error('Error resolving alert:', error);
     res.status(500).json({ error: 'Failed to resolve alert' });
   }
 });
@@ -467,7 +469,7 @@ router.get('/reports/generate', async (req, res) => {
 
     res.json(report);
   } catch (error) {
-    console.error('Error generating report:', error);
+    log.error('Error generating report:', error);
     res.status(500).json({ error: 'Failed to generate report' });
   }
 });

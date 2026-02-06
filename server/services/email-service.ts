@@ -1,4 +1,8 @@
 /**
+
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('email-service');
+
  * Email Service Adapter
  *
  * Provider-agnostic email service that supports multiple providers:
@@ -30,11 +34,11 @@ interface EmailProvider {
 
 class SimulationEmailProvider implements EmailProvider {
   async send(message: EmailMessage) {
-    console.log(`[EMAIL SIMULATION] Would send email:`);
-    console.log(`  To: ${message.to}`);
-    console.log(`  Subject: ${message.subject}`);
-    console.log(`  From: ${message.from || 'notifications@printyx.com'}`);
-    console.log(`  Body: ${message.text || message.html.substring(0, 100)}...`);
+    log.info(`[EMAIL SIMULATION] Would send email:`);
+    log.info(`  To: ${message.to}`);
+    log.info(`  Subject: ${message.subject}`);
+    log.info(`  From: ${message.from || 'notifications@printyx.com'}`);
+    log.info(`  Body: ${message.text || message.html.substring(0, 100)}...`);
 
     return {
       success: true,
@@ -63,15 +67,15 @@ class SendGridProvider implements EmailProvider {
         html: message.html,
       });
 
-      console.log(`[SENDGRID] Email sent successfully`);
-      console.log(`  To: ${message.to}, Subject: ${message.subject}`);
+      log.info(`[SENDGRID] Email sent successfully`);
+      log.info(`  To: ${message.to}, Subject: ${message.subject}`);
 
       return {
         success: true,
         messageId: result[0].headers['x-message-id'],
       };
     } catch (error: any) {
-      console.error('[SENDGRID] Error:', error);
+      log.error('[SENDGRID] Error:', error);
       return {
         success: false,
         error: error.message,
@@ -116,15 +120,15 @@ class AWSSESProvider implements EmailProvider {
         }),
       );
 
-      console.log(`[AWS SES] Email sent successfully`);
-      console.log(`  To: ${message.to}, Subject: ${message.subject}`);
+      log.info(`[AWS SES] Email sent successfully`);
+      log.info(`  To: ${message.to}, Subject: ${message.subject}`);
 
       return {
         success: true,
         messageId: result.MessageId,
       };
     } catch (error: any) {
-      console.error('[AWS SES] Error:', error);
+      log.error('[AWS SES] Error:', error);
       return {
         success: false,
         error: error.message,
@@ -152,15 +156,15 @@ class ResendProvider implements EmailProvider {
         html: message.html,
       });
 
-      console.log(`[RESEND] Email sent successfully`);
-      console.log(`  To: ${message.to}, Subject: ${message.subject}`);
+      log.info(`[RESEND] Email sent successfully`);
+      log.info(`  To: ${message.to}, Subject: ${message.subject}`);
 
       return {
         success: true,
         messageId: result.data?.id,
       };
     } catch (error: any) {
-      console.error('[RESEND] Error:', error);
+      log.error('[RESEND] Error:', error);
       return {
         success: false,
         error: error.message,
@@ -181,7 +185,7 @@ export class EmailService {
     switch (providerType) {
       case 'sendgrid':
         if (!process.env.SENDGRID_API_KEY) {
-          console.warn(
+          log.warn(
             '[EMAIL SERVICE] SendGrid selected but SENDGRID_API_KEY not set. Falling back to simulation.',
           );
           this.provider = new SimulationEmailProvider();
@@ -196,7 +200,7 @@ export class EmailService {
           !process.env.AWS_ACCESS_KEY_ID ||
           !process.env.AWS_SECRET_ACCESS_KEY
         ) {
-          console.warn(
+          log.warn(
             '[EMAIL SERVICE] AWS SES selected but credentials not set. Falling back to simulation.',
           );
           this.provider = new SimulationEmailProvider();
@@ -211,7 +215,7 @@ export class EmailService {
 
       case 'resend':
         if (!process.env.RESEND_API_KEY) {
-          console.warn(
+          log.warn(
             '[EMAIL SERVICE] Resend selected but RESEND_API_KEY not set. Falling back to simulation.',
           );
           this.provider = new SimulationEmailProvider();
@@ -226,14 +230,14 @@ export class EmailService {
         break;
     }
 
-    console.log(
+    log.info(
       `[EMAIL SERVICE] Initialized with provider: ${providerType}, enabled: ${this.enabled}`,
     );
   }
 
   async send(message: EmailMessage) {
     if (!this.enabled) {
-      console.log(`[EMAIL SERVICE] Email sending is disabled. Message to ${message.to} not sent.`);
+      log.info(`[EMAIL SERVICE] Email sending is disabled. Message to ${message.to} not sent.`);
       return {
         success: false,
         error: 'Email service is disabled',

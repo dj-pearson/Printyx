@@ -3,6 +3,8 @@ import { db } from './db';
 import { businessRecords, deals, businessRecordActivities, quotes } from '@shared/schema';
 import { ilike, or, and, eq, sql } from 'drizzle-orm';
 import type { Request, Response } from 'express';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-universal-search');
 
 const router = Router();
 
@@ -205,7 +207,7 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
       }
     } catch (error) {
       // Activities table might not exist in all setups, continue without it
-      console.warn('Could not search activities:', error);
+      log.warn('Could not search activities:', error);
     }
 
     // Search quotes
@@ -258,7 +260,7 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
       }
     } catch (error) {
       // Quotes table might not exist in all setups, continue without it
-      console.warn('Could not search quotes:', error);
+      log.warn('Could not search quotes:', error);
     }
 
     // Sort by relevance and limit
@@ -266,7 +268,7 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
 
     res.json(sortedResults);
   } catch (error) {
-    console.error('Universal search error:', error);
+    log.error('Universal search error:', error);
     res.status(500).json({ message: 'Search failed' });
   }
 });

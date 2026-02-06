@@ -6,6 +6,8 @@
 import { db } from '../../db';
 import { kpiDefinitions } from '../../../shared/reporting-schema';
 import { sql } from 'drizzle-orm';
+import { createModuleLogger } from '../../lib/logger';
+const log = createModuleLogger('kpi-seeder');
 
 // =====================================================================
 // TYPES AND INTERFACES
@@ -1375,8 +1377,8 @@ const PLATFORM_KPIS: KPIDefinition[] = [
 // =====================================================================
 
 export async function seedKPIs() {
-  console.log('🌱 Starting KPI Definitions Seeder...\n');
-  console.log('════════════════════════════════════════════════════════════════\n');
+  log.info('🌱 Starting KPI Definitions Seeder...\n');
+  log.info('════════════════════════════════════════════════════════════════\n');
 
   try {
     // Get or create a system tenant for seeding
@@ -1397,7 +1399,7 @@ export async function seedKPIs() {
       ...PLATFORM_KPIS,
     ];
 
-    console.log(`📊 Seeding ${ALL_KPIS.length} KPI definitions...\n`);
+    log.info(`📊 Seeding ${ALL_KPIS.length} KPI definitions...\n`);
 
     // Seed each KPI
     for (const kpi of ALL_KPIS) {
@@ -1441,34 +1443,34 @@ export async function seedKPIs() {
           });
 
         successCount++;
-        console.log(`  ✅ ${kpi.code.padEnd(45)} - ${kpi.name}`);
+        log.info(`  ✅ ${kpi.code.padEnd(45)} - ${kpi.name}`);
       } catch (error: any) {
         errorCount++;
         errors.push({ kpi: kpi.code, error: error.message });
-        console.error(`  ❌ ${kpi.code.padEnd(45)} - ERROR: ${error.message}`);
+        log.error(`  ❌ ${kpi.code.padEnd(45)} - ERROR: ${error.message}`);
       }
     }
 
-    console.log('\n════════════════════════════════════════════════════════════════\n');
-    console.log('📈 SEEDING SUMMARY\n');
-    console.log(`  Total KPIs Processed: ${ALL_KPIS.length}`);
-    console.log(`  ✅ Successfully Seeded:  ${successCount}`);
-    console.log(`  ❌ Errors:               ${errorCount}`);
+    log.info('\n════════════════════════════════════════════════════════════════\n');
+    log.info('📈 SEEDING SUMMARY\n');
+    log.info(`  Total KPIs Processed: ${ALL_KPIS.length}`);
+    log.info(`  ✅ Successfully Seeded:  ${successCount}`);
+    log.info(`  ❌ Errors:               ${errorCount}`);
 
     if (errorCount > 0) {
-      console.log('\n❌ ERRORS DETAILS:\n');
+      log.info('\n❌ ERRORS DETAILS:\n');
       errors.forEach(({ kpi, error }) => {
-        console.log(`  ${kpi}: ${error}`);
+        log.info(`  ${kpi}: ${error}`);
       });
     }
 
-    console.log('\n════════════════════════════════════════════════════════════════\n');
-    console.log('✅ KPI Definitions Seeder Completed!\n');
+    log.info('\n════════════════════════════════════════════════════════════════\n');
+    log.info('✅ KPI Definitions Seeder Completed!\n');
 
     return { successCount, errorCount, errors };
   } catch (error: any) {
-    console.error('\n❌ CRITICAL ERROR during KPI seeding:');
-    console.error(error);
+    log.error('\n❌ CRITICAL ERROR during KPI seeding:');
+    log.error(error);
     throw error;
   }
 }
@@ -1477,11 +1479,11 @@ export async function seedKPIs() {
 if (require.main === module) {
   seedKPIs()
     .then(() => {
-      console.log('✅ Seeding completed successfully');
+      log.info('✅ Seeding completed successfully');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ Seeding failed:', error);
+      log.error('❌ Seeding failed:', error);
       process.exit(1);
     });
 }

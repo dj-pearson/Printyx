@@ -1,13 +1,15 @@
 import { setupDemoAuth } from './auth-setup';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('setup-demo-data');
 
 async function main() {
   try {
-    console.log('🚀 Setting up demo data...');
+    log.info('🚀 Setting up demo data...');
     await setupDemoAuth();
-    console.log('✅ Demo data setup complete!');
+    log.info('✅ Demo data setup complete!');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error setting up demo data:', error);
+    log.error('❌ Error setting up demo data:', error);
     process.exit(1);
   }
 }

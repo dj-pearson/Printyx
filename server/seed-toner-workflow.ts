@@ -1,6 +1,8 @@
 import { db } from './db';
 import { supplies, inventoryItems, serviceContracts, customerPortalAccess } from '@shared/schema';
 import { sql } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-toner-workflow');
 
 const DEFAULT_TENANT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -178,11 +180,11 @@ const tonerProducts: TonerProduct[] = [
 ];
 
 export async function seedTonerWorkflow() {
-  console.log('🌱 Starting toner workflow seed...\n');
+  log.info('🌱 Starting toner workflow seed...\n');
 
   try {
     // Step 1: Insert toner products into supplies table
-    console.log('📦 Step 1: Inserting toner products into supplies table...');
+    log.info('📦 Step 1: Inserting toner products into supplies table...');
 
     for (const product of tonerProducts) {
       // Check if product already exists
@@ -195,7 +197,7 @@ export async function seedTonerWorkflow() {
         .limit(1);
 
       if (existing.length > 0) {
-        console.log(`   ⏭️  Skipping ${product.productCode} (already exists)`);
+        log.info(`   ⏭️  Skipping ${product.productCode} (already exists)`);
         continue;
       }
 
@@ -212,11 +214,11 @@ export async function seedTonerWorkflow() {
         availableForAll: true,
       });
 
-      console.log(`   ✅ Added ${product.productCode}: ${product.productName}`);
+      log.info(`   ✅ Added ${product.productCode}: ${product.productName}`);
     }
 
     // Step 2: Create matching inventory records
-    console.log('\n📊 Step 2: Creating inventory records for toner products...');
+    log.info('\n📊 Step 2: Creating inventory records for toner products...');
 
     for (const product of tonerProducts) {
       // Check if inventory already exists
@@ -229,7 +231,7 @@ export async function seedTonerWorkflow() {
         .limit(1);
 
       if (existing.length > 0) {
-        console.log(`   ⏭️  Skipping inventory for ${product.productCode} (already exists)`);
+        log.info(`   ⏭️  Skipping inventory for ${product.productCode} (already exists)`);
         continue;
       }
 
@@ -261,13 +263,13 @@ export async function seedTonerWorkflow() {
         isSerialized: false,
       });
 
-      console.log(
+      log.info(
         `   ✅ Created inventory for ${product.productCode} (${product.stock.available} available)`,
       );
     }
 
     // Step 3: Verify customer portal users have contact info
-    console.log('\n👤 Step 3: Verifying customer portal access has contact info...');
+    log.info('\n👤 Step 3: Verifying customer portal access has contact info...');
 
     const portalUsers = await db
       .select()
@@ -276,8 +278,8 @@ export async function seedTonerWorkflow() {
       .limit(5);
 
     if (portalUsers.length === 0) {
-      console.log('   ⚠️  No customer portal users found. Skipping contact info verification.');
-      console.log('   💡 Create customer portal users first, then run this seed again.');
+      log.info('   ⚠️  No customer portal users found. Skipping contact info verification.');
+      log.info('   💡 Create customer portal users first, then run this seed again.');
     } else {
       for (const user of portalUsers) {
         const needsUpdate = !user.email || !user.phone;
@@ -295,23 +297,23 @@ export async function seedTonerWorkflow() {
             })
             .where(sql`${customerPortalAccess.id} = ${user.id}`);
 
-          console.log(`   ✅ Updated contact info for user ${user.username}`);
+          log.info(`   ✅ Updated contact info for user ${user.username}`);
         } else {
-          console.log(`   ✓  User ${user.username} already has email and phone`);
+          log.info(`   ✓  User ${user.username} already has email and phone`);
         }
       }
     }
 
     // Step 4: Display service contract guidance
-    console.log('\n📋 Step 4: Service Contract Setup Guidance');
-    console.log('   ℹ️  To enable automatic toner coverage ($0.00 for customer):');
-    console.log('   1. Link service contracts to equipment via equipment_id');
-    console.log('   2. Set includes_toner = true for contracts with toner coverage');
-    console.log('   3. Ensure start_date <= NOW() and end_date > NOW()');
-    console.log("   4. Set contract_status = 'active'");
-    console.log('');
-    console.log('   Example SQL to create a toner-covered contract:');
-    console.log(`
+    log.info('\n📋 Step 4: Service Contract Setup Guidance');
+    log.info('   ℹ️  To enable automatic toner coverage ($0.00 for customer):');
+    log.info('   1. Link service contracts to equipment via equipment_id');
+    log.info('   2. Set includes_toner = true for contracts with toner coverage');
+    log.info('   3. Ensure start_date <= NOW() and end_date > NOW()');
+    log.info("   4. Set contract_status = 'active'");
+    log.info('');
+    log.info('   Example SQL to create a toner-covered contract:');
+    log.info(`
     INSERT INTO service_contracts (
       tenant_id, contract_number, customer_id, equipment_id,
       contract_type, contract_status, start_date, end_date,
@@ -334,18 +336,18 @@ export async function seedTonerWorkflow() {
     );
     `);
 
-    console.log('\n✅ Toner workflow seed completed successfully!');
-    console.log('\n📊 Summary:');
-    console.log(`   - ${tonerProducts.length} toner products added to supplies table`);
-    console.log(`   - ${tonerProducts.length} inventory records created`);
-    console.log(`   - ${portalUsers.length} customer portal users verified`);
-    console.log('');
-    console.log('🎯 Next Steps:');
-    console.log('   1. Create service contracts for your equipment (see guidance above)');
-    console.log('   2. Test fleet monitoring → order toner flow');
-    console.log('   3. Configure email/SMS notification services (optional)');
+    log.info('\n✅ Toner workflow seed completed successfully!');
+    log.info('\n📊 Summary:');
+    log.info(`   - ${tonerProducts.length} toner products added to supplies table`);
+    log.info(`   - ${tonerProducts.length} inventory records created`);
+    log.info(`   - ${portalUsers.length} customer portal users verified`);
+    log.info('');
+    log.info('🎯 Next Steps:');
+    log.info('   1. Create service contracts for your equipment (see guidance above)');
+    log.info('   2. Test fleet monitoring → order toner flow');
+    log.info('   3. Configure email/SMS notification services (optional)');
   } catch (error) {
-    console.error('\n❌ Error seeding toner workflow:', error);
+    log.error('\n❌ Error seeding toner workflow:', error);
     throw error;
   }
 }
@@ -355,11 +357,11 @@ const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 if (isMainModule) {
   seedTonerWorkflow()
     .then(() => {
-      console.log('\n✅ Seed script completed');
+      log.info('\n✅ Seed script completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('\n❌ Seed script failed:', error);
+      log.error('\n❌ Seed script failed:', error);
       process.exit(1);
     });
 }

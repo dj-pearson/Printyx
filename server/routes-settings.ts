@@ -4,6 +4,8 @@ import { insertUserSettingsSchema } from '@shared/schema';
 import bcrypt from 'bcrypt';
 import multer from 'multer';
 import path from 'path';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-settings');
 
 // Configure multer for avatar uploads
 const avatarStorage = multer.diskStorage({
@@ -79,7 +81,7 @@ export async function getUserSettings(req: Request, res: Response) {
 
     res.json(settings);
   } catch (error) {
-    console.error('Error fetching user settings:', error);
+    log.error('Error fetching user settings:', error);
     res.status(500).json({ message: 'Failed to fetch user settings' });
   }
 }
@@ -114,7 +116,7 @@ export async function updateUserProfile(req: Request, res: Response) {
 
     res.json({ message: 'Profile updated successfully' });
   } catch (error) {
-    console.error('Error updating user profile:', error);
+    log.error('Error updating user profile:', error);
     res.status(500).json({ message: 'Failed to update profile' });
   }
 }
@@ -150,7 +152,7 @@ export async function updateUserPassword(req: Request, res: Response) {
 
     res.json({ message: 'Password updated successfully' });
   } catch (error) {
-    console.error('Error updating password:', error);
+    log.error('Error updating password:', error);
     res.status(500).json({ message: 'Failed to update password' });
   }
 }
@@ -178,7 +180,7 @@ export async function updateUserPreferences(req: Request, res: Response) {
 
     res.json({ message: 'Preferences updated successfully' });
   } catch (error) {
-    console.error('Error updating preferences:', error);
+    log.error('Error updating preferences:', error);
     res.status(500).json({ message: 'Failed to update preferences' });
   }
 }
@@ -199,7 +201,7 @@ export async function updateAccessibilitySettings(req: Request, res: Response) {
 
     res.json({ message: 'Accessibility settings updated successfully' });
   } catch (error) {
-    console.error('Error updating accessibility settings:', error);
+    log.error('Error updating accessibility settings:', error);
     res.status(500).json({ message: 'Failed to update accessibility settings' });
   }
 }
@@ -223,7 +225,7 @@ export async function uploadAvatar(req: Request, res: Response) {
 
     res.json({ url: avatarUrl });
   } catch (error) {
-    console.error('Error uploading avatar:', error);
+    log.error('Error uploading avatar:', error);
     res.status(500).json({ message: 'Failed to upload avatar' });
   }
 }
@@ -259,7 +261,7 @@ export async function exportUserData(req: Request, res: Response) {
     res.setHeader('Content-Disposition', 'attachment; filename="printyx-user-data.json"');
     res.json(exportData);
   } catch (error) {
-    console.error('Error exporting user data:', error);
+    log.error('Error exporting user data:', error);
     res.status(500).json({ message: 'Failed to export user data' });
   }
 }
@@ -283,7 +285,7 @@ export async function deleteUserAccount(req: Request, res: Response) {
 
     res.json({ message: 'Account deleted successfully' });
   } catch (error) {
-    console.error('Error deleting user account:', error);
+    log.error('Error deleting user account:', error);
     res.status(500).json({ message: 'Failed to delete account' });
   }
 }

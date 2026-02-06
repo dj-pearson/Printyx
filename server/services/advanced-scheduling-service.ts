@@ -6,6 +6,8 @@
 import ConstraintSolver from './constraint-solver';
 import ClaudeAIService from './claude-ai-service';
 import PerformanceMonitor from './performance-monitor';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('advanced-scheduling-service');
 
 interface Task {
   id: string;
@@ -113,7 +115,7 @@ class AdvancedSchedulingService {
     existingSchedule: any[] = [],
   ): Promise<SchedulingResult> {
     const startTime = Date.now();
-    console.log('🚀 Starting advanced scheduling for', tasks.length, 'tasks...');
+    log.info('🚀 Starting advanced scheduling for', tasks.length, 'tasks...');
 
     try {
       // Step 1: Analyze user patterns and update learning models
@@ -149,10 +151,10 @@ class AdvancedSchedulingService {
         result: finalResult,
       });
 
-      console.log('✅ Advanced scheduling completed in', duration, 'ms');
+      log.info('✅ Advanced scheduling completed in', duration, 'ms');
       return finalResult;
     } catch (error) {
-      console.error('Advanced scheduling failed:', error);
+      log.error('Advanced scheduling failed:', error);
       return this.fallbackScheduling(tasks, resources, options);
     } finally {
       this.constraintSolver.clear();
@@ -248,9 +250,9 @@ Return JSON with updated pattern insights:
         pattern.contextSwitchingCost = patternInsights.contextSwitchingCost;
       }
 
-      console.log(`📊 Updated patterns for user ${userId}:`, patternInsights.insights?.slice(0, 2));
+      log.info(`📊 Updated patterns for user ${userId}:`, patternInsights.insights?.slice(0, 2));
     } catch (error) {
-      console.error('Pattern learning failed for user', userId, ':', error);
+      log.error('Pattern learning failed for user', userId, ':', error);
     }
   }
 
@@ -775,7 +777,7 @@ Return JSON with updated pattern insights:
     resources: Resource[],
     options: AdvancedSchedulingOptions,
   ): SchedulingResult {
-    console.log('⚠️  Using fallback scheduling algorithm');
+    log.info('⚠️  Using fallback scheduling algorithm');
 
     return {
       scheduledTasks: [],

@@ -14,6 +14,8 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { getUserId, isAuthenticated } from '../utils/auth-helpers';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('user-rate-limit');
 
 // Rate limit configuration by category
 interface RateLimitConfig {
@@ -27,23 +29,35 @@ interface RateLimitConfig {
 
 // Default configurations for different endpoint types
 export const RATE_LIMIT_CONFIGS = {
+  /** Authentication endpoints (login, signup, password reset, MFA) */
+  auth: {
+    limit: 5,
+    windowMs: 60 * 1000, // 1 minute
+    message: 'Too many authentication attempts, please try again later',
+  },
+  /** Billing and subscription endpoints */
+  billing: {
+    limit: 20,
+    windowMs: 60 * 1000, // 1 minute
+    message: 'Too many billing requests, please try again later',
+  },
+  /** Mutation endpoints (POST/PUT/PATCH/DELETE) */
+  mutation: {
+    limit: 100,
+    windowMs: 60 * 1000, // 1 minute
+    message: 'Too many write requests, please try again later',
+  },
+  /** Read endpoints (GET) */
+  read: {
+    limit: 200,
+    windowMs: 60 * 1000, // 1 minute
+    message: 'Too many read requests, please try again later',
+  },
   /** General API endpoints */
   general: {
     limit: 500,
     windowMs: 15 * 60 * 1000, // 15 minutes
     message: 'Too many requests, please try again later',
-  },
-  /** High-traffic read endpoints (lists, searches) */
-  read: {
-    limit: 1000,
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    message: 'Too many read requests, please try again later',
-  },
-  /** Write operations (create, update, delete) */
-  write: {
-    limit: 200,
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    message: 'Too many write requests, please try again later',
   },
   /** Search and autocomplete endpoints */
   search: {
@@ -221,11 +235,12 @@ export function userRateLimit(
       setRateLimitHeaders(res, result.limit, result.remaining, result.resetAt);
 
       if (!result.allowed) {
-        res.setHeader('Retry-After', Math.ceil((result.resetAt - Date.now()) / 1000).toString());
+        const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
+        res.setHeader('Retry-After', retryAfter.toString());
         return res.status(429).json({
           message: config.message || 'Rate limit exceeded',
           code: 'RATE_LIMITED',
-          retryAfter: Math.ceil((result.resetAt - Date.now()) / 1000),
+          details: { retryAfter },
           limit: result.limit,
           remaining: 0,
           resetAt: Math.floor(result.resetAt / 1000),
@@ -235,7 +250,7 @@ export function userRateLimit(
       next();
     } catch (error) {
       // Graceful degradation - allow request if rate limiting fails
-      console.error('[UserRateLimit] Error checking rate limit:', error);
+      log.error('[UserRateLimit] Error checking rate limit:', error);
       next();
     }
   };
@@ -354,4 +369,61 @@ export function getRateLimitStoreStats(): {
     totalBuckets: rateLimitStore.size,
     categories: stats,
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PRE-BUILT TIERED RATE LIMITERS
+// ═══════════════════════════════════════════════════════════════════════
+
+/** Auth routes: 5 req/min (login, signup, password reset, MFA) */
+export const authLimiter = userRateLimit('auth');
+
+/** Billing routes: 20 req/min (/api/billing*, /api/stripe*, /api/subscriptions*) */
+export const billingLimiter = userRateLimit('billing');
+
+/** Mutation routes: 100 req/min (POST/PUT/PATCH/DELETE) */
+export const mutationLimiter = userRateLimit('mutation');
+
+/** Read routes: 200 req/min (GET) */
+export const readLimiter = userRateLimit('read');
+
+/**
+ * Global tiered rate limiter middleware.
+ * Routes through auth → billing → mutation/read based on path and method.
+ */
+export function globalTieredRateLimit(req: Request, res: Response, next: NextFunction) {
+  const path = req.path.toLowerCase();
+  const method = req.method.toUpperCase();
+
+  // Auth routes get strictest limits
+  if (
+    path.includes('/auth/') ||
+    path.includes('/login') ||
+    path.includes('/signup') ||
+    path.includes('/register') ||
+    path.includes('/password') ||
+    path.includes('/mfa') ||
+    path.includes('/verify')
+  ) {
+    return authLimiter(req, res, next);
+  }
+
+  // Billing routes get dedicated limits
+  if (
+    path.startsWith('/api/billing') ||
+    path.startsWith('/api/stripe') ||
+    path.startsWith('/api/subscriptions') ||
+    path.startsWith('/api/invoices') ||
+    path.startsWith('/api/payments')
+  ) {
+    return billingLimiter(req, res, next);
+  }
+
+  // Mutations vs reads
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    return mutationLimiter(req, res, next);
+  }
+
+  // Default: read limiter for GET and other methods
+  return readLimiter(req, res, next);
 }
