@@ -45,7 +45,11 @@
       "Bash(wc:*)",
       "Bash(npm run audit:all:*)",
       "Bash(npm run audit:security:*)",
-      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npx tsc:*)"
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npx tsc:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(npx vite build)",
+      "Bash(npm run db:push:*)",
+      "Bash(comm:*)"
     ],
     "deny": [],
     "ask": []
