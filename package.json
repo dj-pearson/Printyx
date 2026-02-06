@@ -38,6 +38,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx server/lib/migrate.ts",
     "db:migrate:status": "tsx server/lib/migrate.ts status",
+    "db:migrate:baseline": "tsx server/lib/migrate.ts baseline",
     "db:push": "drizzle-kit push",
     "db:push:forecast": "drizzle-kit push --config=drizzle.forecasting.config.ts",
     "updater": "tsx server/database-updater/cli/updater-cli.ts",

@@ -216,6 +216,11 @@ Drizzle migrations live in `drizzle/migrations/`. Schema changes produce version
 
 **Important**: `npm run db:push` is still available for quick dev iteration but should NOT be used in production. Always use `db:generate` + `db:migrate` for production deployments.
 
+**Initializing migrations on an existing database** (one-time setup):
+1. `npm run db:generate` - creates the baseline migration
+2. `npm run db:migrate:baseline` - marks it as already applied (does NOT execute SQL)
+3. From now on, schema changes follow the normal generate + migrate workflow
+
 **Migration lock**: `db:migrate` acquires a `__migration_lock` table lock in PostgreSQL. If a migration crashes, the lock auto-expires after 5 minutes. Check status with `npm run db:migrate:status`.
 
 ### Critical: Always Include Tenant Filtering

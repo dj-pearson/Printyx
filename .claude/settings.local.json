@@ -49,7 +49,12 @@
       "Bash(npx drizzle-kit:*)",
       "Bash(npx vite build)",
       "Bash(npm run db:push:*)",
-      "Bash(comm:*)"
+      "Bash(comm:*)",
+      "Bash(for name in tasks purchaseOrders purchaseOrderItems proposalTemplates proposals proposalLineItems proposalComments proposalApprovals proposalAnalytics projects locationHistory equipmentPackages dashboardLayouts clientActivityLogs)",
+      "Bash(do echo \"=== $name ===\")",
+      "Bash(done)",
+      "WebSearch",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []
