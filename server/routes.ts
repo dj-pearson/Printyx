@@ -135,6 +135,7 @@ import { registerModularDashboardRoutes } from './routes-modular-dashboard';
 import { registerTodayDashboardRoutes } from './routes-today-dashboard';
 import { registerManufacturerIntegrationRoutes } from './routes-manufacturer-integration';
 import { registerLeadAssignmentRoutes } from './routes-lead-assignment';
+import { registerSalesRepAssignmentRoutes } from './routes-sales-rep-assignments';
 import { registerAutoLeadRoutingRoutes } from './routes-auto-lead-routing';
 import { registerPredictiveServiceDispatchRoutes } from './routes-predictive-service-dispatch';
 import { registerWhiteLabelRoutes } from './routes-white-label';
@@ -13027,6 +13028,7 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
   registerTodayDashboardRoutes(app);
   registerManufacturerIntegrationRoutes(app);
   registerLeadAssignmentRoutes(app);
+  registerSalesRepAssignmentRoutes(app);
   registerAutoLeadRoutingRoutes(app);
   registerPredictiveServiceDispatchRoutes(app);
   registerWhiteLabelRoutes(app);
