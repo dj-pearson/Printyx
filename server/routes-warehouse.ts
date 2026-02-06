@@ -2,6 +2,9 @@ import type { Express } from 'express';
 import { z } from 'zod';
 import { storage } from './storage';
 import { isAuthenticated } from './replitAuth';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-warehouse');
+
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -102,7 +105,7 @@ export function registerWarehouseRoutes(app: Express) {
         const operations = await storage.getWarehouseOperations(tenantId);
         res.json(operations);
       } catch (error) {
-        console.error('Error fetching warehouse operations:', error);
+        log.error('Error fetching warehouse operations:', error);
         res.status(500).json({ error: 'Failed to fetch warehouse operations' });
       }
     },
@@ -120,7 +123,7 @@ export function registerWarehouseRoutes(app: Express) {
 
       res.json(operation);
     } catch (error) {
-      console.error('Error fetching warehouse operation:', error);
+      log.error('Error fetching warehouse operation:', error);
       res.status(500).json({ error: 'Failed to fetch warehouse operation' });
     }
   });
@@ -143,7 +146,7 @@ export function registerWarehouseRoutes(app: Express) {
 
       res.json(operation);
     } catch (error: any) {
-      console.error('Error creating warehouse operation:', error);
+      log.error('Error creating warehouse operation:', error);
       if (error.name === 'ZodError') {
         res.status(400).json({ error: 'Invalid data', details: error.errors });
       } else {
@@ -164,7 +167,7 @@ export function registerWarehouseRoutes(app: Express) {
 
       res.json(operation);
     } catch (error) {
-      console.error('Error updating warehouse operation:', error);
+      log.error('Error updating warehouse operation:', error);
       res.status(500).json({ error: 'Failed to update warehouse operation' });
     }
   });
@@ -193,7 +196,7 @@ export function registerWarehouseRoutes(app: Express) {
 
       res.json(operation);
     } catch (error) {
-      console.error('Error updating warehouse operation status:', error);
+      log.error('Error updating warehouse operation status:', error);
       res.status(500).json({ error: 'Failed to update warehouse operation status' });
     }
   });
@@ -210,7 +213,7 @@ export function registerWarehouseRoutes(app: Express) {
 
       res.json({ success: true });
     } catch (error) {
-      console.error('Error deleting warehouse operation:', error);
+      log.error('Error deleting warehouse operation:', error);
       res.status(500).json({ error: 'Failed to delete warehouse operation' });
     }
   });
@@ -238,7 +241,7 @@ export function registerWarehouseRoutes(app: Express) {
 
       res.json(stats);
     } catch (error) {
-      console.error('Error fetching warehouse statistics:', error);
+      log.error('Error fetching warehouse statistics:', error);
       res.status(500).json({ error: 'Failed to fetch warehouse statistics' });
     }
   });
@@ -250,7 +253,7 @@ export function registerWarehouseRoutes(app: Express) {
       const serialNumbers = await storage.getSerialNumbers(tenantId);
       res.json(serialNumbers);
     } catch (error) {
-      console.error('Error fetching serial numbers:', error);
+      log.error('Error fetching serial numbers:', error);
       res.status(500).json({ error: 'Failed to fetch serial numbers' });
     }
   });
@@ -268,7 +271,7 @@ export function registerWarehouseRoutes(app: Express) {
 
       res.json(serialNumber);
     } catch (error: any) {
-      console.error('Error creating serial number:', error);
+      log.error('Error creating serial number:', error);
       if (error.name === 'ZodError') {
         res.status(400).json({ error: 'Invalid data', details: error.errors });
       } else {
@@ -289,7 +292,7 @@ export function registerWarehouseRoutes(app: Express) {
 
       res.json(serialNumber);
     } catch (error) {
-      console.error('Error updating serial number:', error);
+      log.error('Error updating serial number:', error);
       res.status(500).json({ error: 'Failed to update serial number' });
     }
   });
@@ -301,7 +304,7 @@ export function registerWarehouseRoutes(app: Express) {
       const buildProcesses = await storage.getBuildProcesses(tenantId);
       res.json(buildProcesses);
     } catch (error) {
-      console.error('Error fetching build processes:', error);
+      log.error('Error fetching build processes:', error);
       res.status(500).json({ error: 'Failed to fetch build processes' });
     }
   });
@@ -324,7 +327,7 @@ export function registerWarehouseRoutes(app: Express) {
 
       res.json(buildProcess);
     } catch (error: any) {
-      console.error('Error creating build process:', error);
+      log.error('Error creating build process:', error);
       if (error.name === 'ZodError') {
         res.status(400).json({ error: 'Invalid data', details: error.errors });
       } else {
@@ -340,7 +343,7 @@ export function registerWarehouseRoutes(app: Express) {
       const deliverySchedules = await storage.getDeliverySchedules(tenantId);
       res.json(deliverySchedules);
     } catch (error) {
-      console.error('Error fetching delivery schedules:', error);
+      log.error('Error fetching delivery schedules:', error);
       res.status(500).json({ error: 'Failed to fetch delivery schedules' });
     }
   });
@@ -366,7 +369,7 @@ export function registerWarehouseRoutes(app: Express) {
 
       res.json(deliverySchedule);
     } catch (error: any) {
-      console.error('Error creating delivery schedule:', error);
+      log.error('Error creating delivery schedule:', error);
       if (error.name === 'ZodError') {
         res.status(400).json({ error: 'Invalid data', details: error.errors });
       } else {
@@ -387,7 +390,7 @@ export function registerWarehouseRoutes(app: Express) {
 
       res.json(deliverySchedule);
     } catch (error) {
-      console.error('Error updating delivery schedule:', error);
+      log.error('Error updating delivery schedule:', error);
       res.status(500).json({ error: 'Failed to update delivery schedule' });
     }
   });
@@ -415,7 +418,7 @@ export function registerWarehouseRoutes(app: Express) {
 
       res.json(lifecycle);
     } catch (error) {
-      console.error('Error fetching equipment lifecycle:', error);
+      log.error('Error fetching equipment lifecycle:', error);
       res.status(500).json({ error: 'Failed to fetch equipment lifecycle' });
     }
   });

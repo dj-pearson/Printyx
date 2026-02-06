@@ -1,5 +1,8 @@
 import { db } from '../db';
 import { eq, and } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('workflow-execution-service');
+
 import {
   workflowExecutions,
   workflowExecutionSteps,
@@ -33,7 +36,7 @@ interface StepContext {
  * Execute a workflow from start to finish
  */
 export async function executeWorkflow(executionId: string): Promise<void> {
-  console.log(`[Workflow Execution] Starting execution: ${executionId}`);
+  log.info(`[Workflow Execution] Starting execution: ${executionId}`);
 
   try {
     // Get execution details
@@ -69,7 +72,7 @@ export async function executeWorkflow(executionId: string): Promise<void> {
       orderBy: (steps, { asc }) => [asc(steps.orderIndex)],
     });
 
-    console.log(`[Workflow Execution] Executing ${steps.length} steps`);
+    log.info(`[Workflow Execution] Executing ${steps.length} steps`);
 
     // Execute each step in sequence
     let allStepsSucceeded = true;
@@ -84,7 +87,7 @@ export async function executeWorkflow(executionId: string): Promise<void> {
       if (!stepSuccess) {
         allStepsSucceeded = false;
         if (!step.continueOnError) {
-          console.log(`[Workflow Execution] Step failed, stopping execution: ${step.id}`);
+          log.info(`[Workflow Execution] Step failed, stopping execution: ${step.id}`);
           break;
         }
       }
@@ -109,9 +112,9 @@ export async function executeWorkflow(executionId: string): Promise<void> {
       eventData: { executionId, status: finalStatus },
     });
 
-    console.log(`[Workflow Execution] Execution ${finalStatus}: ${executionId}`);
+    log.info(`[Workflow Execution] Execution ${finalStatus}: ${executionId}`);
   } catch (error) {
-    console.error(`[Workflow Execution] Error executing workflow ${executionId}:`, error);
+    log.error(`[Workflow Execution] Error executing workflow ${executionId}:`, error);
 
     // Update status to failed
     await db
@@ -140,7 +143,7 @@ export async function executeWorkflow(executionId: string): Promise<void> {
  * Execute a single workflow step
  */
 async function executeStep(step: WorkflowStepAutomation, context: StepContext): Promise<boolean> {
-  console.log(`[Workflow Step] Executing step: ${step.name} (${step.actionType})`);
+  log.info(`[Workflow Step] Executing step: ${step.name} (${step.actionType})`);
 
   let retryCount = 0;
   let lastError: Error | null = null;
@@ -177,16 +180,16 @@ async function executeStep(step: WorkflowStepAutomation, context: StepContext): 
         })
         .where(eq(workflowExecutionSteps.id, stepExecution.id));
 
-      console.log(`[Workflow Step] Step completed: ${step.name}`);
+      log.info(`[Workflow Step] Step completed: ${step.name}`);
       return true;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      console.error(`[Workflow Step] Step failed (attempt ${retryCount + 1}):`, error);
+      log.error(`[Workflow Step] Step failed (attempt ${retryCount + 1}):`, error);
 
       if (retryCount < (step.maxRetries || 0) && step.retryEnabled) {
         retryCount++;
         const delayMs = (step.retryDelaySeconds || 60) * 1000;
-        console.log(`[Workflow Step] Retrying in ${delayMs}ms...`);
+        log.info(`[Workflow Step] Retrying in ${delayMs}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       } else {
         break;
@@ -195,7 +198,7 @@ async function executeStep(step: WorkflowStepAutomation, context: StepContext): 
   }
 
   // All retries exhausted - mark as failed
-  console.error(`[Workflow Step] Step failed after ${retryCount} retries: ${step.name}`);
+  log.error(`[Workflow Step] Step failed after ${retryCount} retries: ${step.name}`);
   return false;
 }
 
@@ -224,7 +227,7 @@ async function executeStepAction(step: WorkflowStepAutomation, context: StepCont
 
     // Add more action types as needed
     default:
-      console.warn(`[Workflow Step] Unknown action type: ${step.actionType}`);
+      log.warn(`[Workflow Step] Unknown action type: ${step.actionType}`);
       return { message: 'Action type not implemented', actionType: step.actionType };
   }
 }
@@ -234,7 +237,7 @@ async function executeStepAction(step: WorkflowStepAutomation, context: StepCont
  * Creates a task and assigns it to a user or group
  */
 async function createTaskAction(config: Record<string, any>, context: StepContext): Promise<any> {
-  console.log('[Task Action] Creating task');
+  log.info('[Task Action] Creating task');
 
   // Interpolate values from context
   const title = interpolateString(config.title, context.workflowContext);
@@ -285,7 +288,7 @@ async function createTaskAction(config: Record<string, any>, context: StepContex
     })
     .returning();
 
-  console.log(`[Task Action] Created task: ${task.id} - "${task.title}"`);
+  log.info(`[Task Action] Created task: ${task.id} - "${task.title}"`);
 
   return {
     taskId: task.id,
@@ -302,7 +305,7 @@ async function createApprovalAction(
   config: Record<string, any>,
   context: StepContext,
 ): Promise<any> {
-  console.log('[Approval Action] Creating approval request');
+  log.info('[Approval Action] Creating approval request');
 
   const dueInHours = config.dueInHours || 48;
   const dueDate = new Date();
@@ -337,7 +340,7 @@ async function createApprovalAction(
     })
     .returning();
 
-  console.log(`[Approval Action] Created approval request: ${approval.id}`);
+  log.info(`[Approval Action] Created approval request: ${approval.id}`);
 
   // In a real implementation, this would pause the workflow and wait for approval
   // For now, we'll return the approval ID
@@ -356,14 +359,14 @@ async function sendNotificationAction(
   config: Record<string, any>,
   context: StepContext,
 ): Promise<any> {
-  console.log('[Notification Action] Sending notification');
+  log.info('[Notification Action] Sending notification');
 
   const message = interpolateString(config.message, context.workflowContext);
   const recipients = config.recipients || [];
 
   // In production, this would integrate with a notification service
   // For now, we'll log it
-  console.log(`[Notification] To: ${recipients.join(', ')} - ${message}`);
+  log.info(`[Notification] To: ${recipients.join(', ')} - ${message}`);
 
   return {
     recipients,
@@ -377,14 +380,14 @@ async function sendNotificationAction(
  * Sends an email
  */
 async function sendEmailAction(config: Record<string, any>, context: StepContext): Promise<any> {
-  console.log('[Email Action] Sending email');
+  log.info('[Email Action] Sending email');
 
   const to = config.to || [];
   const subject = interpolateString(config.subject, context.workflowContext);
   const body = interpolateString(config.body, context.workflowContext);
 
   // In production, this would use an email service
-  console.log(`[Email] To: ${to.join(', ')} - Subject: ${subject}`);
+  log.info(`[Email] To: ${to.join(', ')} - Subject: ${subject}`);
 
   return {
     to,
@@ -401,7 +404,7 @@ async function waitDelayAction(config: Record<string, any>, context: StepContext
   const delaySeconds = config.delaySeconds || 60;
   const delayMs = delaySeconds * 1000;
 
-  console.log(`[Wait Action] Waiting for ${delaySeconds} seconds`);
+  log.info(`[Wait Action] Waiting for ${delaySeconds} seconds`);
 
   // In production, this would schedule a job to resume later
   // For now, we'll use setTimeout for demo purposes
@@ -443,7 +446,7 @@ export async function processApprovalResponse(
   approved: boolean,
   comment?: string,
 ): Promise<void> {
-  console.log(`[Approval] Processing response for approval: ${approvalId}`);
+  log.info(`[Approval] Processing response for approval: ${approvalId}`);
 
   // Update approval record
   await db
@@ -483,12 +486,10 @@ export async function processApprovalResponse(
   if (approved) {
     // In production, this would resume the paused workflow
     // For now, we'll just log it
-    console.log(
-      `[Approval] Approval approved, resuming workflow execution: ${approval.executionId}`,
-    );
+    log.info(`[Approval] Approval approved, resuming workflow execution: ${approval.executionId}`);
   } else {
     // Workflow should be cancelled or handle rejection
-    console.log(
+    log.info(
       `[Approval] Approval rejected, workflow may need to handle rejection: ${approval.executionId}`,
     );
   }

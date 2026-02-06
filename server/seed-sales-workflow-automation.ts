@@ -1,4 +1,7 @@
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-sales-workflow-automation');
+
 import {
   workflows,
   workflowVersions,
@@ -17,21 +20,21 @@ import {
 } from '@shared/schema';
 
 export async function seedSalesWorkflowAutomation() {
-  console.log('🚀 Seeding sales workflow automation...');
+  log.info('🚀 Seeding sales workflow automation...');
 
   try {
     // Get a test tenant (for demo purposes)
     const tenants = await db.query.tenants.findMany({ limit: 1 });
     if (tenants.length === 0) {
-      console.error('❌ No tenants found. Please create a tenant first.');
+      log.error('❌ No tenants found. Please create a tenant first.');
       return;
     }
 
     const tenantId = tenants[0].id;
-    console.log(`✅ Using tenant: ${tenantId}`);
+    log.info(`✅ Using tenant: ${tenantId}`);
 
     // ==================== Seed Sales Territories ====================
-    console.log('📍 Seeding sales territories...');
+    log.info('📍 Seeding sales territories...');
 
     const eastCoastTerritory = await db
       .insert(salesTerritories)
@@ -101,10 +104,10 @@ export async function seedSalesWorkflowAutomation() {
       })
       .returning();
 
-    console.log(`✅ Created ${3} sales territories`);
+    log.info(`✅ Created ${3} sales territories`);
 
     // ==================== Seed Lead Assignment Rules ====================
-    console.log('🎯 Seeding lead assignment rules...');
+    log.info('🎯 Seeding lead assignment rules...');
 
     await db.insert(leadAssignmentRules).values({
       tenantId,
@@ -190,10 +193,10 @@ export async function seedSalesWorkflowAutomation() {
       escalateAfterMinutes: 15,
     });
 
-    console.log(`✅ Created 4 lead assignment rules`);
+    log.info(`✅ Created 4 lead assignment rules`);
 
     // ==================== Seed Handoff Task Templates ====================
-    console.log('📋 Seeding handoff task templates...');
+    log.info('📋 Seeding handoff task templates...');
 
     await db.insert(handoffTaskTemplates).values({
       tenantId,
@@ -358,10 +361,10 @@ export async function seedSalesWorkflowAutomation() {
       isDefault: false,
     });
 
-    console.log(`✅ Created 2 handoff task templates`);
+    log.info(`✅ Created 2 handoff task templates`);
 
     // ==================== Seed Renewal Playbooks ====================
-    console.log('🔄 Seeding renewal playbooks...');
+    log.info('🔄 Seeding renewal playbooks...');
 
     await db.insert(renewalPlaybooks).values({
       tenantId,
@@ -578,10 +581,10 @@ export async function seedSalesWorkflowAutomation() {
       isDefault: false,
     });
 
-    console.log(`✅ Created 3 renewal playbooks`);
+    log.info(`✅ Created 3 renewal playbooks`);
 
     // ==================== Seed Workflow Templates ====================
-    console.log('⚙️ Seeding workflow templates...');
+    log.info('⚙️ Seeding workflow templates...');
 
     await db.insert(workflowTemplates).values({
       name: 'Lead Speed-to-Response Automation',
@@ -772,11 +775,11 @@ export async function seedSalesWorkflowAutomation() {
       },
     });
 
-    console.log(`✅ Created 3 workflow templates`);
+    log.info(`✅ Created 3 workflow templates`);
 
-    console.log('✅ Sales workflow automation seeding completed successfully!');
+    log.info('✅ Sales workflow automation seeding completed successfully!');
   } catch (error) {
-    console.error('❌ Error seeding sales workflow automation:', error);
+    log.error('❌ Error seeding sales workflow automation:', error);
     throw error;
   }
 }
@@ -785,11 +788,11 @@ export async function seedSalesWorkflowAutomation() {
 if (require.main === module) {
   seedSalesWorkflowAutomation()
     .then(() => {
-      console.log('✅ Seeding complete');
+      log.info('✅ Seeding complete');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ Seeding failed:', error);
+      log.error('❌ Seeding failed:', error);
       process.exit(1);
     });
 }

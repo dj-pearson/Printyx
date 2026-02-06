@@ -4,6 +4,8 @@
  */
 
 import PerformanceMonitor from './services/performance-monitor';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('run-comprehensive-tests');
 
 interface TestSuite {
   name: string;
@@ -223,7 +225,7 @@ class ComprehensiveTestRunner {
     performance: any;
     recommendations: string[];
   }> {
-    console.log('🚀 Starting comprehensive Motion AI test suite...');
+    log.info('🚀 Starting comprehensive Motion AI test suite...');
     const overallStartTime = Date.now();
 
     this.results = [];
@@ -233,7 +235,7 @@ class ComprehensiveTestRunner {
     let totalDuration = 0;
 
     for (const suite of this.testSuites) {
-      console.log(`\n📋 Running ${suite.name}...`);
+      log.info(`\n📋 Running ${suite.name}...`);
       const suiteStartTime = Date.now();
 
       const suiteResult = {
@@ -246,12 +248,12 @@ class ComprehensiveTestRunner {
       };
 
       for (const test of suite.tests) {
-        console.log(`  ⚡ ${test.name}`);
+        log.info(`  ⚡ ${test.name}`);
 
         try {
           const result = await test.run();
           const status = result.passed ? '✅' : '❌';
-          console.log(`    ${status} ${result.duration}ms`);
+          log.info(`    ${status} ${result.duration}ms`);
 
           suiteResult.tests.push({
             name: test.name,
@@ -266,7 +268,7 @@ class ComprehensiveTestRunner {
           } else {
             suiteResult.failed++;
             totalFailed++;
-            console.log(`    Error: ${result.error}`);
+            log.info(`    Error: ${result.error}`);
           }
 
           totalTests++;
@@ -279,7 +281,7 @@ class ComprehensiveTestRunner {
             { suite: suite.name, passed: result.passed },
           );
         } catch (error: any) {
-          console.log(`    ❌ ${error.message}`);
+          log.info(`    ❌ ${error.message}`);
           suiteResult.tests.push({
             name: test.name,
             passed: false,
@@ -296,7 +298,7 @@ class ComprehensiveTestRunner {
       totalDuration += suiteResult.duration;
       this.results.push(suiteResult);
 
-      console.log(
+      log.info(
         `  📊 Suite completed: ${suiteResult.passed}/${suite.tests.length} passed in ${suiteResult.duration}ms`,
       );
     }
@@ -321,28 +323,28 @@ class ComprehensiveTestRunner {
       ),
     };
 
-    console.log('\n🎯 Test Summary:');
-    console.log(`   Total Tests: ${totalTests}`);
-    console.log(`   Passed: ${totalPassed} (${summary.successRate}%)`);
-    console.log(`   Failed: ${totalFailed}`);
-    console.log(`   Duration: ${overallDuration}ms`);
-    console.log(`   Coverage: ${summary.overallCoverage}%`);
+    log.info('\n🎯 Test Summary:');
+    log.info(`   Total Tests: ${totalTests}`);
+    log.info(`   Passed: ${totalPassed} (${summary.successRate}%)`);
+    log.info(`   Failed: ${totalFailed}`);
+    log.info(`   Duration: ${overallDuration}ms`);
+    log.info(`   Coverage: ${summary.overallCoverage}%`);
 
     if (totalFailed > 0) {
-      console.log('\n⚠️  Failed Tests:');
+      log.info('\n⚠️  Failed Tests:');
       this.results.forEach((suite) => {
         suite.tests.forEach((test: any) => {
           if (!test.passed) {
-            console.log(`   - ${suite.name}: ${test.name}`);
-            console.log(`     Error: ${test.error}`);
+            log.info(`   - ${suite.name}: ${test.name}`);
+            log.info(`     Error: ${test.error}`);
           }
         });
       });
     }
 
     if (recommendations.length > 0) {
-      console.log('\n💡 Recommendations:');
-      recommendations.forEach((rec) => console.log(`   - ${rec}`));
+      log.info('\n💡 Recommendations:');
+      recommendations.forEach((rec) => log.info(`   - ${rec}`));
     }
 
     return {
@@ -455,7 +457,7 @@ if (require.main === module) {
   testRunner
     .runAllTests()
     .then((results) => {
-      console.log('\n✅ Comprehensive test suite completed');
+      log.info('\n✅ Comprehensive test suite completed');
 
       // Exit with appropriate code
       if (results.summary.totalFailed > 0) {
@@ -465,7 +467,7 @@ if (require.main === module) {
       }
     })
     .catch((error) => {
-      console.error('❌ Test suite failed:', error);
+      log.error('❌ Test suite failed:', error);
       process.exit(1);
     });
 }

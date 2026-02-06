@@ -11,6 +11,9 @@
 import { db } from '../db';
 import { eq, and, isNull } from 'drizzle-orm';
 import { randomBytes, createHash } from 'crypto';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('sso-service');
+
 import {
   ssoProviderConfigs,
   ssoUserMappings,
@@ -523,7 +526,7 @@ export class SsoService {
         updated,
       };
     } catch (error: any) {
-      console.error('[SsoService] Callback error:', error);
+      log.error('[SsoService] Callback error:', error);
 
       // Update login attempt with error
       if (callbackData.requestId) {
@@ -645,7 +648,7 @@ export class SsoService {
       try {
         userInfo = await this.fetchUserInfo(provider, tokens.access_token);
       } catch (error) {
-        console.warn('[SsoService] Failed to fetch user info:', error);
+        log.warn('[SsoService] Failed to fetch user info:', error);
       }
     }
 

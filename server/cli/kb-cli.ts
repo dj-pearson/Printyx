@@ -27,6 +27,8 @@ import KnowledgeBaseService from '../services/knowledge-base-service';
 import { db } from '../db';
 import { eq, and } from 'drizzle-orm';
 import { knowledgeArticles, knowledgeCategories, articleFeedback } from '@shared/schema';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('kb-cli');
 
 const program = new Command();
 
@@ -50,19 +52,19 @@ program
         limit: parseInt(options.limit),
       });
 
-      console.log('\n📚 Knowledge Base Articles\n');
-      console.log(`Found ${result.total} articles:\n`);
+      log.info('\n📚 Knowledge Base Articles\n');
+      log.info(`Found ${result.total} articles:\n`);
 
       result.articles.forEach((article, index) => {
-        console.log(`${index + 1}. ${article.title}`);
-        console.log(`   ID: ${article.id}`);
-        console.log(`   Status: ${article.status}`);
-        console.log(`   Views: ${article.viewCount}`);
-        console.log(`   Created: ${article.createdAt}`);
-        console.log('');
+        log.info(`${index + 1}. ${article.title}`);
+        log.info(`   ID: ${article.id}`);
+        log.info(`   Status: ${article.status}`);
+        log.info(`   Views: ${article.viewCount}`);
+        log.info(`   Created: ${article.createdAt}`);
+        log.info('');
       });
     } catch (error) {
-      console.error('❌ Error:', error);
+      log.error('❌ Error:', error);
       process.exit(1);
     }
   });
@@ -102,7 +104,7 @@ program
           ],
         };
       } else {
-        console.error('❌ Error: Either --content-file or --content-text is required');
+        log.error('❌ Error: Either --content-file or --content-text is required');
         process.exit(1);
       }
 
@@ -116,14 +118,14 @@ program
         difficultyLevel: options.difficulty,
       });
 
-      console.log('\n✅ Article created successfully!');
-      console.log(`   ID: ${article.id}`);
-      console.log(`   Title: ${article.title}`);
-      console.log(`   Slug: ${article.slug}`);
-      console.log(`   Status: ${article.status}`);
-      console.log('');
+      log.info('\n✅ Article created successfully!');
+      log.info(`   ID: ${article.id}`);
+      log.info(`   Title: ${article.title}`);
+      log.info(`   Slug: ${article.slug}`);
+      log.info(`   Status: ${article.status}`);
+      log.info('');
     } catch (error) {
-      console.error('❌ Error:', error);
+      log.error('❌ Error:', error);
       process.exit(1);
     }
   });
@@ -164,14 +166,14 @@ program
         updates,
       );
 
-      console.log('\n✅ Article updated successfully!');
-      console.log(`   ID: ${article.id}`);
-      console.log(`   Title: ${article.title}`);
-      console.log(`   Status: ${article.status}`);
-      console.log(`   Version: ${article.version}`);
-      console.log('');
+      log.info('\n✅ Article updated successfully!');
+      log.info(`   ID: ${article.id}`);
+      log.info(`   Title: ${article.title}`);
+      log.info(`   Status: ${article.status}`);
+      log.info(`   Version: ${article.version}`);
+      log.info('');
     } catch (error) {
-      console.error('❌ Error:', error);
+      log.error('❌ Error:', error);
       process.exit(1);
     }
   });
@@ -203,7 +205,7 @@ program
         readline.close();
 
         if (answer.toLowerCase() !== 'yes') {
-          console.log('Cancelled.');
+          log.info('Cancelled.');
           process.exit(0);
         }
       }
@@ -214,9 +216,9 @@ program
           and(eq(knowledgeArticles.id, options.id), eq(knowledgeArticles.tenantId, options.tenant)),
         );
 
-      console.log('\n✅ Article deleted successfully!');
+      log.info('\n✅ Article deleted successfully!');
     } catch (error) {
-      console.error('❌ Error:', error);
+      log.error('❌ Error:', error);
       process.exit(1);
     }
   });
@@ -256,11 +258,11 @@ program
         });
         articleIds = drafts.map((a) => a.id);
       } else {
-        console.error('❌ Error: Specify --id, --category, or --all');
+        log.error('❌ Error: Specify --id, --category, or --all');
         process.exit(1);
       }
 
-      console.log(`\nPublishing ${articleIds.length} article(s)...`);
+      log.info(`\nPublishing ${articleIds.length} article(s)...`);
 
       for (const id of articleIds) {
         await KnowledgeBaseService.updateArticle(id, options.tenant, options.user, {
@@ -268,9 +270,9 @@ program
         });
       }
 
-      console.log(`✅ Published ${articleIds.length} article(s) successfully!`);
+      log.info(`✅ Published ${articleIds.length} article(s) successfully!`);
     } catch (error) {
-      console.error('❌ Error:', error);
+      log.error('❌ Error:', error);
       process.exit(1);
     }
   });
@@ -292,7 +294,7 @@ program
   .option('--tone <tone>', 'Tone (professional, casual, technical)', 'professional')
   .action(async (options) => {
     try {
-      console.log('\n🤖 Generating article with AI...\n');
+      log.info('\n🤖 Generating article with AI...\n');
 
       const result = await KnowledgeBaseService.generateArticleWithAI(
         options.tenant,
@@ -308,12 +310,12 @@ program
         },
       );
 
-      console.log('✅ Article generation queued!');
-      console.log(`   Queue ID: ${result.queueId}`);
-      console.log(`   ${result.message}`);
-      console.log('');
+      log.info('✅ Article generation queued!');
+      log.info(`   Queue ID: ${result.queueId}`);
+      log.info(`   ${result.message}`);
+      log.info('');
     } catch (error) {
-      console.error('❌ Error:', error);
+      log.error('❌ Error:', error);
       process.exit(1);
     }
   });
@@ -334,7 +336,7 @@ program
       const filePath = path.resolve(options.file);
 
       if (!fs.existsSync(filePath)) {
-        console.error(`❌ Error: File not found: ${filePath}`);
+        log.error(`❌ Error: File not found: ${filePath}`);
         process.exit(1);
       }
 
@@ -344,11 +346,11 @@ program
       if (options.format === 'json') {
         data = JSON.parse(fileContent);
       } else {
-        console.error('❌ Error: CSV and Markdown import not yet implemented');
+        log.error('❌ Error: CSV and Markdown import not yet implemented');
         process.exit(1);
       }
 
-      console.log('\n📥 Importing articles...\n');
+      log.info('\n📥 Importing articles...\n');
 
       const articles = Array.isArray(data) ? data : [data];
       let imported = 0;
@@ -361,19 +363,19 @@ program
             categoryId: articleData.categoryId || options.category,
           });
           imported++;
-          console.log(`✅ Imported: ${articleData.title}`);
+          log.info(`✅ Imported: ${articleData.title}`);
         } catch (error: any) {
           failed++;
-          console.error(`❌ Failed: ${articleData.title} - ${error.message}`);
+          log.error(`❌ Failed: ${articleData.title} - ${error.message}`);
         }
       }
 
-      console.log(`\n📊 Import complete:`);
-      console.log(`   Imported: ${imported}`);
-      console.log(`   Failed: ${failed}`);
-      console.log('');
+      log.info(`\n📊 Import complete:`);
+      log.info(`   Imported: ${imported}`);
+      log.info(`   Failed: ${failed}`);
+      log.info('');
     } catch (error) {
-      console.error('❌ Error:', error);
+      log.error('❌ Error:', error);
       process.exit(1);
     }
   });
@@ -391,7 +393,7 @@ program
   .option('--format <format>', 'Output format (json, csv)', 'json')
   .action(async (options) => {
     try {
-      console.log('\n📤 Exporting articles...\n');
+      log.info('\n📤 Exporting articles...\n');
 
       const result = await KnowledgeBaseService.searchArticles(options.tenant, '', {
         categoryId: options.category,
@@ -420,10 +422,10 @@ program
         fs.writeFileSync(outputPath, csv, 'utf-8');
       }
 
-      console.log(`✅ Exported ${result.articles.length} articles to ${outputPath}`);
-      console.log('');
+      log.info(`✅ Exported ${result.articles.length} articles to ${outputPath}`);
+      log.info('');
     } catch (error) {
-      console.error('❌ Error:', error);
+      log.error('❌ Error:', error);
       process.exit(1);
     }
   });
@@ -446,34 +448,34 @@ program
         end: new Date(),
       });
 
-      console.log('\n📊 Knowledge Base Statistics\n');
-      console.log(`Total Articles: ${analytics.totalArticles}`);
-      console.log(`Published: ${analytics.publishedArticles}`);
-      console.log(`Total Views: ${analytics.totalViews}`);
-      console.log(`AI Generated: ${analytics.aiGeneratedCount}`);
-      console.log(`AI Success Rate: ${(analytics.aiGenerationSuccessRate * 100).toFixed(1)}%`);
-      console.log(`Average Rating: ${analytics.averageRating.toFixed(1)}/5.0`);
-      console.log('');
+      log.info('\n📊 Knowledge Base Statistics\n');
+      log.info(`Total Articles: ${analytics.totalArticles}`);
+      log.info(`Published: ${analytics.publishedArticles}`);
+      log.info(`Total Views: ${analytics.totalViews}`);
+      log.info(`AI Generated: ${analytics.aiGeneratedCount}`);
+      log.info(`AI Success Rate: ${(analytics.aiGenerationSuccessRate * 100).toFixed(1)}%`);
+      log.info(`Average Rating: ${analytics.averageRating.toFixed(1)}/5.0`);
+      log.info('');
 
-      console.log('Top Articles:');
+      log.info('Top Articles:');
       analytics.topArticles.forEach((article, index) => {
-        console.log(`  ${index + 1}. ${article.title} (${article.views} views)`);
+        log.info(`  ${index + 1}. ${article.title} (${article.views} views)`);
       });
-      console.log('');
+      log.info('');
 
-      console.log('Popular Categories:');
+      log.info('Popular Categories:');
       analytics.popularCategories.forEach((category, index) => {
-        console.log(`  ${index + 1}. ${category.name} (${category.articleCount} articles)`);
+        log.info(`  ${index + 1}. ${category.name} (${category.articleCount} articles)`);
       });
-      console.log('');
+      log.info('');
 
-      console.log('Content Gaps:');
+      log.info('Content Gaps:');
       analytics.contentGaps.forEach((gap, index) => {
-        console.log(`  ${index + 1}. ${gap}`);
+        log.info(`  ${index + 1}. ${gap}`);
       });
-      console.log('');
+      log.info('');
     } catch (error) {
-      console.error('❌ Error:', error);
+      log.error('❌ Error:', error);
       process.exit(1);
     }
   });
@@ -499,24 +501,24 @@ program
           limit: 50,
         });
 
-        console.log(`\n💬 Pending Feedback (${feedback.length})\n`);
+        log.info(`\n💬 Pending Feedback (${feedback.length})\n`);
 
         for (const fb of feedback) {
           const article = await db.query.knowledgeArticles.findFirst({
             where: eq(knowledgeArticles.id, fb.articleId),
           });
 
-          console.log(`ID: ${fb.id}`);
-          console.log(`Article: ${article?.title || 'Unknown'}`);
-          console.log(`Type: ${fb.feedbackType}`);
-          console.log(`Rating: ${fb.rating || 'N/A'}`);
-          console.log(`Comment: ${fb.comment || 'N/A'}`);
-          console.log(`Created: ${fb.createdAt}`);
-          console.log('---');
+          log.info(`ID: ${fb.id}`);
+          log.info(`Article: ${article?.title || 'Unknown'}`);
+          log.info(`Type: ${fb.feedbackType}`);
+          log.info(`Rating: ${fb.rating || 'N/A'}`);
+          log.info(`Comment: ${fb.comment || 'N/A'}`);
+          log.info(`Created: ${fb.createdAt}`);
+          log.info('---');
         }
       } else if (options.resolve) {
         if (!options.user) {
-          console.error('❌ Error: --user is required when resolving feedback');
+          log.error('❌ Error: --user is required when resolving feedback');
           process.exit(1);
         }
 
@@ -534,10 +536,10 @@ program
             ),
           );
 
-        console.log('\n✅ Feedback resolved successfully!');
+        log.info('\n✅ Feedback resolved successfully!');
       }
     } catch (error) {
-      console.error('❌ Error:', error);
+      log.error('❌ Error:', error);
       process.exit(1);
     }
   });
@@ -561,19 +563,19 @@ program
         limit: parseInt(options.limit),
       });
 
-      console.log(`\n🔍 Search Results for "${options.query}"\n`);
-      console.log(`Found ${result.total} articles in ${result.searchTime}ms:\n`);
+      log.info(`\n🔍 Search Results for "${options.query}"\n`);
+      log.info(`Found ${result.total} articles in ${result.searchTime}ms:\n`);
 
       result.articles.forEach((article, index) => {
-        console.log(`${index + 1}. ${article.title}`);
-        console.log(`   ID: ${article.id}`);
-        console.log(`   Status: ${article.status}`);
-        console.log(`   Views: ${article.viewCount}`);
-        console.log(`   Excerpt: ${article.excerpt?.substring(0, 100)}...`);
-        console.log('');
+        log.info(`${index + 1}. ${article.title}`);
+        log.info(`   ID: ${article.id}`);
+        log.info(`   Status: ${article.status}`);
+        log.info(`   Views: ${article.viewCount}`);
+        log.info(`   Excerpt: ${article.excerpt?.substring(0, 100)}...`);
+        log.info('');
       });
     } catch (error) {
-      console.error('❌ Error:', error);
+      log.error('❌ Error:', error);
       process.exit(1);
     }
   });

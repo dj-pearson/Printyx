@@ -6,6 +6,8 @@
  */
 
 import { EventEmitter } from 'events';
+import { createModuleLogger } from './logger';
+const log = createModuleLogger('connection-resilience');
 
 // Configuration interfaces
 export interface RetryConfig {
@@ -289,7 +291,7 @@ export class CircuitBreaker extends EventEmitter {
       timestamp: this.lastStateChange,
     });
 
-    console.log(`[CircuitBreaker:${this.name}] State transition: ${oldState} -> ${newState}`);
+    log.info(`[CircuitBreaker:${this.name}] State transition: ${oldState} -> ${newState}`);
   }
 
   /**
@@ -376,7 +378,7 @@ export class RetryWithBackoff<T> {
         }
 
         if (attempt > 0) {
-          console.log(`[RetryWithBackoff] ${operationName} succeeded after ${attempt} retries`);
+          log.info(`[RetryWithBackoff] ${operationName} succeeded after ${attempt} retries`);
         }
 
         return result;
@@ -392,7 +394,7 @@ export class RetryWithBackoff<T> {
         if (attempt < this.config.maxRetries && isRetryableError(error, this.config)) {
           const delay = calculateBackoffDelay(attempt, this.config);
 
-          console.warn(
+          log.warn(
             `[RetryWithBackoff] ${operationName} failed (attempt ${attempt + 1}/${this.config.maxRetries + 1}), ` +
               `retrying in ${delay}ms: ${error.message}`,
           );
@@ -410,7 +412,7 @@ export class RetryWithBackoff<T> {
     }
 
     // All retries exhausted
-    console.error(
+    log.error(
       `[RetryWithBackoff] ${operationName} failed after ${this.config.maxRetries + 1} attempts`,
     );
 
@@ -504,7 +506,7 @@ export class ResilientConnectionPool<TPool> {
       try {
         await this.destroyPool(this.pool);
       } catch (error) {
-        console.warn('[ResilientConnectionPool] Error destroying pool:', error);
+        log.warn('[ResilientConnectionPool] Error destroying pool:', error);
       }
       this.pool = null;
     }

@@ -6,6 +6,9 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('article-ratings-routes');
+
 import {
   articleRatings,
   articleVotes,
@@ -114,7 +117,7 @@ router.get('/:articleId', async (req: Request, res: Response) => {
       recentReviews,
     });
   } catch (error) {
-    console.error('Error fetching article ratings:', error);
+    log.error('Error fetching article ratings:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch article ratings',
@@ -216,7 +219,7 @@ router.post('/', async (req: Request, res: Response) => {
       rating: result,
     });
   } catch (error) {
-    console.error('Error submitting rating:', error);
+    log.error('Error submitting rating:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to submit rating',
@@ -253,7 +256,7 @@ router.get('/user/:articleId', async (req: Request, res: Response) => {
       hasRated: rating.length > 0,
     });
   } catch (error) {
-    console.error('Error fetching user rating:', error);
+    log.error('Error fetching user rating:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch user rating',
@@ -331,7 +334,7 @@ router.post('/votes', async (req: Request, res: Response) => {
       vote: result,
     });
   } catch (error) {
-    console.error('Error submitting vote:', error);
+    log.error('Error submitting vote:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to submit vote',
@@ -361,7 +364,7 @@ router.get('/votes/user/:articleId', async (req: Request, res: Response) => {
       hasVoted: vote.length > 0,
     });
   } catch (error) {
-    console.error('Error fetching user vote:', error);
+    log.error('Error fetching user vote:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch user vote',
@@ -400,7 +403,7 @@ router.delete('/:ratingId', async (req: Request, res: Response) => {
       message: 'Rating deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting rating:', error);
+    log.error('Error deleting rating:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete rating',
@@ -439,7 +442,7 @@ router.delete('/votes/:voteId', async (req: Request, res: Response) => {
       message: 'Vote deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting vote:', error);
+    log.error('Error deleting vote:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to delete vote',

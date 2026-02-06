@@ -11,6 +11,8 @@ import { db } from '../db';
 import { users } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 import { getComplianceSettings } from '../storage/security-storage';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('mfa-enforcement');
 
 // Role levels that require MFA (configurable per tenant)
 export const DEFAULT_MFA_REQUIRED_ROLES = [
@@ -236,7 +238,7 @@ export function requireMfaForAdmins(options: MfaEnforcementOptions = {}) {
 
       next();
     } catch (error) {
-      console.error('MFA enforcement error:', error);
+      log.error('MFA enforcement error:', error);
       res.status(500).json({
         error: 'Failed to verify MFA requirements',
         code: 'MFA_CHECK_FAILED',
@@ -278,7 +280,7 @@ export function requireMfaVerification() {
 
       next();
     } catch (error) {
-      console.error('MFA verification check error:', error);
+      log.error('MFA verification check error:', error);
       res.status(500).json({ error: 'Failed to verify MFA status' });
     }
   };

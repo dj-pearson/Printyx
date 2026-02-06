@@ -8,6 +8,8 @@ import { format, startOfDay, endOfDay, addDays, subDays, startOfWeek, endOfWeek 
 // Supabase authentication middleware and helpers
 import { protectedRoute } from './middleware/supabase-auth';
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-today-dashboard');
 
 interface TenantRequest extends Request {
   tenantId?: string;
@@ -271,7 +273,7 @@ export function registerTodayDashboardRoutes(app: Router) {
         stats,
       });
     } catch (error) {
-      console.error('Error fetching today dashboard:', error);
+      log.error('Error fetching today dashboard:', error);
       return res.status(500).json({
         error: 'Failed to fetch today dashboard',
         details: error instanceof Error ? error.message : 'Unknown error',

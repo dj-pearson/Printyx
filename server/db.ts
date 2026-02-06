@@ -1,5 +1,8 @@
 import 'dotenv/config';
 import pg from 'pg';
+import { createModuleLogger, getRequestContext } from './lib/logger';
+const log = createModuleLogger('db');
+
 const { Pool } = pg;
 import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from '@shared/schema';
@@ -37,7 +40,7 @@ function buildDatabaseUrl(): string {
 
 // Build the database URL from environment variables
 const databaseUrl = buildDatabaseUrl();
-console.log('[Database] Connecting to PostgreSQL...');
+log.info('[Database] Connecting to PostgreSQL...');
 
 // Database connection configuration
 interface DatabaseConfig {
@@ -95,8 +98,30 @@ export const pool = new Pool(poolConfig);
 
 // Listen for pool errors
 pool.on('error', (err: Error) => {
-  console.error('[Database] Unexpected pool error:', err);
+  log.error('[Database] Unexpected pool error:', err);
   dbCircuitBreaker.recordFailure();
+});
+
+// Inject request correlation ID as SQL comment into every query
+// This makes requestId visible in PostgreSQL slow query logs (log_min_duration_statement)
+pool.on('connect', (client: pg.PoolClient) => {
+  const origQuery = client.query;
+  client.query = function (...args: any[]) {
+    try {
+      const ctx = getRequestContext();
+      if (ctx?.requestId) {
+        const comment = `/* req:${ctx.requestId} */`;
+        if (typeof args[0] === 'string') {
+          args[0] = `${comment} ${args[0]}`;
+        } else if (args[0] && typeof args[0] === 'object' && args[0].text) {
+          args[0] = { ...args[0], text: `${comment} ${args[0].text}` };
+        }
+      }
+    } catch {
+      /* never break queries for correlation logging */
+    }
+    return origQuery.apply(this, args);
+  } as any;
 });
 
 // Enable query logging based on environment configuration
@@ -208,9 +233,9 @@ export function getDbHealth(): {
 export async function closeDbConnections(): Promise<void> {
   try {
     await pool.end();
-    console.log('[Database] Connection pool closed');
+    log.info('[Database] Connection pool closed');
   } catch (error) {
-    console.error('[Database] Error closing connection pool:', error);
+    log.error('[Database] Error closing connection pool:', error);
     throw error;
   }
 }
@@ -219,20 +244,20 @@ export async function closeDbConnections(): Promise<void> {
  * Force reconnection (useful for recovering from stale connections)
  */
 export async function reconnectDb(): Promise<void> {
-  console.log('[Database] Forcing reconnection...');
+  log.info('[Database] Forcing reconnection...');
 
   try {
     // End current pool connections
     await pool.end();
   } catch (error) {
-    console.warn('[Database] Error during pool cleanup:', error);
+    log.warn('[Database] Error during pool cleanup:', error);
   }
 
   // Reset circuit breaker
   dbCircuitBreaker.reset();
 
   // Note: The pool will recreate connections on next query
-  console.log('[Database] Reconnection initiated, pool will recreate connections on next query');
+  log.info('[Database] Reconnection initiated, pool will recreate connections on next query');
 }
 
 // Export circuit breaker for external monitoring

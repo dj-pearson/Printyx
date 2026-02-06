@@ -8,6 +8,9 @@
 import { Router, Request, Response } from 'express';
 import { db } from './db';
 import { eq, and, or } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-dashboard-customization');
+
 import {
   dashboardLayouts,
   userDashboardPreferences,
@@ -56,7 +59,7 @@ router.get('/widgets', async (req: Request, res: Response) => {
 
     res.json({ data: filtered });
   } catch (error) {
-    console.error('Error fetching widgets:', error);
+    log.error('Error fetching widgets:', error);
     res.status(500).json({ error: 'Failed to fetch widgets' });
   }
 });
@@ -89,7 +92,7 @@ router.get('/layouts', async (req: Request, res: Response) => {
 
     res.json({ data: layouts });
   } catch (error) {
-    console.error('Error fetching layouts:', error);
+    log.error('Error fetching layouts:', error);
     res.status(500).json({ error: 'Failed to fetch layouts' });
   }
 });
@@ -119,7 +122,7 @@ router.get('/layout/:layoutId', async (req: Request, res: Response) => {
 
     res.json({ data: layout[0] });
   } catch (error) {
-    console.error('Error fetching layout:', error);
+    log.error('Error fetching layout:', error);
     res.status(500).json({ error: 'Failed to fetch layout' });
   }
 });
@@ -159,7 +162,7 @@ router.post('/layout', async (req: Request, res: Response) => {
 
     res.status(201).json({ data: layout[0] });
   } catch (error) {
-    console.error('Error creating layout:', error);
+    log.error('Error creating layout:', error);
     res.status(500).json({ error: 'Failed to create layout' });
   }
 });
@@ -205,7 +208,7 @@ router.patch('/layout/:layoutId', async (req: Request, res: Response) => {
 
     res.json({ data: updated[0] });
   } catch (error) {
-    console.error('Error updating layout:', error);
+    log.error('Error updating layout:', error);
     res.status(500).json({ error: 'Failed to update layout' });
   }
 });
@@ -225,7 +228,7 @@ router.delete('/layout/:layoutId', async (req: Request, res: Response) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error deleting layout:', error);
+    log.error('Error deleting layout:', error);
     res.status(500).json({ error: 'Failed to delete layout' });
   }
 });
@@ -268,7 +271,7 @@ router.get('/preferences', async (req: Request, res: Response) => {
 
     res.json({ data: prefs[0] });
   } catch (error) {
-    console.error('Error fetching preferences:', error);
+    log.error('Error fetching preferences:', error);
     res.status(500).json({ error: 'Failed to fetch preferences' });
   }
 });
@@ -318,7 +321,7 @@ router.patch('/preferences', async (req: Request, res: Response) => {
 
     res.json({ data: updated[0] || {} });
   } catch (error) {
-    console.error('Error updating preferences:', error);
+    log.error('Error updating preferences:', error);
     res.status(500).json({ error: 'Failed to update preferences' });
   }
 });
@@ -364,7 +367,7 @@ router.post('/snapshot', async (req: Request, res: Response) => {
 
     res.status(201).json({ data: snapshot[0] });
   } catch (error) {
-    console.error('Error creating snapshot:', error);
+    log.error('Error creating snapshot:', error);
     res.status(500).json({ error: 'Failed to create snapshot' });
   }
 });
@@ -389,7 +392,7 @@ router.get('/snapshots/:layoutId', async (req: Request, res: Response) => {
 
     res.json({ data: snapshots });
   } catch (error) {
-    console.error('Error fetching snapshots:', error);
+    log.error('Error fetching snapshots:', error);
     res.status(500).json({ error: 'Failed to fetch snapshots' });
   }
 });

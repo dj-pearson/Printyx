@@ -7,6 +7,9 @@ import { Request, Response, NextFunction } from 'express';
 import { db } from './db';
 import { users, roles, locations, regions } from '../shared/schema';
 import { eq, and, inArray } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('reporting-rbac-middleware');
+
 
 // =====================================================================
 // ENHANCED USER CONTEXT FOR REPORTING
@@ -294,7 +297,7 @@ export const enhanceUserContext = async (
     req.user = enhancedUser;
     next();
   } catch (error) {
-    console.error('Error enhancing user context:', error);
+    log.error('Error enhancing user context:', error);
     res.status(500).json({ error: 'Failed to authenticate user' });
   }
 };

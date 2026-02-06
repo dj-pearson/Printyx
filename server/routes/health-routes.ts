@@ -2,23 +2,26 @@
  * Health Endpoints for Kubernetes/Orchestration
  *
  * These endpoints provide health checks for container orchestration platforms:
- * - /health - Comprehensive health check with dependency status
- * - /ready - Readiness probe (can the app handle traffic?)
- * - /live - Liveness probe (is the app alive?)
+ * - /health - Basic health check with version and uptime
+ * - /ready - Readiness probe (database AND Redis reachable)
+ * - /live - Liveness probe (event loop responsive)
+ * - /health/detailed - Detailed metrics (platform admin only)
  *
  * Standards:
  * - Returns 200 for healthy, 503 for unhealthy
  * - Kubernetes probes use /ready and /live
- * - /health provides detailed status for monitoring dashboards
+ * - /health/detailed provides detailed status for monitoring dashboards
  */
 
 import type { Express, Request, Response } from 'express';
-import { pool } from '../db';
+import { pool, getDbHealth } from '../db';
 import { getMonitoringHealth, getQueryStats } from '../lib/monitoring';
-import { checkJwtConfiguration, type JwtConfigStatus } from '../lib/env-validation';
-
-// Track server start time for uptime calculation
-const serverStartTime = Date.now();
+import { checkJwtConfiguration } from '../lib/env-validation';
+import { getCacheSync } from '../lib/redis-client';
+import { requireSupabaseAuth as requireAuth } from '../middleware/supabase-auth';
+import { isPlatformAdmin } from '../utils/auth-helpers';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('health-routes');
 
 // Track last successful database check
 let lastDbCheckTime = 0;
@@ -44,7 +47,6 @@ async function checkDatabaseHealth(): Promise<{
 
   const startTime = Date.now();
   try {
-    // Simple query to verify database connectivity
     const result = await pool.query('SELECT 1 as health_check');
     const responseTimeMs = Date.now() - startTime;
 
@@ -69,21 +71,26 @@ async function checkDatabaseHealth(): Promise<{
 }
 
 /**
+ * Check Redis/cache connectivity
+ */
+function checkRedisHealth(): { healthy: boolean; type: string } {
+  try {
+    const cache = getCacheSync();
+    return {
+      healthy: cache.isConnected(),
+      type: cache.isConnected() ? 'redis' : 'memory',
+    };
+  } catch {
+    return { healthy: false, type: 'unavailable' };
+  }
+}
+
+/**
  * Get system resource metrics
  */
-function getSystemMetrics(): {
-  uptimeSeconds: number;
-  memoryUsageMB: {
-    heapUsed: number;
-    heapTotal: number;
-    external: number;
-    rss: number;
-  };
-  cpuUsage: NodeJS.CpuUsage;
-} {
+function getSystemMetrics() {
   const memoryUsage = process.memoryUsage();
   return {
-    uptimeSeconds: Math.floor((Date.now() - serverStartTime) / 1000),
     memoryUsageMB: {
       heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024),
       heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),
@@ -95,107 +102,126 @@ function getSystemMetrics(): {
 }
 
 /**
- * Health check response type
- */
-interface HealthCheckResponse {
-  status: 'healthy' | 'degraded' | 'unhealthy';
-  timestamp: string;
-  version: string;
-  environment: string;
-  uptime: number;
-  checks: {
-    database: {
-      status: 'healthy' | 'unhealthy';
-      responseTimeMs: number;
-      error?: string;
-    };
-    jwt: {
-      status: 'healthy' | 'degraded' | 'unhealthy';
-      configured: boolean;
-      components: {
-        supabaseUrl: boolean;
-        anonKey: boolean;
-        jwtSecret: boolean;
-        serviceRoleKey: boolean;
-      };
-      errors?: string[];
-    };
-    monitoring: {
-      status: 'healthy' | 'degraded';
-      initialized: boolean;
-      apm: { enabled: boolean; provider?: string };
-      logging: { level: string; transport?: string };
-    };
-    memory: {
-      status: 'healthy' | 'warning' | 'critical';
-      heapUsedMB: number;
-      heapTotalMB: number;
-      percentUsed: number;
-    };
-  };
-  queryStats?: ReturnType<typeof getQueryStats>;
-}
-
-/**
  * Register health endpoints
  */
 export function registerHealthRoutes(app: Express): void {
   /**
-   * Comprehensive health check
-   * Returns detailed status of all system components
-   * Used by monitoring dashboards and load balancers
+   * GET /health - Basic health check
+   * Returns { status: 'ok', version, uptime, timestamp }
    */
-  app.get('/health', async (_req: Request, res: Response) => {
+  app.get('/health', (_req: Request, res: Response) => {
+    res.status(200).json({
+      status: 'ok',
+      version: process.env.APP_VERSION || process.env.npm_package_version || '1.0.0',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  /**
+   * GET /ready - Readiness probe
+   * Returns 200 only when database AND Redis are reachable
+   * Returns 503 with degraded status otherwise
+   */
+  app.get('/ready', async (_req: Request, res: Response) => {
     const dbHealth = await checkDatabaseHealth();
+    const redisHealth = checkRedisHealth();
+
+    const dbOk = dbHealth.healthy;
+    const redisOk = redisHealth.healthy;
+    const allOk = dbOk && redisOk;
+
+    if (allOk) {
+      res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        checks: {
+          database: 'ok',
+          redis: 'ok',
+        },
+      });
+    } else {
+      res.status(503).json({
+        status: 'degraded',
+        timestamp: new Date().toISOString(),
+        checks: {
+          database: dbOk ? 'ok' : 'fail',
+          redis: redisOk ? 'ok' : 'fail',
+        },
+      });
+    }
+  });
+
+  /**
+   * GET /live - Liveness probe
+   * Returns 200 if the event loop is responsive (not deadlocked)
+   */
+  app.get('/live', (_req: Request, res: Response) => {
+    // If this handler executes, the event loop is responsive
+    res.status(200).json({
+      status: 'alive',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+    });
+  });
+
+  /**
+   * GET /health/detailed - Detailed health metrics (platform admin only)
+   * Returns memory usage, CPU, connection pool stats, WebSocket count, queue depths
+   */
+  app.get('/health/detailed', requireAuth, async (req: Request, res: Response) => {
+    if (!isPlatformAdmin(req)) {
+      return res.status(403).json({ message: 'Platform admin access required' });
+    }
+
+    const dbHealth = await checkDatabaseHealth();
+    const redisHealth = checkRedisHealth();
     const jwtConfig = checkJwtConfiguration();
     const monitoringHealth = getMonitoringHealth();
     const systemMetrics = getSystemMetrics();
+    const dbHealthStats = getDbHealth();
+
+    // Get WebSocket client count dynamically
+    let activeWebSocketCount = 0;
+    try {
+      const { webSocketService } = await import('../websocket-service');
+      activeWebSocketCount = webSocketService.getConnectedClients();
+    } catch {
+      // WebSocket service may not be initialized
+    }
 
     const memoryPercent = Math.round(
       (systemMetrics.memoryUsageMB.heapUsed / systemMetrics.memoryUsageMB.heapTotal) * 100,
     );
 
-    // Determine memory health status
-    let memoryStatus: 'healthy' | 'warning' | 'critical' = 'healthy';
-    if (memoryPercent > 90) {
-      memoryStatus = 'critical';
-    } else if (memoryPercent > 80) {
-      memoryStatus = 'warning';
-    }
-
-    // Determine JWT health status
-    const isProduction = process.env.NODE_ENV === 'production';
-    let jwtStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
-    if (!jwtConfig.configured) {
-      jwtStatus = isProduction ? 'unhealthy' : 'degraded';
-    }
-
-    // Determine overall status
-    let overallStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
-    if (!dbHealth.healthy || (isProduction && !jwtConfig.configured)) {
-      overallStatus = 'unhealthy';
-    } else if (
-      memoryStatus === 'critical' ||
-      !monitoringHealth.initialized ||
-      !jwtConfig.configured
-    ) {
-      overallStatus = 'degraded';
-    }
-
-    const response: HealthCheckResponse = {
-      status: overallStatus,
+    res.status(200).json({
+      status: 'ok',
       timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || '1.0.0',
+      version: process.env.APP_VERSION || process.env.npm_package_version || '1.0.0',
+      uptime: process.uptime(),
       environment: process.env.NODE_ENV || 'development',
-      uptime: systemMetrics.uptimeSeconds,
+      memory: {
+        ...systemMetrics.memoryUsageMB,
+        percentUsed: memoryPercent,
+      },
+      cpu: systemMetrics.cpuUsage,
+      connectionPool: dbHealthStats.poolStats,
+      activeWebSocketCount,
+      queueDepths: {
+        dbWaiting: dbHealthStats.poolStats.waitingCount,
+      },
       checks: {
         database: {
-          status: dbHealth.healthy ? 'healthy' : 'unhealthy',
+          status: dbHealth.healthy ? 'ok' : 'fail',
           responseTimeMs: dbHealth.responseTimeMs,
+          circuitState: dbHealthStats.circuitState,
           ...(dbHealth.error && { error: dbHealth.error }),
         },
+        redis: {
+          status: redisHealth.healthy ? 'ok' : 'fail',
+          type: redisHealth.type,
+        },
         jwt: {
-          status: jwtStatus,
           configured: jwtConfig.configured,
           components: {
             supabaseUrl: jwtConfig.supabaseUrl,
@@ -203,80 +229,21 @@ export function registerHealthRoutes(app: Express): void {
             jwtSecret: jwtConfig.jwtSecret,
             serviceRoleKey: jwtConfig.serviceRoleKey,
           },
-          ...(jwtConfig.errors.length > 0 && { errors: jwtConfig.errors }),
         },
         monitoring: {
-          status: monitoringHealth.initialized ? 'healthy' : 'degraded',
           initialized: monitoringHealth.initialized,
           apm: monitoringHealth.apm,
           logging: monitoringHealth.logging,
         },
-        memory: {
-          status: memoryStatus,
-          heapUsedMB: systemMetrics.memoryUsageMB.heapUsed,
-          heapTotalMB: systemMetrics.memoryUsageMB.heapTotal,
-          percentUsed: memoryPercent,
-        },
       },
-    };
-
-    // Include query stats in non-production environments
-    if (process.env.NODE_ENV !== 'production') {
-      response.queryStats = getQueryStats();
-    }
-
-    const statusCode = overallStatus === 'unhealthy' ? 503 : 200;
-    res.status(statusCode).json(response);
-  });
-
-  /**
-   * Readiness probe
-   * Returns 200 if the app is ready to handle traffic
-   * Used by Kubernetes to determine if pod should receive traffic
-   */
-  app.get('/ready', async (_req: Request, res: Response) => {
-    const dbHealth = await checkDatabaseHealth();
-
-    if (dbHealth.healthy) {
-      res.status(200).json({
-        status: 'ready',
-        timestamp: new Date().toISOString(),
-        checks: {
-          database: 'connected',
-        },
-      });
-    } else {
-      res.status(503).json({
-        status: 'not_ready',
-        timestamp: new Date().toISOString(),
-        checks: {
-          database: 'disconnected',
-        },
-        error: dbHealth.error,
-      });
-    }
-  });
-
-  /**
-   * Liveness probe
-   * Returns 200 if the app is alive (basic process health)
-   * Used by Kubernetes to determine if pod should be restarted
-   */
-  app.get('/live', (_req: Request, res: Response) => {
-    // Liveness should be a simple check that the process is responding
-    // It should NOT check external dependencies
-    res.status(200).json({
-      status: 'alive',
-      timestamp: new Date().toISOString(),
-      uptime: Math.floor((Date.now() - serverStartTime) / 1000),
+      queryStats: getQueryStats(),
     });
   });
 
   /**
    * Kubernetes-style healthz endpoint (alias for /health)
    */
-  app.get('/healthz', async (req: Request, res: Response) => {
-    // Forward to /health handler
+  app.get('/healthz', async (_req: Request, res: Response) => {
     const dbHealth = await checkDatabaseHealth();
     if (dbHealth.healthy) {
       res.status(200).json({ status: 'ok' });
@@ -288,7 +255,7 @@ export function registerHealthRoutes(app: Express): void {
   /**
    * Kubernetes-style readyz endpoint (alias for /ready)
    */
-  app.get('/readyz', async (req: Request, res: Response) => {
+  app.get('/readyz', async (_req: Request, res: Response) => {
     const dbHealth = await checkDatabaseHealth();
     if (dbHealth.healthy) {
       res.status(200).json({ status: 'ok' });

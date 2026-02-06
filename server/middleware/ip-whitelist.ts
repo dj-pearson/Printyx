@@ -7,6 +7,9 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('ip-whitelist');
+
 import {
   getSecuritySettings,
   updateSecuritySettings,
@@ -211,7 +214,7 @@ export async function getTenantIpConfig(tenantId: string): Promise<IpWhitelistCo
 
     return config;
   } catch (error) {
-    console.error('Failed to fetch tenant IP config:', error);
+    log.error('Failed to fetch tenant IP config:', error);
     return { ...DEFAULT_IP_CONFIG };
   }
 }
@@ -277,7 +280,7 @@ export function enforceIpWhitelist(options?: {
       if (!isAllowed) {
         // Log denied access
         if (config.logDenied) {
-          console.warn(
+          log.warn(
             `[IP WHITELIST] Access denied for IP: ${clientIp}, path: ${req.path}, tenant: ${tenantId || 'unknown'}`,
           );
         }
@@ -297,7 +300,7 @@ export function enforceIpWhitelist(options?: {
 
       next();
     } catch (error) {
-      console.error('IP whitelist check error:', error);
+      log.error('IP whitelist check error:', error);
       // Fail open in case of error (configurable)
       next();
     }
@@ -344,7 +347,7 @@ async function notifyIpDenied(
       });
     }
   } catch (error) {
-    console.error('Failed to send IP denied notification:', error);
+    log.error('Failed to send IP denied notification:', error);
   }
 }
 
@@ -449,7 +452,7 @@ export async function updateTenantIpWhitelist(
 
     return { success: true };
   } catch (error) {
-    console.error('Failed to update IP whitelist:', error);
+    log.error('Failed to update IP whitelist:', error);
     return {
       success: false,
       error: 'Failed to update IP whitelist settings',

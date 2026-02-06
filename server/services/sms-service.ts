@@ -1,4 +1,8 @@
 /**
+
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('sms-service');
+
  * SMS Service Adapter
  *
  * Provider-agnostic SMS service that supports multiple providers:
@@ -27,10 +31,10 @@ interface SMSProvider {
 
 class SimulationSMSProvider implements SMSProvider {
   async send(message: SMSMessage) {
-    console.log(`[SMS SIMULATION] Would send SMS:`);
-    console.log(`  To: ${message.to}`);
-    console.log(`  From: ${message.from || '+15551234567'}`);
-    console.log(`  Body: ${message.body}`);
+    log.info(`[SMS SIMULATION] Would send SMS:`);
+    log.info(`  To: ${message.to}`);
+    log.info(`  From: ${message.from || '+15551234567'}`);
+    log.info(`  Body: ${message.body}`);
 
     return {
       success: true,
@@ -61,15 +65,15 @@ class TwilioProvider implements SMSProvider {
         to: message.to,
       });
 
-      console.log(`[TWILIO] SMS sent successfully`);
-      console.log(`  To: ${message.to}, Body: ${message.body.substring(0, 50)}...`);
+      log.info(`[TWILIO] SMS sent successfully`);
+      log.info(`  To: ${message.to}, Body: ${message.body.substring(0, 50)}...`);
 
       return {
         success: true,
         messageId: result.sid,
       };
     } catch (error: any) {
-      console.error('[TWILIO] Error:', error);
+      log.error('[TWILIO] Error:', error);
       return {
         success: false,
         error: error.message,
@@ -113,15 +117,15 @@ class AWSSNSProvider implements SMSProvider {
         }),
       );
 
-      console.log(`[AWS SNS] SMS sent successfully`);
-      console.log(`  To: ${message.to}, Body: ${message.body.substring(0, 50)}...`);
+      log.info(`[AWS SNS] SMS sent successfully`);
+      log.info(`  To: ${message.to}, Body: ${message.body.substring(0, 50)}...`);
 
       return {
         success: true,
         messageId: result.MessageId,
       };
     } catch (error: any) {
-      console.error('[AWS SNS] Error:', error);
+      log.error('[AWS SNS] Error:', error);
       return {
         success: false,
         error: error.message,
@@ -146,7 +150,7 @@ export class SMSService {
           !process.env.TWILIO_AUTH_TOKEN ||
           !process.env.TWILIO_PHONE_NUMBER
         ) {
-          console.warn(
+          log.warn(
             '[SMS SERVICE] Twilio selected but credentials not set. Falling back to simulation.',
           );
           this.provider = new SimulationSMSProvider();
@@ -165,7 +169,7 @@ export class SMSService {
           !process.env.AWS_ACCESS_KEY_ID ||
           !process.env.AWS_SECRET_ACCESS_KEY
         ) {
-          console.warn(
+          log.warn(
             '[SMS SERVICE] AWS SNS selected but credentials not set. Falling back to simulation.',
           );
           this.provider = new SimulationSMSProvider();
@@ -184,14 +188,12 @@ export class SMSService {
         break;
     }
 
-    console.log(
-      `[SMS SERVICE] Initialized with provider: ${providerType}, enabled: ${this.enabled}`,
-    );
+    log.info(`[SMS SERVICE] Initialized with provider: ${providerType}, enabled: ${this.enabled}`);
   }
 
   async send(message: SMSMessage) {
     if (!this.enabled) {
-      console.log(`[SMS SERVICE] SMS sending is disabled. Message to ${message.to} not sent.`);
+      log.info(`[SMS SERVICE] SMS sending is disabled. Message to ${message.to} not sent.`);
       return {
         success: false,
         error: 'SMS service is disabled',
@@ -200,7 +202,7 @@ export class SMSService {
 
     // Validate phone number format (E.164)
     if (!message.to.match(/^\+[1-9]\d{1,14}$/)) {
-      console.error(
+      log.error(
         `[SMS SERVICE] Invalid phone number format: ${message.to}. Must be E.164 format (+1234567890)`,
       );
       return {

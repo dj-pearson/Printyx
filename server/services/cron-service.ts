@@ -6,6 +6,8 @@
  */
 
 import { TrialManagementService } from './trial-management-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('cron-service');
 
 export class CronService {
   private static jobs: any[] = [];
@@ -16,7 +18,7 @@ export class CronService {
    * Using native setInterval until node-cron is available
    */
   static initialize() {
-    console.log('[CRON] Initializing scheduled tasks with native timers...');
+    log.info('[CRON] Initializing scheduled tasks with native timers...');
 
     // Run trial email processing daily at 9 AM (using interval for now)
     // In production, this should use a proper cron library
@@ -26,12 +28,12 @@ export class CronService {
     // For development: Run trial processing every 6 hours
     if (process.env.NODE_ENV === 'development') {
       const sixHourInterval = setInterval(async () => {
-        console.log('[CRON DEV] Running trial check...');
+        log.info('[CRON DEV] Running trial check...');
         try {
           const results = await TrialManagementService.processTrialEmails();
-          console.log(`[CRON DEV] Trial emails: ${results.sent} sent`);
+          log.info(`[CRON DEV] Trial emails: ${results.sent} sent`);
         } catch (error) {
-          console.error('[CRON DEV] Error:', error);
+          log.error('[CRON DEV] Error:', error);
         }
       }, 6 * HOUR_IN_MS);
 
@@ -39,32 +41,30 @@ export class CronService {
     } else {
       // Production: Run once per day
       const dailyInterval = setInterval(async () => {
-        console.log('[CRON] Running trial email processing...');
+        log.info('[CRON] Running trial email processing...');
         try {
           const results = await TrialManagementService.processTrialEmails();
-          console.log(
-            `[CRON] Trial emails processed: ${results.sent} sent, ${results.errors} errors`,
-          );
+          log.info(`[CRON] Trial emails processed: ${results.sent} sent, ${results.errors} errors`);
         } catch (error) {
-          console.error('[CRON] Trial email processing failed:', error);
+          log.error('[CRON] Trial email processing failed:', error);
         }
       }, DAY_IN_MS);
 
       this.intervals.push(dailyInterval);
     }
 
-    console.log(`[CRON] Initialized ${this.intervals.length} scheduled tasks`);
+    log.info(`[CRON] Initialized ${this.intervals.length} scheduled tasks`);
   }
 
   /**
    * Stop all cron jobs
    */
   static shutdown() {
-    console.log('[CRON] Stopping all scheduled tasks...');
+    log.info('[CRON] Stopping all scheduled tasks...');
     this.intervals.forEach((interval) => clearInterval(interval));
     this.intervals = [];
     this.jobs = [];
-    console.log('[CRON] All tasks stopped');
+    log.info('[CRON] All tasks stopped');
   }
 
   /**

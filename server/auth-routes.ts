@@ -11,6 +11,8 @@ import { randomBytes } from 'crypto';
 import { EmailTemplates } from './services/email-templates';
 import { emailService } from './services/email-service';
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('auth-routes');
 
 const router = express.Router();
 
@@ -185,7 +187,7 @@ async function recordFailedLoginAttempt(
   let lockedUntil: Date | null = null;
   if (newAttemptCount >= MAX_LOGIN_ATTEMPTS) {
     lockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_MINUTES * 60 * 1000);
-    console.log(
+    log.info(
       `[SECURITY] Account locked for email: ${normalizedEmail} until ${lockedUntil.toISOString()}`,
     );
   }
@@ -233,7 +235,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     // SECURITY: Check if account is locked before attempting authentication
     const lockStatus = await isAccountLocked(email);
     if (lockStatus.locked) {
-      console.log(`[SECURITY] Blocked login attempt for locked account: ${email}`);
+      log.info(`[SECURITY] Blocked login attempt for locked account: ${email}`);
       return res.status(429).json({
         message: `Account is temporarily locked. Please try again in ${lockStatus.remainingMinutes} minute(s).`,
         locked: true,
@@ -292,7 +294,7 @@ router.post('/login', loginLimiter, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Login error:', error);
+    log.error('Login error:', error);
     res.status(400).json({ message: 'Invalid request' });
   }
 });
@@ -301,7 +303,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 router.post('/logout', (req, res) => {
   req.session.destroy((err) => {
     if (err) {
-      console.error('Logout error:', err);
+      log.error('Logout error:', err);
       return res.status(500).json({ message: 'Failed to logout' });
     }
     res.clearCookie('connect.sid');
@@ -324,7 +326,7 @@ const getCurrentUserHandler = async (req: any, res: any) => {
     // SECURITY: Both TEST_AUTH_SECRET and DEMO_TENANT_ID must be explicitly set
     if (isTestMode && testAuthSecret && req.headers['x-test-auth'] === testAuthSecret) {
       if (!demoTenantId) {
-        console.error('[SECURITY] Test mode requires DEMO_TENANT_ID to be set');
+        log.error('[SECURITY] Test mode requires DEMO_TENANT_ID to be set');
         return res.status(500).json({ message: 'Test mode configuration error' });
       }
 
@@ -393,7 +395,7 @@ const getCurrentUserHandler = async (req: any, res: any) => {
       tenant_id: user.tenantId,
     });
   } catch (error) {
-    console.error('Get user error:', error);
+    log.error('Get user error:', error);
     res.status(500).json({ message: 'Failed to get user' });
   }
 };
@@ -495,7 +497,7 @@ router.post('/signup', signupLimiter, async (req, res) => {
       text: emailTemplate.text,
     });
 
-    console.log(`[SIGNUP] New account created: ${user.email} (tenant: ${tenant.id})`);
+    log.info(`[SIGNUP] New account created: ${user.email} (tenant: ${tenant.id})`);
 
     res.json({
       message: 'Account created successfully! Please check your email to verify your account.',
@@ -505,7 +507,7 @@ router.post('/signup', signupLimiter, async (req, res) => {
       requiresVerification: true,
     });
   } catch (error) {
-    console.error('Signup error:', error);
+    log.error('Signup error:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         message: 'Invalid signup data',
@@ -574,7 +576,7 @@ router.post('/verify-email', async (req, res) => {
     req.session.userId = user.id;
     req.session.tenantId = user.tenantId || undefined;
 
-    console.log(`[EMAIL VERIFICATION] Email verified for user: ${user.id}`);
+    log.info(`[EMAIL VERIFICATION] Email verified for user: ${user.id}`);
 
     res.json({
       message: 'Email verified successfully!',
@@ -587,7 +589,7 @@ router.post('/verify-email', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Email verification error:', error);
+    log.error('Email verification error:', error);
     res.status(500).json({ message: 'Failed to verify email' });
   }
 });
@@ -653,7 +655,7 @@ router.post('/resend-verification', async (req, res) => {
       message: 'Verification email sent successfully',
     });
   } catch (error) {
-    console.error('Resend verification error:', error);
+    log.error('Resend verification error:', error);
     res.status(500).json({ message: 'Failed to resend verification email' });
   }
 });
@@ -680,7 +682,7 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
 
     // If user doesn't exist, return success anyway (security best practice)
     if (!user) {
-      console.log(`[PASSWORD RESET] No user found for email: ${email}`);
+      log.info(`[PASSWORD RESET] No user found for email: ${email}`);
       return res.json(successResponse);
     }
 
@@ -712,10 +714,10 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
       text: emailTemplate.text,
     });
 
-    console.log(`[PASSWORD RESET] Reset email sent to: ${email}`);
+    log.info(`[PASSWORD RESET] Reset email sent to: ${email}`);
     res.json(successResponse);
   } catch (error) {
-    console.error('Forgot password error:', error);
+    log.error('Forgot password error:', error);
     res.status(400).json({ message: 'Invalid request' });
   }
 });
@@ -752,7 +754,7 @@ router.get('/verify-reset-token/:token', async (req, res) => {
       message: 'Token is valid',
     });
   } catch (error) {
-    console.error('Verify reset token error:', error);
+    log.error('Verify reset token error:', error);
     res.status(500).json({ message: 'Failed to verify token' });
   }
 });
@@ -816,13 +818,13 @@ router.post('/reset-password', async (req, res) => {
       text: emailTemplate.text,
     });
 
-    console.log(`[PASSWORD RESET] Password changed for user: ${user.id}`);
+    log.info(`[PASSWORD RESET] Password changed for user: ${user.id}`);
 
     res.json({
       message: 'Password has been reset successfully',
     });
   } catch (error) {
-    console.error('Reset password error:', error);
+    log.error('Reset password error:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         message: 'Invalid request',

@@ -6,6 +6,8 @@
 
 import { Router, Request, Response } from 'express';
 import ContentGapAnalysisService from '../services/content-gap-analysis-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('content-gap-analysis-routes');
 
 const router = Router();
 
@@ -45,7 +47,7 @@ router.get('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
 
-    console.log('🔍 Generating content gap analysis for tenant:', tenantId);
+    log.info('🔍 Generating content gap analysis for tenant:', tenantId);
 
     const report = await ContentGapAnalysisService.generateAnalysis(tenantId);
 
@@ -54,7 +56,7 @@ router.get('/', requireAdmin, async (req: Request, res: Response) => {
       report,
     });
   } catch (error) {
-    console.error('Content gap analysis failed:', error);
+    log.error('Content gap analysis failed:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to generate content gap analysis',
@@ -85,7 +87,7 @@ router.get('/summary', requireAdmin, async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Content gap summary failed:', error);
+    log.error('Content gap summary failed:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to generate content gap summary',
@@ -127,7 +129,7 @@ router.get(
         totalGaps: categoryGaps.length,
       });
     } catch (error) {
-      console.error('Category content gap analysis failed:', error);
+      log.error('Category content gap analysis failed:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to analyze category content gaps',
@@ -164,7 +166,7 @@ router.get('/priorities', requireAdmin, async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Priority-based content gap analysis failed:', error);
+    log.error('Priority-based content gap analysis failed:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to analyze content gaps by priority',
@@ -180,7 +182,7 @@ router.post('/refresh', requireAdmin, async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
 
-    console.log('🔄 Refreshing content gap analysis for tenant:', tenantId);
+    log.info('🔄 Refreshing content gap analysis for tenant:', tenantId);
 
     // Force fresh analysis
     const report = await ContentGapAnalysisService.generateAnalysis(tenantId);
@@ -191,7 +193,7 @@ router.post('/refresh', requireAdmin, async (req: Request, res: Response) => {
       report,
     });
   } catch (error) {
-    console.error('Content gap refresh failed:', error);
+    log.error('Content gap refresh failed:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to refresh content gap analysis',

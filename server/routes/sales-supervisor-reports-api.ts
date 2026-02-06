@@ -4,6 +4,9 @@
 // =====================================================================
 
 import { Router, Response } from 'express';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('sales-supervisor-reports-api');
+
 import {
   enhanceUserContext,
   requirePermission,
@@ -54,7 +57,7 @@ router.get(
 
       res.json(result);
     } catch (error: any) {
-      console.error('Error fetching location pipeline overview:', error);
+      log.error('Error fetching location pipeline overview:', error);
       res
         .status(500)
         .json({ error: 'Failed to fetch location pipeline overview', details: error.message });
@@ -118,7 +121,7 @@ router.get(
         insights,
       });
     } catch (error: any) {
-      console.error('Error fetching location performance:', error);
+      log.error('Error fetching location performance:', error);
       res
         .status(500)
         .json({ error: 'Failed to fetch location performance', details: error.message });
@@ -173,7 +176,7 @@ router.get(
         insights,
       });
     } catch (error: any) {
-      console.error('Error fetching location quota:', error);
+      log.error('Error fetching location quota:', error);
       res.status(500).json({ error: 'Failed to fetch location quota', details: error.message });
     }
   },
@@ -236,7 +239,7 @@ router.get(
         insights,
       });
     } catch (error: any) {
-      console.error('Error fetching location activity:', error);
+      log.error('Error fetching location activity:', error);
       res.status(500).json({ error: 'Failed to fetch location activity', details: error.message });
     }
   },
@@ -268,7 +271,7 @@ router.post(
         pattern: pattern || 'all',
       });
     } catch (error: any) {
-      console.error('Error invalidating cache:', error);
+      log.error('Error invalidating cache:', error);
       res.status(500).json({ error: 'Failed to invalidate cache', details: error.message });
     }
   },

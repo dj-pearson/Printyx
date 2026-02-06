@@ -1,6 +1,9 @@
 import type { Express } from 'express';
 import { db } from './db';
 import { autoLeadRoutingService } from './services/auto-lead-routing-service';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-auto-lead-routing');
+
 import {
   platformLeadAssignmentHistory as leadAssignmentHistory,
   platformLeadScoreCalculations as leadScoreCalculations,
@@ -33,11 +36,11 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         return res.status(400).json({ error: 'Tenant ID required' });
       }
 
-      console.log(`🤖 Auto-routing lead ${leadId} for tenant ${tenantId}...`);
+      log.info(`🤖 Auto-routing lead ${leadId} for tenant ${tenantId}...`);
 
       const result = await autoLeadRoutingService.routeLeadAutomatically(leadId, tenantId);
 
-      console.log(`✅ Lead routed in ${result.processingTimeMs}ms to ${result.assignedRepName}`);
+      log.info(`✅ Lead routed in ${result.processingTimeMs}ms to ${result.assignedRepName}`);
 
       res.json({
         success: true,
@@ -45,7 +48,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         data: result,
       });
     } catch (error: any) {
-      console.error('Auto-routing failed:', error);
+      log.error('Auto-routing failed:', error);
       res.status(500).json({
         success: false,
         error: error.message || 'Failed to route lead',
@@ -69,7 +72,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         return res.status(400).json({ error: 'leadIds array required' });
       }
 
-      console.log(`🤖 Batch routing ${leadIds.length} leads...`);
+      log.info(`🤖 Batch routing ${leadIds.length} leads...`);
 
       const results = [];
       const errors = [];
@@ -91,7 +94,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         errors,
       });
     } catch (error: any) {
-      console.error('Batch routing failed:', error);
+      log.error('Batch routing failed:', error);
       res.status(500).json({
         success: false,
         error: error.message || 'Failed to route leads',
@@ -226,7 +229,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         recentLeads,
       });
     } catch (error: any) {
-      console.error('Failed to fetch dashboard:', error);
+      log.error('Failed to fetch dashboard:', error);
       res.status(500).json({
         error: 'Failed to fetch dashboard data',
       });
@@ -260,7 +263,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         escalateAfterMinutes: 60,
       });
     } catch (error: any) {
-      console.error('Failed to fetch config:', error);
+      log.error('Failed to fetch config:', error);
       res.status(500).json({
         error: 'Failed to fetch configuration',
       });
@@ -281,7 +284,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
       const config = req.body;
 
       // TODO: Save to tenant settings table
-      console.log('📝 Updating auto-routing config:', config);
+      log.info('📝 Updating auto-routing config:', config);
 
       res.json({
         success: true,
@@ -289,7 +292,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         config,
       });
     } catch (error: any) {
-      console.error('Failed to update config:', error);
+      log.error('Failed to update config:', error);
       res.status(500).json({
         error: 'Failed to update configuration',
       });
@@ -330,7 +333,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
         previewOnly: true,
       });
     } catch (error: any) {
-      console.error('Preview failed:', error);
+      log.error('Preview failed:', error);
       res.status(500).json({
         error: 'Failed to generate preview',
       });

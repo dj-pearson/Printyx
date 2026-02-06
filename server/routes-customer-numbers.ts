@@ -4,6 +4,8 @@ import { storage } from './storage';
 import { db } from './db';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-customer-numbers');
 
 // Simple auth middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -176,7 +178,7 @@ router.get('/config', async (req: any, res) => {
 
     res.json(configs);
   } catch (error) {
-    console.error('Error fetching customer number config:', error);
+    log.error('Error fetching customer number config:', error);
     res.status(500).json({ error: 'Failed to fetch configuration' });
   }
 });
@@ -203,7 +205,7 @@ router.post('/config', async (req: any, res) => {
 
     res.json(config);
   } catch (error) {
-    console.error('Error creating customer number config:', error);
+    log.error('Error creating customer number config:', error);
     res.status(500).json({ error: 'Failed to create configuration' });
   }
 });
@@ -244,7 +246,7 @@ router.put('/config/:id', async (req: any, res) => {
 
     res.json(updated);
   } catch (error) {
-    console.error('Error updating customer number config:', error);
+    log.error('Error updating customer number config:', error);
     res.status(500).json({ error: 'Failed to update configuration' });
   }
 });
@@ -259,7 +261,7 @@ router.post('/generate', async (req: any, res) => {
 
     res.json({ customerNumber });
   } catch (error) {
-    console.error('Error generating customer number:', error);
+    log.error('Error generating customer number:', error);
     res.status(500).json({ error: 'Failed to generate customer number' });
   }
 });
@@ -302,7 +304,7 @@ router.post('/assign', async (req: any, res) => {
 
     res.json({ success: true, customerNumber, customerId });
   } catch (error) {
-    console.error('Error assigning customer number:', error);
+    log.error('Error assigning customer number:', error);
     res.status(500).json({ error: 'Failed to assign customer number' });
   }
 });
@@ -322,7 +324,7 @@ router.post('/convert-lead/:leadId', async (req: any, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Error converting lead to customer:', error);
+    log.error('Error converting lead to customer:', error);
     res.status(500).json({ error: 'Failed to convert lead to customer' });
   }
 });
@@ -348,7 +350,7 @@ router.get('/history', async (req: any, res) => {
 
     res.json(history);
   } catch (error) {
-    console.error('Error fetching customer number history:', error);
+    log.error('Error fetching customer number history:', error);
     res.status(500).json({ error: 'Failed to fetch history' });
   }
 });
@@ -371,7 +373,7 @@ router.post('/preview', async (req: any, res) => {
       ],
     });
   } catch (error) {
-    console.error('Error previewing customer number:', error);
+    log.error('Error previewing customer number:', error);
     res.status(500).json({ error: 'Failed to preview customer number' });
   }
 });

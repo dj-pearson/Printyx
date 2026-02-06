@@ -7,6 +7,8 @@ import { isAuthenticated } from '../replitAuth';
 import { createApolloClientForTenant } from '../apollo-client';
 import { apolloStorage } from '../apollo-storage';
 import crypto from 'crypto';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('chrome-extension-routes');
 
 const router = express.Router();
 
@@ -101,7 +103,7 @@ async function enrichViaApollo(
 
     return null;
   } catch (error: any) {
-    console.error('Apollo enrichment error:', error.message);
+    log.error('Apollo enrichment error:', error.message);
     return null;
   }
 }
@@ -222,7 +224,7 @@ router.post('/leads/quick-import', isAuthenticated, async (req: any, res) => {
       lastName = lastName || parsed.lastName;
     }
 
-    console.log(`[Chrome Extension] Quick import request:`, {
+    log.info(`[Chrome Extension] Quick import request:`, {
       name: data.name,
       company: data.company,
       linkedinUrl: data.linkedinUrl,
@@ -238,7 +240,7 @@ router.post('/leads/quick-import', isAuthenticated, async (req: any, res) => {
     });
 
     if (duplicateCheck.exists) {
-      console.log(`[Chrome Extension] Duplicate found via ${duplicateCheck.matchType}`);
+      log.info(`[Chrome Extension] Duplicate found via ${duplicateCheck.matchType}`);
       return res.json({
         success: true,
         alreadyExists: true,
@@ -262,10 +264,10 @@ router.post('/leads/quick-import', isAuthenticated, async (req: any, res) => {
 
       if (enrichedData) {
         enrichmentSource = 'apollo';
-        console.log(`[Chrome Extension] Enriched via Apollo.io - found email:`, enrichedData.email);
+        log.info(`[Chrome Extension] Enriched via Apollo.io - found email:`, enrichedData.email);
       }
     } catch (error: any) {
-      console.log(`[Chrome Extension] Apollo enrichment not available:`, error.message);
+      log.info(`[Chrome Extension] Apollo enrichment not available:`, error.message);
       // Continue without enrichment
     }
 
@@ -310,7 +312,7 @@ router.post('/leads/quick-import', isAuthenticated, async (req: any, res) => {
 
     const [businessRecord] = await db.insert(businessRecords).values(recordData).returning();
 
-    console.log(`[Chrome Extension] Created business record:`, businessRecord.id);
+    log.info(`[Chrome Extension] Created business record:`, businessRecord.id);
 
     // Step 4: Track in Apollo if enriched
     if (enrichmentSource === 'apollo' && enrichedData?.apolloId) {
@@ -350,7 +352,7 @@ router.post('/leads/quick-import', isAuthenticated, async (req: any, res) => {
           addedBy: userId,
         });
       } catch (storageError) {
-        console.error('[Chrome Extension] Failed to track in Apollo storage:', storageError);
+        log.error('[Chrome Extension] Failed to track in Apollo storage:', storageError);
         // Non-critical error, continue
       }
     }
@@ -376,7 +378,7 @@ router.post('/leads/quick-import', isAuthenticated, async (req: any, res) => {
           : 'Contact added successfully (enrichment not available)',
     });
   } catch (error: any) {
-    console.error('[Chrome Extension] Quick import error:', error);
+    log.error('[Chrome Extension] Quick import error:', error);
 
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -427,7 +429,7 @@ router.get('/leads/check-duplicate', isAuthenticated, async (req: any, res) => {
         : null,
     });
   } catch (error: any) {
-    console.error('[Chrome Extension] Duplicate check error:', error);
+    log.error('[Chrome Extension] Duplicate check error:', error);
 
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -480,7 +482,7 @@ router.post('/auth/generate-key', isAuthenticated, async (req: any, res) => {
       warning: 'This key will only be shown once. Store it securely in the Chrome extension.',
     });
   } catch (error: any) {
-    console.error('[Chrome Extension] API key generation error:', error);
+    log.error('[Chrome Extension] API key generation error:', error);
     return res.status(500).json({
       error: 'Failed to generate API key',
       message: error.message,

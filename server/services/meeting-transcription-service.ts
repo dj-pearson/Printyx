@@ -6,6 +6,8 @@
 import { db } from '../db';
 import ClaudeAIService from './claude-ai-service';
 import { eq, and, sql, desc, asc } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('meeting-transcription-service');
 
 interface MeetingRecording {
   id: string;
@@ -168,7 +170,7 @@ class MeetingTranscriptionService {
       recordingSource?: string;
     } = {},
   ): Promise<MeetingRecording> {
-    console.log('🎥 Uploading meeting recording for meeting:', meetingId);
+    log.info('🎥 Uploading meeting recording for meeting:', meetingId);
 
     try {
       // Mock file upload - in production, this would upload to cloud storage
@@ -197,10 +199,10 @@ class MeetingTranscriptionService {
         await this.processRecording(recording.id);
       }
 
-      console.log('✅ Recording uploaded successfully:', recording.id);
+      log.info('✅ Recording uploaded successfully:', recording.id);
       return recording;
     } catch (error) {
-      console.error('Failed to upload recording:', error);
+      log.error('Failed to upload recording:', error);
       throw error;
     }
   }
@@ -213,7 +215,7 @@ class MeetingTranscriptionService {
     notes?: MeetingNotes;
     highlights?: MeetingHighlight[];
   }> {
-    console.log('⚙️ Processing meeting recording:', recordingId);
+    log.info('⚙️ Processing meeting recording:', recordingId);
 
     try {
       // Step 1: Generate transcription
@@ -232,10 +234,10 @@ class MeetingTranscriptionService {
         aiAnalysisStatus: 'completed',
       });
 
-      console.log('✅ Recording processing completed:', recordingId);
+      log.info('✅ Recording processing completed:', recordingId);
       return { transcription, notes, highlights };
     } catch (error) {
-      console.error('Recording processing failed:', error);
+      log.error('Recording processing failed:', error);
       await this.updateRecordingStatus(recordingId, {
         processingStatus: 'failed',
         transcriptionStatus: 'failed',
@@ -249,7 +251,7 @@ class MeetingTranscriptionService {
    * Generate transcription from recording
    */
   private async generateTranscription(recordingId: string): Promise<MeetingTranscription> {
-    console.log('🎤 Generating transcription for recording:', recordingId);
+    log.info('🎤 Generating transcription for recording:', recordingId);
 
     // Mock transcription generation - in production, this would use OpenAI Whisper, Google Speech, etc.
     const mockSegments: TranscriptionSegment[] = [
@@ -348,7 +350,7 @@ class MeetingTranscriptionService {
       contentCategories: ['business_planning', 'performance_review', 'strategy_discussion'],
     };
 
-    console.log('✅ Transcription generated with', mockSegments.length, 'segments');
+    log.info('✅ Transcription generated with', mockSegments.length, 'segments');
     return transcription;
   }
 
@@ -356,7 +358,7 @@ class MeetingTranscriptionService {
    * Generate AI-powered meeting notes
    */
   private async generateMeetingNotes(transcription: MeetingTranscription): Promise<MeetingNotes> {
-    console.log('📝 Generating AI meeting notes...');
+    log.info('📝 Generating AI meeting notes...');
 
     try {
       const notesPrompt = `Generate comprehensive meeting notes from this transcription:
@@ -471,10 +473,10 @@ Return JSON format:
         createdBy: 'ai-assistant',
       };
 
-      console.log('✅ AI meeting notes generated successfully');
+      log.info('✅ AI meeting notes generated successfully');
       return notes;
     } catch (error) {
-      console.error('AI notes generation failed:', error);
+      log.error('AI notes generation failed:', error);
       // Return fallback notes
       return this.generateFallbackNotes(transcription);
     }
@@ -487,7 +489,7 @@ Return JSON format:
     transcription: MeetingTranscription,
     notes: MeetingNotes,
   ): Promise<MeetingHighlight[]> {
-    console.log('✨ Extracting meeting highlights...');
+    log.info('✨ Extracting meeting highlights...');
 
     try {
       const highlightsPrompt = `Extract key highlights from this meeting:
@@ -567,10 +569,10 @@ Return JSON array:
         }),
       );
 
-      console.log(`✅ Extracted ${highlights.length} meeting highlights`);
+      log.info(`✅ Extracted ${highlights.length} meeting highlights`);
       return highlights;
     } catch (error) {
-      console.error('Highlight extraction failed:', error);
+      log.error('Highlight extraction failed:', error);
       return [];
     }
   }
@@ -602,7 +604,7 @@ Return JSON array:
     totalResults: number;
     searchTime: number;
   }> {
-    console.log('🔍 Searching meeting content:', query);
+    log.info('🔍 Searching meeting content:', query);
 
     const startTime = Date.now();
 
@@ -683,7 +685,7 @@ Return JSON array:
     insights: string[];
     recommendations: string[];
   }> {
-    console.log('📊 Generating meeting content analytics...');
+    log.info('📊 Generating meeting content analytics...');
 
     // Mock analytics - in production, this would aggregate from actual data
     return {
@@ -761,7 +763,7 @@ Return JSON array:
       speakingStyle: string;
     };
   }> {
-    console.log('🎙️ Generating speaker voice profile for user:', userId);
+    log.info('🎙️ Generating speaker voice profile for user:', userId);
 
     // Mock voice profile generation - in production, this would use voice recognition AI
     return {
@@ -790,7 +792,7 @@ Return JSON array:
       aiAnalysisStatus?: string;
     },
   ): Promise<void> {
-    console.log('📝 Updating recording status:', recordingId, status);
+    log.info('📝 Updating recording status:', recordingId, status);
     // In production, this would update the database
   }
 

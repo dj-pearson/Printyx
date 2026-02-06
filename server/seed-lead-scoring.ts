@@ -1,13 +1,15 @@
 import { storage } from './storage';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-lead-scoring');
 
 async function seedLeadScoring() {
-  console.log('🎯 Seeding lead scoring data...');
+  log.info('🎯 Seeding lead scoring data...');
 
   try {
     // Get test tenant and user
     const tenants = await storage.getAllTenants();
     if (tenants.length === 0) {
-      console.error('❌ No tenants found. Please create a tenant first.');
+      log.error('❌ No tenants found. Please create a tenant first.');
       return;
     }
 
@@ -15,10 +17,10 @@ async function seedLeadScoring() {
     const users = await storage.getUsers(tenantId);
     const userId = users.length > 0 ? users[0].id : 'system';
 
-    console.log(`✅ Using tenant: ${tenantId}`);
+    log.info(`✅ Using tenant: ${tenantId}`);
 
     // ==================== Seed Lead Scoring Rules ====================
-    console.log('📋 Seeding lead scoring rules...');
+    log.info('📋 Seeding lead scoring rules...');
 
     const scoringRules = [
       // Demographic Rules
@@ -179,10 +181,10 @@ async function seedLeadScoring() {
       });
     }
 
-    console.log(`✅ Created ${scoringRules.length} lead scoring rules`);
+    log.info(`✅ Created ${scoringRules.length} lead scoring rules`);
 
     // ==================== Create Sample Leads with Scores ====================
-    console.log('📋 Creating sample leads with scores...');
+    log.info('📋 Creating sample leads with scores...');
 
     // Get existing leads or create sample ones
     const existingLeads = await storage.getBusinessRecords(tenantId, 'lead');
@@ -320,14 +322,14 @@ async function seedLeadScoring() {
           }
         }
 
-        console.log(`✅ Created lead: ${leadData.companyName}`);
+        log.info(`✅ Created lead: ${leadData.companyName}`);
       }
     } else {
-      console.log(`✅ Using ${existingLeads.length} existing leads`);
+      log.info(`✅ Using ${existingLeads.length} existing leads`);
     }
 
     // ==================== Calculate Scores for All Leads ====================
-    console.log('📋 Calculating scores for all leads...');
+    log.info('📋 Calculating scores for all leads...');
 
     const allLeads = await storage.getBusinessRecords(tenantId, 'lead');
     let scoredCount = 0;
@@ -474,15 +476,15 @@ async function seedLeadScoring() {
 
         scoredCount++;
       } catch (error) {
-        console.error(`Error scoring lead ${lead.companyName}:`, error);
+        log.error(`Error scoring lead ${lead.companyName}:`, error);
       }
     }
 
-    console.log(`✅ Scored ${scoredCount} leads`);
+    log.info(`✅ Scored ${scoredCount} leads`);
 
-    console.log('✅ Lead scoring seeding completed successfully!');
+    log.info('✅ Lead scoring seeding completed successfully!');
   } catch (error) {
-    console.error('❌ Error seeding lead scoring:', error);
+    log.error('❌ Error seeding lead scoring:', error);
     throw error;
   }
 }
@@ -491,11 +493,11 @@ async function seedLeadScoring() {
 if (require.main === module) {
   seedLeadScoring()
     .then(() => {
-      console.log('✅ Seeding complete');
+      log.info('✅ Seeding complete');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ Seeding failed:', error);
+      log.error('❌ Seeding failed:', error);
       process.exit(1);
     });
 }

@@ -7,6 +7,8 @@
 import { Router, Request, Response } from 'express';
 import { apiKeyService } from '../services/api-key-service';
 import { createApiKeyRequestSchema, updateApiKeyRequestSchema } from '@shared/api-key-schema';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('api-key-routes');
 
 const router = Router();
 
@@ -42,7 +44,7 @@ router.post('/', async (req: Request, res: Response) => {
       message: 'Save this key securely. It will only be shown once.',
     });
   } catch (error: any) {
-    console.error('[API Key Routes] Error creating key:', error);
+    log.error('[API Key Routes] Error creating key:', error);
     res.status(500).json({ error: 'Failed to create API key' });
   }
 });
@@ -99,7 +101,7 @@ router.get('/', async (req: Request, res: Response) => {
       total: result.total,
     });
   } catch (error: any) {
-    console.error('[API Key Routes] Error listing keys:', error);
+    log.error('[API Key Routes] Error listing keys:', error);
     res.status(500).json({ error: 'Failed to list API keys' });
   }
 });
@@ -128,7 +130,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     res.json(safeKey);
   } catch (error: any) {
-    console.error('[API Key Routes] Error getting key:', error);
+    log.error('[API Key Routes] Error getting key:', error);
     res.status(500).json({ error: 'Failed to get API key' });
   }
 });
@@ -164,7 +166,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     const { keyHash, keySalt, ...safeKey } = apiKey;
     res.json(safeKey);
   } catch (error: any) {
-    console.error('[API Key Routes] Error updating key:', error);
+    log.error('[API Key Routes] Error updating key:', error);
     res.status(500).json({ error: 'Failed to update API key' });
   }
 });
@@ -192,7 +194,7 @@ router.post('/:id/revoke', async (req: Request, res: Response) => {
 
     res.json({ success: true, message: 'API key revoked' });
   } catch (error: any) {
-    console.error('[API Key Routes] Error revoking key:', error);
+    log.error('[API Key Routes] Error revoking key:', error);
     res.status(500).json({ error: 'Failed to revoke API key' });
   }
 });
@@ -227,7 +229,7 @@ router.post('/:id/rotate', async (req: Request, res: Response) => {
         'Key rotated. Save the new key securely. Old key will remain active during grace period.',
     });
   } catch (error: any) {
-    console.error('[API Key Routes] Error rotating key:', error);
+    log.error('[API Key Routes] Error rotating key:', error);
     res.status(500).json({ error: 'Failed to rotate API key' });
   }
 });
@@ -253,7 +255,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     res.status(204).send();
   } catch (error: any) {
-    console.error('[API Key Routes] Error deleting key:', error);
+    log.error('[API Key Routes] Error deleting key:', error);
     res.status(500).json({ error: 'Failed to delete API key' });
   }
 });
@@ -279,7 +281,7 @@ router.get('/:id/stats', async (req: Request, res: Response) => {
 
     res.json(stats);
   } catch (error: any) {
-    console.error('[API Key Routes] Error getting stats:', error);
+    log.error('[API Key Routes] Error getting stats:', error);
     res.status(500).json({ error: 'Failed to get API key statistics' });
   }
 });
@@ -313,7 +315,7 @@ router.post('/validate', async (req: Request, res: Response) => {
       scopes: result.apiKey!.scopes,
     });
   } catch (error: any) {
-    console.error('[API Key Routes] Error validating key:', error);
+    log.error('[API Key Routes] Error validating key:', error);
     res.status(500).json({ error: 'Failed to validate API key' });
   }
 });

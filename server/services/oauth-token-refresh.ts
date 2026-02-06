@@ -9,6 +9,9 @@ import axios from 'axios';
 import { db } from '../db';
 import { systemIntegrations } from '../../shared/schema';
 import { eq, and, lt, isNotNull } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('oauth-token-refresh');
+
 import {
   googleCalendarConfig,
   microsoftCalendarConfig,
@@ -295,7 +298,7 @@ export async function updateIntegrationTokens(
       .limit(1);
 
     if (!integration) {
-      console.error(`Integration not found: ${integrationId}`);
+      log.error(`Integration not found: ${integrationId}`);
       return false;
     }
 
@@ -321,10 +324,10 @@ export async function updateIntegrationTokens(
       })
       .where(eq(systemIntegrations.id, integrationId));
 
-    console.log(`[TOKEN REFRESH] Updated tokens for integration: ${integrationId}`);
+    log.info(`[TOKEN REFRESH] Updated tokens for integration: ${integrationId}`);
     return true;
   } catch (error) {
-    console.error('Failed to update integration tokens:', error);
+    log.error('Failed to update integration tokens:', error);
     return false;
   }
 }
@@ -342,9 +345,9 @@ async function markIntegrationForReauth(integrationId: string, error: string): P
       })
       .where(eq(systemIntegrations.id, integrationId));
 
-    console.log(`[TOKEN REFRESH] Marked integration for reauthorization: ${integrationId}`);
+    log.info(`[TOKEN REFRESH] Marked integration for reauthorization: ${integrationId}`);
   } catch (err) {
-    console.error('Failed to mark integration for reauth:', err);
+    log.error('Failed to mark integration for reauth:', err);
   }
 }
 
@@ -390,7 +393,7 @@ export async function refreshIntegrationTokens(
 
     return { success: false, error: result.error };
   } catch (error: any) {
-    console.error('Error refreshing integration tokens:', error);
+    log.error('Error refreshing integration tokens:', error);
     return { success: false, error: error.message };
   }
 }
@@ -439,11 +442,11 @@ export async function refreshExpiringTokens(): Promise<{
       }
     }
 
-    console.log(
+    log.info(
       `[TOKEN REFRESH] Checked ${result.total} integrations, refreshed ${result.refreshed}, failed ${result.failed}`,
     );
   } catch (error) {
-    console.error('Error in proactive token refresh:', error);
+    log.error('Error in proactive token refresh:', error);
   }
 
   return result;
@@ -494,7 +497,7 @@ export async function getValidAccessToken(
 
     return { token: tokens.access_token };
   } catch (error: any) {
-    console.error('Error getting valid access token:', error);
+    log.error('Error getting valid access token:', error);
     return { token: null, error: error.message };
   }
 }
@@ -506,18 +509,18 @@ let refreshJobInterval: NodeJS.Timer | null = null;
 
 export function startTokenRefreshJob(): void {
   if (refreshJobInterval) {
-    console.warn('[TOKEN REFRESH] Job already running');
+    log.warn('[TOKEN REFRESH] Job already running');
     return;
   }
 
   const intervalMs = TOKEN_REFRESH_CONFIG.checkIntervalMinutes * 60 * 1000;
 
   refreshJobInterval = setInterval(async () => {
-    console.log('[TOKEN REFRESH] Running proactive refresh check...');
+    log.info('[TOKEN REFRESH] Running proactive refresh check...');
     await refreshExpiringTokens();
   }, intervalMs);
 
-  console.log(
+  log.info(
     `[TOKEN REFRESH] Started periodic refresh job (every ${TOKEN_REFRESH_CONFIG.checkIntervalMinutes} minutes)`,
   );
 
@@ -532,7 +535,7 @@ export function stopTokenRefreshJob(): void {
   if (refreshJobInterval) {
     clearInterval(refreshJobInterval);
     refreshJobInterval = null;
-    console.log('[TOKEN REFRESH] Stopped periodic refresh job');
+    log.info('[TOKEN REFRESH] Stopped periodic refresh job');
   }
 }
 

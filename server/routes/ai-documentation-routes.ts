@@ -5,6 +5,8 @@
 
 import express from 'express';
 import AIDocumentationService from '../services/ai-documentation-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('ai-documentation-routes');
 
 const router = express.Router();
 
@@ -39,7 +41,7 @@ router.post('/documents', async (req, res) => {
 
     res.status(201).json(document);
   } catch (error) {
-    console.error('Error creating document:', error);
+    log.error('Error creating document:', error);
     res.status(500).json({ error: 'Failed to create document' });
   }
 });
@@ -189,7 +191,7 @@ router.get('/documents', async (req, res) => {
       filters: { status, documentType, tags, createdBy, search },
     });
   } catch (error) {
-    console.error('Error fetching documents:', error);
+    log.error('Error fetching documents:', error);
     res.status(500).json({ error: 'Failed to fetch documents' });
   }
 });
@@ -409,7 +411,7 @@ router.get('/documents/:documentId', async (req, res) => {
 
     res.json(document);
   } catch (error) {
-    console.error('Error fetching document:', error);
+    log.error('Error fetching document:', error);
     res.status(500).json({ error: 'Failed to fetch document' });
   }
 });
@@ -436,7 +438,7 @@ router.post('/documents/from-meeting', async (req, res) => {
 
     res.status(201).json(document);
   } catch (error) {
-    console.error('Error generating document from meeting:', error);
+    log.error('Error generating document from meeting:', error);
     res.status(500).json({ error: 'Failed to generate document from meeting' });
   }
 });
@@ -463,7 +465,7 @@ router.post('/documents/:documentId/sections/generate', async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Error generating section content:', error);
+    log.error('Error generating section content:', error);
     res.status(500).json({ error: 'Failed to generate section content' });
   }
 });
@@ -490,7 +492,7 @@ router.post('/documents/:documentId/improve', async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Error improving content:', error);
+    log.error('Error improving content:', error);
     res.status(500).json({ error: 'Failed to improve content' });
   }
 });
@@ -515,7 +517,7 @@ router.post('/knowledge/articles', async (req, res) => {
 
     res.status(201).json(result);
   } catch (error) {
-    console.error('Error creating knowledge article:', error);
+    log.error('Error creating knowledge article:', error);
     res.status(500).json({ error: 'Failed to create knowledge article' });
   }
 });
@@ -665,7 +667,7 @@ router.get('/knowledge/articles', async (req, res) => {
       filters: { category, subcategory, difficulty, featured, search },
     });
   } catch (error) {
-    console.error('Error fetching knowledge articles:', error);
+    log.error('Error fetching knowledge articles:', error);
     res.status(500).json({ error: 'Failed to fetch knowledge articles' });
   }
 });
@@ -691,7 +693,7 @@ router.post('/documents/search', async (req, res) => {
 
     res.json(searchResults);
   } catch (error) {
-    console.error('Error searching documents:', error);
+    log.error('Error searching documents:', error);
     res.status(500).json({ error: 'Failed to search documents' });
   }
 });
@@ -714,7 +716,7 @@ router.get('/analytics/writing', async (req, res) => {
 
     res.json(analytics);
   } catch (error) {
-    console.error('Error fetching writing analytics:', error);
+    log.error('Error fetching writing analytics:', error);
     res.status(500).json({ error: 'Failed to fetch writing analytics' });
   }
 });
@@ -819,7 +821,7 @@ router.get('/document-types', async (req, res) => {
 
     res.json(filteredTypes);
   } catch (error) {
-    console.error('Error fetching document types:', error);
+    log.error('Error fetching document types:', error);
     res.status(500).json({ error: 'Failed to fetch document types' });
   }
 });

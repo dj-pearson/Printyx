@@ -1,5 +1,8 @@
 import express, { Request, Response } from 'express';
 import { z } from 'zod';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('route-optimization-routes');
+
 import {
   routeOptimizationService,
   Waypoint,
@@ -71,7 +74,7 @@ router.post('/optimize', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Optimize route error:', error);
+    log.error('Optimize route error:', error);
     res.status(500).json({ error: 'Failed to optimize route' });
   }
 });
@@ -104,7 +107,7 @@ router.post('/create', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create optimized route error:', error);
+    log.error('Create optimized route error:', error);
     res.status(500).json({ error: 'Failed to create optimized route' });
   }
 });
@@ -140,7 +143,7 @@ router.post('/routes/:id/reoptimize', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Reoptimize route error:', error);
+    log.error('Reoptimize route error:', error);
     res.status(500).json({ error: 'Failed to reoptimize route' });
   }
 });
@@ -168,7 +171,7 @@ router.get('/technicians/:id/analytics', async (req: Request, res: Response) => 
 
     res.json(analytics);
   } catch (error) {
-    console.error('Get route analytics error:', error);
+    log.error('Get route analytics error:', error);
     res.status(500).json({ error: 'Failed to get route analytics' });
   }
 });
@@ -212,7 +215,7 @@ router.post('/multi-technician', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Multi-technician routing error:', error);
+    log.error('Multi-technician routing error:', error);
     res.status(500).json({ error: 'Failed to generate multi-technician routes' });
   }
 });

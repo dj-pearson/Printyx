@@ -10,6 +10,9 @@
 
 import { db } from '../db';
 import { eq, and, lte, gte, isNull, sql, desc } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('automated-billing-service');
+
 import {
   invoices,
   invoiceLineItems,
@@ -514,7 +517,7 @@ class AutomatedBillingService {
         billed++;
       } catch (error: any) {
         errors++;
-        console.error(`Error processing readings for contract ${contractId}:`, error);
+        log.error(`Error processing readings for contract ${contractId}:`, error);
       }
     }
 

@@ -1,3 +1,6 @@
+import { createModuleLogger } from '../../lib/logger';
+const log = createModuleLogger('fmaudit-adapter');
+
 import {
   BaseManufacturerAdapter,
   DeviceInfo,
@@ -29,7 +32,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
 
       return response.ok;
     } catch (error) {
-      console.error('FMAudit connection test failed:', error);
+      log.error('FMAudit connection test failed:', error);
       return false;
     }
   }
@@ -44,7 +47,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
         throw new Error('Unsupported authentication type for FMAudit integration');
       }
     } catch (error) {
-      console.error('FMAudit authentication failed:', error);
+      log.error('FMAudit authentication failed:', error);
       return false;
     }
   }
@@ -68,7 +71,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
 
       return true;
     } catch (error) {
-      console.error('FMAudit basic auth failed:', error);
+      log.error('FMAudit basic auth failed:', error);
       return false;
     }
   }
@@ -94,7 +97,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
       const data = await this.handleApiResponse(response);
       return this.mapFMAuditDevices(data.devices || data.printers || []);
     } catch (error) {
-      console.error('FMAudit device discovery failed:', error);
+      log.error('FMAudit device discovery failed:', error);
       return [];
     }
   }
@@ -363,7 +366,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
       const device = await this.handleApiResponse(response);
       return this.mapFMAuditDevices([device])[0] || null;
     } catch (error) {
-      console.error('Failed to get FMAudit device info:', error);
+      log.error('Failed to get FMAudit device info:', error);
       return null;
     }
   }
@@ -385,7 +388,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
 
       return response.ok;
     } catch (error) {
-      console.error('Failed to update FMAudit device config:', error);
+      log.error('Failed to update FMAudit device config:', error);
       return false;
     }
   }
@@ -428,7 +431,7 @@ export class FMAuditAdapter extends BaseManufacturerAdapter {
 
       return results;
     } catch (error) {
-      console.error('FMAudit batch meter reading failed:', error);
+      log.error('FMAudit batch meter reading failed:', error);
       return deviceIds.map((deviceId) => ({
         success: false,
         deviceId,

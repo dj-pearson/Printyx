@@ -6,6 +6,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { eq, and, sql } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('admin-seed-routes');
+
 import {
   users,
   roles,
@@ -116,7 +119,7 @@ const requireSeedAdmin = async (req: Request, res: Response, next: NextFunction)
 
     next();
   } catch (error: any) {
-    console.error('[Seed] Admin check error:', error);
+    log.error('[Seed] Admin check error:', error);
     res.status(500).json({ error: 'Authorization check failed', message: error.message });
   }
 };
@@ -155,7 +158,7 @@ router.get('/status', requireSeedAdmin, async (req: Request, res: Response) => {
         : 'No demo data found - ready to seed',
     });
   } catch (error: any) {
-    console.error('[Seed] Error checking seed status:', error);
+    log.error('[Seed] Error checking seed status:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -176,8 +179,8 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
     const DEMO_USER_ID = seedUser.id;
     const force = req.body.force === true;
 
-    console.log(`[Seed] Starting demo data seeding for tenant: ${DEMO_TENANT_ID}`);
-    console.log(
+    log.info(`[Seed] Starting demo data seeding for tenant: ${DEMO_TENANT_ID}`);
+    log.info(
       `[Seed] User: ${seedUser.email} (${DEMO_USER_ID}) - Role: ${seedUser.roleName} (Level ${seedUser.roleLevel})`,
     );
 
@@ -198,7 +201,7 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
     const results: Record<string, number> = {};
 
     // ========== PHASE 1: CORE INFRASTRUCTURE ==========
-    console.log('[Seed] Phase 1: Core Infrastructure...');
+    log.info('[Seed] Phase 1: Core Infrastructure...');
 
     // Locations
     const locationData = [
@@ -258,7 +261,7 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
     results.teams = teamData.length;
 
     // ========== PHASE 2: BUSINESS FOUNDATION ==========
-    console.log('[Seed] Phase 2: Business Foundation...');
+    log.info('[Seed] Phase 2: Business Foundation...');
 
     // Companies
     const companyData = [
@@ -434,7 +437,7 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
     results.contacts = contactData.length;
 
     // ========== PHASE 3: PRODUCTS & EQUIPMENT ==========
-    console.log('[Seed] Phase 3: Products & Equipment...');
+    log.info('[Seed] Phase 3: Products & Equipment...');
 
     // Product Models
     const productModelData = [
@@ -617,7 +620,7 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
     results.supplies = supplyData.length;
 
     // ========== PHASE 4: SALES & CRM ==========
-    console.log('[Seed] Phase 4: Sales & CRM...');
+    log.info('[Seed] Phase 4: Sales & CRM...');
 
     // Deal Stages
     const stageData = [
@@ -795,7 +798,7 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
     results.contracts = contractData.length;
 
     // ========== PHASE 5: SERVICE & OPERATIONS ==========
-    console.log('[Seed] Phase 5: Service & Operations...');
+    log.info('[Seed] Phase 5: Service & Operations...');
 
     // Technicians
     const technicianData = [
@@ -966,7 +969,7 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
     results.meterReadings = meterData.length;
 
     // ========== PHASE 6: FINANCE & BILLING ==========
-    console.log('[Seed] Phase 6: Finance & Billing...');
+    log.info('[Seed] Phase 6: Finance & Billing...');
 
     // Vendors
     const vendorData = [
@@ -1239,7 +1242,7 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
     results.inventoryItems = inventoryData.length;
 
     // ========== PHASE 7: TASKS & ACTIVITIES ==========
-    console.log('[Seed] Phase 7: Tasks & Activities...');
+    log.info('[Seed] Phase 7: Tasks & Activities...');
 
     // Tasks
     const taskData = [
@@ -1328,7 +1331,7 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
     }
     results.activities = activityData.length;
 
-    console.log('[Seed] ✅ Demo data seeding completed!');
+    log.info('[Seed] ✅ Demo data seeding completed!');
 
     res.json({
       success: true,
@@ -1338,7 +1341,7 @@ router.post('/demo', requireSeedAdmin, async (req: Request, res: Response) => {
       results,
     });
   } catch (error: any) {
-    console.error('[Seed] ❌ Error seeding demo data:', error);
+    log.error('[Seed] ❌ Error seeding demo data:', error);
     res.status(500).json({
       error: 'Failed to seed demo data',
       message: error.message,
@@ -1373,7 +1376,7 @@ router.get('/roles', async (req: Request, res: Response) => {
       message: 'Use POST /api/admin/seed/assign-role to assign a role',
     });
   } catch (error: any) {
-    console.error('[Seed] Error listing roles:', error);
+    log.error('[Seed] Error listing roles:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1423,7 +1426,7 @@ router.get('/my-role', async (req: Request, res: Response) => {
         : 'You need an admin role (level 5+) to seed demo data. Use POST /api/admin/seed/assign-role to assign yourself a role.',
     });
   } catch (error: any) {
-    console.error('[Seed] Error checking user role:', error);
+    log.error('[Seed] Error checking user role:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -1498,14 +1501,12 @@ router.post('/assign-role', async (req: Request, res: Response) => {
       }
 
       // Allow self-assignment for bootstrapping (first admin scenario)
-      console.log(
-        `[Seed] Bootstrap mode: User ${currentUserId} assigning themselves role ${roleId}`,
-      );
+      log.info(`[Seed] Bootstrap mode: User ${currentUserId} assigning themselves role ${roleId}`);
     } else {
       // Admin can assign roles, but warn if assigning higher level
       const targetRoleLevel = targetRole.level || 0;
       if (targetRoleLevel > currentRoleLevel && !currentUser.canAccessAllTenants) {
-        console.warn(
+        log.warn(
           `[Seed] Warning: User ${currentUserId} (level ${currentRoleLevel}) assigning higher role (level ${targetRoleLevel})`,
         );
       }
@@ -1528,7 +1529,7 @@ router.post('/assign-role', async (req: Request, res: Response) => {
       .where(eq(users.id, userIdToUpdate))
       .limit(1);
 
-    console.log(
+    log.info(
       `[Seed] Role assigned: User ${userIdToUpdate} now has role ${roleId} (${targetRole.name})`,
     );
 
@@ -1543,7 +1544,7 @@ router.post('/assign-role', async (req: Request, res: Response) => {
           : 'You need a higher role level to seed demo data',
     });
   } catch (error: any) {
-    console.error('[Seed] Error assigning role:', error);
+    log.error('[Seed] Error assigning role:', error);
     res.status(500).json({ error: error.message });
   }
 });

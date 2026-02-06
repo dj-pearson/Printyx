@@ -8,6 +8,8 @@ import { db } from './db';
 import { users, roles } from '../shared/schema';
 import { eq } from 'drizzle-orm';
 import { authenticateSupabaseJWT, requireSupabaseAuth } from './middleware/supabase-auth';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-user-profile');
 
 export function registerUserProfileRoutes(app: Express) {
   /**
@@ -114,7 +116,7 @@ export function registerUserProfileRoutes(app: Express) {
           canAccessAllTenants: isAdmin,
         };
 
-        console.log(`[API] User ${userRecord.email} has role '${roleString}' (level ${level})`);
+        log.info(`[API] User ${userRecord.email} has role '${roleString}' (level ${level})`);
       }
 
       // Determine isPlatformUser
@@ -141,13 +143,13 @@ export function registerUserProfileRoutes(app: Express) {
         lastLoginAt: userRecord.lastLoginAt,
       };
 
-      console.log(
+      log.info(
         `[API] User profile fetched: ${userRecord.email}, role: ${(userRecord as any).role}, isPlatformUser: ${isPlatformUser}`,
       );
 
       return res.json(response);
     } catch (error) {
-      console.error('[API] Error fetching user profile:', error);
+      log.error('[API] Error fetching user profile:', error);
       return res.status(500).json({
         error: 'Failed to fetch user profile',
         code: 'SERVER_ERROR',
@@ -191,7 +193,7 @@ export function registerUserProfileRoutes(app: Express) {
           count: permissions.length,
         });
       } catch (error) {
-        console.error('[API] Error fetching permissions:', error);
+        log.error('[API] Error fetching permissions:', error);
         return res.status(500).json({
           error: 'Failed to fetch permissions',
           message: error instanceof Error ? error.message : 'Unknown error',
@@ -200,5 +202,5 @@ export function registerUserProfileRoutes(app: Express) {
     },
   );
 
-  console.log('✅ User profile routes registered');
+  log.info('✅ User profile routes registered');
 }

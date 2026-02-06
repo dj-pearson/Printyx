@@ -1,6 +1,9 @@
 import { storage } from '../storage';
 import { db } from '../db';
 import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('mileage-service');
+
 import {
   technicianMileage,
   mileageReimbursementRates,
@@ -87,7 +90,7 @@ export class MileageService {
 
       return null;
     } catch (error) {
-      console.error('Error getting applicable rate:', error);
+      log.error('Error getting applicable rate:', error);
       return null;
     }
   }
@@ -142,7 +145,7 @@ export class MileageService {
         stops: stops.size,
       };
     } catch (error) {
-      console.error('Error calculating mileage from GPS:', error);
+      log.error('Error calculating mileage from GPS:', error);
       return { totalMiles: 0, trips: 0, stops: 0 };
     }
   }
@@ -599,7 +602,7 @@ export class MileageService {
 
       return recordsCreated;
     } catch (error) {
-      console.error('Error auto-generating daily mileage:', error);
+      log.error('Error auto-generating daily mileage:', error);
       return 0;
     }
   }

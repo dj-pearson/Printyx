@@ -1,5 +1,8 @@
 import { db } from '../db';
 import { eq, and } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('pricing-service');
+
 import {
   companyPricingSettings,
   enhancedProductPricing,
@@ -215,7 +218,7 @@ export async function getCompanyPricingSettings(
 
     return settings || null;
   } catch (error) {
-    console.error('Error fetching company pricing settings:', error);
+    log.error('Error fetching company pricing settings:', error);
     return null;
   }
 }

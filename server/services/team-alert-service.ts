@@ -6,6 +6,9 @@
 
 import { db } from '../db';
 import { eq, and, sql, gte, lte } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('team-alert-service');
+
 import {
   alertConfigurations,
   alertInstances,
@@ -71,7 +74,7 @@ export class TeamAlertService {
         await this.evaluateWarehouseAlert(config, stats, userContext);
       }
     } catch (error) {
-      console.error('Error checking warehouse alerts:', error);
+      log.error('Error checking warehouse alerts:', error);
     }
   }
 
@@ -173,7 +176,7 @@ export class TeamAlertService {
         await this.evaluateServiceAlert(config, stats, userContext);
       }
     } catch (error) {
-      console.error('Error checking service alerts:', error);
+      log.error('Error checking service alerts:', error);
     }
   }
 
@@ -285,7 +288,7 @@ export class TeamAlertService {
         .limit(1);
 
       if (existingAlert.length > 0) {
-        console.log(`Alert already exists for ${alertData.alertType}, skipping duplicate`);
+        log.info(`Alert already exists for ${alertData.alertType}, skipping duplicate`);
         return;
       }
 
@@ -299,12 +302,12 @@ export class TeamAlertService {
         })
         .returning();
 
-      console.log(`Created alert instance: ${alert.id} (${alert.alertType})`);
+      log.info(`Created alert instance: ${alert.id} (${alert.alertType})`);
 
       // Send notifications
       await this.sendNotifications(alert, config);
     } catch (error) {
-      console.error('Error creating alert:', error);
+      log.error('Error creating alert:', error);
     }
   }
 
@@ -348,7 +351,7 @@ export class TeamAlertService {
       });
 
       if (!user || !user.email) {
-        console.error(`No email found for user ${config.userId}`);
+        log.error(`No email found for user ${config.userId}`);
         return;
       }
 
@@ -381,10 +384,10 @@ export class TeamAlertService {
           errorMessage: result.error,
         });
 
-        console.log(`Email notification sent to ${recipient}: ${result.success}`);
+        log.info(`Email notification sent to ${recipient}: ${result.success}`);
       }
     } catch (error) {
-      console.error('Error sending email notification:', error);
+      log.error('Error sending email notification:', error);
     }
   }
 

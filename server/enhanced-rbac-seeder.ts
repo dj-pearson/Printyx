@@ -1,5 +1,8 @@
 import { db } from './db';
 import { eq } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('enhanced-rbac-seeder');
+
 import {
   organizationalUnits,
   enhancedRoles,
@@ -41,7 +44,7 @@ export class EnhancedRBACSeeder {
    * Seed the enhanced RBAC system with standard roles and permissions
    */
   async seedEnhancedRBAC(tenantId: string, createdBy: string): Promise<void> {
-    console.log(`🔐 Seeding Enhanced RBAC for tenant: ${tenantId}`);
+    log.info(`🔐 Seeding Enhanced RBAC for tenant: ${tenantId}`);
 
     // 1. Create default organizational unit (company level)
     const companyUnit = await this.createDefaultOrganizationalUnit(tenantId);
@@ -52,7 +55,7 @@ export class EnhancedRBACSeeder {
     // 3. Seed roles with hierarchy
     await this.seedRoles(tenantId, companyUnit.id, createdBy);
 
-    console.log(`✅ Enhanced RBAC seeding completed for tenant: ${tenantId}`);
+    log.info(`✅ Enhanced RBAC seeding completed for tenant: ${tenantId}`);
   }
 
   private async createDefaultOrganizationalUnit(tenantId: string): Promise<any> {
@@ -492,7 +495,7 @@ export class EnhancedRBACSeeder {
       await db.insert(permissions).values(permissionData).onConflictDoNothing();
     }
 
-    console.log(`✅ Seeded ${permissionDefinitions.length} permissions`);
+    log.info(`✅ Seeded ${permissionDefinitions.length} permissions`);
   }
 
   private async seedRoles(
@@ -818,15 +821,13 @@ export class EnhancedRBACSeeder {
       if (role) {
         // Assign permissions to role
         await this.assignPermissionsToRole(role.id, roleDef.permissions);
-        console.log(
-          `✅ Created role: ${roleDef.name} with ${roleDef.permissions.length} permissions`,
-        );
+        log.info(`✅ Created role: ${roleDef.name} with ${roleDef.permissions.length} permissions`);
       }
 
       position += 2;
     }
 
-    console.log(`✅ Seeded ${roleDefinitions.length} roles`);
+    log.info(`✅ Seeded ${roleDefinitions.length} roles`);
   }
 
   private async assignPermissionsToRole(roleId: string, permissionCodes: string[]): Promise<void> {
@@ -968,7 +969,7 @@ export class EnhancedRBACSeeder {
 
       if (role) {
         await this.assignPermissionsToRole(role.id, roleDef.permissions);
-        console.log(`✅ Created small dealer role: ${roleDef.name}`);
+        log.info(`✅ Created small dealer role: ${roleDef.name}`);
       }
 
       position += 2;

@@ -4,6 +4,9 @@ import { eq, and, or, desc, asc, ilike, inArray, sql, type SQL } from 'drizzle-o
 import { db } from './db';
 import { rbacService } from './enhanced-rbac-service';
 import { rbacSeeder } from './enhanced-rbac-seeder';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-enhanced-rbac');
+
 import {
   organizationalUnits,
   enhancedRoles,
@@ -107,7 +110,7 @@ router.get('/status', async (req, res) => {
       recommendation: 'RBAC system is active and ready for management',
     });
   } catch (error) {
-    console.error('RBAC status error:', error);
+    log.error('RBAC status error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -175,7 +178,7 @@ router.get('/permissions/check', async (req, res) => {
 
     res.json({ hasPermission, permissionCode, userId });
   } catch (error) {
-    console.error('Permission check error:', error);
+    log.error('Permission check error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -209,7 +212,7 @@ router.get('/permissions/effective', async (req, res) => {
       count: effectivePermissions.length,
     });
   } catch (error) {
-    console.error('Effective permissions error:', error);
+    log.error('Effective permissions error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -296,7 +299,7 @@ router.get('/roles', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Roles fetch error:', error);
+    log.error('Roles fetch error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -364,7 +367,7 @@ router.get('/roles/:id', async (req, res) => {
       assignmentCount: parseInt(assignmentCountResult.rows[0]?.count || '0'),
     });
   } catch (error) {
-    console.error('Role fetch error:', error);
+    log.error('Role fetch error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -449,11 +452,11 @@ router.post('/roles', async (req, res) => {
         message: 'Role created successfully',
       });
     } catch (error) {
-      console.error('Role creation error:', error);
+      log.error('Role creation error:', error);
       res.status(500).json({ error: 'Failed to create role' });
     }
   } catch (error) {
-    console.error('Role creation error:', error);
+    log.error('Role creation error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -500,7 +503,7 @@ router.put('/roles/:id/customize', async (req, res) => {
       changes: permissionChanges.length,
     });
   } catch (error) {
-    console.error('Role customization error:', error);
+    log.error('Role customization error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -557,7 +560,7 @@ router.get('/permissions', async (req, res) => {
       totalCount: permissionsList.rows.length,
     });
   } catch (error) {
-    console.error('Permissions fetch error:', error);
+    log.error('Permissions fetch error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -598,7 +601,7 @@ router.get('/users/:userId/roles', async (req, res) => {
 
     res.json({ assignments, userId: targetUserId });
   } catch (error) {
-    console.error('User roles fetch error:', error);
+    log.error('User roles fetch error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -643,7 +646,7 @@ router.post('/users/:userId/roles', async (req, res) => {
 
     res.status(201).json({ assignment, message: 'Role assigned successfully' });
   } catch (error) {
-    console.error('Role assignment error:', error);
+    log.error('Role assignment error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -683,7 +686,7 @@ router.post('/permission-overrides', async (req, res) => {
 
     res.status(201).json({ override, message: 'Permission override request created' });
   } catch (error) {
-    console.error('Permission override error:', error);
+    log.error('Permission override error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -720,7 +723,7 @@ router.get('/organizational-units', async (req, res) => {
 
     res.json({ units, hierarchy, totalCount: units.length });
   } catch (error) {
-    console.error('Organizational units fetch error:', error);
+    log.error('Organizational units fetch error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -882,7 +885,7 @@ router.post('/seed', async (req, res) => {
       userAssigned: firstRoleId,
     });
   } catch (error) {
-    console.error('RBAC seed error:', error);
+    log.error('RBAC seed error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

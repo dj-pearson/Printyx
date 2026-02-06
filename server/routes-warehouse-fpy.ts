@@ -2,6 +2,9 @@ import express from 'express';
 import { eq, and, desc, sql, gte, lte, count, avg } from 'drizzle-orm';
 import { db } from './db';
 import { billingEngine } from './services/billing-engine-service';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-warehouse-fpy');
+
 import {
   warehouseKittingOperations,
   fpyMetrics,
@@ -33,7 +36,7 @@ router.post('/warehouse-kitting-operations', async (req, res) => {
 
     res.json(operation);
   } catch (error) {
-    console.error('Error creating warehouse kitting operation:', error);
+    log.error('Error creating warehouse kitting operation:', error);
     res.status(500).json({ error: 'Failed to create warehouse kitting operation' });
   }
 });
@@ -69,7 +72,7 @@ router.get('/warehouse-kitting-operations', async (req, res) => {
 
     res.json(operations);
   } catch (error) {
-    console.error('Error fetching warehouse kitting operations:', error);
+    log.error('Error fetching warehouse kitting operations:', error);
     res.status(500).json({ error: 'Failed to fetch warehouse kitting operations' });
   }
 });
@@ -106,7 +109,7 @@ router.patch('/warehouse-kitting-operations/:id', async (req, res) => {
 
     res.json(operation);
   } catch (error) {
-    console.error('Error updating warehouse kitting operation:', error);
+    log.error('Error updating warehouse kitting operation:', error);
     res.status(500).json({ error: 'Failed to update warehouse kitting operation' });
   }
 });
@@ -162,7 +165,7 @@ router.post('/warehouse-kitting-operations/:id/complete', async (req, res) => {
 
     res.json(updatedOperation);
   } catch (error) {
-    console.error('Error completing warehouse kitting operation:', error);
+    log.error('Error completing warehouse kitting operation:', error);
     res.status(500).json({ error: 'Failed to complete warehouse kitting operation' });
   }
 });
@@ -269,7 +272,7 @@ router.get('/fpy-metrics', async (req, res) => {
 
     res.json(metrics);
   } catch (error) {
-    console.error('Error fetching FPY metrics:', error);
+    log.error('Error fetching FPY metrics:', error);
     res.status(500).json({ error: 'Failed to fetch FPY metrics' });
   }
 });
@@ -296,7 +299,7 @@ router.post('/auto-invoice/:sourceType/:sourceId', async (req, res) => {
 
     res.status(201).json(invoice);
   } catch (error: any) {
-    console.error('Error creating auto-invoice:', error);
+    log.error('Error creating auto-invoice:', error);
     res.status(500).json({
       error: 'Failed to create auto-invoice',
       message: error.message,
@@ -328,7 +331,7 @@ router.get('/auto-invoice/:sourceType/:sourceId', async (req, res) => {
 
     res.json(autoInvoice);
   } catch (error) {
-    console.error('Error fetching auto-invoice:', error);
+    log.error('Error fetching auto-invoice:', error);
     res.status(500).json({ error: 'Failed to fetch auto-invoice' });
   }
 });
@@ -365,7 +368,7 @@ router.get('/auto-invoices', async (req, res) => {
 
     res.json(invoices);
   } catch (error) {
-    console.error('Error fetching auto-invoices:', error);
+    log.error('Error fetching auto-invoices:', error);
     res.status(500).json({ error: 'Failed to fetch auto-invoices' });
   }
 });

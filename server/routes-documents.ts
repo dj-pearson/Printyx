@@ -4,6 +4,8 @@ import { documents } from '../shared/schema.js';
 import { eq, and } from 'drizzle-orm';
 // Use centralized auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-documents');
 
 const router = express.Router();
 
@@ -36,7 +38,7 @@ router.get('/', requireTenant, async (req: any, res) => {
 
     res.json(docs);
   } catch (error) {
-    console.error('Error fetching documents:', error);
+    log.error('Error fetching documents:', error);
     res.status(500).json({ message: 'Failed to fetch documents' });
   }
 });
@@ -59,7 +61,7 @@ router.post('/', requireTenant, async (req: any, res) => {
 
     res.status(201).json(newDocument);
   } catch (error) {
-    console.error('Error creating document:', error);
+    log.error('Error creating document:', error);
     res.status(500).json({ message: 'Failed to create document' });
   }
 });
@@ -78,7 +80,7 @@ router.get('/:id', requireTenant, async (req: any, res) => {
 
     res.json(document);
   } catch (error) {
-    console.error('Error fetching document:', error);
+    log.error('Error fetching document:', error);
     res.status(500).json({ message: 'Failed to fetch document' });
   }
 });
@@ -104,7 +106,7 @@ router.post('/:id/pdf', requireTenant, async (req: any, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="document-${document.id}.html"`);
     res.send(htmlContent);
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    log.error('Error generating PDF:', error);
     res.status(500).json({ message: 'Failed to generate PDF' });
   }
 });

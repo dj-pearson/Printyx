@@ -2,6 +2,9 @@ import type { Express } from 'express';
 import { eq, and, desc, sql, count, like } from 'drizzle-orm';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-product-models');
+
 import {
   productModels,
   masterProductModels,
@@ -76,7 +79,7 @@ export function registerProductModelsRoutes(app: Express) {
         const models = await query.orderBy(productModels.productName);
         res.json(models);
       } catch (error) {
-        console.error('Error fetching product models:', error);
+        log.error('Error fetching product models:', error);
         res.status(500).json({ error: 'Failed to fetch product models' });
       }
     },
@@ -103,7 +106,7 @@ export function registerProductModelsRoutes(app: Express) {
 
         res.json(model);
       } catch (error) {
-        console.error('Error fetching product model:', error);
+        log.error('Error fetching product model:', error);
         res.status(500).json({ error: 'Failed to fetch product model' });
       }
     },
@@ -128,7 +131,7 @@ export function registerProductModelsRoutes(app: Express) {
 
         res.status(201).json(newModel);
       } catch (error) {
-        console.error('Error creating product model:', error);
+        log.error('Error creating product model:', error);
         res.status(500).json({ error: 'Failed to create product model' });
       }
     },
@@ -159,7 +162,7 @@ export function registerProductModelsRoutes(app: Express) {
 
         res.json(updatedModel);
       } catch (error) {
-        console.error('Error updating product model:', error);
+        log.error('Error updating product model:', error);
         res.status(500).json({ error: 'Failed to update product model' });
       }
     },
@@ -186,7 +189,7 @@ export function registerProductModelsRoutes(app: Express) {
 
         res.json({ message: 'Product model deleted successfully' });
       } catch (error) {
-        console.error('Error deleting product model:', error);
+        log.error('Error deleting product model:', error);
         res.status(500).json({ error: 'Failed to delete product model' });
       }
     },
@@ -210,7 +213,7 @@ export function registerProductModelsRoutes(app: Express) {
 
         res.json(categories.map((c) => c.category));
       } catch (error) {
-        console.error('Error fetching product categories:', error);
+        log.error('Error fetching product categories:', error);
         res.status(500).json({ error: 'Failed to fetch product categories' });
       }
     },
@@ -237,7 +240,7 @@ export function registerProductModelsRoutes(app: Express) {
 
         res.json(manufacturers.map((m) => m.manufacturer));
       } catch (error) {
-        console.error('Error fetching manufacturers:', error);
+        log.error('Error fetching manufacturers:', error);
         res.status(500).json({ error: 'Failed to fetch manufacturers' });
       }
     },
@@ -265,7 +268,7 @@ export function registerProductModelsRoutes(app: Express) {
 
         res.json(lowStockModels);
       } catch (error) {
-        console.error('Error fetching low stock models:', error);
+        log.error('Error fetching low stock models:', error);
         res.status(500).json({ error: 'Failed to fetch low stock models' });
       }
     },
@@ -320,7 +323,7 @@ export function registerProductModelsRoutes(app: Express) {
           averageValue: totalModels > 0 ? totalValue / totalModels : 0,
         });
       } catch (error) {
-        console.error('Error fetching product models dashboard:', error);
+        log.error('Error fetching product models dashboard:', error);
         res.status(500).json({ error: 'Failed to fetch product models dashboard' });
       }
     },
@@ -360,7 +363,7 @@ export function registerProductModelsRoutes(app: Express) {
           updated: results.filter((r) => r),
         });
       } catch (error) {
-        console.error('Error bulk updating stock:', error);
+        log.error('Error bulk updating stock:', error);
         res.status(500).json({ error: 'Failed to bulk update stock' });
       }
     },

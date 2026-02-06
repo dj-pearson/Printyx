@@ -2,6 +2,9 @@ import type { Express } from 'express';
 import { eq, and, desc, sql, count, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-technician-management');
+
 import {
   technicians,
   serviceTickets,
@@ -97,7 +100,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
 
         res.json(technicianStats);
       } catch (error) {
-        console.error('Error fetching technicians:', error);
+        log.error('Error fetching technicians:', error);
         res.status(500).json({ error: 'Failed to fetch technicians' });
       }
     },
@@ -150,7 +153,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
           recentTickets: tickets,
         });
       } catch (error) {
-        console.error('Error fetching technician:', error);
+        log.error('Error fetching technician:', error);
         res.status(500).json({ error: 'Failed to fetch technician' });
       }
     },
@@ -177,7 +180,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
 
         res.status(201).json(newTechnician);
       } catch (error) {
-        console.error('Error creating technician:', error);
+        log.error('Error creating technician:', error);
         res.status(500).json({ error: 'Failed to create technician' });
       }
     },
@@ -208,7 +211,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
 
         res.json(updatedTechnician);
       } catch (error) {
-        console.error('Error updating technician:', error);
+        log.error('Error updating technician:', error);
         res.status(500).json({ error: 'Failed to update technician' });
       }
     },
@@ -254,7 +257,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
 
         res.json({ message: 'Technician deleted successfully' });
       } catch (error) {
-        console.error('Error deleting technician:', error);
+        log.error('Error deleting technician:', error);
         res.status(500).json({ error: 'Failed to delete technician' });
       }
     },
@@ -310,7 +313,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
           res.json(availableTechnicians);
         }
       } catch (error) {
-        console.error('Error fetching technician availability:', error);
+        log.error('Error fetching technician availability:', error);
         res.status(500).json({ error: 'Failed to fetch technician availability' });
       }
     },
@@ -351,7 +354,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
 
         res.json(performanceMetrics);
       } catch (error) {
-        console.error('Error fetching technician performance:', error);
+        log.error('Error fetching technician performance:', error);
         res.status(500).json({ error: 'Failed to fetch technician performance' });
       }
     },
@@ -411,7 +414,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
           utilizationRate: activeTechnicians > 0 ? (busyTechnicians / activeTechnicians) * 100 : 0,
         });
       } catch (error) {
-        console.error('Error fetching technician dashboard:', error);
+        log.error('Error fetching technician dashboard:', error);
         res.status(500).json({ error: 'Failed to fetch technician dashboard' });
       }
     },

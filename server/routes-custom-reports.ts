@@ -14,6 +14,9 @@ import { eq, and, desc, sql, count, or, like, isNull, inArray } from 'drizzle-or
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-custom-reports');
+
 import {
   enhanceUserContext,
   requirePermission,
@@ -190,7 +193,7 @@ export function registerCustomReportsRoutes(app: Express) {
 
         res.json(reports);
       } catch (error: any) {
-        console.error('Error fetching custom reports:', error);
+        log.error('Error fetching custom reports:', error);
         res.status(500).json({ message: 'Failed to fetch custom reports' });
       }
     },
@@ -305,7 +308,7 @@ export function registerCustomReportsRoutes(app: Express) {
           })),
         });
       } catch (error: any) {
-        console.error('Error executing preview:', error);
+        log.error('Error executing preview:', error);
         res.status(500).json({ message: error.message || 'Failed to execute preview' });
       }
     },
@@ -391,7 +394,7 @@ export function registerCustomReportsRoutes(app: Express) {
           message: 'Custom report created successfully',
         });
       } catch (error: any) {
-        console.error('Error creating custom report:', error);
+        log.error('Error creating custom report:', error);
         res.status(500).json({ message: error.message || 'Failed to create custom report' });
       }
     },
@@ -469,7 +472,7 @@ export function registerCustomReportsRoutes(app: Express) {
           message: 'Report updated successfully',
         });
       } catch (error: any) {
-        console.error('Error updating custom report:', error);
+        log.error('Error updating custom report:', error);
         res.status(500).json({ message: error.message || 'Failed to update custom report' });
       }
     },
@@ -509,7 +512,7 @@ export function registerCustomReportsRoutes(app: Express) {
 
         res.json({ message: 'Report deleted successfully' });
       } catch (error: any) {
-        console.error('Error deleting custom report:', error);
+        log.error('Error deleting custom report:', error);
         res.status(500).json({ message: error.message || 'Failed to delete custom report' });
       }
     },
@@ -551,7 +554,7 @@ export function registerCustomReportsRoutes(app: Express) {
 
         res.json(report);
       } catch (error: any) {
-        console.error('Error fetching custom report:', error);
+        log.error('Error fetching custom report:', error);
         res.status(500).json({ message: 'Failed to fetch custom report' });
       }
     },
@@ -720,7 +723,7 @@ export function registerCustomReportsRoutes(app: Express) {
           },
         });
       } catch (error: any) {
-        console.error('Error executing custom report:', error);
+        log.error('Error executing custom report:', error);
         res.status(500).json({ message: error.message || 'Failed to execute report' });
       }
     },

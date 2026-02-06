@@ -12,6 +12,8 @@
  */
 
 import { randomBytes, createCipheriv, createDecipheriv, scryptSync } from 'crypto';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('credentials-encryption');
 
 // Constants
 const ALGORITHM = 'aes-256-gcm';
@@ -120,14 +122,14 @@ export function decryptCredential(encryptedJson: string): string {
   } catch {
     // If parsing fails, the data might be plaintext (legacy/unencrypted)
     // Return as-is for backward compatibility during migration
-    console.warn('[CredentialsEncryption] Legacy unencrypted credential detected');
+    log.warn('[CredentialsEncryption] Legacy unencrypted credential detected');
     return encryptedJson;
   }
 
   // Check for required fields to detect legacy data
   if (!encryptedData.iv || !encryptedData.data || !encryptedData.salt) {
     // Likely plaintext or different format - return as-is for backward compatibility
-    console.warn('[CredentialsEncryption] Legacy unencrypted credential detected');
+    log.warn('[CredentialsEncryption] Legacy unencrypted credential detected');
     return encryptedJson;
   }
 

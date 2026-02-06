@@ -7,6 +7,8 @@ import { Router, Request, Response } from 'express';
 import KnowledgeBaseService from '../services/knowledge-base-service';
 import { insertKnowledgeArticleSchema, insertKnowledgeCategorySchema } from '@shared/schema';
 import { z } from 'zod';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('knowledge-base-routes');
 
 const router = Router();
 
@@ -41,7 +43,7 @@ router.get('/categories', async (req: Request, res: Response) => {
 
     res.json(categoriesWithCounts);
   } catch (error: any) {
-    console.error('Failed to get categories:', error);
+    log.error('Failed to get categories:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -67,7 +69,7 @@ router.post('/categories', async (req: Request, res: Response) => {
       data: category,
     });
   } catch (error: any) {
-    console.error('Failed to create category:', error);
+    log.error('Failed to create category:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -124,7 +126,7 @@ router.get('/articles', async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    console.error('Failed to search articles:', error);
+    log.error('Failed to search articles:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -161,7 +163,7 @@ router.get('/articles/:id', async (req: Request, res: Response) => {
       data: article,
     });
   } catch (error: any) {
-    console.error('Failed to get article:', error);
+    log.error('Failed to get article:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -185,7 +187,7 @@ router.post('/articles', async (req: Request, res: Response) => {
       data: article,
     });
   } catch (error: any) {
-    console.error('Failed to create article:', error);
+    log.error('Failed to create article:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -210,7 +212,7 @@ router.put('/articles/:id', async (req: Request, res: Response) => {
       data: article,
     });
   } catch (error: any) {
-    console.error('Failed to update article:', error);
+    log.error('Failed to update article:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -238,7 +240,7 @@ router.post('/articles/:id/feedback', async (req: Request, res: Response) => {
       data: feedback,
     });
   } catch (error: any) {
-    console.error('Failed to submit feedback:', error);
+    log.error('Failed to submit feedback:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -279,7 +281,7 @@ router.post('/ai/generate', async (req: Request, res: Response) => {
       data: result,
     });
   } catch (error: any) {
-    console.error('Failed to generate article with AI:', error);
+    log.error('Failed to generate article with AI:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -311,7 +313,7 @@ router.get('/analytics', async (req: Request, res: Response) => {
       data: analytics,
     });
   } catch (error: any) {
-    console.error('Failed to get analytics:', error);
+    log.error('Failed to get analytics:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -341,7 +343,7 @@ router.get('/featured', async (req: Request, res: Response) => {
       data: featured,
     });
   } catch (error: any) {
-    console.error('Failed to get featured articles:', error);
+    log.error('Failed to get featured articles:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -373,7 +375,7 @@ router.get('/popular', async (req: Request, res: Response) => {
       data: popular,
     });
   } catch (error: any) {
-    console.error('Failed to get popular articles:', error);
+    log.error('Failed to get popular articles:', error);
     res.status(500).json({
       success: false,
       error: error.message,

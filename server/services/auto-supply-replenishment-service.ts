@@ -1,5 +1,8 @@
 import { db } from '../db';
 import { eq, and, lt, gte, desc, sql } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('auto-supply-replenishment-service');
+
 import {
   supplyMonitoring,
   autoSupplyOrders,
@@ -187,7 +190,7 @@ Format your response as JSON:
       priority,
     };
   } catch (error) {
-    console.error('AI analysis error:', error);
+    log.error('AI analysis error:', error);
 
     // Fallback to simple calculation
     let depletionDate: Date | null = null;
@@ -371,7 +374,7 @@ export async function analyzeTenantSupplies(tenantId: number): Promise<{
         orderCreated: analysis.shouldOrder,
       });
     } catch (error) {
-      console.error(`Error analyzing supply ${supply.id}:`, error);
+      log.error(`Error analyzing supply ${supply.id}:`, error);
       results.push({
         supplyId: supply.id,
         serialNumber: supply.serialNumber,

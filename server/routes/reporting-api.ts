@@ -5,6 +5,9 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('reporting-api');
+
 import {
   reportDefinitions,
   reportSchedules,
@@ -198,7 +201,7 @@ function substituteQueryParameters(
 
     // Security: Only allow whitelisted parameter names
     if (!allowedParams.includes(key)) {
-      console.warn(`Skipping non-whitelisted parameter: ${key}`);
+      log.warn(`Skipping non-whitelisted parameter: ${key}`);
       continue;
     }
 
@@ -437,7 +440,7 @@ router.get('/', async (req: AuthenticatedRequest, res: Response) => {
       total: reports.length,
     });
   } catch (error) {
-    console.error('Error fetching reports:', error);
+    log.error('Error fetching reports:', error);
     res.status(500).json({ error: 'Failed to fetch reports' });
   }
 });
@@ -501,7 +504,7 @@ router.get('/:code', async (req: AuthenticatedRequest, res: Response) => {
       userPreferences: preferences.length > 0 ? preferences[0] : null,
     });
   } catch (error) {
-    console.error('Error fetching report:', error);
+    log.error('Error fetching report:', error);
     res.status(500).json({ error: 'Failed to fetch report definition' });
   }
 });
@@ -649,7 +652,7 @@ router.post('/:code/execute', async (req: AuthenticatedRequest, res: Response) =
       rowCount,
     });
   } catch (error: any) {
-    console.error('Error executing report:', error);
+    log.error('Error executing report:', error);
 
     // Record failed execution
     if (req.user) {
@@ -758,7 +761,7 @@ router.post('/:code/export', async (req: AuthenticatedRequest, res: Response) =>
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.sendFile(filePath);
   } catch (error: any) {
-    console.error('Error exporting report:', error);
+    log.error('Error exporting report:', error);
     res.status(500).json({ error: 'Failed to export report', details: error.message });
   }
 });
@@ -828,7 +831,7 @@ router.post('/:code/schedule', async (req: AuthenticatedRequest, res: Response) 
       message: 'Report scheduled successfully',
     });
   } catch (error: any) {
-    console.error('Error scheduling report:', error);
+    log.error('Error scheduling report:', error);
     res.status(500).json({ error: 'Failed to schedule report', details: error.message });
   }
 });
@@ -868,7 +871,7 @@ router.get('/scheduled/list', async (req: AuthenticatedRequest, res: Response) =
       total: schedules.length,
     });
   } catch (error) {
-    console.error('Error fetching scheduled reports:', error);
+    log.error('Error fetching scheduled reports:', error);
     res.status(500).json({ error: 'Failed to fetch scheduled reports' });
   }
 });
@@ -910,7 +913,7 @@ router.delete('/scheduled/:id', async (req: AuthenticatedRequest, res: Response)
 
     res.json({ message: 'Scheduled report deleted successfully' });
   } catch (error) {
-    console.error('Error deleting scheduled report:', error);
+    log.error('Error deleting scheduled report:', error);
     res.status(500).json({ error: 'Failed to delete scheduled report' });
   }
 });
@@ -952,7 +955,7 @@ router.get('/executions/recent', async (req: AuthenticatedRequest, res: Response
       total: executions.length,
     });
   } catch (error) {
-    console.error('Error fetching report executions:', error);
+    log.error('Error fetching report executions:', error);
     res.status(500).json({ error: 'Failed to fetch report executions' });
   }
 });

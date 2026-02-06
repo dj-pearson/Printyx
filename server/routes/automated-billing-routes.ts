@@ -5,6 +5,8 @@ import { billingEngine } from '../services/billing-engine-service';
 import { db } from '../db';
 import { eq, and, desc } from 'drizzle-orm';
 import { billingSchedules, invoiceGenerationLogs } from '@shared/schema';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('automated-billing-routes');
 
 const router = express.Router();
 
@@ -52,7 +54,7 @@ router.get('/schedules', async (req: Request, res: Response) => {
 
     res.json(schedules);
   } catch (error) {
-    console.error('Get billing schedules error:', error);
+    log.error('Get billing schedules error:', error);
     res.status(500).json({ error: 'Failed to fetch billing schedules' });
   }
 });
@@ -68,7 +70,7 @@ router.get('/schedules/due', async (req: Request, res: Response) => {
     const dueSchedules = await automatedBillingService.getDueSchedules(user.tenantId);
     res.json(dueSchedules);
   } catch (error) {
-    console.error('Get due schedules error:', error);
+    log.error('Get due schedules error:', error);
     res.status(500).json({ error: 'Failed to fetch due schedules' });
   }
 });
@@ -112,7 +114,7 @@ router.post('/schedules', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create billing schedule error:', error);
+    log.error('Create billing schedule error:', error);
     res.status(500).json({ error: 'Failed to create billing schedule' });
   }
 });
@@ -169,7 +171,7 @@ router.put('/schedules/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update billing schedule error:', error);
+    log.error('Update billing schedule error:', error);
     res.status(500).json({ error: 'Failed to update billing schedule' });
   }
 });
@@ -202,7 +204,7 @@ router.delete('/schedules/:id', async (req: Request, res: Response) => {
 
     res.status(204).send();
   } catch (error) {
-    console.error('Delete billing schedule error:', error);
+    log.error('Delete billing schedule error:', error);
     res.status(500).json({ error: 'Failed to delete billing schedule' });
   }
 });
@@ -229,7 +231,7 @@ router.post('/schedules/:id/execute', async (req: Request, res: Response) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Execute billing schedule error:', error);
+    log.error('Execute billing schedule error:', error);
     res.status(500).json({ error: 'Failed to execute billing schedule' });
   }
 });
@@ -267,7 +269,7 @@ router.post('/execute-all-due', async (req: Request, res: Response) => {
       results,
     });
   } catch (error) {
-    console.error('Execute all due schedules error:', error);
+    log.error('Execute all due schedules error:', error);
     res.status(500).json({ error: 'Failed to execute due schedules' });
   }
 });
@@ -293,7 +295,7 @@ router.post('/process-pending-meters', async (req: Request, res: Response) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Process pending meters error:', error);
+    log.error('Process pending meters error:', error);
     res.status(500).json({ error: 'Failed to process pending meter readings' });
   }
 });
@@ -309,7 +311,7 @@ router.get('/meter-status', async (req: Request, res: Response) => {
     const status = await automatedBillingService.getMeterCollectionStatus(user.tenantId);
     res.json(status);
   } catch (error) {
-    console.error('Get meter status error:', error);
+    log.error('Get meter status error:', error);
     res.status(500).json({ error: 'Failed to get meter collection status' });
   }
 });
@@ -327,7 +329,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
     const metrics = await automatedBillingService.getBillingDashboardMetrics(user.tenantId);
     res.json(metrics);
   } catch (error) {
-    console.error('Get billing dashboard error:', error);
+    log.error('Get billing dashboard error:', error);
     res.status(500).json({ error: 'Failed to get billing dashboard metrics' });
   }
 });
@@ -365,7 +367,7 @@ router.get('/generation-logs', async (req: Request, res: Response) => {
     const logs = await query;
     res.json(logs);
   } catch (error) {
-    console.error('Get generation logs error:', error);
+    log.error('Get generation logs error:', error);
     res.status(500).json({ error: 'Failed to fetch generation logs' });
   }
 });
@@ -406,7 +408,7 @@ router.post('/generate-invoice', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Generate invoice error:', error);
+    log.error('Generate invoice error:', error);
     res.status(500).json({ error: 'Failed to generate invoice' });
   }
 });
@@ -443,7 +445,7 @@ router.post('/bulk-generate', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Bulk generate invoices error:', error);
+    log.error('Bulk generate invoices error:', error);
     res.status(500).json({ error: 'Failed to bulk generate invoices' });
   }
 });

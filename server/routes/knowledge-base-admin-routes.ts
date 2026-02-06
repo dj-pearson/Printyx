@@ -12,6 +12,9 @@ import { Router, Request, Response } from 'express';
 import KnowledgeBaseService from '../services/knowledge-base-service';
 import { db } from '../db';
 import { eq, and, sql, desc, gte, lte, inArray } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('knowledge-base-admin-routes');
+
 import {
   knowledgeArticles,
   knowledgeCategories,
@@ -129,7 +132,7 @@ router.get('/dashboard', requireSystemAdmin, async (req: Request, res: Response)
       },
     });
   } catch (error: any) {
-    console.error('Failed to get admin dashboard:', error);
+    log.error('Failed to get admin dashboard:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -187,7 +190,7 @@ router.post('/articles/bulk-update', requireSystemAdmin, async (req: Request, re
       },
     });
   } catch (error: any) {
-    console.error('Bulk update failed:', error);
+    log.error('Bulk update failed:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -242,7 +245,7 @@ router.delete('/articles/bulk-delete', requireRootAdmin, async (req: Request, re
       },
     });
   } catch (error: any) {
-    console.error('Bulk delete failed:', error);
+    log.error('Bulk delete failed:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -290,7 +293,7 @@ router.get('/feedback/pending', requireSystemAdmin, async (req: Request, res: Re
       data: feedbackWithArticles,
     });
   } catch (error: any) {
-    console.error('Failed to get pending feedback:', error);
+    log.error('Failed to get pending feedback:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -331,7 +334,7 @@ router.put('/feedback/:id/resolve', requireSystemAdmin, async (req: Request, res
       data: updated,
     });
   } catch (error: any) {
-    console.error('Failed to resolve feedback:', error);
+    log.error('Failed to resolve feedback:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -366,7 +369,7 @@ router.get('/ai-queue', requireSystemAdmin, async (req: Request, res: Response) 
       data: queue,
     });
   } catch (error: any) {
-    console.error('Failed to get AI queue:', error);
+    log.error('Failed to get AI queue:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -400,7 +403,7 @@ router.post('/ai-queue/:id/retry', requireSystemAdmin, async (req: Request, res:
       data: updated,
     });
   } catch (error: any) {
-    console.error('Failed to retry AI generation:', error);
+    log.error('Failed to retry AI generation:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -428,7 +431,7 @@ router.get('/articles/:id/versions', requireSystemAdmin, async (req: Request, re
       data: versions,
     });
   } catch (error: any) {
-    console.error('Failed to get article versions:', error);
+    log.error('Failed to get article versions:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -484,7 +487,7 @@ router.post(
         message: `Restored to version ${version}`,
       });
     } catch (error: any) {
-      console.error('Failed to restore version:', error);
+      log.error('Failed to restore version:', error);
       res.status(500).json({
         success: false,
         error: error.message,
@@ -554,7 +557,7 @@ router.post('/import', requireRootAdmin, async (req: Request, res: Response) => 
       },
     });
   } catch (error: any) {
-    console.error('Import failed:', error);
+    log.error('Import failed:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -612,7 +615,7 @@ router.get('/export', requireRootAdmin, async (req: Request, res: Response) => {
       res.send(csv);
     }
   } catch (error: any) {
-    console.error('Export failed:', error);
+    log.error('Export failed:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -686,7 +689,7 @@ router.get('/analytics/detailed', requireManager, async (req: Request, res: Resp
       },
     });
   } catch (error: any) {
-    console.error('Failed to get detailed analytics:', error);
+    log.error('Failed to get detailed analytics:', error);
     res.status(500).json({
       success: false,
       error: error.message,
@@ -727,7 +730,7 @@ router.post('/categories/reorder', requireSystemAdmin, async (req: Request, res:
       message: 'Categories reordered successfully',
     });
   } catch (error: any) {
-    console.error('Failed to reorder categories:', error);
+    log.error('Failed to reorder categories:', error);
     res.status(500).json({
       success: false,
       error: error.message,

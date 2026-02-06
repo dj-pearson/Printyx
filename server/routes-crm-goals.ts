@@ -1,5 +1,8 @@
 import type { Express } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-crm-goals');
+
 import {
   salesGoals,
   salesTeams,
@@ -82,7 +85,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
         res.json(goals);
       } catch (error) {
-        console.error('Error fetching goals:', error);
+        log.error('Error fetching goals:', error);
         res.status(500).json({ error: 'Failed to fetch goals' });
       }
     },
@@ -100,7 +103,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       res.status(201).json(goal);
     } catch (error) {
-      console.error('Error creating goal:', error);
+      log.error('Error creating goal:', error);
       res.status(500).json({ error: 'Failed to create goal' });
     }
   });
@@ -133,7 +136,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       res.json(teams);
     } catch (error) {
-      console.error('Error fetching teams:', error);
+      log.error('Error fetching teams:', error);
       res.status(500).json({ error: 'Failed to fetch teams' });
     }
   });
@@ -149,7 +152,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       res.status(201).json(team);
     } catch (error) {
-      console.error('Error creating team:', error);
+      log.error('Error creating team:', error);
       res.status(500).json({ error: 'Failed to create team' });
     }
   });
@@ -180,7 +183,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       res.json(members);
     } catch (error) {
-      console.error('Error fetching team members:', error);
+      log.error('Error fetching team members:', error);
       res.status(500).json({ error: 'Failed to fetch team members' });
     }
   });
@@ -242,7 +245,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       res.json(reports);
     } catch (error) {
-      console.error('Error fetching activity reports:', error);
+      log.error('Error fetching activity reports:', error);
       res.status(500).json({ error: 'Failed to fetch activity reports' });
     }
   });
@@ -292,7 +295,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       res.json(progress);
     } catch (error) {
-      console.error('Error fetching goal progress:', error);
+      log.error('Error fetching goal progress:', error);
       res.status(500).json({ error: 'Failed to fetch goal progress' });
     }
   });
@@ -403,7 +406,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       res.status(201).json(report);
     } catch (error) {
-      console.error('Error generating activity report:', error);
+      log.error('Error generating activity report:', error);
       res.status(500).json({ error: 'Failed to generate activity report' });
     }
   });
@@ -452,7 +455,7 @@ export function registerCrmGoalRoutes(app: Express) {
         recentReports: recentReportsCount[0]?.count || 0,
       });
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+      log.error('Error fetching dashboard stats:', error);
       res.status(500).json({ error: 'Failed to fetch dashboard stats' });
     }
   });
@@ -477,7 +480,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       res.json(metrics);
     } catch (error) {
-      console.error('Error fetching sales metrics:', error);
+      log.error('Error fetching sales metrics:', error);
       res.status(500).json({ error: 'Failed to fetch sales metrics' });
     }
   });
@@ -493,7 +496,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       res.status(201).json(metrics);
     } catch (error) {
-      console.error('Error creating sales metrics:', error);
+      log.error('Error creating sales metrics:', error);
       res.status(500).json({ error: 'Failed to create sales metrics' });
     }
   });
@@ -518,7 +521,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       res.json(funnelData);
     } catch (error) {
-      console.error('Error fetching conversion funnel:', error);
+      log.error('Error fetching conversion funnel:', error);
       res.status(500).json({ error: 'Failed to fetch conversion funnel data' });
     }
   });
@@ -546,7 +549,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       res.json(insights);
     } catch (error) {
-      console.error('Error fetching manager insights:', error);
+      log.error('Error fetching manager insights:', error);
       res.status(500).json({ error: 'Failed to fetch manager insights' });
     }
   });
@@ -699,7 +702,7 @@ export function registerCrmGoalRoutes(app: Express) {
         res.json({ message: 'No new insights generated - performance is on track' });
       }
     } catch (error) {
-      console.error('Error generating manager insights:', error);
+      log.error('Error generating manager insights:', error);
       res.status(500).json({ error: 'Failed to generate insights' });
     }
   });
@@ -782,7 +785,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       res.json(calculation);
     } catch (error) {
-      console.error('Error calculating required activities:', error);
+      log.error('Error calculating required activities:', error);
       res.status(500).json({ error: 'Failed to calculate activities' });
     }
   });
@@ -859,7 +862,7 @@ export function registerCrmGoalRoutes(app: Express) {
 
       res.json(analysisWithBenchmarks);
     } catch (error) {
-      console.error('Error fetching conversion analysis:', error);
+      log.error('Error fetching conversion analysis:', error);
       res.status(500).json({ error: 'Failed to fetch conversion analysis' });
     }
   });

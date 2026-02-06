@@ -1,6 +1,8 @@
 import { eq, sql, and } from 'drizzle-orm';
 import { businessRecords } from '../../shared/schema.js';
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('company-id-generator');
 
 /**
  * Generates a unique 8-digit company display ID
@@ -184,7 +186,7 @@ export async function backfillExistingRecords(tenantId: string, limit = 100): Pr
       );
       updatedCount++;
     } catch (error) {
-      console.error(`Failed to update record ${record.id}:`, error);
+      log.error(`Failed to update record ${record.id}:`, error);
     }
   }
 

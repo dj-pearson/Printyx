@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { db } from '../db';
 import { equipment, businessRecords } from '@shared/schema';
 import { eq, or, like, and } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('ai-email-parser-service');
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -105,7 +107,7 @@ export class AIEmailParserService {
       // Extract JSON from Claude's response
       const jsonMatch = content.text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        console.error('[AIParser] No JSON found in Claude response:', content.text);
+        log.error('[AIParser] No JSON found in Claude response:', content.text);
         throw new Error('No JSON found in Claude response');
       }
 
@@ -119,7 +121,7 @@ export class AIEmailParserService {
 
       return enhanced;
     } catch (error) {
-      console.error('[AIParser] Error parsing email:', error);
+      log.error('[AIParser] Error parsing email:', error);
       // Fallback: Create basic ticket
       return this.createFallbackTicket(email);
     }

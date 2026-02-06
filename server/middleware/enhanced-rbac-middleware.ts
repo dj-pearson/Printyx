@@ -5,6 +5,9 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('enhanced-rbac-middleware');
+
 import {
   permissions,
   enhancedRoles,
@@ -310,7 +313,7 @@ class PermissionComputationService {
         };
 
         const computationTime = Date.now() - startTime;
-        console.log(
+        log.info(
           `[RBAC] User ${userId} has string role '${roleString}' (level ${roleLevel}) - granting ${permissionSet.size} permissions`,
         );
 
@@ -564,7 +567,7 @@ export const enhanceUserContext = async (
         userContext = computed.userContext;
       } catch (permError) {
         // If permission computation fails, create a basic context for the user
-        console.warn('Permission computation failed, using basic context:', permError);
+        log.warn('Permission computation failed, using basic context:', permError);
         permissions = new Set(['basic.view']);
         userContext = {
           roleId: 'basic_user',
@@ -590,7 +593,7 @@ export const enhanceUserContext = async (
     req.user = enhancedUser;
     next();
   } catch (error) {
-    console.error('Enhanced RBAC context error:', error);
+    log.error('Enhanced RBAC context error:', error);
     res.status(500).json({ error: 'Failed to build user context' });
   }
 };
@@ -995,7 +998,7 @@ export const requireApproval = (
 
       next();
     } catch (error) {
-      console.error('Approval check error:', error);
+      log.error('Approval check error:', error);
       res.status(500).json({ error: 'Failed to check approval status' });
     }
   };
@@ -1104,12 +1107,12 @@ async function logRBACEvent(
       .catch((err) => {
         // Table might not exist yet - silently fail
         if (!err.message?.includes('does not exist')) {
-          console.error('[RBAC] Audit log write error:', err);
+          log.error('[RBAC] Audit log write error:', err);
         }
       });
   } catch (error) {
     // Non-critical - don't fail the request
-    console.error('[RBAC] Audit log error:', error);
+    log.error('[RBAC] Audit log error:', error);
   }
 }
 

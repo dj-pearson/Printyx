@@ -1,6 +1,9 @@
 import type { Express } from 'express';
 import { Router } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-predictive-maintenance-hub');
+
 import {
   equipment,
   businessRecords,
@@ -139,7 +142,7 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
             };
           }
         } catch (error) {
-          console.error(`AI prediction failed for ${item.serialNumber}:`, error);
+          log.error(`AI prediction failed for ${item.serialNumber}:`, error);
         }
 
         const estimatedIssues: string[] = [];
@@ -230,7 +233,7 @@ router.get('/api/predictive-maintenance/dashboard', async (req: any, res) => {
       equipment: equipmentHealth,
     });
   } catch (error) {
-    console.error('[PREDICTIVE MAINTENANCE HUB] Error:', error);
+    log.error('[PREDICTIVE MAINTENANCE HUB] Error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch predictive maintenance data',
@@ -292,7 +295,7 @@ router.post('/api/predictive-maintenance/:equipmentId/schedule', async (req: any
       })
       .returning();
 
-    console.log(
+    log.info(
       `[PREDICTIVE MAINTENANCE] Created ticket ${ticketNumber} for equipment ${equipmentId}`,
     );
 
@@ -307,7 +310,7 @@ router.post('/api/predictive-maintenance/:equipmentId/schedule', async (req: any
       },
     });
   } catch (error) {
-    console.error('[PREDICTIVE MAINTENANCE] Error scheduling service:', error);
+    log.error('[PREDICTIVE MAINTENANCE] Error scheduling service:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to schedule predictive maintenance',
@@ -328,14 +331,14 @@ router.post('/api/predictive-maintenance/analyze/:serialNumber', async (req: any
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    console.log(`🔮 Analyzing device ${serialNumber} for predictive dispatch...`);
+    log.info(`🔮 Analyzing device ${serialNumber} for predictive dispatch...`);
 
     const result = await predictiveServiceDispatchService.analyzeAndDispatch(
       serialNumber,
       tenantId,
     );
 
-    console.log(
+    log.info(
       `✅ Analysis complete in ${result.processingTimeMs}ms - Dispatch: ${result.dispatchCreated}`,
     );
 
@@ -347,7 +350,7 @@ router.post('/api/predictive-maintenance/analyze/:serialNumber', async (req: any
       data: result,
     });
   } catch (error: any) {
-    console.error('Predictive analysis failed:', error);
+    log.error('Predictive analysis failed:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to analyze device',
@@ -372,7 +375,7 @@ router.post('/api/predictive-maintenance/analyze-batch', async (req: any, res) =
       return res.status(400).json({ error: 'serialNumbers array required' });
     }
 
-    console.log(`🔮 Batch analyzing ${serialNumbers.length} devices...`);
+    log.info(`🔮 Batch analyzing ${serialNumbers.length} devices...`);
 
     const results = [];
     const errors = [];
@@ -398,7 +401,7 @@ router.post('/api/predictive-maintenance/analyze-batch', async (req: any, res) =
       errors,
     });
   } catch (error: any) {
-    console.error('Batch predictive analysis failed:', error);
+    log.error('Batch predictive analysis failed:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to batch analyze devices',
@@ -418,7 +421,7 @@ router.post('/api/predictive-maintenance/analyze-fleet', async (req: any, res) =
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    console.log(`🔮 Starting full fleet analysis for tenant ${tenantId}...`);
+    log.info(`🔮 Starting full fleet analysis for tenant ${tenantId}...`);
 
     // Get all active equipment
     const activeEquipment = await db
@@ -430,7 +433,7 @@ router.post('/api/predictive-maintenance/analyze-fleet', async (req: any, res) =
       .map((e) => e.serialNumber)
       .filter((sn): sn is string => sn !== null && sn !== undefined);
 
-    console.log(`📊 Found ${serialNumbers.length} devices to analyze`);
+    log.info(`📊 Found ${serialNumbers.length} devices to analyze`);
 
     // Analyze in batches to avoid overload
     const batchSize = 10;
@@ -453,7 +456,7 @@ router.post('/api/predictive-maintenance/analyze-fleet', async (req: any, res) =
       }
     }
 
-    console.log(`✅ Fleet analysis complete - ${results.length} analyzed, ${errors.length} failed`);
+    log.info(`✅ Fleet analysis complete - ${results.length} analyzed, ${errors.length} failed`);
 
     res.json({
       success: true,
@@ -469,7 +472,7 @@ router.post('/api/predictive-maintenance/analyze-fleet', async (req: any, res) =
       errors,
     });
   } catch (error: any) {
-    console.error('Fleet analysis failed:', error);
+    log.error('Fleet analysis failed:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to analyze fleet',
@@ -597,7 +600,7 @@ router.get('/api/predictive-maintenance/parts-forecast', async (req: any, res) =
           partsForecast[partKey].devices.push(device.serialNumber);
         }
       } catch (error) {
-        console.error(`Error analyzing device ${device.serialNumber}:`, error);
+        log.error(`Error analyzing device ${device.serialNumber}:`, error);
       }
     }
 
@@ -616,7 +619,7 @@ router.get('/api/predictive-maintenance/parts-forecast', async (req: any, res) =
       },
     });
   } catch (error) {
-    console.error('Parts forecast failed:', error);
+    log.error('Parts forecast failed:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to generate parts forecast',

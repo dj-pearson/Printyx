@@ -1,6 +1,8 @@
 import { db } from './db';
 import { workflowEventRegistry } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-workflow-events');
 
 /**
  * Seed Workflow Event Registry
@@ -505,7 +507,7 @@ const eventDefinitions = [
 ];
 
 async function seedWorkflowEvents() {
-  console.log('🌱 Seeding workflow event registry...');
+  log.info('🌱 Seeding workflow event registry...');
 
   try {
     for (const eventDef of eventDefinitions) {
@@ -515,7 +517,7 @@ async function seedWorkflowEvents() {
       });
 
       if (existing) {
-        console.log(`  ⏭️  Skipping ${eventDef.displayName} (already exists)`);
+        log.info(`  ⏭️  Skipping ${eventDef.displayName} (already exists)`);
         continue;
       }
 
@@ -530,12 +532,12 @@ async function seedWorkflowEvents() {
         isActive: true,
       });
 
-      console.log(`  ✅ Created ${eventDef.displayName}`);
+      log.info(`  ✅ Created ${eventDef.displayName}`);
     }
 
-    console.log(`\n✨ Successfully seeded ${eventDefinitions.length} workflow events!`);
+    log.info(`\n✨ Successfully seeded ${eventDefinitions.length} workflow events!`);
   } catch (error) {
-    console.error('❌ Error seeding workflow events:', error);
+    log.error('❌ Error seeding workflow events:', error);
     throw error;
   }
 }
@@ -545,7 +547,7 @@ if (require.main === module) {
   seedWorkflowEvents()
     .then(() => process.exit(0))
     .catch((error) => {
-      console.error(error);
+      log.error(error);
       process.exit(1);
     });
 }

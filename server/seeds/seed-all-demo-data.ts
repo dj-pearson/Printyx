@@ -21,6 +21,9 @@
 import 'dotenv/config';
 import { db } from '../db';
 import { eq, and, sql } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('seed-all-demo-data');
+
 import {
   // Core
   tenants,
@@ -113,7 +116,7 @@ const generateId = (prefix: string, index: number) =>
 
 // Look up the demo user and get their tenant ID
 async function initializeDemoUser(): Promise<boolean> {
-  console.log(`\n🔍 Looking up demo user: ${DEMO_USER_EMAIL}`);
+  log.info(`\n🔍 Looking up demo user: ${DEMO_USER_EMAIL}`);
 
   const [demoUser] = await db
     .select()
@@ -121,18 +124,18 @@ async function initializeDemoUser(): Promise<boolean> {
     .where(eq(sql`LOWER(${users.email})`, DEMO_USER_EMAIL.toLowerCase()));
 
   if (!demoUser) {
-    console.error(`❌ Demo user not found: ${DEMO_USER_EMAIL}`);
-    console.error('   Make sure the user exists in the database.');
-    console.error('   Check your .env file has DEMO_USER set correctly.');
+    log.error(`❌ Demo user not found: ${DEMO_USER_EMAIL}`);
+    log.error('   Make sure the user exists in the database.');
+    log.error('   Check your .env file has DEMO_USER set correctly.');
     return false;
   }
 
   DEMO_USER_ID = demoUser.id;
   DEMO_TENANT_ID = demoUser.tenantId!;
 
-  console.log(`✅ Found demo user: ${demoUser.name || demoUser.email}`);
-  console.log(`   User ID: ${DEMO_USER_ID}`);
-  console.log(`   Tenant ID: ${DEMO_TENANT_ID}`);
+  log.info(`✅ Found demo user: ${demoUser.name || demoUser.email}`);
+  log.info(`   User ID: ${DEMO_USER_ID}`);
+  log.info(`   Tenant ID: ${DEMO_TENANT_ID}`);
 
   return true;
 }
@@ -152,13 +155,13 @@ async function demoDataExists(): Promise<boolean> {
 // ============================================================================
 
 async function seedCoreInfrastructure() {
-  console.log('\n📦 Phase 1: Seeding Core Infrastructure...');
+  log.info('\n📦 Phase 1: Seeding Core Infrastructure...');
 
   // Note: Using existing tenant from demo user - not creating a new one
-  console.log(`  → Using existing tenant: ${DEMO_TENANT_ID}`);
+  log.info(`  → Using existing tenant: ${DEMO_TENANT_ID}`);
 
   // Seed Locations
-  console.log('  → Creating locations...');
+  log.info('  → Creating locations...');
   const locationData = [
     {
       id: generateId('loc', 1),
@@ -192,7 +195,7 @@ async function seedCoreInfrastructure() {
   }
 
   // Seed Regions
-  console.log('  → Creating regions...');
+  log.info('  → Creating regions...');
   const regionData = [
     { id: generateId('reg', 1), name: 'East Coast', code: 'EAST' },
     { id: generateId('reg', 2), name: 'West Coast', code: 'WEST' },
@@ -210,7 +213,7 @@ async function seedCoreInfrastructure() {
   }
 
   // Seed Teams
-  console.log('  → Creating teams...');
+  log.info('  → Creating teams...');
   const teamData = [
     { id: generateId('team', 1), name: 'Sales Team Alpha', type: 'sales' },
     { id: generateId('team', 2), name: 'Service Team Beta', type: 'service' },
@@ -228,10 +231,10 @@ async function seedCoreInfrastructure() {
   }
 
   // Using existing demo user from environment
-  console.log(`  → Using existing demo user: ${DEMO_USER_EMAIL}`);
+  log.info(`  → Using existing demo user: ${DEMO_USER_EMAIL}`);
 
   // Create additional test users for the demo tenant
-  console.log('  → Creating additional test users...');
+  log.info('  → Creating additional test users...');
   const additionalUsers = [
     {
       id: generateId('user', 2),
@@ -264,7 +267,7 @@ async function seedCoreInfrastructure() {
       .onConflictDoNothing();
   }
 
-  console.log('  ✅ Core Infrastructure seeded');
+  log.info('  ✅ Core Infrastructure seeded');
 }
 
 // ============================================================================
@@ -272,10 +275,10 @@ async function seedCoreInfrastructure() {
 // ============================================================================
 
 async function seedBusinessFoundation() {
-  console.log('\n🏢 Phase 2: Seeding Business Foundation...');
+  log.info('\n🏢 Phase 2: Seeding Business Foundation...');
 
   // Seed Companies
-  console.log('  → Creating companies...');
+  log.info('  → Creating companies...');
   const companyData = [
     {
       id: generateId('comp', 1),
@@ -331,7 +334,7 @@ async function seedBusinessFoundation() {
   }
 
   // Seed Business Records (Leads & Customers)
-  console.log('  → Creating business records (leads & customers)...');
+  log.info('  → Creating business records (leads & customers)...');
   const businessRecordData = [
     // Customers
     {
@@ -391,7 +394,7 @@ async function seedBusinessFoundation() {
   }
 
   // Seed Company Contacts
-  console.log('  → Creating contacts...');
+  log.info('  → Creating contacts...');
   const contactData = [
     {
       id: generateId('contact', 1),
@@ -456,7 +459,7 @@ async function seedBusinessFoundation() {
       .onConflictDoNothing();
   }
 
-  console.log('  ✅ Business Foundation seeded');
+  log.info('  ✅ Business Foundation seeded');
 }
 
 // ============================================================================
@@ -464,10 +467,10 @@ async function seedBusinessFoundation() {
 // ============================================================================
 
 async function seedProductsAndEquipment() {
-  console.log('\n📦 Phase 3: Seeding Products & Equipment...');
+  log.info('\n📦 Phase 3: Seeding Products & Equipment...');
 
   // Seed Product Models
-  console.log('  → Creating product models...');
+  log.info('  → Creating product models...');
   const productModelData = [
     {
       id: generateId('pm', 1),
@@ -523,7 +526,7 @@ async function seedProductsAndEquipment() {
   }
 
   // Seed Product Accessories
-  console.log('  → Creating product accessories...');
+  log.info('  → Creating product accessories...');
   const accessoryData = [
     {
       id: generateId('acc', 1),
@@ -567,7 +570,7 @@ async function seedProductsAndEquipment() {
   }
 
   // Seed Equipment (deployed machines)
-  console.log('  → Creating equipment...');
+  log.info('  → Creating equipment...');
   const equipmentData = [
     {
       id: generateId('eq', 1),
@@ -622,7 +625,7 @@ async function seedProductsAndEquipment() {
   }
 
   // Seed Service Products
-  console.log('  → Creating service products...');
+  log.info('  → Creating service products...');
   await db
     .insert(serviceProducts)
     .values({
@@ -637,7 +640,7 @@ async function seedProductsAndEquipment() {
     .onConflictDoNothing();
 
   // Seed Professional Services
-  console.log('  → Creating professional services...');
+  log.info('  → Creating professional services...');
   await db
     .insert(professionalServices)
     .values({
@@ -652,7 +655,7 @@ async function seedProductsAndEquipment() {
     .onConflictDoNothing();
 
   // Seed Software Products
-  console.log('  → Creating software products...');
+  log.info('  → Creating software products...');
   await db
     .insert(softwareProducts)
     .values({
@@ -667,7 +670,7 @@ async function seedProductsAndEquipment() {
     .onConflictDoNothing();
 
   // Seed Supplies
-  console.log('  → Creating supplies...');
+  log.info('  → Creating supplies...');
   const supplyData = [
     {
       id: generateId('sup', 1),
@@ -710,7 +713,7 @@ async function seedProductsAndEquipment() {
       .onConflictDoNothing();
   }
 
-  console.log('  ✅ Products & Equipment seeded');
+  log.info('  ✅ Products & Equipment seeded');
 }
 
 // ============================================================================
@@ -718,10 +721,10 @@ async function seedProductsAndEquipment() {
 // ============================================================================
 
 async function seedSalesAndCRM() {
-  console.log('\n💼 Phase 4: Seeding Sales & CRM...');
+  log.info('\n💼 Phase 4: Seeding Sales & CRM...');
 
   // Seed Deal Stages
-  console.log('  → Creating deal stages...');
+  log.info('  → Creating deal stages...');
   const stageData = [
     { id: generateId('stage', 1), name: 'Discovery', order: 1, probability: 10, color: '#3B82F6' },
     {
@@ -761,7 +764,7 @@ async function seedSalesAndCRM() {
   }
 
   // Seed Opportunities
-  console.log('  → Creating opportunities...');
+  log.info('  → Creating opportunities...');
   const opportunityData = [
     {
       id: generateId('opp', 1),
@@ -810,7 +813,7 @@ async function seedSalesAndCRM() {
   }
 
   // Seed Deals
-  console.log('  → Creating deals...');
+  log.info('  → Creating deals...');
   const dealData = [
     {
       id: generateId('deal', 1),
@@ -849,7 +852,7 @@ async function seedSalesAndCRM() {
   }
 
   // Seed Quotes
-  console.log('  → Creating quotes...');
+  log.info('  → Creating quotes...');
   const quoteData = [
     {
       id: generateId('quote', 1),
@@ -890,7 +893,7 @@ async function seedSalesAndCRM() {
   }
 
   // Seed Proposals
-  console.log('  → Creating proposals...');
+  log.info('  → Creating proposals...');
   await db
     .insert(proposals)
     .values({
@@ -907,7 +910,7 @@ async function seedSalesAndCRM() {
     .onConflictDoNothing();
 
   // Seed Contracts
-  console.log('  → Creating contracts...');
+  log.info('  → Creating contracts...');
   const contractData = [
     {
       id: generateId('contract', 1),
@@ -948,7 +951,7 @@ async function seedSalesAndCRM() {
   }
 
   // Seed Sales Goals
-  console.log('  → Creating sales goals...');
+  log.info('  → Creating sales goals...');
   await db
     .insert(salesGoals)
     .values({
@@ -964,7 +967,7 @@ async function seedSalesAndCRM() {
     })
     .onConflictDoNothing();
 
-  console.log('  ✅ Sales & CRM seeded');
+  log.info('  ✅ Sales & CRM seeded');
 }
 
 // ============================================================================
@@ -972,10 +975,10 @@ async function seedSalesAndCRM() {
 // ============================================================================
 
 async function seedServiceAndOperations() {
-  console.log('\n🔧 Phase 5: Seeding Service & Operations...');
+  log.info('\n🔧 Phase 5: Seeding Service & Operations...');
 
   // Seed Technicians
-  console.log('  → Creating technicians...');
+  log.info('  → Creating technicians...');
   const technicianData = [
     {
       id: generateId('tech', 1),
@@ -1017,7 +1020,7 @@ async function seedServiceAndOperations() {
   }
 
   // Seed Service Contracts
-  console.log('  → Creating service contracts...');
+  log.info('  → Creating service contracts...');
   const serviceContractData = [
     {
       id: generateId('sc', 1),
@@ -1055,7 +1058,7 @@ async function seedServiceAndOperations() {
   }
 
   // Seed Service Tickets
-  console.log('  → Creating service tickets...');
+  log.info('  → Creating service tickets...');
   const ticketData = [
     {
       id: generateId('ticket', 1),
@@ -1108,7 +1111,7 @@ async function seedServiceAndOperations() {
   }
 
   // Seed Meter Readings
-  console.log('  → Creating meter readings...');
+  log.info('  → Creating meter readings...');
   const meterData = [
     {
       id: generateId('meter', 1),
@@ -1152,7 +1155,7 @@ async function seedServiceAndOperations() {
   }
 
   // Seed Service Calls
-  console.log('  → Creating service calls...');
+  log.info('  → Creating service calls...');
   await db
     .insert(serviceCalls)
     .values({
@@ -1166,7 +1169,7 @@ async function seedServiceAndOperations() {
     })
     .onConflictDoNothing();
 
-  console.log('  ✅ Service & Operations seeded');
+  log.info('  ✅ Service & Operations seeded');
 }
 
 // ============================================================================
@@ -1174,10 +1177,10 @@ async function seedServiceAndOperations() {
 // ============================================================================
 
 async function seedFinanceAndBilling() {
-  console.log('\n💰 Phase 6: Seeding Finance & Billing...');
+  log.info('\n💰 Phase 6: Seeding Finance & Billing...');
 
   // Seed Vendors
-  console.log('  → Creating vendors...');
+  log.info('  → Creating vendors...');
   const vendorData = [
     {
       id: generateId('vendor', 1),
@@ -1218,7 +1221,7 @@ async function seedFinanceAndBilling() {
   }
 
   // Seed Invoices
-  console.log('  → Creating invoices...');
+  log.info('  → Creating invoices...');
   const invoiceData = [
     {
       id: generateId('inv', 1),
@@ -1271,7 +1274,7 @@ async function seedFinanceAndBilling() {
   }
 
   // Seed Leases
-  console.log('  → Creating leases...');
+  log.info('  → Creating leases...');
   const leaseData = [
     {
       id: generateId('lease', 1),
@@ -1314,7 +1317,7 @@ async function seedFinanceAndBilling() {
   }
 
   // Seed Chart of Accounts
-  console.log('  → Creating chart of accounts...');
+  log.info('  → Creating chart of accounts...');
   const accountData = [
     {
       id: generateId('coa', 1),
@@ -1372,7 +1375,7 @@ async function seedFinanceAndBilling() {
   }
 
   // Seed Purchase Orders
-  console.log('  → Creating purchase orders...');
+  log.info('  → Creating purchase orders...');
   const poData = [
     {
       id: generateId('po', 1),
@@ -1414,7 +1417,7 @@ async function seedFinanceAndBilling() {
   }
 
   // Seed Inventory Items
-  console.log('  → Creating inventory items...');
+  log.info('  → Creating inventory items...');
   const inventoryData = [
     {
       id: generateId('inv-item', 1),
@@ -1465,7 +1468,7 @@ async function seedFinanceAndBilling() {
       .onConflictDoNothing();
   }
 
-  console.log('  ✅ Finance & Billing seeded');
+  log.info('  ✅ Finance & Billing seeded');
 }
 
 // ============================================================================
@@ -1473,10 +1476,10 @@ async function seedFinanceAndBilling() {
 // ============================================================================
 
 async function seedTasksAndActivities() {
-  console.log('\n📋 Phase 7: Seeding Tasks & Activities...');
+  log.info('\n📋 Phase 7: Seeding Tasks & Activities...');
 
   // Seed Tasks
-  console.log('  → Creating tasks...');
+  log.info('  → Creating tasks...');
   const taskData = [
     {
       id: generateId('task', 1),
@@ -1525,7 +1528,7 @@ async function seedTasksAndActivities() {
   }
 
   // Seed Projects
-  console.log('  → Creating projects...');
+  log.info('  → Creating projects...');
   await db
     .insert(projects)
     .values({
@@ -1541,7 +1544,7 @@ async function seedTasksAndActivities() {
     .onConflictDoNothing();
 
   // Seed Business Record Activities
-  console.log('  → Creating activities...');
+  log.info('  → Creating activities...');
   const activityData = [
     {
       id: generateId('activity', 1),
@@ -1584,7 +1587,7 @@ async function seedTasksAndActivities() {
       .onConflictDoNothing();
   }
 
-  console.log('  ✅ Tasks & Activities seeded');
+  log.info('  ✅ Tasks & Activities seeded');
 }
 
 // ============================================================================
@@ -1592,29 +1595,27 @@ async function seedTasksAndActivities() {
 // ============================================================================
 
 async function seedAllDemoData() {
-  console.log('🚀 Starting Demo Data Seeder...\n');
-  console.log('='.repeat(60));
+  log.info('🚀 Starting Demo Data Seeder...\n');
+  log.info('='.repeat(60));
 
   try {
     // First, look up the demo user from environment
     const userFound = await initializeDemoUser();
     if (!userFound) {
-      console.error('\n❌ Cannot proceed without a valid demo user.');
+      log.error('\n❌ Cannot proceed without a valid demo user.');
       process.exit(1);
     }
 
     // Check if demo data already exists for this tenant
     const forceFlag = process.argv.includes('--force');
     if ((await demoDataExists()) && !forceFlag) {
-      console.log(
-        '\n⚠️  Demo data already exists for this tenant. Skipping to prevent duplicates.',
-      );
-      console.log('   To re-seed, run with --force flag: npm run seed:demo -- --force\n');
+      log.info('\n⚠️  Demo data already exists for this tenant. Skipping to prevent duplicates.');
+      log.info('   To re-seed, run with --force flag: npm run seed:demo -- --force\n');
       process.exit(0);
     }
 
     if (forceFlag) {
-      console.log('\n⚡ Force flag detected - proceeding with seeding...');
+      log.info('\n⚡ Force flag detected - proceeding with seeding...');
     }
 
     // Execute phases in order
@@ -1626,26 +1627,26 @@ async function seedAllDemoData() {
     await seedFinanceAndBilling();
     await seedTasksAndActivities();
 
-    console.log('\n' + '='.repeat(60));
-    console.log('✅ Demo data seeding completed successfully!\n');
-    console.log('📊 Summary:');
-    console.log(`   • Using existing tenant: ${DEMO_TENANT_ID}`);
-    console.log('   • 3 Locations, 3 Regions, 3 Teams');
-    console.log('   • 3 Additional test users');
-    console.log('   • 5 Companies, 6 Business Records, 5 Contacts');
-    console.log('   • 5 Product Models, 4 Accessories, 5 Equipment');
-    console.log('   • 6 Deal Stages, 4 Opportunities, 3 Deals');
-    console.log('   • 3 Quotes, 1 Proposal, 3 Contracts');
-    console.log('   • 3 Technicians, 2 Service Contracts, 4 Service Tickets');
-    console.log('   • 3 Vendors, 4 Invoices, 2 Leases');
-    console.log('   • 6 Chart of Accounts, 3 Purchase Orders');
-    console.log('   • 4 Inventory Items, 4 Meter Readings');
-    console.log('   • 4 Tasks, 1 Project, 4 Activities');
-    console.log('\n🔐 Demo User:');
-    console.log(`   Email: ${DEMO_USER_EMAIL}`);
-    console.log(`   Tenant ID: ${DEMO_TENANT_ID}\n`);
+    log.info('\n' + '='.repeat(60));
+    log.info('✅ Demo data seeding completed successfully!\n');
+    log.info('📊 Summary:');
+    log.info(`   • Using existing tenant: ${DEMO_TENANT_ID}`);
+    log.info('   • 3 Locations, 3 Regions, 3 Teams');
+    log.info('   • 3 Additional test users');
+    log.info('   • 5 Companies, 6 Business Records, 5 Contacts');
+    log.info('   • 5 Product Models, 4 Accessories, 5 Equipment');
+    log.info('   • 6 Deal Stages, 4 Opportunities, 3 Deals');
+    log.info('   • 3 Quotes, 1 Proposal, 3 Contracts');
+    log.info('   • 3 Technicians, 2 Service Contracts, 4 Service Tickets');
+    log.info('   • 3 Vendors, 4 Invoices, 2 Leases');
+    log.info('   • 6 Chart of Accounts, 3 Purchase Orders');
+    log.info('   • 4 Inventory Items, 4 Meter Readings');
+    log.info('   • 4 Tasks, 1 Project, 4 Activities');
+    log.info('\n🔐 Demo User:');
+    log.info(`   Email: ${DEMO_USER_EMAIL}`);
+    log.info(`   Tenant ID: ${DEMO_TENANT_ID}\n`);
   } catch (error) {
-    console.error('\n❌ Error seeding demo data:', error);
+    log.error('\n❌ Error seeding demo data:', error);
     process.exit(1);
   }
 

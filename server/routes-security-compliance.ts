@@ -6,6 +6,9 @@
 import { Router, type Request, type Response } from 'express';
 import { eq, desc, and, gte, lte, like, or, sql } from 'drizzle-orm';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-security-compliance');
+
 import {
   auditLogs,
   dataAccessLogs,
@@ -118,7 +121,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching audit logs:', error);
+      log.error('Error fetching audit logs:', error);
       res.status(500).json({ message: 'Failed to fetch audit logs' });
     }
   },
@@ -146,7 +149,7 @@ router.get(
 
       res.json({ stats });
     } catch (error) {
-      console.error('Error fetching audit stats:', error);
+      log.error('Error fetching audit stats:', error);
       res.status(500).json({ message: 'Failed to fetch audit statistics' });
     }
   },
@@ -220,7 +223,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching data access logs:', error);
+      log.error('Error fetching data access logs:', error);
       res.status(500).json({ message: 'Failed to fetch data access logs' });
     }
   },
@@ -272,7 +275,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching GDPR requests:', error);
+      log.error('Error fetching GDPR requests:', error);
       res.status(500).json({ message: 'Failed to fetch GDPR requests' });
     }
   },
@@ -299,7 +302,7 @@ router.post(
         requestId,
       });
     } catch (error) {
-      console.error('Error creating GDPR request:', error);
+      log.error('Error creating GDPR request:', error);
       res.status(500).json({ message: 'Failed to create GDPR request' });
     }
   },
@@ -348,7 +351,7 @@ router.post(
         data: sanitizeForAudit(personalData),
       });
     } catch (error) {
-      console.error('Error processing GDPR access request:', error);
+      log.error('Error processing GDPR access request:', error);
       res.status(500).json({ message: 'Failed to process data access request' });
     }
   },
@@ -399,7 +402,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching security sessions:', error);
+      log.error('Error fetching security sessions:', error);
       res.status(500).json({ message: 'Failed to fetch security sessions' });
     }
   },
@@ -432,7 +435,7 @@ router.post(
 
       res.json({ message: 'Session terminated successfully' });
     } catch (error) {
-      console.error('Error terminating session:', error);
+      log.error('Error terminating session:', error);
       res.status(500).json({ message: 'Failed to terminate session' });
     }
   },
@@ -465,7 +468,7 @@ router.get(
 
       res.json(settings);
     } catch (error) {
-      console.error('Error fetching compliance settings:', error);
+      log.error('Error fetching compliance settings:', error);
       res.status(500).json({ message: 'Failed to fetch compliance settings' });
     }
   },
@@ -499,7 +502,7 @@ router.put(
 
       res.json({ message: 'Compliance settings updated successfully' });
     } catch (error) {
-      console.error('Error updating compliance settings:', error);
+      log.error('Error updating compliance settings:', error);
       res.status(500).json({ message: 'Failed to update compliance settings' });
     }
   },
@@ -584,7 +587,7 @@ router.get(
         timeRange: `${days} days`,
       });
     } catch (error) {
-      console.error('Error fetching security dashboard:', error);
+      log.error('Error fetching security dashboard:', error);
       res.status(500).json({ message: 'Failed to fetch security dashboard data' });
     }
   },

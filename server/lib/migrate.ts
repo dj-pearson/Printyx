@@ -1,5 +1,8 @@
 import 'dotenv/config';
 import pg from 'pg';
+import { createModuleLogger } from './logger';
+const log = createModuleLogger('migrate');
+
 const { Pool } = pg;
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
@@ -110,32 +113,32 @@ async function runMigrations(): Promise<void> {
   const pool = createPool();
 
   try {
-    console.log('[Migrate] Acquiring migration lock...');
+    log.info('[Migrate] Acquiring migration lock...');
     const acquired = await acquireLock(pool);
     if (!acquired) {
       const status = await getLockStatus(pool);
-      console.error(
+      log.error(
         `[Migrate] Failed to acquire lock. Currently locked by: ${status.lockedBy} since ${status.lockedAt}`,
       );
       process.exit(1);
     }
-    console.log('[Migrate] Lock acquired.');
+    log.info('[Migrate] Lock acquired.');
 
-    console.log(`[Migrate] Running migrations from: ${MIGRATIONS_FOLDER}`);
+    log.info(`[Migrate] Running migrations from: ${MIGRATIONS_FOLDER}`);
 
     const db = drizzle({ client: pool });
     await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
 
-    console.log('[Migrate] Migrations completed successfully.');
+    log.info('[Migrate] Migrations completed successfully.');
   } catch (error) {
-    console.error('[Migrate] Migration failed:', error);
+    log.error('[Migrate] Migration failed:', error);
     process.exit(1);
   } finally {
     try {
       await releaseLock(pool);
-      console.log('[Migrate] Lock released.');
+      log.info('[Migrate] Lock released.');
     } catch (lockError) {
-      console.error('[Migrate] Warning: Failed to release lock:', lockError);
+      log.error('[Migrate] Warning: Failed to release lock:', lockError);
     }
     await pool.end();
   }
@@ -155,7 +158,7 @@ async function markBaseline(): Promise<void> {
     // Read the meta journal to find all migrations
     const journalPath = path.join(MIGRATIONS_FOLDER, 'meta', '_journal.json');
     if (!fs.existsSync(journalPath)) {
-      console.error('[Migrate] No migrations found. Run `npm run db:generate` first.');
+      log.error('[Migrate] No migrations found. Run `npm run db:generate` first.');
       process.exit(1);
     }
 
@@ -163,7 +166,7 @@ async function markBaseline(): Promise<void> {
     const entries: Array<{ tag: string }> = journal.entries || [];
 
     if (entries.length === 0) {
-      console.error('[Migrate] No migration entries in journal.');
+      log.error('[Migrate] No migration entries in journal.');
       process.exit(1);
     }
 
@@ -184,7 +187,7 @@ async function markBaseline(): Promise<void> {
     for (const entry of entries) {
       const sqlFile = path.join(MIGRATIONS_FOLDER, `${entry.tag}.sql`);
       if (!fs.existsSync(sqlFile)) {
-        console.warn(`[Migrate] Warning: SQL file not found for ${entry.tag}, skipping`);
+        log.warn(`[Migrate] Warning: SQL file not found for ${entry.tag}, skipping`);
         continue;
       }
 
@@ -192,7 +195,7 @@ async function markBaseline(): Promise<void> {
       const hash = crypto.createHash('sha256').update(sqlContent).digest('hex');
 
       if (appliedHashes.has(hash)) {
-        console.log(`[Migrate] Already applied: ${entry.tag}`);
+        log.info(`[Migrate] Already applied: ${entry.tag}`);
         continue;
       }
 
@@ -201,17 +204,17 @@ async function markBaseline(): Promise<void> {
         Date.now(),
       ]);
       marked++;
-      console.log(`[Migrate] Marked as applied: ${entry.tag}`);
+      log.info(`[Migrate] Marked as applied: ${entry.tag}`);
     }
 
     if (marked === 0) {
-      console.log('[Migrate] All migrations already marked as applied.');
+      log.info('[Migrate] All migrations already marked as applied.');
     } else {
-      console.log(`[Migrate] Baseline complete. Marked ${marked} migration(s) as applied.`);
+      log.info(`[Migrate] Baseline complete. Marked ${marked} migration(s) as applied.`);
     }
-    console.log('[Migrate] Future schema changes will generate incremental migrations.');
+    log.info('[Migrate] Future schema changes will generate incremental migrations.');
   } catch (error) {
-    console.error('[Migrate] Baseline failed:', error);
+    log.error('[Migrate] Baseline failed:', error);
     process.exit(1);
   } finally {
     await pool.end();
@@ -223,28 +226,28 @@ async function showStatus(): Promise<void> {
 
   try {
     const lockStatus = await getLockStatus(pool);
-    console.log('[Migrate] Lock status:', lockStatus.locked ? 'LOCKED' : 'FREE');
+    log.info('[Migrate] Lock status:', lockStatus.locked ? 'LOCKED' : 'FREE');
     if (lockStatus.locked) {
-      console.log(`  Locked by: ${lockStatus.lockedBy}`);
-      console.log(`  Locked at: ${lockStatus.lockedAt}`);
+      log.info(`  Locked by: ${lockStatus.lockedBy}`);
+      log.info(`  Locked at: ${lockStatus.lockedAt}`);
     }
 
     try {
       const result = await pool.query(
         `SELECT * FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 20`,
       );
-      console.log(`\n[Migrate] Applied migrations (${result.rows.length} shown):`);
+      log.info(`\n[Migrate] Applied migrations (${result.rows.length} shown):`);
       for (const row of result.rows) {
         const date = new Date(Number(row.created_at));
-        console.log(`  - ${row.hash} (applied: ${date.toISOString()})`);
+        log.info(`  - ${row.hash} (applied: ${date.toISOString()})`);
       }
     } catch {
-      console.log(
+      log.info(
         '[Migrate] No migrations have been applied yet (__drizzle_migrations table not found).',
       );
     }
   } catch (error) {
-    console.error('[Migrate] Error checking status:', error);
+    log.error('[Migrate] Error checking status:', error);
     process.exit(1);
   } finally {
     await pool.end();

@@ -8,6 +8,8 @@
 import { Router } from 'express';
 import { requireAuth } from './replitAuth';
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-oid-mappings');
 
 const router = Router();
 
@@ -46,7 +48,7 @@ router.get('/', requireAuth, async (req: any, res) => {
 
     res.json(manufacturer ? mappings.filter((m) => m.manufacturer === manufacturer) : mappings);
   } catch (error: any) {
-    console.error('Error fetching OID mappings:', error);
+    log.error('Error fetching OID mappings:', error);
     res.status(500).json({ error: 'Failed to fetch OID mappings' });
   }
 });
@@ -74,7 +76,7 @@ router.get('/:id', requireAuth, async (req: any, res) => {
       isCustom: false,
     });
   } catch (error: any) {
-    console.error('Error fetching OID mapping:', error);
+    log.error('Error fetching OID mapping:', error);
     res.status(500).json({ error: 'Failed to fetch OID mapping' });
   }
 });
@@ -106,7 +108,7 @@ router.post('/', requireAuth, async (req: any, res) => {
       updatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('Error creating OID mapping:', error);
+    log.error('Error creating OID mapping:', error);
     res.status(500).json({ error: 'Failed to create OID mapping' });
   }
 });
@@ -135,7 +137,7 @@ router.put('/:id', requireAuth, async (req: any, res) => {
       updatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('Error updating OID mapping:', error);
+    log.error('Error updating OID mapping:', error);
     res.status(500).json({ error: 'Failed to update OID mapping' });
   }
 });
@@ -154,7 +156,7 @@ router.delete('/:id', requireAuth, async (req: any, res) => {
     // TODO: Implement actual database delete
     res.json({ success: true, message: `OID mapping ${id} deleted` });
   } catch (error: any) {
-    console.error('Error deleting OID mapping:', error);
+    log.error('Error deleting OID mapping:', error);
     res.status(500).json({ error: 'Failed to delete OID mapping' });
   }
 });
@@ -180,7 +182,7 @@ router.post('/:id/test', requireAuth, async (req: any, res) => {
       testedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('Error testing OID mapping:', error);
+    log.error('Error testing OID mapping:', error);
     res.status(500).json({ error: 'Failed to test OID mapping' });
   }
 });
@@ -205,7 +207,7 @@ router.post('/import', requireAuth, async (req: any, res) => {
       errors: [],
     });
   } catch (error: any) {
-    console.error('Error importing OID mappings:', error);
+    log.error('Error importing OID mappings:', error);
     res.status(500).json({ error: 'Failed to import OID mappings' });
   }
 });

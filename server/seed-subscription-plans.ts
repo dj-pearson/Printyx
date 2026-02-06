@@ -1,5 +1,8 @@
 import { db } from './db';
 import { sql } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-subscription-plans');
+
 import {
   subscriptionPlans,
   subscriptionFeatures,
@@ -668,7 +671,7 @@ const plans: NewSubscriptionPlan[] = [
  * Seed subscription plans and features
  */
 export async function seedSubscriptionPlans() {
-  console.log('🌱 Seeding subscription features...');
+  log.info('🌱 Seeding subscription features...');
 
   try {
     // Insert features
@@ -687,10 +690,10 @@ export async function seedSubscriptionPlans() {
       })
       .returning();
 
-    console.log(`✅ Seeded ${insertedFeatures.length} features`);
+    log.info(`✅ Seeded ${insertedFeatures.length} features`);
 
     // Insert plans
-    console.log('🌱 Seeding subscription plans...');
+    log.info('🌱 Seeding subscription plans...');
 
     const insertedPlans = await db
       .insert(subscriptionPlans)
@@ -720,12 +723,12 @@ export async function seedSubscriptionPlans() {
       })
       .returning();
 
-    console.log(`✅ Seeded ${insertedPlans.length} plans`);
+    log.info(`✅ Seeded ${insertedPlans.length} plans`);
 
-    console.log('✅ Subscription plans seeding completed successfully!');
+    log.info('✅ Subscription plans seeding completed successfully!');
     return { features: insertedFeatures, plans: insertedPlans };
   } catch (error) {
-    console.error('❌ Error seeding subscription plans:', error);
+    log.error('❌ Error seeding subscription plans:', error);
     throw error;
   }
 }
@@ -735,11 +738,11 @@ const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 if (isMainModule) {
   seedSubscriptionPlans()
     .then(() => {
-      console.log('🎉 Seeding complete!');
+      log.info('🎉 Seeding complete!');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('💥 Seeding failed:', error);
+      log.error('💥 Seeding failed:', error);
       process.exit(1);
     });
 }

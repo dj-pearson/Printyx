@@ -1,5 +1,8 @@
 import { db } from '../db';
 import { eq, desc, and } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('equipment-lifecycle-state-machine');
+
 import {
   equipmentLifecycle,
   equipmentLifecycleTransitions,
@@ -311,7 +314,7 @@ export class EquipmentLifecycleStateMachine {
         };
       });
     } catch (error: any) {
-      console.error('Transition error:', error);
+      log.error('Transition error:', error);
       return {
         success: false,
         newStage: toStage,
@@ -433,7 +436,7 @@ export class EquipmentLifecycleStateMachine {
         return result;
       });
     } catch (error: any) {
-      console.error('Rollback error:', error);
+      log.error('Rollback error:', error);
       return {
         success: false,
         newStage: '',
@@ -456,19 +459,19 @@ export class EquipmentLifecycleStateMachine {
     const actions: Record<string, Record<string, () => Promise<void>>> = {
       [LIFECYCLE_STAGES.RECEIVED]: {
         [LIFECYCLE_STAGES.STAGED]: async () => {
-          console.log(`[State Machine] Equipment ${equipmentId}: Generate asset label/QR code`);
+          log.info(`[State Machine] Equipment ${equipmentId}: Generate asset label/QR code`);
           // TODO: Integrate with QR code generation service
         },
       },
       [LIFECYCLE_STAGES.DELIVERED]: {
         [LIFECYCLE_STAGES.INSTALLED]: async () => {
-          console.log(`[State Machine] Equipment ${equipmentId}: Schedule 30-day follow-up`);
+          log.info(`[State Machine] Equipment ${equipmentId}: Schedule 30-day follow-up`);
           // TODO: Schedule follow-up service check
         },
       },
       [LIFECYCLE_STAGES.INSTALLED]: {
         [LIFECYCLE_STAGES.ACTIVE]: async () => {
-          console.log(
+          log.info(
             `[State Machine] Equipment ${equipmentId}: Activate monitoring & send welcome email`,
           );
           // TODO: Activate equipment monitoring
@@ -478,19 +481,19 @@ export class EquipmentLifecycleStateMachine {
       },
       [LIFECYCLE_STAGES.ACTIVE]: {
         [LIFECYCLE_STAGES.RETIRED]: async () => {
-          console.log(`[State Machine] Equipment ${equipmentId}: Deactivate monitoring`);
+          log.info(`[State Machine] Equipment ${equipmentId}: Deactivate monitoring`);
           // TODO: Deactivate equipment monitoring
           // TODO: Send retirement notification
         },
       },
       [LIFECYCLE_STAGES.RETIRED]: {
         [LIFECYCLE_STAGES.DISPOSED]: async () => {
-          console.log(`[State Machine] Equipment ${equipmentId}: Trigger disposal workflow`);
+          log.info(`[State Machine] Equipment ${equipmentId}: Trigger disposal workflow`);
           // TODO: Create disposal record
           // TODO: Notify disposal vendor
         },
         [LIFECYCLE_STAGES.TRADED_IN]: async () => {
-          console.log(`[State Machine] Equipment ${equipmentId}: Trigger trade-in workflow`);
+          log.info(`[State Machine] Equipment ${equipmentId}: Trigger trade-in workflow`);
           // TODO: Create trade-in record
           // TODO: Apply credit to customer account
         },
@@ -502,7 +505,7 @@ export class EquipmentLifecycleStateMachine {
       try {
         await action();
       } catch (error) {
-        console.error(
+        log.error(
           `[State Machine] Post-transition action failed for ${fromStage} → ${toStage}:`,
           error,
         );

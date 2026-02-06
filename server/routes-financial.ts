@@ -1,6 +1,7 @@
 import { Router, type Express } from 'express';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { storage } from './storage';
+import { AuthenticationError, AuthorizationError } from './lib/api-errors';
 
 const router = Router();
 
@@ -8,23 +9,22 @@ const router = Router();
  * GET /api/chart-of-accounts
  * Get chart of accounts for the current tenant
  */
-router.get('/api/chart-of-accounts', async (req: any, res) => {
+router.get('/api/chart-of-accounts', async (req: any, res, next) => {
   try {
     const userId = getUserId(req);
     const tenantId = getTenantId(req);
 
     if (!userId) {
-      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });
+      throw new AuthenticationError();
     }
     if (!tenantId) {
-      return res.status(403).json({ message: 'Tenant context required', code: 'NO_TENANT' });
+      throw new AuthorizationError('Tenant context required');
     }
 
     const accounts = await storage.getChartOfAccounts(tenantId);
     res.json(accounts);
   } catch (error) {
-    console.error('Error fetching chart of accounts:', error);
-    res.status(500).json({ message: 'Failed to fetch chart of accounts' });
+    next(error);
   }
 });
 
@@ -32,24 +32,23 @@ router.get('/api/chart-of-accounts', async (req: any, res) => {
  * POST /api/chart-of-accounts
  * Create a new chart of accounts entry
  */
-router.post('/api/chart-of-accounts', async (req: any, res) => {
+router.post('/api/chart-of-accounts', async (req: any, res, next) => {
   try {
     const userId = getUserId(req);
     const tenantId = getTenantId(req);
 
     if (!userId) {
-      return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });
+      throw new AuthenticationError();
     }
     if (!tenantId) {
-      return res.status(403).json({ message: 'Tenant context required', code: 'NO_TENANT' });
+      throw new AuthorizationError('Tenant context required');
     }
 
     const accountData = { ...req.body, tenantId };
     const newAccount = await storage.createChartOfAccount(accountData);
     res.status(201).json(newAccount);
   } catch (error) {
-    console.error('Error creating account:', error);
-    res.status(500).json({ message: 'Failed to create account' });
+    next(error);
   }
 });
 

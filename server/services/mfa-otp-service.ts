@@ -9,6 +9,8 @@ import crypto from 'crypto';
 import { db } from '../db';
 import { emailService } from './email-service';
 import { EmailTemplates } from './email-templates';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('mfa-otp-service');
 
 // OTP Configuration
 export const OTP_CONFIG = {
@@ -171,7 +173,7 @@ export async function sendEmailOtp(
       expiresAt,
     };
   } catch (error) {
-    console.error('Failed to send email OTP:', error);
+    log.error('Failed to send email OTP:', error);
     return {
       success: false,
       message: 'Failed to send verification code. Please try again.',
@@ -241,7 +243,7 @@ export async function sendSmsOtp(
       expiresAt,
     };
   } catch (error) {
-    console.error('Failed to send SMS OTP:', error);
+    log.error('Failed to send SMS OTP:', error);
     return {
       success: false,
       message: 'Failed to send verification code. Please try again.',
@@ -319,7 +321,7 @@ export async function verifyOtp(
       message: 'Verification successful.',
     };
   } catch (error) {
-    console.error('OTP verification error:', error);
+    log.error('OTP verification error:', error);
     return {
       success: false,
       message: 'Verification failed. Please try again.',
@@ -373,7 +375,7 @@ class TwilioSmsProvider implements SmsProvider {
     message: string,
   ): Promise<{ success: boolean; messageId?: string }> {
     if (!this.accountSid || !this.authToken || !this.fromNumber) {
-      console.warn('Twilio not configured. SMS not sent.');
+      log.warn('Twilio not configured. SMS not sent.');
       return { success: false };
     }
 
@@ -390,7 +392,7 @@ class TwilioSmsProvider implements SmsProvider {
 
       return { success: true, messageId: result.sid };
     } catch (error) {
-      console.error('Twilio SMS error:', error);
+      log.error('Twilio SMS error:', error);
       return { success: false };
     }
   }
@@ -405,7 +407,7 @@ class AwsSnsSmsProvider implements SmsProvider {
     message: string,
   ): Promise<{ success: boolean; messageId?: string }> {
     if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-      console.warn('AWS SNS not configured. SMS not sent.');
+      log.warn('AWS SNS not configured. SMS not sent.');
       return { success: false };
     }
 
@@ -429,7 +431,7 @@ class AwsSnsSmsProvider implements SmsProvider {
       const result = await client.send(command);
       return { success: true, messageId: result.MessageId };
     } catch (error) {
-      console.error('AWS SNS error:', error);
+      log.error('AWS SNS error:', error);
       return { success: false };
     }
   }
@@ -443,7 +445,7 @@ class MockSmsProvider implements SmsProvider {
     phoneNumber: string,
     message: string,
   ): Promise<{ success: boolean; messageId?: string }> {
-    console.log(`[MOCK SMS] To: ${phoneNumber}, Message: ${message}`);
+    log.info(`[MOCK SMS] To: ${phoneNumber}, Message: ${message}`);
     return { success: true, messageId: `mock-${Date.now()}` };
   }
 }

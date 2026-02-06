@@ -7,16 +7,19 @@
 
 import { Router, type Express } from 'express';
 import { requireAuth } from './replitAuth';
-import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getTenantId } from './utils/auth-helpers';
+import { AuthenticationError } from './lib/api-errors';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-misc-stubs');
 
 // Customer Access Management Routes
 const customerAccessRouter = Router();
 
-customerAccessRouter.get('/', requireAuth, async (req: any, res) => {
+customerAccessRouter.get('/', requireAuth, async (req: any, res, next) => {
   try {
     const tenantId = getTenantId(req);
     if (!tenantId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      throw new AuthenticationError();
     }
 
     // TODO: Implement customer access list
@@ -26,17 +29,16 @@ customerAccessRouter.get('/', requireAuth, async (req: any, res) => {
       page: 1,
       pageSize: 10,
     });
-  } catch (error: any) {
-    console.error('Error fetching customer access:', error);
-    res.status(500).json({ error: 'Failed to fetch customer access' });
+  } catch (error) {
+    next(error);
   }
 });
 
-customerAccessRouter.post('/', requireAuth, async (req: any, res) => {
+customerAccessRouter.post('/', requireAuth, async (req: any, res, next) => {
   try {
     const tenantId = getTenantId(req);
     if (!tenantId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      throw new AuthenticationError();
     }
 
     // TODO: Implement customer access creation
@@ -45,21 +47,20 @@ customerAccessRouter.post('/', requireAuth, async (req: any, res) => {
       ...req.body,
       createdAt: new Date().toISOString(),
     });
-  } catch (error: any) {
-    console.error('Error creating customer access:', error);
-    res.status(500).json({ error: 'Failed to create customer access' });
+  } catch (error) {
+    next(error);
   }
 });
 
 // Bug Reports Routes
 const bugReportsRouter = Router();
 
-bugReportsRouter.post('/', async (req: any, res) => {
+bugReportsRouter.post('/', async (req: any, res, next) => {
   try {
     const { error, componentStack, url, userAgent, userId, tenantId, additionalContext } = req.body;
 
     // Log the bug report (in production, send to error tracking service)
-    console.error('Bug Report:', {
+    log.error('Bug Report:', {
       error,
       componentStack,
       url,
@@ -75,20 +76,19 @@ bugReportsRouter.post('/', async (req: any, res) => {
       reportId: `BUG-${Date.now()}`,
       message: 'Bug report submitted successfully',
     });
-  } catch (error: any) {
-    console.error('Error submitting bug report:', error);
-    res.status(500).json({ error: 'Failed to submit bug report' });
+  } catch (error) {
+    next(error);
   }
 });
 
 // Service Analytics Routes
 const serviceAnalyticsRouter = Router();
 
-serviceAnalyticsRouter.get('/', requireAuth, async (req: any, res) => {
+serviceAnalyticsRouter.get('/', requireAuth, async (req: any, res, next) => {
   try {
     const tenantId = getTenantId(req);
     if (!tenantId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      throw new AuthenticationError();
     }
 
     // TODO: Implement actual service analytics
@@ -104,26 +104,24 @@ serviceAnalyticsRouter.get('/', requireAuth, async (req: any, res) => {
       technicians: [],
       categories: [],
     });
-  } catch (error: any) {
-    console.error('Error fetching service analytics:', error);
-    res.status(500).json({ error: 'Failed to fetch service analytics' });
+  } catch (error) {
+    next(error);
   }
 });
 
-serviceAnalyticsRouter.get('/trends', requireAuth, async (req: any, res) => {
+serviceAnalyticsRouter.get('/trends', requireAuth, async (req: any, res, next) => {
   try {
     const tenantId = getTenantId(req);
     if (!tenantId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      throw new AuthenticationError();
     }
 
     res.json({
       period: req.query.period || 'month',
       data: [],
     });
-  } catch (error: any) {
-    console.error('Error fetching service trends:', error);
-    res.status(500).json({ error: 'Failed to fetch service trends' });
+  } catch (error) {
+    next(error);
   }
 });
 

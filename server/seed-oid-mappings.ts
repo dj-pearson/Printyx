@@ -1,6 +1,8 @@
 import { db } from './db';
 import { oidMappings } from '@shared/printyx-client-schema';
 import { eq, and } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-oid-mappings');
 
 /**
  * Seed default OID mappings for common printer manufacturers
@@ -202,7 +204,7 @@ const defaultOidMappings = [
 ];
 
 export async function seedOidMappings() {
-  console.log('Starting OID mappings seed...');
+  log.info('Starting OID mappings seed...');
 
   for (const mapping of defaultOidMappings) {
     try {
@@ -219,9 +221,7 @@ export async function seedOidMappings() {
         .limit(1);
 
       if (existing.length > 0) {
-        console.log(
-          `  ✓ Skipping existing mapping: ${mapping.manufacturer} - ${mapping.mappingName}`,
-        );
+        log.info(`  ✓ Skipping existing mapping: ${mapping.manufacturer} - ${mapping.mappingName}`);
         continue;
       }
 
@@ -236,24 +236,24 @@ export async function seedOidMappings() {
         oids: mapping.oids,
       });
 
-      console.log(`  ✓ Created mapping: ${mapping.manufacturer} - ${mapping.mappingName}`);
+      log.info(`  ✓ Created mapping: ${mapping.manufacturer} - ${mapping.mappingName}`);
     } catch (error) {
-      console.error(`  ✗ Failed to create mapping: ${mapping.mappingName}`, error);
+      log.error(`  ✗ Failed to create mapping: ${mapping.mappingName}`, error);
     }
   }
 
-  console.log('OID mappings seed completed!');
+  log.info('OID mappings seed completed!');
 }
 
 // Run seed if called directly
 if (require.main === module) {
   seedOidMappings()
     .then(() => {
-      console.log('Seed completed successfully');
+      log.info('Seed completed successfully');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Seed failed:', error);
+      log.error('Seed failed:', error);
       process.exit(1);
     });
 }

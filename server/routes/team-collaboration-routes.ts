@@ -5,6 +5,8 @@
 
 import express from 'express';
 import TeamCollaborationService from '../services/team-collaboration-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('team-collaboration-routes');
 
 const router = express.Router();
 
@@ -29,7 +31,7 @@ router.post('/teams', async (req, res) => {
     const team = await TeamCollaborationService.createTeam(teamData);
     res.status(201).json(team);
   } catch (error) {
-    console.error('Error creating team:', error);
+    log.error('Error creating team:', error);
     res.status(500).json({ error: 'Failed to create team' });
   }
 });
@@ -115,7 +117,7 @@ router.get('/teams', async (req, res) => {
 
     res.json(teams);
   } catch (error) {
-    console.error('Error fetching teams:', error);
+    log.error('Error fetching teams:', error);
     res.status(500).json({ error: 'Failed to fetch teams' });
   }
 });
@@ -204,7 +206,7 @@ router.get('/teams/:teamId', async (req, res) => {
 
     res.json(team);
   } catch (error) {
-    console.error('Error fetching team details:', error);
+    log.error('Error fetching team details:', error);
     res.status(500).json({ error: 'Failed to fetch team details' });
   }
 });
@@ -221,7 +223,7 @@ router.post('/teams/:teamId/members', async (req, res) => {
     const member = await TeamCollaborationService.addTeamMember(teamId, memberData);
     res.status(201).json(member);
   } catch (error) {
-    console.error('Error adding team member:', error);
+    log.error('Error adding team member:', error);
     res.status(500).json({ error: 'Failed to add team member' });
   }
 });
@@ -237,7 +239,7 @@ router.get('/teams/:teamId/capacity', async (req, res) => {
     const capacityAnalysis = await TeamCollaborationService.analyzeTeamCapacity(teamId);
     res.json(capacityAnalysis);
   } catch (error) {
-    console.error('Error analyzing team capacity:', error);
+    log.error('Error analyzing team capacity:', error);
     res.status(500).json({ error: 'Failed to analyze team capacity' });
   }
 });
@@ -253,7 +255,7 @@ router.get('/teams/:teamId/insights', async (req, res) => {
     const insights = await TeamCollaborationService.generateCollaborationInsights(teamId);
     res.json(insights);
   } catch (error) {
-    console.error('Error generating collaboration insights:', error);
+    log.error('Error generating collaboration insights:', error);
     res.status(500).json({ error: 'Failed to generate collaboration insights' });
   }
 });
@@ -273,7 +275,7 @@ router.post('/projects', async (req, res) => {
     const project = await TeamCollaborationService.createProject(projectData);
     res.status(201).json(project);
   } catch (error) {
-    console.error('Error creating project:', error);
+    log.error('Error creating project:', error);
     res.status(500).json({ error: 'Failed to create project' });
   }
 });
@@ -394,7 +396,7 @@ router.get('/projects', async (req, res) => {
 
     res.json(projects);
   } catch (error) {
-    console.error('Error fetching projects:', error);
+    log.error('Error fetching projects:', error);
     res.status(500).json({ error: 'Failed to fetch projects' });
   }
 });
@@ -565,7 +567,7 @@ router.get('/projects/:projectId', async (req, res) => {
 
     res.json(project);
   } catch (error) {
-    console.error('Error fetching project details:', error);
+    log.error('Error fetching project details:', error);
     res.status(500).json({ error: 'Failed to fetch project details' });
   }
 });
@@ -589,7 +591,7 @@ router.post('/projects/:projectId/assignments/optimize', async (req, res) => {
     );
     res.json(assignments);
   } catch (error) {
-    console.error('Error optimizing task assignments:', error);
+    log.error('Error optimizing task assignments:', error);
     res.status(500).json({ error: 'Failed to optimize task assignments' });
   }
 });
@@ -606,7 +608,7 @@ router.get('/projects/:projectId/dependencies', async (req, res) => {
       await TeamCollaborationService.coordinateCrossTeamDependencies(projectId);
     res.json(dependencyData);
   } catch (error) {
-    console.error('Error fetching project dependencies:', error);
+    log.error('Error fetching project dependencies:', error);
     res.status(500).json({ error: 'Failed to fetch project dependencies' });
   }
 });
@@ -698,7 +700,7 @@ router.get('/collaboration/templates', async (req, res) => {
 
     res.json(templates);
   } catch (error) {
-    console.error('Error fetching project templates:', error);
+    log.error('Error fetching project templates:', error);
     res.status(500).json({ error: 'Failed to fetch project templates' });
   }
 });
@@ -775,7 +777,7 @@ router.get('/collaboration/analytics', async (req, res) => {
 
     res.json(analytics);
   } catch (error) {
-    console.error('Error fetching collaboration analytics:', error);
+    log.error('Error fetching collaboration analytics:', error);
     res.status(500).json({ error: 'Failed to fetch collaboration analytics' });
   }
 });

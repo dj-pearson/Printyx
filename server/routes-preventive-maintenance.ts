@@ -2,6 +2,8 @@ import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { requireAuth } from './auth-setup';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-preventive-maintenance');
 
 const router = express.Router();
 
@@ -220,7 +222,7 @@ router.get('/api/maintenance/schedules', async (req: any, res) => {
 
     res.json(maintenanceSchedules);
   } catch (error) {
-    console.error('Error fetching maintenance schedules:', error);
+    log.error('Error fetching maintenance schedules:', error);
     res.status(500).json({ message: 'Failed to fetch maintenance schedules' });
   }
 });
@@ -348,7 +350,7 @@ router.get('/api/maintenance/analytics', async (req: any, res) => {
 
     res.json(analytics);
   } catch (error) {
-    console.error('Error fetching maintenance analytics:', error);
+    log.error('Error fetching maintenance analytics:', error);
     res.status(500).json({ message: 'Failed to fetch maintenance analytics' });
   }
 });
@@ -466,7 +468,7 @@ router.get('/api/maintenance/templates', async (req: any, res) => {
 
     res.json(templates);
   } catch (error) {
-    console.error('Error fetching maintenance templates:', error);
+    log.error('Error fetching maintenance templates:', error);
     res.status(500).json({ message: 'Failed to fetch maintenance templates' });
   }
 });
@@ -544,7 +546,7 @@ router.post('/api/maintenance/auto-generate', async (req: any, res) => {
       },
     });
   } catch (error) {
-    console.error('Error auto-generating maintenance schedules:', error);
+    log.error('Error auto-generating maintenance schedules:', error);
     res.status(500).json({ message: 'Failed to auto-generate maintenance schedules' });
   }
 });
@@ -563,7 +565,7 @@ router.put('/api/maintenance/schedules/:id', async (req: any, res) => {
       updatedAt: new Date(),
     });
   } catch (error) {
-    console.error('Error updating maintenance schedule:', error);
+    log.error('Error updating maintenance schedule:', error);
     res.status(500).json({ message: 'Failed to update maintenance schedule' });
   }
 });
@@ -664,7 +666,7 @@ router.get('/api/maintenance/predictions', async (req: any, res) => {
 
     res.json(predictions);
   } catch (error) {
-    console.error('Error fetching predictive maintenance:', error);
+    log.error('Error fetching predictive maintenance:', error);
     res.status(500).json({ message: 'Failed to fetch predictive maintenance' });
   }
 });

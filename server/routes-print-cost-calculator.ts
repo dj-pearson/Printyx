@@ -1,6 +1,9 @@
 import express from 'express';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-print-cost-calculator');
+
 import {
   calculatorSessions,
   calculatorLeads,
@@ -126,7 +129,7 @@ router.post('/api/public/calculator/sessions', async (req, res) => {
       recommendations,
     });
   } catch (error: any) {
-    console.error('Error creating calculator session:', error);
+    log.error('Error creating calculator session:', error);
 
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -185,7 +188,7 @@ router.get('/api/public/calculator/sessions/:sessionKey', async (req, res) => {
       recommendations,
     });
   } catch (error: any) {
-    console.error('Error fetching calculator session:', error);
+    log.error('Error fetching calculator session:', error);
     res.status(500).json({ message: 'Failed to fetch session' });
   }
 });
@@ -313,7 +316,7 @@ router.post('/api/public/calculator/leads', async (req, res) => {
       message: 'Email captured successfully',
     });
   } catch (error: any) {
-    console.error('Error capturing lead:', error);
+    log.error('Error capturing lead:', error);
 
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -360,7 +363,7 @@ router.post('/api/public/calculator/track/pdf-download', async (req, res) => {
 
     res.json({ message: 'PDF download tracked' });
   } catch (error: any) {
-    console.error('Error tracking PDF download:', error);
+    log.error('Error tracking PDF download:', error);
     res.status(500).json({ message: 'Failed to track PDF download' });
   }
 });
@@ -403,7 +406,7 @@ router.post('/api/public/calculator/track/event', async (req, res) => {
 
     res.json({ message: 'Event tracked' });
   } catch (error: any) {
-    console.error('Error tracking event:', error);
+    log.error('Error tracking event:', error);
     res.status(500).json({ message: 'Failed to track event' });
   }
 });
@@ -421,7 +424,7 @@ router.get('/api/public/calculator/benchmarks/:industry', async (req, res) => {
 
     res.json(benchmarks);
   } catch (error: any) {
-    console.error('Error fetching benchmarks:', error);
+    log.error('Error fetching benchmarks:', error);
     res.status(500).json({ message: 'Failed to fetch benchmarks' });
   }
 });
@@ -461,7 +464,7 @@ router.get('/api/calculator/leads', async (req: any, res) => {
 
     res.json(leads);
   } catch (error: any) {
-    console.error('Error fetching leads:', error);
+    log.error('Error fetching leads:', error);
     res.status(500).json({ message: 'Failed to fetch leads' });
   }
 });
@@ -501,7 +504,7 @@ router.get('/api/calculator/leads/:leadId', async (req: any, res) => {
       emailSequence,
     });
   } catch (error: any) {
-    console.error('Error fetching lead details:', error);
+    log.error('Error fetching lead details:', error);
     res.status(500).json({ message: 'Failed to fetch lead details' });
   }
 });
@@ -542,7 +545,7 @@ router.patch('/api/calculator/leads/:leadId', async (req: any, res) => {
 
     res.json(lead);
   } catch (error: any) {
-    console.error('Error updating lead:', error);
+    log.error('Error updating lead:', error);
     res.status(500).json({ message: 'Failed to update lead' });
   }
 });
@@ -606,7 +609,7 @@ router.get('/api/calculator/analytics/stats', async (req: any, res) => {
       roleBreakdown,
     });
   } catch (error: any) {
-    console.error('Error fetching analytics stats:', error);
+    log.error('Error fetching analytics stats:', error);
     res.status(500).json({ message: 'Failed to fetch analytics stats' });
   }
 });
@@ -663,9 +666,9 @@ async function startEmailSequence(
       });
     }
 
-    console.log(`Email sequence started for lead ${leadId}`);
+    log.info(`Email sequence started for lead ${leadId}`);
   } catch (error) {
-    console.error('Error starting email sequence:', error);
+    log.error('Error starting email sequence:', error);
     // Don't throw - we don't want email sequence errors to block lead capture
   }
 }

@@ -1,6 +1,9 @@
 import express, { Request, Response } from 'express';
 import { storage } from '../storage';
 import { z } from 'zod';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('lead-scoring-routes');
+
 import {
   insertLeadScoringRuleSchema,
   insertBantQualificationSchema,
@@ -53,7 +56,7 @@ router.post('/rules', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Create scoring rule error:', error);
+    log.error('Create scoring rule error:', error);
     res.status(500).json({ error: 'Failed to create scoring rule' });
   }
 });
@@ -70,7 +73,7 @@ router.get('/rules', async (req: Request, res: Response) => {
     const rules = await storage.getLeadScoringRules(user.tenantId, category as string);
     res.json(rules);
   } catch (error) {
-    console.error('Get scoring rules error:', error);
+    log.error('Get scoring rules error:', error);
     res.status(500).json({ error: 'Failed to fetch scoring rules' });
   }
 });
@@ -86,7 +89,7 @@ router.get('/rules/active', async (req: Request, res: Response) => {
     const rules = await storage.getActiveLeadScoringRules(user.tenantId);
     res.json(rules);
   } catch (error) {
-    console.error('Get active scoring rules error:', error);
+    log.error('Get active scoring rules error:', error);
     res.status(500).json({ error: 'Failed to fetch active scoring rules' });
   }
 });
@@ -106,7 +109,7 @@ router.get('/rules/:id', async (req: Request, res: Response) => {
 
     res.json(rule);
   } catch (error) {
-    console.error('Get scoring rule error:', error);
+    log.error('Get scoring rule error:', error);
     res.status(500).json({ error: 'Failed to fetch scoring rule' });
   }
 });
@@ -139,7 +142,7 @@ router.put('/rules/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Update scoring rule error:', error);
+    log.error('Update scoring rule error:', error);
     res.status(500).json({ error: 'Failed to update scoring rule' });
   }
 });
@@ -167,7 +170,7 @@ router.delete('/rules/:id', async (req: Request, res: Response) => {
     await storage.deleteLeadScoringRule(req.params.id);
     res.json({ success: true });
   } catch (error) {
-    console.error('Delete scoring rule error:', error);
+    log.error('Delete scoring rule error:', error);
     res.status(500).json({ error: 'Failed to delete scoring rule' });
   }
 });
@@ -368,7 +371,7 @@ router.post('/calculate/:leadId', async (req: Request, res: Response) => {
       factors: await storage.getLeadScoringFactors(leadId),
     });
   } catch (error) {
-    console.error('Calculate lead score error:', error);
+    log.error('Calculate lead score error:', error);
     res.status(500).json({ error: 'Failed to calculate lead score' });
   }
 });
@@ -400,7 +403,7 @@ router.get('/score/:leadId', async (req: Request, res: Response) => {
       factors,
     });
   } catch (error) {
-    console.error('Get lead score error:', error);
+    log.error('Get lead score error:', error);
     res.status(500).json({ error: 'Failed to fetch lead score' });
   }
 });
@@ -424,7 +427,7 @@ router.get('/score/:leadId/history', async (req: Request, res: Response) => {
     const history = await storage.getLeadScoreHistory(leadId, limit);
     res.json(history);
   } catch (error) {
-    console.error('Get lead score history error:', error);
+    log.error('Get lead score history error:', error);
     res.status(500).json({ error: 'Failed to fetch lead score history' });
   }
 });
@@ -460,7 +463,7 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
 
     res.json(enrichedLeads);
   } catch (error) {
-    console.error('Get leaderboard error:', error);
+    log.error('Get leaderboard error:', error);
     res.status(500).json({ error: 'Failed to fetch leaderboard' });
   }
 });
@@ -496,7 +499,7 @@ router.get('/grade/:grade', async (req: Request, res: Response) => {
 
     res.json(enrichedLeads);
   } catch (error) {
-    console.error('Get leads by grade error:', error);
+    log.error('Get leads by grade error:', error);
     res.status(500).json({ error: 'Failed to fetch leads by grade' });
   }
 });
@@ -594,7 +597,7 @@ router.post('/bant/:leadId', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Create/update BANT qualification error:', error);
+    log.error('Create/update BANT qualification error:', error);
     res.status(500).json({ error: 'Failed to save BANT qualification' });
   }
 });
@@ -621,7 +624,7 @@ router.get('/bant/:leadId', async (req: Request, res: Response) => {
 
     res.json(qualification);
   } catch (error) {
-    console.error('Get BANT qualification error:', error);
+    log.error('Get BANT qualification error:', error);
     res.status(500).json({ error: 'Failed to fetch BANT qualification' });
   }
 });
@@ -657,7 +660,7 @@ router.get('/qualified', async (req: Request, res: Response) => {
 
     res.json(enrichedLeads);
   } catch (error) {
-    console.error('Get qualified leads error:', error);
+    log.error('Get qualified leads error:', error);
     res.status(500).json({ error: 'Failed to fetch qualified leads' });
   }
 });
@@ -692,7 +695,7 @@ router.post('/engagement/:leadId', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Track engagement error:', error);
+    log.error('Track engagement error:', error);
     res.status(500).json({ error: 'Failed to track engagement' });
   }
 });
@@ -716,7 +719,7 @@ router.get('/engagement/:leadId', async (req: Request, res: Response) => {
     const engagements = await storage.getLeadEngagements(leadId, limit);
     res.json(engagements);
   } catch (error) {
-    console.error('Get engagement history error:', error);
+    log.error('Get engagement history error:', error);
     res.status(500).json({ error: 'Failed to fetch engagement history' });
   }
 });
@@ -741,7 +744,7 @@ router.get('/analytics', async (req: Request, res: Response) => {
     const analytics = await storage.getLeadScoringAnalytics(user.tenantId);
     res.json(analytics);
   } catch (error) {
-    console.error('Get lead scoring analytics error:', error);
+    log.error('Get lead scoring analytics error:', error);
     res.status(500).json({ error: 'Failed to fetch analytics' });
   }
 });
@@ -764,7 +767,7 @@ router.get('/bant-analytics', async (req: Request, res: Response) => {
     const analytics = await storage.getBantAnalytics(user.tenantId);
     res.json(analytics);
   } catch (error) {
-    console.error('Get BANT analytics error:', error);
+    log.error('Get BANT analytics error:', error);
     res.status(500).json({ error: 'Failed to fetch BANT analytics' });
   }
 });
@@ -787,7 +790,7 @@ router.get('/qualification-history/:leadId', async (req: Request, res: Response)
     const history = await storage.getLeadQualificationHistory(leadId);
     res.json(history);
   } catch (error) {
-    console.error('Get qualification history error:', error);
+    log.error('Get qualification history error:', error);
     res.status(500).json({ error: 'Failed to fetch qualification history' });
   }
 });

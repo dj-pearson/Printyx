@@ -15,6 +15,9 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-platform-customer-success');
+
 import {
   platformHealthScores,
   platformChurnPredictions,
@@ -125,7 +128,7 @@ router.get('/health-scores', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching health scores:', error);
+    log.error('Error fetching health scores:', error);
     res.status(500).json({
       error: 'Failed to fetch health scores',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -151,7 +154,7 @@ router.get('/health-scores/:businessRecordId', async (req: Request, res: Respons
 
     res.json(healthScore);
   } catch (error) {
-    console.error('Error fetching health score:', error);
+    log.error('Error fetching health score:', error);
     res.status(500).json({
       error: 'Failed to fetch health score',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -335,7 +338,7 @@ router.post('/health-scores/calculate', async (req: Request, res: Response) => {
 
     res.json(healthScore);
   } catch (error) {
-    console.error('Error calculating health score:', error);
+    log.error('Error calculating health score:', error);
     res.status(500).json({
       error: 'Failed to calculate health score',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -405,7 +408,7 @@ router.get('/churn-predictions', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching churn predictions:', error);
+    log.error('Error fetching churn predictions:', error);
     res.status(500).json({
       error: 'Failed to fetch churn predictions',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -521,7 +524,7 @@ router.post('/churn-predictions/predict', async (req: Request, res: Response) =>
 
     res.json(prediction);
   } catch (error) {
-    console.error('Error predicting churn:', error);
+    log.error('Error predicting churn:', error);
     res.status(500).json({
       error: 'Failed to predict churn',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -577,7 +580,7 @@ router.get('/interventions', async (req: Request, res: Response) => {
 
     res.json({ interventions });
   } catch (error) {
-    console.error('Error fetching interventions:', error);
+    log.error('Error fetching interventions:', error);
     res.status(500).json({
       error: 'Failed to fetch interventions',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -621,7 +624,7 @@ router.post('/interventions', async (req: Request, res: Response) => {
 
     res.status(201).json(intervention);
   } catch (error) {
-    console.error('Error creating intervention:', error);
+    log.error('Error creating intervention:', error);
     res.status(500).json({
       error: 'Failed to create intervention',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -653,7 +656,7 @@ router.patch('/interventions/:id', async (req: Request, res: Response) => {
 
     res.json(updatedIntervention);
   } catch (error) {
-    console.error('Error updating intervention:', error);
+    log.error('Error updating intervention:', error);
     res.status(500).json({
       error: 'Failed to update intervention',
       message: error instanceof Error ? error.message : 'Unknown error',

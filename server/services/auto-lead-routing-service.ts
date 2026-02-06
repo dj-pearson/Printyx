@@ -1,4 +1,7 @@
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('auto-lead-routing-service');
+
 import {
   businessRecords,
   platformLeadScoringRules as leadScoringRules,
@@ -30,7 +33,7 @@ async function getUserFullName(userId: string): Promise<string> {
       return [firstName, lastName].filter(Boolean).join(' ') || userId;
     }
   } catch (error) {
-    console.error('Error fetching user name:', error);
+    log.error('Error fetching user name:', error);
   }
   return userId;
 }
@@ -117,7 +120,7 @@ export class AutoLeadRoutingService {
 
       // Step 5: Send email notification (async, don't wait)
       const emailSent = await this.sendAssignmentEmail(lead, bestRep, leadScore).catch((err) => {
-        console.error('Failed to send assignment email:', err);
+        log.error('Failed to send assignment email:', err);
         return false;
       });
 
@@ -134,7 +137,7 @@ export class AutoLeadRoutingService {
         processingTimeMs,
       };
     } catch (error) {
-      console.error('Auto lead routing failed:', error);
+      log.error('Auto lead routing failed:', error);
       throw error;
     }
   }
@@ -308,7 +311,7 @@ Format as JSON:
         conversionProbability: totalScore,
       };
     } catch (error) {
-      console.error('AI analysis failed:', error);
+      log.error('AI analysis failed:', error);
       // Return fallback
       return {
         insights: `Lead scored ${totalScore}/100 based on demographic and firmographic data.`,
@@ -477,7 +480,7 @@ Format as JSON:
   ): Promise<boolean> {
     // TODO: Integrate with email service
     // For now, just log
-    console.log(`📧 Would send email to ${lead.email}:
+    log.info(`📧 Would send email to ${lead.email}:
       - Assigned to: ${rep.userName}
       - Lead score: ${leadScore.totalScore}/100
       - Next step: ${leadScore.aiRecommendations[0]}

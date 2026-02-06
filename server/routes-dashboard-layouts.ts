@@ -16,6 +16,8 @@ import { dashboardLayouts } from '@shared/reporting-schema';
 import { businessRecords, opportunities, equipment, contacts } from '@shared/schema';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-dashboard-layouts');
 
 type DashboardRequest = Request & TenantRequest & { user?: any; session?: any };
 
@@ -86,7 +88,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
           updatedAt: layout.updatedAt,
         });
       } catch (error: any) {
-        console.error('Error fetching default layout:', error);
+        log.error('Error fetching default layout:', error);
         res.status(500).json({ message: 'Failed to fetch dashboard layout' });
       }
     },
@@ -130,7 +132,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
 
         res.json(layouts);
       } catch (error: any) {
-        console.error('Error fetching layouts:', error);
+        log.error('Error fetching layouts:', error);
         res.status(500).json({ message: 'Failed to fetch dashboard layouts' });
       }
     },
@@ -222,7 +224,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
           message: existingLayout ? 'Dashboard layout updated' : 'Dashboard layout created',
         });
       } catch (error: any) {
-        console.error('Error saving layout:', error);
+        log.error('Error saving layout:', error);
         res.status(500).json({ message: error.message || 'Failed to save dashboard layout' });
       }
     },
@@ -263,7 +265,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
 
         res.json({ message: 'Dashboard layout deleted' });
       } catch (error: any) {
-        console.error('Error deleting layout:', error);
+        log.error('Error deleting layout:', error);
         res.status(500).json({ message: 'Failed to delete dashboard layout' });
       }
     },
@@ -351,7 +353,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
 
         res.json(result);
       } catch (error: any) {
-        console.error('Error fetching metric:', error);
+        log.error('Error fetching metric:', error);
         res.status(500).json({ message: 'Failed to fetch metric' });
       }
     },
@@ -443,7 +445,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
 
         res.json({ data });
       } catch (error: any) {
-        console.error('Error fetching chart data:', error);
+        log.error('Error fetching chart data:', error);
         res.status(500).json({ message: 'Failed to fetch chart data' });
       }
     },
@@ -468,7 +470,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
 
         res.json({ items });
       } catch (error: any) {
-        console.error('Error fetching activity:', error);
+        log.error('Error fetching activity:', error);
         res.status(500).json({ message: 'Failed to fetch activity' });
       }
     },
@@ -492,7 +494,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
 
         res.json({ items });
       } catch (error: any) {
-        console.error('Error fetching urgent items:', error);
+        log.error('Error fetching urgent items:', error);
         res.status(500).json({ message: 'Failed to fetch urgent items' });
       }
     },
@@ -516,7 +518,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
 
         res.json({ items });
       } catch (error: any) {
-        console.error('Error fetching tasks:', error);
+        log.error('Error fetching tasks:', error);
         res.status(500).json({ message: 'Failed to fetch tasks' });
       }
     },
@@ -541,7 +543,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
 
         res.json({ items });
       } catch (error: any) {
-        console.error('Error fetching team performance:', error);
+        log.error('Error fetching team performance:', error);
         res.status(500).json({ message: 'Failed to fetch team performance' });
       }
     },

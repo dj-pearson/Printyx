@@ -13,6 +13,8 @@ import path from 'path';
 import { db } from './db';
 import { reportExecutions } from '../shared/reporting-schema';
 import { eq } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('export-service');
 
 export interface ExportRequest {
   report_id: string;
@@ -70,7 +72,7 @@ export class ReportExportService {
 
     try {
       // Log export request
-      console.log(`🚀 Starting export ${exportId}:`, {
+      log.info(`🚀 Starting export ${exportId}:`, {
         reportId: exportRequest.report_id,
         format: exportRequest.format,
         userId,
@@ -117,7 +119,7 @@ export class ReportExportService {
       // Schedule cleanup (delete file after 24 hours)
       this.scheduleCleanup(filePath, 24 * 60 * 60 * 1000);
 
-      console.log(`✅ Export ${exportId} completed successfully`);
+      log.info(`✅ Export ${exportId} completed successfully`);
 
       return {
         export_id: exportId,
@@ -126,7 +128,7 @@ export class ReportExportService {
         status: 'completed',
       };
     } catch (error) {
-      console.error(`❌ Export ${exportId} failed:`, error);
+      log.error(`❌ Export ${exportId} failed:`, error);
 
       return {
         export_id: exportId,
@@ -422,9 +424,9 @@ export class ReportExportService {
     setTimeout(async () => {
       try {
         await fs.unlink(filePath);
-        console.log(`🗑️ Cleaned up export file: ${filePath}`);
+        log.info(`🗑️ Cleaned up export file: ${filePath}`);
       } catch (error) {
-        console.error(`Failed to cleanup export file: ${filePath}`, error);
+        log.error(`Failed to cleanup export file: ${filePath}`, error);
       }
     }, delayMs);
   }
@@ -446,7 +448,7 @@ export class ReportExportService {
 
       return { filePath, filename };
     } catch (error) {
-      console.error('Error finding export file:', error);
+      log.error('Error finding export file:', error);
       return null;
     }
   }

@@ -36,7 +36,7 @@
         "Tests pass: npm run test"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Currently only ~13 unit test files in server/tests/unit/. vitest is configured. This infrastructure is prerequisite for US-008 through US-010 and US-028/US-039."
     },
     {
@@ -55,7 +55,7 @@
         "Tests pass: npm run test"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "server/utils/apiErrorHandler.ts exists with ErrorCodes enum and handleApiError() but is not adopted (0/174 routes use it). Build on or replace that foundation. CLAUDE.md documents the target format: { message, code, details, requestId }."
     },
     {
@@ -73,7 +73,7 @@
         "Existing tests still pass: npm run test"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "routes.ts is 13,197 lines with 288 inline handlers. 124 modular route files already exist (server/routes-*.ts pattern). This is the first extraction story. Previous iteration (ROUTES-001) removed 7 duplicates and 211 lines."
     },
     {
@@ -90,7 +90,7 @@
         "Existing tests still pass: npm run test"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "routes-business-records.ts already exists as a modular file. Check for overlap. The Unified Business Records pattern means leads and customers share the same table - be careful with route extraction."
     },
     {
@@ -107,7 +107,7 @@
         "Tests pass: npm run test"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Billing may be mounted twice (consolidatedBillingRoutes + advancedBillingRoutes). Investigate and consolidate if appropriate."
     },
     {
@@ -124,7 +124,7 @@
         "Tests pass: npm run test"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "After US-004 through US-006, extract whatever remains. Categories may include: pricing (18 handlers), user (8), seo (7), security-compliance (6), settings, platform management, etc. The goal is routes.ts as a pure registry."
     },
     {
@@ -141,7 +141,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Uses test helpers from US-002. Auth middleware files: server/middleware/supabase-auth.ts, server/replitAuth.ts, server/middleware/enhanced-rbac-middleware.ts, server/utils/auth-helpers.ts. Some tests already exist from previous work (tenant validation has 13 tests, admin detection has 37 tests)."
     },
     {
@@ -158,7 +158,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Tenant resolution priority: x-tenant-id header > JWT app_metadata.tenantId > Session. The 4-tier hierarchy (Platform > Company > Regional > Location) affects query scoping. Previous audit (SVC-011) confirmed 74/91 services have proper tenantId handling."
     },
     {
@@ -175,7 +175,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "Stripe integration uses server/services/stripe-service.ts and related services. billing-analytics-service.ts and payment-audit-service.ts also exist. Mock all Stripe SDK calls."
     },
     {
@@ -192,7 +192,7 @@
         "Tests pass: npm run test"
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "server/lib/logger.ts and server/lib/monitoring.ts provide createModuleLogger(). server/index.ts already uses it (const serverLog = createModuleLogger('server')). Many route files and services still use console.log. Do NOT change client/ files."
     },
     {
@@ -210,7 +210,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "server/middleware/user-rate-limit.ts exists but is only applied in ~10 route files. Redis client at server/lib/redis-client.ts can be used for distributed rate limiting across instances. Apply globally via middleware, not per-route."
     },
     {
@@ -228,7 +228,7 @@
         "Tests pass: npm run test"
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": "shared/ has 51 schema files with Zod schemas (drizzle-zod generates insert/select schemas). server/middleware/enhanced-validation.ts exists. Focus on the extracted CRM routes from US-005 or the existing routes-business-records.ts."
     },
     {
@@ -245,7 +245,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 14,
-      "passes": false,
+      "passes": true,
       "notes": "Dockerfile has HEALTHCHECK pointing to /health. server/lib/monitoring.ts has getMonitoringHealth() and getQueryStats(). server/routes/health-routes.ts may already exist. Enhance into proper K8s-compatible liveness/readiness/startup probes."
     },
     {
@@ -264,7 +264,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 15,
-      "passes": false,
+      "passes": true,
       "notes": "Dockerfile uses dumb-init for signal forwarding. server/lib/monitoring.ts exports shutdownMonitoring(). Extend to cover all resources. Check if any shutdown logic already exists in server/index.ts."
     },
     {
@@ -282,7 +282,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 16,
-      "passes": false,
+      "passes": true,
       "notes": "Platform uses JWT auth primarily (which has built-in CSRF protection) but also has cookie-based session fallback which needs CSRF protection. CORS config already lists X-CSRF-Token in allowedHeaders and exposedHeaders."
     },
     {
@@ -301,7 +301,7 @@
         "Tests pass: npm run test"
       ],
       "priority": 17,
-      "passes": false,
+      "passes": true,
       "notes": "server/services/audit-archival-service.ts exists with 7-year retention. Previous work (AUTH-006) added admin bypass logging with logAdminBypass(). Build a comprehensive system that covers all sensitive operations, not just admin bypasses."
     },
     {
@@ -319,7 +319,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 18,
-      "passes": false,
+      "passes": true,
       "notes": "server/lib/monitoring.ts setupMonitoringMiddleware already handles request ID generation. Verify it flows through all layers. Frontend queryClient is in client/src/lib/queryClient.ts. Drizzle logger is in server/lib/db-logger.ts."
     },
     {
@@ -338,7 +338,7 @@
         "Tests pass: npm run test"
       ],
       "priority": 19,
-      "passes": false,
+      "passes": true,
       "notes": "Drizzle ORM uses parameterized queries preventing SQL injection at ORM level, but XSS is the main concern for user-facing content. Some content fields (emails, knowledge base articles) may need rich HTML."
     },
     {

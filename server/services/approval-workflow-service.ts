@@ -4,6 +4,9 @@
  */
 import { db } from '../db';
 import { eq, and, or, gte, lte, desc } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('approval-workflow-service');
+
 import {
   approvalRules,
   approvalRequests,
@@ -510,11 +513,11 @@ export class ApprovalWorkflowService {
     );
 
     // TODO: Integrate with email/notification service
-    console.log(`Notifying ${approversAtLevel.length} approvers for request ${request.id}`);
+    log.info(`Notifying ${approversAtLevel.length} approvers for request ${request.id}`);
 
     for (const approver of approversAtLevel) {
       // Send email/push notification
-      console.log(`  - ${approver.approverName} (${approver.approverId})`);
+      log.info(`  - ${approver.approverName} (${approver.approverId})`);
     }
   }
 
@@ -523,7 +526,7 @@ export class ApprovalWorkflowService {
    */
   private static async notifyOutcome(request: ApprovalRequest): Promise<void> {
     // TODO: Integrate with email/notification service
-    console.log(
+    log.info(
       `Approval request ${request.id} ${request.finalDecision}: notifying ${request.requestedBy}`,
     );
   }
@@ -533,7 +536,7 @@ export class ApprovalWorkflowService {
    */
   private static async notifyEscalation(request: ApprovalRequest): Promise<void> {
     // TODO: Integrate with email/notification service
-    console.log(`SLA breached for request ${request.id}: escalating`);
+    log.info(`SLA breached for request ${request.id}: escalating`);
   }
 
   /**

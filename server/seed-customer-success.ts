@@ -1,4 +1,7 @@
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-customer-success');
+
 import {
   customerHealthScores,
   churnPredictions,
@@ -10,7 +13,7 @@ import { businessRecords, contracts } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 export async function seedCustomerSuccessData(tenantId: string) {
-  console.log('Seeding customer success data...');
+  log.info('Seeding customer success data...');
 
   try {
     // Get existing business records (customers)
@@ -21,7 +24,7 @@ export async function seedCustomerSuccessData(tenantId: string) {
       .limit(10);
 
     if (customers.length === 0) {
-      console.log('No customers found for tenant, skipping customer success seeding');
+      log.info('No customers found for tenant, skipping customer success seeding');
       return;
     }
 
@@ -183,7 +186,7 @@ export async function seedCustomerSuccessData(tenantId: string) {
         await db.insert(customerHealthScores).values(score);
       }
     }
-    console.log(`✅ Seeded ${healthScores.length} customer health scores`);
+    log.info(`✅ Seeded ${healthScores.length} customer health scores`);
 
     // Seed Churn Predictions (8 records)
     const churnPreds = [
@@ -306,7 +309,7 @@ export async function seedCustomerSuccessData(tenantId: string) {
         await db.insert(churnPredictions).values(pred);
       }
     }
-    console.log(`✅ Seeded ${churnPreds.length} churn predictions`);
+    log.info(`✅ Seeded ${churnPreds.length} churn predictions`);
 
     // Seed Success Interventions (12 records)
     const interventions = [
@@ -405,7 +408,7 @@ export async function seedCustomerSuccessData(tenantId: string) {
         await db.insert(successInterventions).values(intervention);
       }
     }
-    console.log(`✅ Seeded ${interventions.length} success interventions`);
+    log.info(`✅ Seeded ${interventions.length} success interventions`);
 
     // Seed Customer Journeys (10 records)
     const journeys = [
@@ -560,7 +563,7 @@ export async function seedCustomerSuccessData(tenantId: string) {
         await db.insert(customerJourneys).values(journey);
       }
     }
-    console.log(`✅ Seeded ${journeys.length} customer journeys`);
+    log.info(`✅ Seeded ${journeys.length} customer journeys`);
 
     // Seed Renewal Opportunities (10 records)
     const renewals = [
@@ -720,11 +723,11 @@ export async function seedCustomerSuccessData(tenantId: string) {
         await db.insert(renewalOpportunities).values(renewal);
       }
     }
-    console.log(`✅ Seeded ${renewals.length} renewal opportunities`);
+    log.info(`✅ Seeded ${renewals.length} renewal opportunities`);
 
-    console.log('✅ Customer success data seeding completed successfully!');
+    log.info('✅ Customer success data seeding completed successfully!');
   } catch (error) {
-    console.error('Error seeding customer success data:', error);
+    log.error('Error seeding customer success data:', error);
     throw error;
   }
 }

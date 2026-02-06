@@ -6,6 +6,9 @@
 import { db } from '../../db';
 import { reportDefinitions, kpiDefinitions } from '../../../shared/reporting-schema';
 import { sql } from 'drizzle-orm';
+import { createModuleLogger } from '../../lib/logger';
+const log = createModuleLogger('report-seeder');
+
 
 // =====================================================================
 // TYPES AND INTERFACES
@@ -3207,8 +3210,8 @@ const CROSS_DEPARTMENT_REPORTS: ReportDefinition[] = [
 // =====================================================================
 
 export async function seedReports() {
-  console.log('🌱 Starting Report Definitions Seeder...\n');
-  console.log('════════════════════════════════════════════════════════════════\n');
+  log.info('🌱 Starting Report Definitions Seeder...\n');
+  log.info('════════════════════════════════════════════════════════════════\n');
 
   try {
     // Get or create a system tenant for seeding
@@ -3229,7 +3232,7 @@ export async function seedReports() {
       ...CROSS_DEPARTMENT_REPORTS,
     ];
 
-    console.log(`📊 Seeding ${ALL_REPORTS.length} report definitions...\n`);
+    log.info(`📊 Seeding ${ALL_REPORTS.length} report definitions...\n`);
 
     // Seed each report
     for (const report of ALL_REPORTS) {
@@ -3273,34 +3276,34 @@ export async function seedReports() {
           });
 
         successCount++;
-        console.log(`  ✅ ${report.code.padEnd(40)} - ${report.name}`);
+        log.info(`  ✅ ${report.code.padEnd(40)} - ${report.name}`);
       } catch (error: any) {
         errorCount++;
         errors.push({ report: report.code, error: error.message });
-        console.error(`  ❌ ${report.code.padEnd(40)} - ERROR: ${error.message}`);
+        log.error(`  ❌ ${report.code.padEnd(40)} - ERROR: ${error.message}`);
       }
     }
 
-    console.log('\n════════════════════════════════════════════════════════════════\n');
-    console.log('📈 SEEDING SUMMARY\n');
-    console.log(`  Total Reports Processed: ${ALL_REPORTS.length}`);
-    console.log(`  ✅ Successfully Seeded:  ${successCount}`);
-    console.log(`  ❌ Errors:               ${errorCount}`);
+    log.info('\n════════════════════════════════════════════════════════════════\n');
+    log.info('📈 SEEDING SUMMARY\n');
+    log.info(`  Total Reports Processed: ${ALL_REPORTS.length}`);
+    log.info(`  ✅ Successfully Seeded:  ${successCount}`);
+    log.info(`  ❌ Errors:               ${errorCount}`);
 
     if (errorCount > 0) {
-      console.log('\n❌ ERRORS DETAILS:\n');
+      log.info('\n❌ ERRORS DETAILS:\n');
       errors.forEach(({ report, error }) => {
-        console.log(`  ${report}: ${error}`);
+        log.info(`  ${report}: ${error}`);
       });
     }
 
-    console.log('\n════════════════════════════════════════════════════════════════\n');
-    console.log('✅ Report Definitions Seeder Completed!\n');
+    log.info('\n════════════════════════════════════════════════════════════════\n');
+    log.info('✅ Report Definitions Seeder Completed!\n');
 
     return { successCount, errorCount, errors };
   } catch (error: any) {
-    console.error('\n❌ CRITICAL ERROR during report seeding:');
-    console.error(error);
+    log.error('\n❌ CRITICAL ERROR during report seeding:');
+    log.error(error);
     throw error;
   }
 }
@@ -3309,11 +3312,11 @@ export async function seedReports() {
 if (require.main === module) {
   seedReports()
     .then(() => {
-      console.log('✅ Seeding completed successfully');
+      log.info('✅ Seeding completed successfully');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('❌ Seeding failed:', error);
+      log.error('❌ Seeding failed:', error);
       process.exit(1);
     });
 }

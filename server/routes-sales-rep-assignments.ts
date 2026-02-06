@@ -13,6 +13,8 @@ import { eq, and, desc, asc, sql, inArray, ilike, or, isNull, count } from 'driz
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { requireSupabaseAuth as requireAuth } from './middleware/supabase-auth';
 import { z } from 'zod';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-sales-rep-assignments');
 
 export function registerSalesRepAssignmentRoutes(app: Express) {
   // ==================== GET REPS WITH ACCOUNT COUNTS ====================
@@ -96,7 +98,7 @@ export function registerSalesRepAssignmentRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error('Error fetching sales reps:', error);
+      log.error('Error fetching sales reps:', error);
       res.status(500).json({ message: 'Failed to fetch sales reps' });
     }
   });
@@ -157,7 +159,7 @@ export function registerSalesRepAssignmentRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error('Error fetching rep accounts:', error);
+      log.error('Error fetching rep accounts:', error);
       res.status(500).json({ message: 'Failed to fetch rep accounts' });
     }
   });
@@ -211,7 +213,7 @@ export function registerSalesRepAssignmentRoutes(app: Express) {
 
       res.json(accounts);
     } catch (error) {
-      console.error('Error fetching accounts:', error);
+      log.error('Error fetching accounts:', error);
       res.status(500).json({ message: 'Failed to fetch accounts' });
     }
   });
@@ -268,7 +270,7 @@ export function registerSalesRepAssignmentRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error('Error fetching unassigned accounts:', error);
+      log.error('Error fetching unassigned accounts:', error);
       res.status(500).json({ message: 'Failed to fetch unassigned accounts' });
     }
   });
@@ -299,7 +301,7 @@ export function registerSalesRepAssignmentRoutes(app: Express) {
 
       res.json(zipSummary);
     } catch (error) {
-      console.error('Error fetching zip summary:', error);
+      log.error('Error fetching zip summary:', error);
       res.status(500).json({ message: 'Failed to fetch zip summary' });
     }
   });
@@ -389,7 +391,7 @@ export function registerSalesRepAssignmentRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error('Error fetching assignment history:', error);
+      log.error('Error fetching assignment history:', error);
       res.status(500).json({ message: 'Failed to fetch assignment history' });
     }
   });
@@ -451,7 +453,7 @@ export function registerSalesRepAssignmentRoutes(app: Express) {
 
       res.json({ success: true, accountId, newRepId, previousRepId: previousOwnerId });
     } catch (error) {
-      console.error('Error assigning account:', error);
+      log.error('Error assigning account:', error);
       res.status(500).json({ message: 'Failed to assign account' });
     }
   });
@@ -516,7 +518,7 @@ export function registerSalesRepAssignmentRoutes(app: Express) {
 
       res.json({ success: true, assignedCount: accounts.length, newRepId });
     } catch (error) {
-      console.error('Error bulk assigning accounts:', error);
+      log.error('Error bulk assigning accounts:', error);
       res.status(500).json({ message: 'Failed to bulk assign accounts' });
     }
   });
@@ -614,7 +616,7 @@ export function registerSalesRepAssignmentRoutes(app: Express) {
         values,
       });
     } catch (error) {
-      console.error('Error assigning by area:', error);
+      log.error('Error assigning by area:', error);
       res.status(500).json({ message: 'Failed to assign by area' });
     }
   });

@@ -1,5 +1,8 @@
 import type { Express, Request, Response } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-pipeline-configuration');
+
 import {
   pipelineTemplates,
   pipelineStages,
@@ -62,7 +65,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
         res.json(templates);
       } catch (error) {
-        console.error('Error fetching pipeline templates:', error);
+        log.error('Error fetching pipeline templates:', error);
         res.status(500).json({ message: 'Failed to fetch pipeline templates' });
       }
     },
@@ -103,7 +106,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
           stages,
         });
       } catch (error) {
-        console.error('Error fetching pipeline template:', error);
+        log.error('Error fetching pipeline template:', error);
         res.status(500).json({ message: 'Failed to fetch pipeline template' });
       }
     },
@@ -194,7 +197,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
           });
         });
       } catch (error) {
-        console.error('Error creating pipeline template:', error);
+        log.error('Error creating pipeline template:', error);
         res.status(500).json({ message: 'Failed to create pipeline template' });
       }
     },
@@ -253,7 +256,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
         res.json(updated);
       } catch (error) {
-        console.error('Error updating pipeline template:', error);
+        log.error('Error updating pipeline template:', error);
         res.status(500).json({ message: 'Failed to update pipeline template' });
       }
     },
@@ -291,7 +294,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
         res.json({ message: 'Pipeline template deactivated successfully' });
       } catch (error) {
-        console.error('Error deleting pipeline template:', error);
+        log.error('Error deleting pipeline template:', error);
         res.status(500).json({ message: 'Failed to delete pipeline template' });
       }
     },
@@ -375,7 +378,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
           });
         });
       } catch (error) {
-        console.error('Error cloning pipeline template:', error);
+        log.error('Error cloning pipeline template:', error);
         res.status(500).json({ message: 'Failed to clone pipeline template' });
       }
     },
@@ -411,7 +414,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
         res.json(stages);
       } catch (error) {
-        console.error('Error fetching pipeline stages:', error);
+        log.error('Error fetching pipeline stages:', error);
         res.status(500).json({ message: 'Failed to fetch pipeline stages' });
       }
     },
@@ -435,7 +438,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
       res.status(201).json(stage);
     } catch (error) {
-      console.error('Error creating pipeline stage:', error);
+      log.error('Error creating pipeline stage:', error);
       res.status(500).json({ message: 'Failed to create pipeline stage' });
     }
   });
@@ -468,7 +471,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
         res.json(updated);
       } catch (error) {
-        console.error('Error updating pipeline stage:', error);
+        log.error('Error updating pipeline stage:', error);
         res.status(500).json({ message: 'Failed to update pipeline stage' });
       }
     },
@@ -504,7 +507,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
         res.json({ message: 'Stages reordered successfully' });
       } catch (error) {
-        console.error('Error reordering stages:', error);
+        log.error('Error reordering stages:', error);
         res.status(500).json({ message: 'Failed to reorder stages' });
       }
     },
@@ -541,7 +544,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
         res.json({ message: 'Stage deleted successfully' });
       } catch (error) {
-        console.error('Error deleting pipeline stage:', error);
+        log.error('Error deleting pipeline stage:', error);
         res.status(500).json({ message: 'Failed to delete pipeline stage' });
       }
     },
@@ -661,7 +664,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
         res.json({ message: 'Deal transitioned successfully' });
       } catch (error) {
-        console.error('Error transitioning deal:', error);
+        log.error('Error transitioning deal:', error);
         res.status(500).json({ message: 'Failed to transition deal' });
       }
     },
@@ -690,7 +693,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
         res.json(history);
       } catch (error) {
-        console.error('Error fetching deal history:', error);
+        log.error('Error fetching deal history:', error);
         res.status(500).json({ message: 'Failed to fetch deal history' });
       }
     },
@@ -734,7 +737,7 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
         res.json(conversionData);
       } catch (error) {
-        console.error('Error fetching conversion analytics:', error);
+        log.error('Error fetching conversion analytics:', error);
         res.status(500).json({ message: 'Failed to fetch conversion analytics' });
       }
     },
@@ -768,11 +771,11 @@ export function registerPipelineConfigurationRoutes(app: Express) {
 
         res.json(velocityData);
       } catch (error) {
-        console.error('Error fetching velocity analytics:', error);
+        log.error('Error fetching velocity analytics:', error);
         res.status(500).json({ message: 'Failed to fetch velocity analytics' });
       }
     },
   );
 
-  console.log('✅ Pipeline Configuration routes registered');
+  log.info('✅ Pipeline Configuration routes registered');
 }

@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { TenantOnboardingService } from './services/tenant-onboarding-service';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-tenant-onboarding');
+
 import {
   tenantOnboardingTemplates,
   tenantOnboardingSessions,
@@ -77,7 +80,7 @@ router.get('/onboarding/templates', async (req, res) => {
 
     res.json({ templates });
   } catch (error) {
-    console.error('Failed to fetch templates:', error);
+    log.error('Failed to fetch templates:', error);
     res.status(500).json({ error: 'Failed to fetch onboarding templates' });
   }
 });
@@ -95,7 +98,7 @@ router.post('/onboarding/templates', async (req, res) => {
       template,
     });
   } catch (error) {
-    console.error('Failed to create template:', error);
+    log.error('Failed to create template:', error);
     res.status(500).json({ error: 'Failed to create template' });
   }
 });
@@ -126,7 +129,7 @@ router.post('/onboarding/start', async (req, res) => {
       ...result,
     });
   } catch (error) {
-    console.error('Failed to start onboarding:', error);
+    log.error('Failed to start onboarding:', error);
     res.status(500).json({
       error: 'Failed to start onboarding session',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -150,7 +153,7 @@ router.get('/onboarding/:sessionId', async (req, res) => {
 
     res.json({ session });
   } catch (error) {
-    console.error('Failed to fetch onboarding session:', error);
+    log.error('Failed to fetch onboarding session:', error);
     res.status(500).json({ error: 'Failed to fetch onboarding session' });
   }
 });
@@ -192,7 +195,7 @@ router.put('/onboarding/:sessionId/step/:stepNumber', async (req, res) => {
       nextStep: result.nextStep,
     });
   } catch (error) {
-    console.error('Failed to complete step:', error);
+    log.error('Failed to complete step:', error);
     res.status(500).json({
       error: 'Failed to complete onboarding step',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -215,7 +218,7 @@ router.post('/onboarding/:sessionId/complete', async (req, res) => {
       ...result,
     });
   } catch (error) {
-    console.error('Failed to complete onboarding:', error);
+    log.error('Failed to complete onboarding:', error);
     res.status(500).json({
       error: 'Failed to complete onboarding',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -252,7 +255,7 @@ router.post('/onboarding/:sessionId/integrations/setup', async (req, res) => {
       ...result,
     });
   } catch (error) {
-    console.error('Failed to setup integration:', error);
+    log.error('Failed to setup integration:', error);
     res.status(500).json({
       error: 'Failed to setup integration',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -285,7 +288,7 @@ router.post('/:tenantId/integrations/setup', async (req, res) => {
       ...result,
     });
   } catch (error) {
-    console.error('Failed to setup integration:', error);
+    log.error('Failed to setup integration:', error);
     res.status(500).json({
       error: 'Failed to setup integration',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -306,7 +309,7 @@ router.get('/:tenantId/integrations', async (req, res) => {
 
     res.json({ integrations });
   } catch (error) {
-    console.error('Failed to fetch integrations:', error);
+    log.error('Failed to fetch integrations:', error);
     res.status(500).json({ error: 'Failed to fetch integration logs' });
   }
 });
@@ -342,7 +345,7 @@ router.post('/onboarding/:sessionId/import/validate', async (req, res) => {
       ...result,
     });
   } catch (error) {
-    console.error('Failed to validate import:', error);
+    log.error('Failed to validate import:', error);
     res.status(500).json({
       error: 'Failed to validate data import',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -377,7 +380,7 @@ router.post('/:tenantId/import/validate', async (req, res) => {
       ...result,
     });
   } catch (error) {
-    console.error('Failed to validate import:', error);
+    log.error('Failed to validate import:', error);
     res.status(500).json({
       error: 'Failed to validate data import',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -401,7 +404,7 @@ router.get('/import/:validationId', async (req, res) => {
 
     res.json({ validation });
   } catch (error) {
-    console.error('Failed to fetch validation:', error);
+    log.error('Failed to fetch validation:', error);
     res.status(500).json({ error: 'Failed to fetch validation results' });
   }
 });
@@ -430,7 +433,7 @@ router.post('/import/:validationId/execute', async (req, res) => {
       validation: updated,
     });
   } catch (error) {
-    console.error('Failed to execute import:', error);
+    log.error('Failed to execute import:', error);
     res.status(500).json({ error: 'Failed to execute data import' });
   }
 });
@@ -452,7 +455,7 @@ router.post('/:tenantId/validate-health', async (req, res) => {
       healthScore,
     });
   } catch (error) {
-    console.error('Failed to validate health:', error);
+    log.error('Failed to validate health:', error);
     res.status(500).json({
       error: 'Failed to validate tenant health',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -477,7 +480,7 @@ router.get('/:tenantId/health', async (req, res) => {
 
     res.json({ healthScore });
   } catch (error) {
-    console.error('Failed to fetch health score:', error);
+    log.error('Failed to fetch health score:', error);
     res.status(500).json({ error: 'Failed to fetch health score' });
   }
 });
@@ -512,7 +515,7 @@ router.post('/:tenantId/clone', async (req, res) => {
       ...result,
     });
   } catch (error) {
-    console.error('Failed to clone tenant:', error);
+    log.error('Failed to clone tenant:', error);
     res.status(500).json({
       error: 'Failed to clone tenant',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -536,7 +539,7 @@ router.get('/clone/:operationId', async (req, res) => {
 
     res.json({ operation });
   } catch (error) {
-    console.error('Failed to fetch clone operation:', error);
+    log.error('Failed to fetch clone operation:', error);
     res.status(500).json({ error: 'Failed to fetch clone operation' });
   }
 });
@@ -580,7 +583,7 @@ router.get('/onboarding/analytics', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Failed to fetch analytics:', error);
+    log.error('Failed to fetch analytics:', error);
     res.status(500).json({ error: 'Failed to fetch onboarding analytics' });
   }
 });
@@ -601,7 +604,7 @@ router.get('/onboarding/recent', async (req, res) => {
 
     res.json({ sessions });
   } catch (error) {
-    console.error('Failed to fetch recent sessions:', error);
+    log.error('Failed to fetch recent sessions:', error);
     res.status(500).json({ error: 'Failed to fetch recent onboarding sessions' });
   }
 });

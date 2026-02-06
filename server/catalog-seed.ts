@@ -1,5 +1,7 @@
 import { db } from './db';
 import { masterProductModels, masterProductAccessories } from '@shared/schema';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('catalog-seed');
 
 // Sample master catalog data for seeding
 const sampleProducts = [
@@ -261,7 +263,7 @@ const sampleAccessories = [
 
 export async function seedMasterCatalog() {
   try {
-    console.log('Seeding master product catalog...');
+    log.info('Seeding master product catalog...');
 
     // Insert master products
     for (const product of sampleProducts) {
@@ -273,12 +275,12 @@ export async function seedMasterCatalog() {
       await db.insert(masterProductAccessories).values(accessory).onConflictDoNothing();
     }
 
-    console.log(
+    log.info(
       `Successfully seeded ${sampleProducts.length} master products and ${sampleAccessories.length} accessories`,
     );
     return true;
   } catch (error) {
-    console.error('Error seeding master catalog:', error);
+    log.error('Error seeding master catalog:', error);
     return false;
   }
 }

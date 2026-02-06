@@ -3,6 +3,8 @@ import { desc, eq, and, sql, asc } from 'drizzle-orm';
 import { db } from './db';
 import { requireAuth } from './auth-setup';
 import { businessRecords } from '../shared/schema';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-esignature');
 
 const router = express.Router();
 
@@ -110,7 +112,7 @@ router.get('/api/signature-requests', async (req: any, res) => {
 
     res.json(sampleRequests);
   } catch (error) {
-    console.error('Error fetching signature requests:', error);
+    log.error('Error fetching signature requests:', error);
     res.status(500).json({ message: 'Failed to fetch signature requests' });
   }
 });
@@ -177,7 +179,7 @@ router.get('/api/signature-templates', async (req: any, res) => {
 
     res.json(sampleTemplates);
   } catch (error) {
-    console.error('Error fetching signature templates:', error);
+    log.error('Error fetching signature templates:', error);
     res.status(500).json({ message: 'Failed to fetch signature templates' });
   }
 });
@@ -258,7 +260,7 @@ router.post('/api/signature-requests', async (req: any, res) => {
 
     res.status(201).json(newRequest);
   } catch (error) {
-    console.error('Error creating signature request:', error);
+    log.error('Error creating signature request:', error);
     res.status(500).json({ message: 'Failed to create signature request' });
   }
 });
@@ -279,7 +281,7 @@ router.put('/api/signature-requests/:id/status', async (req: any, res) => {
       updatedAt: new Date(),
     });
   } catch (error) {
-    console.error('Error updating signature request status:', error);
+    log.error('Error updating signature request status:', error);
     res.status(500).json({ message: 'Failed to update signature request status' });
   }
 });
@@ -299,7 +301,7 @@ router.post('/api/signature-requests/:id/remind', async (req: any, res) => {
       customMessage,
     });
   } catch (error) {
-    console.error('Error sending reminder:', error);
+    log.error('Error sending reminder:', error);
     res.status(500).json({ message: 'Failed to send reminder' });
   }
 });
@@ -349,7 +351,7 @@ router.get('/api/signature-analytics', async (req: any, res) => {
 
     res.json(analytics);
   } catch (error) {
-    console.error('Error fetching signature analytics:', error);
+    log.error('Error fetching signature analytics:', error);
     res.status(500).json({ message: 'Failed to fetch signature analytics' });
   }
 });
@@ -383,7 +385,7 @@ router.post('/api/signature-requests/bulk-send', async (req: any, res) => {
       failed: 0,
     });
   } catch (error) {
-    console.error('Error sending bulk signature requests:', error);
+    log.error('Error sending bulk signature requests:', error);
     res.status(500).json({ message: 'Failed to send bulk signature requests' });
   }
 });
@@ -435,7 +437,7 @@ router.get('/api/signature-requests/:id/audit-trail', async (req: any, res) => {
 
     res.json(auditTrail);
   } catch (error) {
-    console.error('Error fetching audit trail:', error);
+    log.error('Error fetching audit trail:', error);
     res.status(500).json({ message: 'Failed to fetch audit trail' });
   }
 });

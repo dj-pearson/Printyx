@@ -1,6 +1,9 @@
 import express, { Request, Response } from 'express';
 import { storage } from '../storage';
 import { z } from 'zod';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('manufacturer-order-routes');
+
 import {
   insertManufacturerConnectionSchema,
   insertManufacturerOrderSchema,
@@ -65,7 +68,7 @@ router.get('/connections', async (req: Request, res: Response) => {
 
     res.json(responseData);
   } catch (error) {
-    console.error('Get manufacturer connections error:', error);
+    log.error('Get manufacturer connections error:', error);
     res.status(500).json({ error: 'Failed to fetch manufacturer connections' });
   }
 });
@@ -91,7 +94,7 @@ router.get('/connections/:id', async (req: Request, res: Response) => {
 
     res.json(responseData);
   } catch (error) {
-    console.error('Get manufacturer connection error:', error);
+    log.error('Get manufacturer connection error:', error);
     res.status(500).json({ error: 'Failed to fetch manufacturer connection' });
   }
 });
@@ -122,7 +125,7 @@ router.post('/connections', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create manufacturer connection error:', error);
+    log.error('Create manufacturer connection error:', error);
     res.status(500).json({ error: 'Failed to create manufacturer connection' });
   }
 });
@@ -155,7 +158,7 @@ router.put('/connections/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update manufacturer connection error:', error);
+    log.error('Update manufacturer connection error:', error);
     res.status(500).json({ error: 'Failed to update manufacturer connection' });
   }
 });
@@ -183,7 +186,7 @@ router.delete('/connections/:id', async (req: Request, res: Response) => {
     await storage.deleteManufacturerConnection(req.params.id, user.tenantId);
     res.status(204).send();
   } catch (error) {
-    console.error('Delete manufacturer connection error:', error);
+    log.error('Delete manufacturer connection error:', error);
     res.status(500).json({ error: 'Failed to delete manufacturer connection' });
   }
 });
@@ -204,7 +207,7 @@ router.post('/connections/:id/test', async (req: Request, res: Response) => {
     const result = await storage.testManufacturerConnection(req.params.id, user.tenantId);
     res.json(result);
   } catch (error) {
-    console.error('Test manufacturer connection error:', error);
+    log.error('Test manufacturer connection error:', error);
     res.status(500).json({ error: 'Failed to test manufacturer connection' });
   }
 });
@@ -237,7 +240,7 @@ router.patch('/connections/:id/health', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update connection health error:', error);
+    log.error('Update connection health error:', error);
     res.status(500).json({ error: 'Failed to update connection health' });
   }
 });
@@ -263,7 +266,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     res.json(orders);
   } catch (error) {
-    console.error('Get manufacturer orders error:', error);
+    log.error('Get manufacturer orders error:', error);
     res.status(500).json({ error: 'Failed to fetch manufacturer orders' });
   }
 });
@@ -284,7 +287,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     res.json(order);
   } catch (error) {
-    console.error('Get manufacturer order error:', error);
+    log.error('Get manufacturer order error:', error);
     res.status(500).json({ error: 'Failed to fetch manufacturer order' });
   }
 });
@@ -308,7 +311,7 @@ router.post('/', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create manufacturer order error:', error);
+    log.error('Create manufacturer order error:', error);
     res.status(500).json({ error: 'Failed to create manufacturer order' });
   }
 });
@@ -334,7 +337,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update manufacturer order error:', error);
+    log.error('Update manufacturer order error:', error);
     res.status(500).json({ error: 'Failed to update manufacturer order' });
   }
 });
@@ -355,7 +358,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     await storage.deleteManufacturerOrder(req.params.id, user.tenantId);
     res.status(204).send();
   } catch (error) {
-    console.error('Delete manufacturer order error:', error);
+    log.error('Delete manufacturer order error:', error);
     res.status(500).json({ error: 'Failed to delete manufacturer order' });
   }
 });
@@ -376,7 +379,7 @@ router.post('/:id/submit', async (req: Request, res: Response) => {
     const submitted = await storage.submitOrder(req.params.id, user.tenantId);
     res.json(submitted);
   } catch (error) {
-    console.error('Submit manufacturer order error:', error);
+    log.error('Submit manufacturer order error:', error);
     res.status(500).json({ error: 'Failed to submit manufacturer order' });
   }
 });
@@ -410,7 +413,7 @@ router.post('/:id/acknowledge', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Acknowledge manufacturer order error:', error);
+    log.error('Acknowledge manufacturer order error:', error);
     res.status(500).json({ error: 'Failed to acknowledge manufacturer order' });
   }
 });
@@ -442,7 +445,7 @@ router.patch('/:id/fulfillment', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update order fulfillment error:', error);
+    log.error('Update order fulfillment error:', error);
     res.status(500).json({ error: 'Failed to update order fulfillment' });
   }
 });
@@ -466,7 +469,7 @@ router.get('/:orderId/line-items', async (req: Request, res: Response) => {
     const lineItems = await storage.getOrderLineItems(req.params.orderId);
     res.json(lineItems);
   } catch (error) {
-    console.error('Get order line items error:', error);
+    log.error('Get order line items error:', error);
     res.status(500).json({ error: 'Failed to fetch order line items' });
   }
 });
@@ -487,7 +490,7 @@ router.get('/line-items/:id', async (req: Request, res: Response) => {
 
     res.json(lineItem);
   } catch (error) {
-    console.error('Get order line item error:', error);
+    log.error('Get order line item error:', error);
     res.status(500).json({ error: 'Failed to fetch order line item' });
   }
 });
@@ -518,7 +521,7 @@ router.post('/:orderId/line-items', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create order line item error:', error);
+    log.error('Create order line item error:', error);
     res.status(500).json({ error: 'Failed to create order line item' });
   }
 });
@@ -555,7 +558,7 @@ router.post('/:orderId/line-items/bulk', async (req: Request, res: Response) => 
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Bulk create order line items error:', error);
+    log.error('Bulk create order line items error:', error);
     res.status(500).json({ error: 'Failed to create order line items' });
   }
 });
@@ -581,7 +584,7 @@ router.put('/line-items/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update order line item error:', error);
+    log.error('Update order line item error:', error);
     res.status(500).json({ error: 'Failed to update order line item' });
   }
 });
@@ -602,7 +605,7 @@ router.delete('/line-items/:id', async (req: Request, res: Response) => {
     await storage.deleteOrderLineItem(req.params.id, user.tenantId);
     res.status(204).send();
   } catch (error) {
-    console.error('Delete order line item error:', error);
+    log.error('Delete order line item error:', error);
     res.status(500).json({ error: 'Failed to delete order line item' });
   }
 });
@@ -634,7 +637,7 @@ router.patch('/line-items/:id/shipment', async (req: Request, res: Response) => 
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update line item shipment error:', error);
+    log.error('Update line item shipment error:', error);
     res.status(500).json({ error: 'Failed to update line item shipment' });
   }
 });
@@ -658,7 +661,7 @@ router.get('/:orderId/confirmations', async (req: Request, res: Response) => {
     const confirmations = await storage.getOrderConfirmations(req.params.orderId);
     res.json(confirmations);
   } catch (error) {
-    console.error('Get order confirmations error:', error);
+    log.error('Get order confirmations error:', error);
     res.status(500).json({ error: 'Failed to fetch order confirmations' });
   }
 });
@@ -679,7 +682,7 @@ router.get('/confirmations/:id', async (req: Request, res: Response) => {
 
     res.json(confirmation);
   } catch (error) {
-    console.error('Get order confirmation error:', error);
+    log.error('Get order confirmation error:', error);
     res.status(500).json({ error: 'Failed to fetch order confirmation' });
   }
 });
@@ -710,7 +713,7 @@ router.post('/:orderId/confirmations', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create order confirmation error:', error);
+    log.error('Create order confirmation error:', error);
     res.status(500).json({ error: 'Failed to create order confirmation' });
   }
 });
@@ -736,7 +739,7 @@ router.put('/confirmations/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update order confirmation error:', error);
+    log.error('Update order confirmation error:', error);
     res.status(500).json({ error: 'Failed to update order confirmation' });
   }
 });
@@ -757,7 +760,7 @@ router.post('/confirmations/:id/process', async (req: Request, res: Response) =>
     const processed = await storage.processConfirmation(req.params.id, user.tenantId);
     res.json(processed);
   } catch (error) {
-    console.error('Process order confirmation error:', error);
+    log.error('Process order confirmation error:', error);
     res.status(500).json({ error: 'Failed to process order confirmation' });
   }
 });
@@ -781,7 +784,7 @@ router.get('/:orderId/shipments', async (req: Request, res: Response) => {
     const shipments = await storage.getOrderShipments(req.params.orderId);
     res.json(shipments);
   } catch (error) {
-    console.error('Get order shipments error:', error);
+    log.error('Get order shipments error:', error);
     res.status(500).json({ error: 'Failed to fetch order shipments' });
   }
 });
@@ -802,7 +805,7 @@ router.get('/shipments/:id', async (req: Request, res: Response) => {
 
     res.json(shipment);
   } catch (error) {
-    console.error('Get order shipment error:', error);
+    log.error('Get order shipment error:', error);
     res.status(500).json({ error: 'Failed to fetch order shipment' });
   }
 });
@@ -826,7 +829,7 @@ router.get('/shipments/tracking/:trackingNumber', async (req: Request, res: Resp
 
     res.json(shipment);
   } catch (error) {
-    console.error('Get shipment by tracking number error:', error);
+    log.error('Get shipment by tracking number error:', error);
     res.status(500).json({ error: 'Failed to fetch shipment' });
   }
 });
@@ -857,7 +860,7 @@ router.post('/:orderId/shipments', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create order shipment error:', error);
+    log.error('Create order shipment error:', error);
     res.status(500).json({ error: 'Failed to create order shipment' });
   }
 });
@@ -883,7 +886,7 @@ router.put('/shipments/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update order shipment error:', error);
+    log.error('Update order shipment error:', error);
     res.status(500).json({ error: 'Failed to update order shipment' });
   }
 });
@@ -904,7 +907,7 @@ router.delete('/shipments/:id', async (req: Request, res: Response) => {
     await storage.deleteOrderShipment(req.params.id, user.tenantId);
     res.status(204).send();
   } catch (error) {
-    console.error('Delete order shipment error:', error);
+    log.error('Delete order shipment error:', error);
     res.status(500).json({ error: 'Failed to delete order shipment' });
   }
 });
@@ -936,7 +939,7 @@ router.patch('/shipments/:id/tracking', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update shipment tracking error:', error);
+    log.error('Update shipment tracking error:', error);
     res.status(500).json({ error: 'Failed to update shipment tracking' });
   }
 });
@@ -968,7 +971,7 @@ router.post('/shipments/:id/deliver', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Deliver shipment error:', error);
+    log.error('Deliver shipment error:', error);
     res.status(500).json({ error: 'Failed to deliver shipment' });
   }
 });
@@ -992,7 +995,7 @@ router.get('/:orderId/exceptions', async (req: Request, res: Response) => {
     const exceptions = await storage.getOrderExceptions(req.params.orderId);
     res.json(exceptions);
   } catch (error) {
-    console.error('Get order exceptions error:', error);
+    log.error('Get order exceptions error:', error);
     res.status(500).json({ error: 'Failed to fetch order exceptions' });
   }
 });
@@ -1014,7 +1017,7 @@ router.get('/exceptions/unresolved', async (req: Request, res: Response) => {
 
     res.json(exceptions);
   } catch (error) {
-    console.error('Get unresolved exceptions error:', error);
+    log.error('Get unresolved exceptions error:', error);
     res.status(500).json({ error: 'Failed to fetch unresolved exceptions' });
   }
 });
@@ -1035,7 +1038,7 @@ router.get('/exceptions/:id', async (req: Request, res: Response) => {
 
     res.json(exception);
   } catch (error) {
-    console.error('Get order exception error:', error);
+    log.error('Get order exception error:', error);
     res.status(500).json({ error: 'Failed to fetch order exception' });
   }
 });
@@ -1059,7 +1062,7 @@ router.post('/exceptions', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Create order exception error:', error);
+    log.error('Create order exception error:', error);
     res.status(500).json({ error: 'Failed to create order exception' });
   }
 });
@@ -1085,7 +1088,7 @@ router.put('/exceptions/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Update order exception error:', error);
+    log.error('Update order exception error:', error);
     res.status(500).json({ error: 'Failed to update order exception' });
   }
 });
@@ -1120,7 +1123,7 @@ router.post('/exceptions/:id/resolve', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
-    console.error('Resolve exception error:', error);
+    log.error('Resolve exception error:', error);
     res.status(500).json({ error: 'Failed to resolve exception' });
   }
 });
@@ -1141,7 +1144,7 @@ router.post('/exceptions/:id/retry', async (req: Request, res: Response) => {
     const result = await storage.retryFailedOrder(req.params.id, user.tenantId);
     res.json(result);
   } catch (error) {
-    console.error('Retry failed order error:', error);
+    log.error('Retry failed order error:', error);
     res.status(500).json({ error: 'Failed to retry failed order' });
   }
 });
@@ -1173,7 +1176,7 @@ router.get('/analytics/dashboard', async (req: Request, res: Response) => {
 
     res.json(analytics);
   } catch (error) {
-    console.error('Get manufacturer order analytics error:', error);
+    log.error('Get manufacturer order analytics error:', error);
     res.status(500).json({ error: 'Failed to fetch analytics' });
   }
 });

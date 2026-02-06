@@ -1,4 +1,7 @@
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-signature-data');
+
 import {
   integrationCredentials,
   signatureRequests,
@@ -8,17 +11,17 @@ import {
 } from '@shared/schema';
 
 async function seedSignatureData() {
-  console.log('Starting e-signature data seeding...');
+  log.info('Starting e-signature data seeding...');
 
   try {
     // Get the first tenant for testing
     const tenants = await db.query.tenants.findMany({ limit: 1 });
     if (tenants.length === 0) {
-      console.error('No tenants found. Please seed tenants first.');
+      log.error('No tenants found. Please seed tenants first.');
       return;
     }
     const tenantId = tenants[0].id;
-    console.log(`Using tenant: ${tenantId}`);
+    log.info(`Using tenant: ${tenantId}`);
 
     // Get some customers for testing
     const customers = await db.query.businessRecords.findMany({
@@ -27,14 +30,14 @@ async function seedSignatureData() {
     });
 
     if (customers.length === 0) {
-      console.error('No customers found. Please seed business records first.');
+      log.error('No customers found. Please seed business records first.');
       return;
     }
 
     // ============================================================================
     // 1. CREATE INTEGRATION CREDENTIALS
     // ============================================================================
-    console.log('\n1. Creating integration credentials...');
+    log.info('\n1. Creating integration credentials...');
 
     const docusignCred = await db
       .insert(integrationCredentials)
@@ -91,14 +94,14 @@ async function seedSignatureData() {
       })
       .returning();
 
-    console.log(
+    log.info(
       `  ✓ Created ${docusignCred.length + adobeSignCred.length + hellosignCred.length} integration credentials`,
     );
 
     // ============================================================================
     // 2. CREATE SIGNATURE REQUESTS
     // ============================================================================
-    console.log('\n2. Creating signature requests...');
+    log.info('\n2. Creating signature requests...');
 
     // Request 1: Active - Awaiting signatures
     const request1 = await db
@@ -233,12 +236,12 @@ async function seedSignatureData() {
       })
       .returning();
 
-    console.log(`  ✓ Created 5 signature requests`);
+    log.info(`  ✓ Created 5 signature requests`);
 
     // ============================================================================
     // 3. CREATE SIGNATURE SIGNERS
     // ============================================================================
-    console.log('\n3. Creating signature signers...');
+    log.info('\n3. Creating signature signers...');
 
     const signers = [];
 
@@ -388,12 +391,12 @@ async function seedSignatureData() {
         .returning()),
     );
 
-    console.log(`  ✓ Created ${signers.length} signature signers`);
+    log.info(`  ✓ Created ${signers.length} signature signers`);
 
     // ============================================================================
     // 4. CREATE SIGNATURE DOCUMENTS
     // ============================================================================
-    console.log('\n4. Creating signature documents...');
+    log.info('\n4. Creating signature documents...');
 
     const documents = [];
 
@@ -516,12 +519,12 @@ async function seedSignatureData() {
         .returning()),
     );
 
-    console.log(`  ✓ Created ${documents.length} signature documents`);
+    log.info(`  ✓ Created ${documents.length} signature documents`);
 
     // ============================================================================
     // 5. CREATE SIGNATURE AUDIT LOGS
     // ============================================================================
-    console.log('\n5. Creating signature audit logs...');
+    log.info('\n5. Creating signature audit logs...');
 
     const auditLogs = [];
 
@@ -720,21 +723,21 @@ async function seedSignatureData() {
         .returning()),
     );
 
-    console.log(`  ✓ Created ${auditLogs.length} audit log entries`);
+    log.info(`  ✓ Created ${auditLogs.length} audit log entries`);
 
     // ============================================================================
     // SUMMARY
     // ============================================================================
-    console.log('\n✅ E-Signature data seeding completed successfully!');
-    console.log('\nSummary:');
-    console.log(`  - Integration Credentials: 3 (DocuSign, Adobe Sign, HelloSign)`);
-    console.log(`  - Signature Requests: 5 (draft, sent, completed, declined, expiring soon)`);
-    console.log(`  - Signature Signers: ${signers.length}`);
-    console.log(`  - Signature Documents: ${documents.length}`);
-    console.log(`  - Audit Log Entries: ${auditLogs.length}`);
-    console.log('\n🎉 Ready for testing!');
+    log.info('\n✅ E-Signature data seeding completed successfully!');
+    log.info('\nSummary:');
+    log.info(`  - Integration Credentials: 3 (DocuSign, Adobe Sign, HelloSign)`);
+    log.info(`  - Signature Requests: 5 (draft, sent, completed, declined, expiring soon)`);
+    log.info(`  - Signature Signers: ${signers.length}`);
+    log.info(`  - Signature Documents: ${documents.length}`);
+    log.info(`  - Audit Log Entries: ${auditLogs.length}`);
+    log.info('\n🎉 Ready for testing!');
   } catch (error) {
-    console.error('Error seeding e-signature data:', error);
+    log.error('Error seeding e-signature data:', error);
     throw error;
   }
 }
@@ -744,10 +747,10 @@ export { seedSignatureData };
 // Run the seed function if executed directly
 seedSignatureData()
   .then(() => {
-    console.log('\nSeeding complete. Exiting...');
+    log.info('\nSeeding complete. Exiting...');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('\nSeeding failed:', error);
+    log.error('\nSeeding failed:', error);
     process.exit(1);
   });

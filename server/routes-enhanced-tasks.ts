@@ -5,6 +5,8 @@ import { users } from '../shared/schema.js';
 import { eq, and, desc, sql, isNull, or, inArray } from 'drizzle-orm';
 import { isAuthenticated } from './replitAuth.js';
 import { z } from 'zod';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-enhanced-tasks');
 
 // Enhanced task routes for advanced task management functionality
 export function registerEnhancedTaskRoutes(app: Express) {
@@ -14,7 +16,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
       const tenantId = req.user?.tenantId;
 
       if (!tenantId) {
-        console.log('Enhanced tasks: Missing tenantId for user:', req.user);
+        log.info('Enhanced tasks: Missing tenantId for user:', req.user);
         return res.status(401).json({ message: 'Missing tenant context' });
       }
 
@@ -103,7 +105,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.json(rootTasks);
     } catch (error) {
-      console.error('Error fetching enhanced tasks:', error);
+      log.error('Error fetching enhanced tasks:', error);
       res.status(500).json({ error: 'Failed to fetch tasks' });
     }
   });
@@ -167,7 +169,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.json(projectsData);
     } catch (error) {
-      console.error('Error fetching enhanced projects:', error);
+      log.error('Error fetching enhanced projects:', error);
       res.status(500).json({ error: 'Failed to fetch projects' });
     }
   });
@@ -191,7 +193,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.json(teamMembers);
     } catch (error) {
-      console.error('Error fetching team members:', error);
+      log.error('Error fetching team members:', error);
       res.status(500).json({ error: 'Failed to fetch team members' });
     }
   });
@@ -224,7 +226,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.status(201).json(newTask);
     } catch (error) {
-      console.error('Error creating enhanced task:', error);
+      log.error('Error creating enhanced task:', error);
       res.status(500).json({ error: 'Failed to create task' });
     }
   });
@@ -263,7 +265,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.json(updatedTask);
     } catch (error) {
-      console.error('Error updating task:', error);
+      log.error('Error updating task:', error);
       res.status(500).json({ error: 'Failed to update task' });
     }
   });
@@ -296,7 +298,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.status(201).json(comment);
     } catch (error) {
-      console.error('Error adding comment:', error);
+      log.error('Error adding comment:', error);
       res.status(500).json({ error: 'Failed to add comment' });
     }
   });
@@ -331,7 +333,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.status(201).json(timeEntry);
     } catch (error) {
-      console.error('Error adding time entry:', error);
+      log.error('Error adding time entry:', error);
       res.status(500).json({ error: 'Failed to add time entry' });
     }
   });
@@ -359,7 +361,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.json(updatedTasks);
     } catch (error) {
-      console.error('Error bulk updating tasks:', error);
+      log.error('Error bulk updating tasks:', error);
       res.status(500).json({ error: 'Failed to bulk update tasks' });
     }
   });
@@ -395,7 +397,7 @@ export function registerEnhancedTaskRoutes(app: Express) {
 
       res.json({ success: true });
     } catch (error) {
-      console.error('Error deleting task:', error);
+      log.error('Error deleting task:', error);
       res.status(500).json({ error: 'Failed to delete task' });
     }
   });
@@ -440,6 +442,6 @@ async function updateParentTaskProgress(parentTaskId: string) {
       })
       .where(eq(tasks.id, parentTaskId));
   } catch (error) {
-    console.error('Error updating parent task progress:', error);
+    log.error('Error updating parent task progress:', error);
   }
 }

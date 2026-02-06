@@ -3,6 +3,9 @@ import { eq, and, desc, sql, count, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
 import { businessRecords, quotes, deals, users, type BusinessRecord } from '@shared/schema';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-opportunities');
+
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -64,7 +67,7 @@ export function registerOpportunitiesRoutes(app: Express) {
 
         res.json(opportunities);
       } catch (error) {
-        console.error('Error fetching opportunities:', error);
+        log.error('Error fetching opportunities:', error);
         res.status(500).json({ error: 'Failed to fetch opportunities' });
       }
     },
@@ -127,7 +130,7 @@ export function registerOpportunitiesRoutes(app: Express) {
         relatedDeals,
       });
     } catch (error) {
-      console.error('Error fetching opportunity:', error);
+      log.error('Error fetching opportunity:', error);
       res.status(500).json({ error: 'Failed to fetch opportunity' });
     }
   });
@@ -153,7 +156,7 @@ export function registerOpportunitiesRoutes(app: Express) {
 
       res.json(updatedOpportunity);
     } catch (error) {
-      console.error('Error updating opportunity:', error);
+      log.error('Error updating opportunity:', error);
       res.status(500).json({ error: 'Failed to update opportunity' });
     }
   });
@@ -205,7 +208,7 @@ export function registerOpportunitiesRoutes(app: Express) {
 
       res.json(newDeal);
     } catch (error) {
-      console.error('Error converting opportunity to deal:', error);
+      log.error('Error converting opportunity to deal:', error);
       res.status(500).json({ error: 'Failed to convert opportunity to deal' });
     }
   });
@@ -263,7 +266,7 @@ export function registerOpportunitiesRoutes(app: Express) {
         averageValue: totalOpportunities > 0 ? totalValue / totalOpportunities : 0,
       });
     } catch (error) {
-      console.error('Error fetching opportunities dashboard:', error);
+      log.error('Error fetching opportunities dashboard:', error);
       res.status(500).json({ error: 'Failed to fetch opportunities dashboard' });
     }
   });
@@ -290,7 +293,7 @@ export function registerOpportunitiesRoutes(app: Express) {
 
       res.json(opportunitiesByStage);
     } catch (error) {
-      console.error('Error fetching opportunities by stage:', error);
+      log.error('Error fetching opportunities by stage:', error);
       res.status(500).json({ error: 'Failed to fetch opportunities by stage' });
     }
   });
