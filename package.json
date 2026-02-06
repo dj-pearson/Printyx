@@ -25,6 +25,7 @@
     "test:unit": "vitest run server/tests/unit",
     "test:integration": "vitest run server/tests/integration",
     "test:coverage": "vitest run --coverage",
+    "test:coverage:check": "vitest run --coverage --coverage.thresholdAutoUpdate=false",
     "test:e2e": "playwright test",
     "test:e2e:chromium": "playwright test --project=chromium",
     "test:e2e:firefox": "playwright test --project=firefox",
