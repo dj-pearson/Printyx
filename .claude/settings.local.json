@@ -54,7 +54,8 @@
       "Bash(do echo \"=== $name ===\")",
       "Bash(done)",
       "WebSearch",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(npm ci:*)"
     ],
     "deny": [],
     "ask": []
