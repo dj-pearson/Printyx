@@ -45,11 +45,45 @@ export default function AuthCallback() {
         const errorDescription =
           hashParams.get('error_description') || queryParams.get('error_description');
 
-        // Handle errors from Supabase
-        if (errorCode || errorDescription) {
+        // Handle errors from Supabase or OAuth proxy
+        const oauthError = queryParams.get('error');
+        if (errorCode || errorDescription || oauthError) {
           setStatus('error');
-          setErrorMessage(errorDescription || `Error code: ${errorCode}`);
+          setErrorMessage(
+            errorDescription ||
+              queryParams.get('error_description') ||
+              oauthError ||
+              `Error code: ${errorCode}`,
+          );
           return;
+        }
+
+        // Handle magic link token from OAuth proxy
+        const magicToken = queryParams.get('token');
+        const magicType = queryParams.get('type');
+        if (magicToken && magicType) {
+          const { data: otpData, error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: magicToken,
+            type: magicType as any,
+          });
+
+          if (verifyError) {
+            setStatus('error');
+            setErrorMessage(verifyError.message);
+            return;
+          }
+
+          if (otpData.session) {
+            setStatus('success');
+            const isNewUser = queryParams.get('new_user') === 'true';
+            if (isNewUser) {
+              setCallbackType('signup');
+            }
+            setTimeout(() => {
+              setLocation(redirectPath);
+            }, 1500);
+            return;
+          }
         }
 
         // Determine the callback type for UI messaging
