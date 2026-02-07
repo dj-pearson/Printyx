@@ -4,6 +4,9 @@
 // =====================================================================
 
 import { Router, Response } from 'express';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('sales-reports-api');
+
 import {
   enhanceUserContext,
   requirePermission,
@@ -47,7 +50,7 @@ router.get(
         weightedValue: pipeline.reduce((sum, stage) => sum + stage.weightedValue, 0),
       });
     } catch (error: any) {
-      console.error('Error fetching personal pipeline:', error);
+      log.error('Error fetching personal pipeline:', error);
       res.status(500).json({ error: 'Failed to fetch pipeline data', details: error.message });
     }
   },
@@ -104,7 +107,7 @@ router.get(
         },
       });
     } catch (error: any) {
-      console.error('Error fetching personal activity:', error);
+      log.error('Error fetching personal activity:', error);
       res.status(500).json({ error: 'Failed to fetch activity data', details: error.message });
     }
   },
@@ -142,7 +145,7 @@ router.get(
         },
       });
     } catch (error: any) {
-      console.error('Error fetching quota attainment:', error);
+      log.error('Error fetching quota attainment:', error);
       res.status(500).json({ error: 'Failed to fetch quota data', details: error.message });
     }
   },
@@ -195,7 +198,7 @@ router.get(
         summary,
       });
     } catch (error: any) {
-      console.error('Error fetching commissions:', error);
+      log.error('Error fetching commissions:', error);
       res.status(500).json({ error: 'Failed to fetch commission data', details: error.message });
     }
   },
@@ -233,7 +236,7 @@ router.get(
           : 0,
       });
     } catch (error: any) {
-      console.error('Error fetching leaderboard:', error);
+      log.error('Error fetching leaderboard:', error);
       res.status(500).json({ error: 'Failed to fetch leaderboard data', details: error.message });
     }
   },
@@ -272,7 +275,7 @@ router.get(
         summary,
       });
     } catch (error: any) {
-      console.error('Error fetching team comparison:', error);
+      log.error('Error fetching team comparison:', error);
       res.status(500).json({ error: 'Failed to fetch team data', details: error.message });
     }
   },
@@ -307,7 +310,7 @@ router.get(
         totalDeals: comparison.reduce((sum, m) => sum + m.dealsInProgress, 0),
       });
     } catch (error: any) {
-      console.error('Error fetching team pipeline:', error);
+      log.error('Error fetching team pipeline:', error);
       res.status(500).json({ error: 'Failed to fetch team pipeline data', details: error.message });
     }
   },
@@ -366,7 +369,7 @@ router.get(
         metrics,
       });
     } catch (error: any) {
-      console.error('Error fetching team pipeline summary:', error);
+      log.error('Error fetching team pipeline summary:', error);
       res
         .status(500)
         .json({ error: 'Failed to fetch team pipeline summary', details: error.message });
@@ -397,7 +400,7 @@ router.post(
 
       res.json({ message: 'Cache invalidated successfully' });
     } catch (error: any) {
-      console.error('Error invalidating cache:', error);
+      log.error('Error invalidating cache:', error);
       res.status(500).json({ error: 'Failed to invalidate cache', details: error.message });
     }
   },

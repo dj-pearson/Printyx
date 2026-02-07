@@ -8,6 +8,8 @@ import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { readingHistory, knowledgeArticles } from '../../shared/knowledge-base-schema';
 import { eq, and, desc, sql, gte } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('reading-history-routes');
 
 const router = Router();
 
@@ -89,7 +91,7 @@ router.get('/', async (req: Request, res: Response) => {
       offset: Number(offset),
     });
   } catch (error) {
-    console.error('Error fetching reading history:', error);
+    log.error('Error fetching reading history:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch reading history',
@@ -180,7 +182,7 @@ router.post('/', async (req: Request, res: Response) => {
       history: result,
     });
   } catch (error) {
-    console.error('Error updating reading history:', error);
+    log.error('Error updating reading history:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update reading history',
@@ -235,7 +237,7 @@ router.get('/recent', async (req: Request, res: Response) => {
       })),
     });
   } catch (error) {
-    console.error('Error fetching recent articles:', error);
+    log.error('Error fetching recent articles:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch recent articles',
@@ -335,7 +337,7 @@ router.get('/stats', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching reading stats:', error);
+    log.error('Error fetching reading stats:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch reading statistics',
@@ -365,7 +367,7 @@ router.get('/:articleId', async (req: Request, res: Response) => {
       exists: history.length > 0,
     });
   } catch (error) {
-    console.error('Error fetching article reading history:', error);
+    log.error('Error fetching article reading history:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch reading history',
@@ -392,7 +394,7 @@ router.delete('/:articleId', async (req: Request, res: Response) => {
       message: 'Reading history cleared successfully',
     });
   } catch (error) {
-    console.error('Error clearing reading history:', error);
+    log.error('Error clearing reading history:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to clear reading history',

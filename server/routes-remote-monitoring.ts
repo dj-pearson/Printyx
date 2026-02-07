@@ -3,6 +3,8 @@ import { desc, eq, and, sql, asc, gte, lte, count } from 'drizzle-orm';
 import { db } from './db';
 import { requireAuth } from './auth-setup';
 import { deviceRegistrations, deviceMetrics } from '../shared/manufacturer-integration-schema';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-remote-monitoring');
 
 const router = express.Router();
 
@@ -209,7 +211,7 @@ router.get('/api/remote-monitoring/equipment-status', async (req: any, res) => {
 
     res.json(equipmentStatus);
   } catch (error) {
-    console.error('Error fetching equipment status:', error);
+    log.error('Error fetching equipment status:', error);
     res.status(500).json({ message: 'Failed to fetch equipment status' });
   }
 });
@@ -415,7 +417,7 @@ router.get('/api/remote-monitoring/sensor-data', async (req: any, res) => {
 
     res.json(sensorData);
   } catch (error) {
-    console.error('Error fetching sensor data:', error);
+    log.error('Error fetching sensor data:', error);
     res.status(500).json({ message: 'Failed to fetch sensor data' });
   }
 });
@@ -676,7 +678,7 @@ router.get('/api/remote-monitoring/fleet-overview', async (req: any, res) => {
 
     res.json(fleetOverview);
   } catch (error) {
-    console.error('Error fetching fleet overview:', error);
+    log.error('Error fetching fleet overview:', error);
     res.status(500).json({ message: 'Failed to fetch fleet overview' });
   }
 });
@@ -709,7 +711,7 @@ router.post('/api/remote-monitoring/alerts', async (req: any, res) => {
       message: 'Alert configuration updated successfully',
     });
   } catch (error) {
-    console.error('Error updating alert configuration:', error);
+    log.error('Error updating alert configuration:', error);
     res.status(500).json({ message: 'Failed to update alert configuration' });
   }
 });
@@ -739,7 +741,7 @@ router.post('/api/remote-monitoring/acknowledge-alert', async (req: any, res) =>
       message: 'Alert acknowledged successfully',
     });
   } catch (error) {
-    console.error('Error acknowledging alert:', error);
+    log.error('Error acknowledging alert:', error);
     res.status(500).json({ message: 'Failed to acknowledge alert' });
   }
 });

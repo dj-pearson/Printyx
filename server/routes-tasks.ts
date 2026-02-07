@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { insertTaskSchema, insertProjectSchema } from '@shared/schema';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-tasks');
 
 // Task management routes using real database data
 export function registerTaskRoutes(app: Express) {
@@ -32,7 +34,7 @@ export function registerTaskRoutes(app: Express) {
           };
         }
       } catch (error) {
-        console.error('Error fetching user details:', error);
+        log.error('Error fetching user details:', error);
       }
     }
 
@@ -69,7 +71,7 @@ export function registerTaskRoutes(app: Express) {
       const tasks = await storage.getTasks(tenantId, userId);
       res.json(tasks);
     } catch (error) {
-      console.error('Error fetching tasks:', error);
+      log.error('Error fetching tasks:', error);
       res.status(500).json({ error: 'Failed to fetch tasks' });
     }
   });
@@ -88,7 +90,7 @@ export function registerTaskRoutes(app: Express) {
       const stats = await storage.getTaskStats(tenantId, userId);
       res.json(stats);
     } catch (error) {
-      console.error('Error fetching task stats:', error);
+      log.error('Error fetching task stats:', error);
       res.status(500).json({ error: 'Failed to fetch task statistics' });
     }
   });
@@ -125,7 +127,7 @@ export function registerTaskRoutes(app: Express) {
       const task = await storage.createTask(validatedData);
       res.status(201).json(task);
     } catch (error) {
-      console.error('Error creating task:', error);
+      log.error('Error creating task:', error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: 'Invalid task data', details: error.errors });
       }
@@ -147,7 +149,7 @@ export function registerTaskRoutes(app: Express) {
 
       res.json(task);
     } catch (error) {
-      console.error('Error updating task:', error);
+      log.error('Error updating task:', error);
       res.status(500).json({ error: 'Failed to update task' });
     }
   });
@@ -166,7 +168,7 @@ export function registerTaskRoutes(app: Express) {
 
       res.json(task);
     } catch (error) {
-      console.error('Error updating task:', error);
+      log.error('Error updating task:', error);
       res.status(500).json({ error: 'Failed to update task' });
     }
   });
@@ -187,7 +189,7 @@ export function registerTaskRoutes(app: Express) {
       const projects = await storage.getProjects(tenantId, userId);
       res.json(projects);
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      log.error('Error fetching projects:', error);
       res.status(500).json({ error: 'Failed to fetch projects' });
     }
   });
@@ -195,10 +197,10 @@ export function registerTaskRoutes(app: Express) {
   // Create new project
   app.post('/api/projects', async (req: any, res) => {
     try {
-      console.log('Creating project - request body:', req.body);
+      log.info('Creating project - request body:', req.body);
       const tenantId = req.user?.tenantId;
       const userId = req.user?.id || req.user?.claims?.sub;
-      console.log('Creating project - tenant:', tenantId, 'user:', userId);
+      log.info('Creating project - tenant:', tenantId, 'user:', userId);
 
       // Convert string dates to Date objects and clean up data
       const projectData = { ...req.body };
@@ -214,7 +216,7 @@ export function registerTaskRoutes(app: Express) {
         projectData.customerId = null;
       }
 
-      console.log('Creating project - processed data:', projectData);
+      log.info('Creating project - processed data:', projectData);
 
       const validatedData = insertProjectSchema.parse({
         ...projectData,
@@ -222,13 +224,13 @@ export function registerTaskRoutes(app: Express) {
         createdBy: userId,
       });
 
-      console.log('Creating project - validated data:', validatedData);
+      log.info('Creating project - validated data:', validatedData);
 
       const project = await storage.createProject(validatedData);
-      console.log('Creating project - created:', project);
+      log.info('Creating project - created:', project);
       res.status(201).json(project);
     } catch (error) {
-      console.error('Error creating project:', error);
+      log.error('Error creating project:', error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: 'Invalid project data', details: error.errors });
       }

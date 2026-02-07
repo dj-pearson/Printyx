@@ -39,6 +39,7 @@ import {
   softwareProducts,
   supplies,
   managedServices,
+  users,
 } from '@shared/schema';
 import { storage } from '../storage';
 
@@ -1434,13 +1435,61 @@ export class CsvImportService {
 
 // ============= HELPER FUNCTIONS FOR RECORD OPERATIONS =============
 
+/**
+ * Resolve a sales rep name/email to a user ID within the tenant.
+ * If the value is already a UUID, returns it as-is.
+ */
+async function resolveSalesRepId(repValue: string, tenantId: string): Promise<string | null> {
+  if (!repValue) return null;
+
+  // If it looks like a UUID, return as-is
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidPattern.test(repValue)) return repValue;
+
+  // Try email match first
+  if (repValue.includes('@')) {
+    const user = await db.query.users.findFirst({
+      where: and(eq(users.tenantId, tenantId), ilike(users.email, repValue)),
+    });
+    return user?.id || null;
+  }
+
+  // Try name match (first+last or last name)
+  const parts = repValue.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    const user = await db.query.users.findFirst({
+      where: and(
+        eq(users.tenantId, tenantId),
+        ilike(users.firstName, parts[0]),
+        ilike(users.lastName, parts.slice(1).join(' ')),
+      ),
+    });
+    if (user) return user.id;
+  }
+
+  // Fallback: try matching last name only
+  const user = await db.query.users.findFirst({
+    where: and(eq(users.tenantId, tenantId), ilike(users.lastName, repValue)),
+  });
+  return user?.id || null;
+}
+
 async function createNewRecord(
   entityType: string,
   tenantId: string,
   data: Record<string, any>,
 ): Promise<string> {
   switch (entityType) {
-    case 'business_records':
+    case 'business_records': {
+      // Resolve sales rep name/email to user ID
+      if (data.assignedSalesRep && !data.ownerId) {
+        const resolvedId = await resolveSalesRepId(data.assignedSalesRep, tenantId);
+        if (resolvedId) {
+          data.ownerId = resolvedId;
+          data.assignedSalesRep = resolvedId;
+        }
+      }
+
       const [br] = await db
         .insert(businessRecords)
         .values({
@@ -1451,6 +1500,7 @@ async function createNewRecord(
         })
         .returning({ id: businessRecords.id });
       return br.id;
+    }
 
     case 'contacts':
       const [contact] = await db

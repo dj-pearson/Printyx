@@ -10,6 +10,8 @@
  */
 
 import { z } from 'zod';
+import { createModuleLogger } from './logger';
+const log = createModuleLogger('env-validation');
 
 // Environment variable schema
 const envSchema = z.object({
@@ -147,22 +149,22 @@ export function validateEnvironmentOrFail(): EnvConfig {
 
   // Log warnings
   for (const warning of result.warnings) {
-    console.warn(`[ENV WARNING] ${warning}`);
+    log.warn(`[ENV WARNING] ${warning}`);
   }
 
   // Fail on errors
   if (!result.valid) {
-    console.error('\n========================================');
-    console.error('  ENVIRONMENT CONFIGURATION ERRORS');
-    console.error('========================================\n');
+    log.error('\n========================================');
+    log.error('  ENVIRONMENT CONFIGURATION ERRORS');
+    log.error('========================================\n');
 
     for (const error of result.errors) {
-      console.error(`  ❌ ${error}`);
+      log.error(`  ❌ ${error}`);
     }
 
-    console.error('\n========================================');
-    console.error('  Please fix the above issues and restart');
-    console.error('========================================\n');
+    log.error('\n========================================');
+    log.error('  Please fix the above issues and restart');
+    log.error('========================================\n');
 
     // In production, fail immediately
     if (process.env.NODE_ENV === 'production') {
@@ -170,9 +172,9 @@ export function validateEnvironmentOrFail(): EnvConfig {
     }
 
     // In development, just warn but continue
-    console.warn('[ENV] Continuing with incomplete configuration (development mode)\n');
+    log.warn('[ENV] Continuing with incomplete configuration (development mode)\n');
   } else {
-    console.log('[ENV] ✅ Environment validation passed');
+    log.info('[ENV] ✅ Environment validation passed');
   }
 
   return result.config as EnvConfig;
@@ -258,15 +260,15 @@ export function logJwtConfigurationStatus(): void {
   const status = checkJwtConfiguration();
 
   if (status.configured) {
-    console.log('[JWT] ✅ JWT authentication is properly configured');
+    log.info('[JWT] ✅ JWT authentication is properly configured');
   } else {
-    console.warn('[JWT] ⚠️  JWT authentication is NOT fully configured:');
-    status.errors.forEach((error) => console.warn(`  - ${error}`));
+    log.warn('[JWT] ⚠️  JWT authentication is NOT fully configured:');
+    status.errors.forEach((error) => log.warn(`  - ${error}`));
 
     if (isProduction()) {
-      console.error('[JWT] ❌ CRITICAL: JWT must be configured in production!');
+      log.error('[JWT] ❌ CRITICAL: JWT must be configured in production!');
     } else {
-      console.warn('[JWT] Running in development mode - some auth features may not work');
+      log.warn('[JWT] Running in development mode - some auth features may not work');
     }
   }
 }

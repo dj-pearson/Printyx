@@ -3,6 +3,19 @@ import { toast } from '@/hooks/use-toast';
 import { config, getApiUrl } from '@/lib/config';
 import { getAccessToken } from '@/lib/supabase';
 
+// Generate a unique request ID for correlation
+function generateRequestId(): string {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+// Store last request ID for error reporting UI
+let __lastRequestId: string | undefined;
+export function getLastRequestId(): string | undefined {
+  return __lastRequestId;
+}
+
 function getTenantIdForHeaders(): string | undefined {
   if (typeof window === 'undefined') return undefined;
 
@@ -82,8 +95,12 @@ export async function apiRequest(
     finalHeaders = headers;
   }
 
+  const requestId = generateRequestId();
+  __lastRequestId = requestId;
+
   const requestHeaders: HeadersInit = {
     'Content-Type': 'application/json',
+    'X-Request-ID': requestId,
     ...finalHeaders,
   };
 
@@ -175,7 +192,11 @@ export async function apiFormRequest(
   formData: FormData,
   extraHeaders?: Record<string, string>,
 ): Promise<any> {
+  const formRequestId = generateRequestId();
+  __lastRequestId = formRequestId;
+
   const requestHeaders: HeadersInit = {
+    'X-Request-ID': formRequestId,
     ...extraHeaders,
   };
 
@@ -245,7 +266,12 @@ type UnauthorizedBehavior = 'returnNull' | 'throw';
 export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const headers: HeadersInit = {};
+    const queryRequestId = generateRequestId();
+    __lastRequestId = queryRequestId;
+
+    const headers: HeadersInit = {
+      'X-Request-ID': queryRequestId,
+    };
 
     const authMode = config.authMode;
     const isSupabaseMode = authMode === 'supabase' || authMode === 'hybrid';

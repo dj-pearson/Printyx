@@ -412,6 +412,9 @@ import {
   type InsertRenewalOpportunity,
 } from '@shared/customer-success-schema';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('storage');
+
 import {
   eq,
   and,
@@ -2454,7 +2457,7 @@ export class DatabaseStorage implements IStorage {
         .limit(1);
       return result[0];
     } catch (error) {
-      console.error('Error in getCustomer:', error);
+      log.error('Error in getCustomer:', error);
       return undefined;
     }
   }
@@ -2492,7 +2495,7 @@ export class DatabaseStorage implements IStorage {
         .from(equipment)
         .where(and(eq(equipment.customerId, customerId), eq(equipment.tenantId, tenantId)));
     } catch (error) {
-      console.log('No equipment table found, returning empty array');
+      log.info('No equipment table found, returning empty array');
       return [];
     }
   }
@@ -2505,7 +2508,7 @@ export class DatabaseStorage implements IStorage {
         .where(and(eq(meterReadings.customerId, customerId), eq(meterReadings.tenantId, tenantId)))
         .orderBy(desc(meterReadings.readingDate));
     } catch (error) {
-      console.log('No meter readings table found, returning empty array');
+      log.info('No meter readings table found, returning empty array');
       return [];
     }
   }
@@ -2518,7 +2521,7 @@ export class DatabaseStorage implements IStorage {
         .where(and(eq(invoices.customerId, customerId), eq(invoices.tenantId, tenantId)))
         .orderBy(desc(invoices.invoiceDate));
     } catch (error) {
-      console.log('No invoices table found, returning empty array');
+      log.info('No invoices table found, returning empty array');
       return [];
     }
   }
@@ -2533,7 +2536,7 @@ export class DatabaseStorage implements IStorage {
         )
         .orderBy(desc(serviceTickets.createdAt));
     } catch (error) {
-      console.log('No service tickets table found, returning empty array');
+      log.info('No service tickets table found, returning empty array');
       return [];
     }
   }
@@ -2545,7 +2548,7 @@ export class DatabaseStorage implements IStorage {
         .from(contracts)
         .where(and(eq(contracts.customerId, customerId), eq(contracts.tenantId, tenantId)));
     } catch (error) {
-      console.log('No contracts found, returning empty array');
+      log.info('No contracts found, returning empty array');
       return [];
     }
   }
@@ -2576,7 +2579,7 @@ export class DatabaseStorage implements IStorage {
         .where(and(eq(companies.businessName, name.trim()), eq(companies.tenantId, tenantId)));
       return company;
     } catch (error) {
-      console.error('Error in getCompanyByName:', error);
+      log.error('Error in getCompanyByName:', error);
       return undefined;
     }
   }
@@ -2669,7 +2672,7 @@ export class DatabaseStorage implements IStorage {
       `);
       return result.rows;
     } catch (error) {
-      console.error('Error in getLeads:', error);
+      log.error('Error in getLeads:', error);
       return [];
     }
   }
@@ -2697,7 +2700,7 @@ export class DatabaseStorage implements IStorage {
         return result.rows;
       }
     } catch (error) {
-      console.error('Error in getCustomers:', error);
+      log.error('Error in getCustomers:', error);
       return [];
     }
   }
@@ -2712,7 +2715,7 @@ export class DatabaseStorage implements IStorage {
       `);
       return result.rows;
     } catch (error) {
-      console.error('Error in getFormerCustomers:', error);
+      log.error('Error in getFormerCustomers:', error);
       return [];
     }
   }
@@ -2797,7 +2800,7 @@ export class DatabaseStorage implements IStorage {
         updatedAt: row.updatedAt,
       }));
     } catch (error) {
-      console.error('Error in getBusinessRecords:', error);
+      log.error('Error in getBusinessRecords:', error);
       // Return empty array to prevent frontend crashes
       return [];
     }
@@ -2827,7 +2830,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateBusinessRecord(id: string, tenantId: string, updates: any): Promise<any | undefined> {
-    console.log('[DEBUG] STORAGE - Updating business record:', {
+    log.info('[DEBUG] STORAGE - Updating business record:', {
       id,
       tenantId,
       updates: JSON.stringify(updates, null, 2),
@@ -2837,10 +2840,7 @@ export class DatabaseStorage implements IStorage {
       .set({ ...updates, updatedAt: new Date() })
       .where(and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId)))
       .returning();
-    console.log(
-      '[DEBUG] STORAGE - Updated record returned:',
-      JSON.stringify(updatedRecord, null, 2),
-    );
+    log.info('[DEBUG] STORAGE - Updated record returned:', JSON.stringify(updatedRecord, null, 2));
     return updatedRecord;
   }
 
@@ -3258,7 +3258,7 @@ export class DatabaseStorage implements IStorage {
         };
       });
     } catch (error) {
-      console.error('Error in getAllActivities:', error);
+      log.error('Error in getAllActivities:', error);
       return [];
     }
   }
@@ -3846,7 +3846,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(systemAlerts.createdAt))
         .limit(10);
     } catch (error) {
-      console.error('Error fetching system alerts:', error);
+      log.error('Error fetching system alerts:', error);
       return []; // Return empty array instead of throwing
     }
   }
@@ -4038,7 +4038,7 @@ export class DatabaseStorage implements IStorage {
 
       return masterModels;
     } catch (error) {
-      console.error('Error in getMasterProductModelsForAccessories:', error);
+      log.error('Error in getMasterProductModelsForAccessories:', error);
       return [];
     }
   }

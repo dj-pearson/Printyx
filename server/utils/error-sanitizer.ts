@@ -6,6 +6,8 @@
  */
 
 import { Response } from 'express';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('error-sanitizer');
 
 interface SanitizedError {
   message: string;
@@ -65,7 +67,7 @@ export function sendErrorResponse(
   const sanitized = sanitizeError(error, isDevelopment);
 
   // Always log the full error server-side
-  console.error('[ERROR]', {
+  log.error('[ERROR]', {
     requestId,
     error: error?.message || error,
     stack: error?.stack,

@@ -5,6 +5,8 @@
 
 import { db } from './storage';
 import { reportDefinitions, kpiDefinitions } from '../shared/reporting-schema';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-reporting-definitions');
 
 // =====================================================================
 // SALES DEPARTMENT REPORT DEFINITIONS
@@ -601,7 +603,7 @@ export const SERVICE_KPIS = [
 
 export async function seedReportDefinitions(tenantId: string): Promise<void> {
   try {
-    console.log('🌱 Seeding report definitions for tenant:', tenantId);
+    log.info('🌱 Seeding report definitions for tenant:', tenantId);
 
     const allReports = [...SALES_REPORTS, ...SERVICE_REPORTS, ...FINANCE_REPORTS];
     const allKPIs = [...SALES_KPIS, ...SERVICE_KPIS];
@@ -630,9 +632,9 @@ export async function seedReportDefinitions(tenantId: string): Promise<void> {
         .onConflictDoNothing();
     }
 
-    console.log(`✅ Successfully seeded ${allReports.length} reports and ${allKPIs.length} KPIs`);
+    log.info(`✅ Successfully seeded ${allReports.length} reports and ${allKPIs.length} KPIs`);
   } catch (error) {
-    console.error('❌ Error seeding report definitions:', error);
+    log.error('❌ Error seeding report definitions:', error);
     throw error;
   }
 }

@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import type { IStorage } from '../storage';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('customer-success-routes');
 
 const router = Router();
 let storage: IStorage;
@@ -34,7 +36,7 @@ router.get('/health-scores', async (req: Request, res: Response) => {
     const scores = await storage.getHealthScores(user.tenantId, filters);
     res.json(scores);
   } catch (error) {
-    console.error('Get health scores error:', error);
+    log.error('Get health scores error:', error);
     res.status(500).json({ error: 'Failed to fetch health scores' });
   }
 });
@@ -55,7 +57,7 @@ router.get('/health-scores/:id', async (req: Request, res: Response) => {
 
     res.json(score);
   } catch (error) {
-    console.error('Get health score error:', error);
+    log.error('Get health score error:', error);
     res.status(500).json({ error: 'Failed to fetch health score' });
   }
 });
@@ -77,7 +79,7 @@ router.post('/health-scores', async (req: Request, res: Response) => {
     const score = await storage.createHealthScore(scoreData);
     res.status(201).json(score);
   } catch (error) {
-    console.error('Create health score error:', error);
+    log.error('Create health score error:', error);
     res.status(500).json({ error: 'Failed to create health score' });
   }
 });
@@ -98,7 +100,7 @@ router.patch('/health-scores/:id', async (req: Request, res: Response) => {
     const updated = await storage.updateHealthScore(req.params.id, user.tenantId, req.body);
     res.json(updated);
   } catch (error) {
-    console.error('Update health score error:', error);
+    log.error('Update health score error:', error);
     res.status(500).json({ error: 'Failed to update health score' });
   }
 });
@@ -119,7 +121,7 @@ router.get('/health-scores/customer/:customerId', async (req: Request, res: Resp
 
     res.json(score);
   } catch (error) {
-    console.error('Get health score by customer error:', error);
+    log.error('Get health score by customer error:', error);
     res.status(500).json({ error: 'Failed to fetch health score for customer' });
   }
 });
@@ -140,7 +142,7 @@ router.get('/health-scores/customer/:customerId/history', async (req: Request, r
     );
     res.json(history);
   } catch (error) {
-    console.error('Get health score history error:', error);
+    log.error('Get health score history error:', error);
     res.status(500).json({ error: 'Failed to fetch health score history' });
   }
 });
@@ -160,7 +162,7 @@ router.get('/health-scores/due-calculation', async (req: Request, res: Response)
     const scores = await storage.getScoresDueForCalculation(user.tenantId);
     res.json(scores);
   } catch (error) {
-    console.error('Get scores due for calculation error:', error);
+    log.error('Get scores due for calculation error:', error);
     res.status(500).json({ error: 'Failed to fetch scores due for calculation' });
   }
 });
@@ -176,7 +178,7 @@ router.get('/health-scores/at-risk', async (req: Request, res: Response) => {
     const scores = await storage.getCustomersAtRisk(user.tenantId);
     res.json(scores);
   } catch (error) {
-    console.error('Get customers at risk error:', error);
+    log.error('Get customers at risk error:', error);
     res.status(500).json({ error: 'Failed to fetch customers at risk' });
   }
 });
@@ -200,7 +202,7 @@ router.get('/churn-predictions', async (req: Request, res: Response) => {
     const predictions = await storage.getChurnPredictions(user.tenantId, filters);
     res.json(predictions);
   } catch (error) {
-    console.error('Get churn predictions error:', error);
+    log.error('Get churn predictions error:', error);
     res.status(500).json({ error: 'Failed to fetch churn predictions' });
   }
 });
@@ -221,7 +223,7 @@ router.get('/churn-predictions/:id', async (req: Request, res: Response) => {
 
     res.json(prediction);
   } catch (error) {
-    console.error('Get churn prediction error:', error);
+    log.error('Get churn prediction error:', error);
     res.status(500).json({ error: 'Failed to fetch churn prediction' });
   }
 });
@@ -248,7 +250,7 @@ router.post('/churn-predictions', async (req: Request, res: Response) => {
     const prediction = await storage.createChurnPrediction(predictionData);
     res.status(201).json(prediction);
   } catch (error) {
-    console.error('Create churn prediction error:', error);
+    log.error('Create churn prediction error:', error);
     res.status(500).json({ error: 'Failed to create churn prediction' });
   }
 });
@@ -273,7 +275,7 @@ router.patch('/churn-predictions/:id', async (req: Request, res: Response) => {
     const updated = await storage.updateChurnPrediction(req.params.id, user.tenantId, req.body);
     res.json(updated);
   } catch (error) {
-    console.error('Update churn prediction error:', error);
+    log.error('Update churn prediction error:', error);
     res.status(500).json({ error: 'Failed to update churn prediction' });
   }
 });
@@ -297,7 +299,7 @@ router.get('/churn-predictions/customer/:customerId', async (req: Request, res: 
 
     res.json(prediction);
   } catch (error) {
-    console.error('Get churn prediction by customer error:', error);
+    log.error('Get churn prediction by customer error:', error);
     res.status(500).json({ error: 'Failed to fetch churn prediction for customer' });
   }
 });
@@ -313,7 +315,7 @@ router.get('/churn-predictions/high-risk', async (req: Request, res: Response) =
     const predictions = await storage.getHighRiskChurns(user.tenantId);
     res.json(predictions);
   } catch (error) {
-    console.error('Get high risk churns error:', error);
+    log.error('Get high risk churns error:', error);
     res.status(500).json({ error: 'Failed to fetch high risk churns' });
   }
 });
@@ -333,7 +335,7 @@ router.get('/churn-predictions/expired', async (req: Request, res: Response) => 
     const predictions = await storage.getExpiredPredictions(user.tenantId);
     res.json(predictions);
   } catch (error) {
-    console.error('Get expired predictions error:', error);
+    log.error('Get expired predictions error:', error);
     res.status(500).json({ error: 'Failed to fetch expired predictions' });
   }
 });
@@ -349,7 +351,7 @@ router.get('/churn-predictions/intervention-required', async (req: Request, res:
     const predictions = await storage.getPredictionsRequiringIntervention(user.tenantId);
     res.json(predictions);
   } catch (error) {
-    console.error('Get predictions requiring intervention error:', error);
+    log.error('Get predictions requiring intervention error:', error);
     res.status(500).json({ error: 'Failed to fetch predictions requiring intervention' });
   }
 });
@@ -375,7 +377,7 @@ router.get('/interventions', async (req: Request, res: Response) => {
     const interventions = await storage.getInterventions(user.tenantId, filters);
     res.json(interventions);
   } catch (error) {
-    console.error('Get interventions error:', error);
+    log.error('Get interventions error:', error);
     res.status(500).json({ error: 'Failed to fetch interventions' });
   }
 });
@@ -396,7 +398,7 @@ router.get('/interventions/:id', async (req: Request, res: Response) => {
 
     res.json(intervention);
   } catch (error) {
-    console.error('Get intervention error:', error);
+    log.error('Get intervention error:', error);
     res.status(500).json({ error: 'Failed to fetch intervention' });
   }
 });
@@ -418,7 +420,7 @@ router.post('/interventions', async (req: Request, res: Response) => {
     const intervention = await storage.createIntervention(interventionData);
     res.status(201).json(intervention);
   } catch (error) {
-    console.error('Create intervention error:', error);
+    log.error('Create intervention error:', error);
     res.status(500).json({ error: 'Failed to create intervention' });
   }
 });
@@ -439,7 +441,7 @@ router.patch('/interventions/:id', async (req: Request, res: Response) => {
     const updated = await storage.updateIntervention(req.params.id, user.tenantId, req.body);
     res.json(updated);
   } catch (error) {
-    console.error('Update intervention error:', error);
+    log.error('Update intervention error:', error);
     res.status(500).json({ error: 'Failed to update intervention' });
   }
 });
@@ -458,7 +460,7 @@ router.get('/interventions/customer/:customerId', async (req: Request, res: Resp
     );
     res.json(interventions);
   } catch (error) {
-    console.error('Get interventions by customer error:', error);
+    log.error('Get interventions by customer error:', error);
     res.status(500).json({ error: 'Failed to fetch interventions for customer' });
   }
 });
@@ -490,7 +492,7 @@ router.post('/interventions/:id/assign', async (req: Request, res: Response) => 
     const assigned = await storage.assignIntervention(req.params.id, user.tenantId, userId);
     res.json(assigned);
   } catch (error) {
-    console.error('Assign intervention error:', error);
+    log.error('Assign intervention error:', error);
     res.status(500).json({ error: 'Failed to assign intervention' });
   }
 });
@@ -521,7 +523,7 @@ router.post('/interventions/:id/complete', async (req: Request, res: Response) =
     );
     res.json(completed);
   } catch (error) {
-    console.error('Complete intervention error:', error);
+    log.error('Complete intervention error:', error);
     res.status(500).json({ error: 'Failed to complete intervention' });
   }
 });
@@ -553,7 +555,7 @@ router.post('/interventions/:id/cancel', async (req: Request, res: Response) => 
     const cancelled = await storage.cancelIntervention(req.params.id, user.tenantId, reason);
     res.json(cancelled);
   } catch (error) {
-    console.error('Cancel intervention error:', error);
+    log.error('Cancel intervention error:', error);
     res.status(500).json({ error: 'Failed to cancel intervention' });
   }
 });
@@ -569,7 +571,7 @@ router.get('/interventions/overdue', async (req: Request, res: Response) => {
     const interventions = await storage.getOverdueInterventions(user.tenantId);
     res.json(interventions);
   } catch (error) {
-    console.error('Get overdue interventions error:', error);
+    log.error('Get overdue interventions error:', error);
     res.status(500).json({ error: 'Failed to fetch overdue interventions' });
   }
 });
@@ -585,7 +587,7 @@ router.get('/interventions/my', async (req: Request, res: Response) => {
     const interventions = await storage.getMyInterventions(user.id, user.tenantId);
     res.json(interventions);
   } catch (error) {
-    console.error('Get my interventions error:', error);
+    log.error('Get my interventions error:', error);
     res.status(500).json({ error: 'Failed to fetch my interventions' });
   }
 });
@@ -610,7 +612,7 @@ router.get('/journeys', async (req: Request, res: Response) => {
     const journeys = await storage.getJourneys(user.tenantId, filters);
     res.json(journeys);
   } catch (error) {
-    console.error('Get journeys error:', error);
+    log.error('Get journeys error:', error);
     res.status(500).json({ error: 'Failed to fetch journeys' });
   }
 });
@@ -631,7 +633,7 @@ router.get('/journeys/:id', async (req: Request, res: Response) => {
 
     res.json(journey);
   } catch (error) {
-    console.error('Get journey error:', error);
+    log.error('Get journey error:', error);
     res.status(500).json({ error: 'Failed to fetch journey' });
   }
 });
@@ -652,7 +654,7 @@ router.post('/journeys', async (req: Request, res: Response) => {
     const journey = await storage.createJourney(journeyData);
     res.status(201).json(journey);
   } catch (error) {
-    console.error('Create journey error:', error);
+    log.error('Create journey error:', error);
     res.status(500).json({ error: 'Failed to create journey' });
   }
 });
@@ -673,7 +675,7 @@ router.patch('/journeys/:id', async (req: Request, res: Response) => {
     const updated = await storage.updateJourney(req.params.id, user.tenantId, req.body);
     res.json(updated);
   } catch (error) {
-    console.error('Update journey error:', error);
+    log.error('Update journey error:', error);
     res.status(500).json({ error: 'Failed to update journey' });
   }
 });
@@ -694,7 +696,7 @@ router.get('/journeys/customer/:customerId', async (req: Request, res: Response)
 
     res.json(journey);
   } catch (error) {
-    console.error('Get journey by customer error:', error);
+    log.error('Get journey by customer error:', error);
     res.status(500).json({ error: 'Failed to fetch journey for customer' });
   }
 });
@@ -720,7 +722,7 @@ router.post('/journeys/:id/advance-stage', async (req: Request, res: Response) =
     const advanced = await storage.advanceJourneyStage(req.params.id, user.tenantId, newStage);
     res.json(advanced);
   } catch (error) {
-    console.error('Advance journey stage error:', error);
+    log.error('Advance journey stage error:', error);
     res.status(500).json({ error: 'Failed to advance journey stage' });
   }
 });
@@ -750,7 +752,7 @@ router.post('/journeys/:id/record-touchpoint', async (req: Request, res: Respons
     );
     res.json(updated);
   } catch (error) {
-    console.error('Record journey touchpoint error:', error);
+    log.error('Record journey touchpoint error:', error);
     res.status(500).json({ error: 'Failed to record journey touchpoint' });
   }
 });
@@ -766,7 +768,7 @@ router.get('/journeys/needing-attention', async (req: Request, res: Response) =>
     const journeys = await storage.getJourneysNeedingAttention(user.tenantId);
     res.json(journeys);
   } catch (error) {
-    console.error('Get journeys needing attention error:', error);
+    log.error('Get journeys needing attention error:', error);
     res.status(500).json({ error: 'Failed to fetch journeys needing attention' });
   }
 });
@@ -791,7 +793,7 @@ router.get('/renewals', async (req: Request, res: Response) => {
     const renewals = await storage.getRenewalOpportunities(user.tenantId, filters);
     res.json(renewals);
   } catch (error) {
-    console.error('Get renewal opportunities error:', error);
+    log.error('Get renewal opportunities error:', error);
     res.status(500).json({ error: 'Failed to fetch renewal opportunities' });
   }
 });
@@ -812,7 +814,7 @@ router.get('/renewals/:id', async (req: Request, res: Response) => {
 
     res.json(renewal);
   } catch (error) {
-    console.error('Get renewal opportunity error:', error);
+    log.error('Get renewal opportunity error:', error);
     res.status(500).json({ error: 'Failed to fetch renewal opportunity' });
   }
 });
@@ -834,7 +836,7 @@ router.post('/renewals', async (req: Request, res: Response) => {
     const renewal = await storage.createRenewalOpportunity(renewalData);
     res.status(201).json(renewal);
   } catch (error) {
-    console.error('Create renewal opportunity error:', error);
+    log.error('Create renewal opportunity error:', error);
     res.status(500).json({ error: 'Failed to create renewal opportunity' });
   }
 });
@@ -855,7 +857,7 @@ router.patch('/renewals/:id', async (req: Request, res: Response) => {
     const updated = await storage.updateRenewalOpportunity(req.params.id, user.tenantId, req.body);
     res.json(updated);
   } catch (error) {
-    console.error('Update renewal opportunity error:', error);
+    log.error('Update renewal opportunity error:', error);
     res.status(500).json({ error: 'Failed to update renewal opportunity' });
   }
 });
@@ -871,7 +873,7 @@ router.get('/renewals/customer/:customerId', async (req: Request, res: Response)
     const renewals = await storage.getRenewalsByCustomer(req.params.customerId, user.tenantId);
     res.json(renewals);
   } catch (error) {
-    console.error('Get renewals by customer error:', error);
+    log.error('Get renewals by customer error:', error);
     res.status(500).json({ error: 'Failed to fetch renewals for customer' });
   }
 });
@@ -892,7 +894,7 @@ router.get('/renewals/contract/:contractId', async (req: Request, res: Response)
 
     res.json(renewal);
   } catch (error) {
-    console.error('Get renewal by contract error:', error);
+    log.error('Get renewal by contract error:', error);
     res.status(500).json({ error: 'Failed to fetch renewal for contract' });
   }
 });
@@ -924,7 +926,7 @@ router.post('/renewals/:id/assign-csm', async (req: Request, res: Response) => {
     const assigned = await storage.assignRenewalCsm(req.params.id, user.tenantId, csmId);
     res.json(assigned);
   } catch (error) {
-    console.error('Assign renewal CSM error:', error);
+    log.error('Assign renewal CSM error:', error);
     res.status(500).json({ error: 'Failed to assign renewal CSM' });
   }
 });
@@ -953,7 +955,7 @@ router.post('/renewals/:id/close', async (req: Request, res: Response) => {
     const closed = await storage.closeRenewal(req.params.id, user.tenantId, won, notes);
     res.json(closed);
   } catch (error) {
-    console.error('Close renewal error:', error);
+    log.error('Close renewal error:', error);
     res.status(500).json({ error: 'Failed to close renewal' });
   }
 });
@@ -974,7 +976,7 @@ router.get('/renewals/upcoming/:days', async (req: Request, res: Response) => {
     const renewals = await storage.getUpcomingRenewals(user.tenantId, days);
     res.json(renewals);
   } catch (error) {
-    console.error('Get upcoming renewals error:', error);
+    log.error('Get upcoming renewals error:', error);
     res.status(500).json({ error: 'Failed to fetch upcoming renewals' });
   }
 });
@@ -995,7 +997,7 @@ router.get('/renewals/high-value/:minMrr', async (req: Request, res: Response) =
     const renewals = await storage.getHighValueRenewals(user.tenantId, minMrr);
     res.json(renewals);
   } catch (error) {
-    console.error('Get high value renewals error:', error);
+    log.error('Get high value renewals error:', error);
     res.status(500).json({ error: 'Failed to fetch high value renewals' });
   }
 });

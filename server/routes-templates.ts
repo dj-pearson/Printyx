@@ -10,6 +10,8 @@ import { projectTemplates, projects, tasks } from '../shared/task-schema.js';
 import { eq, and } from 'drizzle-orm';
 import { isAuthenticated } from './replitAuth.js';
 import { z } from 'zod';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-templates');
 
 export function registerTemplateRoutes(app: Express) {
   // Get all templates
@@ -25,7 +27,7 @@ export function registerTemplateRoutes(app: Express) {
 
       res.json(templates);
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      log.error('Error fetching templates:', error);
       res.status(500).json({ error: 'Failed to fetch templates' });
     }
   });
@@ -47,7 +49,7 @@ export function registerTemplateRoutes(app: Express) {
 
       res.json(template);
     } catch (error) {
-      console.error('Error fetching template:', error);
+      log.error('Error fetching template:', error);
       res.status(500).json({ error: 'Failed to fetch template' });
     }
   });
@@ -68,7 +70,7 @@ export function registerTemplateRoutes(app: Express) {
 
       res.status(201).json(newTemplate);
     } catch (error) {
-      console.error('Error creating template:', error);
+      log.error('Error creating template:', error);
       res.status(500).json({ error: 'Failed to create template' });
     }
   });
@@ -91,7 +93,7 @@ export function registerTemplateRoutes(app: Express) {
 
       res.json(updatedTemplate);
     } catch (error) {
-      console.error('Error updating template:', error);
+      log.error('Error updating template:', error);
       res.status(500).json({ error: 'Failed to update template' });
     }
   });
@@ -108,7 +110,7 @@ export function registerTemplateRoutes(app: Express) {
 
       res.json({ success: true });
     } catch (error) {
-      console.error('Error deleting template:', error);
+      log.error('Error deleting template:', error);
       res.status(500).json({ error: 'Failed to delete template' });
     }
   });
@@ -173,7 +175,7 @@ export function registerTemplateRoutes(app: Express) {
         message: 'Project created from template successfully',
       });
     } catch (error) {
-      console.error('Error instantiating template:', error);
+      log.error('Error instantiating template:', error);
       res.status(500).json({ error: 'Failed to create project from template' });
     }
   });
@@ -225,7 +227,7 @@ export function registerTemplateRoutes(app: Express) {
 
       res.status(201).json(newTemplate);
     } catch (error) {
-      console.error('Error creating template from project:', error);
+      log.error('Error creating template from project:', error);
       res.status(500).json({ error: 'Failed to create template from project' });
     }
   });

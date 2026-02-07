@@ -1,8 +1,10 @@
 import { storage } from './storage';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-gps-tracking');
 
 async function seedGpsTracking() {
   try {
-    console.log('Seeding GPS tracking system...');
+    log.info('Seeding GPS tracking system...');
 
     const tenantId = 'demo-tenant';
     const now = new Date();
@@ -12,7 +14,7 @@ async function seedGpsTracking() {
     const austinLng = -97.7431;
 
     // 1. Create current technician locations (5 technicians)
-    console.log('Creating technician locations...');
+    log.info('Creating technician locations...');
 
     const tech1Location = await storage.createTechnicianLocation({
       tenantId,
@@ -117,10 +119,10 @@ async function seedGpsTracking() {
       timestamp: new Date(now.getTime() - 3 * 60 * 60 * 1000), // 3 hours ago
     });
 
-    console.log(`Created ${5} technician locations`);
+    log.info(`Created ${5} technician locations`);
 
     // 2. Create location history (tracking breadcrumbs)
-    console.log('Creating location history...');
+    log.info('Creating location history...');
 
     const historyCount = 20;
     for (let i = 0; i < historyCount; i++) {
@@ -144,10 +146,10 @@ async function seedGpsTracking() {
       });
     }
 
-    console.log(`Created ${historyCount} location history records`);
+    log.info(`Created ${historyCount} location history records`);
 
     // 3. Create route assignments (2 active routes)
-    console.log('Creating route assignments...');
+    log.info('Creating route assignments...');
 
     const route1 = await storage.createRouteAssignment({
       tenantId,
@@ -241,10 +243,10 @@ async function seedGpsTracking() {
       createdBy: 'dispatcher-001',
     });
 
-    console.log(`Created ${2} route assignments`);
+    log.info(`Created ${2} route assignments`);
 
     // 4. Create route deviations (3 deviations)
-    console.log('Creating route deviations...');
+    log.info('Creating route deviations...');
 
     const deviation1 = await storage.createRouteDeviation({
       tenantId,
@@ -332,10 +334,10 @@ async function seedGpsTracking() {
       detectedAt: new Date(now.getTime() - 20 * 60 * 1000),
     });
 
-    console.log(`Created ${3} route deviations`);
+    log.info(`Created ${3} route deviations`);
 
     // 5. Create ETA calculations (5 ETAs)
-    console.log('Creating ETA calculations...');
+    log.info('Creating ETA calculations...');
 
     const eta1 = await storage.createEtaCalculation({
       tenantId,
@@ -433,10 +435,10 @@ async function seedGpsTracking() {
       accuracyMinutes: 2,
     });
 
-    console.log(`Created ${4} ETA calculations`);
+    log.info(`Created ${4} ETA calculations`);
 
     // 6. Create geofences (4 geofences)
-    console.log('Creating geofences...');
+    log.info('Creating geofences...');
 
     const geofence1 = await storage.createGeofence({
       tenantId,
@@ -504,10 +506,10 @@ async function seedGpsTracking() {
       createdBy: 'admin-001',
     });
 
-    console.log(`Created ${4} geofences`);
+    log.info(`Created ${4} geofences`);
 
     // 7. Create geofence events (5 events)
-    console.log('Creating geofence events...');
+    log.info('Creating geofence events...');
 
     await storage.createGeofenceEvent({
       tenantId,
@@ -574,10 +576,10 @@ async function seedGpsTracking() {
       deviceId: 'device-abc123',
     });
 
-    console.log(`Created ${4} geofence events`);
+    log.info(`Created ${4} geofence events`);
 
-    console.log('✅ GPS tracking system seeded successfully');
-    console.log(`Summary:
+    log.info('✅ GPS tracking system seeded successfully');
+    log.info(`Summary:
   - 5 technician locations (3 active, 1 idle, 1 offline)
   - 20 location history records
   - 2 route assignments (1 in progress, 1 assigned)
@@ -587,7 +589,7 @@ async function seedGpsTracking() {
   - 4 geofence events (entry, exit, dwell)
     `);
   } catch (error) {
-    console.error('❌ Error seeding GPS tracking:', error);
+    log.error('❌ Error seeding GPS tracking:', error);
     throw error;
   }
 }
@@ -596,11 +598,11 @@ async function seedGpsTracking() {
 if (require.main === module) {
   seedGpsTracking()
     .then(() => {
-      console.log('Seeding completed');
+      log.info('Seeding completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Seeding failed:', error);
+      log.error('Seeding failed:', error);
       process.exit(1);
     });
 }

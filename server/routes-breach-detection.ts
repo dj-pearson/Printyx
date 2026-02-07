@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { db } from './db';
 import { sql, and, eq, gte, lt, count, desc } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-breach-detection');
+
 // Temporary removal of auth middleware to fix loading
 // import { requireAuth } from './auth';
 import {
@@ -65,7 +68,7 @@ router.get('/reports/breaches', async (req: any, res) => {
         });
       }
     } catch (error) {
-      console.log('Sales response breach detection skipped:', error.message);
+      log.info('Sales response breach detection skipped:', error.message);
     }
 
     // 2. Proposal Aging (Proposals older than 14 days)
@@ -197,7 +200,7 @@ router.get('/reports/breaches', async (req: any, res) => {
 
     res.json(breaches);
   } catch (error) {
-    console.error('Error fetching breach metrics:', error);
+    log.error('Error fetching breach metrics:', error);
     // Return empty array instead of error to prevent frontend crashes
     res.json([]);
   }
@@ -241,7 +244,7 @@ router.get('/reports/breach-summary', async (req, res) => {
 
     res.json(summary);
   } catch (error) {
-    console.error('Error fetching breach summary:', error);
+    log.error('Error fetching breach summary:', error);
     res.status(500).json({ error: 'Failed to fetch breach summary' });
   }
 });

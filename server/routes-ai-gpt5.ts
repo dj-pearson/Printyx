@@ -3,6 +3,8 @@ import { gpt5Service, GPT5_CONFIGS } from './services/gpt5-service';
 import { z } from 'zod';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-ai-gpt5');
 
 // Authentication middleware for GPT-5 routes
 const requireAuth = (req: any, res: any, next: any) => {
@@ -121,7 +123,7 @@ router.post('/analyze-lead', async (req, res) => {
       usage: result.usage,
     });
   } catch (error) {
-    console.error('Lead analysis error:', error);
+    log.error('Lead analysis error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -165,7 +167,7 @@ router.post('/generate-proposal', async (req, res) => {
       usage: result.usage,
     });
   } catch (error) {
-    console.error('Proposal generation error:', error);
+    log.error('Proposal generation error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -205,7 +207,7 @@ router.post('/analyze-service', async (req, res) => {
       usage: result.usage,
     });
   } catch (error) {
-    console.error('Service analysis error:', error);
+    log.error('Service analysis error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -245,7 +247,7 @@ router.post('/support-response', async (req, res) => {
       usage: result.usage,
     });
   } catch (error) {
-    console.error('Support response error:', error);
+    log.error('Support response error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -285,7 +287,7 @@ router.post('/business-analytics', async (req, res) => {
       usage: result.usage,
     });
   } catch (error) {
-    console.error('Business analytics error:', error);
+    log.error('Business analytics error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -325,7 +327,7 @@ router.post('/classify-inquiry', async (req, res) => {
       usage: result.usage,
     });
   } catch (error) {
-    console.error('Inquiry classification error:', error);
+    log.error('Inquiry classification error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -365,7 +367,7 @@ router.post('/generate-code', async (req, res) => {
       usage: result.usage,
     });
   } catch (error) {
-    console.error('Code generation error:', error);
+    log.error('Code generation error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -407,7 +409,7 @@ router.post('/custom-prompt', async (req, res) => {
       usage: result.usage,
     });
   } catch (error) {
-    console.error('Custom prompt error:', error);
+    log.error('Custom prompt error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -438,7 +440,7 @@ router.get('/configs', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Config retrieval error:', error);
+    log.error('Config retrieval error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

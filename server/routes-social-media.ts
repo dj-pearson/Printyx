@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { eq, and, desc } from 'drizzle-orm';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-social-media');
+
 import {
   socialMediaPosts,
   socialMediaCronJobs,
@@ -108,7 +111,7 @@ async function generateSocialMediaContent(prompt: string): Promise<{
       claudeResponse: response,
     };
   } catch (error) {
-    console.error('Claude API Error:', error);
+    log.error('Claude API Error:', error);
     throw new Error(`Failed to generate content: ${error.message}`);
   }
 }
@@ -152,7 +155,7 @@ async function sendWebhook(webhookUrl: string, post: SocialMediaPost): Promise<b
 
     return true;
   } catch (error) {
-    console.error('Webhook Error:', error);
+    log.error('Webhook Error:', error);
 
     // Update post with webhook failure
     await db
@@ -183,7 +186,7 @@ router.get('/api/social-media/posts', isAuthenticated, async (req: any, res) => 
 
     res.json(posts);
   } catch (error) {
-    console.error('Error fetching social media posts:', error);
+    log.error('Error fetching social media posts:', error);
     res.status(500).json({ message: 'Failed to fetch posts' });
   }
 });
@@ -234,7 +237,7 @@ router.post('/api/social-media/posts/generate', isAuthenticated, async (req: any
 
     res.status(201).json(newPost);
   } catch (error) {
-    console.error('Error generating social media post:', error);
+    log.error('Error generating social media post:', error);
     res.status(500).json({
       message: 'Failed to generate post',
       error: error.message,
@@ -266,7 +269,7 @@ router.put('/api/social-media/posts/:id', isAuthenticated, async (req: any, res)
 
     res.json(updatedPost);
   } catch (error) {
-    console.error('Error updating social media post:', error);
+    log.error('Error updating social media post:', error);
     res.status(500).json({ message: 'Failed to update post' });
   }
 });
@@ -292,7 +295,7 @@ router.delete('/api/social-media/posts/:id', isAuthenticated, async (req: any, r
 
     res.json({ message: 'Post deleted successfully' });
   } catch (error) {
-    console.error('Error deleting social media post:', error);
+    log.error('Error deleting social media post:', error);
     res.status(500).json({ message: 'Failed to delete post' });
   }
 });
@@ -335,7 +338,7 @@ router.post('/api/social-media/posts/:id/broadcast', isAuthenticated, async (req
       message: success ? 'Post broadcasted successfully' : 'Broadcast failed',
     });
   } catch (error) {
-    console.error('Error broadcasting post:', error);
+    log.error('Error broadcasting post:', error);
     res.status(500).json({ message: 'Failed to broadcast post' });
   }
 });
@@ -358,7 +361,7 @@ router.get('/api/social-media/cron-jobs', isAuthenticated, async (req: any, res)
 
     res.json(cronJobs);
   } catch (error) {
-    console.error('Error fetching cron jobs:', error);
+    log.error('Error fetching cron jobs:', error);
     res.status(500).json({ message: 'Failed to fetch cron jobs' });
   }
 });
@@ -383,7 +386,7 @@ router.post('/api/social-media/cron-jobs', isAuthenticated, async (req: any, res
 
     res.status(201).json(newCronJob);
   } catch (error) {
-    console.error('Error creating cron job:', error);
+    log.error('Error creating cron job:', error);
     res.status(500).json({ message: 'Failed to create cron job' });
   }
 });
@@ -412,7 +415,7 @@ router.put('/api/social-media/cron-jobs/:id', isAuthenticated, async (req: any, 
 
     res.json(updatedCronJob);
   } catch (error) {
-    console.error('Error updating cron job:', error);
+    log.error('Error updating cron job:', error);
     res.status(500).json({ message: 'Failed to update cron job' });
   }
 });
@@ -438,7 +441,7 @@ router.delete('/api/social-media/cron-jobs/:id', isAuthenticated, async (req: an
 
     res.json({ message: 'Cron job deleted successfully' });
   } catch (error) {
-    console.error('Error deleting cron job:', error);
+    log.error('Error deleting cron job:', error);
     res.status(500).json({ message: 'Failed to delete cron job' });
   }
 });
@@ -527,7 +530,7 @@ router.post('/api/social-media/cron-jobs/:id/execute', isAuthenticated, async (r
       throw executionError;
     }
   } catch (error) {
-    console.error('Error executing cron job:', error);
+    log.error('Error executing cron job:', error);
     res.status(500).json({
       message: 'Failed to execute cron job',
       error: error.message,

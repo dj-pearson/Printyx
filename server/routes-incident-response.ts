@@ -1,6 +1,8 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-incident-response');
 
 // Using inline auth middleware since requireAuth is not available
 const requireAuth = (req: any, res: any, next: any) => {
@@ -454,7 +456,7 @@ router.get('/api/incident-response/dashboard', async (req: any, res) => {
 
     res.json(incidentResponseData);
   } catch (error) {
-    console.error('Error fetching incident response dashboard:', error);
+    log.error('Error fetching incident response dashboard:', error);
     res.status(500).json({ message: 'Failed to fetch incident response dashboard' });
   }
 });
@@ -618,7 +620,7 @@ router.get('/api/incident-response/incidents/:incidentId', async (req: any, res)
 
     res.json(incidentDetails);
   } catch (error) {
-    console.error('Error fetching incident details:', error);
+    log.error('Error fetching incident details:', error);
     res.status(500).json({ message: 'Failed to fetch incident details' });
   }
 });
@@ -674,7 +676,7 @@ router.post('/api/incident-response/playbooks/:playbookId/execute', async (req: 
 
     res.status(202).json(execution);
   } catch (error) {
-    console.error('Error executing playbook:', error);
+    log.error('Error executing playbook:', error);
     res.status(500).json({ message: 'Failed to execute playbook' });
   }
 });

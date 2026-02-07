@@ -1,6 +1,9 @@
 import type { Express } from 'express';
 import { db } from './db';
 import { whiteLabelService } from './services/white-label-service';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-white-label');
+
 import {
   insertWhiteLabelConfigSchema,
   updateWhiteLabelConfigSchema,
@@ -28,7 +31,7 @@ export function registerWhiteLabelRoutes(app: Express) {
 
       res.json(config);
     } catch (error: any) {
-      console.error('Failed to fetch white-label config:', error);
+      log.error('Failed to fetch white-label config:', error);
       res.status(500).json({ error: 'Failed to fetch configuration' });
     }
   });
@@ -61,7 +64,7 @@ export function registerWhiteLabelRoutes(app: Express) {
         config,
       });
     } catch (error: any) {
-      console.error('Failed to update white-label config:', error);
+      log.error('Failed to update white-label config:', error);
       res.status(500).json({ error: 'Failed to update configuration' });
     }
   });
@@ -97,7 +100,7 @@ export function registerWhiteLabelRoutes(app: Express) {
         });
       }
     } catch (error: any) {
-      console.error('Domain verification failed:', error);
+      log.error('Domain verification failed:', error);
       res.status(500).json({ error: 'Failed to verify domain' });
     }
   });
@@ -120,7 +123,7 @@ export function registerWhiteLabelRoutes(app: Express) {
         count: templates.length,
       });
     } catch (error: any) {
-      console.error('Failed to fetch email templates:', error);
+      log.error('Failed to fetch email templates:', error);
       res.status(500).json({ error: 'Failed to fetch email templates' });
     }
   });
@@ -145,7 +148,7 @@ export function registerWhiteLabelRoutes(app: Express) {
 
       res.json(template);
     } catch (error: any) {
-      console.error('Failed to fetch email template:', error);
+      log.error('Failed to fetch email template:', error);
       res.status(500).json({ error: 'Failed to fetch email template' });
     }
   });
@@ -183,7 +186,7 @@ export function registerWhiteLabelRoutes(app: Express) {
         template,
       });
     } catch (error: any) {
-      console.error('Failed to update email template:', error);
+      log.error('Failed to update email template:', error);
       res.status(500).json({ error: 'Failed to update email template' });
     }
   });
@@ -207,7 +210,7 @@ export function registerWhiteLabelRoutes(app: Express) {
         message: 'Template deleted successfully',
       });
     } catch (error: any) {
-      console.error('Failed to delete email template:', error);
+      log.error('Failed to delete email template:', error);
       res.status(500).json({ error: 'Failed to delete email template' });
     }
   });
@@ -224,7 +227,7 @@ export function registerWhiteLabelRoutes(app: Express) {
         count: presets.length,
       });
     } catch (error: any) {
-      console.error('Failed to fetch presets:', error);
+      log.error('Failed to fetch presets:', error);
       res.status(500).json({ error: 'Failed to fetch presets' });
     }
   });
@@ -249,7 +252,7 @@ export function registerWhiteLabelRoutes(app: Express) {
         config,
       });
     } catch (error: any) {
-      console.error('Failed to apply preset:', error);
+      log.error('Failed to apply preset:', error);
       res.status(500).json({ error: error.message || 'Failed to apply preset' });
     }
   });
@@ -276,7 +279,7 @@ export function registerWhiteLabelRoutes(app: Express) {
       res.setHeader('Content-Type', 'text/css');
       res.send(css);
     } catch (error: any) {
-      console.error('Failed to generate CSS:', error);
+      log.error('Failed to generate CSS:', error);
       res.status(500).json({ error: 'Failed to generate CSS' });
     }
   });
@@ -308,7 +311,7 @@ export function registerWhiteLabelRoutes(app: Express) {
         preview: rendered,
       });
     } catch (error: any) {
-      console.error('Failed to preview email template:', error);
+      log.error('Failed to preview email template:', error);
       res.status(500).json({ error: 'Failed to preview email template' });
     }
   });
@@ -361,7 +364,7 @@ export function registerWhiteLabelRoutes(app: Express) {
         features: config.features,
       });
     } catch (error: any) {
-      console.error('Failed to fetch config by domain:', error);
+      log.error('Failed to fetch config by domain:', error);
       res.status(500).json({ error: 'Failed to fetch configuration' });
     }
   });

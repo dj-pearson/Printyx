@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { TenantRequest } from './middleware/tenancy';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-sales-pipeline');
 
 // Sales Pipeline Schema
 const pipelineOpportunitySchema = z.object({
@@ -125,7 +127,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
 
       res.json(opportunities);
     } catch (error) {
-      console.error('Error fetching pipeline opportunities:', error);
+      log.error('Error fetching pipeline opportunities:', error);
       res.status(500).json({ message: 'Failed to fetch pipeline opportunities' });
     }
   });
@@ -204,7 +206,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
 
         res.json({ success: true, opportunity: result.rows[0] });
       } catch (error) {
-        console.error('Error updating opportunity stage:', error);
+        log.error('Error updating opportunity stage:', error);
         res.status(500).json({ message: 'Failed to update opportunity stage' });
       }
     },
@@ -259,7 +261,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
 
         res.json({ success: true });
       } catch (error) {
-        console.error('Error logging activity:', error);
+        log.error('Error logging activity:', error);
         res.status(500).json({ message: 'Failed to log activity' });
       }
     },
@@ -373,7 +375,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
 
       res.json(metrics);
     } catch (error) {
-      console.error('Error fetching rep metrics:', error);
+      log.error('Error fetching rep metrics:', error);
       res.status(500).json({ message: 'Failed to fetch rep metrics' });
     }
   });
@@ -470,7 +472,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
         goalAchievement: parseFloat(summary.goal_achievement) || 0,
       });
     } catch (error) {
-      console.error('Error fetching pipeline summary:', error);
+      log.error('Error fetching pipeline summary:', error);
       res.status(500).json({ message: 'Failed to fetch pipeline summary' });
     }
   });
@@ -529,7 +531,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
 
       res.status(201).json({ success: true, opportunity: result.rows[0] });
     } catch (error) {
-      console.error('Error creating opportunity:', error);
+      log.error('Error creating opportunity:', error);
       res.status(500).json({ message: 'Failed to create opportunity' });
     }
   });

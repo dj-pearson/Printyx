@@ -1,6 +1,8 @@
 import { Router, type Express } from 'express';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-analytics');
 
 const router = Router();
 
@@ -148,7 +150,7 @@ router.get('/api/analytics/dashboard', async (req: any, res) => {
 
     res.json(analyticsDashboard);
   } catch (error) {
-    console.error('Error fetching analytics dashboard:', error);
+    log.error('Error fetching analytics dashboard:', error);
     res.status(500).json({ message: 'Failed to fetch analytics dashboard' });
   }
 });
@@ -190,7 +192,7 @@ router.get('/api/analytics/metrics', async (req: any, res) => {
       firstCallResolution: parseFloat(results[5].rows[0].first_call_resolution),
     });
   } catch (error) {
-    console.error('Error fetching analytics metrics:', error);
+    log.error('Error fetching analytics metrics:', error);
     res.status(500).json({ error: 'Failed to fetch analytics metrics' });
   }
 });
@@ -232,7 +234,7 @@ router.get('/api/analytics/performance-metrics', async (req: any, res) => {
     const result = await db.$client.query(query, queryParams);
     res.json(result.rows);
   } catch (error) {
-    console.error('Error fetching performance metrics:', error);
+    log.error('Error fetching performance metrics:', error);
     res.status(500).json({ error: 'Failed to fetch performance metrics' });
   }
 });
@@ -266,7 +268,7 @@ router.get('/api/analytics/technician-performance', async (req: any, res) => {
     const result = await db.$client.query(query, [tenantId]);
     res.json(result.rows);
   } catch (error) {
-    console.error('Error fetching technician performance analytics:', error);
+    log.error('Error fetching technician performance analytics:', error);
     res.status(500).json({ error: 'Failed to fetch technician performance analytics' });
   }
 });
@@ -300,7 +302,7 @@ router.get('/api/analytics/customer-service', async (req: any, res) => {
     const result = await db.$client.query(query, [tenantId]);
     res.json(result.rows);
   } catch (error) {
-    console.error('Error fetching customer service analytics:', error);
+    log.error('Error fetching customer service analytics:', error);
     res.status(500).json({ error: 'Failed to fetch customer service analytics' });
   }
 });
@@ -342,7 +344,7 @@ router.get('/api/analytics/trends', async (req: any, res) => {
     const result = await db.$client.query(query, queryParams);
     res.json(result.rows);
   } catch (error) {
-    console.error('Error fetching trend analysis:', error);
+    log.error('Error fetching trend analysis:', error);
     res.status(500).json({ error: 'Failed to fetch trend analysis' });
   }
 });
@@ -386,7 +388,7 @@ router.get('/api/analytics/dashboards', async (req: any, res) => {
     const result = await db.$client.query(query, queryParams);
     res.json(result.rows);
   } catch (error) {
-    console.error('Error fetching BI dashboards:', error);
+    log.error('Error fetching BI dashboards:', error);
     res.status(500).json({ error: 'Failed to fetch BI dashboards' });
   }
 });
@@ -446,7 +448,7 @@ router.post('/api/analytics/dashboards', async (req: any, res) => {
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Error creating BI dashboard:', error);
+    log.error('Error creating BI dashboard:', error);
     res.status(500).json({ error: 'Failed to create BI dashboard' });
   }
 });
@@ -477,7 +479,7 @@ router.get('/api/analytics/benchmarks', async (req: any, res) => {
     const result = await db.$client.query(query, [tenantId]);
     res.json(result.rows);
   } catch (error) {
-    console.error('Error fetching performance benchmarks:', error);
+    log.error('Error fetching performance benchmarks:', error);
     res.status(500).json({ error: 'Failed to fetch performance benchmarks' });
   }
 });
@@ -533,7 +535,7 @@ router.post('/api/analytics/benchmarks', async (req: any, res) => {
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    console.error('Error creating performance benchmark:', error);
+    log.error('Error creating performance benchmark:', error);
     res.status(500).json({ error: 'Failed to create performance benchmark' });
   }
 });
@@ -646,7 +648,7 @@ router.post('/api/analytics/generate-reports', async (req: any, res) => {
       reports_generated: 1 + trends.length,
     });
   } catch (error) {
-    console.error('Error generating analytics reports:', error);
+    log.error('Error generating analytics reports:', error);
     res.status(500).json({ error: 'Failed to generate analytics reports' });
   }
 });

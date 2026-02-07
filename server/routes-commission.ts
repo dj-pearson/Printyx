@@ -1,5 +1,7 @@
 import { Router, type Express } from 'express';
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-commission');
 
 const router = Router();
 
@@ -76,7 +78,7 @@ router.get('/api/commission/plans', async (req: any, res) => {
 
     res.json(commissionPlans);
   } catch (error) {
-    console.error('Error fetching commission plans:', error);
+    log.error('Error fetching commission plans:', error);
     res.status(500).json({ message: 'Failed to fetch commission plans' });
   }
 });
@@ -150,7 +152,7 @@ router.get('/api/commission/calculations', async (req: any, res) => {
 
     res.json(calculations);
   } catch (error) {
-    console.error('Error fetching commission calculations:', error);
+    log.error('Error fetching commission calculations:', error);
     res.status(500).json({ message: 'Failed to fetch commission calculations' });
   }
 });
@@ -234,7 +236,7 @@ router.get('/api/commission/analytics', async (req: any, res) => {
 
     res.json(analytics);
   } catch (error) {
-    console.error('Error fetching commission analytics:', error);
+    log.error('Error fetching commission analytics:', error);
     res.status(500).json({ message: 'Failed to fetch commission analytics' });
   }
 });
@@ -282,7 +284,7 @@ router.get('/api/commission/disputes', async (req: any, res) => {
 
     res.json(disputes);
   } catch (error) {
-    console.error('Error fetching commission disputes:', error);
+    log.error('Error fetching commission disputes:', error);
     res.status(500).json({ message: 'Failed to fetch commission disputes' });
   }
 });

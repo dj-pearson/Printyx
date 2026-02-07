@@ -10,6 +10,7 @@ import { Router, type Express } from 'express';
 import { storage } from './storage';
 import { insertCustomerSchema } from '@shared/schema';
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { AuthenticationError, AuthorizationError } from './lib/api-errors';
 
 const router = Router();
 
@@ -20,26 +21,20 @@ const router = Router();
  * Auth: Requires authentication (handled by global middleware)
  * Tenant: Requires tenant context
  */
-router.post('/api/customers', async (req: any, res) => {
+router.post('/api/customers', async (req: any, res, next) => {
   try {
     const userId = getUserId(req);
     const tenantId = getTenantId(req);
 
     if (!tenantId) {
-      return res.status(403).json({
-        message: 'Tenant context required',
-        code: 'NO_TENANT',
-      });
+      throw new AuthorizationError('Tenant context required');
     }
 
     if (!userId) {
-      return res.status(401).json({
-        message: 'Authentication required',
-        code: 'UNAUTHORIZED',
-      });
+      throw new AuthenticationError();
     }
 
-    // Validate and parse request body
+    // Validate and parse request body (ZodError caught by global error handler)
     const validatedData = insertCustomerSchema.parse({
       ...req.body,
       tenantId: tenantId,
@@ -57,17 +52,7 @@ router.post('/api/customers', async (req: any, res) => {
 
     res.status(201).json(customer);
   } catch (error) {
-    console.error('Error creating customer:', error);
-
-    // Handle validation errors from Zod
-    if (error instanceof Error && error.name === 'ZodError') {
-      return res.status(400).json({
-        message: 'Invalid customer data',
-        errors: error.message,
-      });
-    }
-
-    res.status(500).json({ message: 'Failed to create customer' });
+    next(error);
   }
 });
 

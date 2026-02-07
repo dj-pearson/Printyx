@@ -1,5 +1,8 @@
 import { Express } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-service-analysis');
+
 import {
   serviceCallAnalysis,
   servicePartsUsed,
@@ -46,7 +49,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
 
       res.json(analysis);
     } catch (error) {
-      console.error('Error fetching service analysis:', error);
+      log.error('Error fetching service analysis:', error);
       res.status(500).json({ error: 'Failed to fetch service analysis' });
     }
   });
@@ -79,7 +82,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
 
       res.status(201).json(newAnalysis);
     } catch (error) {
-      console.error('Error creating service analysis:', error);
+      log.error('Error creating service analysis:', error);
       res.status(500).json({ error: 'Failed to create service analysis' });
     }
   });
@@ -103,7 +106,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
 
       res.json(updatedAnalysis);
     } catch (error) {
-      console.error('Error updating service analysis:', error);
+      log.error('Error updating service analysis:', error);
       res.status(500).json({ error: 'Failed to update service analysis' });
     }
   });
@@ -123,7 +126,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
 
       res.json(parts);
     } catch (error) {
-      console.error('Error fetching parts used:', error);
+      log.error('Error fetching parts used:', error);
       res.status(500).json({ error: 'Failed to fetch parts used' });
     }
   });
@@ -143,7 +146,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
 
       res.status(201).json(newPart);
     } catch (error) {
-      console.error('Error adding parts used:', error);
+      log.error('Error adding parts used:', error);
       res.status(500).json({ error: 'Failed to add parts used' });
     }
   });
@@ -179,7 +182,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
 
       res.status(201).json(newOrder);
     } catch (error) {
-      console.error('Error creating parts order:', error);
+      log.error('Error creating parts order:', error);
       res.status(500).json({ error: 'Failed to create parts order' });
     }
   });
@@ -198,7 +201,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
 
       res.json(orders);
     } catch (error) {
-      console.error('Error fetching parts orders:', error);
+      log.error('Error fetching parts orders:', error);
       res.status(500).json({ error: 'Failed to fetch parts orders' });
     }
   });
@@ -227,7 +230,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
 
       res.json(updatedOrder);
     } catch (error) {
-      console.error('Error updating parts order:', error);
+      log.error('Error updating parts order:', error);
       res.status(500).json({ error: 'Failed to update parts order' });
     }
   });
@@ -251,7 +254,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
 
       res.status(201).json(newItems);
     } catch (error) {
-      console.error('Error adding parts order items:', error);
+      log.error('Error adding parts order items:', error);
       res.status(500).json({ error: 'Failed to add parts order items' });
     }
   });
@@ -269,7 +272,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
 
       res.json(items);
     } catch (error) {
-      console.error('Error fetching parts order items:', error);
+      log.error('Error fetching parts order items:', error);
       res.status(500).json({ error: 'Failed to fetch parts order items' });
     }
   });
@@ -305,7 +308,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
         partsStats: partsOrderStats[0],
       });
     } catch (error) {
-      console.error('Error fetching service analysis stats:', error);
+      log.error('Error fetching service analysis stats:', error);
       res.status(500).json({ error: 'Failed to fetch service analysis stats' });
     }
   });
@@ -336,7 +339,7 @@ export function registerServiceAnalysisRoutes(app: Express) {
 
       res.json(recentAnalyses);
     } catch (error) {
-      console.error('Error fetching recent service analyses:', error);
+      log.error('Error fetching recent service analyses:', error);
       res.status(500).json({ error: 'Failed to fetch recent service analyses' });
     }
   });

@@ -1,6 +1,9 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-business-process-optimization');
+
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -441,7 +444,7 @@ router.get('/api/business-process/dashboard', async (req: any, res) => {
 
     res.json(processOptimizationData);
   } catch (error) {
-    console.error('Error fetching business process optimization data:', error);
+    log.error('Error fetching business process optimization data:', error);
     res.status(500).json({ message: 'Failed to fetch business process optimization data' });
   }
 });
@@ -573,7 +576,7 @@ router.get('/api/business-process/workflows/:workflowId', async (req: any, res) 
 
     res.json(workflowDetails);
   } catch (error) {
-    console.error('Error fetching workflow details:', error);
+    log.error('Error fetching workflow details:', error);
     res.status(500).json({ message: 'Failed to fetch workflow details' });
   }
 });
@@ -602,7 +605,7 @@ router.post('/api/business-process/workflows', async (req: any, res) => {
 
     res.status(201).json(newWorkflow);
   } catch (error) {
-    console.error('Error creating workflow:', error);
+    log.error('Error creating workflow:', error);
     res.status(500).json({ message: 'Failed to create workflow' });
   }
 });
@@ -628,7 +631,7 @@ router.put('/api/business-process/workflows/:workflowId', async (req: any, res) 
 
     res.json(updatedWorkflow);
   } catch (error) {
-    console.error('Error updating workflow:', error);
+    log.error('Error updating workflow:', error);
     res.status(500).json({ message: 'Failed to update workflow' });
   }
 });
@@ -660,7 +663,7 @@ router.post('/api/business-process/workflows/:workflowId/execute', async (req: a
 
     res.status(202).json(execution);
   } catch (error) {
-    console.error('Error executing workflow:', error);
+    log.error('Error executing workflow:', error);
     res.status(500).json({ message: 'Failed to execute workflow' });
   }
 });
@@ -742,7 +745,7 @@ router.get('/api/business-process/recommendations', async (req: any, res) => {
 
     res.json(recommendations);
   } catch (error) {
-    console.error('Error fetching recommendations:', error);
+    log.error('Error fetching recommendations:', error);
     res.status(500).json({ message: 'Failed to fetch recommendations' });
   }
 });

@@ -4,6 +4,9 @@ import { serviceTickets, technicians, inventoryItems } from '../shared/schema';
 import { eq, and, inArray, sql, desc, count } from 'drizzle-orm';
 import { cacheControl, etag } from './middleware/cache-middleware';
 import { customerNotificationService } from './services/customer-notification-service';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-service-dispatch');
+
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -211,21 +214,21 @@ router.get(
                   });
 
                 if (notificationResult.success) {
-                  console.log(`[AUTO-DISPATCH] Customer notification sent for ticket ${ticket.id}`);
+                  log.info(`[AUTO-DISPATCH] Customer notification sent for ticket ${ticket.id}`);
                 }
 
                 // Schedule 30-minute reminder
                 customerNotificationService.scheduleReminder(ticket.id, 30);
               }
             } catch (notificationError) {
-              console.error(
+              log.error(
                 `[AUTO-DISPATCH] Failed to send customer notification for ticket ${ticket.id}:`,
                 notificationError,
               );
               // Don't fail the assignment if notification fails
             }
           } catch (assignError) {
-            console.error(`Error auto-assigning ticket ${ticket.id}:`, assignError);
+            log.error(`Error auto-assigning ticket ${ticket.id}:`, assignError);
             // Continue with recommendations even if auto-assign fails
           }
         }
@@ -247,7 +250,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching dispatch recommendations:', error);
+      log.error('Error fetching dispatch recommendations:', error);
       res.status(500).json({ message: 'Failed to fetch dispatch recommendations' });
     }
   },
@@ -338,7 +341,7 @@ router.get(
 
       res.json(technicianAvailability);
     } catch (error) {
-      console.error('Error fetching technician availability:', error);
+      log.error('Error fetching technician availability:', error);
       res.status(500).json({ message: 'Failed to fetch technician availability' });
     }
   },
@@ -441,7 +444,7 @@ router.get('/api/dispatch/analytics', cacheControl(180), etag(), async (req: any
 
     res.json(analytics);
   } catch (error) {
-    console.error('Error fetching dispatch analytics:', error);
+    log.error('Error fetching dispatch analytics:', error);
     res.status(500).json({ message: 'Failed to fetch dispatch analytics' });
   }
 });
@@ -523,7 +526,7 @@ router.post(
         assignments,
       });
     } catch (error) {
-      console.error('Error auto-assigning tickets:', error);
+      log.error('Error auto-assigning tickets:', error);
       res.status(500).json({ message: 'Failed to auto-assign tickets' });
     }
   },
@@ -573,7 +576,7 @@ router.get('/api/dispatch/tracking', cacheControl(60), etag(), async (req: any, 
 
     res.json(tracking);
   } catch (error) {
-    console.error('Error fetching tracking data:', error);
+    log.error('Error fetching tracking data:', error);
     res.status(500).json({ message: 'Failed to fetch tracking data' });
   }
 });
@@ -658,7 +661,7 @@ router.post('/api/dispatch/check-parts', async (req: any, res) => {
       canDispatch: allPartsAvailable,
     });
   } catch (error) {
-    console.error('[PARTS CHECK] Error:', error);
+    log.error('[PARTS CHECK] Error:', error);
     res.status(500).json({ message: 'Failed to check parts availability' });
   }
 });
@@ -749,7 +752,7 @@ router.post('/api/dispatch/batch-check-parts', async (req: any, res) => {
       },
     });
   } catch (error) {
-    console.error('[BATCH PARTS CHECK] Error:', error);
+    log.error('[BATCH PARTS CHECK] Error:', error);
     res.status(500).json({ message: 'Failed to check parts availability' });
   }
 });

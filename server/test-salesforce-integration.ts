@@ -1,6 +1,8 @@
 import { Express } from 'express';
 import { storage } from './storage';
 import { SALESFORCE_FIELD_MAPPINGS, SalesforceDataTransformer } from './salesforce-mapping';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('test-salesforce-integration');
 
 /**
  * Test endpoints for validating Salesforce integration infrastructure
@@ -34,7 +36,7 @@ export function registerSalesforceTestRoutes(app: Express) {
         data: mappingStats,
       });
     } catch (error) {
-      console.error('Error testing Salesforce mappings:', error);
+      log.error('Error testing Salesforce mappings:', error);
       res.status(500).json({
         status: 'error',
         message: 'Failed to load Salesforce mappings',
@@ -60,7 +62,7 @@ export function registerSalesforceTestRoutes(app: Express) {
         data: schemaTests,
       });
     } catch (error) {
-      console.error('Error testing database schema:', error);
+      log.error('Error testing database schema:', error);
       res.status(500).json({
         status: 'error',
         message: 'Database schema validation failed',
@@ -97,7 +99,7 @@ export function registerSalesforceTestRoutes(app: Express) {
         data: compatibilityTest,
       });
     } catch (error) {
-      console.error('Error testing dual-platform compatibility:', error);
+      log.error('Error testing dual-platform compatibility:', error);
       res.status(500).json({
         status: 'error',
         message: 'Dual-platform compatibility test failed',
@@ -131,7 +133,7 @@ export function registerSalesforceTestRoutes(app: Express) {
         data: healthCheck,
       });
     } catch (error) {
-      console.error('Error in health check:', error);
+      log.error('Error in health check:', error);
       res.status(500).json({
         status: 'error',
         message: 'Health check failed',

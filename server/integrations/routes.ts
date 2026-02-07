@@ -9,6 +9,8 @@ import webhookRoutes from './webhook-routes';
 import { db } from '../db';
 import { integrationMetrics, integrationApiLogs } from '../../shared/schema';
 import { eq, and, gte, desc } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('routes');
 
 // Using inline auth middleware since requireAuth is not available
 const requireAuth = (req: any, res: any, next: any) => {
@@ -45,7 +47,7 @@ router.get('/api/integrations/marketplace', async (req: any, res) => {
       systemStatus: { valid, errors },
     });
   } catch (error) {
-    console.error('Error fetching integrations marketplace:', error);
+    log.error('Error fetching integrations marketplace:', error);
     res.status(500).json({ message: 'Failed to fetch integrations marketplace' });
   }
 });
@@ -149,7 +151,7 @@ router.get('/api/integrations', async (req: any, res) => {
 
     res.json(activeIntegrations);
   } catch (error) {
-    console.error('Error fetching user integrations:', error);
+    log.error('Error fetching user integrations:', error);
     res.status(500).json({ message: 'Failed to fetch integrations' });
   }
 });
@@ -183,7 +185,7 @@ router.post('/api/integrations/oauth/init', async (req: any, res) => {
 
     res.json({ authUrl, state });
   } catch (error) {
-    console.error('Error initializing OAuth:', error);
+    log.error('Error initializing OAuth:', error);
     res.status(500).json({ message: 'Failed to initialize OAuth flow' });
   }
 });
@@ -224,7 +226,7 @@ router.get('/api/integrations/:provider/callback', async (req: any, res) => {
       `${process.env.CLIENT_URL}/integration-hub?success=true&integration=${integration.id}`,
     );
   } catch (error) {
-    console.error('Error handling OAuth callback:', error);
+    log.error('Error handling OAuth callback:', error);
     res.redirect(
       `${process.env.CLIENT_URL}/integration-hub?error=${encodeURIComponent('oauth_failed')}`,
     );
@@ -276,7 +278,7 @@ router.get('/api/integrations/:integrationId/calendar/events', async (req: any, 
 
     res.json({ events, count: events.length });
   } catch (error) {
-    console.error('Error fetching calendar events:', error);
+    log.error('Error fetching calendar events:', error);
     res.status(500).json({ message: 'Failed to fetch calendar events' });
   }
 });
@@ -297,7 +299,7 @@ router.delete('/api/integrations/:integrationId', async (req: any, res) => {
 
     res.json({ message: 'Integration deleted successfully' });
   } catch (error) {
-    console.error('Error deleting integration:', error);
+    log.error('Error deleting integration:', error);
     res.status(500).json({ message: 'Failed to delete integration' });
   }
 });
@@ -353,7 +355,7 @@ router.post('/api/integrations/:integrationId/test', async (req: any, res) => {
 
     res.json(testResult);
   } catch (error) {
-    console.error('Error testing integration:', error);
+    log.error('Error testing integration:', error);
     res.json({
       success: false,
       message: 'Integration test failed',

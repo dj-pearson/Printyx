@@ -8,6 +8,9 @@ import { db } from './db';
 import { businessRecords, enhancedContacts, opportunities, enhancedProducts } from '@shared/schema';
 import { SalesforceDataTransformer, SALESFORCE_FIELD_MAPPINGS } from './salesforce-mapping';
 import { eq, and } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-salesforce-integration');
+
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -115,7 +118,7 @@ export function registerSalesforceRoutes(app: Express) {
               await insertRecord(mapping.printixTable, transformedRecord);
               results.successCount++;
             } catch (error) {
-              console.error(`Error processing record ${record[mapping.primaryKey]}:`, error);
+              log.error(`Error processing record ${record[mapping.primaryKey]}:`, error);
               results.errors.push({
                 record: record[mapping.primaryKey],
                 error: error.message,
@@ -130,7 +133,7 @@ export function registerSalesforceRoutes(app: Express) {
           results,
         });
       } catch (error) {
-        console.error('Salesforce import error:', error);
+        log.error('Salesforce import error:', error);
         res.status(500).json({ error: 'Internal server error during import' });
       }
     },
@@ -182,7 +185,7 @@ export function registerSalesforceRoutes(app: Express) {
 
         res.json({ syncStatus });
       } catch (error) {
-        console.error('Error fetching sync status:', error);
+        log.error('Error fetching sync status:', error);
         res.status(500).json({ error: 'Failed to fetch sync status' });
       }
     },
@@ -208,7 +211,7 @@ export function registerSalesforceRoutes(app: Express) {
           fieldMappings: mapping.fields,
         });
       } catch (error) {
-        console.error('Error fetching field mappings:', error);
+        log.error('Error fetching field mappings:', error);
         res.status(500).json({ error: 'Failed to fetch field mappings' });
       }
     },
@@ -229,7 +232,7 @@ export function registerSalesforceRoutes(app: Express) {
 
         res.json({ mappings });
       } catch (error) {
-        console.error('Error fetching mappings:', error);
+        log.error('Error fetching mappings:', error);
         res.status(500).json({ error: 'Failed to fetch mappings' });
       }
     },
@@ -263,7 +266,7 @@ export function registerSalesforceRoutes(app: Express) {
           targetTable: mapping.printixTable,
         });
       } catch (error) {
-        console.error('Error previewing transformation:', error);
+        log.error('Error previewing transformation:', error);
         res.status(500).json({ error: 'Failed to preview transformation' });
       }
     },
@@ -322,7 +325,7 @@ export function registerSalesforceRoutes(app: Express) {
           deletedCount,
         });
       } catch (error) {
-        console.error('Error during cleanup:', error);
+        log.error('Error during cleanup:', error);
         res.status(500).json({ error: 'Failed to cleanup data' });
       }
     },
@@ -393,7 +396,7 @@ async function checkForDuplicate(
         return false;
     }
   } catch (error) {
-    console.error('Error checking for duplicate:', error);
+    log.error('Error checking for duplicate:', error);
     return false;
   }
 }

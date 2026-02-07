@@ -14,6 +14,9 @@
 
 import { db } from '../db';
 import { eq, and, desc, sql, gte, lte, isNotNull, count, sum } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('billing-engine-service');
+
 import {
   invoices,
   invoiceLineItems,
@@ -263,7 +266,7 @@ class BillingEngineService {
 
       return invoice;
     } catch (error: any) {
-      console.error('Error generating invoice from contract:', error);
+      log.error('Error generating invoice from contract:', error);
 
       // Log failed generation
       await this.logInvoiceGeneration(
@@ -395,7 +398,7 @@ class BillingEngineService {
         throw error;
       }
     } catch (error) {
-      console.error('Error auto-generating invoice from service ticket:', error);
+      log.error('Error auto-generating invoice from service ticket:', error);
       throw error;
     }
   }
@@ -435,7 +438,7 @@ class BillingEngineService {
 
       throw new Error('Not yet implemented');
     } catch (error: any) {
-      console.error('Error in batch generation:', error);
+      log.error('Error in batch generation:', error);
       throw error;
     }
   }
@@ -1162,7 +1165,7 @@ class BillingEngineService {
       .limit(1);
 
     if (!invoice || !invoice.customerEmail) {
-      console.warn(`Cannot send invoice ${invoiceId}: no customer email`);
+      log.warn(`Cannot send invoice ${invoiceId}: no customer email`);
       return;
     }
 
@@ -1208,7 +1211,7 @@ class BillingEngineService {
   ): Promise<void> {
     // This would create a record in invoiceGenerationLogs table
     // Placeholder implementation
-    console.log('Invoice generation log:', {
+    log.info('Invoice generation log:', {
       invoiceId,
       generationType,
       appliedRules: appliedRules.length,

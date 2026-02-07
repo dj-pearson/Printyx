@@ -1,5 +1,8 @@
 import { db } from './db';
 import { eq, and, sql, desc, gte, lte } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('manufacturer-integration-service');
+
 import {
   manufacturerIntegrations,
   deviceRegistrations,
@@ -50,7 +53,7 @@ export class CanonAdapter implements ManufacturerAdapter {
       });
       return response.ok;
     } catch (error) {
-      console.error('Canon connection failed:', error);
+      log.error('Canon connection failed:', error);
       return false;
     }
   }
@@ -68,7 +71,7 @@ export class CanonAdapter implements ManufacturerAdapter {
       const data = await response.json();
       return data.devices || [];
     } catch (error) {
-      console.error('Canon device discovery failed:', error);
+      log.error('Canon device discovery failed:', error);
       return [];
     }
   }
@@ -98,7 +101,7 @@ export class CanonAdapter implements ManufacturerAdapter {
         rawData: data,
       };
     } catch (error) {
-      console.error('Canon metrics collection failed:', error);
+      log.error('Canon metrics collection failed:', error);
       throw error;
     }
   }
@@ -170,7 +173,7 @@ export class XeroxAdapter implements ManufacturerAdapter {
       }
       return false;
     } catch (error) {
-      console.error('Xerox connection failed:', error);
+      log.error('Xerox connection failed:', error);
       return false;
     }
   }
@@ -188,7 +191,7 @@ export class XeroxAdapter implements ManufacturerAdapter {
       const data = await response.json();
       return data.items || [];
     } catch (error) {
-      console.error('Xerox device discovery failed:', error);
+      log.error('Xerox device discovery failed:', error);
       return [];
     }
   }
@@ -226,7 +229,7 @@ export class XeroxAdapter implements ManufacturerAdapter {
         rawData: data,
       };
     } catch (error) {
-      console.error('Xerox metrics collection failed:', error);
+      log.error('Xerox metrics collection failed:', error);
       throw error;
     }
   }
@@ -297,7 +300,7 @@ export class HPAdapter implements ManufacturerAdapter {
 
       return response.ok;
     } catch (error) {
-      console.error('HP connection failed:', error);
+      log.error('HP connection failed:', error);
       return false;
     }
   }
@@ -321,7 +324,7 @@ export class HPAdapter implements ManufacturerAdapter {
       const data = await response.json();
       return data.devices || [];
     } catch (error) {
-      console.error('HP device discovery failed:', error);
+      log.error('HP device discovery failed:', error);
       return [];
     }
   }
@@ -365,7 +368,7 @@ export class HPAdapter implements ManufacturerAdapter {
         rawData: data,
       };
     } catch (error) {
-      console.error('HP metrics collection failed:', error);
+      log.error('HP metrics collection failed:', error);
       throw error;
     }
   }
@@ -444,7 +447,7 @@ export class FMAuditAdapter implements ManufacturerAdapter {
       }
       return false;
     } catch (error) {
-      console.error('FMAudit connection failed:', error);
+      log.error('FMAudit connection failed:', error);
       return false;
     }
   }
@@ -462,7 +465,7 @@ export class FMAuditAdapter implements ManufacturerAdapter {
       const data = await response.json();
       return data.devices || [];
     } catch (error) {
-      console.error('FMAudit device discovery failed:', error);
+      log.error('FMAudit device discovery failed:', error);
       return [];
     }
   }
@@ -492,7 +495,7 @@ export class FMAuditAdapter implements ManufacturerAdapter {
         rawData: data,
       };
     } catch (error) {
-      console.error('FMAudit metrics collection failed:', error);
+      log.error('FMAudit metrics collection failed:', error);
       throw error;
     }
   }
@@ -594,7 +597,7 @@ export class ManufacturerIntegrationService {
 
       return newIntegration;
     } catch (error) {
-      console.error('Failed to create integration:', error);
+      log.error('Failed to create integration:', error);
       throw error;
     }
   }
@@ -652,7 +655,7 @@ export class ManufacturerIntegrationService {
             `Device ${deviceData.deviceName} registered successfully`,
           );
         } catch (error) {
-          console.error(`Failed to register device ${device.id}:`, error);
+          log.error(`Failed to register device ${device.id}:`, error);
           await this.logAuditEvent(
             tenantId,
             integrationId,
@@ -666,7 +669,7 @@ export class ManufacturerIntegrationService {
 
       return registeredDevices;
     } catch (error) {
-      console.error('Failed to discover devices:', error);
+      log.error('Failed to discover devices:', error);
       throw error;
     }
   }
@@ -732,7 +735,7 @@ export class ManufacturerIntegrationService {
 
       return deviceMetric;
     } catch (error) {
-      console.error('Failed to collect device metrics:', error);
+      log.error('Failed to collect device metrics:', error);
       await this.logAuditEvent(
         tenantId,
         null,
@@ -783,7 +786,7 @@ export class ManufacturerIntegrationService {
         timestamp: new Date(),
       });
     } catch (error) {
-      console.error('Failed to log audit event:', error);
+      log.error('Failed to log audit event:', error);
     }
   }
 }

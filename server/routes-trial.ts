@@ -4,6 +4,7 @@
 
 import express, { Request } from 'express';
 import { TrialManagementService } from './services/trial-management-service';
+import { AuthenticationError, AuthorizationError, NotFoundError } from './lib/api-errors';
 
 const router = express.Router();
 
@@ -17,23 +18,22 @@ const getUserId = (req: Request): string | undefined => {
  * GET /api/trial/status
  * Get current user's trial status
  */
-router.get('/status', async (req, res) => {
+router.get('/status', async (req, res, next) => {
   try {
     const userId = getUserId(req);
     if (!userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
+      throw new AuthenticationError();
     }
 
     const trialStatus = await TrialManagementService.getTrialStatus(userId);
 
     if (!trialStatus) {
-      return res.status(404).json({ message: 'Trial status not found' });
+      throw new NotFoundError('Trial status');
     }
 
     res.json(trialStatus);
   } catch (error) {
-    console.error('[TRIAL STATUS] Error:', error);
-    res.status(500).json({ message: 'Failed to get trial status' });
+    next(error);
   }
 });
 
@@ -42,17 +42,17 @@ router.get('/status', async (req, res) => {
  * Manually trigger trial email processing (admin only)
  * This is normally run by a cron job
  */
-router.post('/process-emails', async (req, res) => {
+router.post('/process-emails', async (req, res, next) => {
   try {
     const userId = getUserId(req);
     if (!userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
+      throw new AuthenticationError();
     }
 
     // TODO: Add admin role check here
     // For now, allow any authenticated user in development
     if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({ message: 'Admin access required' });
+      throw new AuthorizationError('Admin access required');
     }
 
     const results = await TrialManagementService.processTrialEmails();
@@ -62,8 +62,7 @@ router.post('/process-emails', async (req, res) => {
       results,
     });
   } catch (error) {
-    console.error('[TRIAL PROCESSING] Error:', error);
-    res.status(500).json({ message: 'Failed to process trial emails' });
+    next(error);
   }
 });
 
@@ -71,16 +70,16 @@ router.post('/process-emails', async (req, res) => {
  * GET /api/trial/users
  * Get all users in trial (admin only)
  */
-router.get('/users', async (req, res) => {
+router.get('/users', async (req, res, next) => {
   try {
     const userId = getUserId(req);
     if (!userId) {
-      return res.status(401).json({ message: 'Not authenticated' });
+      throw new AuthenticationError();
     }
 
     // TODO: Add admin role check here
     if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({ message: 'Admin access required' });
+      throw new AuthorizationError('Admin access required');
     }
 
     const trialUsers = await TrialManagementService.getAllTrialUsers();
@@ -90,8 +89,7 @@ router.get('/users', async (req, res) => {
       users: trialUsers,
     });
   } catch (error) {
-    console.error('[TRIAL USERS] Error:', error);
-    res.status(500).json({ message: 'Failed to get trial users' });
+    next(error);
   }
 });
 

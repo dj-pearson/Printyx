@@ -5,6 +5,8 @@
 
 import ClaudeAIService from './claude-ai-service';
 import CalendarService from './calendar-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('task-scheduling-service');
 
 interface Task {
   id: string;
@@ -65,7 +67,7 @@ class TaskSchedulingService {
     startDate: Date = new Date(),
     endDate: Date = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
   ): Promise<SchedulingResult> {
-    console.log(`🧠 Starting AI task scheduling for ${tasks.length} tasks...`);
+    log.info(`🧠 Starting AI task scheduling for ${tasks.length} tasks...`);
 
     try {
       // Step 1: AI Priority and Complexity Analysis
@@ -88,10 +90,10 @@ class TaskSchedulingService {
       // Step 5: AI optimization and insights
       const optimizedResult = await this.optimizeScheduleWithAI(schedulingResult, preferences);
 
-      console.log(`✅ Scheduled ${optimizedResult.scheduledTasks.length}/${tasks.length} tasks`);
+      log.info(`✅ Scheduled ${optimizedResult.scheduledTasks.length}/${tasks.length} tasks`);
       return optimizedResult;
     } catch (error) {
-      console.error('Task scheduling error:', error);
+      log.error('Task scheduling error:', error);
       // Fallback to basic scheduling
       return this.fallbackScheduling(tasks, preferences, existingEvents, startDate, endDate);
     }
@@ -142,7 +144,7 @@ Consider factors like:
           aiReasoning: aiAnalysis.reasoning || 'AI analysis completed',
         });
       } catch (error) {
-        console.error(`AI analysis failed for task ${task.id}:`, error);
+        log.error(`AI analysis failed for task ${task.id}:`, error);
         // Fallback scoring
         analyzedTasks.push({
           ...task,
@@ -333,7 +335,7 @@ Provide 3-5 optimization insights as a JSON array of strings.`;
         ? insights
         : result.optimizationInsights;
     } catch (error) {
-      console.error('AI optimization failed:', error);
+      log.error('AI optimization failed:', error);
     }
 
     return result;

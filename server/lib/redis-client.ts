@@ -15,6 +15,8 @@
  */
 
 import crypto from 'crypto';
+import { createModuleLogger } from './logger';
+const log = createModuleLogger('redis-client');
 
 // Cache entry type
 interface CacheEntry {
@@ -131,22 +133,22 @@ class RedisCache implements CacheClient {
     // Handle connection events
     if (this.client) {
       this.client.on('connect', () => {
-        console.log('[Redis] Connected');
+        log.info('[Redis] Connected');
         this.connected = true;
       });
 
       this.client.on('error', (err: any) => {
-        console.error('[Redis] Connection error:', err.message);
+        log.error('[Redis] Connection error:', err.message);
         this.connected = false;
       });
 
       this.client.on('close', () => {
-        console.log('[Redis] Connection closed');
+        log.info('[Redis] Connection closed');
         this.connected = false;
       });
 
       this.client.on('reconnecting', () => {
-        console.log('[Redis] Reconnecting...');
+        log.info('[Redis] Reconnecting...');
       });
     }
   }
@@ -160,7 +162,7 @@ class RedisCache implements CacheClient {
       if (!value) return null;
       return JSON.parse(value);
     } catch (error) {
-      console.error('[Redis] Get error:', error);
+      log.error('[Redis] Get error:', error);
       return this.fallback.get(key);
     }
   }
@@ -172,7 +174,7 @@ class RedisCache implements CacheClient {
     try {
       await this.client.setex(key, ttlSeconds, JSON.stringify(value));
     } catch (error) {
-      console.error('[Redis] Set error:', error);
+      log.error('[Redis] Set error:', error);
       await this.fallback.set(key, value, ttlSeconds);
     }
   }
@@ -184,7 +186,7 @@ class RedisCache implements CacheClient {
     try {
       await this.client.del(key);
     } catch (error) {
-      console.error('[Redis] Del error:', error);
+      log.error('[Redis] Del error:', error);
     }
     // Also delete from fallback
     await this.fallback.del(key);
@@ -198,7 +200,7 @@ class RedisCache implements CacheClient {
       const result = await this.client.exists(key);
       return result === 1;
     } catch (error) {
-      console.error('[Redis] Exists error:', error);
+      log.error('[Redis] Exists error:', error);
       return this.fallback.exists(key);
     }
   }
@@ -210,7 +212,7 @@ class RedisCache implements CacheClient {
     try {
       return await this.client.keys(pattern);
     } catch (error) {
-      console.error('[Redis] Keys error:', error);
+      log.error('[Redis] Keys error:', error);
       return this.fallback.keys(pattern);
     }
   }
@@ -220,7 +222,7 @@ class RedisCache implements CacheClient {
       try {
         await this.client.flushdb();
       } catch (error) {
-        console.error('[Redis] FlushDB error:', error);
+        log.error('[Redis] FlushDB error:', error);
       }
     }
     await this.fallback.flushAll();
@@ -236,7 +238,7 @@ class RedisCache implements CacheClient {
       try {
         await this.client.quit();
       } catch (error) {
-        console.error('[Redis] Quit error:', error);
+        log.error('[Redis] Quit error:', error);
       }
     }
   }
@@ -260,7 +262,7 @@ export async function initCache(): Promise<CacheClient> {
 
   // Check if Redis should be used
   if (!redisEnabled || (!redisUrl && !redisHost)) {
-    console.log('[Cache] Using in-memory cache (Redis not configured)');
+    log.info('[Cache] Using in-memory cache (Redis not configured)');
     cacheInstance = new MemoryCache();
     return cacheInstance;
   }
@@ -296,12 +298,12 @@ export async function initCache(): Promise<CacheClient> {
     // Test connection
     await redisClient.connect();
     await redisClient.ping();
-    console.log('[Cache] Redis connected successfully');
+    log.info('[Cache] Redis connected successfully');
 
     cacheInstance = new RedisCache(redisClient);
     return cacheInstance;
   } catch (error: any) {
-    console.warn('[Cache] Redis not available, using in-memory cache:', error.message);
+    log.warn('[Cache] Redis not available, using in-memory cache:', error.message);
     cacheInstance = new MemoryCache();
     return cacheInstance;
   }

@@ -3,6 +3,9 @@ import { db } from './db';
 import { eq, and, desc } from 'drizzle-orm';
 import { contractRenewalTracking, renewalProposals } from '@shared/schema';
 import * as renewalService from './services/contract-renewal-service';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-contract-renewal');
+
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -46,7 +49,7 @@ router.get(
       const metrics = await renewalService.getDashboardMetrics(tenantId);
       res.json(metrics);
     } catch (error) {
-      console.error('Error fetching dashboard metrics:', error);
+      log.error('Error fetching dashboard metrics:', error);
       res.status(500).json({
         error: 'Failed to fetch dashboard metrics',
         details: error instanceof Error ? error.message : 'Unknown error',
@@ -72,7 +75,7 @@ router.get('/contracts', async (req: Request, res: Response) => {
 
     res.json(contracts);
   } catch (error) {
-    console.error('Error fetching contracts:', error);
+    log.error('Error fetching contracts:', error);
     res.status(500).json({
       error: 'Failed to fetch contracts',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -91,7 +94,7 @@ router.get('/expiring', async (req: Request, res: Response) => {
     const contracts = await renewalService.getExpiringContracts(tenantId, days);
     res.json(contracts);
   } catch (error) {
-    console.error('Error fetching expiring contracts:', error);
+    log.error('Error fetching expiring contracts:', error);
     res.status(500).json({
       error: 'Failed to fetch expiring contracts',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -109,7 +112,7 @@ router.get('/at-risk', async (req: Request, res: Response) => {
     const contracts = await renewalService.getContractsAtRisk(tenantId);
     res.json(contracts);
   } catch (error) {
-    console.error('Error fetching at-risk contracts:', error);
+    log.error('Error fetching at-risk contracts:', error);
     res.status(500).json({
       error: 'Failed to fetch at-risk contracts',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -133,7 +136,7 @@ router.post('/analyze/:contractTrackingId', async (req: Request, res: Response) 
     const analysis = await renewalService.analyzeContractRenewal(tenantId, contractTrackingId);
     res.json(analysis);
   } catch (error) {
-    console.error('Error analyzing contract:', error);
+    log.error('Error analyzing contract:', error);
     res.status(500).json({
       error: 'Failed to analyze contract',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -151,7 +154,7 @@ router.post('/analyze-all', async (req: Request, res: Response) => {
     const results = await renewalService.analyzeExpiringContracts(tenantId);
     res.json(results);
   } catch (error) {
-    console.error('Error analyzing contracts:', error);
+    log.error('Error analyzing contracts:', error);
     res.status(500).json({
       error: 'Failed to analyze contracts',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -192,7 +195,7 @@ router.post('/generate-proposal/:contractTrackingId', async (req: Request, res: 
 
     res.json(proposal);
   } catch (error) {
-    console.error('Error generating proposal:', error);
+    log.error('Error generating proposal:', error);
     res.status(500).json({
       error: 'Failed to generate proposal',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -217,7 +220,7 @@ router.get('/proposals', async (req: Request, res: Response) => {
 
     res.json(proposals);
   } catch (error) {
-    console.error('Error fetching proposals:', error);
+    log.error('Error fetching proposals:', error);
     res.status(500).json({
       error: 'Failed to fetch proposals',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -248,7 +251,7 @@ router.get('/proposals/:proposalId', async (req: Request, res: Response) => {
 
     res.json(proposal);
   } catch (error) {
-    console.error('Error fetching proposal:', error);
+    log.error('Error fetching proposal:', error);
     res.status(500).json({
       error: 'Failed to fetch proposal',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -299,7 +302,7 @@ router.patch('/proposals/:proposalId/status', async (req: Request, res: Response
 
     res.json(updatedProposal);
   } catch (error) {
-    console.error('Error updating proposal status:', error);
+    log.error('Error updating proposal status:', error);
     res.status(500).json({
       error: 'Failed to update proposal status',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -342,7 +345,7 @@ router.get('/contract/:contractTrackingId', async (req: Request, res: Response) 
 
     res.json(contract);
   } catch (error) {
-    console.error('Error fetching contract details:', error);
+    log.error('Error fetching contract details:', error);
     res.status(500).json({
       error: 'Failed to fetch contract details',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -384,7 +387,7 @@ router.patch('/contract/:contractTrackingId', async (req: Request, res: Response
 
     res.json(updatedContract);
   } catch (error) {
-    console.error('Error updating contract:', error);
+    log.error('Error updating contract:', error);
     res.status(500).json({
       error: 'Failed to update contract',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -402,7 +405,7 @@ router.get('/rules', async (req: Request, res: Response) => {
     const rules = await renewalService.getRenewalAutomationRules(tenantId);
     res.json(rules);
   } catch (error) {
-    console.error('Error fetching rules:', error);
+    log.error('Error fetching rules:', error);
     res.status(500).json({
       error: 'Failed to fetch rules',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -421,7 +424,7 @@ router.put('/rules', async (req: Request, res: Response) => {
     const rules = await renewalService.updateRenewalAutomationRules(tenantId, updates);
     res.json(rules);
   } catch (error) {
-    console.error('Error updating rules:', error);
+    log.error('Error updating rules:', error);
     res.status(500).json({
       error: 'Failed to update rules',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -475,7 +478,7 @@ router.post('/proposals/:proposalId/send', async (req: Request, res: Response) =
 
     res.json(proposal);
   } catch (error) {
-    console.error('Error sending proposal:', error);
+    log.error('Error sending proposal:', error);
     res.status(500).json({
       error: 'Failed to send proposal',
       details: error instanceof Error ? error.message : 'Unknown error',

@@ -6,6 +6,8 @@
 import { Router, type Request, type Response } from 'express';
 import { ExecutiveReportingService } from '../services/executive-reporting-service';
 import { enhanceUserContext, requireLevel } from '../middleware/enhanced-rbac-middleware';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('executive-reports-api');
 
 const router = Router();
 
@@ -56,7 +58,7 @@ router.get('/dashboard', requireLevel(7), async (req: Request, res: Response) =>
       },
     });
   } catch (error) {
-    console.error('Error fetching executive dashboard:', error);
+    log.error('Error fetching executive dashboard:', error);
     res.status(500).json({
       message: 'Failed to fetch executive dashboard',
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -95,7 +97,7 @@ router.get('/platform-admin', requireLevel(8), async (req: Request, res: Respons
       },
     });
   } catch (error) {
-    console.error('Error fetching platform admin dashboard:', error);
+    log.error('Error fetching platform admin dashboard:', error);
     res.status(500).json({
       message: 'Failed to fetch platform admin dashboard',
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -117,7 +119,7 @@ router.post('/clear-cache', requireLevel(7), async (req: Request, res: Response)
     ExecutiveReportingService.clearCache();
     res.json({ message: 'Cache cleared successfully' });
   } catch (error) {
-    console.error('Error clearing cache:', error);
+    log.error('Error clearing cache:', error);
     res.status(500).json({
       message: 'Failed to clear cache',
       error: error instanceof Error ? error.message : 'Unknown error',

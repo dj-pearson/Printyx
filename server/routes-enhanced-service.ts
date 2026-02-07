@@ -1,6 +1,9 @@
 import express from 'express';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-enhanced-service');
+
 import {
   phoneInTickets,
   technicianTicketSessions,
@@ -95,7 +98,7 @@ router.put(
         message: 'Service request status updated successfully',
       });
     } catch (error) {
-      console.error('Error updating service request status:', error);
+      log.error('Error updating service request status:', error);
 
       if (error.message === 'Service request not found') {
         return res.status(404).json({
@@ -138,7 +141,7 @@ router.get('/service-requests', requireServiceAccess(2), async (req: any, res) =
       count: requests.length,
     });
   } catch (error) {
-    console.error('Error fetching service requests:', error);
+    log.error('Error fetching service requests:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch service requests',
@@ -254,7 +257,7 @@ Phone-in ticket details:
       res.json({ phoneTicket });
     }
   } catch (error) {
-    console.error('Error creating phone-in ticket:', error);
+    log.error('Error creating phone-in ticket:', error);
     res.status(500).json({ error: 'Failed to create phone-in ticket' });
   }
 });
@@ -292,7 +295,7 @@ router.get('/customers', async (req, res) => {
     const customers = await query.limit(50);
     res.json(customers);
   } catch (error) {
-    console.error('Error fetching customers for phone-in tickets:', error);
+    log.error('Error fetching customers for phone-in tickets:', error);
     res.status(500).json({ error: 'Failed to fetch customers' });
   }
 });
@@ -352,7 +355,7 @@ router.get('/phone-in-tickets', async (req, res) => {
 
     res.json(rows);
   } catch (error) {
-    console.error('Error fetching phone-in tickets:', error);
+    log.error('Error fetching phone-in tickets:', error);
     res.status(500).json({ error: 'Failed to fetch phone-in tickets' });
   }
 });
@@ -410,7 +413,7 @@ router.post('/service-tickets/:ticketId/check-in', async (req, res) => {
 
     res.json(session);
   } catch (error) {
-    console.error('Error checking in technician:', error);
+    log.error('Error checking in technician:', error);
     res.status(500).json({ error: 'Failed to check in technician' });
   }
 });
@@ -439,7 +442,7 @@ router.get('/service-tickets/:ticketId/session', async (req, res) => {
 
     res.json(session[0]);
   } catch (error) {
-    console.error('Error fetching session:', error);
+    log.error('Error fetching session:', error);
     res.status(500).json({ error: 'Failed to fetch session' });
   }
 });
@@ -523,7 +526,7 @@ router.post('/technician-sessions/:sessionId/update-step', async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error updating workflow step:', error);
+    log.error('Error updating workflow step:', error);
     res.status(500).json({ error: 'Failed to update workflow step' });
   }
 });
@@ -546,7 +549,7 @@ router.post('/service-tickets/:ticketId/request-parts', async (req, res) => {
 
     res.json(partsRequest);
   } catch (error) {
-    console.error('Error requesting parts:', error);
+    log.error('Error requesting parts:', error);
     res.status(500).json({ error: 'Failed to request parts' });
   }
 });
@@ -570,7 +573,7 @@ router.get('/service-tickets/:ticketId/parts-requests', async (req, res) => {
 
     res.json(partsRequests);
   } catch (error) {
-    console.error('Error fetching parts requests:', error);
+    log.error('Error fetching parts requests:', error);
     res.status(500).json({ error: 'Failed to fetch parts requests' });
   }
 });
@@ -637,14 +640,14 @@ router.post('/service-tickets/:ticketId/complete', async (req, res) => {
           await billingEngine.autoGenerateFromServiceTicket(ticketId, ticket.tenantId);
         }
       } catch (invErr) {
-        console.error('Auto-invoice generation failed:', invErr);
+        log.error('Auto-invoice generation failed:', invErr);
         // Non-fatal error - ticket completion should succeed even if invoicing fails
       }
     }
 
     res.json({ success: true, status: ticketStatus });
   } catch (error) {
-    console.error('Error completing service ticket:', error);
+    log.error('Error completing service ticket:', error);
     res.status(500).json({ error: 'Failed to complete service ticket' });
   }
 });
@@ -663,7 +666,7 @@ router.get('/technician-sessions/:sessionId/workflow-steps', async (req, res) =>
 
     res.json(steps);
   } catch (error) {
-    console.error('Error fetching workflow steps:', error);
+    log.error('Error fetching workflow steps:', error);
     res.status(500).json({ error: 'Failed to fetch workflow steps' });
   }
 });
@@ -701,7 +704,7 @@ router.get('/customers/search', async (req, res) => {
 
     res.json(searchResults);
   } catch (error) {
-    console.error('Error searching customers:', error);
+    log.error('Error searching customers:', error);
     res.status(500).json({ error: 'Failed to search customers' });
   }
 });
@@ -727,7 +730,7 @@ router.post('/parts-requests/:requestId/approve', async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error approving parts request:', error);
+    log.error('Error approving parts request:', error);
     res.status(500).json({ error: 'Failed to approve parts request' });
   }
 });
@@ -749,7 +752,7 @@ router.post('/parts-requests/:requestId/reject', async (req, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error rejecting parts request:', error);
+    log.error('Error rejecting parts request:', error);
     res.status(500).json({ error: 'Failed to reject parts request' });
   }
 });
@@ -805,7 +808,7 @@ router.post('/phone-in-tickets/:id/convert', async (req, res) => {
       serviceTicket,
     });
   } catch (error) {
-    console.error('Error converting phone-in ticket:', error);
+    log.error('Error converting phone-in ticket:', error);
     res.status(500).json({ error: 'Failed to convert phone-in ticket' });
   }
 });
@@ -833,7 +836,7 @@ router.get('/phone-tickets/equipment/:companyId', async (req, res) => {
 
     res.json(equipment);
   } catch (error) {
-    console.error('Error fetching equipment for company:', error);
+    log.error('Error fetching equipment for company:', error);
     res.status(500).json({ error: 'Failed to fetch equipment' });
   }
 });
@@ -859,7 +862,7 @@ router.get('/phone-tickets/search-contacts/:companyId', async (req, res) => {
 
     res.json(contacts);
   } catch (error) {
-    console.error('Error searching contacts:', error);
+    log.error('Error searching contacts:', error);
     res.status(500).json({ error: 'Failed to search contacts' });
   }
 });

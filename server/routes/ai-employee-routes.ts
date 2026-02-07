@@ -1,6 +1,9 @@
 // server/routes/ai-employee-routes.ts
 import express from 'express';
 import { aiEmployeeService } from '../services/ai-employee-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('ai-employee-routes');
+
 // import { authMiddleware } from '../middleware/authMiddleware'; // Assuming auth middleware
 
 const router = express.Router();
@@ -35,7 +38,7 @@ router.post('/ai-employees', async (req, res) => {
       message: 'AI employee created successfully',
     });
   } catch (error: any) {
-    console.error('Error creating AI employee:', error);
+    log.error('Error creating AI employee:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create AI employee',
@@ -68,7 +71,7 @@ router.get('/ai-employees', async (req, res) => {
       count: employees.length,
     });
   } catch (error: any) {
-    console.error('Error fetching AI employees:', error);
+    log.error('Error fetching AI employees:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch AI employees',
@@ -101,7 +104,7 @@ router.get('/ai-employees/:employeeId', async (req, res) => {
       data: employee,
     });
   } catch (error: any) {
-    console.error('Error fetching AI employee:', error);
+    log.error('Error fetching AI employee:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch AI employee',
@@ -127,7 +130,7 @@ router.post('/ai-employees/tasks', async (req, res) => {
       message: 'Task assigned successfully',
     });
   } catch (error: any) {
-    console.error('Error assigning task:', error);
+    log.error('Error assigning task:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to assign task',
@@ -155,7 +158,7 @@ router.get('/ai-employees/:employeeId/tasks', async (req, res) => {
       count: tasks.length,
     });
   } catch (error: any) {
-    console.error('Error fetching employee tasks:', error);
+    log.error('Error fetching employee tasks:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch employee tasks',
@@ -193,7 +196,7 @@ router.get('/ai-employees/:employeeId/performance', async (req, res) => {
       data: performance,
     });
   } catch (error: any) {
-    console.error('Error fetching employee performance:', error);
+    log.error('Error fetching employee performance:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch employee performance',
@@ -219,7 +222,7 @@ router.post('/ai-employees/workflows/execute', async (req, res) => {
       message: 'Workflow execution started',
     });
   } catch (error: any) {
-    console.error('Error executing workflow:', error);
+    log.error('Error executing workflow:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to execute workflow',
@@ -246,7 +249,7 @@ router.get('/ai-employees/workflows', async (req, res) => {
       count: workflows.length,
     });
   } catch (error: any) {
-    console.error('Error fetching workflows:', error);
+    log.error('Error fetching workflows:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch workflows',
@@ -322,7 +325,7 @@ router.get('/ai-employees/analytics/overview', async (req, res) => {
       data: analyticsData,
     });
   } catch (error: any) {
-    console.error('Error fetching analytics overview:', error);
+    log.error('Error fetching analytics overview:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch analytics overview',
@@ -448,7 +451,7 @@ router.get('/ai-employees/templates', async (req, res) => {
       count: templates.length,
     });
   } catch (error: any) {
-    console.error('Error fetching employee templates:', error);
+    log.error('Error fetching employee templates:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch employee templates',

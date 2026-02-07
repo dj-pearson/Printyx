@@ -4,6 +4,9 @@ import { eq, and, desc, like, or, lte, gte } from 'drizzle-orm';
 import crypto from 'crypto';
 import { emailService } from './services/email-service';
 import { smsService } from './services/sms-service';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-client-monitoring');
+
 import {
   monitoringClients,
   clientActivityLogs,
@@ -75,7 +78,7 @@ async function authenticateClient(req: any, res: any, next: any) {
 
     next();
   } catch (error) {
-    console.error('Error authenticating client:', error);
+    log.error('Error authenticating client:', error);
     res.status(500).json({ message: 'Authentication error' });
   }
 }
@@ -147,7 +150,7 @@ async function lookupTonerProduct(
       .limit(1);
 
     if (results.length === 0) {
-      console.log('[TONER LOOKUP] No product found for:', {
+      log.info('[TONER LOOKUP] No product found for:', {
         manufacturer,
         model,
         color: normalizedColor,
@@ -201,7 +204,7 @@ async function lookupTonerProduct(
         estimatedShipDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       }
 
-      console.log('[WAREHOUSE INVENTORY] Stock check:', {
+      log.info('[WAREHOUSE INVENTORY] Stock check:', {
         partNumber: inventory[0].partNumber,
         quantityOnHand: inventory[0].quantityOnHand,
         quantityCommitted: inventory[0].quantityCommitted,
@@ -213,10 +216,10 @@ async function lookupTonerProduct(
     } else {
       // Fallback to product table flag if no inventory record
       inStock = product.inStock === 'true' || product.inStock === '1' || product.inventory !== '0';
-      console.log('[WAREHOUSE INVENTORY] No inventory record found, using product flag:', inStock);
+      log.info('[WAREHOUSE INVENTORY] No inventory record found, using product flag:', inStock);
     }
 
-    console.log('[TONER LOOKUP] Found product:', {
+    log.info('[TONER LOOKUP] Found product:', {
       productId: product.id,
       productCode: product.productCode,
       productName: product.productName,
@@ -238,7 +241,7 @@ async function lookupTonerProduct(
       estimatedShipDate,
     };
   } catch (error) {
-    console.error('[TONER LOOKUP] Error looking up toner product:', error);
+    log.error('[TONER LOOKUP] Error looking up toner product:', error);
     return null;
   }
 }
@@ -288,7 +291,7 @@ async function checkServiceContractCoverage(
       .limit(1);
 
     if (contracts.length === 0) {
-      console.log('[SERVICE CONTRACT] No active contract found for equipment:', equipmentId);
+      log.info('[SERVICE CONTRACT] No active contract found for equipment:', equipmentId);
       return {
         isCovered: false,
         contractId: null,
@@ -304,7 +307,7 @@ async function checkServiceContractCoverage(
 
     // Check if contract has expired
     if (contract.endDate && new Date(contract.endDate) < now) {
-      console.log('[SERVICE CONTRACT] Contract expired:', {
+      log.info('[SERVICE CONTRACT] Contract expired:', {
         contractNumber: contract.contractNumber,
         endDate: contract.endDate,
       });
@@ -322,7 +325,7 @@ async function checkServiceContractCoverage(
     // Contract is active and valid
     const isCovered = contract.includesToner ?? false;
 
-    console.log('[SERVICE CONTRACT] Found active contract:', {
+    log.info('[SERVICE CONTRACT] Found active contract:', {
       contractId: contract.id,
       contractNumber: contract.contractNumber,
       contractType: contract.contractType,
@@ -344,7 +347,7 @@ async function checkServiceContractCoverage(
       includesLabor: contract.includesLabor ?? false,
     };
   } catch (error) {
-    console.error('[SERVICE CONTRACT] Error checking coverage:', error);
+    log.error('[SERVICE CONTRACT] Error checking coverage:', error);
     return null;
   }
 }
@@ -373,7 +376,7 @@ async function sendNotificationAlerts(
   try {
     // Send email notification
     if (recipientEmail) {
-      console.log('[EMAIL NOTIFICATION] Sending email:', {
+      log.info('[EMAIL NOTIFICATION] Sending email:', {
         notificationId,
         to: recipientEmail,
         title,
@@ -399,23 +402,19 @@ async function sendNotificationAlerts(
           })
           .where(eq(customerNotifications.id, notificationId));
 
-        console.log(
+        log.info(
           '[EMAIL NOTIFICATION] Email sent successfully:',
           notificationId,
           emailResult.messageId,
         );
       } else {
-        console.error(
-          '[EMAIL NOTIFICATION] Email failed to send:',
-          notificationId,
-          emailResult.error,
-        );
+        log.error('[EMAIL NOTIFICATION] Email failed to send:', notificationId, emailResult.error);
       }
     }
 
     // Send SMS notification
     if (recipientPhone) {
-      console.log('[SMS NOTIFICATION] Sending SMS:', {
+      log.info('[SMS NOTIFICATION] Sending SMS:', {
         notificationId,
         to: recipientPhone,
         message: message?.substring(0, 100) + '...',
@@ -439,19 +438,15 @@ async function sendNotificationAlerts(
           })
           .where(eq(customerNotifications.id, notificationId));
 
-        console.log(
-          '[SMS NOTIFICATION] SMS sent successfully:',
-          notificationId,
-          smsResult.messageId,
-        );
+        log.info('[SMS NOTIFICATION] SMS sent successfully:', notificationId, smsResult.messageId);
       } else {
-        console.error('[SMS NOTIFICATION] SMS failed to send:', notificationId, smsResult.error);
+        log.error('[SMS NOTIFICATION] SMS failed to send:', notificationId, smsResult.error);
       }
     }
 
     return { emailSent, smsSent };
   } catch (error) {
-    console.error('[NOTIFICATION] Error sending alerts:', error);
+    log.error('[NOTIFICATION] Error sending alerts:', error);
     return { emailSent, smsSent };
   }
 }
@@ -477,7 +472,7 @@ export function registerClientMonitoringRoutes(app: Express) {
 
       res.json(clients);
     } catch (error) {
-      console.error('Error fetching monitoring clients:', error);
+      log.error('Error fetching monitoring clients:', error);
       res.status(500).json({ message: 'Failed to fetch monitoring clients' });
     }
   });
@@ -512,7 +507,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         plainApiKey: apiKey, // Only returned once during creation
       });
     } catch (error) {
-      console.error('Error creating monitoring client:', error);
+      log.error('Error creating monitoring client:', error);
       res.status(500).json({ message: 'Failed to create monitoring client' });
     }
   });
@@ -539,7 +534,7 @@ export function registerClientMonitoringRoutes(app: Express) {
 
       res.json(client[0]);
     } catch (error) {
-      console.error('Error fetching monitoring client:', error);
+      log.error('Error fetching monitoring client:', error);
       res.status(500).json({ message: 'Failed to fetch monitoring client' });
     }
   });
@@ -569,7 +564,7 @@ export function registerClientMonitoringRoutes(app: Express) {
 
       res.json(updatedClient);
     } catch (error) {
-      console.error('Error updating monitoring client:', error);
+      log.error('Error updating monitoring client:', error);
       res.status(500).json({ message: 'Failed to update monitoring client' });
     }
   });
@@ -607,7 +602,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         plainApiKey: newApiKey, // Only returned once
       });
     } catch (error) {
-      console.error('Error rotating API key:', error);
+      log.error('Error rotating API key:', error);
       res.status(500).json({ message: 'Failed to rotate API key' });
     }
   });
@@ -628,7 +623,7 @@ export function registerClientMonitoringRoutes(app: Express) {
 
       res.json({ message: 'Monitoring client deleted successfully' });
     } catch (error) {
-      console.error('Error deleting monitoring client:', error);
+      log.error('Error deleting monitoring client:', error);
       res.status(500).json({ message: 'Failed to delete monitoring client' });
     }
   });
@@ -652,7 +647,7 @@ export function registerClientMonitoringRoutes(app: Express) {
 
       res.json(logs);
     } catch (error) {
-      console.error('Error fetching activity logs:', error);
+      log.error('Error fetching activity logs:', error);
       res.status(500).json({ message: 'Failed to fetch activity logs' });
     }
   });
@@ -680,7 +675,7 @@ export function registerClientMonitoringRoutes(app: Express) {
 
       res.json(devices);
     } catch (error) {
-      console.error('Error fetching discovered devices:', error);
+      log.error('Error fetching discovered devices:', error);
       res.status(500).json({ message: 'Failed to fetch discovered devices' });
     }
   });
@@ -825,7 +820,7 @@ export function registerClientMonitoringRoutes(app: Express) {
             for (const [color, level] of Object.entries(deviceData.tonerLevels)) {
               if (level <= CRITICAL_THRESHOLD) {
                 // Critical toner level - trigger replenishment order
-                console.log(
+                log.info(
                   `[TONER ALERT] Critical: ${device[0].deviceName} - ${color} toner at ${level}%`,
                 );
 
@@ -834,7 +829,7 @@ export function registerClientMonitoringRoutes(app: Express) {
                 // Trigger automatic toner order if contract includes toner
               } else if (level <= WARNING_THRESHOLD) {
                 // Warning level - notify but don't order yet
-                console.log(
+                log.info(
                   `[TONER ALERT] Warning: ${device[0].deviceName} - ${color} toner at ${level}%`,
                 );
               }
@@ -846,7 +841,7 @@ export function registerClientMonitoringRoutes(app: Express) {
             const diff = deviceData.rawData.differential;
 
             // Log usage for billing
-            console.log(`[BILLING] ${device[0].deviceName} usage since last reading:`, {
+            log.info(`[BILLING] ${device[0].deviceName} usage since last reading:`, {
               total: diff.totalImpressions,
               bw: diff.bwImpressions,
               color: diff.colorImpressions,
@@ -863,7 +858,7 @@ export function registerClientMonitoringRoutes(app: Express) {
             status: 'success',
           });
         } catch (deviceError) {
-          console.error(`Error processing device ${deviceData.serialNumber}:`, deviceError);
+          log.error(`Error processing device ${deviceData.serialNumber}:`, deviceError);
           errors.push({
             serialNumber: deviceData.serialNumber,
             error: deviceError instanceof Error ? deviceError.message : 'Unknown error',
@@ -908,7 +903,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error('Error processing metric submission:', error);
+      log.error('Error processing metric submission:', error);
 
       // Log error activity
       if (req.monitoringClient) {
@@ -957,7 +952,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         serverTime: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('Error processing heartbeat:', error);
+      log.error('Error processing heartbeat:', error);
       res.status(500).json({ message: 'Failed to process heartbeat' });
     }
   });
@@ -974,7 +969,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         status: client.status,
       });
     } catch (error) {
-      console.error('Error fetching client config:', error);
+      log.error('Error fetching client config:', error);
       res.status(500).json({ message: 'Failed to fetch configuration' });
     }
   });
@@ -1130,7 +1125,7 @@ export function registerClientMonitoringRoutes(app: Express) {
           })),
       });
     } catch (error) {
-      console.error('Error fetching fleet dashboard:', error);
+      log.error('Error fetching fleet dashboard:', error);
       res.status(500).json({ message: 'Failed to fetch fleet dashboard' });
     }
   });
@@ -1206,7 +1201,7 @@ export function registerClientMonitoringRoutes(app: Express) {
 
       res.json(filteredDevices);
     } catch (error) {
-      console.error('Error fetching fleet devices:', error);
+      log.error('Error fetching fleet devices:', error);
       res.status(500).json({ message: 'Failed to fetch fleet devices' });
     }
   });
@@ -1248,7 +1243,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         totalReadings: metrics.length,
       });
     } catch (error) {
-      console.error('Error fetching device metrics:', error);
+      log.error('Error fetching device metrics:', error);
       res.status(500).json({ message: 'Failed to fetch device metrics' });
     }
   });
@@ -1310,7 +1305,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         totalDevices: enrichedDevices.length,
       });
     } catch (error) {
-      console.error('Error fetching customer devices:', error);
+      log.error('Error fetching customer devices:', error);
       res.status(500).json({ message: 'Failed to fetch customer devices' });
     }
   });
@@ -1367,7 +1362,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         totalReadings: metrics.length,
       });
     } catch (error) {
-      console.error('Error fetching customer metrics history:', error);
+      log.error('Error fetching customer metrics history:', error);
       res.status(500).json({ message: 'Failed to fetch customer metrics history' });
     }
   });
@@ -1415,7 +1410,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         .limit(1);
 
       // Log the toner order request
-      console.log('[TONER ORDER] Manual order triggered:', {
+      log.info('[TONER ORDER] Manual order triggered:', {
         deviceId: id,
         deviceName: device[0].deviceName,
         serialNumber: device[0].serialNumber,
@@ -1493,7 +1488,7 @@ export function registerClientMonitoringRoutes(app: Express) {
           })
           .returning();
 
-        console.log('[SUPPLY ORDER] Created order:', {
+        log.info('[SUPPLY ORDER] Created order:', {
           orderId: supplyOrder[0].id,
           orderNumber: supplyOrder[0].orderNumber,
           status: supplyOrder[0].status,
@@ -1542,7 +1537,7 @@ export function registerClientMonitoringRoutes(app: Express) {
               })
               .returning();
 
-            console.log('[SUPPLY ORDER ITEM] Created item:', {
+            log.info('[SUPPLY ORDER ITEM] Created item:', {
               color,
               productId,
               productSku,
@@ -1558,7 +1553,7 @@ export function registerClientMonitoringRoutes(app: Express) {
           }),
         );
 
-        console.log(
+        log.info(
           '[SUPPLY ORDER ITEMS] Created items:',
           orderItems.length,
           'Subtotal:',
@@ -1589,7 +1584,7 @@ export function registerClientMonitoringRoutes(app: Express) {
             })
             .returning();
 
-          console.log('[NOTIFICATION] Created notification for toner order:', notification[0].id);
+          log.info('[NOTIFICATION] Created notification for toner order:', notification[0].id);
 
           // Get customer email/phone for notification delivery
           if (req.user?.id) {
@@ -1613,11 +1608,11 @@ export function registerClientMonitoringRoutes(app: Express) {
               emailSent = result.emailSent;
               smsSent = result.smsSent;
 
-              console.log('[NOTIFICATION] Alerts sent:', { emailSent, smsSent });
+              log.info('[NOTIFICATION] Alerts sent:', { emailSent, smsSent });
             }
           }
         } catch (notificationError) {
-          console.error('[NOTIFICATION] Failed to create notification:', notificationError);
+          log.error('[NOTIFICATION] Failed to create notification:', notificationError);
           // Don't fail the order if notification fails
         }
 
@@ -1644,11 +1639,11 @@ export function registerClientMonitoringRoutes(app: Express) {
           },
         });
       } catch (orderError) {
-        console.error('[SUPPLY ORDER] Failed to create order:', orderError);
+        log.error('[SUPPLY ORDER] Failed to create order:', orderError);
         throw orderError;
       }
     } catch (error) {
-      console.error('Error triggering toner order:', error);
+      log.error('Error triggering toner order:', error);
       res.status(500).json({ message: 'Failed to trigger toner order' });
     }
   });
@@ -1710,7 +1705,7 @@ export function registerClientMonitoringRoutes(app: Express) {
 
       res.json({ presets });
     } catch (error) {
-      console.error('Error fetching OID presets:', error);
+      log.error('Error fetching OID presets:', error);
       res.status(500).json({ message: 'Failed to fetch OID presets' });
     }
   });
@@ -1795,7 +1790,7 @@ export function registerClientMonitoringRoutes(app: Express) {
 
       res.json(preset);
     } catch (error) {
-      console.error('Error fetching OID preset:', error);
+      log.error('Error fetching OID preset:', error);
       res.status(500).json({ message: 'Failed to fetch OID preset' });
     }
   });
@@ -1893,7 +1888,7 @@ export function registerClientMonitoringRoutes(app: Express) {
         res.json({ deviceId: device[0].id, message: 'Device registered' });
       }
     } catch (error) {
-      console.error('Error registering device:', error);
+      log.error('Error registering device:', error);
       res.status(500).json({ message: 'Failed to register device' });
     }
   });
@@ -1996,7 +1991,7 @@ export function registerClientMonitoringRoutes(app: Express) {
 
       res.json({ message: 'Metrics submitted successfully' });
     } catch (error) {
-      console.error('Error submitting metrics:', error);
+      log.error('Error submitting metrics:', error);
       res.status(500).json({ message: 'Failed to submit metrics' });
     }
   });

@@ -1,4 +1,7 @@
 import type { Express } from 'express';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-purchase-orders');
+
 import {
   insertPurchaseOrderSchema,
   insertPurchaseOrderItemSchema,
@@ -31,7 +34,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
         const purchaseOrders = await storage.getPurchaseOrders(tenantId);
         res.json(purchaseOrders);
       } catch (error) {
-        console.error('Error fetching purchase orders:', error);
+        log.error('Error fetching purchase orders:', error);
         res.status(500).json({ error: 'Failed to fetch purchase orders' });
       }
     },
@@ -56,7 +59,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         res.json({ ...purchaseOrder, items });
       } catch (error) {
-        console.error('Error fetching purchase order:', error);
+        log.error('Error fetching purchase order:', error);
         res.status(500).json({ error: 'Failed to fetch purchase order' });
       }
     },
@@ -98,7 +101,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
           res.json(purchaseOrder);
         }
       } catch (error: any) {
-        console.error('Error creating purchase order:', error);
+        log.error('Error creating purchase order:', error);
         if (error.name === 'ZodError') {
           res.status(400).json({ error: 'Invalid data', details: error.errors });
         } else {
@@ -124,7 +127,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         res.json(purchaseOrder);
       } catch (error) {
-        console.error('Error updating purchase order:', error);
+        log.error('Error updating purchase order:', error);
         res.status(500).json({ error: 'Failed to update purchase order' });
       }
     },
@@ -146,7 +149,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         res.json({ success: true });
       } catch (error) {
-        console.error('Error deleting purchase order:', error);
+        log.error('Error deleting purchase order:', error);
         res.status(500).json({ error: 'Failed to delete purchase order' });
       }
     },
@@ -182,7 +185,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         res.json(purchaseOrder);
       } catch (error) {
-        console.error('Error updating purchase order status:', error);
+        log.error('Error updating purchase order status:', error);
         res.status(500).json({ error: 'Failed to update purchase order status' });
       }
     },
@@ -201,7 +204,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
         const items = await storage.getPurchaseOrderItems(id, tenantId);
         res.json(items);
       } catch (error) {
-        console.error('Error fetching purchase order items:', error);
+        log.error('Error fetching purchase order items:', error);
         res.status(500).json({ error: 'Failed to fetch purchase order items' });
       }
     },
@@ -225,7 +228,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
         const item = await storage.createPurchaseOrderItem(validatedData);
         res.json(item);
       } catch (error: any) {
-        console.error('Error creating purchase order item:', error);
+        log.error('Error creating purchase order item:', error);
         if (error.name === 'ZodError') {
           res.status(400).json({ error: 'Invalid data', details: error.errors });
         } else {
@@ -251,7 +254,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         res.json(item);
       } catch (error) {
-        console.error('Error updating purchase order item:', error);
+        log.error('Error updating purchase order item:', error);
         res.status(500).json({ error: 'Failed to update purchase order item' });
       }
     },
@@ -273,7 +276,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         res.json({ success: true });
       } catch (error) {
-        console.error('Error deleting purchase order item:', error);
+        log.error('Error deleting purchase order item:', error);
         res.status(500).json({ error: 'Failed to delete purchase order item' });
       }
     },
@@ -290,7 +293,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
         const vendors = await storage.getVendors(tenantId);
         res.json(vendors);
       } catch (error) {
-        console.error('Error fetching vendors:', error);
+        log.error('Error fetching vendors:', error);
         res.status(500).json({ error: 'Failed to fetch vendors' });
       }
     },
@@ -312,7 +315,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         res.json(vendor);
       } catch (error) {
-        console.error('Error fetching vendor:', error);
+        log.error('Error fetching vendor:', error);
         res.status(500).json({ error: 'Failed to fetch vendor' });
       }
     },
@@ -334,7 +337,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
         const vendor = await storage.createVendor(validatedData);
         res.json(vendor);
       } catch (error: any) {
-        console.error('Error creating vendor:', error);
+        log.error('Error creating vendor:', error);
         if (error.name === 'ZodError') {
           res.status(400).json({ error: 'Invalid data', details: error.errors });
         } else {
@@ -360,7 +363,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         res.json(vendor);
       } catch (error) {
-        console.error('Error updating vendor:', error);
+        log.error('Error updating vendor:', error);
         res.status(500).json({ error: 'Failed to update vendor' });
       }
     },
@@ -382,7 +385,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         res.json({ success: true });
       } catch (error) {
-        console.error('Error deleting vendor:', error);
+        log.error('Error deleting vendor:', error);
         res.status(500).json({ error: 'Failed to delete vendor' });
       }
     },
@@ -415,7 +418,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         res.json(purchaseOrder);
       } catch (error) {
-        console.error('Error updating purchase order status:', error);
+        log.error('Error updating purchase order status:', error);
         res.status(500).json({ error: 'Failed to update purchase order status' });
       }
     },
@@ -450,7 +453,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
 
         res.json(stats);
       } catch (error) {
-        console.error('Error fetching purchase order stats:', error);
+        log.error('Error fetching purchase order stats:', error);
         res.status(500).json({ error: 'Failed to fetch purchase order statistics' });
       }
     },

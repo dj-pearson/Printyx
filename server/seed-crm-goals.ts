@@ -1,4 +1,7 @@
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-crm-goals');
+
 import {
   salesGoals,
   salesTeams,
@@ -11,13 +14,13 @@ import {
 import { eq, and } from 'drizzle-orm';
 
 export async function seedCrmGoals() {
-  console.log('Seeding CRM Goals data...');
+  log.info('Seeding CRM Goals data...');
 
   try {
     // Get the first tenant
     const [tenant] = await db.select().from(tenants).limit(1);
     if (!tenant) {
-      console.log('No tenant found, skipping CRM goals seeding');
+      log.info('No tenant found, skipping CRM goals seeding');
       return;
     }
 
@@ -29,7 +32,7 @@ export async function seedCrmGoals() {
       .limit(10);
 
     if (tenantUsers.length === 0) {
-      console.log('No users found for tenant, skipping CRM goals seeding');
+      log.info('No users found for tenant, skipping CRM goals seeding');
       return;
     }
 
@@ -71,7 +74,7 @@ export async function seedCrmGoals() {
       .onConflictDoNothing()
       .returning();
 
-    console.log(`Created ${createdTeams.length} sales teams`);
+    log.info(`Created ${createdTeams.length} sales teams`);
 
     // Add team members
     if (createdTeams.length > 0 && tenantUsers.length > 3) {
@@ -117,7 +120,7 @@ export async function seedCrmGoals() {
           .onConflictDoNothing()
           .returning();
 
-        console.log(`Created ${createdMembers.length} team members`);
+        log.info(`Created ${createdMembers.length} team members`);
       }
     }
 
@@ -192,7 +195,7 @@ export async function seedCrmGoals() {
         .onConflictDoNothing()
         .returning();
 
-      console.log(`Created ${createdGoals.length} sales goals`);
+      log.info(`Created ${createdGoals.length} sales goals`);
 
       // Create sample activity reports
       const reportData = [
@@ -259,7 +262,7 @@ export async function seedCrmGoals() {
           .onConflictDoNothing()
           .returning();
 
-        console.log(`Created ${createdReports.length} activity reports`);
+        log.info(`Created ${createdReports.length} activity reports`);
 
         // Create sample goal progress tracking
         const progressData = createdGoals.map((goal, index) => ({
@@ -288,13 +291,13 @@ export async function seedCrmGoals() {
           .onConflictDoNothing()
           .returning();
 
-        console.log(`Created ${createdProgress.length} goal progress records`);
+        log.info(`Created ${createdProgress.length} goal progress records`);
       }
     }
 
-    console.log('CRM Goals seeding completed successfully!');
+    log.info('CRM Goals seeding completed successfully!');
   } catch (error) {
-    console.error('Error seeding CRM Goals:', error);
+    log.error('Error seeding CRM Goals:', error);
   }
 }
 
@@ -302,11 +305,11 @@ export async function seedCrmGoals() {
 if (require.main === module) {
   seedCrmGoals()
     .then(() => {
-      console.log('Seeding completed');
+      log.info('Seeding completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Seeding failed:', error);
+      log.error('Seeding failed:', error);
       process.exit(1);
     });
 }

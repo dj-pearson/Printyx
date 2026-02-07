@@ -1,3 +1,6 @@
+import { createModuleLogger } from '../../lib/logger';
+const log = createModuleLogger('xerox-adapter');
+
 import {
   BaseManufacturerAdapter,
   DeviceInfo,
@@ -29,7 +32,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
 
       return response.ok;
     } catch (error) {
-      console.error('Xerox connection test failed:', error);
+      log.error('Xerox connection test failed:', error);
       return false;
     }
   }
@@ -44,7 +47,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
         throw new Error('Unsupported authentication type for Xerox integration');
       }
     } catch (error) {
-      console.error('Xerox authentication failed:', error);
+      log.error('Xerox authentication failed:', error);
       return false;
     }
   }
@@ -70,7 +73,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
 
       return true;
     } catch (error) {
-      console.error('Xerox OAuth2 authentication failed:', error);
+      log.error('Xerox OAuth2 authentication failed:', error);
       return false;
     }
   }
@@ -96,7 +99,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
       const data = await this.handleApiResponse(response);
       return this.mapXeroxDevices(data.devices || data.printers || []);
     } catch (error) {
-      console.error('Xerox device discovery failed:', error);
+      log.error('Xerox device discovery failed:', error);
       return [];
     }
   }
@@ -343,7 +346,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
       const device = await this.handleApiResponse(response);
       return this.mapXeroxDevices([device])[0] || null;
     } catch (error) {
-      console.error('Failed to get Xerox device info:', error);
+      log.error('Failed to get Xerox device info:', error);
       return null;
     }
   }
@@ -365,7 +368,7 @@ export class XeroxAdapter extends BaseManufacturerAdapter {
 
       return response.ok;
     } catch (error) {
-      console.error('Failed to update Xerox device config:', error);
+      log.error('Failed to update Xerox device config:', error);
       return false;
     }
   }

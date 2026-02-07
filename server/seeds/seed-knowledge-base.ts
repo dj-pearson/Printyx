@@ -8,6 +8,9 @@
  */
 
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('seed-knowledge-base');
+
 import {
   knowledgeCategories,
   knowledgeArticles,
@@ -21,7 +24,7 @@ import { meterBillingArticles } from './articles/meter-billing';
 import { troubleshootingArticles } from './articles/troubleshooting';
 
 async function seedCategories() {
-  console.log('🌱 Seeding knowledge base categories...');
+  log.info('🌱 Seeding knowledge base categories...');
 
   const insertedCategories = [];
 
@@ -42,25 +45,25 @@ async function seedCategories() {
         .returning();
 
       insertedCategories.push(inserted);
-      console.log(`  ✓ Created category: ${category.name}`);
+      log.info(`  ✓ Created category: ${category.name}`);
     } catch (error: any) {
       if (error.code === '23505') {
         // Unique constraint violation
-        console.log(`  ⊙ Category already exists: ${category.name}`);
+        log.info(`  ⊙ Category already exists: ${category.name}`);
       } else {
-        console.error(`  ✗ Error creating category ${category.name}:`, error.message);
+        log.error(`  ✗ Error creating category ${category.name}:`, error.message);
       }
     }
   }
 
-  console.log(
+  log.info(
     `✅ Categories seeded: ${insertedCategories.length} new, ${categorySeedData.length} total\n`,
   );
   return insertedCategories;
 }
 
 async function seedArticles(categoryMap: Map<string, string>) {
-  console.log('📝 Seeding knowledge base articles...');
+  log.info('📝 Seeding knowledge base articles...');
 
   const allArticles = [
     ...gettingStartedArticles,
@@ -77,7 +80,7 @@ async function seedArticles(categoryMap: Map<string, string>) {
     try {
       const categoryId = categoryMap.get(article.categorySlug);
       if (!categoryId) {
-        console.log(
+        log.info(
           `  ⚠ Warning: Category not found for slug "${article.categorySlug}", skipping article: ${article.title}`,
         );
         skippedCount++;
@@ -134,27 +137,27 @@ async function seedArticles(categoryMap: Map<string, string>) {
       });
 
       insertedCount++;
-      console.log(`  ✓ Created article: ${article.title} (${article.categorySlug})`);
+      log.info(`  ✓ Created article: ${article.title} (${article.categorySlug})`);
     } catch (error: any) {
       if (error.code === '23505') {
         // Unique constraint violation
-        console.log(`  ⊙ Article already exists: ${article.title}`);
+        log.info(`  ⊙ Article already exists: ${article.title}`);
         skippedCount++;
       } else {
-        console.error(`  ✗ Error creating article "${article.title}":`, error.message);
+        log.error(`  ✗ Error creating article "${article.title}":`, error.message);
         skippedCount++;
       }
     }
   }
 
-  console.log(
+  log.info(
     `✅ Articles seeded: ${insertedCount} new, ${skippedCount} skipped, ${allArticles.length} total\n`,
   );
 }
 
 async function main() {
-  console.log('\n🚀 Starting Knowledge Base Seeder\n');
-  console.log('═'.repeat(60));
+  log.info('\n🚀 Starting Knowledge Base Seeder\n');
+  log.info('═'.repeat(60));
 
   try {
     // Step 1: Seed categories
@@ -167,21 +170,21 @@ async function main() {
       categoryMap.set(cat.slug, cat.id);
     });
 
-    console.log(`📋 Category map created with ${categoryMap.size} categories\n`);
+    log.info(`📋 Category map created with ${categoryMap.size} categories\n`);
 
     // Step 2: Seed articles
     await seedArticles(categoryMap);
 
-    console.log('═'.repeat(60));
-    console.log('✨ Knowledge Base seeding complete!\n');
-    console.log('Next steps:');
-    console.log('1. Visit /admin/knowledge-base to manage articles');
-    console.log('2. Visit /knowledge-base to view the public knowledge base');
-    console.log('3. Continue adding more articles as needed\n');
+    log.info('═'.repeat(60));
+    log.info('✨ Knowledge Base seeding complete!\n');
+    log.info('Next steps:');
+    log.info('1. Visit /admin/knowledge-base to manage articles');
+    log.info('2. Visit /knowledge-base to view the public knowledge base');
+    log.info('3. Continue adding more articles as needed\n');
 
     process.exit(0);
   } catch (error) {
-    console.error('\n❌ Seeding failed:', error);
+    log.error('\n❌ Seeding failed:', error);
     process.exit(1);
   }
 }

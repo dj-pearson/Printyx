@@ -6,6 +6,8 @@
 import { db } from '../db';
 import ClaudeAIService from './claude-ai-service';
 import { eq, and, sql, desc, asc, like, ilike } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('ai-documentation-service');
 
 interface DocumentType {
   id: string;
@@ -161,7 +163,7 @@ class AIDocumentationService {
       tags?: string[];
     },
   ): Promise<AIDocument> {
-    console.log('📄 Creating new AI document:', documentData.title);
+    log.info('📄 Creating new AI document:', documentData.title);
 
     try {
       const documentType = documentData.documentTypeId
@@ -219,10 +221,10 @@ class AIDocumentationService {
         updatedAt: new Date(),
       };
 
-      console.log('✅ AI document created successfully:', document.id);
+      log.info('✅ AI document created successfully:', document.id);
       return document;
     } catch (error) {
-      console.error('Failed to create AI document:', error);
+      log.error('Failed to create AI document:', error);
       throw error;
     }
   }
@@ -237,7 +239,7 @@ class AIDocumentationService {
     transcriptionData: any,
     documentType: 'meeting_minutes' | 'summary' | 'action_items' = 'meeting_minutes',
   ): Promise<AIDocument> {
-    console.log('🎙️ Generating document from meeting transcription:', meetingId);
+    log.info('🎙️ Generating document from meeting transcription:', meetingId);
 
     try {
       const prompt = this.buildMeetingDocumentPrompt(transcriptionData, documentType);
@@ -260,10 +262,10 @@ class AIDocumentationService {
         tags: ['meeting', documentType, 'ai-generated'],
       });
 
-      console.log('✅ Document generated from meeting successfully');
+      log.info('✅ Document generated from meeting successfully');
       return document;
     } catch (error) {
-      console.error('Failed to generate document from meeting:', error);
+      log.error('Failed to generate document from meeting:', error);
       throw error;
     }
   }
@@ -287,7 +289,7 @@ class AIDocumentationService {
     confidenceScore: number;
     suggestions: ContentSuggestion[];
   }> {
-    console.log('✨ Generating AI content for section:', sectionType);
+    log.info('✨ Generating AI content for section:', sectionType);
 
     try {
       const enhancedPrompt = this.buildSectionPrompt(prompt, sectionType, context);
@@ -314,7 +316,7 @@ class AIDocumentationService {
         suggestions,
       };
     } catch (error) {
-      console.error('AI content generation failed:', error);
+      log.error('AI content generation failed:', error);
       return {
         content: { text: 'Failed to generate content. Please try again.' },
         plainText: 'Failed to generate content. Please try again.',
@@ -347,7 +349,7 @@ class AIDocumentationService {
       reasoning: string;
     }>;
   }> {
-    console.log('🔧 Improving content with AI assistance:', improvementType);
+    log.info('🔧 Improving content with AI assistance:', improvementType);
 
     try {
       const prompt = `Improve the following content for ${improvementType}:
@@ -413,7 +415,7 @@ Provide improvements and explain each change. Return JSON format:
         changes: improvementData.changes,
       };
     } catch (error) {
-      console.error('Content improvement failed:', error);
+      log.error('Content improvement failed:', error);
       return {
         improvedContent: content,
         suggestions: [],
@@ -447,7 +449,7 @@ Provide improvements and explain each change. Return JSON format:
       qualityScore: number;
     };
   }> {
-    console.log('📚 Creating knowledge base article:', articleData.title);
+    log.info('📚 Creating knowledge base article:', articleData.title);
 
     try {
       const plainTextContent = this.extractPlainText(articleData.content);
@@ -496,13 +498,13 @@ Provide improvements and explain each change. Return JSON format:
         updatedAt: new Date(),
       };
 
-      console.log('✅ Knowledge article created with AI enhancements');
+      log.info('✅ Knowledge article created with AI enhancements');
       return {
         id: article.id,
         aiEnhancements: enhancements,
       };
     } catch (error) {
-      console.error('Failed to create knowledge article:', error);
+      log.error('Failed to create knowledge article:', error);
       throw error;
     }
   }
@@ -536,7 +538,7 @@ Provide improvements and explain each change. Return JSON format:
     searchTime: number;
     suggestions: string[];
   }> {
-    console.log('🔍 Searching documents with AI ranking:', query);
+    log.info('🔍 Searching documents with AI ranking:', query);
 
     const startTime = Date.now();
 
@@ -598,7 +600,7 @@ Provide improvements and explain each change. Return JSON format:
         suggestions: ['meeting minutes', 'project reports', 'client proposals'],
       };
     } catch (error) {
-      console.error('Document search failed:', error);
+      log.error('Document search failed:', error);
       throw error;
     }
   }
@@ -622,7 +624,7 @@ Provide improvements and explain each change. Return JSON format:
     aiInsights: string[];
     recommendations: string[];
   }> {
-    console.log('📊 Generating AI writing analytics...');
+    log.info('📊 Generating AI writing analytics...');
 
     // Mock analytics data
     return {

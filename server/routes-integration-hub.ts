@@ -2,6 +2,8 @@ import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { DashboardService } from './integrations/dashboard-service';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-integration-hub');
 
 // Using inline auth middleware since requireAuth is not available
 const requireAuth = (req: any, res: any, next: any) => {
@@ -29,7 +31,7 @@ router.get('/api/integration-hub/dashboard', async (req: any, res) => {
 
     res.json(integrationHubData);
   } catch (error) {
-    console.error('Error fetching integration hub dashboard:', error);
+    log.error('Error fetching integration hub dashboard:', error);
     res.status(500).json({ message: 'Failed to fetch integration hub dashboard' });
   }
 });
@@ -785,7 +787,7 @@ router.get('/api/integration-hub/dashboard-mock', async (req: any, res) => {
 
     res.json(integrationHubData);
   } catch (error) {
-    console.error('Error fetching integration hub dashboard:', error);
+    log.error('Error fetching integration hub dashboard:', error);
     res.status(500).json({ message: 'Failed to fetch integration hub dashboard' });
   }
 });
@@ -808,7 +810,7 @@ router.get('/api/integration-hub/marketplace', async (req: any, res) => {
 
     res.json({ apis: marketplaceAPIs, total: marketplaceAPIs.length });
   } catch (error) {
-    console.error('Error fetching marketplace APIs:', error);
+    log.error('Error fetching marketplace APIs:', error);
     res.status(500).json({ message: 'Failed to fetch marketplace APIs' });
   }
 });
@@ -835,7 +837,7 @@ router.post('/api/integration-hub/integrations', async (req: any, res) => {
 
     res.status(201).json(newIntegration);
   } catch (error) {
-    console.error('Error creating integration:', error);
+    log.error('Error creating integration:', error);
     res.status(500).json({ message: 'Failed to create integration' });
   }
 });

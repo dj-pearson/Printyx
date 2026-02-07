@@ -12,6 +12,9 @@
  */
 
 import { db } from '../../db';
+import { createModuleLogger } from '../../lib/logger';
+const log = createModuleLogger('rbac-seeder');
+
 import {
   permissions,
   enhancedRoles,
@@ -1956,11 +1959,11 @@ const ROLE_TEMPLATES: RoleTemplate[] = [
 // ============================================================================
 
 export async function seedRBAC() {
-  console.log('🌱 Starting RBAC Seeder...\n');
+  log.info('🌱 Starting RBAC Seeder...\n');
 
   try {
     // Step 1: Seed Permissions
-    console.log('📝 Seeding permissions...');
+    log.info('📝 Seeding permissions...');
     let permissionsCreated = 0;
     const permissionMap = new Map<string, string>(); // code -> id
 
@@ -1996,12 +1999,12 @@ export async function seedRBAC() {
       }
     }
 
-    console.log(
+    log.info(
       `✅ Created ${permissionsCreated} permissions (${PERMISSION_DEFINITIONS.length} total)`,
     );
 
     // Step 2: Seed Roles
-    console.log('\n👥 Seeding roles...');
+    log.info('\n👥 Seeding roles...');
     let rolesCreated = 0;
     const roleMap = new Map<string, string>(); // code -> id
 
@@ -2038,14 +2041,14 @@ export async function seedRBAC() {
         lftCounter = rght + 1;
       } catch (error) {
         // Role might already exist
-        console.log(`   ⚠️ ${role.name} may already exist`);
+        log.info(`   ⚠️ ${role.name} may already exist`);
       }
     }
 
-    console.log(`✅ Created ${rolesCreated} roles (${ROLE_TEMPLATES.length} total)`);
+    log.info(`✅ Created ${rolesCreated} roles (${ROLE_TEMPLATES.length} total)`);
 
     // Step 3: Map Role-Permission Relationships
-    console.log('\n🔗 Mapping role-permission relationships...');
+    log.info('\n🔗 Mapping role-permission relationships...');
     let mappingsCreated = 0;
 
     for (const role of ROLE_TEMPLATES) {
@@ -2055,7 +2058,7 @@ export async function seedRBAC() {
       for (const permCode of role.permissions) {
         const permId = permissionMap.get(permCode);
         if (!permId) {
-          console.log(`   ⚠️ Permission not found: ${permCode}`);
+          log.info(`   ⚠️ Permission not found: ${permCode}`);
           continue;
         }
 
@@ -2073,41 +2076,45 @@ export async function seedRBAC() {
       }
     }
 
-    console.log(`✅ Created ${mappingsCreated} role-permission mappings`);
+    log.info(`✅ Created ${mappingsCreated} role-permission mappings`);
 
     // Summary
-    console.log('\n' + '='.repeat(60));
-    console.log('✅ RBAC Seeding Complete!');
-    console.log('='.repeat(60));
-    console.log(`📊 Summary:`);
-    console.log(`   - Permissions: ${PERMISSION_DEFINITIONS.length}`);
-    console.log(`   - Roles: ${ROLE_TEMPLATES.length}`);
-    console.log(`   - Mappings: ${mappingsCreated}`);
-    console.log(`\n🎯 Role Breakdown:`);
-    console.log(`   - Level 8 (Platform): 1 role`);
-    console.log(`   - Level 7 (Executive): 3 roles`);
-    console.log(`   - Level 6 (Director): 4 roles`);
-    console.log(`   - Level 5 (Regional): 2 roles`);
-    console.log(`   - Level 4 (Manager): 5 roles`);
-    console.log(`   - Level 3 (Supervisor): 3 roles`);
-    console.log(`   - Level 2 (Team Lead): 2 roles`);
-    console.log(`   - Level 1 (Individual): 4 roles`);
-    console.log('='.repeat(60));
+    log.info('\n' + '='.repeat(60));
+    log.info('✅ RBAC Seeding Complete!');
+    log.info('='.repeat(60));
+    log.info(`📊 Summary:`);
+    log.info(`   - Permissions: ${PERMISSION_DEFINITIONS.length}`);
+    log.info(`   - Roles: ${ROLE_TEMPLATES.length}`);
+    log.info(`   - Mappings: ${mappingsCreated}`);
+    log.info(`\n🎯 Role Breakdown:`);
+    log.info(`   - Level 8 (Platform): 1 role`);
+    log.info(`   - Level 7 (Executive): 3 roles`);
+    log.info(`   - Level 6 (Director): 4 roles`);
+    log.info(`   - Level 5 (Regional): 2 roles`);
+    log.info(`   - Level 4 (Manager): 5 roles`);
+    log.info(`   - Level 3 (Supervisor): 3 roles`);
+    log.info(`   - Level 2 (Team Lead): 2 roles`);
+    log.info(`   - Level 1 (Individual): 4 roles`);
+    log.info('='.repeat(60));
   } catch (error) {
-    console.error('❌ RBAC Seeding Failed:', error);
+    log.error('❌ RBAC Seeding Failed:', error);
     throw error;
   }
 }
 
-// Allow direct execution
-if (require.main === module) {
+// Allow direct execution (ESM compatible)
+const isMainModule =
+  import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/')}` ||
+  import.meta.url === `file:///${process.argv[1].replace(/\\/g, '/').replace(/^\//, '')}`;
+
+if (isMainModule) {
   seedRBAC()
     .then(() => {
-      console.log('\n✅ Seeding completed successfully');
+      log.info('\n✅ Seeding completed successfully');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('\n❌ Seeding failed:', error);
+      log.error('\n❌ Seeding failed:', error);
       process.exit(1);
     });
 }

@@ -1,5 +1,7 @@
 import { SubscriptionService } from './subscription-service';
 import { UsageTrackingService } from './usage-tracking-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('subscription-jobs');
 
 /**
  * SUBSCRIPTION SCHEDULED JOBS
@@ -20,11 +22,11 @@ export class SubscriptionJobs {
   static startAll() {
     // Allow disabling in development (similar to WebSocket and Database Updater)
     if (process.env.DISABLE_SUBSCRIPTION_JOBS === 'true') {
-      console.log('ℹ️ Subscription jobs disabled (set DISABLE_SUBSCRIPTION_JOBS=false to enable)');
+      log.info('ℹ️ Subscription jobs disabled (set DISABLE_SUBSCRIPTION_JOBS=false to enable)');
       return;
     }
 
-    console.log('🚀 Starting subscription scheduled jobs...');
+    log.info('🚀 Starting subscription scheduled jobs...');
 
     // Check trial expirations every hour
     this.intervals.push(
@@ -33,7 +35,7 @@ export class SubscriptionJobs {
           this.checkTrialExpirations().catch((error) => {
             // Only log in development to reduce noise
             if (process.env.NODE_ENV === 'development') {
-              console.error('Trial expiration check failed:', error?.message || error);
+              log.error('Trial expiration check failed:', error?.message || error);
             }
           });
         },
@@ -48,7 +50,7 @@ export class SubscriptionJobs {
           this.checkUsageLimits().catch((error) => {
             // Only log in development to reduce noise
             if (process.env.NODE_ENV === 'development') {
-              console.error('Usage limit check failed:', error?.message || error);
+              log.error('Usage limit check failed:', error?.message || error);
             }
           });
         },
@@ -64,7 +66,7 @@ export class SubscriptionJobs {
           // Run at approximately midnight (23:00 - 01:00)
           if (now.getHours() === 0) {
             this.createDailySnapshots().catch((error) => {
-              console.error('Daily snapshot creation failed:', error);
+              log.error('Daily snapshot creation failed:', error);
             });
           }
         },
@@ -77,7 +79,7 @@ export class SubscriptionJobs {
       setInterval(
         () => {
           this.recalculateUsage().catch((error) => {
-            console.error('Usage recalculation failed:', error);
+            log.error('Usage recalculation failed:', error);
           });
         },
         4 * 60 * 60 * 1000,
@@ -87,21 +89,21 @@ export class SubscriptionJobs {
     // Run initial checks immediately
     this.runInitialChecks();
 
-    console.log('✅ Subscription scheduled jobs started');
+    log.info('✅ Subscription scheduled jobs started');
   }
 
   /**
    * Stop all scheduled jobs
    */
   static stopAll() {
-    console.log('🛑 Stopping subscription scheduled jobs...');
+    log.info('🛑 Stopping subscription scheduled jobs...');
 
     for (const interval of this.intervals) {
       clearInterval(interval);
     }
 
     this.intervals = [];
-    console.log('✅ Subscription scheduled jobs stopped');
+    log.info('✅ Subscription scheduled jobs stopped');
   }
 
   /**
@@ -109,7 +111,7 @@ export class SubscriptionJobs {
    */
   private static async runInitialChecks() {
     try {
-      console.log('🔍 Running initial subscription checks...');
+      log.info('🔍 Running initial subscription checks...');
 
       // Run checks individually with error handling to prevent one failure from blocking others
       const results = await Promise.allSettled([
@@ -122,7 +124,7 @@ export class SubscriptionJobs {
         if (result.status === 'rejected') {
           const checkName = index === 0 ? 'Trial expiration' : 'Usage limit';
           if (import.meta.env?.DEV) {
-            console.warn(
+            log.warn(
               `${checkName} check failed on startup (will retry on schedule):`,
               result.reason?.message,
             );
@@ -130,11 +132,11 @@ export class SubscriptionJobs {
         }
       });
 
-      console.log('✅ Initial subscription checks completed');
+      log.info('✅ Initial subscription checks completed');
     } catch (error) {
       // Catch any unexpected errors
       if (import.meta.env?.DEV) {
-        console.error('Initial checks failed:', error);
+        log.error('Initial checks failed:', error);
       }
     }
   }
@@ -144,15 +146,15 @@ export class SubscriptionJobs {
    */
   static async checkTrialExpirations(): Promise<void> {
     try {
-      console.log('⏰ Checking trial expirations...');
+      log.info('⏰ Checking trial expirations...');
 
       await SubscriptionService.checkTrialExpirations();
 
-      console.log('✅ Trial expiration check completed');
+      log.info('✅ Trial expiration check completed');
     } catch (error) {
       // Only log in development to reduce noise
       if (import.meta.env?.DEV) {
-        console.error('Trial expiration check failed:', error);
+        log.error('Trial expiration check failed:', error);
       }
       throw error;
     }
@@ -163,15 +165,15 @@ export class SubscriptionJobs {
    */
   static async checkUsageLimits(): Promise<void> {
     try {
-      console.log('📊 Checking usage limits...');
+      log.info('📊 Checking usage limits...');
 
       await SubscriptionService.checkUsageLimits();
 
-      console.log('✅ Usage limit check completed');
+      log.info('✅ Usage limit check completed');
     } catch (error) {
       // Only log in development to reduce noise
       if (import.meta.env?.DEV) {
-        console.error('Usage limit check failed:', error);
+        log.error('Usage limit check failed:', error);
       }
       throw error;
     }
@@ -182,13 +184,13 @@ export class SubscriptionJobs {
    */
   static async createDailySnapshots(): Promise<void> {
     try {
-      console.log('📸 Creating daily usage snapshots...');
+      log.info('📸 Creating daily usage snapshots...');
 
       await UsageTrackingService.createAllDailySnapshots();
 
-      console.log('✅ Daily snapshots created');
+      log.info('✅ Daily snapshots created');
     } catch (error) {
-      console.error('Daily snapshot creation failed:', error);
+      log.error('Daily snapshot creation failed:', error);
       throw error;
     }
   }
@@ -198,13 +200,13 @@ export class SubscriptionJobs {
    */
   static async recalculateUsage(): Promise<void> {
     try {
-      console.log('♻️ Recalculating usage for all tenants...');
+      log.info('♻️ Recalculating usage for all tenants...');
 
       await UsageTrackingService.recalculateAllUsage();
 
-      console.log('✅ Usage recalculation completed');
+      log.info('✅ Usage recalculation completed');
     } catch (error) {
-      console.error('Usage recalculation failed:', error);
+      log.error('Usage recalculation failed:', error);
       throw error;
     }
   }
@@ -213,7 +215,7 @@ export class SubscriptionJobs {
    * Manual trigger for all maintenance tasks
    */
   static async runMaintenance(): Promise<void> {
-    console.log('🔧 Running subscription maintenance tasks...');
+    log.info('🔧 Running subscription maintenance tasks...');
 
     try {
       await Promise.all([
@@ -223,9 +225,9 @@ export class SubscriptionJobs {
         this.recalculateUsage(),
       ]);
 
-      console.log('✅ Subscription maintenance completed successfully');
+      log.info('✅ Subscription maintenance completed successfully');
     } catch (error) {
-      console.error('Subscription maintenance failed:', error);
+      log.error('Subscription maintenance failed:', error);
       throw error;
     }
   }
@@ -233,11 +235,11 @@ export class SubscriptionJobs {
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received, stopping subscription jobs...');
+  log.info('SIGTERM received, stopping subscription jobs...');
   SubscriptionJobs.stopAll();
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT received, stopping subscription jobs...');
+  log.info('SIGINT received, stopping subscription jobs...');
   SubscriptionJobs.stopAll();
 });

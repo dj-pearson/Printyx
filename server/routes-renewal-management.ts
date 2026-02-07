@@ -1,5 +1,8 @@
 import type { Express } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-renewal-management');
+
 import {
   contractRenewals,
   renewalActivities,
@@ -51,7 +54,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json(renewals);
     } catch (error) {
-      console.error('Error fetching renewals:', error);
+      log.error('Error fetching renewals:', error);
       res.status(500).json({ error: 'Failed to fetch renewals' });
     }
   });
@@ -78,7 +81,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json({ ...renewal, activities });
     } catch (error) {
-      console.error('Error fetching renewal:', error);
+      log.error('Error fetching renewal:', error);
       res.status(500).json({ error: 'Failed to fetch renewal' });
     }
   });
@@ -106,7 +109,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.status(201).json(newRenewal);
     } catch (error) {
-      console.error('Error creating renewal:', error);
+      log.error('Error creating renewal:', error);
       res.status(500).json({ error: 'Failed to create renewal' });
     }
   });
@@ -129,7 +132,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error updating renewal:', error);
+      log.error('Error updating renewal:', error);
       res.status(500).json({ error: 'Failed to update renewal' });
     }
   });
@@ -161,7 +164,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error marking renewal as won:', error);
+      log.error('Error marking renewal as won:', error);
       res.status(500).json({ error: 'Failed to mark renewal as won' });
     }
   });
@@ -191,7 +194,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error marking renewal as lost:', error);
+      log.error('Error marking renewal as lost:', error);
       res.status(500).json({ error: 'Failed to mark renewal as lost' });
     }
   });
@@ -223,7 +226,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json(renewalsNeedingAttention);
     } catch (error) {
-      console.error('Error fetching renewals needing attention:', error);
+      log.error('Error fetching renewals needing attention:', error);
       res.status(500).json({ error: 'Failed to fetch renewals needing attention' });
     }
   });
@@ -257,7 +260,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error recalculating risk:', error);
+      log.error('Error recalculating risk:', error);
       res.status(500).json({ error: 'Failed to recalculate risk' });
     }
   });
@@ -284,7 +287,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json(activities);
     } catch (error) {
-      console.error('Error fetching activities:', error);
+      log.error('Error fetching activities:', error);
       res.status(500).json({ error: 'Failed to fetch activities' });
     }
   });
@@ -315,7 +318,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.status(201).json(newActivity);
     } catch (error) {
-      console.error('Error creating activity:', error);
+      log.error('Error creating activity:', error);
       res.status(500).json({ error: 'Failed to create activity' });
     }
   });
@@ -337,7 +340,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json(playbooks);
     } catch (error) {
-      console.error('Error fetching playbooks:', error);
+      log.error('Error fetching playbooks:', error);
       res.status(500).json({ error: 'Failed to fetch playbooks' });
     }
   });
@@ -359,7 +362,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.status(201).json(newPlaybook);
     } catch (error) {
-      console.error('Error creating playbook:', error);
+      log.error('Error creating playbook:', error);
       res.status(500).json({ error: 'Failed to create playbook' });
     }
   });
@@ -382,7 +385,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error updating playbook:', error);
+      log.error('Error updating playbook:', error);
       res.status(500).json({ error: 'Failed to update playbook' });
     }
   });
@@ -441,7 +444,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json(matchingPlaybook || null);
     } catch (error) {
-      console.error('Error recommending playbook:', error);
+      log.error('Error recommending playbook:', error);
       res.status(500).json({ error: 'Failed to recommend playbook' });
     }
   });
@@ -477,7 +480,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json(opportunities);
     } catch (error) {
-      console.error('Error fetching expansion opportunities:', error);
+      log.error('Error fetching expansion opportunities:', error);
       res.status(500).json({ error: 'Failed to fetch expansion opportunities' });
     }
   });
@@ -502,7 +505,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.status(201).json(newOpportunity);
     } catch (error) {
-      console.error('Error creating expansion opportunity:', error);
+      log.error('Error creating expansion opportunity:', error);
       res.status(500).json({ error: 'Failed to create expansion opportunity' });
     }
   });
@@ -527,7 +530,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error updating expansion opportunity:', error);
+      log.error('Error updating expansion opportunity:', error);
       res.status(500).json({ error: 'Failed to update expansion opportunity' });
     }
   });
@@ -559,7 +562,7 @@ export function registerRenewalManagementRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error marking opportunity as won:', error);
+      log.error('Error marking opportunity as won:', error);
       res.status(500).json({ error: 'Failed to mark opportunity as won' });
     }
   });

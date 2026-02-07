@@ -5,6 +5,8 @@ import { db } from '../db';
 import { businessRecords } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { isAuthenticated } from '../replitAuth';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('apollo-routes');
 
 const router = express.Router();
 
@@ -54,7 +56,7 @@ router.post('/search', isAuthenticated, async (req, res) => {
     // Check cache first
     const cached = await apolloStorage.getSearchCache(searchHash);
     if (cached && cached.apolloIds) {
-      console.log(`Cache hit for search ${searchHash}`);
+      log.info(`Cache hit for search ${searchHash}`);
 
       // Get full contact data from centralized cache
       const contacts = await apolloStorage.getCentralizedContactsByIds(
@@ -88,7 +90,7 @@ router.post('/search', isAuthenticated, async (req, res) => {
     }
 
     // Cache miss - call Apollo API
-    console.log(`Cache miss for search ${searchHash} - calling Apollo API`);
+    log.info(`Cache miss for search ${searchHash} - calling Apollo API`);
     const startTime = Date.now();
 
     // Get tenant-specific Apollo client
@@ -147,7 +149,7 @@ router.post('/search', isAuthenticated, async (req, res) => {
       fromCache: false,
     });
   } catch (error: any) {
-    console.error('Apollo search error:', error);
+    log.error('Apollo search error:', error);
 
     // Track failed API call
     if (req.session?.user) {
@@ -264,7 +266,7 @@ router.post('/leads/:contactId/add-to-crm', isAuthenticated, async (req, res) =>
       message: 'Lead successfully added to CRM',
     });
   } catch (error: any) {
-    console.error('Add to CRM error:', error);
+    log.error('Add to CRM error:', error);
     return res.status(500).json({
       error: 'Failed to add lead to CRM',
       message: error.message,
@@ -377,7 +379,7 @@ router.post('/leads/bulk-add', isAuthenticated, async (req, res) => {
 
     return res.json(results);
   } catch (error: any) {
-    console.error('Bulk add error:', error);
+    log.error('Bulk add error:', error);
     return res.status(500).json({
       error: 'Failed to bulk add leads',
       message: error.message,
@@ -400,7 +402,7 @@ router.get('/stats', isAuthenticated, async (req, res) => {
 
     return res.json(stats);
   } catch (error: any) {
-    console.error('Stats error:', error);
+    log.error('Stats error:', error);
     return res.status(500).json({
       error: 'Failed to get stats',
       message: error.message,
@@ -440,7 +442,7 @@ router.get('/credentials', isAuthenticated, async (req, res) => {
       config: credential.config,
     });
   } catch (error: any) {
-    console.error('Get credentials error:', error);
+    log.error('Get credentials error:', error);
     return res.status(500).json({
       error: 'Failed to get credentials',
       message: error.message,
@@ -504,7 +506,7 @@ router.post('/credentials', isAuthenticated, async (req, res) => {
         },
       };
 
-      console.log(
+      log.info(
         'Creating credential with data:',
         JSON.stringify({
           ...credentialData,
@@ -521,7 +523,7 @@ router.post('/credentials', isAuthenticated, async (req, res) => {
       });
     }
   } catch (error: any) {
-    console.error('Save credentials error:', error);
+    log.error('Save credentials error:', error);
     return res.status(500).json({
       error: 'Failed to save credentials',
       message: error.message,
@@ -550,7 +552,7 @@ router.post('/credentials/verify', isAuthenticated, async (req, res) => {
       const { storage } = await import('../storage');
       const credential = await storage.getIntegrationCredentialByProvider(tenantId, 'apollo');
 
-      console.log(
+      log.info(
         'Verify - Retrieved credential:',
         JSON.stringify({
           found: !!credential,
@@ -589,7 +591,7 @@ router.post('/credentials/verify', isAuthenticated, async (req, res) => {
       responseTimeMs: responseTime,
     });
   } catch (error: any) {
-    console.error('Verify credentials error:', error);
+    log.error('Verify credentials error:', error);
 
     // Parse error message for better user feedback
     if (error.message?.includes('401') || error.message?.includes('403')) {
@@ -625,7 +627,7 @@ router.delete('/credentials/:id', isAuthenticated, async (req, res) => {
       message: 'Apollo.io credentials removed successfully',
     });
   } catch (error: any) {
-    console.error('Delete credentials error:', error);
+    log.error('Delete credentials error:', error);
     return res.status(500).json({
       error: 'Failed to delete credentials',
       message: error.message,

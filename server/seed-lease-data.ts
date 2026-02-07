@@ -1,4 +1,7 @@
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-lease-data');
+
 import {
   leases,
   leasePayments,
@@ -10,7 +13,7 @@ import {
 import { eq, and } from 'drizzle-orm';
 
 async function seedLeaseData() {
-  console.log('Starting lease data seeding...');
+  log.info('Starting lease data seeding...');
 
   try {
     // Get a tenant ID from existing data
@@ -21,12 +24,12 @@ async function seedLeaseData() {
       .limit(5);
 
     if (existingCustomers.length === 0) {
-      console.log('No customers found. Please seed customer data first.');
+      log.info('No customers found. Please seed customer data first.');
       return;
     }
 
     const tenantId = existingCustomers[0].tenantId;
-    console.log(`Using tenant ID: ${tenantId}`);
+    log.info(`Using tenant ID: ${tenantId}`);
 
     // Create sample leases in various states
     const sampleLeases = [
@@ -167,12 +170,12 @@ async function seedLeaseData() {
       },
     ];
 
-    console.log('Inserting leases...');
+    log.info('Inserting leases...');
     const insertedLeases = await db.insert(leases).values(sampleLeases).returning();
-    console.log(`✓ Inserted ${insertedLeases.length} leases`);
+    log.info(`✓ Inserted ${insertedLeases.length} leases`);
 
     // Create payment schedules for active leases
-    console.log('Creating payment schedules...');
+    log.info('Creating payment schedules...');
     const paymentRecords = [];
 
     for (const lease of insertedLeases) {
@@ -221,11 +224,11 @@ async function seedLeaseData() {
 
     if (paymentRecords.length > 0) {
       await db.insert(leasePayments).values(paymentRecords);
-      console.log(`✓ Inserted ${paymentRecords.length} payment records`);
+      log.info(`✓ Inserted ${paymentRecords.length} payment records`);
     }
 
     // Create renewal records for pending renewal leases
-    console.log('Creating renewal records...');
+    log.info('Creating renewal records...');
     const renewalRecords = [];
 
     for (const lease of insertedLeases) {
@@ -249,11 +252,11 @@ async function seedLeaseData() {
 
     if (renewalRecords.length > 0) {
       await db.insert(leaseRenewals).values(renewalRecords);
-      console.log(`✓ Inserted ${renewalRecords.length} renewal records`);
+      log.info(`✓ Inserted ${renewalRecords.length} renewal records`);
     }
 
     // Create disposition records for completed/expired leases
-    console.log('Creating disposition records...');
+    log.info('Creating disposition records...');
     const dispositionRecords = [];
 
     for (const lease of insertedLeases) {
@@ -287,17 +290,17 @@ async function seedLeaseData() {
 
     if (dispositionRecords.length > 0) {
       await db.insert(leaseDispositions).values(dispositionRecords);
-      console.log(`✓ Inserted ${dispositionRecords.length} disposition records`);
+      log.info(`✓ Inserted ${dispositionRecords.length} disposition records`);
     }
 
-    console.log('\n✅ Lease data seeding completed successfully!');
-    console.log('\nSummary:');
-    console.log(`- ${insertedLeases.length} leases created`);
-    console.log(`- ${paymentRecords.length} payment records`);
-    console.log(`- ${renewalRecords.length} renewal records`);
-    console.log(`- ${dispositionRecords.length} disposition records`);
+    log.info('\n✅ Lease data seeding completed successfully!');
+    log.info('\nSummary:');
+    log.info(`- ${insertedLeases.length} leases created`);
+    log.info(`- ${paymentRecords.length} payment records`);
+    log.info(`- ${renewalRecords.length} renewal records`);
+    log.info(`- ${dispositionRecords.length} disposition records`);
   } catch (error) {
-    console.error('Error seeding lease data:', error);
+    log.error('Error seeding lease data:', error);
     throw error;
   }
 }
@@ -307,10 +310,10 @@ export { seedLeaseData };
 // Auto-run when executed directly
 seedLeaseData()
   .then(() => {
-    console.log('Seeding complete!');
+    log.info('Seeding complete!');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('Seeding failed:', error);
+    log.error('Seeding failed:', error);
     process.exit(1);
   });

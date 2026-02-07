@@ -7,6 +7,8 @@ import { google } from 'googleapis';
 import { Client } from '@microsoft/microsoft-graph-client';
 import { db } from '../db';
 import { eq, and } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('calendar-service');
 
 interface CalendarEvent {
   id: string;
@@ -69,7 +71,7 @@ class CalendarService {
         status: (event.status as any) || 'confirmed',
       }));
     } catch (error) {
-      console.error('Google Calendar sync error:', error);
+      log.error('Google Calendar sync error:', error);
       throw new Error('Failed to sync Google Calendar');
     }
   }
@@ -111,7 +113,7 @@ class CalendarService {
         status: event.showAs === 'free' ? 'tentative' : 'confirmed',
       }));
     } catch (error) {
-      console.error('Outlook Calendar sync error:', error);
+      log.error('Outlook Calendar sync error:', error);
       throw new Error('Failed to sync Outlook Calendar');
     }
   }

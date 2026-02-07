@@ -1,4 +1,8 @@
 /**
+
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('claude-ai-service');
+
  * Claude AI Service
  * Handles all interactions with Claude API for Motion AI features
  */
@@ -41,7 +45,7 @@ class ClaudeAIService {
   constructor() {
     this.apiKey = process.env.CLAUDE_API_KEY || '';
     if (!this.apiKey) {
-      console.warn('CLAUDE_API_KEY not found in environment variables');
+      log.warn('CLAUDE_API_KEY not found in environment variables');
     }
   }
 
@@ -68,7 +72,7 @@ class ClaudeAIService {
 
       return response.json();
     } catch (error: any) {
-      console.error('Claude API request failed:', error.message);
+      log.error('Claude API request failed:', error.message);
       throw error;
     }
   }
@@ -86,7 +90,7 @@ class ClaudeAIService {
       const response: ClaudeResponse = await this.makeRequest('/messages', requestData);
       return response.content[0]?.text || '';
     } catch (error) {
-      console.error('Claude API error:', error);
+      log.error('Claude API error:', error);
       throw error;
     }
   }
@@ -122,7 +126,7 @@ class ClaudeAIService {
           : [],
       };
     } catch (error) {
-      console.error('Error analyzing lead data:', error);
+      log.error('Error analyzing lead data:', error);
       return {
         score: 50,
         conversionProbability: 25,

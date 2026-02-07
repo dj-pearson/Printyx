@@ -6,6 +6,8 @@
 import AdvancedSchedulingService from './advanced-scheduling-service';
 import ClaudeAIService from './claude-ai-service';
 import PerformanceMonitor from './performance-monitor';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('dynamic-rescheduling-service');
 
 interface ReschedulingEvent {
   id: string;
@@ -85,7 +87,7 @@ class DynamicReschedulingService {
    * Trigger rescheduling based on an event
    */
   async triggerRescheduling(event: ReschedulingEvent): Promise<ReschedulingResult> {
-    console.log('🔄 Rescheduling triggered:', event.type, 'Impact:', event.impact);
+    log.info('🔄 Rescheduling triggered:', event.type, 'Impact:', event.impact);
 
     // Add to event queue
     this.eventQueue.push(event);
@@ -116,7 +118,7 @@ class DynamicReschedulingService {
    */
   addStrategy(strategy: ReschedulingStrategy): void {
     this.strategies.set(strategy.id, strategy);
-    console.log(`📋 Added rescheduling strategy: ${strategy.name}`);
+    log.info(`📋 Added rescheduling strategy: ${strategy.name}`);
   }
 
   /**
@@ -190,10 +192,10 @@ class DynamicReschedulingService {
         success: result.success,
       });
 
-      console.log(`✅ Rescheduling completed: ${result.changedTasks.length} tasks changed`);
+      log.info(`✅ Rescheduling completed: ${result.changedTasks.length} tasks changed`);
       return result;
     } catch (error) {
-      console.error('Rescheduling failed:', error);
+      log.error('Rescheduling failed:', error);
       return {
         success: false,
         strategy: 'error',
@@ -348,7 +350,7 @@ class DynamicReschedulingService {
    * Execute full schedule reoptimization
    */
   private async executeReoptimization(parameters: any, event: ReschedulingEvent): Promise<any> {
-    console.log('🔄 Executing full schedule reoptimization...');
+    log.info('🔄 Executing full schedule reoptimization...');
 
     // This would integrate with AdvancedSchedulingService
     // For now, return mock result
@@ -371,7 +373,7 @@ class DynamicReschedulingService {
    * Execute task shifting (moving tasks to different time slots)
    */
   private async executeTaskShifting(parameters: any, event: ReschedulingEvent): Promise<any> {
-    console.log('⏰ Executing task shifting...');
+    log.info('⏰ Executing task shifting...');
 
     const shiftMinutes = parameters.shiftMinutes || 30;
 
@@ -396,7 +398,7 @@ class DynamicReschedulingService {
     parameters: any,
     event: ReschedulingEvent,
   ): Promise<any> {
-    console.log('👥 Executing resource reassignment...');
+    log.info('👥 Executing resource reassignment...');
 
     return {
       changedTasks: event.affectedTasks.slice(0, 2).map((taskId) => ({
@@ -413,7 +415,7 @@ class DynamicReschedulingService {
    * Execute priority adjustment
    */
   private async executePriorityAdjustment(parameters: any, event: ReschedulingEvent): Promise<any> {
-    console.log('🎯 Executing priority adjustment...');
+    log.info('🎯 Executing priority adjustment...');
 
     return {
       changedTasks: event.affectedTasks.map((taskId) => ({
@@ -429,7 +431,7 @@ class DynamicReschedulingService {
    * Execute buffer time addition
    */
   private async executeBufferTimeAddition(parameters: any, event: ReschedulingEvent): Promise<any> {
-    console.log('⏱️  Adding buffer time...');
+    log.info('⏱️  Adding buffer time...');
 
     const bufferMinutes = parameters.bufferMinutes || 15;
 
@@ -484,7 +486,7 @@ Return confidence score (0.0 to 1.0):`;
       const confidence = parseFloat(aiResponse.trim());
       return isNaN(confidence) ? 0.7 : Math.max(0, Math.min(1, confidence));
     } catch (error) {
-      console.error('Confidence calculation failed:', error);
+      log.error('Confidence calculation failed:', error);
       return 0.7; // Default confidence
     }
   }
@@ -514,7 +516,7 @@ Provide a concise explanation of why this rescheduling was necessary and how it 
 
       return reasoning.trim();
     } catch (error) {
-      console.error('Reasoning generation failed:', error);
+      log.error('Reasoning generation failed:', error);
       return `Applied ${strategy.name} strategy in response to ${event.type} event`;
     }
   }
@@ -614,7 +616,7 @@ Provide a concise explanation of why this rescheduling was necessary and how it 
       cooldownMinutes: 15,
     });
 
-    console.log(`📋 Initialized ${this.strategies.size} default rescheduling strategies`);
+    log.info(`📋 Initialized ${this.strategies.size} default rescheduling strategies`);
   }
 
   /**
@@ -638,7 +640,7 @@ Provide a concise explanation of why this rescheduling was necessary and how it 
           await this.processEvent(event);
         }
       } catch (error) {
-        console.error('Event processing error:', error);
+        log.error('Event processing error:', error);
       } finally {
         this.isProcessing = false;
       }

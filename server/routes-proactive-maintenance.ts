@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { db } from './db';
 import { equipment, businessRecords, serviceTickets } from '../shared/schema';
 import { eq, and, sql, desc, count } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-proactive-maintenance');
 
 const requireAuth = (req: any, res: any, next: any) => {
   if (!req.user) {
@@ -162,7 +164,7 @@ router.get('/api/service/proactive-maintenance', async (req: any, res) => {
       equipment: maintenanceItems,
     });
   } catch (error) {
-    console.error('[PROACTIVE MAINTENANCE] Error:', error);
+    log.error('[PROACTIVE MAINTENANCE] Error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch proactive maintenance data',
@@ -221,9 +223,7 @@ router.post('/api/service/proactive-maintenance/:equipmentId/schedule', async (r
       })
       .returning();
 
-    console.log(
-      `[PROACTIVE MAINTENANCE] Created ticket ${ticketNumber} for equipment ${equipmentId}`,
-    );
+    log.info(`[PROACTIVE MAINTENANCE] Created ticket ${ticketNumber} for equipment ${equipmentId}`);
 
     res.json({
       success: true,
@@ -235,7 +235,7 @@ router.post('/api/service/proactive-maintenance/:equipmentId/schedule', async (r
       },
     });
   } catch (error) {
-    console.error('[PROACTIVE MAINTENANCE] Error scheduling service:', error);
+    log.error('[PROACTIVE MAINTENANCE] Error scheduling service:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to schedule proactive service',

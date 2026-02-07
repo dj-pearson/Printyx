@@ -6,6 +6,9 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('api-key-auth');
+
 import {
   apiKeyService,
   ApiKeyValidationResult,
@@ -265,7 +268,7 @@ export function logApiKeyUsage() {
             },
           )
           .catch((err) => {
-            console.error('[API Key Usage] Failed to log usage:', err);
+            log.error('[API Key Usage] Failed to log usage:', err);
           });
       }
 

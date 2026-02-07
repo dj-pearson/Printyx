@@ -4,6 +4,8 @@ import { CanonAdapter } from './manufacturer-adapters/canon-adapter';
 import { XeroxAdapter } from './manufacturer-adapters/xerox-adapter';
 import { HPAdapter } from './manufacturer-adapters/hp-adapter';
 import { FMAuditAdapter } from './manufacturer-adapters/fmaudit-adapter';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('unified-meter-collection-service');
 
 /**
  * Unified Meter Collection Service
@@ -56,19 +58,19 @@ export class UnifiedMeterCollectionService {
    */
   async runScheduledCollection(): Promise<void> {
     try {
-      console.log('Starting scheduled meter collection...');
+      log.info('Starting scheduled meter collection...');
 
       // Get all integrations due for collection
       const integrationsdue = await this.integrationService.getIntegrationsDueForCollection();
 
-      console.log(`Found ${integrationsdue.length} integrations due for collection`);
+      log.info(`Found ${integrationsdue.length} integrations due for collection`);
 
       // Process each integration
       for (const integration of integrationsdue) {
         try {
           await this.collectFromIntegration(integration);
         } catch (error) {
-          console.error(`Failed to collect from integration ${integration.id}:`, error);
+          log.error(`Failed to collect from integration ${integration.id}:`, error);
           await this.integrationService.updateIntegrationStatus(
             integration.tenantId,
             integration.id,
@@ -78,9 +80,9 @@ export class UnifiedMeterCollectionService {
         }
       }
 
-      console.log('Scheduled meter collection completed');
+      log.info('Scheduled meter collection completed');
     } catch (error) {
-      console.error('Failed to run scheduled collection:', error);
+      log.error('Failed to run scheduled collection:', error);
     }
   }
 
@@ -88,7 +90,7 @@ export class UnifiedMeterCollectionService {
    * Collect meter data from a specific integration
    */
   async collectFromIntegration(integration: any): Promise<void> {
-    console.log(`Collecting data from ${integration.manufacturer} integration ${integration.id}`);
+    log.info(`Collecting data from ${integration.manufacturer} integration ${integration.id}`);
 
     try {
       // Get adapter for this integration
@@ -108,7 +110,7 @@ export class UnifiedMeterCollectionService {
         integration.id,
       );
 
-      console.log(`Found ${devices.length} devices for integration ${integration.id}`);
+      log.info(`Found ${devices.length} devices for integration ${integration.id}`);
 
       let successCount = 0;
       let errorCount = 0;
@@ -176,7 +178,7 @@ export class UnifiedMeterCollectionService {
           await this.sleep(1000);
         } catch (error) {
           errorCount++;
-          console.error(`Failed to collect from device ${device.deviceId}:`, error);
+          log.error(`Failed to collect from device ${device.deviceId}:`, error);
 
           await this.integrationService.logAuditEvent(
             integration.tenantId,
@@ -220,11 +222,11 @@ export class UnifiedMeterCollectionService {
 
       await this.integrationService.updateNextCollectionTime(integration.id, nextCollectionTime);
 
-      console.log(
+      log.info(
         `Integration ${integration.id} collection completed: ${successCount} success, ${errorCount} errors`,
       );
     } catch (error) {
-      console.error(`Failed to process integration ${integration.id}:`, error);
+      log.error(`Failed to process integration ${integration.id}:`, error);
 
       await this.integrationService.updateIntegrationStatus(
         integration.tenantId,

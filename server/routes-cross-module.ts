@@ -10,6 +10,8 @@
 import { Router } from 'express';
 import { requireAuth } from './replitAuth';
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-cross-module');
 
 const router = Router();
 
@@ -41,7 +43,7 @@ router.post('/trigger-service', requireAuth, async (req: any, res) => {
       message: 'Service ticket created from cross-module integration',
     });
   } catch (error: any) {
-    console.error('Error triggering service from customer:', error);
+    log.error('Error triggering service from customer:', error);
     res.status(500).json({ error: 'Failed to trigger service' });
   }
 });
@@ -67,7 +69,7 @@ router.post('/check-inventory', requireAuth, async (req: any, res) => {
       urgency,
     });
   } catch (error: any) {
-    console.error('Error checking inventory:', error);
+    log.error('Error checking inventory:', error);
     res.status(500).json({ error: 'Failed to check inventory' });
   }
 });
@@ -94,7 +96,7 @@ router.post('/trigger-billing', requireAuth, async (req: any, res) => {
         0,
     });
   } catch (error: any) {
-    console.error('Error triggering billing:', error);
+    log.error('Error triggering billing:', error);
     res.status(500).json({ error: 'Failed to trigger billing' });
   }
 });
@@ -121,7 +123,7 @@ router.post('/schedule-maintenance', requireAuth, async (req: any, res) => {
       scheduledDate: scheduledDate || new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('Error scheduling maintenance:', error);
+    log.error('Error scheduling maintenance:', error);
     res.status(500).json({ error: 'Failed to schedule maintenance' });
   }
 });
@@ -143,7 +145,7 @@ router.get('/parts-availability', requireAuth, async (req: any, res) => {
       availableParts: [],
     });
   } catch (error: any) {
-    console.error('Error getting parts availability:', error);
+    log.error('Error getting parts availability:', error);
     res.status(500).json({ error: 'Failed to get parts availability' });
   }
 });
@@ -170,7 +172,7 @@ router.get('/status', requireAuth, async (req: any, res) => {
       processedToday: 0,
     });
   } catch (error: any) {
-    console.error('Error getting integration status:', error);
+    log.error('Error getting integration status:', error);
     res.status(500).json({ error: 'Failed to get integration status' });
   }
 });
@@ -187,7 +189,7 @@ router.post('/log-event', requireAuth, async (req: any, res) => {
     const { sourceModule, targetModule, eventType, data } = req.body;
 
     // TODO: Implement actual event logging
-    console.log('Cross-module event:', { sourceModule, targetModule, eventType, data });
+    log.info('Cross-module event:', { sourceModule, targetModule, eventType, data });
 
     res.json({
       success: true,
@@ -195,7 +197,7 @@ router.post('/log-event', requireAuth, async (req: any, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('Error logging cross-module event:', error);
+    log.error('Error logging cross-module event:', error);
     res.status(500).json({ error: 'Failed to log event' });
   }
 });

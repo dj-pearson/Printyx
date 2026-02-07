@@ -1,3 +1,6 @@
+import { createModuleLogger } from '../../lib/logger';
+const log = createModuleLogger('canon-adapter');
+
 import {
   BaseManufacturerAdapter,
   DeviceInfo,
@@ -29,7 +32,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
 
       return response.ok;
     } catch (error) {
-      console.error('Canon connection test failed:', error);
+      log.error('Canon connection test failed:', error);
       return false;
     }
   }
@@ -45,7 +48,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
         throw new Error('Unsupported authentication type for Canon integration');
       }
     } catch (error) {
-      console.error('Canon authentication failed:', error);
+      log.error('Canon authentication failed:', error);
       return false;
     }
   }
@@ -78,7 +81,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
 
       return true;
     } catch (error) {
-      console.error('Canon API key authentication failed:', error);
+      log.error('Canon API key authentication failed:', error);
       return false;
     }
   }
@@ -97,7 +100,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
       const data = await this.handleApiResponse(response);
       return this.mapCanonDevices(data.devices || []);
     } catch (error) {
-      console.error('Canon device discovery failed:', error);
+      log.error('Canon device discovery failed:', error);
       return [];
     }
   }
@@ -297,7 +300,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
       const device = await this.handleApiResponse(response);
       return this.mapCanonDevices([device])[0] || null;
     } catch (error) {
-      console.error('Failed to get Canon device info:', error);
+      log.error('Failed to get Canon device info:', error);
       return null;
     }
   }
@@ -319,7 +322,7 @@ export class CanonAdapter extends BaseManufacturerAdapter {
 
       return response.ok;
     } catch (error) {
-      console.error('Failed to update Canon device config:', error);
+      log.error('Failed to update Canon device config:', error);
       return false;
     }
   }

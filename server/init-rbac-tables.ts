@@ -1,5 +1,7 @@
 import { db } from './db';
 import { sql } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('init-rbac-tables');
 
 /**
  * Initialize Enhanced RBAC Database Tables
@@ -9,7 +11,7 @@ import { sql } from 'drizzle-orm';
  */
 
 async function initRBACTables() {
-  console.log('🔄 Initializing Enhanced RBAC database tables...');
+  log.info('🔄 Initializing Enhanced RBAC database tables...');
 
   try {
     // Create Organizational Units table
@@ -171,17 +173,17 @@ async function initRBACTables() {
       CREATE INDEX IF NOT EXISTS idx_permission_cache_lookup ON permission_cache(user_id, tenant_id, permission_code, expires_at);
     `);
 
-    console.log('✅ Enhanced RBAC database tables initialized successfully!');
-    console.log('📊 Created tables:');
-    console.log('  - organizational_units');
-    console.log('  - enhanced_roles');
-    console.log('  - system_permissions');
-    console.log('  - role_permissions');
-    console.log('  - user_role_assignments');
-    console.log('  - permission_cache');
-    console.log('🚀 Ready for RBAC system initialization');
+    log.info('✅ Enhanced RBAC database tables initialized successfully!');
+    log.info('📊 Created tables:');
+    log.info('  - organizational_units');
+    log.info('  - enhanced_roles');
+    log.info('  - system_permissions');
+    log.info('  - role_permissions');
+    log.info('  - user_role_assignments');
+    log.info('  - permission_cache');
+    log.info('🚀 Ready for RBAC system initialization');
   } catch (error) {
-    console.error('❌ Error initializing RBAC tables:', error);
+    log.error('❌ Error initializing RBAC tables:', error);
     throw error;
   }
 }
@@ -190,11 +192,11 @@ async function initRBACTables() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   initRBACTables()
     .then(() => {
-      console.log('Database initialization complete');
+      log.info('Database initialization complete');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Database initialization failed:', error);
+      log.error('Database initialization failed:', error);
       process.exit(1);
     });
 }

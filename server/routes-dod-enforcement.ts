@@ -1,6 +1,9 @@
 import express from 'express';
 import { eq, and, count, isNotNull } from 'drizzle-orm';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-dod-enforcement');
+
 import {
   businessRecords,
   quotes,
@@ -85,7 +88,7 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
       nextAction: errors.length === 0 ? 'CREATE_PROPOSAL' : 'FIX_REQUIREMENTS',
     });
   } catch (error) {
-    console.error('Error validating quote for proposal:', error);
+    log.error('Error validating quote for proposal:', error);
     res.status(500).json({ error: 'Failed to validate quote' });
   }
 });
@@ -148,7 +151,7 @@ router.get('/validate/proposal-to-contract/:proposalId', async (req, res) => {
       nextAction: errors.length === 0 ? 'GENERATE_CONTRACT' : 'COMPLETE_PROPOSAL',
     });
   } catch (error) {
-    console.error('Error validating proposal for contract:', error);
+    log.error('Error validating proposal for contract:', error);
     res.status(500).json({ error: 'Failed to validate proposal' });
   }
 });
@@ -213,7 +216,7 @@ router.get('/validate/po-to-warehouse/:poId', async (req, res) => {
       nextAction: errors.length === 0 ? 'RELEASE_TO_WAREHOUSE' : 'COMPLETE_PO_REQUIREMENTS',
     });
   } catch (error) {
-    console.error('Error validating PO for warehouse:', error);
+    log.error('Error validating PO for warehouse:', error);
     res.status(500).json({ error: 'Failed to validate purchase order' });
   }
 });
@@ -279,7 +282,7 @@ router.get('/validate/kitting-to-delivery/:operationId', async (req, res) => {
       nextAction: errors.length === 0 ? 'SCHEDULE_DELIVERY' : 'RESOLVE_QUALITY_ISSUES',
     });
   } catch (error) {
-    console.error('Error validating kitting for delivery:', error);
+    log.error('Error validating kitting for delivery:', error);
     res.status(500).json({ error: 'Failed to validate warehouse operation' });
   }
 });
@@ -329,7 +332,7 @@ router.get('/validate/order-workflow/:orderId', async (req, res) => {
 
     res.json(workflow);
   } catch (error) {
-    console.error('Error getting order workflow validation:', error);
+    log.error('Error getting order workflow validation:', error);
     res.status(500).json({ error: 'Failed to get workflow validation' });
   }
 });

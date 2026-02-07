@@ -8,6 +8,8 @@ import ClaudeAIService from './claude-ai-service';
 import AdvancedSchedulingService from './advanced-scheduling-service';
 import TeamCollaborationService from './team-collaboration-service';
 import { eq, and, sql, desc, asc, gte, lte } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('meeting-scheduling-service');
 
 interface MeetingType {
   id: string;
@@ -138,7 +140,7 @@ class MeetingSchedulingService {
     suggestions: SchedulingSuggestion[];
     processingStatus: string;
   }> {
-    console.log('📅 Creating intelligent scheduling request:', requestData.title);
+    log.info('📅 Creating intelligent scheduling request:', requestData.title);
 
     try {
       // Create the scheduling request
@@ -163,14 +165,14 @@ class MeetingSchedulingService {
       // Generate AI-optimized scheduling suggestions
       const suggestions = await this.generateSchedulingSuggestions(request);
 
-      console.log(`✅ Generated ${suggestions.length} scheduling suggestions`);
+      log.info(`✅ Generated ${suggestions.length} scheduling suggestions`);
       return {
         requestId: request.id,
         suggestions,
         processingStatus: 'completed',
       };
     } catch (error) {
-      console.error('Failed to create scheduling request:', error);
+      log.error('Failed to create scheduling request:', error);
       throw error;
     }
   }
@@ -181,7 +183,7 @@ class MeetingSchedulingService {
   private async generateSchedulingSuggestions(
     request: SchedulingRequest,
   ): Promise<SchedulingSuggestion[]> {
-    console.log('🧠 Generating AI-optimized scheduling suggestions...');
+    log.info('🧠 Generating AI-optimized scheduling suggestions...');
 
     try {
       // Get participant availability
@@ -289,7 +291,7 @@ Return JSON with suggestions:
 
       return enhancedSuggestions.sort((a, b) => b.confidence - a.confidence);
     } catch (error) {
-      console.error('AI scheduling suggestion failed:', error);
+      log.error('AI scheduling suggestion failed:', error);
       return this.generateFallbackSuggestions(request);
     }
   }
@@ -307,7 +309,7 @@ Return JSON with suggestions:
     summary: Record<string, any>;
     conflicts: Array<{ userId: string; conflict: string; severity: string }>;
   }> {
-    console.log('📊 Analyzing participant availability...');
+    log.info('📊 Analyzing participant availability...');
 
     const allParticipants = [...requiredParticipants, ...optionalParticipants];
     const windows: AvailabilityWindow[] = [];
@@ -413,7 +415,7 @@ Return JSON with suggestions:
       availabilityConfirmed: boolean;
     }>
   > {
-    console.log('🏢 Finding optimal meeting rooms...');
+    log.info('🏢 Finding optimal meeting rooms...');
 
     // Mock room data - in production, this would query the meeting_rooms table
     const availableRooms = [
@@ -568,7 +570,7 @@ Return JSON with suggestions:
    * Generate fallback suggestions when AI fails
    */
   private generateFallbackSuggestions(request: SchedulingRequest): SchedulingSuggestion[] {
-    console.log('⚠️ Generating fallback scheduling suggestions');
+    log.info('⚠️ Generating fallback scheduling suggestions');
 
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -601,7 +603,7 @@ Return JSON with suggestions:
     selectedSuggestion: SchedulingSuggestion,
     roomId?: string,
   ): Promise<Meeting> {
-    console.log('📅 Scheduling meeting from request:', requestId);
+    log.info('📅 Scheduling meeting from request:', requestId);
 
     try {
       // Mock meeting creation
@@ -633,10 +635,10 @@ Return JSON with suggestions:
         );
       }
 
-      console.log('✅ Meeting scheduled successfully:', meeting.id);
+      log.info('✅ Meeting scheduled successfully:', meeting.id);
       return meeting;
     } catch (error) {
-      console.error('Failed to schedule meeting:', error);
+      log.error('Failed to schedule meeting:', error);
       throw error;
     }
   }
@@ -645,7 +647,7 @@ Return JSON with suggestions:
    * Send meeting invitations to participants
    */
   private async sendMeetingInvitations(meeting: Meeting): Promise<void> {
-    console.log('📧 Sending meeting invitations for:', meeting.title);
+    log.info('📧 Sending meeting invitations for:', meeting.title);
     // This would integrate with email/calendar systems to send invitations
   }
 
@@ -658,7 +660,7 @@ Return JSON with suggestions:
     startTime: Date,
     endTime: Date,
   ): Promise<void> {
-    console.log('🏢 Booking meeting room:', roomId);
+    log.info('🏢 Booking meeting room:', roomId);
     // This would create a room booking record
   }
 
@@ -683,7 +685,7 @@ Return JSON with suggestions:
       attendanceRate: 'improving' | 'stable' | 'declining';
     };
   }> {
-    console.log('📊 Generating meeting analytics for tenant:', tenantId);
+    log.info('📊 Generating meeting analytics for tenant:', tenantId);
 
     // Mock analytics data
     return {
@@ -737,7 +739,7 @@ Return JSON with suggestions:
       reasoning: string;
     }>;
   }> {
-    console.log('🔧 Optimizing existing meeting schedule...');
+    log.info('🔧 Optimizing existing meeting schedule...');
 
     // Mock optimization results
     return {

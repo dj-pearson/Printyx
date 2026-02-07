@@ -1,6 +1,9 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-ai-analytics');
+
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -512,7 +515,7 @@ router.get('/api/ai-analytics/dashboard', async (req: any, res) => {
 
     res.json(aiAnalyticsData);
   } catch (error) {
-    console.error('Error fetching AI analytics dashboard:', error);
+    log.error('Error fetching AI analytics dashboard:', error);
     res.status(500).json({ message: 'Failed to fetch AI analytics dashboard' });
   }
 });
@@ -568,7 +571,7 @@ router.get('/api/ai-analytics/models/training-status', async (req: any, res) => 
 
     res.json(trainingStatus);
   } catch (error) {
-    console.error('Error fetching training status:', error);
+    log.error('Error fetching training status:', error);
     res.status(500).json({ message: 'Failed to fetch training status' });
   }
 });
@@ -602,7 +605,7 @@ router.post('/api/ai-analytics/recommendations/execute', async (req: any, res) =
 
     res.status(202).json(execution);
   } catch (error) {
-    console.error('Error executing recommendation:', error);
+    log.error('Error executing recommendation:', error);
     res.status(500).json({ message: 'Failed to execute recommendation' });
   }
 });

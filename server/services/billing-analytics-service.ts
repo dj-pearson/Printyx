@@ -14,6 +14,8 @@
 import { db } from '../db';
 import { eq, and, desc, sql, gte, lte, count, sum, avg } from 'drizzle-orm';
 import { invoices, businessRecords, contracts, meterReadings, type Invoice } from '@shared/schema';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('billing-analytics-service');
 
 // =============================================================================
 // TYPES & INTERFACES
@@ -152,7 +154,7 @@ class BillingAnalyticsService {
 
       return forecasts;
     } catch (error) {
-      console.error('Error forecasting revenue:', error);
+      log.error('Error forecasting revenue:', error);
       throw error;
     }
   }
@@ -314,7 +316,7 @@ class BillingAnalyticsService {
       // Sort by churn risk (highest first)
       return predictions.sort((a, b) => b.churnRisk - a.churnRisk);
     } catch (error) {
-      console.error('Error predicting churn:', error);
+      log.error('Error predicting churn:', error);
       throw error;
     }
   }
@@ -543,7 +545,7 @@ class BillingAnalyticsService {
       // Sort by predicted lifetime value (highest first)
       return lifetimeValues.sort((a, b) => b.predictedLifetimeValue - a.predictedLifetimeValue);
     } catch (error) {
-      console.error('Error calculating lifetime value:', error);
+      log.error('Error calculating lifetime value:', error);
       throw error;
     }
   }

@@ -1,5 +1,7 @@
 import { db } from './db';
 import { sql } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('create-rbac-tables');
 
 /**
  * Create basic RBAC tables for immediate use
@@ -7,7 +9,7 @@ import { sql } from 'drizzle-orm';
  */
 
 async function createRBACTables() {
-  console.log('Creating RBAC tables...');
+  log.info('Creating RBAC tables...');
 
   try {
     // Create system_permissions table (using different name to avoid conflicts)
@@ -124,9 +126,9 @@ async function createRBACTables() {
       ON CONFLICT (code) DO NOTHING
     `);
 
-    console.log('✅ RBAC tables created successfully');
+    log.info('✅ RBAC tables created successfully');
   } catch (error) {
-    console.error('Error creating RBAC tables:', error);
+    log.error('Error creating RBAC tables:', error);
     throw error;
   }
 }

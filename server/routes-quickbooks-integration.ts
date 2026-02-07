@@ -1,5 +1,8 @@
 import type { Express } from 'express';
 import { isAuthenticated } from './replitAuth';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-quickbooks-integration');
+
 import {
   QUICKBOOKS_CONFIG,
   transformQuickBooksData,
@@ -48,7 +51,7 @@ export function registerQuickBooksRoutes(app: Express) {
         message: 'Redirect to this URL to connect QuickBooks',
       });
     } catch (error) {
-      console.error('QuickBooks connect error:', error);
+      log.error('QuickBooks connect error:', error);
       res.status(500).json({ error: 'Failed to initialize QuickBooks connection' });
     }
   });
@@ -101,7 +104,7 @@ export function registerQuickBooksRoutes(app: Express) {
 
       res.redirect('/?quickbooks=connected');
     } catch (error) {
-      console.error('QuickBooks callback error:', error);
+      log.error('QuickBooks callback error:', error);
       res.status(500).json({ error: 'Failed to complete QuickBooks authorization' });
     }
   });
@@ -121,7 +124,7 @@ export function registerQuickBooksRoutes(app: Express) {
         tokenExpires: tokenExpires ? new Date(tokenExpires).toISOString() : null,
       });
     } catch (error) {
-      console.error('QuickBooks status error:', error);
+      log.error('QuickBooks status error:', error);
       res.status(500).json({ error: 'Failed to get QuickBooks status' });
     }
   });
@@ -137,7 +140,7 @@ export function registerQuickBooksRoutes(app: Express) {
 
       res.json({ message: 'QuickBooks disconnected successfully' });
     } catch (error) {
-      console.error('QuickBooks disconnect error:', error);
+      log.error('QuickBooks disconnect error:', error);
       res.status(500).json({ error: 'Failed to disconnect QuickBooks' });
     }
   });
@@ -190,14 +193,14 @@ export function registerQuickBooksRoutes(app: Express) {
       });
 
       // In a real implementation, save to database here
-      console.log(`Synced ${transformedCustomers.length} customers from QuickBooks`);
+      log.info(`Synced ${transformedCustomers.length} customers from QuickBooks`);
 
       res.json({
         message: `Successfully synced ${transformedCustomers.length} customers`,
         customers: transformedCustomers,
       });
     } catch (error) {
-      console.error('QuickBooks customer sync error:', error);
+      log.error('QuickBooks customer sync error:', error);
       res.status(500).json({ error: 'Failed to sync customers from QuickBooks' });
     }
   });
@@ -252,7 +255,7 @@ export function registerQuickBooksRoutes(app: Express) {
         items: transformedItems,
       });
     } catch (error) {
-      console.error('QuickBooks items sync error:', error);
+      log.error('QuickBooks items sync error:', error);
       res.status(500).json({ error: 'Failed to sync items from QuickBooks' });
     }
   });
@@ -298,7 +301,7 @@ export function registerQuickBooksRoutes(app: Express) {
         customer: createdCustomer,
       });
     } catch (error) {
-      console.error('QuickBooks create customer error:', error);
+      log.error('QuickBooks create customer error:', error);
       res.status(500).json({ error: 'Failed to create customer in QuickBooks' });
     }
   });
@@ -345,7 +348,7 @@ async function refreshQuickBooksToken(req: any): Promise<void> {
     }
     req.session.qb_token_expires = Date.now() + tokenData.expires_in * 1000;
   } catch (error) {
-    console.error('Token refresh error:', error);
+    log.error('Token refresh error:', error);
     throw error;
   }
 }

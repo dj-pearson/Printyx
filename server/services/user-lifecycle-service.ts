@@ -1,4 +1,7 @@
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('user-lifecycle-service');
+
 import {
   userProvisioningTemplates,
   userLifecycleEvents,
@@ -312,7 +315,7 @@ export class UserLifecycleService {
     // 4. Enabling integration access
     // 5. Setting user preferences
 
-    console.log(`Applying template ${template.name} to user ${userId}`);
+    log.info(`Applying template ${template.name} to user ${userId}`);
 
     // Placeholder for now
     const actions = {

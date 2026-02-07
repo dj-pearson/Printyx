@@ -8,6 +8,9 @@ import { db } from '../db';
 import ClaudeAIService from './claude-ai-service';
 import AISearchKnowledgeService from './ai-search-knowledge-service';
 import { eq, and, sql, desc, asc, like, ilike, inArray, or } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('knowledge-base-service');
+
 import {
   knowledgeCategories,
   knowledgeArticles,
@@ -51,7 +54,7 @@ class KnowledgeBaseService {
       icon?: string;
     },
   ): Promise<KnowledgeCategory> {
-    console.log('📚 Creating knowledge base category:', categoryData.name);
+    log.info('📚 Creating knowledge base category:', categoryData.name);
 
     try {
       const slug = this.generateSlug(categoryData.name);
@@ -82,10 +85,10 @@ class KnowledgeBaseService {
         })
         .returning();
 
-      console.log('✅ Category created successfully:', category.id);
+      log.info('✅ Category created successfully:', category.id);
       return category;
     } catch (error) {
-      console.error('Failed to create category:', error);
+      log.error('Failed to create category:', error);
       throw error;
     }
   }
@@ -172,7 +175,7 @@ class KnowledgeBaseService {
       isPublic?: boolean;
     },
   ): Promise<KnowledgeArticle> {
-    console.log('📝 Creating knowledge base article:', articleData.title);
+    log.info('📝 Creating knowledge base article:', articleData.title);
 
     try {
       const slug = this.generateSlug(articleData.title);
@@ -214,10 +217,10 @@ class KnowledgeBaseService {
       // Generate vector embedding for semantic search
       await this.generateArticleEmbedding(tenantId, article.id, articleData.title, plainText);
 
-      console.log('✅ Article created successfully:', article.id);
+      log.info('✅ Article created successfully:', article.id);
       return article;
     } catch (error) {
-      console.error('Failed to create article:', error);
+      log.error('Failed to create article:', error);
       throw error;
     }
   }
@@ -238,7 +241,7 @@ class KnowledgeBaseService {
       excerpt?: string;
     },
   ): Promise<KnowledgeArticle> {
-    console.log('📝 Updating knowledge base article:', articleId);
+    log.info('📝 Updating knowledge base article:', articleId);
 
     try {
       // Get current article
@@ -301,10 +304,10 @@ class KnowledgeBaseService {
       // Create version history
       await this.createVersion(articleId, updatedArticle, userId, 'Article updated');
 
-      console.log('✅ Article updated successfully');
+      log.info('✅ Article updated successfully');
       return updatedArticle;
     } catch (error) {
-      console.error('Failed to update article:', error);
+      log.error('Failed to update article:', error);
       throw error;
     }
   }
@@ -362,7 +365,7 @@ class KnowledgeBaseService {
     total: number;
     searchTime: number;
   }> {
-    console.log('🔍 Searching knowledge base:', query);
+    log.info('🔍 Searching knowledge base:', query);
 
     const startTime = Date.now();
 
@@ -406,7 +409,7 @@ class KnowledgeBaseService {
 
       const searchTime = Date.now() - startTime;
 
-      console.log(`✅ Search completed: ${total} results in ${searchTime}ms`);
+      log.info(`✅ Search completed: ${total} results in ${searchTime}ms`);
 
       return {
         articles,
@@ -414,7 +417,7 @@ class KnowledgeBaseService {
         searchTime,
       };
     } catch (error) {
-      console.error('Article search failed:', error);
+      log.error('Article search failed:', error);
       throw error;
     }
   }
@@ -436,7 +439,7 @@ class KnowledgeBaseService {
       tone?: string;
     },
   ): Promise<{ queueId: string; message: string }> {
-    console.log('🤖 Queueing AI article generation for:', params.topic);
+    log.info('🤖 Queueing AI article generation for:', params.topic);
 
     try {
       const prompt = this.buildArticleGenerationPrompt(params);
@@ -456,11 +459,11 @@ class KnowledgeBaseService {
         })
         .returning();
 
-      console.log('✅ Article generation queued:', queueItem.id);
+      log.info('✅ Article generation queued:', queueItem.id);
 
       // Process immediately (in production, this would be async via queue worker)
       this.processAIGenerationQueue(queueItem.id, tenantId, userId).catch((err) => {
-        console.error('Background AI generation failed:', err);
+        log.error('Background AI generation failed:', err);
       });
 
       return {
@@ -468,7 +471,7 @@ class KnowledgeBaseService {
         message: 'Article generation started. This may take a few moments.',
       };
     } catch (error) {
-      console.error('Failed to queue article generation:', error);
+      log.error('Failed to queue article generation:', error);
       throw error;
     }
   }
@@ -481,7 +484,7 @@ class KnowledgeBaseService {
     tenantId: string,
     userId: string,
   ): Promise<void> {
-    console.log('🔄 Processing AI generation queue:', queueId);
+    log.info('🔄 Processing AI generation queue:', queueId);
 
     try {
       // Update status to generating
@@ -557,9 +560,9 @@ class KnowledgeBaseService {
         })
         .where(eq(aiContentGenerationQueue.id, queueId));
 
-      console.log('✅ AI article generation completed:', article.id);
+      log.info('✅ AI article generation completed:', article.id);
     } catch (error: any) {
-      console.error('AI generation failed:', error);
+      log.error('AI generation failed:', error);
 
       // Update queue item with error
       await db
@@ -590,7 +593,7 @@ class KnowledgeBaseService {
       suggestedCorrection?: string;
     },
   ): Promise<ArticleFeedback> {
-    console.log('💬 Submitting article feedback:', articleId);
+    log.info('💬 Submitting article feedback:', articleId);
 
     try {
       const [feedback] = await db
@@ -625,10 +628,10 @@ class KnowledgeBaseService {
           .where(eq(knowledgeArticles.id, articleId));
       }
 
-      console.log('✅ Feedback submitted successfully');
+      log.info('✅ Feedback submitted successfully');
       return feedback;
     } catch (error) {
-      console.error('Failed to submit feedback:', error);
+      log.error('Failed to submit feedback:', error);
       throw error;
     }
   }
@@ -651,7 +654,7 @@ class KnowledgeBaseService {
     aiGeneratedCount: number;
     aiGenerationSuccessRate: number;
   }> {
-    console.log('📊 Generating knowledge base analytics...');
+    log.info('📊 Generating knowledge base analytics...');
 
     try {
       // Get all articles for tenant
@@ -705,7 +708,7 @@ class KnowledgeBaseService {
         aiGenerationSuccessRate: 0.92,
       };
     } catch (error) {
-      console.error('Failed to generate analytics:', error);
+      log.error('Failed to generate analytics:', error);
       throw error;
     }
   }
@@ -777,9 +780,9 @@ class KnowledgeBaseService {
         contentHash,
       });
 
-      console.log('✅ Article embedding generated');
+      log.info('✅ Article embedding generated');
     } catch (error) {
-      console.error('Failed to generate embedding:', error);
+      log.error('Failed to generate embedding:', error);
       // Don't fail the article creation if embedding fails
     }
   }

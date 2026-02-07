@@ -5,6 +5,9 @@
 
 import { db } from '../db';
 import { eq, desc, and } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('seo-service');
+
 import {
   seoSettings,
   seoAuditHistory,
@@ -499,7 +502,7 @@ export async function crawlWebsite(
         issues,
       });
     } catch (error: any) {
-      console.error(`Error crawling ${url}:`, error.message);
+      log.error(`Error crawling ${url}:`, error.message);
       results.push({
         url,
         statusCode: 0,
@@ -578,7 +581,7 @@ export async function checkCoreWebVitalsWithAPI(
     };
   } catch (error: any) {
     // Fallback to basic estimation if API fails
-    console.error('PageSpeed API error:', error.message);
+    log.error('PageSpeed API error:', error.message);
     return estimateCoreWebVitals();
   }
 }

@@ -1,4 +1,6 @@
 import OpenAI from 'openai';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('gpt5-service');
 
 // Configuration for different use cases in the Printyx platform
 interface GPT5Config {
@@ -110,7 +112,7 @@ export class GPT5Service {
 
   constructor() {
     if (!process.env.OPENAI_API_KEY) {
-      console.warn('[GPT5Service] OPENAI_API_KEY not set - AI features will be disabled');
+      log.warn('[GPT5Service] OPENAI_API_KEY not set - AI features will be disabled');
       return;
     }
 
@@ -162,7 +164,7 @@ export class GPT5Service {
         usage: response.usage,
       };
     } catch (error) {
-      console.error('GPT-5 Responses API error:', error);
+      log.error('GPT-5 Responses API error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -209,7 +211,7 @@ export class GPT5Service {
         usage: response.usage,
       };
     } catch (error) {
-      console.error('GPT-5 Chat Completions error:', error);
+      log.error('GPT-5 Chat Completions error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',

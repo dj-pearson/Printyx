@@ -2,6 +2,9 @@
 import type { Express } from 'express';
 import { z } from 'zod';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-data-enrichment');
+
 import {
   enrichedContacts,
   enrichedCompanies,
@@ -205,7 +208,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
       } catch (dbError: any) {
         // If columns don't exist, return empty result set
         if (dbError.code === '42703') {
-          console.log('Enriched contacts table schema mismatch - returning empty result set');
+          log.info('Enriched contacts table schema mismatch - returning empty result set');
           contacts = [];
           total = 0;
         } else {
@@ -223,7 +226,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error('Error fetching enriched contacts:', error);
+      log.error('Error fetching enriched contacts:', error);
       res.status(500).json({ message: 'Failed to fetch enriched contacts' });
     }
   });
@@ -246,7 +249,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       res.json(contact[0]);
     } catch (error) {
-      console.error('Error fetching enriched contact:', error);
+      log.error('Error fetching enriched contact:', error);
       res.status(500).json({ message: 'Failed to fetch enriched contact' });
     }
   });
@@ -264,7 +267,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       res.status(201).json(contact);
     } catch (error) {
-      console.error('Error creating enriched contact:', error);
+      log.error('Error creating enriched contact:', error);
       res.status(500).json({ message: 'Failed to create enriched contact' });
     }
   });
@@ -288,7 +291,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       res.json(contact);
     } catch (error) {
-      console.error('Error updating enriched contact:', error);
+      log.error('Error updating enriched contact:', error);
       res.status(500).json({ message: 'Failed to update enriched contact' });
     }
   });
@@ -379,7 +382,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error('Error fetching enriched companies:', error);
+      log.error('Error fetching enriched companies:', error);
       res.status(500).json({ message: 'Failed to fetch enriched companies' });
     }
   });
@@ -402,7 +405,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       res.json(company[0]);
     } catch (error) {
-      console.error('Error fetching enriched company:', error);
+      log.error('Error fetching enriched company:', error);
       res.status(500).json({ message: 'Failed to fetch enriched company' });
     }
   });
@@ -420,7 +423,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       res.status(201).json(company);
     } catch (error) {
-      console.error('Error creating enriched company:', error);
+      log.error('Error creating enriched company:', error);
       res.status(500).json({ message: 'Failed to create enriched company' });
     }
   });
@@ -458,7 +461,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       res.json(intentData);
     } catch (error) {
-      console.error('Error fetching intent data:', error);
+      log.error('Error fetching intent data:', error);
       res.status(500).json({ message: 'Failed to fetch intent data' });
     }
   });
@@ -487,7 +490,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       res.json(campaigns);
     } catch (error) {
-      console.error('Error fetching campaigns:', error);
+      log.error('Error fetching campaigns:', error);
       res.status(500).json({ message: 'Failed to fetch campaigns' });
     }
   });
@@ -511,7 +514,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
 
       res.status(201).json(campaign);
     } catch (error) {
-      console.error('Error creating campaign:', error);
+      log.error('Error creating campaign:', error);
       res.status(500).json({ message: 'Failed to create campaign' });
     }
   });
@@ -574,7 +577,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
         contacts: results,
       });
     } catch (error) {
-      console.error('Error importing ZoomInfo contacts:', error);
+      log.error('Error importing ZoomInfo contacts:', error);
       res.status(500).json({ message: 'Failed to import ZoomInfo contacts' });
     }
   });
@@ -630,7 +633,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
         contacts: results,
       });
     } catch (error) {
-      console.error('Error importing Apollo contacts:', error);
+      log.error('Error importing Apollo contacts:', error);
       res.status(500).json({ message: 'Failed to import Apollo contacts' });
     }
   });
@@ -696,7 +699,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error('Error fetching enrichment analytics:', error);
+      log.error('Error fetching enrichment analytics:', error);
       res.status(500).json({ message: 'Failed to fetch enrichment analytics' });
     }
   });
@@ -717,7 +720,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
         method: 'POST',
       });
     } catch (error) {
-      console.error('Error building ZoomInfo query:', error);
+      log.error('Error building ZoomInfo query:', error);
       res.status(500).json({ message: 'Failed to build ZoomInfo query' });
     }
   });
@@ -734,7 +737,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
         method: 'POST',
       });
     } catch (error) {
-      console.error('Error building Apollo query:', error);
+      log.error('Error building Apollo query:', error);
       res.status(500).json({ message: 'Failed to build Apollo query' });
     }
   });

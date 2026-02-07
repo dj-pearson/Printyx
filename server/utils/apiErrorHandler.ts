@@ -4,6 +4,8 @@
  */
 
 import { Response } from 'express';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('apiErrorHandler');
 
 export interface ApiError {
   success: false;
@@ -80,7 +82,7 @@ export function handleApiError(
   const errorId = generateErrorId();
 
   // Log the error with context for debugging (keep console.error for server logs)
-  console.error(`[${errorId}] [${finalErrorCode}] ${context}:`, {
+  log.error(`[${errorId}] [${finalErrorCode}] ${context}:`, {
     error: errorMessage,
     stack: error instanceof Error ? error.stack : undefined,
     timestamp: new Date().toISOString(),

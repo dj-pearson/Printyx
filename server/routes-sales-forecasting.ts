@@ -3,6 +3,9 @@ import { desc, eq, and, sql, asc, gte, lte, between, isNotNull } from 'drizzle-o
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-sales-forecasting');
+
 import {
   businessRecords,
   deals,
@@ -39,7 +42,7 @@ router.get(
         .orderBy(desc(salesForecasts.createdAt));
       res.json(forecasts);
     } catch (error) {
-      console.error('Error fetching sales forecasts:', error);
+      log.error('Error fetching sales forecasts:', error);
       res.status(500).json({ message: 'Failed to fetch sales forecasts' });
     }
   },
@@ -62,7 +65,7 @@ router.get('/api/sales-forecasts/:id/pipeline', async (req: any, res) => {
 
     res.json(items);
   } catch (error) {
-    console.error('Error fetching pipeline items:', error);
+    log.error('Error fetching pipeline items:', error);
     res.status(500).json({ message: 'Failed to fetch pipeline items' });
   }
 });
@@ -144,11 +147,11 @@ router.get(
           `);
           crmGoalsData = crmGoalsResult.rows || [];
         } catch (error) {
-          console.log('CRM Goals table not found, continuing without goals data');
+          log.info('CRM Goals table not found, continuing without goals data');
           crmGoalsData = [];
         }
       } catch (error) {
-        console.error('Error fetching pipeline data:', error);
+        log.error('Error fetching pipeline data:', error);
         throw error;
       }
 
@@ -274,7 +277,7 @@ router.get(
 
       res.json(responseData);
     } catch (error) {
-      console.error('Error fetching pipeline forecast:', error);
+      log.error('Error fetching pipeline forecast:', error);
       res.status(500).json({ message: 'Failed to fetch pipeline forecast data' });
     }
   },
@@ -294,7 +297,7 @@ router.get('/api/sales-performance-metrics', async (req: any, res) => {
 
     res.json(metrics);
   } catch (error) {
-    console.error('Error fetching performance metrics:', error);
+    log.error('Error fetching performance metrics:', error);
     res.status(500).json({ message: 'Failed to fetch performance metrics' });
   }
 });
@@ -338,7 +341,7 @@ router.post('/api/sales-forecasts', isAuthenticated, async (req: any, res) => {
 
     res.status(201).json(newForecast);
   } catch (error) {
-    console.error('Error creating sales forecast:', error);
+    log.error('Error creating sales forecast:', error);
     res.status(500).json({ message: 'Failed to create sales forecast' });
   }
 });
@@ -366,7 +369,7 @@ router.put('/api/sales-pipeline/:id', isAuthenticated, async (req: any, res) => 
 
     res.json(updated);
   } catch (error) {
-    console.error('Error updating pipeline item:', error);
+    log.error('Error updating pipeline item:', error);
     res.status(500).json({ message: 'Failed to update pipeline item' });
   }
 });
@@ -385,7 +388,7 @@ router.get('/api/sales-forecasting-rules', async (req: any, res) => {
 
     res.json(rules);
   } catch (error) {
-    console.error('Error fetching forecasting rules:', error);
+    log.error('Error fetching forecasting rules:', error);
     res.status(500).json({ message: 'Failed to fetch forecasting rules' });
   }
 });
@@ -460,7 +463,7 @@ router.get('/api/sales-trends', async (req: any, res) => {
 
     res.json(trendData.reverse());
   } catch (error) {
-    console.error('Error fetching sales trends:', error);
+    log.error('Error fetching sales trends:', error);
     res.status(500).json({ message: 'Failed to fetch sales trends' });
   }
 });

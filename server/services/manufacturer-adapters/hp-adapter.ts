@@ -1,3 +1,6 @@
+import { createModuleLogger } from '../../lib/logger';
+const log = createModuleLogger('hp-adapter');
+
 import {
   BaseManufacturerAdapter,
   DeviceInfo,
@@ -30,7 +33,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
 
       return response.ok;
     } catch (error) {
-      console.error('HP connection test failed:', error);
+      log.error('HP connection test failed:', error);
       return false;
     }
   }
@@ -43,7 +46,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
         throw new Error('Unsupported authentication type for HP integration');
       }
     } catch (error) {
-      console.error('HP authentication failed:', error);
+      log.error('HP authentication failed:', error);
       return false;
     }
   }
@@ -72,7 +75,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
 
       return true;
     } catch (error) {
-      console.error('HP HMAC authentication failed:', error);
+      log.error('HP HMAC authentication failed:', error);
       return false;
     }
   }
@@ -101,7 +104,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
       const data = await this.handleApiResponse(response);
       return this.mapHPDevices(data.devices || data.printers || []);
     } catch (error) {
-      console.error('HP device discovery failed:', error);
+      log.error('HP device discovery failed:', error);
       return [];
     }
   }
@@ -360,7 +363,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
       const device = await this.handleApiResponse(response);
       return this.mapHPDevices([device])[0] || null;
     } catch (error) {
-      console.error('Failed to get HP device info:', error);
+      log.error('Failed to get HP device info:', error);
       return null;
     }
   }
@@ -382,7 +385,7 @@ export class HPAdapter extends BaseManufacturerAdapter {
 
       return response.ok;
     } catch (error) {
-      console.error('Failed to update HP device config:', error);
+      log.error('Failed to update HP device config:', error);
       return false;
     }
   }

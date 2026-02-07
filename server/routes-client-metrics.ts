@@ -1,5 +1,8 @@
 import express, { Response } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-client-metrics');
+
 import {
   clientRegistrations,
   clientCollectedMetrics,
@@ -194,7 +197,7 @@ async function authenticateClient(apiKey: string | undefined, tenantIdHeader: st
 
     return client;
   } catch (error) {
-    console.error('Error authenticating client:', error);
+    log.error('Error authenticating client:', error);
     return null;
   }
 }
@@ -289,7 +292,7 @@ router.post('/submit', async (req, res: Response<SubmitMetricsResponse>) => {
 
     // Process toner alerts (fire and forget, don't block response)
     processTonerAlerts(client.tenantId, client.clientId, devices).catch((err) => {
-      console.error('Error processing toner alerts:', err);
+      log.error('Error processing toner alerts:', err);
     });
 
     // Log activity
@@ -306,7 +309,7 @@ router.post('/submit', async (req, res: Response<SubmitMetricsResponse>) => {
       .insert(clientActivityLogs)
       .values(activityLog)
       .catch((err) => {
-        console.error('Error logging activity:', err);
+        log.error('Error logging activity:', err);
       });
 
     res.status(200).json({
@@ -319,7 +322,7 @@ router.post('/submit', async (req, res: Response<SubmitMetricsResponse>) => {
       },
     });
   } catch (error) {
-    console.error('Error submitting metrics:', error);
+    log.error('Error submitting metrics:', error);
     res.status(500).json({
       message: 'Internal server error',
       processed: 0,
@@ -370,7 +373,7 @@ router.post('/heartbeat', async (req, res) => {
         .insert(clientActivityLogs)
         .values(activityLog)
         .catch((err) => {
-          console.error('Error logging heartbeat:', err);
+          log.error('Error logging heartbeat:', err);
         });
     }
 
@@ -380,7 +383,7 @@ router.post('/heartbeat', async (req, res) => {
       status: 'healthy',
     });
   } catch (error) {
-    console.error('Error processing heartbeat:', error);
+    log.error('Error processing heartbeat:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -429,7 +432,7 @@ router.get('/config', async (req, res) => {
       serverTime: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error fetching config:', error);
+    log.error('Error fetching config:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -496,7 +499,7 @@ router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest,
       },
     });
   } catch (error) {
-    console.error('Error registering client:', error);
+    log.error('Error registering client:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -519,7 +522,7 @@ router.get('/clients', resolveTenant, requireTenant, async (req: TenantRequest, 
 
     res.status(200).json({ clients: clientsWithoutKeys });
   } catch (error) {
-    console.error('Error fetching clients:', error);
+    log.error('Error fetching clients:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -586,7 +589,7 @@ router.get('/clients/:clientId', resolveTenant, requireTenant, async (req: Tenan
       activeAlerts,
     });
   } catch (error) {
-    console.error('Error fetching client details:', error);
+    log.error('Error fetching client details:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -640,7 +643,7 @@ router.post(
         apiKey: newApiKey,
       });
     } catch (error) {
-      console.error('Error regenerating API key:', error);
+      log.error('Error regenerating API key:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   },

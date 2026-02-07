@@ -6,6 +6,8 @@
 import express from 'express';
 import TaskSchedulingService from '../services/task-scheduling-service';
 import ClaudeAIService from '../services/claude-ai-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('task-routes');
 
 const router = express.Router();
 
@@ -109,7 +111,7 @@ router.get('/', async (req, res) => {
       offset: startIndex,
     });
   } catch (error) {
-    console.error('Error fetching tasks:', error);
+    log.error('Error fetching tasks:', error);
     res.status(500).json({ error: 'Failed to fetch tasks' });
   }
 });
@@ -157,7 +159,7 @@ Return JSON with:
 
       aiAnalysis = JSON.parse(analysis);
     } catch (error) {
-      console.error('AI analysis failed for new task:', error);
+      log.error('AI analysis failed for new task:', error);
     }
 
     // Create task
@@ -179,7 +181,7 @@ Return JSON with:
 
     res.json(newTask);
   } catch (error) {
-    console.error('Error creating task:', error);
+    log.error('Error creating task:', error);
     res.status(500).json({ error: 'Failed to create task' });
   }
 });
@@ -202,7 +204,7 @@ router.put('/:taskId', async (req, res) => {
 
     res.json(updatedTask);
   } catch (error) {
-    console.error('Error updating task:', error);
+    log.error('Error updating task:', error);
     res.status(500).json({ error: 'Failed to update task' });
   }
 });
@@ -218,7 +220,7 @@ router.delete('/:taskId', async (req, res) => {
     // Mock task deletion
     res.json({ success: true, deletedTaskId: taskId });
   } catch (error) {
-    console.error('Error deleting task:', error);
+    log.error('Error deleting task:', error);
     res.status(500).json({ error: 'Failed to delete task' });
   }
 });
@@ -299,7 +301,7 @@ router.post('/schedule', async (req, res) => {
 
     res.json(schedulingResult);
   } catch (error) {
-    console.error('Error scheduling tasks:', error);
+    log.error('Error scheduling tasks:', error);
     res.status(500).json({ error: 'Failed to schedule tasks' });
   }
 });
@@ -322,7 +324,7 @@ router.get('/categories', async (req, res) => {
 
     res.json(categories);
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    log.error('Error fetching categories:', error);
     res.status(500).json({ error: 'Failed to fetch categories' });
   }
 });
@@ -353,7 +355,7 @@ router.post('/:taskId/time-entry', async (req, res) => {
 
     res.json(timeEntry);
   } catch (error) {
-    console.error('Error managing time entry:', error);
+    log.error('Error managing time entry:', error);
     res.status(500).json({ error: 'Failed to manage time entry' });
   }
 });
@@ -405,7 +407,7 @@ router.get('/suggestions', async (req, res) => {
 
     res.json(suggestions);
   } catch (error) {
-    console.error('Error fetching task suggestions:', error);
+    log.error('Error fetching task suggestions:', error);
     res.status(500).json({ error: 'Failed to fetch task suggestions' });
   }
 });
@@ -442,7 +444,7 @@ router.post('/suggestions/:suggestionId/accept', async (req, res) => {
       status: 'accepted',
     });
   } catch (error) {
-    console.error('Error accepting task suggestion:', error);
+    log.error('Error accepting task suggestion:', error);
     res.status(500).json({ error: 'Failed to accept task suggestion' });
   }
 });

@@ -5,6 +5,8 @@
 import { db } from '../db';
 import { systemIntegrations } from '../../shared/schema';
 import { eq, and, gte, sql } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('error-monitor');
 
 export interface IntegrationError {
   id: string;
@@ -146,7 +148,7 @@ export class ErrorMonitor {
     }
 
     // Log error for monitoring
-    console.error(`Integration error recorded:`, {
+    log.error(`Integration error recorded:`, {
       id: integrationError.id,
       provider,
       operation,
@@ -245,7 +247,7 @@ export class ErrorMonitor {
     error.nextRetryAt = new Date(Date.now() + delay);
     error.updatedAt = new Date();
 
-    console.log(
+    log.info(
       `Scheduling retry for error ${error.id} in ${delay}ms (attempt ${error.retryCount + 1}/${error.maxRetries})`,
     );
 
@@ -276,7 +278,7 @@ export class ErrorMonitor {
     error.updatedAt = new Date();
     error.nextRetryAt = undefined;
 
-    console.log(
+    log.info(
       `Executing retry for error ${errorId} (attempt ${error.retryCount}/${error.maxRetries})`,
     );
 
@@ -286,7 +288,7 @@ export class ErrorMonitor {
 
       if (success) {
         error.resolved = true;
-        console.log(`Retry successful for error ${errorId}`);
+        log.info(`Retry successful for error ${errorId}`);
 
         // Update integration status to connected
         await this.updateIntegrationStatus(error.integrationId, 'connected');
@@ -295,12 +297,12 @@ export class ErrorMonitor {
         if (this.shouldRetry(error)) {
           await this.scheduleRetry(error);
         } else {
-          console.log(`Max retries reached for error ${errorId}`);
+          log.info(`Max retries reached for error ${errorId}`);
           await this.updateIntegrationStatus(error.integrationId, 'error');
         }
       }
     } catch (retryError) {
-      console.error(`Retry failed for error ${errorId}:`, retryError);
+      log.error(`Retry failed for error ${errorId}:`, retryError);
 
       // Schedule next retry if attempts remain
       if (this.shouldRetry(error)) {
@@ -340,7 +342,7 @@ export class ErrorMonitor {
     // This is a placeholder that simulates token refresh
     try {
       // Add actual token refresh logic here
-      console.log(`Attempting token refresh for integration ${error.integrationId}`);
+      log.info(`Attempting token refresh for integration ${error.integrationId}`);
       return Math.random() > 0.3; // Simulate 70% success rate
     } catch (err) {
       return false;
@@ -353,7 +355,7 @@ export class ErrorMonitor {
   private static async retryDataSync(error: IntegrationError): Promise<boolean> {
     try {
       // Add actual data sync retry logic here
-      console.log(`Attempting data sync retry for integration ${error.integrationId}`);
+      log.info(`Attempting data sync retry for integration ${error.integrationId}`);
       return Math.random() > 0.2; // Simulate 80% success rate
     } catch (err) {
       return false;
@@ -366,7 +368,7 @@ export class ErrorMonitor {
   private static async retryWebhookDelivery(error: IntegrationError): Promise<boolean> {
     try {
       // Add actual webhook retry logic here
-      console.log(`Attempting webhook delivery retry for integration ${error.integrationId}`);
+      log.info(`Attempting webhook delivery retry for integration ${error.integrationId}`);
       return Math.random() > 0.1; // Simulate 90% success rate
     } catch (err) {
       return false;
@@ -379,7 +381,7 @@ export class ErrorMonitor {
   private static async testConnection(error: IntegrationError): Promise<boolean> {
     try {
       // Add actual connection test logic here
-      console.log(`Testing connection for integration ${error.integrationId}`);
+      log.info(`Testing connection for integration ${error.integrationId}`);
       return Math.random() > 0.2; // Simulate 80% success rate
     } catch (err) {
       return false;
@@ -402,7 +404,7 @@ export class ErrorMonitor {
         })
         .where(eq(systemIntegrations.id, integrationId));
     } catch (error) {
-      console.error(`Failed to update integration status:`, error);
+      log.error(`Failed to update integration status:`, error);
     }
   }
 
@@ -456,7 +458,7 @@ export class ErrorMonitor {
         successCount,
       };
     } catch (error) {
-      console.error(`Failed to get integration health:`, error);
+      log.error(`Failed to get integration health:`, error);
       return null;
     }
   }
@@ -543,7 +545,7 @@ export class ErrorMonitor {
       }
     }
 
-    console.log(`Cleaned up ${deletedCount} old errors`);
+    log.info(`Cleaned up ${deletedCount} old errors`);
     return deletedCount;
   }
 }

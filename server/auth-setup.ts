@@ -3,6 +3,8 @@ import { storage } from './storage';
 import { users, roles, teams, tenants } from '@shared/schema';
 import { and, eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('auth-setup');
 
 /**
  * Re-export standard auth middleware for convenience
@@ -201,7 +203,7 @@ const teamDefinitions = [
 
 export async function setupDemoAuth() {
   try {
-    console.log('Setting up demo authentication system...');
+    log.info('Setting up demo authentication system...');
 
     // Create demo tenant
     const demoTenant = {
@@ -217,7 +219,7 @@ export async function setupDemoAuth() {
 
     // Insert tenant
     await db.insert(tenants).values(demoTenant).onConflictDoNothing();
-    console.log('✓ Demo tenant created');
+    log.info('✓ Demo tenant created');
 
     // Create roles
     const createdRoles = [];
@@ -234,7 +236,7 @@ export async function setupDemoAuth() {
 
       if (role) {
         createdRoles.push(role);
-        console.log(`✓ Created role: ${role.name}`);
+        log.info(`✓ Created role: ${role.name}`);
       }
     }
 
@@ -252,7 +254,7 @@ export async function setupDemoAuth() {
 
       if (team) {
         createdTeams.push(team);
-        console.log(`✓ Created team: ${team.name}`);
+        log.info(`✓ Created team: ${team.name}`);
       }
     }
 
@@ -264,7 +266,7 @@ export async function setupDemoAuth() {
       // Find matching role
       const userRole = createdRoles.find((r) => r.code === userDef.role);
       if (!userRole) {
-        console.warn(`Role ${userDef.role} not found for user ${userDef.email}`);
+        log.warn(`Role ${userDef.role} not found for user ${userDef.email}`);
         continue;
       }
 
@@ -295,7 +297,7 @@ export async function setupDemoAuth() {
 
       if (user) {
         createdUsers.push({ ...user, role: userRole });
-        console.log(`✓ Created user: ${user.email} (${userRole.name})`);
+        log.info(`✓ Created user: ${user.email} (${userRole.name})`);
       }
     }
 
@@ -308,7 +310,7 @@ export async function setupDemoAuth() {
         .update(teams)
         .set({ managerId: salesManager.id })
         .where(and(eq(teams.department, 'sales'), eq(teams.tenantId, demoTenant.id)));
-      console.log('✓ Assigned sales team managers');
+      log.info('✓ Assigned sales team managers');
     }
 
     if (serviceManager) {
@@ -316,20 +318,20 @@ export async function setupDemoAuth() {
         .update(teams)
         .set({ managerId: serviceManager.id })
         .where(and(eq(teams.department, 'service'), eq(teams.tenantId, demoTenant.id)));
-      console.log('✓ Assigned service team managers');
+      log.info('✓ Assigned service team managers');
     }
 
-    console.log('\n🎉 Demo authentication system setup complete!');
-    console.log('\nDemo Login Credentials:');
-    console.log('========================');
+    log.info('\n🎉 Demo authentication system setup complete!');
+    log.info('\nDemo Login Credentials:');
+    log.info('========================');
 
     demoUsers.forEach((user) => {
       const roleInfo = roleDefinitions.find((r) => r.code === user.role);
-      console.log(`${roleInfo?.name}:`);
-      console.log(`  Email: ${user.email}`);
+      log.info(`${roleInfo?.name}:`);
+      log.info(`  Email: ${user.email}`);
       // SECURITY FIX: Never log passwords, even in development
-      console.log(`  Password: [Use password reset to set password]`);
-      console.log(`  Level: ${user.level} (${user.department})\n`);
+      log.info(`  Password: [Use password reset to set password]`);
+      log.info(`  Level: ${user.level} (${user.department})\n`);
     });
 
     return {
@@ -339,7 +341,7 @@ export async function setupDemoAuth() {
       teams: createdTeams,
     };
   } catch (error) {
-    console.error('Error setting up demo authentication:', error);
+    log.error('Error setting up demo authentication:', error);
     throw error;
   }
 }

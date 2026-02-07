@@ -5,6 +5,8 @@
 
 import express from 'express';
 import MeetingSchedulingService from '../services/meeting-scheduling-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('meeting-scheduling-routes');
 
 const router = express.Router();
 
@@ -29,7 +31,7 @@ router.post('/schedule-request', async (req, res) => {
     const result = await MeetingSchedulingService.createSchedulingRequest(requestData);
     res.status(201).json(result);
   } catch (error) {
-    console.error('Error creating scheduling request:', error);
+    log.error('Error creating scheduling request:', error);
     res.status(500).json({ error: 'Failed to create scheduling request' });
   }
 });
@@ -55,7 +57,7 @@ router.post('/schedule/:requestId', async (req, res) => {
 
     res.json(meeting);
   } catch (error) {
-    console.error('Error scheduling meeting:', error);
+    log.error('Error scheduling meeting:', error);
     res.status(500).json({ error: 'Failed to schedule meeting' });
   }
 });
@@ -353,7 +355,7 @@ router.get('/meetings', async (req, res) => {
 
     res.json(filteredMeetings);
   } catch (error) {
-    console.error('Error fetching meetings:', error);
+    log.error('Error fetching meetings:', error);
     res.status(500).json({ error: 'Failed to fetch meetings' });
   }
 });
@@ -588,7 +590,7 @@ router.get('/meetings/:meetingId', async (req, res) => {
 
     res.json(meeting);
   } catch (error) {
-    console.error('Error fetching meeting details:', error);
+    log.error('Error fetching meeting details:', error);
     res.status(500).json({ error: 'Failed to fetch meeting details' });
   }
 });
@@ -695,7 +697,7 @@ router.get('/types', async (req, res) => {
 
     res.json(meetingTypes);
   } catch (error) {
-    console.error('Error fetching meeting types:', error);
+    log.error('Error fetching meeting types:', error);
     res.status(500).json({ error: 'Failed to fetch meeting types' });
   }
 });
@@ -854,7 +856,7 @@ router.get('/rooms', async (req, res) => {
 
     res.json(filteredRooms);
   } catch (error) {
-    console.error('Error fetching meeting rooms:', error);
+    log.error('Error fetching meeting rooms:', error);
     res.status(500).json({ error: 'Failed to fetch meeting rooms' });
   }
 });
@@ -874,7 +876,7 @@ router.get('/analytics', async (req, res) => {
 
     res.json(analytics);
   } catch (error) {
-    console.error('Error fetching meeting analytics:', error);
+    log.error('Error fetching meeting analytics:', error);
     res.status(500).json({ error: 'Failed to fetch meeting analytics' });
   }
 });
@@ -906,7 +908,7 @@ router.post('/optimize-schedule', async (req, res) => {
 
     res.json(optimization);
   } catch (error) {
-    console.error('Error optimizing schedule:', error);
+    log.error('Error optimizing schedule:', error);
     res.status(500).json({ error: 'Failed to optimize schedule' });
   }
 });

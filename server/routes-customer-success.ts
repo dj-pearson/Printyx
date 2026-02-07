@@ -3,6 +3,9 @@ import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { requireAuth } from './auth-setup';
 import { businessRecords, users, contracts, serviceTickets } from '../shared/schema';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-customer-success');
+
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -266,7 +269,7 @@ router.get(
 
       res.json(healthScores);
     } catch (error) {
-      console.error('Error fetching customer health scores:', error);
+      log.error('Error fetching customer health scores:', error);
       res.status(500).json({ message: 'Failed to fetch customer health scores' });
     }
   },
@@ -500,7 +503,7 @@ router.get(
         res.json(usageAnalytics);
       }
     } catch (error) {
-      console.error('Error fetching usage analytics:', error);
+      log.error('Error fetching usage analytics:', error);
       res.status(500).json({ message: 'Failed to fetch usage analytics' });
     }
   },
@@ -664,7 +667,7 @@ router.get(
 
       res.json(satisfactionData);
     } catch (error) {
-      console.error('Error fetching satisfaction data:', error);
+      log.error('Error fetching satisfaction data:', error);
       res.status(500).json({ message: 'Failed to fetch satisfaction data' });
     }
   },
@@ -706,7 +709,7 @@ router.post(
 
       res.json(calculationResults);
     } catch (error) {
-      console.error('Error calculating health scores:', error);
+      log.error('Error calculating health scores:', error);
       res.status(500).json({ message: 'Failed to calculate health scores' });
     }
   },
