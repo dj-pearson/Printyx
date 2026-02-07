@@ -1,5 +1,8 @@
 import type { Express } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-sales-handoff');
+
 import {
   salesHandoffChecklists,
   handoffTaskTemplates,
@@ -44,7 +47,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(handoffs);
     } catch (error) {
-      console.error('Error fetching handoffs:', error);
+      log.error('Error fetching handoffs:', error);
       res.status(500).json({ error: 'Failed to fetch handoffs' });
     }
   });
@@ -74,7 +77,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json({ ...handoff, tasks });
     } catch (error) {
-      console.error('Error fetching handoff:', error);
+      log.error('Error fetching handoff:', error);
       res.status(500).json({ error: 'Failed to fetch handoff' });
     }
   });
@@ -119,7 +122,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.status(201).json(newHandoff);
     } catch (error) {
-      console.error('Error creating handoff:', error);
+      log.error('Error creating handoff:', error);
       res.status(500).json({ error: 'Failed to create handoff' });
     }
   });
@@ -155,7 +158,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error updating handoff:', error);
+      log.error('Error updating handoff:', error);
       res.status(500).json({ error: 'Failed to update handoff' });
     }
   });
@@ -198,7 +201,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error completing handoff:', error);
+      log.error('Error completing handoff:', error);
       res.status(500).json({ error: 'Failed to complete handoff' });
     }
   });
@@ -228,7 +231,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(templates);
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      log.error('Error fetching templates:', error);
       res.status(500).json({ error: 'Failed to fetch templates' });
     }
   });
@@ -250,7 +253,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.status(201).json(newTemplate);
     } catch (error) {
-      console.error('Error creating template:', error);
+      log.error('Error creating template:', error);
       res.status(500).json({ error: 'Failed to create template' });
     }
   });
@@ -273,7 +276,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error updating template:', error);
+      log.error('Error updating template:', error);
       res.status(500).json({ error: 'Failed to update template' });
     }
   });
@@ -308,7 +311,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(tasks);
     } catch (error) {
-      console.error('Error fetching tasks:', error);
+      log.error('Error fetching tasks:', error);
       res.status(500).json({ error: 'Failed to fetch tasks' });
     }
   });
@@ -330,7 +333,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.status(201).json(newTask);
     } catch (error) {
-      console.error('Error creating task:', error);
+      log.error('Error creating task:', error);
       res.status(500).json({ error: 'Failed to create task' });
     }
   });
@@ -371,7 +374,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error updating task:', error);
+      log.error('Error updating task:', error);
       res.status(500).json({ error: 'Failed to update task' });
     }
   });
@@ -419,7 +422,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error completing task:', error);
+      log.error('Error completing task:', error);
       res.status(500).json({ error: 'Failed to complete task' });
     }
   });
@@ -455,7 +458,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(projects);
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      log.error('Error fetching projects:', error);
       res.status(500).json({ error: 'Failed to fetch projects' });
     }
   });
@@ -479,7 +482,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(project);
     } catch (error) {
-      console.error('Error fetching project:', error);
+      log.error('Error fetching project:', error);
       res.status(500).json({ error: 'Failed to fetch project' });
     }
   });
@@ -501,7 +504,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.status(201).json(newProject);
     } catch (error) {
-      console.error('Error creating project:', error);
+      log.error('Error creating project:', error);
       res.status(500).json({ error: 'Failed to create project' });
     }
   });
@@ -526,7 +529,7 @@ export function registerSalesHandoffRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error updating project:', error);
+      log.error('Error updating project:', error);
       res.status(500).json({ error: 'Failed to update project' });
     }
   });
@@ -576,7 +579,7 @@ export function registerSalesHandoffRoutes(app: Express) {
           res.status(400).json({ error: 'Invalid milestone index' });
         }
       } catch (error) {
-        console.error('Error completing milestone:', error);
+        log.error('Error completing milestone:', error);
         res.status(500).json({ error: 'Failed to complete milestone' });
       }
     },

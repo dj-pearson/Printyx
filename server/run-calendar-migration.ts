@@ -6,52 +6,54 @@
 import { db } from './db';
 import fs from 'fs';
 import path from 'path';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('run-calendar-migration');
 
 async function runCalendarMigration() {
-  console.log('🚀 Starting Calendar Integration Migration...');
+  log.info('🚀 Starting Calendar Integration Migration...');
 
   try {
     const migrationPath = path.join(__dirname, '../migrations/calendar-integration-migration.sql');
     const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
 
-    console.log('📄 Migration SQL loaded, executing...');
+    log.info('📄 Migration SQL loaded, executing...');
 
     const statements = migrationSQL
       .split(';')
       .map((stmt) => stmt.trim())
       .filter((stmt) => stmt.length > 0 && !stmt.startsWith('--'));
 
-    console.log(`📊 Found ${statements.length} SQL statements to execute`);
+    log.info(`📊 Found ${statements.length} SQL statements to execute`);
 
     for (let i = 0; i < statements.length; i++) {
       const statement = statements[i];
 
       if (statement.trim()) {
         try {
-          console.log(`⚡ Executing statement ${i + 1}/${statements.length}...`);
+          log.info(`⚡ Executing statement ${i + 1}/${statements.length}...`);
           await db.execute(statement);
         } catch (error: any) {
           if (
             error.message?.includes('already exists') ||
             error.message?.includes('duplicate column name')
           ) {
-            console.log(`⚠️  Skipped statement ${i + 1} (already exists)`);
+            log.info(`⚠️  Skipped statement ${i + 1} (already exists)`);
             continue;
           } else {
-            console.error(`❌ Error in statement ${i + 1}:`, error.message);
+            log.error(`❌ Error in statement ${i + 1}:`, error.message);
             throw error;
           }
         }
       }
     }
 
-    console.log('✅ Calendar Integration Migration completed successfully!');
-    console.log('\n🎯 Next Steps:');
-    console.log('1. Visit /calendar-demo to see the new calendar interface');
-    console.log('2. Configure external calendar connections (Google/Outlook)');
-    console.log('3. Test AI-powered scheduling features');
+    log.info('✅ Calendar Integration Migration completed successfully!');
+    log.info('\n🎯 Next Steps:');
+    log.info('1. Visit /calendar-demo to see the new calendar interface');
+    log.info('2. Configure external calendar connections (Google/Outlook)');
+    log.info('3. Test AI-powered scheduling features');
   } catch (error) {
-    console.error('❌ Migration failed:', error);
+    log.error('❌ Migration failed:', error);
     process.exit(1);
   }
 }
@@ -59,11 +61,11 @@ async function runCalendarMigration() {
 if (require.main === module) {
   runCalendarMigration()
     .then(() => {
-      console.log('Calendar migration script completed');
+      log.info('Calendar migration script completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Calendar migration script failed:', error);
+      log.error('Calendar migration script failed:', error);
       process.exit(1);
     });
 }

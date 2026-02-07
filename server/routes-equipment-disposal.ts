@@ -13,6 +13,8 @@ import { z } from 'zod';
 import { db } from './db';
 import { equipmentDisposal, equipmentLifecycle } from '@shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-equipment-disposal');
 
 const router = Router();
 
@@ -154,7 +156,7 @@ router.post('/api/equipment-disposal', async (req: TenantRequest, res: Response)
       data: disposal,
     });
   } catch (error: any) {
-    console.error('Create disposal error:', error);
+    log.error('Create disposal error:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error',
@@ -198,7 +200,7 @@ router.get('/api/equipment-disposal', async (req: TenantRequest, res: Response) 
       data: disposals,
     });
   } catch (error: any) {
-    console.error('Get disposals error:', error);
+    log.error('Get disposals error:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error',
@@ -240,7 +242,7 @@ router.get('/api/equipment-disposal/:disposalId', async (req: TenantRequest, res
       data: disposal,
     });
   } catch (error: any) {
-    console.error('Get disposal error:', error);
+    log.error('Get disposal error:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error',
@@ -312,7 +314,7 @@ router.patch(
         data: updated,
       });
     } catch (error: any) {
-      console.error('Update disposal status error:', error);
+      log.error('Update disposal status error:', error);
       return res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -367,7 +369,7 @@ router.delete('/api/equipment-disposal/:disposalId', async (req: TenantRequest, 
       message: 'Disposal record deleted successfully',
     });
   } catch (error: any) {
-    console.error('Delete disposal error:', error);
+    log.error('Delete disposal error:', error);
     return res.status(500).json({
       success: false,
       message: 'Internal server error',

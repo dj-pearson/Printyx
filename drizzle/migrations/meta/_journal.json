@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1770397594370,
+      "tag": "0000_fuzzy_blizzard",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1770397806208,
+      "tag": "0001_complete_zombie",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770400286505,
+      "tag": "0002_nebulous_ender_wiggin",
+      "breakpoints": true
+    }
+  ]
+}

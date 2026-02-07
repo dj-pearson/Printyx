@@ -2,6 +2,9 @@ import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { serviceReportPDFGenerator } from './services/service-report-pdf';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-mobile');
+
 import {
   SERVICE_CHECKLIST_TEMPLATES,
   getTemplateById,
@@ -259,7 +262,7 @@ router.get('/api/mobile/dashboard', async (req: any, res) => {
 
     res.json(mobileDashboard);
   } catch (error) {
-    console.error('Error fetching mobile dashboard:', error);
+    log.error('Error fetching mobile dashboard:', error);
     res.status(500).json({ message: 'Failed to fetch mobile dashboard' });
   }
 });
@@ -405,7 +408,7 @@ router.get('/api/mobile/jobs/:jobId', async (req: any, res) => {
 
     res.json(jobDetail);
   } catch (error) {
-    console.error('Error fetching job detail:', error);
+    log.error('Error fetching job detail:', error);
     res.status(500).json({ message: 'Failed to fetch job detail' });
   }
 });
@@ -485,7 +488,7 @@ router.post('/api/mobile/jobs/:jobId/status', async (req: any, res) => {
       message: 'Job status updated successfully',
     });
   } catch (error) {
-    console.error('Error updating job status:', error);
+    log.error('Error updating job status:', error);
     res.status(500).json({ message: 'Failed to update job status' });
   }
 });
@@ -582,7 +585,7 @@ router.get('/api/mobile/route-optimization', async (req: any, res) => {
 
     res.json(routeOptimization);
   } catch (error) {
-    console.error('Error fetching route optimization:', error);
+    log.error('Error fetching route optimization:', error);
     res.status(500).json({ message: 'Failed to fetch route optimization' });
   }
 });
@@ -679,7 +682,7 @@ router.post('/api/mobile/service-report', async (req: any, res) => {
       ],
     });
   } catch (error) {
-    console.error('Error submitting service report:', error);
+    log.error('Error submitting service report:', error);
     res.status(500).json({ message: 'Failed to submit service report' });
   }
 });
@@ -784,7 +787,7 @@ router.get('/api/mobile/service-report/:reportId/pdf', async (req: any, res) => 
     // Pipe PDF stream to response
     pdfStream.pipe(res);
   } catch (error) {
-    console.error('Error generating service report PDF:', error);
+    log.error('Error generating service report PDF:', error);
     res.status(500).json({ message: 'Failed to generate PDF service report' });
   }
 });
@@ -809,7 +812,7 @@ router.get('/api/mobile/checklist-templates', (req: any, res) => {
       })),
     });
   } catch (error) {
-    console.error('[CHECKLIST] Error fetching templates:', error);
+    log.error('[CHECKLIST] Error fetching templates:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch checklist templates',
@@ -835,7 +838,7 @@ router.get('/api/mobile/checklist-templates/:templateId', (req: any, res) => {
       template,
     });
   } catch (error) {
-    console.error('[CHECKLIST] Error fetching template:', error);
+    log.error('[CHECKLIST] Error fetching template:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch checklist template',
@@ -856,7 +859,7 @@ router.get('/api/mobile/checklist-templates/by-type/:serviceType', (req: any, re
       count: templates.length,
     });
   } catch (error) {
-    console.error('[CHECKLIST] Error fetching templates by type:', error);
+    log.error('[CHECKLIST] Error fetching templates by type:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch checklist templates',

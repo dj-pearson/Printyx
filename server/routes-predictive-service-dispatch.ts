@@ -2,6 +2,8 @@ import type { Express } from 'express';
 import { db } from './db';
 import { predictiveServiceDispatchService } from './services/predictive-service-dispatch-service';
 import { eq, and, desc, sql, gte, lte, isNull } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-predictive-service-dispatch');
 
 export function registerPredictiveServiceDispatchRoutes(app: Express) {
   /**
@@ -16,14 +18,14 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         return res.status(400).json({ error: 'Tenant ID required' });
       }
 
-      console.log(`🔮 Analyzing device ${serialNumber} for predictive dispatch...`);
+      log.info(`🔮 Analyzing device ${serialNumber} for predictive dispatch...`);
 
       const result = await predictiveServiceDispatchService.analyzeAndDispatch(
         serialNumber,
         tenantId,
       );
 
-      console.log(
+      log.info(
         `✅ Analysis complete in ${result.processingTimeMs}ms - Dispatch: ${result.dispatchCreated}`,
       );
 
@@ -35,7 +37,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         data: result,
       });
     } catch (error: any) {
-      console.error('Predictive dispatch analysis failed:', error);
+      log.error('Predictive dispatch analysis failed:', error);
       res.status(500).json({
         success: false,
         error: error.message || 'Failed to analyze device',
@@ -59,7 +61,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         return res.status(400).json({ error: 'serialNumbers array required' });
       }
 
-      console.log(`🔮 Batch analyzing ${serialNumbers.length} devices...`);
+      log.info(`🔮 Batch analyzing ${serialNumbers.length} devices...`);
 
       const results = [];
       const errors = [];
@@ -85,7 +87,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         errors,
       });
     } catch (error: any) {
-      console.error('Batch predictive dispatch failed:', error);
+      log.error('Batch predictive dispatch failed:', error);
       res.status(500).json({
         success: false,
         error: error.message || 'Failed to batch analyze devices',
@@ -233,7 +235,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         })),
       });
     } catch (error: any) {
-      console.error('Failed to fetch predictive dispatch dashboard:', error);
+      log.error('Failed to fetch predictive dispatch dashboard:', error);
       res.status(500).json({
         error: 'Failed to fetch dashboard data',
       });
@@ -310,7 +312,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         count: atRiskDevices.length,
       });
     } catch (error: any) {
-      console.error('Failed to fetch at-risk devices:', error);
+      log.error('Failed to fetch at-risk devices:', error);
       res.status(500).json({
         error: 'Failed to fetch at-risk devices',
       });
@@ -389,7 +391,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         })),
       });
     } catch (error: any) {
-      console.error('Failed to fetch device health:', error);
+      log.error('Failed to fetch device health:', error);
       res.status(500).json({
         error: 'Failed to fetch device health',
       });
@@ -435,7 +437,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         count: performanceData.length,
       });
     } catch (error: any) {
-      console.error('Failed to fetch technician performance:', error);
+      log.error('Failed to fetch technician performance:', error);
       res.status(500).json({
         error: 'Failed to fetch technician performance',
       });
@@ -453,7 +455,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         return res.status(400).json({ error: 'Tenant ID required' });
       }
 
-      console.log(`🔮 Starting full fleet analysis for tenant ${tenantId}...`);
+      log.info(`🔮 Starting full fleet analysis for tenant ${tenantId}...`);
 
       // Get all unique devices with recent metrics (last 7 days)
       const sevenDaysAgo = new Date();
@@ -471,7 +473,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
 
       const serialNumbers = devicesWithMetrics.map((d) => d.serialNumber);
 
-      console.log(`📊 Found ${serialNumbers.length} devices to analyze`);
+      log.info(`📊 Found ${serialNumbers.length} devices to analyze`);
 
       // Analyze in batches to avoid overload
       const batchSize = 10;
@@ -494,9 +496,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         }
       }
 
-      console.log(
-        `✅ Fleet analysis complete - ${results.length} analyzed, ${errors.length} failed`,
-      );
+      log.info(`✅ Fleet analysis complete - ${results.length} analyzed, ${errors.length} failed`);
 
       res.json({
         success: true,
@@ -512,7 +512,7 @@ export function registerPredictiveServiceDispatchRoutes(app: Express) {
         errors,
       });
     } catch (error: any) {
-      console.error('Fleet analysis failed:', error);
+      log.error('Fleet analysis failed:', error);
       res.status(500).json({
         success: false,
         error: error.message || 'Failed to analyze fleet',

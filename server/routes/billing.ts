@@ -13,6 +13,9 @@
 
 import { Router } from 'express';
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('billing');
+
 import {
   subscriptionPaymentMethods,
   billingHistory,
@@ -106,7 +109,7 @@ router.get('/payment-methods', requireTenantContext, async (req: any, res) => {
 
     res.json(paymentMethods);
   } catch (error) {
-    console.error('Failed to fetch payment methods:', error);
+    log.error('Failed to fetch payment methods:', error);
     res.status(500).json({ error: 'Failed to fetch payment methods' });
   }
 });
@@ -170,7 +173,7 @@ router.post('/payment-methods', requireTenantContext, async (req: any, res) => {
       paymentMethod: newPaymentMethod,
     });
   } catch (error: any) {
-    console.error('Failed to add payment method:', error);
+    log.error('Failed to add payment method:', error);
     res.status(500).json({
       error: 'Failed to add payment method',
       message: error.message,
@@ -223,7 +226,7 @@ router.delete('/payment-methods/:id', requireTenantContext, async (req: any, res
       try {
         await StripeService.removePaymentMethod(paymentMethod.stripePaymentMethodId);
       } catch (error) {
-        console.error('Failed to remove from Stripe:', error);
+        log.error('Failed to remove from Stripe:', error);
         // Continue with database deletion even if Stripe fails
       }
     }
@@ -251,7 +254,7 @@ router.delete('/payment-methods/:id', requireTenantContext, async (req: any, res
 
     res.json({ message: 'Payment method deleted successfully' });
   } catch (error) {
-    console.error('Failed to delete payment method:', error);
+    log.error('Failed to delete payment method:', error);
     res.status(500).json({ error: 'Failed to delete payment method' });
   }
 });
@@ -378,7 +381,7 @@ router.get('/invoices', requireTenantContext, async (req: any, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching invoices:', error);
+    log.error('Error fetching invoices:', error);
     res.status(500).json({ error: 'Failed to fetch invoices' });
   }
 });
@@ -442,7 +445,7 @@ router.get('/invoices/:id', requireTenantContext, async (req: any, res) => {
       lineItems,
     });
   } catch (error) {
-    console.error('Error fetching invoice:', error);
+    log.error('Error fetching invoice:', error);
     res.status(500).json({ error: 'Failed to fetch invoice' });
   }
 });
@@ -485,7 +488,7 @@ router.post('/invoices', isAuthenticated, requireTenantContext, async (req: any,
 
     res.status(201).json(newInvoice);
   } catch (error: any) {
-    console.error('Error creating invoice:', error);
+    log.error('Error creating invoice:', error);
     res.status(500).json({
       error: 'Failed to create invoice',
       message: error.message,
@@ -517,7 +520,7 @@ router.put('/invoices/:id', isAuthenticated, requireTenantContext, async (req: a
 
     res.json(updatedInvoice);
   } catch (error) {
-    console.error('Error updating invoice:', error);
+    log.error('Error updating invoice:', error);
     res.status(500).json({ error: 'Failed to update invoice' });
   }
 });
@@ -555,7 +558,7 @@ router.delete('/invoices/:id', isAuthenticated, requireTenantContext, async (req
 
     res.json({ message: 'Invoice deleted successfully' });
   } catch (error) {
-    console.error('Error deleting invoice:', error);
+    log.error('Error deleting invoice:', error);
     res.status(500).json({ error: 'Failed to delete invoice' });
   }
 });
@@ -712,7 +715,7 @@ async function handleInvoiceSend(req: any, res: any) {
       messageId: emailResult.messageId,
     });
   } catch (error: any) {
-    console.error('Error sending invoice:', error);
+    log.error('Error sending invoice:', error);
     res.status(500).json({
       error: 'Failed to send invoice',
       message: error.message,
@@ -773,7 +776,7 @@ async function handlePaymentRecording(req: any, res: any) {
 
     res.json(updatedInvoice);
   } catch (error) {
-    console.error('Error marking invoice as paid:', error);
+    log.error('Error marking invoice as paid:', error);
     res.status(500).json({ error: 'Failed to mark invoice as paid' });
   }
 }
@@ -822,7 +825,7 @@ router.get('/invoices/:id/pdf', requireTenantContext, async (req: any, res) => {
     // Send PDF
     res.send(pdfBuffer);
   } catch (error: any) {
-    console.error('Failed to download invoice:', error);
+    log.error('Failed to download invoice:', error);
     res.status(500).json({
       error: 'Failed to download invoice',
       message: error.message,
@@ -861,7 +864,7 @@ router.get('/auto-invoice-status', requireTenantContext, async (req: any, res) =
 
     res.json(generations);
   } catch (error) {
-    console.error('Error fetching auto-invoice status:', error);
+    log.error('Error fetching auto-invoice status:', error);
     res.status(500).json({ error: 'Failed to fetch auto-invoice status' });
   }
 });
@@ -891,7 +894,7 @@ router.post('/auto-generate', isAuthenticated, requireTenantContext, async (req:
 
     res.status(201).json(invoice);
   } catch (error: any) {
-    console.error('Error auto-generating invoice:', error);
+    log.error('Error auto-generating invoice:', error);
     res.status(500).json({
       error: 'Failed to auto-generate invoice',
       message: error.message,
@@ -924,7 +927,7 @@ router.get('/metrics', requireTenantContext, async (req: any, res) => {
       ...metrics,
     });
   } catch (error) {
-    console.error('Error fetching billing metrics:', error);
+    log.error('Error fetching billing metrics:', error);
     res.status(500).json({ error: 'Failed to fetch billing metrics' });
   }
 });
@@ -941,7 +944,7 @@ router.get('/health-score', requireTenantContext, async (req: any, res) => {
 
     res.json(healthScore);
   } catch (error) {
-    console.error('Error calculating health score:', error);
+    log.error('Error calculating health score:', error);
     res.status(500).json({ error: 'Failed to calculate health score' });
   }
 });
@@ -1008,7 +1011,7 @@ router.get('/dashboard', isAuthenticated, requireTenantContext, async (req: any,
       paymentRate: totalInvoices > 0 ? (paidInvoices / totalInvoices) * 100 : 0,
     });
   } catch (error) {
-    console.error('Error fetching invoices dashboard:', error);
+    log.error('Error fetching invoices dashboard:', error);
     res.status(500).json({ error: 'Failed to fetch invoices dashboard' });
   }
 });
@@ -1041,7 +1044,7 @@ router.get('/info', requireTenantContext, async (req: any, res) => {
 
     res.json(billingDetails || null);
   } catch (error) {
-    console.error('Failed to fetch billing info:', error);
+    log.error('Failed to fetch billing info:', error);
     res.status(500).json({ error: 'Failed to fetch billing info' });
   }
 });
@@ -1087,7 +1090,7 @@ router.put('/address', requireTenantContext, async (req: any, res) => {
       billingDetails: addressData,
     });
   } catch (error) {
-    console.error('Failed to update billing address:', error);
+    log.error('Failed to update billing address:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         error: 'Invalid billing address data',
@@ -1121,7 +1124,7 @@ router.get('/stripe/config', (req: any, res) => {
       configured: true,
     });
   } catch (error: any) {
-    console.error('Failed to get Stripe config:', error);
+    log.error('Failed to get Stripe config:', error);
     res.status(500).json({
       error: 'Failed to get Stripe configuration',
       message: error.message,
@@ -1159,7 +1162,7 @@ router.post('/stripe/setup-intent', requireTenantContext, async (req: any, res) 
       clientSecret: setupIntent.client_secret,
     });
   } catch (error: any) {
-    console.error('Failed to create setup intent:', error);
+    log.error('Failed to create setup intent:', error);
     res.status(500).json({
       error: 'Failed to create setup intent',
       message: error.message,
@@ -1177,7 +1180,7 @@ router.post('/stripe/webhooks', async (req: any, res) => {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
-      console.error('STRIPE_WEBHOOK_SECRET not configured');
+      log.error('STRIPE_WEBHOOK_SECRET not configured');
       return res.status(500).json({ error: 'Webhook secret not configured' });
     }
 
@@ -1193,7 +1196,7 @@ router.post('/stripe/webhooks', async (req: any, res) => {
 
     res.json({ received: true });
   } catch (error: any) {
-    console.error('Webhook error:', error);
+    log.error('Webhook error:', error);
     res.status(400).json({
       error: 'Webhook processing failed',
       message: error.message,
@@ -1257,7 +1260,7 @@ router.get('/rules', requireTenantContext, async (req: any, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching billing rules:', error);
+    log.error('Error fetching billing rules:', error);
     res.status(500).json({ error: 'Failed to fetch billing rules' });
   }
 });
@@ -1283,7 +1286,7 @@ router.get('/rules/:id', requireTenantContext, async (req: any, res) => {
 
     res.json(rule);
   } catch (error) {
-    console.error('Error fetching billing rule:', error);
+    log.error('Error fetching billing rule:', error);
     res.status(500).json({ error: 'Failed to fetch billing rule' });
   }
 });
@@ -1307,7 +1310,7 @@ router.post('/rules', isAuthenticated, requireTenantContext, async (req: any, re
 
     res.status(201).json(newRule);
   } catch (error: any) {
-    console.error('Error creating billing rule:', error);
+    log.error('Error creating billing rule:', error);
     if (error.name === 'ZodError') {
       return res.status(400).json({
         error: 'Invalid billing rule data',
@@ -1352,7 +1355,7 @@ router.put('/rules/:id', isAuthenticated, requireTenantContext, async (req: any,
 
     res.json(updatedRule);
   } catch (error: any) {
-    console.error('Error updating billing rule:', error);
+    log.error('Error updating billing rule:', error);
     res.status(500).json({
       error: 'Failed to update billing rule',
       message: error.message,
@@ -1395,7 +1398,7 @@ router.delete('/rules/:id', isAuthenticated, requireTenantContext, async (req: a
       rule: deletedRule,
     });
   } catch (error) {
-    console.error('Error deleting billing rule:', error);
+    log.error('Error deleting billing rule:', error);
     res.status(500).json({ error: 'Failed to delete billing rule' });
   }
 });
@@ -1428,7 +1431,7 @@ router.patch(
 
       res.json(updatedRule);
     } catch (error) {
-      console.error('Error activating billing rule:', error);
+      log.error('Error activating billing rule:', error);
       res.status(500).json({ error: 'Failed to activate billing rule' });
     }
   },
@@ -1462,7 +1465,7 @@ router.patch(
 
       res.json(updatedRule);
     } catch (error) {
-      console.error('Error deactivating billing rule:', error);
+      log.error('Error deactivating billing rule:', error);
       res.status(500).json({ error: 'Failed to deactivate billing rule' });
     }
   },
@@ -1488,7 +1491,7 @@ router.get('/analytics/revenue-forecast', requireTenantContext, async (req: any,
       generatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('Error generating revenue forecast:', error);
+    log.error('Error generating revenue forecast:', error);
     res.status(500).json({
       error: 'Failed to generate revenue forecast',
       message: error.message,
@@ -1518,7 +1521,7 @@ router.get('/analytics/churn-prediction', requireTenantContext, async (req: any,
       generatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('Error predicting churn:', error);
+    log.error('Error predicting churn:', error);
     res.status(500).json({
       error: 'Failed to predict churn',
       message: error.message,
@@ -1555,7 +1558,7 @@ router.get('/analytics/lifetime-value', requireTenantContext, async (req: any, r
       generatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error('Error calculating lifetime value:', error);
+    log.error('Error calculating lifetime value:', error);
     res.status(500).json({
       error: 'Failed to calculate lifetime value',
       message: error.message,

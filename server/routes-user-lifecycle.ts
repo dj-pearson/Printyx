@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { UserLifecycleService } from './services/user-lifecycle-service';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-user-lifecycle');
+
 import {
   userProvisioningTemplates,
   userLifecycleEvents,
@@ -76,11 +79,11 @@ const auditLog = (action: string) => {
     // Log to file for audit trail
     const logPath = path.join(__dirname, 'audit.log');
     fs.appendFile(logPath, JSON.stringify(logEntry) + '\n', (err) => {
-      if (err) console.error('Failed to write audit log:', err);
+      if (err) log.error('Failed to write audit log:', err);
     });
 
     // Log to console
-    console.warn(`[AUDIT] ${action}:`, logEntry);
+    log.warn(`[AUDIT] ${action}:`, logEntry);
 
     next();
   };
@@ -109,7 +112,7 @@ router.get('/templates', async (req, res) => {
 
     res.json({ templates: filtered });
   } catch (error) {
-    console.error('Failed to fetch templates:', error);
+    log.error('Failed to fetch templates:', error);
     res.status(500).json({ error: 'Failed to fetch provisioning templates' });
   }
 });
@@ -128,7 +131,7 @@ router.get('/templates/:id', async (req, res) => {
 
     res.json({ template });
   } catch (error) {
-    console.error('Failed to fetch template:', error);
+    log.error('Failed to fetch template:', error);
     res.status(500).json({ error: 'Failed to fetch template' });
   }
 });
@@ -143,7 +146,7 @@ router.post('/templates', async (req, res) => {
 
     res.status(201).json({ template });
   } catch (error) {
-    console.error('Failed to create template:', error);
+    log.error('Failed to create template:', error);
     res.status(500).json({ error: 'Failed to create template' });
   }
 });
@@ -186,7 +189,7 @@ router.post('/provision', async (req, res) => {
       ...result,
     });
   } catch (error) {
-    console.error('Failed to provision user:', error);
+    log.error('Failed to provision user:', error);
     res.status(500).json({
       error: 'Failed to provision user',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -225,7 +228,7 @@ router.post('/provision/bulk', async (req, res) => {
       ...result,
     });
   } catch (error) {
-    console.error('Failed to bulk provision users:', error);
+    log.error('Failed to bulk provision users:', error);
     res.status(500).json({
       error: 'Failed to bulk provision users',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -249,7 +252,7 @@ router.get('/bulk-operations/:id', async (req, res) => {
 
     res.json({ operation });
   } catch (error) {
-    console.error('Failed to fetch bulk operation:', error);
+    log.error('Failed to fetch bulk operation:', error);
     res.status(500).json({ error: 'Failed to fetch bulk operation status' });
   }
 });
@@ -275,7 +278,7 @@ router.get('/:userId/onboarding', async (req, res) => {
 
     res.json({ checklist });
   } catch (error) {
-    console.error('Failed to fetch onboarding checklist:', error);
+    log.error('Failed to fetch onboarding checklist:', error);
     res.status(500).json({ error: 'Failed to fetch onboarding checklist' });
   }
 });
@@ -330,7 +333,7 @@ router.put('/:userId/onboarding/:checklistId/items/:itemId', async (req, res) =>
 
     res.json({ checklist: updated });
   } catch (error) {
-    console.error('Failed to update checklist item:', error);
+    log.error('Failed to update checklist item:', error);
     res.status(500).json({ error: 'Failed to update checklist item' });
   }
 });
@@ -368,7 +371,7 @@ router.post('/:userId/offboard', async (req, res) => {
       ...result,
     });
   } catch (error) {
-    console.error('Failed to initiate offboarding:', error);
+    log.error('Failed to initiate offboarding:', error);
     res.status(500).json({
       error: 'Failed to initiate offboarding',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -393,7 +396,7 @@ router.get('/:userId/offboarding', async (req, res) => {
 
     res.json({ workflow });
   } catch (error) {
-    console.error('Failed to fetch offboarding workflow:', error);
+    log.error('Failed to fetch offboarding workflow:', error);
     res.status(500).json({ error: 'Failed to fetch offboarding workflow' });
   }
 });
@@ -433,7 +436,7 @@ router.post('/access-review', async (req, res) => {
       review,
     });
   } catch (error) {
-    console.error('Failed to create access review:', error);
+    log.error('Failed to create access review:', error);
     res.status(500).json({
       error: 'Failed to create access review',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -462,7 +465,7 @@ router.get('/access-review', async (req, res) => {
 
     res.json({ reviews });
   } catch (error) {
-    console.error('Failed to fetch access reviews:', error);
+    log.error('Failed to fetch access reviews:', error);
     res.status(500).json({ error: 'Failed to fetch access reviews' });
   }
 });
@@ -491,7 +494,7 @@ router.get('/access-review/:id', async (req, res) => {
       certifications,
     });
   } catch (error) {
-    console.error('Failed to fetch access review:', error);
+    log.error('Failed to fetch access review:', error);
     res.status(500).json({ error: 'Failed to fetch access review details' });
   }
 });
@@ -534,7 +537,7 @@ router.post('/:userId/impersonate', auditLog('USER_IMPERSONATION_START'), async 
       ...result,
     });
   } catch (error) {
-    console.error('Failed to start impersonation:', error);
+    log.error('Failed to start impersonation:', error);
     res.status(500).json({
       error: 'Failed to start impersonation session',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -556,7 +559,7 @@ router.post('/impersonate/:sessionId/end', auditLog('USER_IMPERSONATION_END'), a
       message: 'Impersonation session ended',
     });
   } catch (error) {
-    console.error('Failed to end impersonation:', error);
+    log.error('Failed to end impersonation:', error);
     res.status(500).json({
       error: 'Failed to end impersonation session',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -582,7 +585,7 @@ router.get('/impersonate/active', async (req, res) => {
 
     res.json({ sessions });
   } catch (error) {
-    console.error('Failed to fetch impersonation sessions:', error);
+    log.error('Failed to fetch impersonation sessions:', error);
     res.status(500).json({ error: 'Failed to fetch impersonation sessions' });
   }
 });
@@ -607,7 +610,7 @@ router.get('/:userId/lifecycle-events', async (req, res) => {
 
     res.json({ events });
   } catch (error) {
-    console.error('Failed to fetch lifecycle events:', error);
+    log.error('Failed to fetch lifecycle events:', error);
     res.status(500).json({ error: 'Failed to fetch lifecycle events' });
   }
 });

@@ -1,4 +1,7 @@
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-email-marketing-data');
+
 import {
   emailTemplates,
   emailCampaigns,
@@ -13,10 +16,10 @@ const DEMO_TENANT_ID = 'demo-tenant-001';
 const DEMO_USER_ID = 'demo-user-001';
 
 async function seedEmailMarketing() {
-  console.log('🌱 Starting email marketing data seeding...');
+  log.info('🌱 Starting email marketing data seeding...');
 
   try {
-    console.log('🧹 Cleaning up existing email marketing data...');
+    log.info('🧹 Cleaning up existing email marketing data...');
     await db.delete(emailEvents);
     await db.delete(emailSends);
     await db.delete(emailCampaigns);
@@ -25,7 +28,7 @@ async function seedEmailMarketing() {
     await db.delete(emailLists);
     await db.delete(emailUnsubscribes);
 
-    console.log('📧 Seeding email templates...');
+    log.info('📧 Seeding email templates...');
     const templates = await db
       .insert(emailTemplates)
       .values([
@@ -156,9 +159,9 @@ async function seedEmailMarketing() {
       ])
       .returning();
 
-    console.log(`✅ Created ${templates.length} email templates`);
+    log.info(`✅ Created ${templates.length} email templates`);
 
-    console.log('📋 Seeding email lists...');
+    log.info('📋 Seeding email lists...');
     const lists = await db
       .insert(emailLists)
       .values([
@@ -202,9 +205,9 @@ async function seedEmailMarketing() {
       ])
       .returning();
 
-    console.log(`✅ Created ${lists.length} email lists`);
+    log.info(`✅ Created ${lists.length} email lists`);
 
-    console.log('👥 Seeding email list members...');
+    log.info('👥 Seeding email list members...');
     const members = await db
       .insert(emailListMembers)
       .values([
@@ -266,9 +269,9 @@ async function seedEmailMarketing() {
       ])
       .returning();
 
-    console.log(`✅ Created ${members.length} list members`);
+    log.info(`✅ Created ${members.length} list members`);
 
-    console.log('📨 Seeding email campaigns...');
+    log.info('📨 Seeding email campaigns...');
     const campaigns = await db
       .insert(emailCampaigns)
       .values([
@@ -367,9 +370,9 @@ async function seedEmailMarketing() {
       ])
       .returning();
 
-    console.log(`✅ Created ${campaigns.length} email campaigns`);
+    log.info(`✅ Created ${campaigns.length} email campaigns`);
 
-    console.log('✉️ Seeding email sends...');
+    log.info('✉️ Seeding email sends...');
     const sends = await db
       .insert(emailSends)
       .values([
@@ -410,9 +413,9 @@ async function seedEmailMarketing() {
       ])
       .returning();
 
-    console.log(`✅ Created ${sends.length} email sends`);
+    log.info(`✅ Created ${sends.length} email sends`);
 
-    console.log('📊 Seeding email events...');
+    log.info('📊 Seeding email events...');
     const events = await db
       .insert(emailEvents)
       .values([
@@ -467,9 +470,9 @@ async function seedEmailMarketing() {
       ])
       .returning();
 
-    console.log(`✅ Created ${events.length} email events`);
+    log.info(`✅ Created ${events.length} email events`);
 
-    console.log('🚫 Seeding email unsubscribes...');
+    log.info('🚫 Seeding email unsubscribes...');
     const unsubscribes = await db
       .insert(emailUnsubscribes)
       .values([
@@ -485,29 +488,29 @@ async function seedEmailMarketing() {
       ])
       .returning();
 
-    console.log(`✅ Created ${unsubscribes.length} unsubscribes`);
+    log.info(`✅ Created ${unsubscribes.length} unsubscribes`);
 
-    console.log('✅ Email marketing data seeding completed successfully!');
-    console.log('\nSummary:');
-    console.log(`  - Email Templates: ${templates.length}`);
-    console.log(`  - Email Lists: ${lists.length}`);
-    console.log(`  - List Members: ${members.length}`);
-    console.log(`  - Email Campaigns: ${campaigns.length}`);
-    console.log(`  - Email Sends: ${sends.length}`);
-    console.log(`  - Email Events: ${events.length}`);
-    console.log(`  - Unsubscribes: ${unsubscribes.length}`);
+    log.info('✅ Email marketing data seeding completed successfully!');
+    log.info('\nSummary:');
+    log.info(`  - Email Templates: ${templates.length}`);
+    log.info(`  - Email Lists: ${lists.length}`);
+    log.info(`  - List Members: ${members.length}`);
+    log.info(`  - Email Campaigns: ${campaigns.length}`);
+    log.info(`  - Email Sends: ${sends.length}`);
+    log.info(`  - Email Events: ${events.length}`);
+    log.info(`  - Unsubscribes: ${unsubscribes.length}`);
   } catch (error) {
-    console.error('❌ Error seeding email marketing data:', error);
+    log.error('❌ Error seeding email marketing data:', error);
     throw error;
   }
 }
 
 seedEmailMarketing()
   .then(() => {
-    console.log('✨ Seeding script completed');
+    log.info('✨ Seeding script completed');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('💥 Seeding script failed:', error);
+    log.error('💥 Seeding script failed:', error);
     process.exit(1);
   });

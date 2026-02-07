@@ -3,6 +3,9 @@ import { eq, and, desc, sql, count } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-deals-management');
+
 import {
   deals,
   dealStages,
@@ -86,7 +89,7 @@ export function registerDealsManagementRoutes(app: Express) {
 
         res.json(dealsData);
       } catch (error) {
-        console.error('Error fetching deals:', error);
+        log.error('Error fetching deals:', error);
         res.status(500).json({ error: 'Failed to fetch deals' });
       }
     },
@@ -134,7 +137,7 @@ export function registerDealsManagementRoutes(app: Express) {
 
       res.json({ ...deal, activities });
     } catch (error) {
-      console.error('Error fetching deal:', error);
+      log.error('Error fetching deal:', error);
       res.status(500).json({ error: 'Failed to fetch deal' });
     }
   });
@@ -156,7 +159,7 @@ export function registerDealsManagementRoutes(app: Express) {
 
       res.status(201).json(newDeal);
     } catch (error) {
-      console.error('Error creating deal:', error);
+      log.error('Error creating deal:', error);
       res.status(500).json({ error: 'Failed to create deal' });
     }
   });
@@ -201,7 +204,7 @@ export function registerDealsManagementRoutes(app: Express) {
 
       res.json(updatedDeal);
     } catch (error) {
-      console.error('Error updating deal:', error);
+      log.error('Error updating deal:', error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: 'Invalid input', details: error.errors });
       }
@@ -232,7 +235,7 @@ export function registerDealsManagementRoutes(app: Express) {
 
       res.json({ message: 'Deal deleted successfully' });
     } catch (error) {
-      console.error('Error deleting deal:', error);
+      log.error('Error deleting deal:', error);
       res.status(500).json({ error: 'Failed to delete deal' });
     }
   });
@@ -250,7 +253,7 @@ export function registerDealsManagementRoutes(app: Express) {
 
       res.json(stages);
     } catch (error) {
-      console.error('Error fetching deal stages:', error);
+      log.error('Error fetching deal stages:', error);
       res.status(500).json({ error: 'Failed to fetch deal stages' });
     }
   });
@@ -269,7 +272,7 @@ export function registerDealsManagementRoutes(app: Express) {
 
       res.status(201).json(newStage);
     } catch (error) {
-      console.error('Error creating deal stage:', error);
+      log.error('Error creating deal stage:', error);
       res.status(500).json({ error: 'Failed to create deal stage' });
     }
   });
@@ -299,7 +302,7 @@ export function registerDealsManagementRoutes(app: Express) {
 
       res.json(activities);
     } catch (error) {
-      console.error('Error fetching deal activities:', error);
+      log.error('Error fetching deal activities:', error);
       res.status(500).json({ error: 'Failed to fetch deal activities' });
     }
   });
@@ -322,7 +325,7 @@ export function registerDealsManagementRoutes(app: Express) {
 
       res.status(201).json(newActivity);
     } catch (error) {
-      console.error('Error creating deal activity:', error);
+      log.error('Error creating deal activity:', error);
       res.status(500).json({ error: 'Failed to create deal activity' });
     }
   });
@@ -373,7 +376,7 @@ export function registerDealsManagementRoutes(app: Express) {
         winRate: Math.round(winRate * 100) / 100,
       });
     } catch (error) {
-      console.error('Error fetching deals dashboard:', error);
+      log.error('Error fetching deals dashboard:', error);
       res.status(500).json({ error: 'Failed to fetch deals dashboard' });
     }
   });

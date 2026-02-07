@@ -2,6 +2,9 @@ import type { Express, Request, Response } from 'express';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-product-pricing');
+
 import {
   companyPricingSettings,
   enhancedProductPricing,
@@ -64,7 +67,7 @@ export function registerProductPricingRoutes(app: Express) {
       const settings = await getOrCreatePricingSettings(tenantId);
       res.json(settings);
     } catch (error) {
-      console.error('Error fetching pricing settings:', error);
+      log.error('Error fetching pricing settings:', error);
       res.status(500).json({ error: 'Failed to fetch pricing settings' });
     }
   });
@@ -124,7 +127,7 @@ export function registerProductPricingRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error updating pricing settings:', error);
+      log.error('Error updating pricing settings:', error);
       res.status(500).json({ error: 'Failed to update pricing settings' });
     }
   });
@@ -145,7 +148,7 @@ export function registerProductPricingRoutes(app: Express) {
       const visibility = await getPricingVisibility(tenantId, userRole);
       res.json(visibility);
     } catch (error) {
-      console.error('Error fetching pricing visibility:', error);
+      log.error('Error fetching pricing visibility:', error);
       res.status(500).json({ error: 'Failed to fetch pricing visibility' });
     }
   });
@@ -184,7 +187,7 @@ export function registerProductPricingRoutes(app: Express) {
           markupPercentage: markupPercentage || settings.defaultMarkupPercentage,
         });
       } catch (error) {
-        console.error('Error calculating rep cost:', error);
+        log.error('Error calculating rep cost:', error);
         res.status(500).json({ error: 'Failed to calculate rep cost' });
       }
     },
@@ -293,7 +296,7 @@ export function registerProductPricingRoutes(app: Express) {
 
         res.json(filtered);
       } catch (error) {
-        console.error('Error updating product pricing:', error);
+        log.error('Error updating product pricing:', error);
         res.status(500).json({ error: 'Failed to update product pricing' });
       }
     },
@@ -369,7 +372,7 @@ export function registerProductPricingRoutes(app: Express) {
           updated: results,
         });
       } catch (error) {
-        console.error('Error bulk updating dealer costs:', error);
+        log.error('Error bulk updating dealer costs:', error);
         res.status(500).json({ error: 'Failed to bulk update dealer costs' });
       }
     },
@@ -492,7 +495,7 @@ export function registerProductPricingRoutes(app: Express) {
           report,
         });
       } catch (error) {
-        console.error('Error generating margin report:', error);
+        log.error('Error generating margin report:', error);
         res.status(500).json({ error: 'Failed to generate margin report' });
       }
     },
@@ -568,7 +571,7 @@ export function registerProductPricingRoutes(app: Express) {
         res.setHeader('Content-Disposition', 'attachment; filename="margin-report.csv"');
         res.send(csv);
       } catch (error) {
-        console.error('Error exporting margin report:', error);
+        log.error('Error exporting margin report:', error);
         res.status(500).json({ error: 'Failed to export margin report' });
       }
     },
@@ -623,7 +626,7 @@ export function registerProductPricingRoutes(app: Express) {
 
         res.status(201).json(approval);
       } catch (error) {
-        console.error('Error creating price approval request:', error);
+        log.error('Error creating price approval request:', error);
         res.status(500).json({ error: 'Failed to create approval request' });
       }
     },
@@ -678,7 +681,7 @@ export function registerProductPricingRoutes(app: Express) {
 
         res.json(updated);
       } catch (error) {
-        console.error('Error updating approval status:', error);
+        log.error('Error updating approval status:', error);
         res.status(500).json({ error: 'Failed to update approval status' });
       }
     },
@@ -725,7 +728,7 @@ export function registerProductPricingRoutes(app: Express) {
 
         res.json(pending);
       } catch (error) {
-        console.error('Error fetching pending approvals:', error);
+        log.error('Error fetching pending approvals:', error);
         res.status(500).json({ error: 'Failed to fetch pending approvals' });
       }
     },

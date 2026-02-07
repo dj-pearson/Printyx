@@ -2,6 +2,9 @@ import { Router } from 'express';
 import { eq, and, isNull } from 'drizzle-orm';
 import { db } from './db';
 import { businessRecords } from '../shared/schema';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-company-ids');
+
 import {
   generateCompanyDisplayId,
   generateUniqueUrlSlug,
@@ -76,7 +79,7 @@ router.post('/generate/:recordId', async (req: any, res) => {
       url: `/customer/${result.urlSlug}`,
     });
   } catch (error) {
-    console.error('Error generating company identifiers:', error);
+    log.error('Error generating company identifiers:', error);
     res.status(500).json({ error: 'Failed to generate company identifiers' });
   }
 });
@@ -99,7 +102,7 @@ router.post('/backfill', async (req: any, res) => {
       updatedCount,
     });
   } catch (error) {
-    console.error('Error backfilling company identifiers:', error);
+    log.error('Error backfilling company identifiers:', error);
     res.status(500).json({ error: 'Failed to backfill company identifiers' });
   }
 });
@@ -130,7 +133,7 @@ router.get('/missing-ids', async (req: any, res) => {
       count: recordsWithoutIds.length,
     });
   } catch (error) {
-    console.error('Error fetching records without IDs:', error);
+    log.error('Error fetching records without IDs:', error);
     res.status(500).json({ error: 'Failed to fetch records without IDs' });
   }
 });
@@ -163,7 +166,7 @@ router.post('/preview-slug', async (req: any, res) => {
       note: 'This is a preview - actual display ID will be different when created',
     });
   } catch (error) {
-    console.error('Error previewing URL slug:', error);
+    log.error('Error previewing URL slug:', error);
     res.status(500).json({ error: 'Failed to preview URL slug' });
   }
 });

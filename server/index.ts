@@ -1,5 +1,8 @@
 // Load environment variables FIRST before anything else
 import { config as dotenvConfig } from 'dotenv';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('index');
+
 dotenvConfig(); // Load .env file
 
 // Validate environment configuration early
@@ -26,6 +29,9 @@ import {
   getQueryStats,
 } from './lib/monitoring';
 import { setupOpenApi } from './openapi';
+import { globalErrorHandler } from './middleware/error-handler';
+import { closeDbConnections } from './db';
+import { shutdownCache } from './lib/redis-client';
 
 const app = express();
 
@@ -77,7 +83,16 @@ setupMonitoringMiddleware(app, {
   loggingOptions: {
     logRequestBody: false,
     logResponseBody: false,
-    excludePaths: ['/health', '/healthz', '/ready', '/live', '/_health', '/favicon.ico'],
+    excludePaths: [
+      '/health',
+      '/healthz',
+      '/ready',
+      '/readyz',
+      '/live',
+      '/livez',
+      '/_health',
+      '/favicon.ico',
+    ],
     auditPaths: ['/api/root-admin', '/api/security', '/api/platform', '/api/seo'],
   },
 });
@@ -147,9 +162,9 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
 
     // Log CORS decision
-    console.log('[CORS] ✅ Allowed origin:', allowedOrigin);
+    log.info('[CORS] ✅ Allowed origin:', allowedOrigin);
   } else if (origin) {
-    console.error('[CORS] ❌ BLOCKED origin:', origin);
+    log.error('[CORS] ❌ BLOCKED origin:', origin);
   }
 
   // Handle preflight requests
@@ -200,6 +215,10 @@ app.use(compression());
 // SECURITY FIX: Add request size limits to prevent DoS
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// Input sanitization - strip XSS, null bytes, control chars, reject path traversal
+import { inputSanitization } from './middleware/input-sanitization';
+app.use(inputSanitization);
 
 // Audit log for root-admin actions and sensitive endpoints
 // Note: This is now primarily handled by the structured logging middleware,
@@ -310,38 +329,8 @@ app.use((req, res, next) => {
   // Setup monitoring error handlers (must be after routes, before other error handlers)
   setupMonitoringErrorHandlers(app);
 
-  // Final error handler with APM integration
-  app.use((err: any, req: Request & { requestId?: string }, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || 'Internal Server Error';
-    const code = err.code || (status >= 500 ? 'internal_error' : 'request_error');
-    const details = err.details || undefined;
-    const requestId = req.requestId;
-
-    // Capture exception in APM for server errors
-    if (status >= 500) {
-      getAPM().captureException(err, {
-        requestId,
-        method: req.method,
-        path: req.path,
-        statusCode: status,
-      });
-    }
-
-    res.status(status).json({ message, code, details, requestId });
-
-    // Log using structured logging
-    serverLog.error(
-      {
-        err,
-        requestId,
-        method: req.method,
-        path: req.path,
-        statusCode: status,
-      },
-      `Error ${status}: ${message}`,
-    );
-  });
+  // Global error handler (catches AppError subclasses + unhandled errors)
+  app.use(globalErrorHandler);
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
@@ -393,23 +382,68 @@ app.use((req, res, next) => {
   });
 
   // Graceful shutdown handling
+  let isShuttingDown = false;
   const gracefulShutdown = async (signal: string) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
     serverLog.info({ signal }, 'Received shutdown signal, initiating graceful shutdown...');
 
-    // Shutdown monitoring systems (flush logs, close APM)
-    await shutdownMonitoring();
-
-    // Close server
-    server.close(() => {
-      serverLog.info('Server closed');
-      process.exit(0);
-    });
-
-    // Force exit after timeout
-    setTimeout(() => {
-      serverLog.error('Forced shutdown after timeout');
+    // Force exit after 30 seconds
+    const forceTimer = setTimeout(() => {
+      serverLog.error('Forced shutdown after 30s timeout');
       process.exit(1);
     }, 30000);
+    forceTimer.unref();
+
+    // 1. Stop accepting new HTTP connections (in-flight requests continue)
+    server.close(() => {
+      serverLog.info('HTTP server closed, all in-flight requests completed');
+    });
+
+    // 2. Notify WebSocket clients and close after 5 seconds
+    try {
+      const { webSocketService } = await import('./websocket-service');
+      const clientCount = webSocketService.getConnectedClients();
+      if (clientCount > 0) {
+        serverLog.info({ clientCount }, 'Notifying WebSocket clients of shutdown');
+        webSocketService.broadcastDataUpdate('system', {
+          type: 'server-shutdown',
+          message: 'Server is shutting down',
+        });
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+      }
+      webSocketService.destroy();
+      serverLog.info('WebSocket connections closed');
+    } catch {
+      // WebSocket service may not be initialized
+    }
+
+    // 3. Shutdown monitoring systems (flush logs, close APM)
+    try {
+      await shutdownMonitoring();
+      serverLog.info('Monitoring shutdown complete');
+    } catch (err) {
+      serverLog.error({ err }, 'Error shutting down monitoring');
+    }
+
+    // 4. Close Redis/cache connections
+    try {
+      await shutdownCache();
+      serverLog.info('Redis/cache connections closed');
+    } catch (err) {
+      serverLog.error({ err }, 'Error closing Redis connections');
+    }
+
+    // 5. Drain database connection pool
+    try {
+      await closeDbConnections();
+      serverLog.info('Database connections closed');
+    } catch (err) {
+      serverLog.error({ err }, 'Error closing database connections');
+    }
+
+    serverLog.info('Graceful shutdown complete');
+    process.exit(0);
   };
 
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

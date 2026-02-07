@@ -4,6 +4,9 @@ import { db } from './db';
 import { contracts, serviceContracts, businessRecords } from '../shared/schema';
 import { renewalOpportunities, churnPredictions } from '../shared/customer-success-schema';
 import { contractRenewalWorkflow } from './services/contract-renewal-workflow';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-contract-alerts');
+
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -166,7 +169,7 @@ router.get(
 
       res.json(response);
     } catch (error) {
-      console.error('Error fetching contract expiration alerts:', error);
+      log.error('Error fetching contract expiration alerts:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch contract expiration alerts',
@@ -262,7 +265,7 @@ router.get('/api/alerts/contract-expirations/:contractId', async (req: any, res)
       contractSource: 'service_contract',
     });
   } catch (error) {
-    console.error('Error fetching contract details:', error);
+    log.error('Error fetching contract details:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch contract details',
@@ -365,7 +368,7 @@ router.post(
         renewalOpportunity,
       });
     } catch (error) {
-      console.error('Error creating renewal opportunity:', error);
+      log.error('Error creating renewal opportunity:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to create renewal opportunity',
@@ -405,7 +408,7 @@ router.post('/api/alerts/renewal-workflow/process', async (req: any, res) => {
       },
     });
   } catch (error) {
-    console.error('[RENEWAL WORKFLOW] Error processing workflows:', error);
+    log.error('[RENEWAL WORKFLOW] Error processing workflows:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to process renewal workflows',
@@ -436,7 +439,7 @@ router.get('/api/alerts/renewal-workflow/summary', async (req: any, res) => {
       ...summary,
     });
   } catch (error) {
-    console.error('[RENEWAL WORKFLOW] Error getting summary:', error);
+    log.error('[RENEWAL WORKFLOW] Error getting summary:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get renewal workflow summary',

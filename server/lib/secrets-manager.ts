@@ -13,6 +13,8 @@
  */
 
 import { EventEmitter } from 'events';
+import { createModuleLogger } from './logger';
+const log = createModuleLogger('secrets-manager');
 
 // Types for secrets management
 export interface SecretConfig {
@@ -87,7 +89,7 @@ class HashiCorpVaultProvider implements SecretsProvider {
 
     // Start token renewal loop
     this.startTokenRenewal();
-    console.log(`[SecretsManager] HashiCorp Vault initialized at ${this.address}`);
+    log.info(`[SecretsManager] HashiCorp Vault initialized at ${this.address}`);
   }
 
   private async authenticateAppRole(): Promise<void> {
@@ -125,7 +127,7 @@ class HashiCorpVaultProvider implements SecretsProvider {
           try {
             await this.renewToken();
           } catch (error) {
-            console.error('[SecretsManager] Failed to renew Vault token:', error);
+            log.error('[SecretsManager] Failed to renew Vault token:', error);
             // Try to re-authenticate with AppRole
             if (process.env.VAULT_ROLE_ID && process.env.VAULT_SECRET_ID) {
               await this.authenticateAppRole();
@@ -140,7 +142,7 @@ class HashiCorpVaultProvider implements SecretsProvider {
     const response = await this.makeRequest('/v1/auth/token/renew-self', 'POST', {});
     if (response.auth?.lease_duration) {
       this.tokenExpiresAt = new Date(Date.now() + response.auth.lease_duration * 1000);
-      console.log('[SecretsManager] Vault token renewed successfully');
+      log.info('[SecretsManager] Vault token renewed successfully');
     }
   }
 
@@ -312,7 +314,7 @@ class AWSSecretsManagerProvider implements SecretsProvider {
       }
 
       this.client = new SecretsManagerClient(config);
-      console.log(`[SecretsManager] AWS Secrets Manager initialized in ${this.region}`);
+      log.info(`[SecretsManager] AWS Secrets Manager initialized in ${this.region}`);
     } catch (error: any) {
       if (error.code === 'ERR_MODULE_NOT_FOUND') {
         throw new Error(
@@ -475,7 +477,7 @@ class EnvironmentProvider implements SecretsProvider {
   }
 
   async initialize(): Promise<void> {
-    console.log('[SecretsManager] Using environment variables for secrets');
+    log.info('[SecretsManager] Using environment variables for secrets');
   }
 
   private getEnvKey(key: string): string {
@@ -500,7 +502,7 @@ class EnvironmentProvider implements SecretsProvider {
   async setSecret(key: string, value: string): Promise<void> {
     const envKey = this.getEnvKey(key);
     process.env[envKey] = value;
-    console.warn(
+    log.warn(
       `[SecretsManager] Warning: Setting ${envKey} in process.env. This is temporary and will not persist.`,
     );
   }

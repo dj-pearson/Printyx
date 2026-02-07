@@ -1,6 +1,8 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-erp-integration');
 
 // Using inline auth middleware since requireAuth is not available
 const requireAuth = (req: any, res: any, next: any) => {
@@ -677,7 +679,7 @@ router.get('/api/erp-integration/dashboard', async (req: any, res) => {
 
     res.json(erpIntegrationData);
   } catch (error) {
-    console.error('Error fetching ERP integration dashboard:', error);
+    log.error('Error fetching ERP integration dashboard:', error);
     res.status(500).json({ message: 'Failed to fetch ERP integration dashboard' });
   }
 });
@@ -710,7 +712,7 @@ router.get('/api/erp-integration/systems/:systemId', async (req: any, res) => {
 
     res.json(systemDetails);
   } catch (error) {
-    console.error('Error fetching system details:', error);
+    log.error('Error fetching system details:', error);
     res.status(500).json({ message: 'Failed to fetch system details' });
   }
 });
@@ -737,7 +739,7 @@ router.post('/api/erp-integration/systems', async (req: any, res) => {
 
     res.status(201).json(newIntegration);
   } catch (error) {
-    console.error('Error creating integration:', error);
+    log.error('Error creating integration:', error);
     res.status(500).json({ message: 'Failed to create integration' });
   }
 });

@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { db } from './db';
 import { sql, and, eq, gte, lt, count, desc } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-validate');
+
 import {
   businessRecords,
   proposals,
@@ -118,7 +121,7 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
 
     res.json({ valid: errors.length === 0, errors });
   } catch (error) {
-    console.error('Error validating quote for proposal:', error);
+    log.error('Error validating quote for proposal:', error);
     res.status(500).json({ error: 'Validation check failed' });
   }
 });
@@ -209,7 +212,7 @@ router.get('/validate/proposal-to-contract/:proposalId', async (req, res) => {
 
     res.json({ valid: errors.length === 0, errors });
   } catch (error) {
-    console.error('Error validating proposal for contract:', error);
+    log.error('Error validating proposal for contract:', error);
     res.status(500).json({ error: 'Validation check failed' });
   }
 });
@@ -275,7 +278,7 @@ router.get('/validate/po-to-warehouse/:poId', async (req, res) => {
 
     res.json({ valid: errors.length === 0, errors });
   } catch (error) {
-    console.error('Error validating PO for warehouse:', error);
+    log.error('Error validating PO for warehouse:', error);
     res.status(500).json({ error: 'Validation check failed' });
   }
 });
@@ -353,7 +356,7 @@ router.get('/validate/service-completion/:ticketId', async (req, res) => {
 
     res.json({ valid: errors.length === 0, errors });
   } catch (error) {
-    console.error('Error validating service completion:', error);
+    log.error('Error validating service completion:', error);
     res.status(500).json({ error: 'Validation check failed' });
   }
 });

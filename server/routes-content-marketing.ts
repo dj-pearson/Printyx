@@ -1,6 +1,9 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, or, ilike, inArray } from 'drizzle-orm';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-content-marketing');
+
 import {
   blogPosts,
   guides,
@@ -105,7 +108,7 @@ router.get('/api/content/blog', optionalAuth, async (req: any, res) => {
       offset: parseInt(offset as string),
     });
   } catch (error: any) {
-    console.error('Error fetching blog posts:', error);
+    log.error('Error fetching blog posts:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -170,7 +173,7 @@ router.get('/api/content/blog/:slug', optionalAuth, async (req: any, res) => {
       relatedPosts,
     });
   } catch (error: any) {
-    console.error('Error fetching blog post:', error);
+    log.error('Error fetching blog post:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -191,7 +194,7 @@ router.post('/api/content/blog', async (req: any, res) => {
 
     res.json(post);
   } catch (error: any) {
-    console.error('Error creating blog post:', error);
+    log.error('Error creating blog post:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
@@ -210,7 +213,7 @@ router.put('/api/content/blog/:id', async (req: any, res) => {
 
     res.json(post);
   } catch (error: any) {
-    console.error('Error updating blog post:', error);
+    log.error('Error updating blog post:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -222,7 +225,7 @@ router.delete('/api/content/blog/:id', async (req: any, res) => {
 
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Error deleting blog post:', error);
+    log.error('Error deleting blog post:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -279,7 +282,7 @@ router.get('/api/content/guides', optionalAuth, async (req: any, res) => {
       offset: parseInt(offset as string),
     });
   } catch (error: any) {
-    console.error('Error fetching guides:', error);
+    log.error('Error fetching guides:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -331,7 +334,7 @@ router.get('/api/content/guides/:slug', optionalAuth, async (req: any, res) => {
       relatedGuides,
     });
   } catch (error: any) {
-    console.error('Error fetching guide:', error);
+    log.error('Error fetching guide:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -352,7 +355,7 @@ router.post('/api/content/guides', async (req: any, res) => {
 
     res.json(guide);
   } catch (error: any) {
-    console.error('Error creating guide:', error);
+    log.error('Error creating guide:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
@@ -397,7 +400,7 @@ router.get('/api/content/case-studies', optionalAuth, async (req: any, res) => {
 
     res.json({ studies });
   } catch (error: any) {
-    console.error('Error fetching case studies:', error);
+    log.error('Error fetching case studies:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -423,7 +426,7 @@ router.get('/api/content/case-studies/:slug', optionalAuth, async (req: any, res
 
     res.json(study);
   } catch (error: any) {
-    console.error('Error fetching case study:', error);
+    log.error('Error fetching case study:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -442,7 +445,7 @@ router.post('/api/content/case-studies', async (req: any, res) => {
 
     res.json(study);
   } catch (error: any) {
-    console.error('Error creating case study:', error);
+    log.error('Error creating case study:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
@@ -473,7 +476,7 @@ router.get('/api/content/landing/:slug', optionalAuth, async (req: any, res) => 
 
     res.json(page);
   } catch (error: any) {
-    console.error('Error fetching landing page:', error);
+    log.error('Error fetching landing page:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -492,7 +495,7 @@ router.post('/api/content/landing', async (req: any, res) => {
 
     res.json(page);
   } catch (error: any) {
-    console.error('Error creating landing page:', error);
+    log.error('Error creating landing page:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
@@ -511,7 +514,7 @@ router.put('/api/content/landing/:id', async (req: any, res) => {
 
     res.json(page);
   } catch (error: any) {
-    console.error('Error updating landing page:', error);
+    log.error('Error updating landing page:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -532,7 +535,7 @@ router.post('/api/content/:contentType/:contentId/faq', async (req: any, res) =>
 
     res.json(faq);
   } catch (error: any) {
-    console.error('Error adding FAQ:', error);
+    log.error('Error adding FAQ:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
@@ -556,7 +559,7 @@ router.post('/api/content/:contentType/:contentId/citation', async (req: any, re
 
     res.json(citation);
   } catch (error: any) {
-    console.error('Error adding citation:', error);
+    log.error('Error adding citation:', error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
@@ -599,7 +602,7 @@ router.post('/api/content/analytics/view', optionalAuth, async (req: any, res) =
 
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Error tracking analytics:', error);
+    log.error('Error tracking analytics:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -656,7 +659,7 @@ router.get('/api/content/analytics/:contentType/:contentId', async (req: any, re
       topSources,
     });
   } catch (error: any) {
-    console.error('Error fetching analytics:', error);
+    log.error('Error fetching analytics:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -771,7 +774,7 @@ router.get('/sitemap.xml', async (req, res) => {
     res.header('Content-Type', 'application/xml');
     res.send(xml);
   } catch (error: any) {
-    console.error('Error generating sitemap:', error);
+    log.error('Error generating sitemap:', error);
     res.status(500).send('Error generating sitemap');
   }
 });
@@ -857,7 +860,7 @@ updated: ${new Date().toISOString().split('T')[0]}`;
     res.header('Content-Type', 'text/plain');
     res.send(llmsTxt);
   } catch (error: any) {
-    console.error('Error generating llms.txt:', error);
+    log.error('Error generating llms.txt:', error);
     res.status(500).send('Error generating llms.txt');
   }
 });

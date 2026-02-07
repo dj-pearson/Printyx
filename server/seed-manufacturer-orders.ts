@@ -1,14 +1,16 @@
 import { db } from './db';
 import { storage } from './storage';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-manufacturer-orders');
 
 async function seedManufacturerOrders() {
   try {
-    console.log('Seeding manufacturer order submission system...');
+    log.info('Seeding manufacturer order submission system...');
 
     const tenantId = 'demo-tenant';
 
     // 1. Create manufacturer connections (3 manufacturers)
-    console.log('Creating manufacturer connections...');
+    log.info('Creating manufacturer connections...');
 
     const canonConnection = await storage.createManufacturerConnection({
       tenantId,
@@ -64,10 +66,10 @@ async function seedManufacturerOrders() {
       notes: 'Connection needs reconfiguration',
     });
 
-    console.log(`Created ${3} manufacturer connections`);
+    log.info(`Created ${3} manufacturer connections`);
 
     // 2. Create manufacturer orders (5 orders)
-    console.log('Creating manufacturer orders...');
+    log.info('Creating manufacturer orders...');
 
     // Order 1: Canon - Delivered
     const canonOrder1 = await storage.createManufacturerOrder({
@@ -228,10 +230,10 @@ async function seedManufacturerOrders() {
       autoSubmitted: false,
     });
 
-    console.log(`Created ${5} manufacturer orders`);
+    log.info(`Created ${5} manufacturer orders`);
 
     // 3. Create order line items
-    console.log('Creating order line items...');
+    log.info('Creating order line items...');
 
     // Canon Order 1 line items
     await storage.bulkCreateOrderLineItems([
@@ -354,10 +356,10 @@ async function seedManufacturerOrders() {
       },
     ]);
 
-    console.log('Created order line items');
+    log.info('Created order line items');
 
     // 4. Create order confirmations
-    console.log('Creating order confirmations...');
+    log.info('Creating order confirmations...');
 
     await storage.createOrderConfirmation({
       tenantId,
@@ -395,10 +397,10 @@ async function seedManufacturerOrders() {
       },
     });
 
-    console.log('Created order confirmations');
+    log.info('Created order confirmations');
 
     // 5. Create order shipments
-    console.log('Creating order shipments...');
+    log.info('Creating order shipments...');
 
     await storage.createOrderShipment({
       tenantId,
@@ -484,10 +486,10 @@ async function seedManufacturerOrders() {
       lastTrackingUpdate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
     });
 
-    console.log('Created order shipments');
+    log.info('Created order shipments');
 
     // 6. Create order exceptions
-    console.log('Creating order exceptions...');
+    log.info('Creating order exceptions...');
 
     await storage.createOrderException({
       tenantId,
@@ -538,10 +540,10 @@ async function seedManufacturerOrders() {
       occurredAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
     });
 
-    console.log('Created order exceptions');
+    log.info('Created order exceptions');
 
-    console.log('✅ Manufacturer order submission system seeded successfully');
-    console.log(`Summary:
+    log.info('✅ Manufacturer order submission system seeded successfully');
+    log.info(`Summary:
   - 3 manufacturer connections (Canon, Xerox, HP)
   - 5 manufacturer orders (various statuses)
   - 7 order line items
@@ -550,7 +552,7 @@ async function seedManufacturerOrders() {
   - 2 order exceptions
     `);
   } catch (error) {
-    console.error('❌ Error seeding manufacturer orders:', error);
+    log.error('❌ Error seeding manufacturer orders:', error);
     throw error;
   }
 }
@@ -559,11 +561,11 @@ async function seedManufacturerOrders() {
 if (require.main === module) {
   seedManufacturerOrders()
     .then(() => {
-      console.log('Seeding completed');
+      log.info('Seeding completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Seeding failed:', error);
+      log.error('Seeding failed:', error);
       process.exit(1);
     });
 }

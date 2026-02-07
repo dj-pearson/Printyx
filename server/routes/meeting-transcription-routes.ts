@@ -6,6 +6,8 @@
 import express from 'express';
 import multer from 'multer';
 import MeetingTranscriptionService from '../services/meeting-transcription-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('meeting-transcription-routes');
 
 const router = express.Router();
 
@@ -69,7 +71,7 @@ router.post(
 
       res.status(201).json(recording);
     } catch (error) {
-      console.error('Error uploading recording:', error);
+      log.error('Error uploading recording:', error);
       res.status(500).json({ error: 'Failed to upload recording' });
     }
   },
@@ -157,7 +159,7 @@ router.get('/meetings/:meetingId/recordings', async (req, res) => {
 
     res.json(recordings);
   } catch (error) {
-    console.error('Error fetching recordings:', error);
+    log.error('Error fetching recordings:', error);
     res.status(500).json({ error: 'Failed to fetch recordings' });
   }
 });
@@ -299,7 +301,7 @@ John Smith: Excellent insights everyone. Let me summarize our key decisions and 
 
     res.json(transcription);
   } catch (error) {
-    console.error('Error fetching transcription:', error);
+    log.error('Error fetching transcription:', error);
     res.status(500).json({ error: 'Failed to fetch transcription' });
   }
 });
@@ -549,7 +551,7 @@ Significant discussion around resource allocation to support growth objectives w
 
     res.json(notes);
   } catch (error) {
-    console.error('Error fetching meeting notes:', error);
+    log.error('Error fetching meeting notes:', error);
     res.status(500).json({ error: 'Failed to fetch meeting notes' });
   }
 });
@@ -727,7 +729,7 @@ router.get('/meetings/:meetingId/highlights', async (req, res) => {
 
     res.json(highlights);
   } catch (error) {
-    console.error('Error fetching meeting highlights:', error);
+    log.error('Error fetching meeting highlights:', error);
     res.status(500).json({ error: 'Failed to fetch meeting highlights' });
   }
 });
@@ -768,7 +770,7 @@ router.post('/content/search', async (req, res) => {
       filters: filters,
     });
   } catch (error) {
-    console.error('Error searching meeting content:', error);
+    log.error('Error searching meeting content:', error);
     res.status(500).json({ error: 'Failed to search meeting content' });
   }
 });
@@ -794,7 +796,7 @@ router.get('/analytics/content', async (req, res) => {
 
     res.json(analytics);
   } catch (error) {
-    console.error('Error fetching meeting content analytics:', error);
+    log.error('Error fetching meeting content analytics:', error);
     res.status(500).json({ error: 'Failed to fetch meeting content analytics' });
   }
 });
@@ -819,7 +821,7 @@ router.post('/speakers/profile', async (req, res) => {
 
     res.json(profile);
   } catch (error) {
-    console.error('Error generating speaker profile:', error);
+    log.error('Error generating speaker profile:', error);
     res.status(500).json({ error: 'Failed to generate speaker profile' });
   }
 });
@@ -846,7 +848,7 @@ router.post('/recordings/:recordingId/process', async (req, res) => {
       message: 'Recording processing completed successfully',
     });
   } catch (error) {
-    console.error('Error processing recording:', error);
+    log.error('Error processing recording:', error);
     res.status(500).json({ error: 'Failed to process recording' });
   }
 });

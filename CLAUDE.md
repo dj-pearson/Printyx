@@ -26,7 +26,10 @@ npm run format:write     # Apply Prettier formatting
 ### Database
 
 ```bash
-npm run db:push          # Push schema changes to main database
+npm run db:generate      # Generate migration SQL from schema changes
+npm run db:migrate       # Apply pending migrations (with lock)
+npm run db:migrate:status # Show migration status and lock info
+npm run db:push          # Push schema changes directly (dev only, NOT for production)
 npm run db:push:forecast # Push to forecasting database
 ```
 
@@ -202,10 +205,23 @@ app.get('/leads', requirePermission(['sales.lead.view_own', 'sales.lead.view_tea
 
 ### Migration Workflow
 
+Drizzle migrations live in `drizzle/migrations/`. Schema changes produce versioned SQL files.
+
 1. Update schema in `shared/` directory
-2. Run `npm run db:push` to apply changes
-3. Test in development
-4. Commit schema changes
+2. Run `npm run db:generate` to create a migration SQL file in `drizzle/migrations/`
+3. Review the generated SQL
+4. Run `npm run db:migrate` to apply pending migrations (uses a lock to prevent concurrent runs)
+5. Test in development
+6. Commit both schema changes AND the generated migration file
+
+**Important**: `npm run db:push` is still available for quick dev iteration but should NOT be used in production. Always use `db:generate` + `db:migrate` for production deployments.
+
+**Initializing migrations on an existing database** (one-time setup):
+1. `npm run db:generate` - creates the baseline migration
+2. `npm run db:migrate:baseline` - marks it as already applied (does NOT execute SQL)
+3. From now on, schema changes follow the normal generate + migrate workflow
+
+**Migration lock**: `db:migrate` acquires a `__migration_lock` table lock in PostgreSQL. If a migration crashes, the lock auto-expires after 5 minutes. Check status with `npm run db:migrate:status`.
 
 ### Critical: Always Include Tenant Filtering
 

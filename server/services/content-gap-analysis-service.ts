@@ -7,6 +7,9 @@
 
 import { db } from '../db';
 import { eq, and, sql, desc, lt, isNull } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('content-gap-analysis-service');
+
 import {
   knowledgeArticles,
   knowledgeCategories,
@@ -58,7 +61,7 @@ class ContentGapAnalysisService {
    * Generate comprehensive content gap analysis
    */
   async generateAnalysis(tenantId: string): Promise<AnalysisReport> {
-    console.log('🔍 Starting content gap analysis for tenant:', tenantId);
+    log.info('🔍 Starting content gap analysis for tenant:', tenantId);
 
     const [searchGaps, feedbackGaps, featureCoverageGaps, categoryHealth] = await Promise.all([
       this.analyzeSearchPatterns(tenantId),
@@ -94,7 +97,7 @@ class ContentGapAnalysisService {
    * Analyze search query patterns to identify topics users are looking for
    */
   private async analyzeSearchPatterns(tenantId: string): Promise<ContentGap[]> {
-    console.log('🔎 Analyzing search patterns...');
+    log.info('🔎 Analyzing search patterns...');
 
     // Get search queries from last 90 days
     const ninetyDaysAgo = new Date();
@@ -138,7 +141,7 @@ class ContentGapAnalysisService {
       }
     }
 
-    console.log(`  Found ${gaps.length} content gaps from search patterns`);
+    log.info(`  Found ${gaps.length} content gaps from search patterns`);
     return gaps;
   }
 
@@ -146,7 +149,7 @@ class ContentGapAnalysisService {
    * Analyze user feedback to identify problematic or missing content
    */
   private async analyzeFeedback(tenantId: string): Promise<ContentGap[]> {
-    console.log('💬 Analyzing user feedback...');
+    log.info('💬 Analyzing user feedback...');
 
     const gaps: ContentGap[] = [];
 
@@ -207,7 +210,7 @@ class ContentGapAnalysisService {
       });
     }
 
-    console.log(`  Found ${gaps.length} content gaps from feedback`);
+    log.info(`  Found ${gaps.length} content gaps from feedback`);
     return gaps;
   }
 
@@ -215,7 +218,7 @@ class ContentGapAnalysisService {
    * Analyze platform features to find undocumented or poorly documented areas
    */
   private async analyzeFeatureCoverage(tenantId: string): Promise<ContentGap[]> {
-    console.log('📋 Analyzing feature coverage...');
+    log.info('📋 Analyzing feature coverage...');
 
     const gaps: ContentGap[] = [];
 
@@ -286,7 +289,7 @@ class ContentGapAnalysisService {
       }
     }
 
-    console.log(`  Found ${gaps.length} content gaps from feature coverage`);
+    log.info(`  Found ${gaps.length} content gaps from feature coverage`);
     return gaps;
   }
 
@@ -294,7 +297,7 @@ class ContentGapAnalysisService {
    * Analyze health/completeness of each category
    */
   private async analyzeCategoryHealth(tenantId: string): Promise<Record<string, any>> {
-    console.log('📊 Analyzing category health...');
+    log.info('📊 Analyzing category health...');
 
     const categories = await db
       .select({

@@ -1,1362 +1,893 @@
 {
-  "title": "Printyx Platform Production Readiness - Supabase Migration & Enterprise Features",
-  "branchName": "feature/production-enterprise-readiness",
-  "description": "Comprehensive platform review and production readiness initiative covering: self-hosted Supabase migration completion, authentication/security hardening, business process automation, feature consolidation, and enterprise-grade reliability. This PRD addresses 177 missing database tables, 70+ inline routes needing modularization, 15+ incomplete service implementations, and end-to-end business process gaps from lead inception to delivery.",
-  "phases": [
-    {
-      "name": "Phase 1: Infrastructure & Database Migration",
-      "priority": 1,
-      "estimatedStories": 12
-    },
-    {
-      "name": "Phase 2: Authentication & Security Hardening",
-      "priority": 2,
-      "estimatedStories": 8
-    },
-    {
-      "name": "Phase 3: Edge Functions Migration",
-      "priority": 3,
-      "estimatedStories": 10
-    },
-    {
-      "name": "Phase 4: API Routes Consolidation",
-      "priority": 4,
-      "estimatedStories": 8
-    },
-    {
-      "name": "Phase 5: Service Layer Completion",
-      "priority": 5,
-      "estimatedStories": 12
-    },
-    {
-      "name": "Phase 6: Business Process Automation",
-      "priority": 6,
-      "estimatedStories": 15
-    },
-    {
-      "name": "Phase 7: Feature Completeness & Consolidation",
-      "priority": 7,
-      "estimatedStories": 10
-    },
-    {
-      "name": "Phase 8: Code Quality & Technical Debt",
-      "priority": 8,
-      "estimatedStories": 8
-    }
-  ],
+  "project": "Printyx Enterprise Production Readiness",
+  "branchName": "ralph/enterprise-production-readiness",
+  "description": "Make Printyx print shop management SaaS enterprise-grade, professional, and production-ready. Platform: React 18 + TypeScript + Express + PostgreSQL (Drizzle ORM) + Supabase. Architecture: multi-tenant 4-tier hierarchy (Platform > Company > Regional > Location), 8-level RBAC, 213 pages, 127 route files, 91 services, 51 schema files. Critical gaps: 13,197-line monolithic routes.ts (288 inline handlers remaining), minimal test coverage (~13 unit test files for 127 route files), placeholder K8s deployments (echo commands), no proper DB migrations (using db:push), poor accessibility (7 ARIA usages), no i18n, inconsistent error handling and input validation, console.log scattered alongside structured logger. Quality checks: npm run check (typecheck), npm run test (unit tests), npm run lint (eslint), npm run build (vite build).",
   "userStories": [
     {
-      "id": "DB-001",
-      "phase": "Phase 1: Infrastructure & Database Migration",
-      "title": "Verify and complete Neon to Supabase data migration",
-      "description": "The migration status report shows only 41 tables in Supabase vs 181 tables in the original Neon database. Need to verify if core business tables (users, companies, customers, invoices, quotes, contracts) exist in Supabase and complete the migration of any missing data.",
+      "id": "US-001",
+      "title": "Set up Drizzle migration system replacing db:push",
+      "description": "As a platform operator, I need proper database migrations instead of db:push so schema changes are versioned, auditable, and safely deployable to production without data loss.",
       "acceptanceCriteria": [
-        "Run verification query to check existence of all 181 tables from Neon export",
-        "Document which tables exist and which are missing",
-        "If tables missing, restore from database-exports/complete-with-schema.sql",
-        "Verify data integrity after migration (row counts match)",
-        "Update migration tracking documentation",
-        "Confirm all Edge Functions can access migrated tables"
+        "Configure drizzle-kit to generate migration SQL files in a drizzle/migrations/ directory",
+        "drizzle-kit migrate applies pending migrations in order",
+        "Add npm scripts: db:generate, db:migrate, db:migrate:status",
+        "Create an initial baseline migration from the current schema in shared/schema.ts",
+        "Add a migration lockfile pattern to prevent concurrent migrations in production",
+        "Update the Database section in CLAUDE.md with new migration workflow replacing db:push references",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
       ],
-      "files": [
-        "database-exports/complete-with-schema.sql",
-        "NEON_MIGRATION_STATUS.md",
-        "tools/migrate-neon-to-supabase.ps1",
-        "deployment/restore-schema-remote.sh",
-        "scripts/verify-database-migration.mjs"
-      ],
-      "passes": false,
       "priority": 1,
-      "severity": "critical",
-      "verificationAttempt": "2026-01-21T23:38:00Z",
-      "blockedReason": "INVALID_CREDENTIALS",
-      "notes": "BLOCKED: Two issues discovered: (1) Direct PostgreSQL connection to 209.145.59.219:5433 fails with ECONNRESET - TCP port is open but PG protocol fails, likely Supavisor configuration issue; (2) Supabase REST API returns 'Invalid authentication credentials' - SUPABASE_SERVICE_ROLE_KEY appears expired or invalid. USER ACTION REQUIRED: Update .env with valid Supabase credentials from the self-hosted Supabase dashboard at 209.145.59.219. Once credentials fixed, run: node scripts/verify-database-migration.mjs"
-    },
-    {
-      "id": "DB-002",
-      "phase": "Phase 1: Infrastructure & Database Migration",
-      "title": "Verify created_by column references in route files",
-      "description": "RESOLVED: Analysis confirmed routes-automation.ts and routes-sales-pipeline.ts are CORRECT. They reference tables (automation_rules, business_record_activities, business_records) that DO have created_by columns. The original commits 1fee0ac and 88a20ec fixed the import edge function which was inserting into customers/company_contacts tables that lack this column. No changes needed to server routes.",
-      "acceptanceCriteria": [
-        "VERIFIED: automation_rules table HAS created_by column (schema.sql line 387)",
-        "VERIFIED: business_record_activities table HAS created_by column (schema.ts line 2189)",
-        "VERIFIED: business_records table HAS created_by column (schema.ts line 1302)",
-        "VERIFIED: customers table does NOT have created_by - import edge function already fixed",
-        "VERIFIED: company_contacts table does NOT have created_by - import edge function already fixed",
-        "No code changes required - routes are correct"
-      ],
-      "files": [
-        "server/routes-automation.ts",
-        "server/routes-sales-pipeline.ts",
-        "supabase/functions/import/index.ts"
-      ],
       "passes": true,
-      "priority": 1,
-      "severity": "resolved",
-      "resolution": "Misidentified issue - routes reference tables that have created_by columns. Import edge function was already fixed in commits 1fee0ac and 88a20ec."
+      "notes": "Currently using db:push which is not safe for production. Drizzle supports generate+migrate workflow. Main schema: shared/schema.ts (293KB) with 43 additional files in shared/*-schema.ts. Forecasting DB config: drizzle.forecasting.config.ts. See drizzle.config.ts for current setup."
     },
     {
-      "id": "DB-003",
-      "phase": "Phase 1: Infrastructure & Database Migration",
-      "title": "Synchronize Drizzle schema with production database",
-      "description": "Ensure shared/schema.ts and all 51 *-schema.ts files accurately reflect the production database structure. Run db:push to apply any schema differences.",
+      "id": "US-002",
+      "title": "Add comprehensive test infrastructure with factories and helpers",
+      "description": "As a developer, I need proper test infrastructure with coverage reporting, test utilities, and factory functions so writing tests is fast and consistent.",
       "acceptanceCriteria": [
-        "Export current Supabase schema structure",
-        "Compare with shared/schema.ts definitions",
-        "Identify missing columns, tables, or type mismatches",
-        "Update Drizzle schemas to match production",
-        "Run npm run db:push to apply changes",
-        "Verify all 51 schema files are consistent"
+        "Create server/tests/helpers/test-utils.ts with: mock Express request/response factories, authenticated request helpers with JWT mock, tenant context helpers",
+        "Create server/tests/helpers/db-helpers.ts with: test database setup/teardown helpers, seed data factories for key entities (tenant, user, lead, customer, quote, order, invoice)",
+        "Create server/tests/helpers/auth-mocks.ts with: mock implementations for requireAuth, requireSupabaseAuth, protectedRoute that set req.user and req.supabaseUser",
+        "Configure vitest.config.ts with coverage provider and statements threshold of 50% for new files",
+        "Add npm script test:coverage:check that fails if coverage thresholds not met",
+        "Verify test infrastructure works by writing 3 smoke tests using the helpers",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
       ],
-      "files": ["shared/schema.ts", "drizzle.config.ts", "drizzle.forecasting.config.ts"],
-      "passes": false,
       "priority": 2,
-      "severity": "high"
+      "passes": true,
+      "notes": "Currently only ~13 unit test files in server/tests/unit/. vitest is configured. This infrastructure is prerequisite for US-008 through US-010 and US-028/US-039."
     },
     {
-      "id": "DB-004",
-      "phase": "Phase 1: Infrastructure & Database Migration",
-      "title": "Clean up Neon migration artifacts and documentation",
-      "description": "COMPLETED: Removed old Neon-related scripts, backup package.json files, and updated documentation.",
+      "id": "US-003",
+      "title": "Create standardized API error classes and global error handler",
+      "description": "As an API consumer, I need consistent error response format across all endpoints so error handling is predictable. The format must be: { message, code, details, requestId }.",
       "acceptanceCriteria": [
-        "DONE: Deleted package.json.backup, package.json.fixed, package.json.corrected",
-        "DONE: Archived migration scripts to tools/_archived/",
-        "DONE: Updated NEON_MIGRATION_STATUS.md with credential issue and cleanup status",
-        "N/A: @neondatabase/serverless is only an optional peer dependency from drizzle-orm (not direct)",
-        "DONE: Verified no Neon references in CLAUDE.md",
-        "SKIPPED: database-exports/ kept for potential future restoration"
+        "Create server/lib/api-errors.ts with: AppError base class, NotFoundError (404), ValidationError (400), AuthenticationError (401), AuthorizationError (403), ConflictError (409), RateLimitError (429) - each with HTTP status and error code",
+        "Create server/middleware/error-handler.ts global error handler that catches AppError instances and formats: { message, code, details, requestId }",
+        "Register error handler as the LAST middleware in server/index.ts (after all routes)",
+        "Error handler logs all 5xx errors with full stack trace using createModuleLogger",
+        "Error handler returns sanitized message for 5xx in production (no stack traces to client)",
+        "Update at least 5 route files to throw AppError subclasses instead of manual res.status().json()",
+        "Add unit tests for the error handler middleware covering each error type",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
       ],
-      "files": [
-        "tools/_archived/migrate-neon-to-supabase.ps1",
-        "tools/_archived/migrate-neon-to-supabase.sh",
-        "NEON_MIGRATION_STATUS.md"
-      ],
+      "priority": 3,
       "passes": true,
+      "notes": "server/utils/apiErrorHandler.ts exists with ErrorCodes enum and handleApiError() but is not adopted (0/174 routes use it). Build on or replace that foundation. CLAUDE.md documents the target format: { message, code, details, requestId }."
+    },
+    {
+      "id": "US-004",
+      "title": "Extract auth routes from monolithic routes.ts",
+      "description": "As a developer, I need auth-related routes extracted from the 13,197-line routes.ts into a dedicated module so the codebase is maintainable.",
+      "acceptanceCriteria": [
+        "Create server/routes-auth-core.ts containing all authentication and session routes extracted from routes.ts",
+        "Routes include: login, logout, signup, password reset, email verification, session management, MFA setup endpoints, /api/me, /api/auth/* paths",
+        "Export a registerAuthRoutes(app: Express) function following the existing route module pattern",
+        "Register the new route module in routes.ts via import and function call",
+        "Remove all extracted route handlers from routes.ts",
+        "All auth endpoints respond identically at the same paths with the same behavior",
+        "Typecheck passes: npm run check",
+        "Existing tests still pass: npm run test"
+      ],
       "priority": 4,
-      "severity": "resolved",
-      "resolution": "Cleaned up 3 backup package.json files, archived 2 migration scripts to tools/_archived/, updated NEON_MIGRATION_STATUS.md with credential error discovery and cleanup notes."
+      "passes": true,
+      "notes": "routes.ts is 13,197 lines with 288 inline handlers. 124 modular route files already exist (server/routes-*.ts pattern). This is the first extraction story. Previous iteration (ROUTES-001) removed 7 duplicates and 211 lines."
     },
     {
-      "id": "DB-005",
-      "phase": "Phase 1: Infrastructure & Database Migration",
-      "title": "Implement database connection health monitoring",
-      "description": "The db.ts file has comprehensive resilience features but health check endpoints should be verified and monitoring dashboard integration completed.",
+      "id": "US-005",
+      "title": "Extract CRM routes (leads, customers, contacts) from routes.ts",
+      "description": "As a developer, I need CRM routes extracted from routes.ts to continue the monolith decomposition.",
       "acceptanceCriteria": [
-        "Verify /health, /ready, /live endpoints work correctly",
-        "Test circuit breaker behavior under load",
-        "Integrate health metrics with monitoring dashboard",
-        "Add alerting for connection pool exhaustion",
-        "Document health check endpoints in API documentation",
-        "Test graceful shutdown with closeDbConnections()"
+        "Create server/routes-crm-core.ts with all leads, customers, contacts, and business records route handlers from routes.ts",
+        "Include /api/leads*, /api/customers*, /api/contacts*, /api/business-records* routes",
+        "Export a registerCrmRoutes(app: Express) function",
+        "Register in routes.ts and remove all extracted handlers",
+        "All CRM API endpoints work identically at the same paths",
+        "Typecheck passes: npm run check",
+        "Existing tests still pass: npm run test"
       ],
-      "files": [
-        "server/db.ts",
-        "server/routes/health-routes.ts",
-        "server/lib/connection-resilience.ts"
+      "priority": 5,
+      "passes": true,
+      "notes": "routes-business-records.ts already exists as a modular file. Check for overlap. The Unified Business Records pattern means leads and customers share the same table - be careful with route extraction."
+    },
+    {
+      "id": "US-006",
+      "title": "Extract dashboard, analytics, and billing routes from routes.ts",
+      "description": "As a developer, I need dashboard/analytics and billing routes extracted from routes.ts.",
+      "acceptanceCriteria": [
+        "Create server/routes-dashboards-core.ts with all /api/dashboard*, /api/kpi*, /api/analytics*, /api/widgets* handlers from routes.ts",
+        "Create server/routes-billing-core.ts with all /api/billing*, /api/subscriptions*, /api/invoices*, /api/payments*, /api/stripe* handlers from routes.ts",
+        "Both files export register functions following existing patterns",
+        "Register both in routes.ts and remove all extracted handlers",
+        "All endpoints work identically",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
       ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Billing may be mounted twice (consolidatedBillingRoutes + advancedBillingRoutes). Investigate and consolidate if appropriate."
+    },
+    {
+      "id": "US-007",
+      "title": "Complete routes.ts decomposition to under 500 lines",
+      "description": "As a developer, I need routes.ts to be a clean registry file that only imports and registers route modules, under 500 lines.",
+      "acceptanceCriteria": [
+        "All remaining business route handlers in routes.ts are extracted to appropriately named route modules",
+        "routes.ts contains only: imports, middleware setup, route module registration calls, and the catch-all SPA handler",
+        "routes.ts is under 500 lines total",
+        "Every extracted module follows the pattern: export function registerXxxRoutes(app: Express)",
+        "All API endpoints work identically at the same paths",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "After US-004 through US-006, extract whatever remains. Categories may include: pricing (18 handlers), user (8), seo (7), security-compliance (6), settings, platform management, etc. The goal is routes.ts as a pure registry."
+    },
+    {
+      "id": "US-008",
+      "title": "Add unit tests for auth middleware and helpers",
+      "description": "As a developer, I need the authentication middleware thoroughly tested since it protects every route in the system.",
+      "acceptanceCriteria": [
+        "Tests for server/middleware/supabase-auth.ts: valid JWT, expired JWT, missing token, malformed token, tenant extraction from app_metadata",
+        "Tests for server/utils/auth-helpers.ts: getUserId, getTenantId, isAuthenticated, isPlatformAdmin for JWT and session fallback sources",
+        "Tests for server/replitAuth.ts: requireAuth middleware with session fallback behavior",
+        "Tests for server/middleware/enhanced-rbac-middleware.ts: permission checking with requirePermission, role hierarchy enforcement, scope filtering (own, team, all)",
+        "At least 30 test cases covering positive and negative paths",
+        "All tests pass: npm run test",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Uses test helpers from US-002. Auth middleware files: server/middleware/supabase-auth.ts, server/replitAuth.ts, server/middleware/enhanced-rbac-middleware.ts, server/utils/auth-helpers.ts. Some tests already exist from previous work (tenant validation has 13 tests, admin detection has 37 tests)."
+    },
+    {
+      "id": "US-009",
+      "title": "Add unit tests for tenant isolation and multi-tenancy",
+      "description": "As a security auditor, I need tests proving tenant isolation is enforced across all data access patterns.",
+      "acceptanceCriteria": [
+        "Tests for server/middleware/tenancy.ts: tenant resolution from x-tenant-id header, JWT app_metadata.tenantId, and session fallback; rejection when all sources missing",
+        "Tests for server/middleware/hierarchical-query-builder.ts: query scoping at platform, company, regional, and location hierarchy levels",
+        "Tests for server/middleware/requireTenant.ts: tenant requirement enforcement and 401 on missing tenant",
+        "Test demonstrating that a request with Tenant A context cannot access Tenant B data via the query builder",
+        "At least 20 test cases",
+        "All tests pass: npm run test",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Tenant resolution priority: x-tenant-id header > JWT app_metadata.tenantId > Session. The 4-tier hierarchy (Platform > Company > Regional > Location) affects query scoping. Previous audit (SVC-011) confirmed 74/91 services have proper tenantId handling."
+    },
+    {
+      "id": "US-010",
+      "title": "Add unit tests for billing and subscription services",
+      "description": "As a developer, I need billing logic tested to prevent revenue-impacting bugs in the Stripe integration.",
+      "acceptanceCriteria": [
+        "Tests for server/services/billing-engine-service.ts: plan pricing calculation, proration for mid-cycle changes, trial period handling, overage billing",
+        "Tests for server/services/automated-billing-service.ts: invoice generation, payment retry logic on failure, billing cycle management",
+        "Tests for server/middleware/subscription.ts: feature gating based on subscription plan, expired subscription handling",
+        "Mock Stripe API calls with realistic response shapes",
+        "At least 20 test cases covering billing edge cases",
+        "All tests pass: npm run test",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "Stripe integration uses server/services/stripe-service.ts and related services. billing-analytics-service.ts and payment-audit-service.ts also exist. Mock all Stripe SDK calls."
+    },
+    {
+      "id": "US-011",
+      "title": "Replace console.log with structured logger across server",
+      "description": "As a platform operator, I need all server logging to use the structured logger so logs are parseable, searchable, and include context.",
+      "acceptanceCriteria": [
+        "Find and replace all console.log, console.error, console.warn in server/ directory with createModuleLogger calls",
+        "Each file gets its own module logger: const log = createModuleLogger('module-name')",
+        "Log levels are appropriate: log.error() for errors, log.warn() for warnings, log.info() for operations, log.debug() for verbose",
+        "CORS logging in server/index.ts uses structured logger instead of console.log/console.error",
+        "No remaining console.log/console.error/console.warn in server/ except server/vite.ts (which handles Vite dev server output)",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "server/lib/logger.ts and server/lib/monitoring.ts provide createModuleLogger(). server/index.ts already uses it (const serverLog = createModuleLogger('server')). Many route files and services still use console.log. Do NOT change client/ files."
+    },
+    {
+      "id": "US-012",
+      "title": "Apply rate limiting consistently across all API endpoints",
+      "description": "As a security engineer, I need rate limiting on all API endpoints to prevent abuse, with stricter limits on auth and billing endpoints.",
+      "acceptanceCriteria": [
+        "Update server/middleware/user-rate-limit.ts to export tiered rate limiters: authLimiter (5 req/min), billingLimiter (20 req/min), mutationLimiter (100 req/min), readLimiter (200 req/min)",
+        "Apply authLimiter to all auth routes: login, signup, password reset, MFA verification",
+        "Apply billingLimiter to all /api/billing*, /api/stripe*, /api/subscriptions* routes",
+        "Apply mutationLimiter as global middleware for POST/PUT/PATCH/DELETE requests",
+        "Apply readLimiter as global middleware for GET requests",
+        "Rate limit headers included in all responses: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset",
+        "429 responses return standardized error format: { message, code: 'RATE_LIMITED', details: { retryAfter } }",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "server/middleware/user-rate-limit.ts exists but is only applied in ~10 route files. Redis client at server/lib/redis-client.ts can be used for distributed rate limiting across instances. Apply globally via middleware, not per-route."
+    },
+    {
+      "id": "US-013",
+      "title": "Add Zod input validation to all CRM routes",
+      "description": "As a security engineer, I need all CRM API inputs validated with Zod schemas to prevent injection and data corruption.",
+      "acceptanceCriteria": [
+        "Every POST/PUT/PATCH endpoint in CRM routes (leads, customers, contacts, business records) validates request body with a Zod schema",
+        "Every GET endpoint with query parameters validates them with Zod (pagination: page, limit, sort, filter)",
+        "Validation errors return 400 with: { message: 'Validation error', code: 'VALIDATION_ERROR', details: zodError.flatten() }",
+        "Reuse existing Zod schemas from shared/ directory where they exist (e.g., shared/schema.ts insert schemas)",
+        "Create missing schemas in the appropriate shared/*-schema.ts file",
+        "At least 20 CRM endpoints have input validation",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": "shared/ has 51 schema files with Zod schemas (drizzle-zod generates insert/select schemas). server/middleware/enhanced-validation.ts exists. Focus on the extracted CRM routes from US-005 or the existing routes-business-records.ts."
+    },
+    {
+      "id": "US-014",
+      "title": "Add comprehensive health check and readiness endpoints",
+      "description": "As a platform operator, I need health, readiness, and liveness endpoints so Kubernetes can properly manage pod lifecycle.",
+      "acceptanceCriteria": [
+        "GET /health returns 200 with: { status: 'ok', version: process.env.APP_VERSION, uptime: process.uptime(), timestamp: new Date().toISOString() }",
+        "GET /ready returns 200 only when database AND Redis are reachable; returns 503 with { status: 'degraded', checks: { database: 'ok'|'fail', redis: 'ok'|'fail' } } otherwise",
+        "GET /live returns 200 if the event loop is responsive (not deadlocked)",
+        "GET /health/detailed requires authentication + platform admin role and returns: memory usage, CPU, connection pool stats, active WebSocket count, queue depths",
+        "All health endpoints are excluded from logging middleware (already configured in server/index.ts excludePaths)",
+        "Update Dockerfile HEALTHCHECK to use /ready instead of /health for proper K8s readiness",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": "Dockerfile has HEALTHCHECK pointing to /health. server/lib/monitoring.ts has getMonitoringHealth() and getQueryStats(). server/routes/health-routes.ts may already exist. Enhance into proper K8s-compatible liveness/readiness/startup probes."
+    },
+    {
+      "id": "US-015",
+      "title": "Implement graceful shutdown with connection draining",
+      "description": "As a platform operator, I need the server to drain connections on SIGTERM so rolling deployments don't drop in-flight requests.",
+      "acceptanceCriteria": [
+        "SIGTERM handler stops accepting new HTTP connections via server.close()",
+        "In-flight HTTP requests are given 30 seconds to complete before force-closing",
+        "Database connection pool is drained via closeDbConnections() from server/db.ts",
+        "Redis connections are closed cleanly",
+        "WebSocket connections receive a 'server-shutdown' event and are closed after 5 seconds",
+        "shutdownMonitoring() from server/lib/monitoring.ts is called for cleanup",
+        "Process exits with code 0 after all cleanup completes",
+        "SIGINT (Ctrl+C in dev) triggers the same graceful shutdown",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": "Dockerfile uses dumb-init for signal forwarding. server/lib/monitoring.ts exports shutdownMonitoring(). Extend to cover all resources. Check if any shutdown logic already exists in server/index.ts."
+    },
+    {
+      "id": "US-016",
+      "title": "Add CSRF protection to all state-changing endpoints",
+      "description": "As a security engineer, I need CSRF protection on all mutation endpoints to prevent cross-site request forgery on cookie-based sessions.",
+      "acceptanceCriteria": [
+        "Install csrf-csrf or equivalent modern CSRF library (csurf is deprecated)",
+        "Generate CSRF token on session initialization, expose via GET /api/csrf-token",
+        "All POST/PUT/PATCH/DELETE requests validate CSRF token from X-CSRF-Token header",
+        "CSRF validation is skipped for requests authenticated via API key (server-to-server)",
+        "CSRF validation is skipped for requests authenticated via Bearer JWT without cookies",
+        "Frontend TanStack Query client in client/src/lib/queryClient.ts includes X-CSRF-Token in all mutation requests",
+        "CORS already exposes X-CSRF-Token header (verified in server/index.ts line 146)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 16,
+      "passes": true,
+      "notes": "Platform uses JWT auth primarily (which has built-in CSRF protection) but also has cookie-based session fallback which needs CSRF protection. CORS config already lists X-CSRF-Token in allowedHeaders and exposedHeaders."
+    },
+    {
+      "id": "US-017",
+      "title": "Implement comprehensive audit logging for sensitive operations",
+      "description": "As a compliance officer, I need an immutable audit trail of all sensitive operations for security and regulatory compliance.",
+      "acceptanceCriteria": [
+        "Create audit_logs table in shared/schema.ts: id, action (string), resourceType (string), resourceId (string), userId (string), tenantId (string), details (jsonb), ipAddress (string), userAgent (string), createdAt (timestamp) with indexes on tenantId+createdAt and userId+createdAt",
+        "Create server/services/audit-log-service.ts with: logAction(action, resourceType, resourceId, userId, tenantId, details, req) function",
+        "Log all auth events: login_success, login_failure, logout, password_change, mfa_enable, mfa_disable",
+        "Log all admin actions: user_create, user_delete, role_change, permission_change, tenant_config_update",
+        "Log all data deletion events: record_delete, bulk_delete",
+        "Audit logs table has no UPDATE or DELETE permissions (append-only)",
+        "Add GET /api/audit-logs endpoint (platform admin only) with pagination, date range filter, action filter, user filter",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 17,
+      "passes": true,
+      "notes": "server/services/audit-archival-service.ts exists with 7-year retention. Previous work (AUTH-006) added admin bypass logging with logAdminBypass(). Build a comprehensive system that covers all sensitive operations, not just admin bypasses."
+    },
+    {
+      "id": "US-018",
+      "title": "Implement request correlation IDs end-to-end",
+      "description": "As a developer debugging production issues, I need every request to carry a correlation ID from frontend through backend into logs.",
+      "acceptanceCriteria": [
+        "Every HTTP request gets a unique X-Request-ID (server generates UUID if client doesn't provide one)",
+        "X-Request-ID is returned in ALL API responses (success and error)",
+        "All structured log entries include the requestId in their context",
+        "All error responses include requestId in the JSON body",
+        "Frontend API client in client/src/lib/queryClient.ts generates and sends X-Request-ID with every request",
+        "Frontend stores last requestId for error reporting UI",
+        "Database queries from Drizzle include request ID as SQL comment for slow query log correlation",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 18,
+      "passes": true,
+      "notes": "server/lib/monitoring.ts setupMonitoringMiddleware already handles request ID generation. Verify it flows through all layers. Frontend queryClient is in client/src/lib/queryClient.ts. Drizzle logger is in server/lib/db-logger.ts."
+    },
+    {
+      "id": "US-019",
+      "title": "Add input sanitization middleware for XSS prevention",
+      "description": "As a security engineer, I need all user input sanitized to prevent XSS and injection attacks across the entire API.",
+      "acceptanceCriteria": [
+        "Create server/middleware/input-sanitization.ts that processes all req.body, req.query, and req.params string values",
+        "Strip HTML tags from all string inputs using a sanitization library (e.g., sanitize-html or xss)",
+        "Detect and strip null bytes and control characters from all inputs",
+        "Detect and reject path traversal patterns (../, %2e%2e) with 400 error",
+        "Apply sanitization middleware globally after body parser in server/index.ts",
+        "Whitelist specific fields that need rich HTML (e.g., emailBody, description with formatting) via a configuration map",
+        "Add unit tests with common XSS payloads: <script>, onerror=, javascript:, data:text/html",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 19,
+      "passes": true,
+      "notes": "Drizzle ORM uses parameterized queries preventing SQL injection at ORM level, but XSS is the main concern for user-facing content. Some content fields (emails, knowledge base articles) may need rich HTML."
+    },
+    {
+      "id": "US-020",
+      "title": "Enhance API key management for external integrations",
+      "description": "As an enterprise admin, I need to manage API keys with scoped permissions, expiration, and usage tracking.",
+      "acceptanceCriteria": [
+        "Verify server/services/api-key-service.ts properly hashes API keys (bcrypt or argon2, never plaintext storage)",
+        "POST /api/api-keys creates key with: name, scopes (permission list), expiresAt; returns the key ONCE on creation",
+        "GET /api/api-keys lists all keys for tenant showing: name, lastUsed, expiresAt, scopes, masked key (last 4 chars only)",
+        "DELETE /api/api-keys/:id revokes a key immediately",
+        "API key auth via server/middleware/api-key-auth.ts respects the key's scopes - rejects requests outside scope",
+        "Each API key usage logs: timestamp, IP, endpoint, response status to an api_key_usage_logs table",
+        "Expired keys are rejected with 401",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 20,
       "passes": false,
-      "priority": 3,
-      "severity": "medium"
+      "notes": "server/middleware/api-key-auth.ts and server/services/api-key-service.ts already exist. Audit and enhance to enterprise standards: proper hashing, rotation support, scoped permissions, usage logging."
     },
     {
-      "id": "AUTH-001",
-      "phase": "Phase 2: Authentication & Security Hardening",
-      "title": "Fix tenant header validation security vulnerability",
-      "description": "RESOLVED: Implemented security validation to prevent x-tenant-id header from overriding JWT tenant. Non-platform users receive 403 Forbidden if attempting to access different tenant. Platform admins (roleLevel >= 8) can access any tenant via header.",
+      "id": "US-021",
+      "title": "Add ARIA labels and keyboard navigation to core UI",
+      "description": "As a user with disabilities, I need the core navigation, forms, and data tables to be screen reader and keyboard accessible.",
       "acceptanceCriteria": [
-        "DONE: Validate x-tenant-id header against user's JWT app_metadata.tenantId",
-        "DONE: Return 403 Forbidden if header doesn't match user's assigned tenant",
-        "DONE: Add exception for platform admins who can access any tenant (roleLevel >= 8)",
-        "DONE: Log all tenant context mismatches for security audit",
-        "PENDING: Add unit tests for tenant validation",
-        "PENDING: Document the validation logic in security documentation"
+        "Main sidebar/navigation has ARIA roles: nav with aria-label, menuitem roles, aria-current for active item",
+        "All form inputs across Login, Signup, and Settings pages have associated <label> elements with htmlFor or aria-label",
+        "Data tables have <caption>, <th scope='col'>, and aria-sort on sortable columns",
+        "Modal dialogs have aria-modal='true', aria-labelledby pointing to title, and focus trap",
+        "Toast notifications use role='alert' or role='status' with aria-live='polite'",
+        "SkipNavigation component from client/src/components/accessibility/SkipNavigation.tsx is rendered in the root App component",
+        "Keyboard: Tab navigates all interactive elements in logical order, Escape closes modals and dropdowns, Enter/Space activates buttons",
+        "Typecheck passes: npm run check"
       ],
-      "files": [
-        "server/middleware/tenancy.ts",
-        "server/utils/auth-helpers.ts",
-        "server/tests/unit/tenancy-middleware.test.ts"
-      ],
-      "passes": true,
-      "priority": 1,
-      "severity": "critical",
-      "completedAt": "2026-01-21",
-      "resolution": "Added validateTenantHeader() function that validates x-tenant-id header against user JWT tenant. Returns 403 for mismatches. Platform admins can access any tenant. Security logging added. 13 unit tests."
-    },
-    {
-      "id": "AUTH-002",
-      "phase": "Phase 2: Authentication & Security Hardening",
-      "title": "Implement graceful JWT secret validation failure",
-      "description": "If SUPABASE_JWT_SECRET is not set, the server crashes. Should fail gracefully at startup or use env-validation.ts to prevent server start without required secrets.",
-      "acceptanceCriteria": [
-        "Add SUPABASE_JWT_SECRET to required env vars in env-validation.ts",
-        "Prevent server startup if JWT secret is missing",
-        "Log clear error message about missing configuration",
-        "Add fallback error handling in supabase-auth.ts",
-        "Document required environment variables",
-        "Add health check for JWT configuration"
-      ],
-      "files": [
-        "server/middleware/supabase-auth.ts",
-        "server/lib/env-validation.ts",
-        "server/routes/health-routes.ts",
-        "server/tests/unit/env-validation.test.ts"
-      ],
-      "passes": true,
-      "priority": 2,
-      "severity": "high",
-      "completedAt": "2026-01-21",
-      "resolution": "Added SUPABASE_JWT_SECRET to env-validation.ts as required in production. getJwtSecret() returns null gracefully instead of throwing. Added JwtConfigurationError class. Health endpoint /health includes JWT configuration status. 13 unit tests added."
-    },
-    {
-      "id": "AUTH-003",
-      "phase": "Phase 2: Authentication & Security Hardening",
-      "title": "Standardize authentication middleware usage across routes",
-      "description": "Routes use inconsistent auth patterns: some use requireAuth, others isAuthenticated, others requireSupabaseAuth. Need to standardize on one approach.",
-      "acceptanceCriteria": [
-        "Document the standard auth middleware pattern",
-        "Audit all 174 route files for auth middleware usage",
-        "Replace inconsistent patterns with standard approach",
-        "Ensure all protected routes have proper auth",
-        "Add eslint rule to enforce auth middleware",
-        "Test all auth-protected endpoints"
-      ],
-      "files": [
-        "server/routes.ts",
-        "server/middleware/supabase-auth.ts",
-        "server/middleware/enhanced-rbac-middleware.ts",
-        "server/replitAuth.ts",
-        "server/auth-setup.ts",
-        "tools/automated-testing/check-auth-middleware.ts",
-        "CLAUDE.md"
-      ],
-      "passes": true,
-      "priority": 2,
-      "severity": "high",
-      "completedAt": "2026-01-21",
-      "resolution": "Created centralized auth middleware exports (requireAuth in replitAuth.ts and auth-setup.ts). Documented standard patterns in CLAUDE.md. Created validation script check-auth-middleware.ts that detects 47 files with local definitions. Audit complete: 600 requireAuth usages, 343 isAuthenticated usages, 10 requireSupabaseAuth usages. Migration plan: incrementally update 47 files to use centralized imports."
-    },
-    {
-      "id": "AUTH-004",
-      "phase": "Phase 2: Authentication & Security Hardening",
-      "title": "Complete intelligent alerts security action implementations",
-      "description": "intelligent-alerts-service.ts has 14 TODO placeholders for security responses including user suspension, session termination, IP blocking, and MFA enforcement.",
-      "acceptanceCriteria": [
-        "Implement user suspension action",
-        "Implement session termination action",
-        "Implement IP blocking action",
-        "Implement file quarantine action",
-        "Implement rate limiting action",
-        "Implement MFA enforcement action",
-        "Implement password reset action",
-        "Test all security actions with mock incidents"
-      ],
-      "files": [
-        "server/services/intelligent-alerts-service.ts",
-        "shared/intelligent-alerts-schema.ts",
-        "server/tests/unit/intelligent-alerts.test.ts"
-      ],
-      "passes": true,
-      "priority": 2,
-      "severity": "high",
-      "completedAt": "2026-01-21",
-      "resolution": "Implemented all 10 security containment actions: suspend_user (sets isActive=false), terminate_session (updates securitySessions), block_ip (audit log + firewall flag), quarantine_file (audit log), disable_integration (audit log), rate_limit (audit log), force_password_reset (clears password hash + email), enable_mfa (audit log + email), restrict_permissions (sets accessScope to location), notify_team (sends email to security team). Created 28 unit tests covering action validation, containment generation, auto-containment thresholds, and risk score calculation."
-    },
-    {
-      "id": "AUTH-005",
-      "phase": "Phase 2: Authentication & Security Hardening",
-      "title": "Improve platform admin detection logic",
-      "description": "Current admin detection uses string pattern matching which could false-positive on roles like 'administrator_assistant'. Should use explicit role ID lookup.",
-      "acceptanceCriteria": [
-        "Replace pattern matching with explicit role level check",
-        "Use roleLevel >= 8 as primary admin indicator",
-        "Add isPlatformUser flag check from JWT",
-        "Add unit tests for admin detection",
-        "Document admin role requirements",
-        "Audit all isPlatformAdmin() usages"
-      ],
-      "files": [
-        "server/utils/auth-helpers.ts",
-        "server/middleware/enhanced-rbac-middleware.ts",
-        "server/tests/unit/auth-helpers.test.ts"
-      ],
-      "passes": true,
-      "priority": 3,
-      "severity": "medium",
-      "notes": "Implemented exact role matching (not substring). Added 5-priority detection: isPlatformUser flag, roleLevel >= 8, hasAllPermissions, exact role code match. 37 unit tests cover all scenarios including false positive prevention."
-    },
-    {
-      "id": "AUTH-006",
-      "phase": "Phase 2: Authentication & Security Hardening",
-      "title": "Add audit logging for admin bypass actions",
-      "description": "Platform admins bypass permission checks but these bypasses may not be fully logged. Need comprehensive audit trail for all admin actions.",
-      "acceptanceCriteria": [
-        "Log all permission bypass events for platform admins",
-        "Include request details (path, method, params) in audit log",
-        "Add audit viewer in admin panel",
-        "Implement log retention policy",
-        "Add alerting for suspicious admin activity patterns",
-        "Document audit log format and retention"
-      ],
-      "files": [
-        "server/middleware/enhanced-rbac-middleware.ts",
-        "server/services/audit-archival-service.ts",
-        "server/routes-root-admin.ts",
-        "server/tests/unit/rbac-audit-logging.test.ts"
-      ],
-      "passes": true,
-      "priority": 3,
-      "severity": "medium",
-      "notes": "Added logAdminBypass() function, logs all 4 bypass locations (PERMISSION, ALL_PERMISSIONS, ANY_PERMISSION, APPROVAL). Added 3 admin endpoints for viewing audit logs with filtering. 14 unit tests. 7-year retention via existing audit-archival-service."
-    },
-    {
-      "id": "AUTH-007",
-      "phase": "Phase 2: Authentication & Security Hardening",
-      "title": "Cache user role data to reduce database lookups",
-      "description": "Every request does a database lookup to fetch user role in supabase-auth.ts line 155-159. Should implement caching with short TTL.",
-      "acceptanceCriteria": [
-        "Implement L1 (memory) cache for user role data",
-        "Set appropriate TTL (5-15 minutes)",
-        "Add cache invalidation on role updates",
-        "Measure and document performance improvement",
-        "Add cache hit/miss metrics",
-        "Document caching strategy"
-      ],
-      "files": [
-        "server/middleware/supabase-auth.ts",
-        "server/middleware/enhanced-rbac-middleware.ts"
-      ],
+      "priority": 21,
       "passes": false,
-      "priority": 4,
-      "severity": "low"
+      "notes": "client/src/components/accessibility/ has FocusManager.tsx, SkipNavigation.tsx, ColorBlindnessFilters.tsx but only 7 ARIA usages total across all components. shadcn/ui provides some built-in a11y. Focus on app shell, navigation sidebar, and the most-used DataTable component."
     },
     {
-      "id": "EDGE-001",
-      "phase": "Phase 3: Edge Functions Migration",
-      "title": "Remove deprecated business-records edge function",
-      "description": "CLARIFIED: The Edge Function is deprecated (Jan 13, 2026) but NOT directly used by frontend. Frontend calls Express routes at /api/business-records via routes-business-records.ts. Edge Function can be safely removed after Feb 12, 2026.",
+      "id": "US-022",
+      "title": "Add visible focus indicators and color contrast compliance",
+      "description": "As a user with visual impairments, I need sufficient color contrast and visible focus indicators throughout the app.",
       "acceptanceCriteria": [
-        "VERIFIED: Frontend uses Express /api/business-records routes (routes-business-records.ts), NOT Edge Function",
-        "VERIFIED: No calls to functions.printyx.net/business-records found in codebase",
-        "VERIFIED: Edge Function has deprecation warnings and falls back to Express behavior",
-        "WAITING: Remove supabase/functions/business-records/ after Feb 12, 2026",
-        "SEPARATE: Express /api/business-records migration to /companies is a different story (many frontend dependencies)",
-        "DONE: Deprecation headers already present in Edge Function"
+        "Create a Tailwind utility class ring-focus or similar that provides a visible 2px focus ring with 3:1 contrast ratio",
+        "Apply focus-visible styles to all interactive elements (buttons, links, inputs, selects) via global CSS in client/src/index.css",
+        "Remove any outline: none or outline: 0 that hides focus indicators without replacement",
+        "All status indicators (success/error/warning badges) include an icon alongside color, not color alone",
+        "Primary text (#foreground on #background) meets 4.5:1 WCAG AA contrast ratio",
+        "Large text (18px+ or 14px bold) meets 3:1 contrast ratio",
+        "Typecheck passes: npm run check"
       ],
-      "files": [
-        "supabase/functions/business-records/index.ts",
-        "server/routes-business-records.ts"
-      ],
-      "passes": true,
-      "priority": 2,
-      "severity": "resolved",
-      "resolution": "Edge Function verified as not directly used by frontend. All 75+ frontend references to /api/business-records use Express routes. Edge Function safe to remove after Feb 12, 2026. Express route migration is a separate larger effort."
-    },
-    {
-      "id": "EDGE-002",
-      "phase": "Phase 3: Edge Functions Migration",
-      "title": "Move CORS allowed origins to environment variables",
-      "description": "CORS allowed origins are now configurable via ALLOWED_ORIGINS environment variable. Falls back to default production origins if not set.",
-      "acceptanceCriteria": [
-        "DONE: Created ALLOWED_ORIGINS environment variable support in _shared/cors.ts",
-        "DONE: Parse comma-separated origins from env var with trim and filter",
-        "DONE: Updated _shared/cors.ts to use getAllowedOrigins() function",
-        "DONE: Updated server.ts to import getCorsHeaders from shared module",
-        "DONE: Created supabase/functions/.env.example with documentation",
-        "Test CORS with multiple origins - requires deployment"
-      ],
-      "files": [
-        "supabase/functions/_shared/cors.ts",
-        "supabase/functions/server.ts",
-        "supabase/functions/.env.example"
-      ],
-      "passes": true,
-      "priority": 2,
-      "severity": "high",
-      "completedAt": "2026-01-20"
-    },
-    {
-      "id": "EDGE-003",
-      "phase": "Phase 3: Edge Functions Migration",
-      "title": "Verify /api/me endpoint functionality",
-      "description": "RESOLVED: Both Express route (server/routes.ts:797) and Edge function (supabase/functions/me/index.ts) exist and are complete. The endpoint returns user profile with tenant context, role, team, and permissions.",
-      "acceptanceCriteria": [
-        "VERIFIED: supabase/functions/me/index.ts exists with full implementation",
-        "VERIFIED: Express route exists at server/routes.ts:797 as primary handler",
-        "VERIFIED: Returns user profile with tenant context",
-        "VERIFIED: Includes user permissions and role information via role lookup",
-        "VERIFIED: JWT validation via supabase.auth.getUser()",
-        "VERIFIED: Configured in supabase/config.toml with verify_jwt = true"
-      ],
-      "files": ["supabase/functions/me/index.ts", "server/routes.ts", "supabase/config.toml"],
-      "passes": true,
-      "priority": 1,
-      "severity": "resolved",
-      "resolution": "Both implementations already exist. Express route serves as primary handler. Edge function available for direct Supabase deployments.",
-      "completedAt": "2026-01-20"
-    },
-    {
-      "id": "EDGE-004",
-      "phase": "Phase 3: Edge Functions Migration",
-      "title": "Complete inventory edge function logging feature",
-      "description": "inventory/index.ts has TODO for logging adjustments to inventory_transactions table. Need to implement this tracking.",
-      "acceptanceCriteria": [
-        "Check if inventory_transactions table exists, create if not",
-        "Implement transaction logging on inventory adjustments",
-        "Log adjustment type, quantity, user, timestamp",
-        "Add transaction history query endpoint",
-        "Test inventory adjustment logging",
-        "Document inventory transaction tracking"
-      ],
-      "files": ["supabase/functions/inventory/index.ts", "shared/schema.ts"],
+      "priority": 22,
       "passes": false,
-      "priority": 3,
-      "severity": "medium"
+      "notes": "Check tailwind.config.ts for theme colors. shadcn/ui components should have ring focus styles. Custom components may not. Global focus-visible styles in index.css will cover most cases."
     },
     {
-      "id": "EDGE-005",
-      "phase": "Phase 3: Edge Functions Migration",
-      "title": "Create missing edge functions for core operations",
-      "description": "According to migration plan, need 50+ edge functions but only 47 exist. Create edge functions for: service-tickets, territories, catalog, pricing, quotes, proposals.",
+      "id": "US-023",
+      "title": "Set up i18n foundation with extracted navigation strings",
+      "description": "As a product owner, I need internationalization infrastructure so the platform can support multiple languages for global enterprise customers.",
       "acceptanceCriteria": [
-        "Create service-tickets edge function from routes-service-dispatch.ts",
-        "Create territories edge function from routes-territory-management.ts",
-        "Create catalog edge function from routes-catalog.ts",
-        "Create pricing edge function from routes-pricing.ts",
-        "Create quotes edge function from routes/quotes-routes.ts",
-        "Create proposals edge function from routes-proposals.ts",
-        "Test all new edge functions",
-        "Update frontend to call edge functions"
+        "Install react-i18next and i18next packages",
+        "Create client/src/i18n/ directory with: config.ts (i18next initialization), locales/en.json (English messages)",
+        "Wrap the root App component with I18nextProvider in client/src/main.tsx",
+        "Extract all hardcoded strings from the main navigation/sidebar component into en.json using t() function",
+        "Extract all hardcoded strings from Login.tsx and Signup.tsx pages into en.json",
+        "Create a useTranslation wrapper hook at client/src/hooks/useTranslation.ts if needed for convenience",
+        "Add a language selector dropdown in the Settings page that switches between en and a placeholder locale",
+        "Typecheck passes: npm run check"
       ],
-      "files": [
-        "supabase/functions/",
-        "server/routes-service-dispatch.ts",
-        "server/routes-territory-management.ts"
-      ],
+      "priority": 23,
       "passes": false,
-      "priority": 2,
-      "severity": "high"
+      "notes": "No i18n exists. Start with foundation and extract strings from the most visible components. Full string extraction across 213 pages is a separate future effort. react-i18next is the most popular React i18n library."
     },
     {
-      "id": "EDGE-006",
-      "phase": "Phase 3: Edge Functions Migration",
-      "title": "Document edge function environment variables",
-      "description": "COMPLETED: Created supabase/functions/.env.example as part of EDGE-002 with all required environment variables documented.",
+      "id": "US-024",
+      "title": "Add React Error Boundaries to all route pages",
+      "description": "As a user, I need page crashes to be contained rather than crashing the entire application.",
       "acceptanceCriteria": [
-        "DONE: Created supabase/functions/.env.example file",
-        "DONE: Documented SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY",
-        "DONE: Documented ALLOWED_ORIGINS configuration with defaults",
-        "DONE: Documented PORT and SITE_URL (all env vars used by functions)",
-        "N/A: Env validation handled by Deno's ?? '' pattern with graceful fallbacks",
-        "DONE: File includes development override examples"
+        "Create client/src/components/ErrorBoundary.tsx with: error display, 'Try Again' button that resets error state, and optional onError callback",
+        "Create client/src/components/PageErrorBoundary.tsx that shows error with navigation still accessible (sidebar/header remain functional)",
+        "Create client/src/components/SectionErrorBoundary.tsx for dashboard widgets that shows a compact error card in the widget space",
+        "Wrap every route in client/src/App.tsx with PageErrorBoundary",
+        "Dashboard page wraps each widget/section with SectionErrorBoundary",
+        "Error boundary onError callback sends error details to /api/client-errors endpoint for server-side logging",
+        "Typecheck passes: npm run check"
       ],
-      "files": ["supabase/functions/.env.example"],
-      "passes": true,
-      "priority": 3,
-      "severity": "resolved",
-      "resolution": "Completed as part of EDGE-002. The .env.example file documents all 6 environment variables used by edge functions: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, ALLOWED_ORIGINS, PORT, SITE_URL."
-    },
-    {
-      "id": "ROUTES-001",
-      "phase": "Phase 4: API Routes Consolidation",
-      "title": "Extract inline routes from monolithic routes.ts",
-      "description": "SCOPE DISCOVERY: routes.ts is 13,170 lines with 288 inline handlers (not 70+ as estimated). This iteration removed 211 lines and 7 duplicate route handlers. Full extraction requires multiple iterations.",
-      "acceptanceCriteria": [
-        "DONE: Removed duplicate /api/pricing/products routes (4 handlers)",
-        "DONE: Removed duplicate /api/leads GET routes (2 handlers) - kept unified business records version",
-        "DONE: Removed duplicate /api/integration-hub/dashboard mock route (175 lines)",
-        "DONE: Removed duplicate /api/database-updater registration",
-        "FINDING: 288 route handlers remain (was 295)",
-        "FINDING: /api/billing mounted twice (consolidatedBillingRoutes + advancedBillingRoutes) - may be intentional",
-        "DEFERRED: Full route extraction to modular files - requires multi-iteration effort",
-        "DEFERRED: Test all extracted routes"
-      ],
-      "files": ["server/routes.ts"],
+      "priority": 24,
       "passes": false,
-      "priority": 2,
-      "severity": "high",
-      "partialProgress": {
-        "duplicatesRemoved": 7,
-        "linesRemoved": 211,
-        "remainingHandlers": 288,
-        "iteration": 1
-      },
-      "notes": "Routes.ts has 288 inline handlers across domains: pricing(18), leads(12), user(8), seo(7), security-compliance(6), etc. 124 modular route files already exist. Full extraction is a major refactoring effort requiring multiple iterations."
+      "notes": "Check for existing error boundary in client/src/components/. TanStack Query handles API errors, but React rendering errors need Error Boundaries. The dashboard.tsx page is the highest-value target for section-level boundaries."
     },
     {
-      "id": "ROUTES-002",
-      "phase": "Phase 4: API Routes Consolidation",
-      "title": "Remove or fix broken/archived routes",
-      "description": "COMPLETED: Removed server/_archived/ directory containing 6 obsolete backup route files (1.3MB total). No active code referenced these files.",
+      "id": "US-025",
+      "title": "Standardize loading and empty states across top pages",
+      "description": "As a user, I need consistent loading indicators and empty state messages so the UI feels polished and professional.",
       "acceptanceCriteria": [
-        "DONE: Reviewed routes-broken.ts - obsolete session-based routes, replaced by tenant middleware",
-        "DONE: Reviewed routes-original.ts.broken - 450KB backup copy, obsolete",
-        "DONE: Reviewed routes-clean-head.ts - 399KB backup copy, obsolete",
-        "DONE: Deleted all 6 archived files (no code extraction needed)",
-        "DONE: Verified no imports from _archived in active codebase",
-        "DONE: Removed _archived directory"
+        "Create client/src/components/ui/loading-state.tsx with variants: Spinner (inline), Skeleton (content placeholder), PageLoader (full-page centered spinner with message)",
+        "Create client/src/components/ui/empty-state.tsx with: icon slot, title, description, and optional CTA button",
+        "Update these 10 pages to use the components: dashboard, LeadsManagement, customers, QuotesManagement, Invoices, contracts, EquipmentLifecycleHub, contacts (from any of the contact pages), Reports/ReportsHub, Settings",
+        "Every TanStack Query isLoading state in updated pages shows the appropriate loading component",
+        "Every empty data array in updated pages shows the empty state component with contextual message and action",
+        "Typecheck passes: npm run check"
       ],
-      "files": [],
-      "passes": true,
-      "priority": 4,
-      "severity": "resolved",
-      "resolution": "Deleted server/_archived/ directory containing 6 obsolete files: fix-hardcoded-tenants.ts.broken, routes_clean.ts.broken, routes-broken.ts, routes-clean-head.ts, routes-modular-dashboard-old.ts, routes-original.ts.broken. All were backup copies from previous refactoring efforts with no unique code worth preserving."
-    },
-    {
-      "id": "ROUTES-003",
-      "phase": "Phase 4: API Routes Consolidation",
-      "title": "Re-enable disabled system features",
-      "description": "COMPLETED: Replaced commented code with proper feature flags controlled by environment variables.",
-      "acceptanceCriteria": [
-        "DONE: Database Updater - controlled by ENABLE_DATABASE_UPDATER=true (disabled by default to prevent continuous execution)",
-        "DONE: Catalog seeding - controlled by ENABLE_AUTO_SEED=true (disabled, use npm run seed:* commands instead)",
-        "DONE: WebSocket service - controlled by ENABLE_WEBSOCKET=true (auto-enabled in production, disabled in dev due to Vite conflict)",
-        "DONE: Removed commented code blocks, replaced with conditional imports",
-        "DONE: Added informative console messages explaining disabled status",
-        "DONE: Feature flags allow enabling without code changes"
-      ],
-      "files": ["server/routes.ts"],
-      "passes": true,
-      "priority": 3,
-      "severity": "resolved",
-      "resolution": "Replaced commented-out code with proper feature flags: ENABLE_DATABASE_UPDATER, ENABLE_AUTO_SEED, ENABLE_WEBSOCKET. WebSocket auto-enables in production. All features can be toggled via environment variables without code changes."
-    },
-    {
-      "id": "ROUTES-004",
-      "phase": "Phase 4: API Routes Consolidation",
-      "title": "Complete placeholder route implementations",
-      "description": "15+ routes have placeholder implementations including journal entries (routes-financial.ts), skill matching (routes-service-dispatch.ts), and billing auth (routes/billing.ts).",
-      "acceptanceCriteria": [
-        "Implement journal entries in routes-financial.ts",
-        "Implement skill match algorithm in routes-service-dispatch.ts",
-        "Complete auth middleware in routes/billing.ts",
-        "Complete routes-platform-customer-success.ts placeholders",
-        "Complete routes-reporting.ts SQL execution",
-        "Test all completed implementations"
-      ],
-      "files": [
-        "server/routes-financial.ts",
-        "server/routes-service-dispatch.ts",
-        "server/routes/billing.ts"
-      ],
+      "priority": 25,
       "passes": false,
-      "priority": 3,
-      "severity": "medium"
+      "notes": "shadcn/ui has a Skeleton component already. Build loading-state on top of it. Check client/src/components/ui/ for existing loading components to avoid duplication."
     },
     {
-      "id": "ROUTES-005",
-      "phase": "Phase 4: API Routes Consolidation",
-      "title": "Standardize route registration patterns",
-      "description": "Routes use three different registration patterns: import + app.use(), dynamic imports, and direct file imports. Should standardize on one approach.",
+      "id": "US-026",
+      "title": "Add E2E tests for 5 critical user flows",
+      "description": "As a QA engineer, I need E2E tests covering the most critical user flows to catch regressions before production.",
       "acceptanceCriteria": [
-        "Document standard route registration pattern",
-        "Convert all dynamic imports to standard pattern",
-        "Convert all direct imports to standard pattern",
-        "Ensure consistent ordering of middleware",
-        "Add eslint rule for route registration",
-        "Update CLAUDE.md with route guidelines"
+        "E2E test: Login flow - valid credentials succeed, invalid credentials show error, locked account shows message",
+        "E2E test: Lead creation - navigate to leads, fill creation form, submit, verify lead appears in list",
+        "E2E test: Quote creation - select customer, add line items, save draft, verify quote in list",
+        "E2E test: Dashboard load - verify all widget sections render, data displays, no console errors",
+        "E2E test: Settings page - update a profile field, save, refresh page, verify value persisted",
+        "All E2E tests use Playwright following existing patterns in tests/ directory",
+        "All tests pass: npm run test:e2e:chromium"
       ],
-      "files": ["server/routes.ts"],
+      "priority": 26,
       "passes": false,
-      "priority": 4,
-      "severity": "low"
+      "notes": "tests/ has page-audit.spec.ts, smoke.spec.ts, satisfaction-rating-api.spec.ts as examples. Playwright is configured with playwright.config.ts. Tests need proper setup (running dev server, test user credentials)."
     },
     {
-      "id": "ROUTES-006",
-      "phase": "Phase 4: API Routes Consolidation",
-      "title": "Resolve TODO/FIXME items in route files",
-      "description": "37+ TODO/FIXME comments found across 21 route files. High-density files: routes-purchase-orders.ts (18), routes-product-models.ts (11), routes-technician-management.ts (9).",
+      "id": "US-027",
+      "title": "Add multi-tenant data isolation integration tests",
+      "description": "As a security auditor, I need automated tests proving Tenant A can never access Tenant B's data across all major endpoints.",
       "acceptanceCriteria": [
-        "Review and resolve 18 TODOs in routes-purchase-orders.ts",
-        "Review and resolve 11 TODOs in routes-product-models.ts",
-        "Review and resolve 9 TODOs in routes-technician-management.ts",
-        "Review remaining 24 TODOs across other files",
-        "Document any that are intentionally deferred",
-        "Remove resolved TODO comments"
+        "Create server/tests/integration/tenant-isolation.test.ts",
+        "Test setup creates 2 tenants with separate users and seed data for each",
+        "Test: GET endpoints (leads, customers, contacts, quotes, orders) with Tenant A auth return ONLY Tenant A data",
+        "Test: GET single resource of Tenant B with Tenant A auth returns 404 (not the data)",
+        "Test: PUT/DELETE on Tenant B resource with Tenant A auth returns 403 or 404",
+        "Cover at least 8 resource types: leads, customers, contacts, quotes, invoices, equipment, reports, users",
+        "Tests run with test database in CI: npm run test:integration",
+        "All tests pass: npm run test:integration"
       ],
-      "files": [
-        "server/routes-purchase-orders.ts",
-        "server/routes-product-models.ts",
-        "server/routes-technician-management.ts"
-      ],
+      "priority": 27,
       "passes": false,
-      "priority": 3,
-      "severity": "medium"
+      "notes": "CI already runs integration tests with a PostgreSQL 16 Alpine service container (see .github/workflows/ci.yml). These tests are the most critical for enterprise multi-tenancy compliance. Use the test helpers from US-002."
     },
     {
-      "id": "SVC-001",
-      "phase": "Phase 5: Service Layer Completion",
+      "id": "US-028",
+      "title": "Complete OpenAPI documentation for CRM and billing endpoints",
+      "description": "As an API consumer, I need complete OpenAPI 3.0 documentation for CRM and billing endpoints for confident integration.",
+      "acceptanceCriteria": [
+        "server/openapi/ contains complete schema definitions derived from Zod schemas in shared/ for: leads, customers, contacts, quotes, invoices, subscriptions",
+        "At least 25 CRM and billing endpoints documented with: path, method, request body schema, response schema, error responses, auth requirements",
+        "Swagger UI accessible at /api-docs in development mode (NODE_ENV !== 'production')",
+        "OpenAPI spec exportable as JSON at GET /api-docs/spec.json",
+        "Each documented endpoint includes at least one example request/response",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": "server/openapi/ already has config.ts, index.ts, setup.ts. Build on this. Use zod-to-openapi or manually map the Drizzle-Zod schemas from shared/ to OpenAPI components."
+    },
+    {
+      "id": "US-029",
+      "title": "Add API versioning support with v1 default",
+      "description": "As a platform architect, I need API versioning so the API can evolve without breaking existing integrations.",
+      "acceptanceCriteria": [
+        "server/middleware/api-versioning.ts implements URL prefix versioning: /api/v1/* routes to existing /api/* handlers",
+        "All existing /api/* routes continue to work (backward compatible, treated as v1)",
+        "New /api/v1/* prefix routes to the same handlers as /api/*",
+        "req.apiVersion is set on all requests (defaults to 'v1')",
+        "Header-based override via Accept-Version or X-API-Version header",
+        "Document versioning strategy and deprecation policy in CLAUDE.md",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": "server/middleware/api-versioning.ts already exists. Verify and complete its implementation. URL prefix versioning is most standard for REST APIs."
+    },
+    {
+      "id": "US-030",
+      "title": "Complete Kubernetes deployment manifests",
+      "description": "As a DevOps engineer, I need working K8s manifests so the platform deploys to a production cluster.",
+      "acceptanceCriteria": [
+        "Create k8s/ directory with: deployment.yaml, service.yaml, ingress.yaml, configmap.yaml, secret.yaml (template with placeholders)",
+        "Deployment spec includes: 2 replicas, resource limits (512Mi memory, 500m CPU), resource requests (256Mi, 250m), rolling update strategy (maxUnavailable: 0, maxSurge: 1)",
+        "Liveness probe: httpGet /live, readiness probe: httpGet /ready, startup probe: httpGet /health with failureThreshold: 30",
+        "Service: ClusterIP type, port 5000",
+        "Ingress: TLS termination with cert-manager annotation, host: printyx.net",
+        "HorizontalPodAutoscaler: min 2, max 10 replicas, target CPU 70%",
+        "Update .github/workflows/ci.yml deploy-staging and deploy-production jobs to use kubectl set image with the Docker image digest",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": "CI pipeline has placeholder echo commands in deploy jobs. Docker image pushes to ghcr.io/${{ github.repository }}. The Dockerfile exposes port 5000 with health check."
+    },
+    {
+      "id": "US-031",
+      "title": "Add database backup automation with cloud storage",
+      "description": "As a platform operator, I need automated database backups with tested restore procedures for disaster recovery.",
+      "acceptanceCriteria": [
+        "Create scripts/db-backup.sh that: runs pg_dump on the production database, compresses output with gzip, uploads to Google Cloud Storage bucket",
+        "Create scripts/db-restore.sh that: downloads a specific backup from GCS, decompresses, restores to target database with confirmation prompt",
+        "Add npm scripts: db:backup, db:restore, db:backup:list",
+        "Backup naming: printyx-backup-YYYY-MM-DD-HHmmss.sql.gz",
+        "Create k8s/cronjob-backup.yaml for daily automated backups at 2 AM UTC",
+        "Implement retention: keep daily for 7 days, weekly for 4 weeks, monthly for 12 months (cleanup script)",
+        "Document backup/restore procedures in CLAUDE.md"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": "Database: PostgreSQL at 209.145.59.219:5433. @google-cloud/storage is already installed as a dependency. Forecasting database also needs backup (drizzle.forecasting.config.ts)."
+    },
+    {
+      "id": "US-032",
+      "title": "Add frontend code splitting and bundle optimization",
+      "description": "As a user, I need the application to load fast with optimized bundle sizes.",
+      "acceptanceCriteria": [
+        "Verify all 213 page components in client/src/App.tsx use React.lazy() for route-level code splitting",
+        "Add Suspense boundaries at route level with a loading spinner fallback",
+        "Configure Vite manualChunks in vite.config.ts to split: react-vendor (react, react-dom), ui-vendor (radix-ui), query-vendor (tanstack), chart-vendor (recharts), date-vendor (date-fns)",
+        "Add dynamic import for heavy components: PDF viewer, rich text editor, map components, chart libraries",
+        "Add rollup-plugin-visualizer for bundle analysis: npm run build:analyze",
+        "Initial JS bundle (excluding lazy chunks) under 350KB gzipped",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 32,
+      "passes": false,
+      "notes": "Check client/src/App.tsx for existing React.lazy usage. vite.config.ts handles the build. 213 pages means code splitting is critical for initial load performance."
+    },
+    {
+      "id": "US-033",
+      "title": "Add environment-specific configuration management",
+      "description": "As a DevOps engineer, I need clear separation of environment configs to prevent misconfigurations across dev/staging/production.",
+      "acceptanceCriteria": [
+        "Create server/config/ directory with: index.ts (loader), default.ts, development.ts, staging.ts, production.ts, test.ts",
+        "Config includes: database pool sizes, rate limit values, cache TTLs, log levels, feature toggles, CORS origins",
+        "server/config/index.ts loads and merges: default.ts + {NODE_ENV}.ts + environment variable overrides",
+        "Replace at least 10 hardcoded constants scattered in server/ with config references",
+        "Create .env.example with ALL required and optional environment variables, each with a description comment",
+        "Extend server/lib/env-validation.ts to validate all required vars exist at startup with clear error messages",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 33,
+      "passes": false,
+      "notes": "server/lib/env-validation.ts exists for startup validation. Many configs are inline constants (rate limit values, cache TTLs, pool sizes). .env.example may already exist - update it."
+    },
+    {
+      "id": "US-034",
+      "title": "Add WebSocket authentication and reconnection resilience",
+      "description": "As a developer, I need WebSocket connections authenticated and resilient to network failures.",
+      "acceptanceCriteria": [
+        "WebSocket upgrade request validates JWT token from query param or Authorization header before accepting",
+        "Unauthenticated WebSocket upgrade requests are rejected with HTTP 401",
+        "WebSocket messages include tenantId context for multi-tenant data isolation",
+        "Client useWebSocket hook implements auto-reconnect with exponential backoff: 1s, 2s, 4s, 8s, max 30s",
+        "On reconnection, client re-subscribes to all previous channels/topics automatically",
+        "Server sends ping every 30 seconds, client responds with pong; stale connections are cleaned up after 90s",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 34,
+      "passes": false,
+      "notes": "Client hook: client/src/hooks/useWebSocket. Redis at server/lib/redis-client.ts can be used for pub/sub to support multi-instance WebSocket broadcasting. Check ENABLE_WEBSOCKET feature flag from ROUTES-003."
+    },
+    {
+      "id": "US-035",
+      "title": "Implement feature flags system for controlled rollouts",
+      "description": "As a product owner, I need feature flags to gradually roll out features and quickly disable broken ones without deployment.",
+      "acceptanceCriteria": [
+        "Create feature_flags table in shared/schema.ts: id, name (unique), description, enabled (boolean), rolloutPercentage (int 0-100), tenantOverrides (jsonb), createdAt, updatedAt",
+        "Create server/services/feature-flags-service.ts with: isEnabled(flagName, { tenantId, userId }) that checks: tenant override > rollout percentage > global enabled",
+        "Create server/middleware/feature-flag.ts: requireFeatureFlag(flagName) middleware for route-level gating",
+        "Create client/src/hooks/useFeatureFlag.ts hook that calls GET /api/feature-flags and caches for 5 minutes",
+        "Create client/src/components/FeatureGate.tsx: <FeatureGate flag='name'>{children}</FeatureGate> for conditional rendering",
+        "CRUD endpoints: GET /api/feature-flags, PUT /api/feature-flags/:name (platform admin only)",
+        "Seed 5 default flags: new_dashboard, ai_features, advanced_reporting, mobile_pwa, beta_integrations",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 35,
+      "passes": false,
+      "notes": "No feature flag system exists. ROUTES-003 created env-var based feature toggles (ENABLE_DATABASE_UPDATER, etc.) but a proper feature flag system supports per-tenant overrides and percentage rollouts."
+    },
+    {
+      "id": "US-036",
+      "title": "Add Sentry error tracking integration",
+      "description": "As a developer, I need production error tracking so bugs are automatically reported with full context.",
+      "acceptanceCriteria": [
+        "Install @sentry/node for backend and @sentry/react for frontend",
+        "Configure Sentry in server/index.ts: DSN from SENTRY_DSN env var, environment from NODE_ENV, release from APP_VERSION",
+        "Configure Sentry in client/src/main.tsx: React error boundary integration, browser tracing, replay",
+        "All unhandled server exceptions are captured by Sentry with context: userId, tenantId, requestId",
+        "All frontend React errors are captured with user context and route information",
+        "Source maps uploaded to Sentry during CI build step (add to .github/workflows/ci.yml build job)",
+        "Add SENTRY_DSN to .env.example",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 36,
+      "passes": false,
+      "notes": "server/lib/monitoring.ts provides custom monitoring but Sentry is the industry standard. Can coexist with existing APM at server/lib/apm.ts. Sentry traces sample rate should be 0.1 in production to control costs."
+    },
+    {
+      "id": "US-037",
+      "title": "Add data table virtualization for large datasets",
+      "description": "As a user working with 10K+ records, I need data tables to render smoothly without lag.",
+      "acceptanceCriteria": [
+        "Install @tanstack/react-virtual for virtual scrolling",
+        "Create client/src/components/ui/virtualized-data-table.tsx extending the existing DataTable pattern",
+        "Virtual table renders only visible rows plus 5 row overscan buffer",
+        "Supports all existing DataTable features: sorting, filtering, column selection, row selection, pagination",
+        "Replace DataTable with VirtualizedDataTable in the 5 highest-volume pages: LeadsManagement, customers, Invoices, QuotesManagement, inventory",
+        "Rendering a dataset of 10,000 rows shows no visible jank (smooth 60fps scrolling)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 37,
+      "passes": false,
+      "notes": "@tanstack/react-query already used. @tanstack/react-virtual integrates well. Check client/src/components/ui/ for existing DataTable implementation to extend."
+    },
+    {
+      "id": "US-038",
+      "title": "Add PWA support with offline capability",
+      "description": "As a field service technician, I need the app installable as a PWA with offline support for areas with poor connectivity.",
+      "acceptanceCriteria": [
+        "Install and configure vite-plugin-pwa in vite.config.ts",
+        "Create public/manifest.json with: app name 'Printyx', theme color, icons (192x192, 512x512), display: 'standalone'",
+        "Service worker caches: app shell HTML/CSS/JS, static assets, and GET API responses for the current page",
+        "Offline fallback page shows last cached data and a 'You are offline' banner",
+        "Add an 'Install App' prompt component that appears when PWA install criteria are met (shown once, dismissible)",
+        "Add online/offline status indicator in the app header bar",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 38,
+      "passes": false,
+      "notes": "Mobile field pages exist: MobileFieldOperations.tsx, MobileFieldService.tsx, MobileServiceApp.tsx. PWA is especially valuable for field technicians. vite-plugin-pwa handles service worker generation."
+    },
+    {
+      "id": "US-039",
+      "title": "Add automated security scanning to CI pipeline",
+      "description": "As a security engineer, I need automated security scanning in CI to catch vulnerabilities before production.",
+      "acceptanceCriteria": [
+        "Add npm audit --audit-level=high to CI lint-and-typecheck job that fails on high/critical vulnerabilities",
+        "Install eslint-plugin-security and add security rules to ESLint config",
+        "Add gitleaks or similar secrets detection as a CI step that scans for credential patterns in code",
+        "Verify the existing Trivy container scan in ci.yml security-scan job works end-to-end",
+        "Create SECURITY.md with: vulnerability disclosure policy, security contact email, responsible disclosure timeline",
+        "Add npm script: npm run audit:security that runs npm audit + eslint security rules locally",
+        "Typecheck passes: npm run check",
+        "Lint passes: npm run lint"
+      ],
+      "priority": 39,
+      "passes": false,
+      "notes": "CI has Trivy container scanning. scripts/audit/security-audit.ts and tools/automated-testing/check-no-secrets.ts exist. Integrate into a unified security pipeline."
+    },
+    {
+      "id": "US-040",
+      "title": "Add request payload size limits and file upload security",
+      "description": "As a security engineer, I need request body size limits and secure file upload handling to prevent DoS and malicious uploads.",
+      "acceptanceCriteria": [
+        "JSON body parser in server/index.ts limits normal routes to 1MB",
+        "File upload routes (identified by multer/busboy usage) allow up to 25MB",
+        "File uploads validate: file type against whitelist (pdf, png, jpg, gif, xlsx, csv, docx), file size, filename sanitization (strip special chars)",
+        "Reject files with double extensions (e.g., .pdf.exe), null bytes in name, or path separators in name",
+        "Upload rate limiting: max 10 file uploads per minute per user",
+        "Temporary uploaded files are cleaned up after processing (within 1 hour)",
+        "Add tests for payload rejection and file validation",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 40,
+      "passes": false,
+      "notes": "Check server/index.ts for existing express.json({ limit }) configuration. Platform handles document uploads, logos, CSV imports, etc."
+    },
+    {
+      "id": "US-041",
+      "title": "Add session management with concurrent session control",
+      "description": "As an enterprise admin, I need to view active sessions, revoke sessions, and limit concurrent sessions for compliance.",
+      "acceptanceCriteria": [
+        "Create active_sessions table or use Redis to track: userId, tenantId, deviceInfo (user-agent parsed), ipAddress, lastActive, sessionToken hash",
+        "GET /api/sessions returns all active sessions for the current user with device/IP/lastActive info",
+        "DELETE /api/sessions/:id revokes a specific session",
+        "POST /api/sessions/revoke-all revokes all sessions except the current one",
+        "GET /api/admin/sessions/:userId shows sessions for any user (admin only)",
+        "Configurable max concurrent sessions per tenant (default: 5), new login beyond limit revokes oldest",
+        "Session lastActive updated on each authenticated API request",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 41,
+      "passes": false,
+      "notes": "server/middleware/session-timeout.ts exists. Supabase GoTrue manages JWTs. Need server-side session tracking (Redis via server/lib/redis-client.ts) to complement JWT for features like forced logout and concurrent limits."
+    },
+    {
+      "id": "US-042",
       "title": "Complete approval workflow email notifications",
-      "description": "approval-workflow-service.ts has 3 TODOs for email/notification service integration. Notifications are stubbed out.",
+      "description": "As a sales manager, I need email notifications when approvals are requested, granted, or denied so deals aren't blocked by unnoticed approval requests.",
       "acceptanceCriteria": [
-        "Integrate email service for approval requested notifications",
-        "Integrate email service for approval granted notifications",
-        "Integrate email service for approval denied notifications",
-        "Add configurable notification templates",
-        "Test end-to-end approval workflow with emails",
-        "Document notification configuration"
+        "When an approval is requested: email sent to all approvers with: requester name, item details, direct link to approve/deny",
+        "When an approval is granted: email sent to requester with approver name and any comments",
+        "When an approval is denied: email sent to requester with reason and next steps",
+        "Email templates use server/services/email-templates.ts for consistent branding",
+        "Email sending uses server/services/email-service.ts with retry on failure",
+        "Approvals pending > 24 hours trigger a reminder email to approvers",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
       ],
-      "files": ["server/services/approval-workflow-service.ts", "server/services/email-service.ts"],
+      "priority": 42,
       "passes": false,
-      "priority": 2,
-      "severity": "high"
+      "notes": "server/services/approval-workflow-service.ts has 3 TODOs for email integration. server/services/email-service.ts and server/services/email-templates.ts exist. Wire them together."
     },
     {
-      "id": "SVC-002",
-      "phase": "Phase 5: Service Layer Completion",
-      "title": "Complete auto-lead-routing email integration",
-      "description": "auto-lead-routing-service.ts has TODO for email service integration. Lead assignment notifications not sent.",
+      "id": "US-043",
+      "title": "Complete Stripe webhook notification implementations",
+      "description": "As a billing admin, I need Stripe webhook events to trigger proper notifications so customers are informed about billing changes.",
       "acceptanceCriteria": [
-        "Integrate email service for lead assignment notifications",
-        "Send notification to assigned rep with lead details",
-        "Include lead score and priority in notification",
-        "Add link to lead in email",
-        "Test lead routing with email delivery",
-        "Add email template for lead assignment"
+        "customer.subscription.trial_will_end webhook sends trial ending email 3 days before expiry",
+        "invoice.upcoming webhook sends upcoming invoice notification with amount and due date",
+        "invoice.payment_failed webhook sends payment failure notification with: amount, failure reason, retry schedule, update payment method link",
+        "customer.subscription.updated webhook sends add-on activation confirmation when new features enabled",
+        "All notification emails use branded templates from server/services/email-templates.ts",
+        "Webhook handler logs all events to audit log for reconciliation",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
       ],
-      "files": ["server/services/auto-lead-routing-service.ts", "server/services/email-service.ts"],
+      "priority": 43,
       "passes": false,
-      "priority": 2,
-      "severity": "high"
+      "notes": "server/services/stripe-service.ts has 4 TODOs for these notifications. Test with Stripe CLI: stripe trigger customer.subscription.trial_will_end"
     },
     {
-      "id": "SVC-003",
-      "phase": "Phase 5: Service Layer Completion",
-      "title": "Implement calculator email service sending",
-      "description": "calculator-email-service.ts has TODO for actual email sending using Resend or SendGrid. Currently just logs.",
+      "id": "US-044",
+      "title": "Implement GDPR data export and deletion endpoints",
+      "description": "As a data protection officer, I need GDPR-compliant data export and deletion for regulatory compliance with enterprise EU customers.",
       "acceptanceCriteria": [
-        "Integrate Resend or SendGrid for email sending",
-        "Implement scheduled email sending via cron",
-        "Handle email delivery failures with retry",
-        "Track email delivery status",
-        "Add email analytics (opens, clicks)",
-        "Test email delivery end-to-end"
+        "GET /api/gdpr/export/:userId generates complete JSON+CSV data export of all user data (profile, activities, records, files metadata)",
+        "POST /api/gdpr/delete-request creates a deletion request with 30-day grace period before execution",
+        "DELETE /api/gdpr/execute-deletion/:requestId hard-deletes user data after grace period (platform admin only with confirmation)",
+        "GET /api/gdpr/requests lists all pending/completed deletion requests with status and dates",
+        "Data export includes: user profile, all created/modified records, activity logs, uploaded file metadata",
+        "Consent management tracks what the user consented to and when via server/services/consent-management-service.ts",
+        "All endpoints require authentication; export limited to own data unless admin",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
       ],
-      "files": ["server/services/calculator-email-service.ts"],
+      "priority": 44,
       "passes": false,
-      "priority": 3,
-      "severity": "medium"
+      "notes": "Existing services: server/services/gdpr-data-export-service.ts, server/services/consent-management-service.ts, server/services/data-retention-service.ts, server/services/dpa-management-service.ts. Build on these existing services."
     },
     {
-      "id": "SVC-004",
-      "phase": "Phase 5: Service Layer Completion",
-      "title": "Complete equipment lifecycle state machine TODOs",
-      "description": "equipment-lifecycle-state-machine.ts has 7 TODOs for QR code generation, service scheduling, monitoring activation, warranty registration, notifications, and disposal workflows.",
+      "id": "US-045",
+      "title": "Add performance load tests with k6",
+      "description": "As a platform operator, I need load tests to validate the platform handles enterprise traffic and identify bottlenecks before they hit production.",
       "acceptanceCriteria": [
-        "Implement QR code generation for equipment",
-        "Implement service check scheduling on installation",
-        "Implement monitoring activation workflow",
-        "Implement warranty registration with manufacturer",
-        "Implement customer notifications for status changes",
-        "Implement retirement/disposal workflow",
-        "Test full equipment lifecycle flow"
+        "Create tests/load/ directory with k6 JavaScript test scripts",
+        "Smoke test script: 1 virtual user, verify critical endpoints (login, dashboard, leads list, create lead) respond in < 500ms",
+        "Load test script: 50 concurrent users for 5 minutes, p95 response time < 2 seconds, error rate < 1%",
+        "Stress test script: ramp from 10 to 200 users over 10 minutes to find breaking point",
+        "All test scripts authenticate with JWT and use proper tenant context headers",
+        "Add npm script: npm run test:load:smoke that runs the smoke test",
+        "Create tests/load/README.md documenting how to run tests, interpret results, and current baselines"
       ],
-      "files": ["server/services/equipment-lifecycle-state-machine.ts"],
+      "priority": 45,
       "passes": false,
-      "priority": 2,
-      "severity": "high"
+      "notes": "No performance tests exist. k6 is the industry standard (install via brew install k6 or docker). Tests should hit actual API endpoints with realistic data patterns."
     },
     {
-      "id": "SVC-005",
-      "phase": "Phase 5: Service Layer Completion",
-      "title": "Complete geofence alerts service notifications",
-      "description": "geofence-alerts-service.ts has 6 TODOs for user role resolution, email, push, SMS, and in-app notifications.",
+      "id": "US-046",
+      "title": "Cache user role data to reduce database lookups per request",
+      "description": "As a platform operator, I need user role data cached to reduce per-request database queries and improve response times.",
       "acceptanceCriteria": [
-        "Implement user role resolution for alerts",
-        "Integrate email notifications for geofence events",
-        "Integrate push notification service",
-        "Integrate SMS notification service",
-        "Implement in-app notification system",
-        "Implement technician name resolution",
-        "Test geofence alert delivery across channels"
+        "Implement in-memory LRU cache (or Redis cache) for user role/permission data in server/middleware/supabase-auth.ts",
+        "Cache TTL: 5 minutes for role data",
+        "Cache key: userId (role data rarely changes within a session)",
+        "Cache invalidation on role/permission update endpoints (PUT /api/roles/*, PUT /api/permissions/*)",
+        "Add cache hit/miss metrics to monitoring: log.debug with cache_status in context",
+        "Measure improvement: log query time before and after for the auth middleware DB lookup",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
       ],
-      "files": ["server/services/geofence-alerts-service.ts"],
+      "priority": 46,
       "passes": false,
-      "priority": 3,
-      "severity": "medium"
+      "notes": "supabase-auth.ts does a DB lookup for user role on every request. Redis client exists at server/lib/redis-client.ts. Even a simple Map with TTL would help for single-instance deployments."
     },
     {
-      "id": "SVC-006",
-      "phase": "Phase 5: Service Layer Completion",
-      "title": "Complete Stripe webhook notification TODOs",
-      "description": "stripe-service.ts has 4 TODOs for trial ending, upcoming invoice, add-on activation, and payment failure notifications.",
+      "id": "US-047",
+      "title": "Resolve TODO/FIXME items in high-density route files",
+      "description": "As a developer, I need placeholder TODOs resolved in the route files with the most technical debt.",
       "acceptanceCriteria": [
-        "Implement trial ending email notification",
-        "Implement upcoming invoice notification",
-        "Implement add-on activation notification",
-        "Implement payment failure notification with retry info",
-        "Add email templates for each notification type",
-        "Test webhook handlers with Stripe CLI"
+        "Review and resolve or implement all 18 TODOs in server/routes-purchase-orders.ts",
+        "Review and resolve or implement all 11 TODOs in server/routes-product-models.ts",
+        "Review and resolve or implement all 9 TODOs in server/routes-technician-management.ts",
+        "For each TODO: implement the feature, remove the TODO comment, or convert to a tracked issue with explanation",
+        "No remaining TODO comments that are trivially implementable (< 30 min each)",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
       ],
-      "files": ["server/services/stripe-service.ts"],
+      "priority": 47,
       "passes": false,
-      "priority": 2,
-      "severity": "high"
+      "notes": "37+ TODO/FIXME across 21 route files. These three files have the highest density. Many TODOs are for: missing validation, incomplete error handling, placeholder calculations, missing tenant filtering."
     },
     {
-      "id": "SVC-007",
-      "phase": "Phase 5: Service Layer Completion",
-      "title": "Implement subscription discount code validation",
-      "description": "subscription-service.ts line 135 has TODO for discount code validation. Currently not implemented.",
-      "acceptanceCriteria": [
-        "Create discount_codes table if not exists",
-        "Implement discount code validation logic",
-        "Support percentage and fixed amount discounts",
-        "Implement usage limits and expiration",
-        "Apply discount to subscription billing",
-        "Test discount code flow end-to-end"
-      ],
-      "files": ["server/services/subscription-service.ts", "shared/schema.ts"],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "SVC-008",
-      "phase": "Phase 5: Service Layer Completion",
-      "title": "Complete predictive service dispatch TODOs",
-      "description": "predictive-service-dispatch-service.ts has TODOs for distance calculation, service call database creation, and purchase order creation.",
-      "acceptanceCriteria": [
-        "Implement accurate distance calculation using Google Maps or similar API",
-        "Implement service call database creation from prediction",
-        "Implement automatic purchase order creation for predicted needs",
-        "Add prediction confidence scoring",
-        "Test predictive dispatch accuracy",
-        "Document prediction algorithm"
-      ],
-      "files": ["server/services/predictive-service-dispatch-service.ts"],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "SVC-009",
-      "phase": "Phase 5: Service Layer Completion",
-      "title": "Consolidate duplicate reporting services",
-      "description": "10 reporting services exist with role-specific variants (sales-reporting, sales-manager-reporting, sales-supervisor-reporting, etc.). Should consolidate into single service with role-based filtering.",
-      "acceptanceCriteria": [
-        "Create unified ReportingService with role-based access",
-        "Consolidate sales-reporting and sales-manager/supervisor variants",
-        "Consolidate service-reporting and service-manager/supervisor variants",
-        "Add role-based data filtering within single service",
-        "Deprecate old service files",
-        "Update routes to use consolidated service"
-      ],
-      "files": [
-        "server/services/sales-reporting-service.ts",
-        "server/services/sales-manager-reporting-service.ts",
-        "server/services/sales-supervisor-reporting-service.ts",
-        "server/services/service-reporting-service.ts",
-        "server/services/service-manager-reporting-service.ts",
-        "server/services/service-supervisor-reporting-service.ts"
-      ],
-      "passes": false,
-      "priority": 4,
-      "severity": "low"
-    },
-    {
-      "id": "SVC-010",
-      "phase": "Phase 5: Service Layer Completion",
-      "title": "Clarify billing service boundaries",
-      "description": "billing-engine-service.ts and automated-billing-service.ts have unclear boundaries. Need to define and document responsibilities.",
-      "acceptanceCriteria": [
-        "Document billing-engine-service responsibilities",
-        "Document automated-billing-service responsibilities",
-        "Define clear interface between services",
-        "Consolidate if overlap exists",
-        "Add service diagram to documentation",
-        "Test billing workflows end-to-end"
-      ],
-      "files": [
-        "server/services/billing-engine-service.ts",
-        "server/services/automated-billing-service.ts"
-      ],
-      "passes": false,
-      "priority": 4,
-      "severity": "low"
-    },
-    {
-      "id": "SVC-011",
-      "phase": "Phase 5: Service Layer Completion",
-      "title": "Audit services for tenant isolation compliance",
-      "description": "COMPLETED: 91 services audited. 74 have proper tenantId handling, 13 are stateless utilities (no DB ops), 1 is intentionally cross-tenant (system service), 1 was fixed with defense-in-depth tenant filtering.",
-      "acceptanceCriteria": [
-        "DONE: Audited all 91 services for tenantId usage",
-        "RESOLVED: oauth-token-refresh.ts - SYSTEM SERVICE designed to operate cross-tenant (background job refreshes OAuth tokens for ALL tenants)",
-        "FIXED: ai-csv-refinement-service.ts - Added tenantId parameter and defense-in-depth filtering in WHERE clauses",
-        "FIXED: routes-csv-import.ts - Updated to pass tenantId to AI service",
-        "OK: 13 utility services (email, SMS, AI APIs, PDF, calculators) - no DB ops, no tenantId needed",
-        "OK: constraint-solver.ts and integrations-service.ts - false positives (Array.from/Buffer.from)",
-        "DEFERRED: Add automated tests for tenant isolation (tech debt)"
-      ],
-      "files": [
-        "server/services/oauth-token-refresh.ts",
-        "server/services/ai-csv-refinement-service.ts",
-        "server/routes-csv-import.ts"
-      ],
-      "passes": true,
-      "priority": 1,
-      "severity": "resolved",
-      "completedAt": "2026-01-21",
-      "auditResults": {
-        "totalServices": 91,
-        "withTenantId": 75,
-        "utilityServices": 13,
-        "systemServices": 1,
-        "fixed": 1,
-        "falsePositives": 2
-      },
-      "resolution": "oauth-token-refresh.ts is an intentional cross-tenant system service (background OAuth token refresh). ai-csv-refinement-service.ts fixed with tenantId parameter and 'and(eq(id), eq(tenantId))' WHERE clauses for defense-in-depth."
-    },
-    {
-      "id": "BIZ-001",
-      "phase": "Phase 6: Business Process Automation",
-      "title": "Implement lead-to-deal automatic conversion",
-      "description": "Currently requires manual deal creation from leads. Should auto-convert based on qualification thresholds.",
-      "acceptanceCriteria": [
-        "Define qualification score threshold for auto-conversion",
-        "Implement automatic deal creation when threshold met",
-        "Copy relevant lead data to deal record",
-        "Create deal activity for conversion event",
-        "Send notification to sales rep on conversion",
-        "Allow configuration of conversion rules per tenant"
-      ],
-      "files": [
-        "server/services/auto-lead-routing-service.ts",
-        "server/routes-deals-management.ts",
-        "shared/lead-scoring-schema.ts"
-      ],
-      "passes": false,
-      "priority": 2,
-      "severity": "high"
-    },
-    {
-      "id": "BIZ-002",
-      "phase": "Phase 6: Business Process Automation",
-      "title": "Implement customer success intervention automation",
-      "description": "Health scores are calculated but interventions are manual. Need automatic outreach based on health triggers.",
-      "acceptanceCriteria": [
-        "Define health score thresholds for intervention triggers",
-        "Create intervention playbooks (email sequences, call tasks)",
-        "Implement automatic intervention creation on threshold breach",
-        "Assign interventions to customer success reps",
-        "Track intervention outcomes",
-        "Report on intervention effectiveness"
-      ],
-      "files": [
-        "server/routes-customer-success.ts",
-        "shared/customer-success-schema.ts",
-        "server/services/email-service.ts"
-      ],
-      "passes": false,
-      "priority": 2,
-      "severity": "high"
-    },
-    {
-      "id": "BIZ-003",
-      "phase": "Phase 6: Business Process Automation",
-      "title": "Implement inventory auto-reordering",
-      "description": "Inventory management is manual. Should auto-create purchase orders when stock falls below thresholds.",
-      "acceptanceCriteria": [
-        "Define reorder point thresholds per item/tenant",
-        "Implement stock level monitoring",
-        "Auto-create draft PO when threshold reached",
-        "Send notification for PO approval",
-        "Track reorder history and patterns",
-        "Add vendor selection logic"
-      ],
-      "files": [
-        "server/services/auto-supply-replenishment-service.ts",
-        "server/routes-purchase-orders.ts",
-        "shared/auto-supply-replenishment-schema.ts"
-      ],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "BIZ-004",
-      "phase": "Phase 6: Business Process Automation",
-      "title": "Implement service ticket ML-based auto-assignment",
-      "description": "AI dispatch exists but manual override frequently used. Need learning from technician feedback to improve assignments.",
-      "acceptanceCriteria": [
-        "Track assignment outcomes (completion time, satisfaction)",
-        "Feed outcomes back into assignment algorithm",
-        "Adjust technician skill scores based on performance",
-        "Implement confidence-based auto vs manual routing",
-        "Add assignment quality dashboard",
-        "Document ML model and training process"
-      ],
-      "files": [
-        "server/routes-predictive-service-dispatch.ts",
-        "server/services/predictive-service-dispatch-service.ts"
-      ],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "BIZ-005",
-      "phase": "Phase 6: Business Process Automation",
-      "title": "Implement failed delivery recovery workflow",
-      "description": "No automated workflow for handling failed deliveries. Need exception handling and re-scheduling.",
-      "acceptanceCriteria": [
-        "Define failure reasons (not home, access issue, etc.)",
-        "Auto-create follow-up delivery task on failure",
-        "Send customer notification with re-scheduling options",
-        "Track failure patterns by address/customer",
-        "Escalate repeated failures to management",
-        "Report on delivery success rates"
-      ],
-      "files": ["shared/equipment-schema.ts", "server/routes-warehouse.ts"],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "BIZ-006",
-      "phase": "Phase 6: Business Process Automation",
-      "title": "Implement sales activity auto-logging",
-      "description": "Sales activities require manual entry. Should auto-capture from calendar and email integrations.",
-      "acceptanceCriteria": [
-        "Integrate calendar events as activities",
-        "Integrate email tracking as activities",
-        "Auto-link activities to business records",
-        "Track activity attribution to deals",
-        "Avoid duplicate activity logging",
-        "Provide manual activity entry as fallback"
-      ],
-      "files": ["server/routes-activities.ts", "shared/schema.ts"],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "BIZ-007",
-      "phase": "Phase 6: Business Process Automation",
-      "title": "Implement contract renewal automation",
-      "description": "Renewals are tracked but renewal proposal generation is incomplete. Need end-to-end automation.",
-      "acceptanceCriteria": [
-        "Generate renewal proposals automatically 90/60/30 days before expiration",
-        "Include usage-based pricing adjustments",
-        "Send renewal reminders to customer",
-        "Create renewal deal/opportunity automatically",
-        "Track renewal acceptance/decline rates",
-        "Report on renewal revenue at risk"
-      ],
-      "files": [
-        "server/services/contract-renewal-service.ts",
-        "server/services/contract-renewal-workflow.ts",
-        "shared/contract-renewal-schema.ts"
-      ],
-      "passes": false,
-      "priority": 2,
-      "severity": "high"
-    },
-    {
-      "id": "BIZ-008",
-      "phase": "Phase 6: Business Process Automation",
-      "title": "Implement lead nurturing sequences",
-      "description": "Lead nurturing workflows exist in schema but sequences not fully implemented.",
-      "acceptanceCriteria": [
-        "Create email sequence templates for different lead stages",
-        "Implement sequence execution engine",
-        "Track sequence engagement (opens, clicks)",
-        "Auto-advance leads based on engagement",
-        "Allow sequence branching based on behavior",
-        "Pause sequence on manual interaction"
-      ],
-      "files": [
-        "shared/workflow-automation-schema.ts",
-        "server/services/workflow-execution-service.ts"
-      ],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "BIZ-009",
-      "phase": "Phase 6: Business Process Automation",
-      "title": "Implement multi-stop route optimization",
-      "description": "Current dispatch is single-stop only. Need multi-stop route optimization for technicians.",
-      "acceptanceCriteria": [
-        "Implement route optimization algorithm for multiple stops",
-        "Consider time windows, skill requirements, and travel time",
-        "Allow manual adjustment of optimized routes",
-        "Track actual vs optimized route efficiency",
-        "Integrate with GPS tracking for real-time updates",
-        "Report on route optimization savings"
-      ],
-      "files": [
-        "server/services/route-optimization-service.ts",
-        "server/services/advanced-scheduling-service.ts"
-      ],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "BIZ-010",
-      "phase": "Phase 6: Business Process Automation",
-      "title": "Implement win/loss analysis automation",
-      "description": "No automated win/loss analysis for closed deals. Need to capture reasons and analyze patterns.",
-      "acceptanceCriteria": [
-        "Require win/loss reason on deal close",
-        "Categorize reasons (price, feature, competitor, timing)",
-        "Track competitor mentions in lost deals",
-        "Generate win/loss reports by reason, rep, product",
-        "Identify patterns in lost deals",
-        "Feed insights back to sales training"
-      ],
-      "files": ["server/routes-deals-management.ts", "shared/schema.ts"],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "BIZ-011",
-      "phase": "Phase 6: Business Process Automation",
-      "title": "Implement customer journey stage tracking",
-      "description": "Customer journey stages exist in schema but tracking is manual. Need automated stage progression.",
-      "acceptanceCriteria": [
-        "Define journey stages (onboarding, adoption, expansion, renewal)",
-        "Implement automatic stage progression based on activity",
-        "Track time in each stage",
-        "Alert on stalled journeys",
-        "Create stage-specific playbooks",
-        "Report on journey funnel metrics"
-      ],
-      "files": ["shared/customer-success-schema.ts", "server/routes-customer-success.ts"],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "FEAT-001",
-      "phase": "Phase 7: Feature Completeness & Consolidation",
-      "title": "Implement real-time GPS tracking integration",
-      "description": "GPS tracking infrastructure exists but client integration incomplete. Need end-to-end tracking.",
-      "acceptanceCriteria": [
-        "Integrate GPS data collection from mobile devices",
-        "Implement real-time location updates via WebSocket",
-        "Display technician locations on map",
-        "Track delivery vehicle locations",
-        "Calculate ETA based on current location",
-        "Send customer notifications with ETA updates"
-      ],
-      "files": ["shared/gps-tracking-schema.ts", "server/routes-gps-tracking.ts"],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "FEAT-002",
-      "phase": "Phase 7: Feature Completeness & Consolidation",
-      "title": "Complete mobile service application",
-      "description": "Mobile schema support exists but client apps incomplete. Need functional mobile service app.",
-      "acceptanceCriteria": [
-        "Review client/src/components/mobile/ for completeness",
-        "Implement service ticket mobile workflow",
-        "Implement meter reading capture on mobile",
-        "Add offline support for field operations",
-        "Implement signature capture for service completion",
-        "Test mobile app on iOS and Android"
-      ],
-      "files": ["client/src/components/mobile/", "shared/mobile-service-schema.ts"],
-      "passes": false,
-      "priority": 2,
-      "severity": "high"
-    },
-    {
-      "id": "FEAT-003",
-      "phase": "Phase 7: Feature Completeness & Consolidation",
-      "title": "Implement customer feedback and NPS tracking",
-      "description": "No customer feedback collection or NPS tracking integration exists.",
-      "acceptanceCriteria": [
-        "Create feedback request workflow after service completion",
-        "Implement NPS survey collection",
-        "Track satisfaction scores per customer/technician",
-        "Integrate feedback into customer health score",
-        "Alert on negative feedback for follow-up",
-        "Report on NPS trends"
-      ],
-      "files": ["shared/customer-success-schema.ts"],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "FEAT-004",
-      "phase": "Phase 7: Feature Completeness & Consolidation",
-      "title": "Implement comprehensive reporting dashboard",
-      "description": "Basic reports work but complex BI incomplete. Need executive dashboard with drill-down.",
-      "acceptanceCriteria": [
-        "Create executive summary dashboard",
-        "Implement drill-down from KPIs to details",
-        "Add date range and filter controls",
-        "Implement report scheduling and delivery",
-        "Add export to PDF/Excel",
-        "Create department-specific dashboards"
-      ],
-      "files": ["server/routes-reporting-architecture.ts", "server/routes-analytics.ts"],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "FEAT-005",
-      "phase": "Phase 7: Feature Completeness & Consolidation",
-      "title": "Complete bidirectional Salesforce integration",
-      "description": "Salesforce integration exists but is one-directional. Need real-time bidirectional sync.",
-      "acceptanceCriteria": [
-        "Implement Salesforce to Printyx sync",
-        "Implement Printyx to Salesforce sync",
-        "Handle conflict resolution on simultaneous edits",
-        "Track sync status and errors",
-        "Support field mapping configuration",
-        "Add sync history and rollback"
-      ],
-      "files": ["server/routes-salesforce-integration.ts"],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "FEAT-006",
-      "phase": "Phase 7: Feature Completeness & Consolidation",
-      "title": "Implement white-label delivery tracking portal",
-      "description": "White-label support exists but delivery tracking portal not implemented.",
-      "acceptanceCriteria": [
-        "Create customer-facing delivery tracking page",
-        "Apply tenant branding (logo, colors)",
-        "Show delivery status and ETA",
-        "Allow delivery preference updates",
-        "Send tracking link via email/SMS",
-        "Support custom domain for tracking portal"
-      ],
-      "files": ["shared/white-label-schema.ts"],
-      "passes": false,
-      "priority": 4,
-      "severity": "low"
-    },
-    {
-      "id": "FEAT-007",
-      "phase": "Phase 7: Feature Completeness & Consolidation",
-      "title": "Implement service knowledge base linking",
-      "description": "Knowledge base exists but service ticket linking is skeleton only.",
-      "acceptanceCriteria": [
-        "Suggest relevant KB articles during ticket creation",
-        "Allow linking KB articles to ticket resolution",
-        "Track article usage in resolutions",
-        "Auto-suggest based on ticket description",
-        "Allow technicians to create KB from resolution",
-        "Report on KB article effectiveness"
-      ],
-      "files": ["shared/knowledge-base-schema.ts", "server/routes/knowledge-base-routes.ts"],
-      "passes": false,
-      "priority": 4,
-      "severity": "low"
-    },
-    {
-      "id": "TECH-001",
-      "phase": "Phase 8: Code Quality & Technical Debt",
-      "title": "Implement consistent error handling across routes",
-      "description": "INFRASTRUCTURE EXISTS: server/utils/apiErrorHandler.ts provides standardized error handling with ErrorCodes, handleApiError(), sendSuccess(), and asyncHandler(). Adoption across 174 route files is still pending.",
-      "acceptanceCriteria": [
-        "DONE: Standard error response format defined (ApiError interface in apiErrorHandler.ts)",
-        "DONE: Error handling middleware created (asyncHandler wrapper)",
-        "PENDING: Update all routes to use standard format (0/174 routes using it)",
-        "DONE: Error ID included in responses (generateErrorId())",
-        "DONE: All errors logged with context (console.error with errorId, code, stack)",
-        "DONE: Error codes documented (ErrorCodes enum with 17 codes)"
-      ],
-      "files": ["server/utils/apiErrorHandler.ts", "server/utils/apiErrorHandler.example.ts"],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium",
-      "notes": "Infrastructure complete. Adoption is a separate incremental task - should be done as routes are touched for other reasons."
-    },
-    {
-      "id": "TECH-002",
-      "phase": "Phase 8: Code Quality & Technical Debt",
-      "title": "Add comprehensive logging to services",
-      "description": "Many services have try/catch that logs and continues. Need structured logging with alerting.",
-      "acceptanceCriteria": [
-        "Implement structured logging (Pino) in all services",
-        "Include correlation IDs for request tracing",
-        "Log service method entry/exit with timing",
-        "Add log levels appropriate to severity",
-        "Configure log aggregation (CloudWatch/ELK)",
-        "Set up alerting for error log patterns"
-      ],
-      "files": ["server/services/", "server/lib/monitoring.ts"],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "TECH-003",
-      "phase": "Phase 8: Code Quality & Technical Debt",
-      "title": "Implement query result caching for reporting",
-      "description": "No query caching exists despite expensive report calculations. Add caching layer.",
-      "acceptanceCriteria": [
-        "Implement Redis or in-memory cache for reports",
-        "Cache expensive aggregation queries",
-        "Set appropriate TTLs per report type",
-        "Add cache invalidation on data changes",
-        "Track cache hit/miss rates",
-        "Document caching strategy"
-      ],
-      "files": [
-        "server/services/sales-reporting-service.ts",
-        "server/services/executive-reporting-service.ts"
-      ],
-      "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "TECH-004",
-      "phase": "Phase 8: Code Quality & Technical Debt",
+      "id": "US-048",
       "title": "Fix N+1 query patterns in services",
-      "description": "Some services have N+1 patterns (e.g., getUserFullName in loop in auto-lead-routing). Need batch queries.",
+      "description": "As a platform operator, I need N+1 query patterns eliminated to prevent performance degradation under load.",
       "acceptanceCriteria": [
-        "Identify all N+1 patterns with query logging",
-        "Replace loops with batch queries",
-        "Use Drizzle with() for eager loading",
-        "Measure and document query count reduction",
-        "Add performance tests to prevent regression",
-        "Document query optimization patterns"
+        "Enable Drizzle query logging in development to identify N+1 patterns",
+        "Fix N+1 in auto-lead-routing-service.ts: batch getUserFullName calls into single query",
+        "Audit and fix N+1 patterns in the 5 most-used services: leads listing, customer listing, dashboard widgets, quote details, invoice listing",
+        "Replace loops containing individual DB queries with batch queries using Drizzle's inArray() or with() for eager loading",
+        "Add a development-mode warning that logs when > 10 queries are made per request",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
       ],
-      "files": ["server/services/auto-lead-routing-service.ts"],
+      "priority": 48,
       "passes": false,
-      "priority": 3,
-      "severity": "medium"
+      "notes": "server/lib/db-logger.ts exists for query logging. Drizzle supports with() for relations and inArray() for batch lookups. Focus on the highest-traffic endpoints first."
     },
     {
-      "id": "TECH-005",
-      "phase": "Phase 8: Code Quality & Technical Debt",
-      "title": "Create comprehensive API documentation",
-      "description": "API documentation is incomplete. Need OpenAPI/Swagger docs for all endpoints.",
+      "id": "US-049",
+      "title": "Implement query result caching for expensive reports",
+      "description": "As a user running reports, I need report results cached so repeated queries are instant and the database isn't overloaded.",
       "acceptanceCriteria": [
-        "Generate OpenAPI spec from route definitions",
-        "Document all request/response schemas",
-        "Include authentication requirements",
-        "Add example requests and responses",
-        "Set up Swagger UI for interactive docs",
-        "Keep docs in sync with code changes"
+        "Create server/lib/query-cache.ts using Redis (server/lib/redis-client.ts) with: get(key), set(key, data, ttlSeconds), invalidate(pattern)",
+        "Cache expensive report queries in: executive-reporting-service.ts, sales-reporting-service.ts, director-reporting-service.ts",
+        "Cache TTL by report type: real-time dashboards 30s, daily reports 5min, historical reports 1 hour",
+        "Cache key includes: tenantId, report type, date range, filters (to prevent cross-tenant data leak)",
+        "Add cache invalidation when underlying data changes (e.g., new invoice created invalidates revenue reports)",
+        "Add cache hit/miss metrics to monitoring",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
       ],
-      "files": ["server/routes.ts"],
+      "priority": 49,
       "passes": false,
-      "priority": 4,
-      "severity": "low"
+      "notes": "Redis client exists at server/lib/redis-client.ts. Cache middleware exists at server/middleware/cache-middleware.ts. Build on these. Report services do heavy aggregation queries that are perfect caching candidates."
     },
     {
-      "id": "TECH-006",
-      "phase": "Phase 8: Code Quality & Technical Debt",
-      "title": "Add integration tests for critical flows",
-      "description": "Limited integration tests exist. Need tests for lead-to-deal, service dispatch, and billing flows.",
+      "id": "US-050",
+      "title": "Complete equipment lifecycle state machine TODOs",
+      "description": "As an equipment manager, I need the full equipment lifecycle automated from procurement through disposal.",
       "acceptanceCriteria": [
-        "Create integration test suite for lead conversion",
-        "Create integration test suite for service dispatch",
-        "Create integration test suite for billing/invoicing",
-        "Create integration test suite for customer onboarding",
-        "Run tests in CI/CD pipeline",
-        "Maintain >80% coverage on critical paths"
+        "Implement QR code generation for equipment asset tags (use qrcode npm package)",
+        "Implement automatic first service check scheduling when equipment is installed",
+        "Implement monitoring activation workflow when equipment goes into active state",
+        "Implement warranty registration tracking with manufacturer and expiry date",
+        "Implement customer notification emails on equipment status changes (delivered, installed, service needed)",
+        "Implement retirement/disposal workflow with asset write-off recording",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
       ],
-      "files": ["tests/", "server/tests/"],
+      "priority": 50,
       "passes": false,
-      "priority": 3,
-      "severity": "medium"
-    },
-    {
-      "id": "TECH-007",
-      "phase": "Phase 8: Code Quality & Technical Debt",
-      "title": "Update all TypeScript any types",
-      "description": "CLAUDE.md states to avoid any type. Audit codebase and replace with proper types.",
-      "acceptanceCriteria": [
-        "Run TypeScript strict mode check",
-        "Identify all any usages",
-        "Replace with proper types or unknown",
-        "Add type definitions for external APIs",
-        "Enable noImplicitAny in tsconfig",
-        "Document type patterns for team"
-      ],
-      "files": ["tsconfig.json", "server/", "client/src/"],
-      "passes": false,
-      "priority": 4,
-      "severity": "low"
-    },
-    {
-      "id": "TECH-008",
-      "phase": "Phase 8: Code Quality & Technical Debt",
-      "title": "Clean up temporary and backup files",
-      "description": "Various .broken, .backup, and temp files exist in codebase. Need cleanup.",
-      "acceptanceCriteria": [
-        "Remove package.json.backup, .fixed, .corrected",
-        "Remove or archive server/_archived/ directory",
-        "Remove .routes.ts.JlUUaIB4AMTKHwsNjYpr-~ temp file",
-        "Update .gitignore to prevent future temp files",
-        "Remove empty or unused files",
-        "Document archive policy"
-      ],
-      "files": [
-        "package.json.backup",
-        "server/_archived/",
-        "server/.routes.ts.JlUUaIB4AMTKHwsNjYpr-~"
-      ],
-      "passes": false,
-      "priority": 4,
-      "severity": "low"
+      "notes": "server/services/equipment-lifecycle-state-machine.ts has 7 TODOs. The state machine pattern is already implemented - just the side effects (notifications, external calls) are stubbed."
     }
-  ],
-  "summary": {
-    "totalStories": 73,
-    "criticalPriority": 6,
-    "highPriority": 22,
-    "mediumPriority": 31,
-    "lowPriority": 14,
-    "phaseSummary": {
-      "Phase 1 - Infrastructure & Database": "12 stories - Focus on Neon migration completion and database stability",
-      "Phase 2 - Authentication & Security": "8 stories - Critical security fixes including tenant validation",
-      "Phase 3 - Edge Functions": "10 stories - Complete migration from Express to Edge Functions",
-      "Phase 4 - API Routes": "8 stories - Consolidate monolithic routes.ts and fix broken routes",
-      "Phase 5 - Service Layer": "12 stories - Complete TODO implementations and notification integrations",
-      "Phase 6 - Business Process": "15 stories - Automation for lead conversion, customer success, and operations",
-      "Phase 7 - Features": "8 stories - Complete mobile app, reporting dashboards, and integrations",
-      "Phase 8 - Technical Debt": "8 stories - Code quality, testing, and documentation"
-    },
-    "criticalIssues": [
-      "DB-001: 177 tables potentially missing from Supabase migration",
-      "DB-002: created_by column references causing INSERT failures",
-      "AUTH-001: Tenant header validation security vulnerability",
-      "EDGE-003: /api/me endpoint returns 404 breaking user profiles",
-      "SVC-011: 22% of services may lack tenant isolation"
-    ],
-    "quickWins": [
-      "DB-002: Remove created_by references (30 min)",
-      "EDGE-003: Create /api/me edge function (1 hour)",
-      "EDGE-002: Move CORS to env vars (30 min)",
-      "AUTH-002: Add JWT secret validation (30 min)",
-      "TECH-008: Clean up backup files (15 min)"
-    ]
-  },
-  "metadata": {
-    "createdAt": "2026-01-20",
-    "lastUpdated": "2026-01-20",
-    "version": "1.0.0",
-    "analyzedFiles": {
-      "routeFiles": 174,
-      "serviceFiles": 96,
-      "schemaFiles": 51,
-      "edgeFunctions": 47
-    },
-    "findings": {
-      "neonReferences": "Documentation only, no active code",
-      "databaseConnection": "Correctly using self-hosted Supabase (209.145.59.219:5433)",
-      "edgeFunctionStatus": "47 functions, CORS hardcoded, 1 deprecated",
-      "routesStatus": "13,398 line monolithic file, 70+ inline handlers",
-      "servicesStatus": "96 services, 16 with TODOs, 21 need tenant audit",
-      "authStatus": "Multi-layer auth working, tenant header vulnerability"
-    }
-  }
+  ]
 }

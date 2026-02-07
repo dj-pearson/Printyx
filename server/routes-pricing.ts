@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
 import { storage } from './storage';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-pricing');
+
 import {
   insertCompanyPricingSettingsSchema,
   insertProductPricingSchema,
@@ -19,7 +22,7 @@ export async function getCompanyPricingSettings(req: Request, res: Response) {
     const settings = await storage.getCompanyPricingSettings(user.tenantId);
     res.json(settings);
   } catch (error) {
-    console.error('Error fetching company pricing settings:', error);
+    log.error('Error fetching company pricing settings:', error);
     res.status(500).json({ message: 'Failed to fetch company pricing settings' });
   }
 }
@@ -42,7 +45,7 @@ export async function updateCompanyPricingSettings(req: Request, res: Response) 
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: 'Invalid data', errors: error.errors });
     }
-    console.error('Error updating company pricing settings:', error);
+    log.error('Error updating company pricing settings:', error);
     res.status(500).json({ message: 'Failed to update company pricing settings' });
   }
 }
@@ -58,7 +61,7 @@ export async function getProductPricing(req: Request, res: Response) {
     const productPricing = await storage.getProductPricing(user.tenantId);
     res.json(productPricing);
   } catch (error) {
-    console.error('Error fetching product pricing:', error);
+    log.error('Error fetching product pricing:', error);
     res.status(500).json({ message: 'Failed to fetch product pricing' });
   }
 }
@@ -82,7 +85,7 @@ export async function createProductPricing(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: 'Invalid data', errors: error.errors });
     }
-    console.error('Error creating product pricing:', error);
+    log.error('Error creating product pricing:', error);
     res.status(500).json({ message: 'Failed to create product pricing' });
   }
 }
@@ -107,7 +110,7 @@ export async function updateProductPricing(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: 'Invalid data', errors: error.errors });
     }
-    console.error('Error updating product pricing:', error);
+    log.error('Error updating product pricing:', error);
     res.status(500).json({ message: 'Failed to update product pricing' });
   }
 }
@@ -128,7 +131,7 @@ export async function deleteProductPricing(req: Request, res: Response) {
 
     res.json({ message: 'Product pricing deleted successfully' });
   } catch (error) {
-    console.error('Error deleting product pricing:', error);
+    log.error('Error deleting product pricing:', error);
     res.status(500).json({ message: 'Failed to delete product pricing' });
   }
 }
@@ -145,7 +148,7 @@ export async function getQuotePricing(req: Request, res: Response) {
     const quotePricing = await storage.getQuotePricing(quoteId, user.tenantId);
     res.json(quotePricing);
   } catch (error) {
-    console.error('Error fetching quote pricing:', error);
+    log.error('Error fetching quote pricing:', error);
     res.status(500).json({ message: 'Failed to fetch quote pricing' });
   }
 }
@@ -169,7 +172,7 @@ export async function createQuotePricing(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: 'Invalid data', errors: error.errors });
     }
-    console.error('Error creating quote pricing:', error);
+    log.error('Error creating quote pricing:', error);
     res.status(500).json({ message: 'Failed to create quote pricing' });
   }
 }
@@ -194,7 +197,7 @@ export async function updateQuotePricing(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: 'Invalid data', errors: error.errors });
     }
-    console.error('Error updating quote pricing:', error);
+    log.error('Error updating quote pricing:', error);
     res.status(500).json({ message: 'Failed to update quote pricing' });
   }
 }
@@ -211,7 +214,7 @@ export async function getQuoteLineItems(req: Request, res: Response) {
     const lineItems = await storage.getQuotePricingLineItems(quotePricingId, user.tenantId);
     res.json(lineItems);
   } catch (error) {
-    console.error('Error fetching quote line items:', error);
+    log.error('Error fetching quote line items:', error);
     res.status(500).json({ message: 'Failed to fetch quote line items' });
   }
 }
@@ -234,7 +237,7 @@ export async function createQuoteLineItem(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: 'Invalid data', errors: error.errors });
     }
-    console.error('Error creating quote line item:', error);
+    log.error('Error creating quote line item:', error);
     res.status(500).json({ message: 'Failed to create quote line item' });
   }
 }
@@ -259,7 +262,7 @@ export async function updateQuoteLineItem(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: 'Invalid data', errors: error.errors });
     }
-    console.error('Error updating quote line item:', error);
+    log.error('Error updating quote line item:', error);
     res.status(500).json({ message: 'Failed to update quote line item' });
   }
 }
@@ -280,7 +283,7 @@ export async function deleteQuoteLineItem(req: Request, res: Response) {
 
     res.json({ message: 'Quote line item deleted successfully' });
   } catch (error) {
-    console.error('Error deleting quote line item:', error);
+    log.error('Error deleting quote line item:', error);
     res.status(500).json({ message: 'Failed to delete quote line item' });
   }
 }
@@ -327,7 +330,7 @@ export async function calculatePricingForProduct(req: Request, res: Response) {
 
     res.json(calculations);
   } catch (error) {
-    console.error('Error calculating pricing:', error);
+    log.error('Error calculating pricing:', error);
     res.status(500).json({ message: 'Failed to calculate pricing' });
   }
 }

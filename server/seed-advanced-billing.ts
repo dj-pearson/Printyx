@@ -1,14 +1,16 @@
 import { storage } from './storage';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-advanced-billing');
 
 async function seedAdvancedBilling() {
   try {
-    console.log('Seeding advanced billing system...');
+    log.info('Seeding advanced billing system...');
 
     const tenantId = 'demo-tenant';
     const now = new Date();
 
     // 1. Create Billing Rules
-    console.log('Creating billing rules...');
+    log.info('Creating billing rules...');
 
     // Tiered rate rule for high-volume customers
     const tieredRule = await storage.createBillingRule({
@@ -144,10 +146,10 @@ async function seedAdvancedBilling() {
       createdBy: 'admin-001',
     });
 
-    console.log(`Created ${5} billing rules`);
+    log.info(`Created ${5} billing rules`);
 
     // 2. Create Meter Anomalies
-    console.log('Creating meter anomalies...');
+    log.info('Creating meter anomalies...');
 
     // Sudden spike anomaly
     const spikeAnomaly = await storage.createMeterAnomaly({
@@ -291,10 +293,10 @@ async function seedAdvancedBilling() {
       impactOnBilling: false,
     });
 
-    console.log(`Created ${4} meter anomalies`);
+    log.info(`Created ${4} meter anomalies`);
 
     // 3. Create Billing Disputes
-    console.log('Creating billing disputes...');
+    log.info('Creating billing disputes...');
 
     // Open dispute - meter reading challenge
     const meterDisputeOpen = await storage.createBillingDispute({
@@ -490,10 +492,10 @@ async function seedAdvancedBilling() {
       createdBy: 'billing-admin-001',
     });
 
-    console.log(`Created ${4} billing disputes`);
+    log.info(`Created ${4} billing disputes`);
 
     // 4. Create Invoice Generation Logs
-    console.log('Creating invoice generation logs...');
+    log.info('Creating invoice generation logs...');
 
     // Successful generation
     const successLog1 = await storage.createInvoiceGenerationLog({
@@ -607,10 +609,10 @@ async function seedAdvancedBilling() {
       },
     });
 
-    console.log(`Created ${4} invoice generation logs`);
+    log.info(`Created ${4} invoice generation logs`);
 
     // 5. Create Billing Schedules
-    console.log('Creating billing schedules...');
+    log.info('Creating billing schedules...');
 
     // Monthly recurring schedule
     const monthlySchedule = await storage.createBillingSchedule({
@@ -705,10 +707,10 @@ async function seedAdvancedBilling() {
       createdBy: 'admin-001',
     });
 
-    console.log(`Created ${4} billing schedules`);
+    log.info(`Created ${4} billing schedules`);
 
     // 6. Create Credit Memos
-    console.log('Creating credit memos...');
+    log.info('Creating credit memos...');
 
     // Issued credit memo (from resolved dispute)
     const issuedCredit = await storage.createCreditMemo({
@@ -809,10 +811,10 @@ async function seedAdvancedBilling() {
       createdBy: 'billing-admin-003',
     });
 
-    console.log(`Created ${4} credit memos`);
+    log.info(`Created ${4} credit memos`);
 
-    console.log('✅ Advanced billing system seeded successfully');
-    console.log(`Summary:
+    log.info('✅ Advanced billing system seeded successfully');
+    log.info(`Summary:
   - 5 billing rules (tiered, volume discount, overage, flat rate, inactive)
   - 4 meter anomalies (spike, negative reading, stagnant, out of range)
   - 4 billing disputes (open, under review, resolved, escalated)
@@ -821,7 +823,7 @@ async function seedAdvancedBilling() {
   - 4 credit memos (issued, approved, pending, voided)
     `);
   } catch (error) {
-    console.error('❌ Error seeding advanced billing:', error);
+    log.error('❌ Error seeding advanced billing:', error);
     throw error;
   }
 }
@@ -830,11 +832,11 @@ async function seedAdvancedBilling() {
 if (require.main === module) {
   seedAdvancedBilling()
     .then(() => {
-      console.log('Seeding completed');
+      log.info('Seeding completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('Seeding failed:', error);
+      log.error('Seeding failed:', error);
       process.exit(1);
     });
 }

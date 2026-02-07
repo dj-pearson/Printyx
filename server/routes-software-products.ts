@@ -2,6 +2,9 @@ import type { Express } from 'express';
 import { eq, and, desc, sql, count, like } from 'drizzle-orm';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-software-products');
+
 import {
   softwareProducts,
   insertSoftwareProductSchema,
@@ -58,7 +61,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
       const products = await query.orderBy(softwareProducts.productName);
       res.json(products);
     } catch (error) {
-      console.error('Error fetching software products:', error);
+      log.error('Error fetching software products:', error);
       res.status(500).json({ error: 'Failed to fetch software products' });
     }
   });
@@ -80,7 +83,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
 
       res.json(product);
     } catch (error) {
-      console.error('Error fetching software product:', error);
+      log.error('Error fetching software product:', error);
       res.status(500).json({ error: 'Failed to fetch software product' });
     }
   });
@@ -100,7 +103,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
 
       res.status(201).json(newProduct);
     } catch (error) {
-      console.error('Error creating software product:', error);
+      log.error('Error creating software product:', error);
       res.status(500).json({ error: 'Failed to create software product' });
     }
   });
@@ -126,7 +129,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
 
       res.json(updatedProduct);
     } catch (error) {
-      console.error('Error updating software product:', error);
+      log.error('Error updating software product:', error);
       res.status(500).json({ error: 'Failed to update software product' });
     }
   });
@@ -148,7 +151,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
 
       res.json({ message: 'Software product deleted successfully' });
     } catch (error) {
-      console.error('Error deleting software product:', error);
+      log.error('Error deleting software product:', error);
       res.status(500).json({ error: 'Failed to delete software product' });
     }
   });
@@ -170,7 +173,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
 
       res.json(categories.map((c) => c.category));
     } catch (error) {
-      console.error('Error fetching software categories:', error);
+      log.error('Error fetching software categories:', error);
       res.status(500).json({ error: 'Failed to fetch software categories' });
     }
   });
@@ -189,7 +192,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
 
       res.json(vendors.map((v) => v.vendor));
     } catch (error) {
-      console.error('Error fetching vendors:', error);
+      log.error('Error fetching vendors:', error);
       res.status(500).json({ error: 'Failed to fetch vendors' });
     }
   });
@@ -211,7 +214,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
 
       res.json(licenseTypes.map((lt) => lt.licenseType));
     } catch (error) {
-      console.error('Error fetching license types:', error);
+      log.error('Error fetching license types:', error);
       res.status(500).json({ error: 'Failed to fetch license types' });
     }
   });
@@ -261,7 +264,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
         averagePrice: totalProducts > 0 ? totalValue / totalProducts : 0,
       });
     } catch (error) {
-      console.error('Error fetching software products dashboard:', error);
+      log.error('Error fetching software products dashboard:', error);
       res.status(500).json({ error: 'Failed to fetch software products dashboard' });
     }
   });
@@ -283,7 +286,7 @@ export function registerSoftwareProductsRoutes(app: Express) {
 
       res.json(productsByLicense);
     } catch (error) {
-      console.error('Error fetching products by license type:', error);
+      log.error('Error fetching products by license type:', error);
       res.status(500).json({ error: 'Failed to fetch products by license type' });
     }
   });

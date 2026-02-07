@@ -7,6 +7,9 @@ import { eq, and, desc, or, lte, gte, sql, count } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-deal-desk');
+
 import {
   approvalRules,
   approvalRequests,
@@ -57,7 +60,7 @@ export function registerDealDeskRoutes(app: Express) {
 
         res.json(rules);
       } catch (error) {
-        console.error('Error fetching approval rules:', error);
+        log.error('Error fetching approval rules:', error);
         res.status(500).json({ error: 'Failed to fetch approval rules' });
       }
     },
@@ -83,7 +86,7 @@ export function registerDealDeskRoutes(app: Express) {
 
         res.status(201).json(newRule);
       } catch (error) {
-        console.error('Error creating approval rule:', error);
+        log.error('Error creating approval rule:', error);
         if (error instanceof z.ZodError) {
           return res.status(400).json({ error: 'Invalid input', details: error.errors });
         }
@@ -113,7 +116,7 @@ export function registerDealDeskRoutes(app: Express) {
 
       res.json(updatedRule);
     } catch (error) {
-      console.error('Error updating approval rule:', error);
+      log.error('Error updating approval rule:', error);
       res.status(500).json({ error: 'Failed to update approval rule' });
     }
   });
@@ -135,7 +138,7 @@ export function registerDealDeskRoutes(app: Express) {
 
       res.json({ message: 'Rule deleted successfully' });
     } catch (error) {
-      console.error('Error deleting approval rule:', error);
+      log.error('Error deleting approval rule:', error);
       res.status(500).json({ error: 'Failed to delete approval rule' });
     }
   });
@@ -152,7 +155,7 @@ export function registerDealDeskRoutes(app: Express) {
 
       res.json(result);
     } catch (error) {
-      console.error('Error checking approval:', error);
+      log.error('Error checking approval:', error);
       res.status(500).json({ error: 'Failed to check approval requirement' });
     }
   });
@@ -189,7 +192,7 @@ export function registerDealDeskRoutes(app: Express) {
 
       res.status(201).json(approvalRequest);
     } catch (error) {
-      console.error('Error creating approval request:', error);
+      log.error('Error creating approval request:', error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: 'Invalid input', details: error.errors });
       }
@@ -226,7 +229,7 @@ export function registerDealDeskRoutes(app: Express) {
 
       res.json(requests);
     } catch (error) {
-      console.error('Error fetching approval requests:', error);
+      log.error('Error fetching approval requests:', error);
       res.status(500).json({ error: 'Failed to fetch approval requests' });
     }
   });
@@ -244,7 +247,7 @@ export function registerDealDeskRoutes(app: Express) {
 
       res.json(pendingApprovals);
     } catch (error) {
-      console.error('Error fetching pending approvals:', error);
+      log.error('Error fetching pending approvals:', error);
       res.status(500).json({ error: 'Failed to fetch pending approvals' });
     }
   });
@@ -292,7 +295,7 @@ export function registerDealDeskRoutes(app: Express) {
         comments,
       });
     } catch (error) {
-      console.error('Error fetching approval request:', error);
+      log.error('Error fetching approval request:', error);
       res.status(500).json({ error: 'Failed to fetch approval request' });
     }
   });
@@ -317,7 +320,7 @@ export function registerDealDeskRoutes(app: Express) {
 
       res.json(updatedRequest);
     } catch (error) {
-      console.error('Error processing approval decision:', error);
+      log.error('Error processing approval decision:', error);
       res.status(500).json({ error: 'Failed to process approval decision' });
     }
   });
@@ -346,7 +349,7 @@ export function registerDealDeskRoutes(app: Express) {
 
       res.status(201).json(comment);
     } catch (error) {
-      console.error('Error adding comment:', error);
+      log.error('Error adding comment:', error);
       res.status(500).json({ error: 'Failed to add comment' });
     }
   });
@@ -459,7 +462,7 @@ export function registerDealDeskRoutes(app: Express) {
           recentRejected: rejectedCount.count || 0,
         });
       } catch (error) {
-        console.error('Error fetching deal desk dashboard:', error);
+        log.error('Error fetching deal desk dashboard:', error);
         res.status(500).json({ error: 'Failed to fetch dashboard stats' });
       }
     },
@@ -493,7 +496,7 @@ export function registerDealDeskRoutes(app: Express) {
 
       res.json(analytics);
     } catch (error) {
-      console.error('Error fetching discount analytics:', error);
+      log.error('Error fetching discount analytics:', error);
       res.status(500).json({ error: 'Failed to fetch discount analytics' });
     }
   });
@@ -522,7 +525,7 @@ export function registerDealDeskRoutes(app: Express) {
 
       res.json(delegations);
     } catch (error) {
-      console.error('Error fetching delegations:', error);
+      log.error('Error fetching delegations:', error);
       res.status(500).json({ error: 'Failed to fetch delegations' });
     }
   });
@@ -544,7 +547,7 @@ export function registerDealDeskRoutes(app: Express) {
 
       res.status(201).json(delegation);
     } catch (error) {
-      console.error('Error creating delegation:', error);
+      log.error('Error creating delegation:', error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: 'Invalid input', details: error.errors });
       }
@@ -580,7 +583,7 @@ export function registerDealDeskRoutes(app: Express) {
 
       res.json(delegation);
     } catch (error) {
-      console.error('Error deactivating delegation:', error);
+      log.error('Error deactivating delegation:', error);
       res.status(500).json({ error: 'Failed to deactivate delegation' });
     }
   });
@@ -599,7 +602,7 @@ export function registerDealDeskRoutes(app: Express) {
 
       res.json({ message: 'SLA check completed' });
     } catch (error) {
-      console.error('Error checking SLA:', error);
+      log.error('Error checking SLA:', error);
       res.status(500).json({ error: 'Failed to check SLA' });
     }
   });

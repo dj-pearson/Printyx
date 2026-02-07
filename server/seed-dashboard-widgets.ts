@@ -5,6 +5,8 @@
 
 import { db } from './db';
 import { dashboardWidgets } from '@shared/schema-dashboard';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-dashboard-widgets');
 
 export const dashboardWidgetDefinitions = [
   // ============================================================================
@@ -557,7 +559,7 @@ export async function seedDashboardWidgets() {
     // Check if widgets already exist
     const existingCount = await db.query.dashboardWidgets?.findMany?.();
     if (existingCount && existingCount.length > 0) {
-      console.log(`✅ Dashboard widgets already seeded (${existingCount.length} widgets)`);
+      log.info(`✅ Dashboard widgets already seeded (${existingCount.length} widgets)`);
       return;
     }
 
@@ -584,8 +586,8 @@ export async function seedDashboardWidgets() {
       });
     }
 
-    console.log(`✅ Seeded ${dashboardWidgetDefinitions.length} dashboard widgets`);
+    log.info(`✅ Seeded ${dashboardWidgetDefinitions.length} dashboard widgets`);
   } catch (error) {
-    console.error('Error seeding dashboard widgets:', error);
+    log.error('Error seeding dashboard widgets:', error);
   }
 }

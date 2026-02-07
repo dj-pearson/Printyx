@@ -4,6 +4,8 @@
 // =====================================================================
 
 import crypto from 'crypto';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('cache-service');
 
 // Interface for cache service to support multiple backends
 interface CacheService {
@@ -96,7 +98,7 @@ class RedisCacheService implements CacheService {
       const value = await this.redis.get(key);
       return value ? JSON.parse(value) : null;
     } catch (error) {
-      console.error('Redis get error:', error);
+      log.error('Redis get error:', error);
       return null;
     }
   }
@@ -105,7 +107,7 @@ class RedisCacheService implements CacheService {
     try {
       await this.redis.setex(key, ttlSeconds, JSON.stringify(value));
     } catch (error) {
-      console.error('Redis set error:', error);
+      log.error('Redis set error:', error);
     }
   }
 
@@ -113,7 +115,7 @@ class RedisCacheService implements CacheService {
     try {
       await this.redis.del(key);
     } catch (error) {
-      console.error('Redis del error:', error);
+      log.error('Redis del error:', error);
     }
   }
 
@@ -121,7 +123,7 @@ class RedisCacheService implements CacheService {
     try {
       await this.redis.flushdb();
     } catch (error) {
-      console.error('Redis clear error:', error);
+      log.error('Redis clear error:', error);
     }
   }
 
@@ -211,14 +213,14 @@ export class ReportingCacheManager {
   async invalidateTenantCache(tenantId: string): Promise<void> {
     // For memory cache, we'd need to iterate and delete matching keys
     // For Redis, we could use SCAN pattern matching
-    console.log(`Invalidating cache for tenant: ${tenantId}`);
+    log.info(`Invalidating cache for tenant: ${tenantId}`);
     // Implementation depends on cache backend
   }
 
   // Invalidate specific report cache
   async invalidateReportCache(tenantId: string, reportId: string): Promise<void> {
     // Implementation would delete all cache entries for this report
-    console.log(`Invalidating report cache: ${tenantId}:${reportId}`);
+    log.info(`Invalidating report cache: ${tenantId}:${reportId}`);
   }
 
   // Generate cache keys
@@ -343,7 +345,7 @@ export function reportCacheMiddleware(ttlSeconds?: number) {
         if (data && data.data && Array.isArray(data.data)) {
           reportingCache
             .cacheReportData(tenantId, reportId, req.query, data.data, ttlSeconds)
-            .catch((err) => console.error('Cache save error:', err));
+            .catch((err) => log.error('Cache save error:', err));
         }
 
         // Call original json method
@@ -352,7 +354,7 @@ export function reportCacheMiddleware(ttlSeconds?: number) {
 
       next();
     } catch (error) {
-      console.error('Cache middleware error:', error);
+      log.error('Cache middleware error:', error);
       next(); // Continue without caching on error
     }
   };

@@ -1,12 +1,14 @@
 import { initializeRoleHierarchy } from './role-seeder';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('initialize-roles');
 
 // Run the role initialization
 initializeRoleHierarchy()
   .then(() => {
-    console.log('Role hierarchy setup completed successfully!');
+    log.info('Role hierarchy setup completed successfully!');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('Error setting up role hierarchy:', error);
+    log.error('Error setting up role hierarchy:', error);
     process.exit(1);
   });

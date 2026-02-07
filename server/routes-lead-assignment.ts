@@ -1,5 +1,8 @@
 import type { Express } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-lead-assignment');
+
 import {
   salesTerritories,
   leadAssignmentRules,
@@ -32,7 +35,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(territories);
     } catch (error) {
-      console.error('Error fetching sales territories:', error);
+      log.error('Error fetching sales territories:', error);
       res.status(500).json({ error: 'Failed to fetch sales territories' });
     }
   });
@@ -53,7 +56,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(territory);
     } catch (error) {
-      console.error('Error fetching territory:', error);
+      log.error('Error fetching territory:', error);
       res.status(500).json({ error: 'Failed to fetch territory' });
     }
   });
@@ -75,7 +78,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.status(201).json(newTerritory);
     } catch (error) {
-      console.error('Error creating territory:', error);
+      log.error('Error creating territory:', error);
       res.status(500).json({ error: 'Failed to create territory' });
     }
   });
@@ -98,7 +101,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error updating territory:', error);
+      log.error('Error updating territory:', error);
       res.status(500).json({ error: 'Failed to update territory' });
     }
   });
@@ -120,7 +123,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json({ success: true, deleted });
     } catch (error) {
-      console.error('Error deleting territory:', error);
+      log.error('Error deleting territory:', error);
       res.status(500).json({ error: 'Failed to delete territory' });
     }
   });
@@ -142,7 +145,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(rules);
     } catch (error) {
-      console.error('Error fetching assignment rules:', error);
+      log.error('Error fetching assignment rules:', error);
       res.status(500).json({ error: 'Failed to fetch assignment rules' });
     }
   });
@@ -163,7 +166,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(rule);
     } catch (error) {
-      console.error('Error fetching assignment rule:', error);
+      log.error('Error fetching assignment rule:', error);
       res.status(500).json({ error: 'Failed to fetch assignment rule' });
     }
   });
@@ -185,7 +188,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.status(201).json(newRule);
     } catch (error) {
-      console.error('Error creating assignment rule:', error);
+      log.error('Error creating assignment rule:', error);
       res.status(500).json({ error: 'Failed to create assignment rule' });
     }
   });
@@ -208,7 +211,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error updating assignment rule:', error);
+      log.error('Error updating assignment rule:', error);
       res.status(500).json({ error: 'Failed to update assignment rule' });
     }
   });
@@ -230,7 +233,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json({ success: true, deleted });
     } catch (error) {
-      console.error('Error deleting assignment rule:', error);
+      log.error('Error deleting assignment rule:', error);
       res.status(500).json({ error: 'Failed to delete assignment rule' });
     }
   });
@@ -253,7 +256,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(capacity);
     } catch (error) {
-      console.error('Error fetching rep capacity:', error);
+      log.error('Error fetching rep capacity:', error);
       res.status(500).json({ error: 'Failed to fetch rep capacity' });
     }
   });
@@ -273,7 +276,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(capacities);
     } catch (error) {
-      console.error('Error fetching rep capacities:', error);
+      log.error('Error fetching rep capacities:', error);
       res.status(500).json({ error: 'Failed to fetch rep capacities' });
     }
   });
@@ -310,7 +313,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
         return res.status(201).json(newCapacity);
       }
     } catch (error) {
-      console.error('Error saving rep capacity:', error);
+      log.error('Error saving rep capacity:', error);
       res.status(500).json({ error: 'Failed to save rep capacity' });
     }
   });
@@ -339,7 +342,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(updated);
     } catch (error) {
-      console.error('Error updating rep availability:', error);
+      log.error('Error updating rep availability:', error);
       res.status(500).json({ error: 'Failed to update rep availability' });
     }
   });
@@ -362,7 +365,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(history);
     } catch (error) {
-      console.error('Error fetching assignment history:', error);
+      log.error('Error fetching assignment history:', error);
       res.status(500).json({ error: 'Failed to fetch assignment history' });
     }
   });
@@ -384,7 +387,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(assignments);
     } catch (error) {
-      console.error('Error fetching user assignments:', error);
+      log.error('Error fetching user assignments:', error);
       res.status(500).json({ error: 'Failed to fetch user assignments' });
     }
   });
@@ -409,7 +412,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.status(201).json(newAssignment);
     } catch (error) {
-      console.error('Error recording assignment:', error);
+      log.error('Error recording assignment:', error);
       res.status(500).json({ error: 'Failed to record assignment' });
     }
   });
@@ -440,7 +443,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
       const queue = await query;
       res.json(queue);
     } catch (error) {
-      console.error('Error fetching assignment queue:', error);
+      log.error('Error fetching assignment queue:', error);
       res.status(500).json({ error: 'Failed to fetch assignment queue' });
     }
   });
@@ -462,7 +465,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.status(201).json(newQueueItem);
     } catch (error) {
-      console.error('Error adding to assignment queue:', error);
+      log.error('Error adding to assignment queue:', error);
       res.status(500).json({ error: 'Failed to add to assignment queue' });
     }
   });
@@ -491,7 +494,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
 
       res.json(processed);
     } catch (error) {
-      console.error('Error processing assignment:', error);
+      log.error('Error processing assignment:', error);
       res.status(500).json({ error: 'Failed to process assignment' });
     }
   });
@@ -598,7 +601,7 @@ export function registerLeadAssignmentRoutes(app: Express) {
         ruleUsed: matchedRule.ruleName,
       });
     } catch (error) {
-      console.error('Error assigning lead:', error);
+      log.error('Error assigning lead:', error);
       res.status(500).json({ error: 'Failed to assign lead' });
     }
   });

@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('analytics-routes');
 
 const analyticsRouter = Router();
 
@@ -28,7 +30,7 @@ analyticsRouter.get('/api/analytics/conversion-metrics/:dealId?', async (req, re
     };
     res.json(conversionMetrics);
   } catch (error) {
-    console.error('Error fetching conversion metrics:', error);
+    log.error('Error fetching conversion metrics:', error);
     return res.status(500).json({ message: 'Failed to fetch conversion metrics', error });
   }
 });

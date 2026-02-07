@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { storage } from '../storage';
 import { z } from 'zod';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('signature-routes');
+
 import {
   insertIntegrationCredentialSchema,
   insertSignatureRequestSchema,
@@ -38,7 +41,7 @@ router.get('/integration-credentials', async (req, res) => {
 
     res.json(safeCredentials);
   } catch (error) {
-    console.error('Error fetching integration credentials:', error);
+    log.error('Error fetching integration credentials:', error);
     res.status(500).json({ error: 'Failed to fetch integration credentials' });
   }
 });
@@ -68,7 +71,7 @@ router.get('/integration-credentials/:id', async (req, res) => {
 
     res.json(safeCredential);
   } catch (error) {
-    console.error('Error fetching integration credential:', error);
+    log.error('Error fetching integration credential:', error);
     res.status(500).json({ error: 'Failed to fetch integration credential' });
   }
 });
@@ -104,7 +107,7 @@ router.post('/integration-credentials', async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
-    console.error('Error creating integration credential:', error);
+    log.error('Error creating integration credential:', error);
     res.status(500).json({ error: 'Failed to create integration credential' });
   }
 });
@@ -148,7 +151,7 @@ router.patch('/integration-credentials/:id', async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
-    console.error('Error updating integration credential:', error);
+    log.error('Error updating integration credential:', error);
     res.status(500).json({ error: 'Failed to update integration credential' });
   }
 });
@@ -164,7 +167,7 @@ router.delete('/integration-credentials/:id', async (req, res) => {
     await storage.deleteIntegrationCredential(req.params.id, tenantId);
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting integration credential:', error);
+    log.error('Error deleting integration credential:', error);
     res.status(500).json({ error: 'Failed to delete integration credential' });
   }
 });
@@ -180,7 +183,7 @@ router.post('/integration-credentials/:id/test', async (req, res) => {
     const result = await storage.testIntegrationConnection(req.params.id, tenantId);
     res.json(result);
   } catch (error) {
-    console.error('Error testing integration connection:', error);
+    log.error('Error testing integration connection:', error);
     res.status(500).json({ error: 'Failed to test integration connection' });
   }
 });
@@ -201,7 +204,7 @@ router.get('/signature-requests', async (req, res) => {
     const requests = await storage.getSignatureRequests(tenantId, status);
     res.json(requests);
   } catch (error) {
-    console.error('Error fetching signature requests:', error);
+    log.error('Error fetching signature requests:', error);
     res.status(500).json({ error: 'Failed to fetch signature requests' });
   }
 });
@@ -221,7 +224,7 @@ router.get('/signature-requests/:id', async (req, res) => {
 
     res.json(request);
   } catch (error) {
-    console.error('Error fetching signature request:', error);
+    log.error('Error fetching signature request:', error);
     res.status(500).json({ error: 'Failed to fetch signature request' });
   }
 });
@@ -237,7 +240,7 @@ router.get('/customers/:customerId/signature-requests', async (req, res) => {
     const requests = await storage.getSignatureRequestsByCustomer(req.params.customerId, tenantId);
     res.json(requests);
   } catch (error) {
-    console.error('Error fetching signature requests by customer:', error);
+    log.error('Error fetching signature requests by customer:', error);
     res.status(500).json({ error: 'Failed to fetch signature requests' });
   }
 });
@@ -254,7 +257,7 @@ router.get('/signature-requests/expiring/soon', async (req, res) => {
     const requests = await storage.getExpiringSignatureRequests(tenantId, days);
     res.json(requests);
   } catch (error) {
-    console.error('Error fetching expiring signature requests:', error);
+    log.error('Error fetching expiring signature requests:', error);
     res.status(500).json({ error: 'Failed to fetch expiring signature requests' });
   }
 });
@@ -292,7 +295,7 @@ router.post('/signature-requests', async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
-    console.error('Error creating signature request:', error);
+    log.error('Error creating signature request:', error);
     res.status(500).json({ error: 'Failed to create signature request' });
   }
 });
@@ -317,7 +320,7 @@ router.patch('/signature-requests/:id', async (req, res) => {
 
     res.json(request);
   } catch (error) {
-    console.error('Error updating signature request:', error);
+    log.error('Error updating signature request:', error);
     res.status(500).json({ error: 'Failed to update signature request' });
   }
 });
@@ -333,7 +336,7 @@ router.delete('/signature-requests/:id', async (req, res) => {
     await storage.deleteSignatureRequest(req.params.id, tenantId);
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting signature request:', error);
+    log.error('Error deleting signature request:', error);
     res.status(500).json({ error: 'Failed to delete signature request' });
   }
 });
@@ -372,7 +375,7 @@ router.post('/signature-requests/:id/send', async (req, res) => {
 
     res.json(updatedRequest);
   } catch (error) {
-    console.error('Error sending signature request:', error);
+    log.error('Error sending signature request:', error);
     res.status(500).json({ error: 'Failed to send signature request' });
   }
 });
@@ -409,7 +412,7 @@ router.post('/signature-requests/:id/void', async (req, res) => {
 
     res.json(updatedRequest);
   } catch (error) {
-    console.error('Error voiding signature request:', error);
+    log.error('Error voiding signature request:', error);
     res.status(500).json({ error: 'Failed to void signature request' });
   }
 });
@@ -429,7 +432,7 @@ router.get('/signature-requests/:requestId/signers', async (req, res) => {
     const signers = await storage.getSignatureSigners(req.params.requestId, tenantId);
     res.json(signers);
   } catch (error) {
-    console.error('Error fetching signers:', error);
+    log.error('Error fetching signers:', error);
     res.status(500).json({ error: 'Failed to fetch signers' });
   }
 });
@@ -449,7 +452,7 @@ router.get('/signature-signers/:id', async (req, res) => {
 
     res.json(signer);
   } catch (error) {
-    console.error('Error fetching signer:', error);
+    log.error('Error fetching signer:', error);
     res.status(500).json({ error: 'Failed to fetch signer' });
   }
 });
@@ -473,7 +476,7 @@ router.post('/signature-signers', async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
-    console.error('Error creating signer:', error);
+    log.error('Error creating signer:', error);
     res.status(500).json({ error: 'Failed to create signer' });
   }
 });
@@ -493,7 +496,7 @@ router.patch('/signature-signers/:id', async (req, res) => {
 
     res.json(signer);
   } catch (error) {
-    console.error('Error updating signer:', error);
+    log.error('Error updating signer:', error);
     res.status(500).json({ error: 'Failed to update signer' });
   }
 });
@@ -509,7 +512,7 @@ router.delete('/signature-signers/:id', async (req, res) => {
     await storage.deleteSignatureSigner(req.params.id, tenantId);
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting signer:', error);
+    log.error('Error deleting signer:', error);
     res.status(500).json({ error: 'Failed to delete signer' });
   }
 });
@@ -529,7 +532,7 @@ router.get('/signature-requests/:requestId/documents', async (req, res) => {
     const documents = await storage.getSignatureDocuments(req.params.requestId, tenantId);
     res.json(documents);
   } catch (error) {
-    console.error('Error fetching documents:', error);
+    log.error('Error fetching documents:', error);
     res.status(500).json({ error: 'Failed to fetch documents' });
   }
 });
@@ -549,7 +552,7 @@ router.get('/signature-documents/:id', async (req, res) => {
 
     res.json(document);
   } catch (error) {
-    console.error('Error fetching document:', error);
+    log.error('Error fetching document:', error);
     res.status(500).json({ error: 'Failed to fetch document' });
   }
 });
@@ -573,7 +576,7 @@ router.post('/signature-documents', async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
-    console.error('Error creating document:', error);
+    log.error('Error creating document:', error);
     res.status(500).json({ error: 'Failed to create document' });
   }
 });
@@ -593,7 +596,7 @@ router.patch('/signature-documents/:id', async (req, res) => {
 
     res.json(document);
   } catch (error) {
-    console.error('Error updating document:', error);
+    log.error('Error updating document:', error);
     res.status(500).json({ error: 'Failed to update document' });
   }
 });
@@ -609,7 +612,7 @@ router.delete('/signature-documents/:id', async (req, res) => {
     await storage.deleteSignatureDocument(req.params.id, tenantId);
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting document:', error);
+    log.error('Error deleting document:', error);
     res.status(500).json({ error: 'Failed to delete document' });
   }
 });
@@ -629,7 +632,7 @@ router.get('/signature-requests/:requestId/audit-logs', async (req, res) => {
     const logs = await storage.getSignatureAuditLogs(req.params.requestId, tenantId);
     res.json(logs);
   } catch (error) {
-    console.error('Error fetching audit logs:', error);
+    log.error('Error fetching audit logs:', error);
     res.status(500).json({ error: 'Failed to fetch audit logs' });
   }
 });
@@ -645,7 +648,7 @@ router.get('/signature-signers/:signerId/audit-logs', async (req, res) => {
     const logs = await storage.getSignatureAuditLogsBySigner(req.params.signerId, tenantId);
     res.json(logs);
   } catch (error) {
-    console.error('Error fetching audit logs:', error);
+    log.error('Error fetching audit logs:', error);
     res.status(500).json({ error: 'Failed to fetch audit logs' });
   }
 });
@@ -660,10 +663,10 @@ router.post('/webhooks/docusign', async (req, res) => {
     // TODO: Verify webhook signature
     // TODO: Process DocuSign events and update signature requests accordingly
 
-    console.log('DocuSign webhook received:', req.body);
+    log.info('DocuSign webhook received:', req.body);
     res.status(200).json({ received: true });
   } catch (error) {
-    console.error('Error processing DocuSign webhook:', error);
+    log.error('Error processing DocuSign webhook:', error);
     res.status(500).json({ error: 'Failed to process webhook' });
   }
 });
@@ -674,10 +677,10 @@ router.post('/webhooks/adobe-sign', async (req, res) => {
     // TODO: Verify webhook signature
     // TODO: Process Adobe Sign events and update signature requests accordingly
 
-    console.log('Adobe Sign webhook received:', req.body);
+    log.info('Adobe Sign webhook received:', req.body);
     res.status(200).json({ received: true });
   } catch (error) {
-    console.error('Error processing Adobe Sign webhook:', error);
+    log.error('Error processing Adobe Sign webhook:', error);
     res.status(500).json({ error: 'Failed to process webhook' });
   }
 });
@@ -688,10 +691,10 @@ router.post('/webhooks/hellosign', async (req, res) => {
     // TODO: Verify webhook signature
     // TODO: Process HelloSign events and update signature requests accordingly
 
-    console.log('HelloSign webhook received:', req.body);
+    log.info('HelloSign webhook received:', req.body);
     res.status(200).json({ received: true });
   } catch (error) {
-    console.error('Error processing HelloSign webhook:', error);
+    log.error('Error processing HelloSign webhook:', error);
     res.status(500).json({ error: 'Failed to process webhook' });
   }
 });

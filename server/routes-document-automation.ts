@@ -1,5 +1,8 @@
 import express, { type Request, Response } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-document-automation');
+
 import {
   documentTemplates,
   generatedDocuments,
@@ -75,7 +78,7 @@ router.get('/api/document-templates', async (req: Request, res: Response) => {
 
     res.json(templates);
   } catch (error: any) {
-    console.error('Error fetching templates:', error);
+    log.error('Error fetching templates:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -97,7 +100,7 @@ router.get('/api/document-templates/:id', async (req: Request, res: Response) =>
 
     res.json(template);
   } catch (error: any) {
-    console.error('Error fetching template:', error);
+    log.error('Error fetching template:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -118,7 +121,7 @@ router.post('/api/document-templates', async (req: Request, res: Response) => {
 
     res.status(201).json(template);
   } catch (error: any) {
-    console.error('Error creating template:', error);
+    log.error('Error creating template:', error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -148,7 +151,7 @@ router.put('/api/document-templates/:id', async (req: Request, res: Response) =>
 
     res.json(updated);
   } catch (error: any) {
-    console.error('Error updating template:', error);
+    log.error('Error updating template:', error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -174,7 +177,7 @@ router.delete('/api/document-templates/:id', async (req: Request, res: Response)
 
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Error deleting template:', error);
+    log.error('Error deleting template:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -194,7 +197,7 @@ router.post('/api/document-templates/:id/preview', async (req: Request, res: Res
 
     res.json({ preview });
   } catch (error: any) {
-    console.error('Error previewing template:', error);
+    log.error('Error previewing template:', error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -252,7 +255,7 @@ router.post('/api/documents/generate', async (req: Request, res: Response) => {
 
     res.status(201).json(document);
   } catch (error: any) {
-    console.error('Error generating document:', error);
+    log.error('Error generating document:', error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -282,7 +285,7 @@ router.post('/api/documents/batch-generate', async (req: Request, res: Response)
 
     res.status(201).json(documents);
   } catch (error: any) {
-    console.error('Error batch generating documents:', error);
+    log.error('Error batch generating documents:', error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -312,7 +315,7 @@ router.get('/api/documents/generated', async (req: Request, res: Response) => {
 
     res.json(documents);
   } catch (error: any) {
-    console.error('Error fetching generated documents:', error);
+    log.error('Error fetching generated documents:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -347,7 +350,7 @@ router.get('/api/documents/generated/:id/download', async (req: Request, res: Re
     // Send file
     res.download(document.filePath, document.name);
   } catch (error: any) {
-    console.error('Error downloading document:', error);
+    log.error('Error downloading document:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -385,12 +388,12 @@ router.post('/api/documents/upload', upload.single('file'), async (req: Request,
 
     // Trigger OCR and AI processing in background
     DocumentProcessingService.processDocument(upload.id, tenantId).catch((error) => {
-      console.error(`Background processing failed for upload ${upload.id}:`, error);
+      log.error(`Background processing failed for upload ${upload.id}:`, error);
     });
 
     res.status(201).json(upload);
   } catch (error: any) {
-    console.error('Error uploading document:', error);
+    log.error('Error uploading document:', error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -411,7 +414,7 @@ router.get('/api/documents/uploads/:id', async (req: Request, res: Response) => 
 
     res.json(upload);
   } catch (error: any) {
-    console.error('Error fetching upload:', error);
+    log.error('Error fetching upload:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -428,7 +431,7 @@ router.get('/api/documents/uploads', async (req: Request, res: Response) => {
 
     res.json(uploads);
   } catch (error: any) {
-    console.error('Error fetching uploads:', error);
+    log.error('Error fetching uploads:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -461,7 +464,7 @@ router.post('/api/documents/uploads/:id/review', async (req: Request, res: Respo
 
     res.json({ success: true });
   } catch (error: any) {
-    console.error('Error reviewing upload:', error);
+    log.error('Error reviewing upload:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -482,7 +485,7 @@ router.get('/api/document-field-mappings', async (req: Request, res: Response) =
 
     res.json(mappings);
   } catch (error: any) {
-    console.error('Error fetching field mappings:', error);
+    log.error('Error fetching field mappings:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -503,7 +506,7 @@ router.post('/api/document-field-mappings', async (req: Request, res: Response) 
 
     res.status(201).json(mapping);
   } catch (error: any) {
-    console.error('Error creating field mapping:', error);
+    log.error('Error creating field mapping:', error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -530,7 +533,7 @@ router.post('/api/documents/ai-extract', async (req: Request, res: Response) => 
 
     res.json(result);
   } catch (error: any) {
-    console.error('Error extracting fields:', error);
+    log.error('Error extracting fields:', error);
     res.status(400).json({ error: error.message });
   }
 });

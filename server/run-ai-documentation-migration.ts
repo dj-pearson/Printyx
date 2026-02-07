@@ -7,9 +7,11 @@ import { db } from './db';
 import fs from 'fs';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('run-ai-documentation-migration');
 
 async function runAIDocumentationMigration() {
-  console.log('📚 Starting AI Documentation Migration...');
+  log.info('📚 Starting AI Documentation Migration...');
 
   try {
     const __filename = fileURLToPath(import.meta.url);
@@ -17,7 +19,7 @@ async function runAIDocumentationMigration() {
     const migrationPath = path.join(__dirname, '../migrations/ai-documentation-migration.sql');
 
     const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
-    console.log('📄 AI documentation migration SQL loaded, executing...');
+    log.info('📄 AI documentation migration SQL loaded, executing...');
 
     // Split SQL into individual statements
     const statements = migrationSQL
@@ -25,14 +27,14 @@ async function runAIDocumentationMigration() {
       .map((stmt) => stmt.trim())
       .filter((stmt) => stmt.length > 0 && !stmt.startsWith('--'));
 
-    console.log(`📊 Found ${statements.length} SQL statements to execute`);
+    log.info(`📊 Found ${statements.length} SQL statements to execute`);
 
     // Execute each statement
     for (let i = 0; i < statements.length; i++) {
       const statement = statements[i];
       if (statement.trim()) {
         try {
-          console.log(`⚡ Executing statement ${i + 1}/${statements.length}...`);
+          log.info(`⚡ Executing statement ${i + 1}/${statements.length}...`);
           await db.execute(statement);
         } catch (error: any) {
           if (
@@ -40,40 +42,36 @@ async function runAIDocumentationMigration() {
             error.message?.includes('duplicate column name') ||
             error.message?.includes('duplicate key value')
           ) {
-            console.log(`⚠️  Skipped statement ${i + 1} (already exists)`);
+            log.info(`⚠️  Skipped statement ${i + 1} (already exists)`);
             continue;
           } else {
-            console.error(`❌ Error in statement ${i + 1}:`, error.message);
+            log.error(`❌ Error in statement ${i + 1}:`, error.message);
             throw error;
           }
         }
       }
     }
 
-    console.log('✅ AI Documentation Migration completed successfully!');
-    console.log('\n🎯 AI Documentation Features Added:');
-    console.log(
-      '📝 Document Types - Configurable templates with AI writing prompts and formatting',
-    );
-    console.log(
+    log.info('✅ AI Documentation Migration completed successfully!');
+    log.info('\n🎯 AI Documentation Features Added:');
+    log.info('📝 Document Types - Configurable templates with AI writing prompts and formatting');
+    log.info(
       '🧠 AI Documents - Intelligent content generation with confidence scoring and version control',
     );
-    console.log('✨ Writing Sessions - AI assistance tracking with user interaction metrics');
-    console.log(
-      '📄 Document Sections - Structured content with AI-powered generation and formatting',
-    );
-    console.log('💡 Content Suggestions - AI-powered improvements for grammar, style, and clarity');
-    console.log(
+    log.info('✨ Writing Sessions - AI assistance tracking with user interaction metrics');
+    log.info('📄 Document Sections - Structured content with AI-powered generation and formatting');
+    log.info('💡 Content Suggestions - AI-powered improvements for grammar, style, and clarity');
+    log.info(
       '📚 Knowledge Articles - Enhanced knowledge base with AI categorization and search optimization',
     );
-    console.log(
+    log.info(
       '🎨 Document Templates - Reusable templates with AI customization and success tracking',
     );
-    console.log('📊 Writing Analytics - Performance insights and AI effectiveness metrics');
-    console.log('👥 Document Reviews - Collaboration workflow with AI-assisted review process');
-    console.log('\n🚀 Ready for intelligent document creation and AI-powered writing assistance!');
+    log.info('📊 Writing Analytics - Performance insights and AI effectiveness metrics');
+    log.info('👥 Document Reviews - Collaboration workflow with AI-assisted review process');
+    log.info('\n🚀 Ready for intelligent document creation and AI-powered writing assistance!');
   } catch (error) {
-    console.error('❌ AI documentation migration failed:', error);
+    log.error('❌ AI documentation migration failed:', error);
     process.exit(1);
   }
 }
@@ -82,11 +80,11 @@ async function runAIDocumentationMigration() {
 if (import.meta.url.startsWith('file:') && fileURLToPath(import.meta.url) === process.argv[1]) {
   runAIDocumentationMigration()
     .then(() => {
-      console.log('AI documentation migration script completed');
+      log.info('AI documentation migration script completed');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('AI documentation migration script failed:', error);
+      log.error('AI documentation migration script failed:', error);
       process.exit(1);
     });
 }

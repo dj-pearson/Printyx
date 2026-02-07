@@ -16,6 +16,8 @@ import { gdprDataExportService, DATA_CATEGORIES } from './services/gdpr-data-exp
 import { consentManagementService, CONSENT_TYPES } from './services/consent-management-service';
 import { dpaManagementService, DPA_STATUSES } from './services/dpa-management-service';
 import { contactDeduplicationService } from './services/contact-deduplication-service';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-gdpr-core');
 
 // Schemas
 import {
@@ -68,7 +70,7 @@ router.post(
         export: exportRequest,
       });
     } catch (error) {
-      console.error('Error creating data export request:', error);
+      log.error('Error creating data export request:', error);
       res.status(500).json({ message: 'Failed to create data export request' });
     }
   },
@@ -92,7 +94,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      console.error('Error listing data export requests:', error);
+      log.error('Error listing data export requests:', error);
       res.status(500).json({ message: 'Failed to list data export requests' });
     }
   },
@@ -117,7 +119,7 @@ router.get(
 
       res.json(exportRequest);
     } catch (error) {
-      console.error('Error fetching data export request:', error);
+      log.error('Error fetching data export request:', error);
       res.status(500).json({ message: 'Failed to fetch data export request' });
     }
   },
@@ -147,7 +149,7 @@ router.post(
         data: result.data,
       });
     } catch (error) {
-      console.error('Error processing data export:', error);
+      log.error('Error processing data export:', error);
       res.status(500).json({ message: 'Failed to process data export' });
     }
   },
@@ -197,7 +199,7 @@ router.get(
       );
       res.json(result.data);
     } catch (error) {
-      console.error('Error downloading data export:', error);
+      log.error('Error downloading data export:', error);
       res.status(500).json({ message: 'Failed to download data export' });
     }
   },
@@ -214,7 +216,7 @@ router.get(
       const templates = await gdprDataExportService.listTemplates(req.tenantId!);
       res.json({ templates });
     } catch (error) {
-      console.error('Error listing export templates:', error);
+      log.error('Error listing export templates:', error);
       res.status(500).json({ message: 'Failed to list export templates' });
     }
   },
@@ -231,7 +233,7 @@ router.post(
       const template = await gdprDataExportService.createTemplate(req.tenantId!, req.body);
       res.status(201).json({ template });
     } catch (error) {
-      console.error('Error creating export template:', error);
+      log.error('Error creating export template:', error);
       res.status(500).json({ message: 'Failed to create export template' });
     }
   },
@@ -271,7 +273,7 @@ router.post(
         consent,
       });
     } catch (error) {
-      console.error('Error recording consent:', error);
+      log.error('Error recording consent:', error);
       res.status(500).json({ message: 'Failed to record consent' });
     }
   },
@@ -306,7 +308,7 @@ router.post(
         consents,
       });
     } catch (error) {
-      console.error('Error bulk recording consents:', error);
+      log.error('Error bulk recording consents:', error);
       res.status(500).json({ message: 'Failed to record consents' });
     }
   },
@@ -336,7 +338,7 @@ router.post(
         consent,
       });
     } catch (error) {
-      console.error('Error withdrawing consent:', error);
+      log.error('Error withdrawing consent:', error);
       res.status(500).json({ message: 'Failed to withdraw consent' });
     }
   },
@@ -355,7 +357,7 @@ router.get('/consent/subject/:type/:id', async (req: TenantRequest, res: Respons
 
     res.json({ consents });
   } catch (error) {
-    console.error('Error fetching subject consents:', error);
+    log.error('Error fetching subject consents:', error);
     res.status(500).json({ message: 'Failed to fetch subject consents' });
   }
 });
@@ -369,7 +371,7 @@ router.get('/consent/subject/:id/summary', async (req: TenantRequest, res: Respo
 
     res.json({ summary });
   } catch (error) {
-    console.error('Error fetching consent summary:', error);
+    log.error('Error fetching consent summary:', error);
     res.status(500).json({ message: 'Failed to fetch consent summary' });
   }
 });
@@ -387,7 +389,7 @@ router.get('/consent/check/:subjectId/:consentType', async (req: TenantRequest, 
 
     res.json({ hasConsent });
   } catch (error) {
-    console.error('Error checking consent:', error);
+    log.error('Error checking consent:', error);
     res.status(500).json({ message: 'Failed to check consent' });
   }
 });
@@ -411,7 +413,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      console.error('Error listing consents:', error);
+      log.error('Error listing consents:', error);
       res.status(500).json({ message: 'Failed to list consents' });
     }
   },
@@ -432,7 +434,7 @@ router.get(
 
       res.json({ history });
     } catch (error) {
-      console.error('Error fetching consent history:', error);
+      log.error('Error fetching consent history:', error);
       res.status(500).json({ message: 'Failed to fetch consent history' });
     }
   },
@@ -449,7 +451,7 @@ router.get(
       const stats = await consentManagementService.getConsentStats(req.tenantId!);
       res.json(stats);
     } catch (error) {
-      console.error('Error fetching consent stats:', error);
+      log.error('Error fetching consent stats:', error);
       res.status(500).json({ message: 'Failed to fetch consent statistics' });
     }
   },
@@ -466,7 +468,7 @@ router.get(
       const templates = await consentManagementService.listTemplates(req.tenantId!);
       res.json({ templates });
     } catch (error) {
-      console.error('Error listing consent templates:', error);
+      log.error('Error listing consent templates:', error);
       res.status(500).json({ message: 'Failed to list consent templates' });
     }
   },
@@ -483,7 +485,7 @@ router.post(
       const template = await consentManagementService.createTemplate(req.tenantId!, req.body);
       res.status(201).json({ template });
     } catch (error) {
-      console.error('Error creating consent template:', error);
+      log.error('Error creating consent template:', error);
       res.status(500).json({ message: 'Failed to create consent template' });
     }
   },
@@ -520,7 +522,7 @@ router.post(
         dpa,
       });
     } catch (error) {
-      console.error('Error creating DPA:', error);
+      log.error('Error creating DPA:', error);
       res.status(500).json({ message: 'Failed to create DPA' });
     }
   },
@@ -546,7 +548,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      console.error('Error listing DPAs:', error);
+      log.error('Error listing DPAs:', error);
       res.status(500).json({ message: 'Failed to list DPAs' });
     }
   },
@@ -568,7 +570,7 @@ router.get(
 
       res.json(dpa);
     } catch (error) {
-      console.error('Error fetching DPA:', error);
+      log.error('Error fetching DPA:', error);
       res.status(500).json({ message: 'Failed to fetch DPA' });
     }
   },
@@ -595,7 +597,7 @@ router.put(
         dpa,
       });
     } catch (error) {
-      console.error('Error updating DPA:', error);
+      log.error('Error updating DPA:', error);
       res
         .status(500)
         .json({ message: error instanceof Error ? error.message : 'Failed to update DPA' });
@@ -628,7 +630,7 @@ router.post(
         dpa,
       });
     } catch (error) {
-      console.error('Error submitting DPA for review:', error);
+      log.error('Error submitting DPA for review:', error);
       res.status(500).json({ message: 'Failed to submit DPA for review' });
     }
   },
@@ -654,7 +656,7 @@ router.post(
         dpa,
       });
     } catch (error) {
-      console.error('Error approving DPA:', error);
+      log.error('Error approving DPA:', error);
       res.status(500).json({ message: 'Failed to approve DPA' });
     }
   },
@@ -681,7 +683,7 @@ router.post(
         dpa,
       });
     } catch (error) {
-      console.error('Error recording signatures:', error);
+      log.error('Error recording signatures:', error);
       res.status(500).json({ message: 'Failed to record signatures' });
     }
   },
@@ -711,7 +713,7 @@ router.post(
         dpa,
       });
     } catch (error) {
-      console.error('Error renewing DPA:', error);
+      log.error('Error renewing DPA:', error);
       res.status(500).json({ message: 'Failed to renew DPA' });
     }
   },
@@ -730,7 +732,7 @@ router.get(
 
       res.json({ dpas, withinDays });
     } catch (error) {
-      console.error('Error fetching expiring DPAs:', error);
+      log.error('Error fetching expiring DPAs:', error);
       res.status(500).json({ message: 'Failed to fetch expiring DPAs' });
     }
   },
@@ -747,7 +749,7 @@ router.get(
       const dpas = await dpaManagementService.getDpasPendingCompliance(req.tenantId!);
       res.json({ dpas });
     } catch (error) {
-      console.error('Error fetching DPAs pending compliance:', error);
+      log.error('Error fetching DPAs pending compliance:', error);
       res.status(500).json({ message: 'Failed to fetch DPAs pending compliance' });
     }
   },
@@ -779,7 +781,7 @@ router.post(
         dpa,
       });
     } catch (error) {
-      console.error('Error adding sub-processor:', error);
+      log.error('Error adding sub-processor:', error);
       res.status(500).json({ message: 'Failed to add sub-processor' });
     }
   },
@@ -811,7 +813,7 @@ router.delete(
         dpa,
       });
     } catch (error) {
-      console.error('Error removing sub-processor:', error);
+      log.error('Error removing sub-processor:', error);
       res.status(500).json({ message: 'Failed to remove sub-processor' });
     }
   },
@@ -842,7 +844,7 @@ router.post(
         check,
       });
     } catch (error) {
-      console.error('Error creating compliance check:', error);
+      log.error('Error creating compliance check:', error);
       res.status(500).json({ message: 'Failed to create compliance check' });
     }
   },
@@ -864,7 +866,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      console.error('Error listing compliance checks:', error);
+      log.error('Error listing compliance checks:', error);
       res.status(500).json({ message: 'Failed to list compliance checks' });
     }
   },
@@ -881,7 +883,7 @@ router.get(
       const stats = await dpaManagementService.getStats(req.tenantId!);
       res.json(stats);
     } catch (error) {
-      console.error('Error fetching DPA stats:', error);
+      log.error('Error fetching DPA stats:', error);
       res.status(500).json({ message: 'Failed to fetch DPA statistics' });
     }
   },
@@ -916,7 +918,7 @@ router.post(
         rule,
       });
     } catch (error) {
-      console.error('Error creating dedup rule:', error);
+      log.error('Error creating dedup rule:', error);
       res.status(500).json({ message: 'Failed to create duplicate detection rule' });
     }
   },
@@ -938,7 +940,7 @@ router.get(
 
       res.json({ rules });
     } catch (error) {
-      console.error('Error listing dedup rules:', error);
+      log.error('Error listing dedup rules:', error);
       res.status(500).json({ message: 'Failed to list duplicate detection rules' });
     }
   },
@@ -960,7 +962,7 @@ router.get(
 
       res.json(rule);
     } catch (error) {
-      console.error('Error fetching dedup rule:', error);
+      log.error('Error fetching dedup rule:', error);
       res.status(500).json({ message: 'Failed to fetch duplicate detection rule' });
     }
   },
@@ -991,7 +993,7 @@ router.put(
         rule,
       });
     } catch (error) {
-      console.error('Error updating dedup rule:', error);
+      log.error('Error updating dedup rule:', error);
       res.status(500).json({ message: 'Failed to update duplicate detection rule' });
     }
   },
@@ -1016,7 +1018,7 @@ router.post(
 
       res.json({ duplicates });
     } catch (error) {
-      console.error('Error finding duplicates:', error);
+      log.error('Error finding duplicates:', error);
       res.status(500).json({ message: 'Failed to find duplicates' });
     }
   },
@@ -1041,7 +1043,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      console.error('Error listing matches:', error);
+      log.error('Error listing matches:', error);
       res.status(500).json({ message: 'Failed to list duplicate matches' });
     }
   },
@@ -1071,7 +1073,7 @@ router.post(
         match,
       });
     } catch (error) {
-      console.error('Error resolving match:', error);
+      log.error('Error resolving match:', error);
       res.status(500).json({ message: 'Failed to resolve duplicate match' });
     }
   },
@@ -1111,7 +1113,7 @@ router.post(
         mergeHistory: history,
       });
     } catch (error) {
-      console.error('Error merging records:', error);
+      log.error('Error merging records:', error);
       res
         .status(500)
         .json({ message: error instanceof Error ? error.message : 'Failed to merge records' });
@@ -1137,7 +1139,7 @@ router.post(
 
       res.json({ message: 'Merge rolled back successfully' });
     } catch (error) {
-      console.error('Error rolling back merge:', error);
+      log.error('Error rolling back merge:', error);
       res
         .status(500)
         .json({ message: error instanceof Error ? error.message : 'Failed to rollback merge' });
@@ -1160,7 +1162,7 @@ router.get(
 
       res.json({ history });
     } catch (error) {
-      console.error('Error fetching merge history:', error);
+      log.error('Error fetching merge history:', error);
       res.status(500).json({ message: 'Failed to fetch merge history' });
     }
   },
@@ -1189,7 +1191,7 @@ router.post(
         job,
       });
     } catch (error) {
-      console.error('Error creating scan job:', error);
+      log.error('Error creating scan job:', error);
       res.status(500).json({ message: 'Failed to create scan job' });
     }
   },
@@ -1206,11 +1208,11 @@ router.post(
       // Run the scan job asynchronously
       contactDeduplicationService
         .runScanJob(req.tenantId!, req.params.id)
-        .catch((err) => console.error('Scan job error:', err));
+        .catch((err) => log.error('Scan job error:', err));
 
       res.json({ message: 'Scan job started' });
     } catch (error) {
-      console.error('Error running scan job:', error);
+      log.error('Error running scan job:', error);
       res.status(500).json({ message: 'Failed to start scan job' });
     }
   },
@@ -1233,7 +1235,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      console.error('Error listing scan jobs:', error);
+      log.error('Error listing scan jobs:', error);
       res.status(500).json({ message: 'Failed to list scan jobs' });
     }
   },
@@ -1250,7 +1252,7 @@ router.get(
       const stats = await contactDeduplicationService.getStats(req.tenantId!);
       res.json(stats);
     } catch (error) {
-      console.error('Error fetching dedup stats:', error);
+      log.error('Error fetching dedup stats:', error);
       res.status(500).json({ message: 'Failed to fetch deduplication statistics' });
     }
   },

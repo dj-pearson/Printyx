@@ -8,6 +8,8 @@ import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenanc
 import { requireRole } from './rbac-middleware';
 import { enhanceUserContext } from './middleware/rbac-route-helper';
 import { auditLogMiddleware } from './security-compliance';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-territory-management');
 
 // Services
 import {
@@ -49,7 +51,7 @@ router.post(
         territory,
       });
     } catch (error) {
-      console.error('Error creating territory:', error);
+      log.error('Error creating territory:', error);
       res.status(500).json({ message: 'Failed to create territory' });
     }
   },
@@ -75,7 +77,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      console.error('Error listing territories:', error);
+      log.error('Error listing territories:', error);
       res.status(500).json({ message: 'Failed to list territories' });
     }
   },
@@ -97,7 +99,7 @@ router.get(
 
       res.json(territory);
     } catch (error) {
-      console.error('Error fetching territory:', error);
+      log.error('Error fetching territory:', error);
       res.status(500).json({ message: 'Failed to fetch territory' });
     }
   },
@@ -124,7 +126,7 @@ router.put(
         territory,
       });
     } catch (error) {
-      console.error('Error updating territory:', error);
+      log.error('Error updating territory:', error);
       res.status(500).json({ message: 'Failed to update territory' });
     }
   },
@@ -143,7 +145,7 @@ router.delete(
 
       res.json({ message: 'Territory deleted successfully' });
     } catch (error) {
-      console.error('Error deleting territory:', error);
+      log.error('Error deleting territory:', error);
       res.status(500).json({ message: 'Failed to delete territory' });
     }
   },
@@ -164,7 +166,7 @@ router.post(
 
       res.json({ territory });
     } catch (error) {
-      console.error('Error finding matching territory:', error);
+      log.error('Error finding matching territory:', error);
       res.status(500).json({ message: 'Failed to find matching territory' });
     }
   },
@@ -190,7 +192,7 @@ router.post(
 
       res.json({ message: 'Lead assigned to territory successfully' });
     } catch (error) {
-      console.error('Error assigning lead to territory:', error);
+      log.error('Error assigning lead to territory:', error);
       res
         .status(500)
         .json({ message: error instanceof Error ? error.message : 'Failed to assign lead' });
@@ -227,7 +229,7 @@ router.post(
         rule,
       });
     } catch (error) {
-      console.error('Error creating assignment rule:', error);
+      log.error('Error creating assignment rule:', error);
       res.status(500).json({ message: 'Failed to create assignment rule' });
     }
   },
@@ -250,7 +252,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      console.error('Error listing assignment rules:', error);
+      log.error('Error listing assignment rules:', error);
       res.status(500).json({ message: 'Failed to list assignment rules' });
     }
   },
@@ -272,7 +274,7 @@ router.get(
 
       res.json(rule);
     } catch (error) {
-      console.error('Error fetching assignment rule:', error);
+      log.error('Error fetching assignment rule:', error);
       res.status(500).json({ message: 'Failed to fetch assignment rule' });
     }
   },
@@ -303,7 +305,7 @@ router.put(
         rule,
       });
     } catch (error) {
-      console.error('Error updating assignment rule:', error);
+      log.error('Error updating assignment rule:', error);
       res.status(500).json({ message: 'Failed to update assignment rule' });
     }
   },
@@ -327,7 +329,7 @@ router.delete(
 
       res.json({ message: 'Assignment rule deleted successfully' });
     } catch (error) {
-      console.error('Error deleting assignment rule:', error);
+      log.error('Error deleting assignment rule:', error);
       res.status(500).json({ message: 'Failed to delete assignment rule' });
     }
   },
@@ -352,7 +354,7 @@ router.get(
 
       res.json(capacity);
     } catch (error) {
-      console.error('Error fetching rep capacity:', error);
+      log.error('Error fetching rep capacity:', error);
       res.status(500).json({ message: 'Failed to fetch rep capacity' });
     }
   },
@@ -378,7 +380,7 @@ router.put(
         capacity,
       });
     } catch (error) {
-      console.error('Error updating rep capacity:', error);
+      log.error('Error updating rep capacity:', error);
       res.status(500).json({ message: 'Failed to update rep capacity' });
     }
   },
@@ -401,7 +403,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      console.error('Error listing rep capacities:', error);
+      log.error('Error listing rep capacities:', error);
       res.status(500).json({ message: 'Failed to list rep capacities' });
     }
   },
@@ -424,7 +426,7 @@ router.post(
 
       res.json({ rep });
     } catch (error) {
-      console.error('Error finding available rep:', error);
+      log.error('Error finding available rep:', error);
       res.status(500).json({ message: 'Failed to find available rep' });
     }
   },
@@ -449,7 +451,7 @@ router.get(
 
       res.json({ history });
     } catch (error) {
-      console.error('Error fetching lead assignment history:', error);
+      log.error('Error fetching lead assignment history:', error);
       res.status(500).json({ message: 'Failed to fetch assignment history' });
     }
   },
@@ -475,7 +477,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      console.error('Error fetching rep assignment history:', error);
+      log.error('Error fetching rep assignment history:', error);
       res.status(500).json({ message: 'Failed to fetch assignment history' });
     }
   },
@@ -496,7 +498,7 @@ router.get(
       const stats = await territoryManagementService.getStats(req.tenantId!);
       res.json(stats);
     } catch (error) {
-      console.error('Error fetching territory stats:', error);
+      log.error('Error fetching territory stats:', error);
       res.status(500).json({ message: 'Failed to fetch territory statistics' });
     }
   },

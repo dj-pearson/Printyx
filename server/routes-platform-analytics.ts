@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-platform-analytics');
+
 import {
   platformBusinessRecords,
   platformDeals,
@@ -83,7 +86,7 @@ router.get('/cohort-analysis', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching cohort analysis:', error);
+    log.error('Error fetching cohort analysis:', error);
     res.status(500).json({ message: 'Failed to fetch cohort analysis' });
   }
 });
@@ -181,7 +184,7 @@ router.post('/cohort-analysis/generate', async (req, res) => {
       cohort,
     });
   } catch (error) {
-    console.error('Error generating cohort analysis:', error);
+    log.error('Error generating cohort analysis:', error);
     res.status(500).json({ message: 'Failed to generate cohort analysis' });
   }
 });
@@ -299,7 +302,7 @@ router.get('/revenue-metrics', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error calculating revenue metrics:', error);
+    log.error('Error calculating revenue metrics:', error);
     res.status(500).json({ message: 'Failed to calculate revenue metrics' });
   }
 });
@@ -435,7 +438,7 @@ router.get('/conversion-funnel', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error calculating conversion funnel:', error);
+    log.error('Error calculating conversion funnel:', error);
     res.status(500).json({ message: 'Failed to calculate conversion funnel' });
   }
 });
@@ -538,7 +541,7 @@ router.get('/sales-performance', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error calculating sales performance:', error);
+    log.error('Error calculating sales performance:', error);
     res.status(500).json({ message: 'Failed to calculate sales performance' });
   }
 });
@@ -616,7 +619,7 @@ router.get('/pipeline-forecast', async (req, res) => {
       forecastPeriod: `${months} months`,
     });
   } catch (error) {
-    console.error('Error calculating pipeline forecast:', error);
+    log.error('Error calculating pipeline forecast:', error);
     res.status(500).json({ message: 'Failed to calculate pipeline forecast' });
   }
 });
@@ -700,7 +703,7 @@ router.get('/churn-analysis', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error analyzing churn:', error);
+    log.error('Error analyzing churn:', error);
     res.status(500).json({ message: 'Failed to analyze churn' });
   }
 });
@@ -791,7 +794,7 @@ router.get('/activity-trends', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error calculating activity trends:', error);
+    log.error('Error calculating activity trends:', error);
     res.status(500).json({ message: 'Failed to calculate activity trends' });
   }
 });
@@ -878,7 +881,7 @@ router.get('/goals-tracking', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error tracking goals:', error);
+    log.error('Error tracking goals:', error);
     res.status(500).json({ message: 'Failed to track goals' });
   }
 });
@@ -962,7 +965,7 @@ router.get('/health-trends', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error calculating health trends:', error);
+    log.error('Error calculating health trends:', error);
     res.status(500).json({ message: 'Failed to calculate health trends' });
   }
 });

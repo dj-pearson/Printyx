@@ -8,6 +8,8 @@ import ClaudeAIService from './claude-ai-service';
 import AdvancedSchedulingService from './advanced-scheduling-service';
 import DynamicReschedulingService from './dynamic-rescheduling-service';
 import { eq, and, sql, desc, asc } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('team-collaboration-service');
 
 interface Team {
   id: string;
@@ -124,7 +126,7 @@ class TeamCollaborationService {
    * Create a new team
    */
   async createTeam(teamData: Partial<Team>): Promise<Team> {
-    console.log('👥 Creating new team:', teamData.name);
+    log.info('👥 Creating new team:', teamData.name);
 
     try {
       // Mock team creation - in production, this would use Drizzle ORM
@@ -146,10 +148,10 @@ class TeamCollaborationService {
       const aiSettings = await this.generateTeamAISettings(team);
       team.settings = { ...team.settings, ...aiSettings };
 
-      console.log('✅ Team created successfully:', team.id);
+      log.info('✅ Team created successfully:', team.id);
       return team;
     } catch (error) {
-      console.error('Failed to create team:', error);
+      log.error('Failed to create team:', error);
       throw error;
     }
   }
@@ -158,7 +160,7 @@ class TeamCollaborationService {
    * Add member to team with AI-optimized role assignment
    */
   async addTeamMember(teamId: string, memberData: Partial<TeamMember>): Promise<TeamMember> {
-    console.log('👤 Adding team member to team:', teamId);
+    log.info('👤 Adding team member to team:', teamId);
 
     try {
       // Analyze optimal role and capacity for new member
@@ -183,10 +185,10 @@ class TeamCollaborationService {
         await this.rebalanceTeamWorkload(teamId);
       }
 
-      console.log('✅ Team member added:', member.id);
+      log.info('✅ Team member added:', member.id);
       return member;
     } catch (error) {
-      console.error('Failed to add team member:', error);
+      log.error('Failed to add team member:', error);
       throw error;
     }
   }
@@ -195,7 +197,7 @@ class TeamCollaborationService {
    * Create project with AI-optimized planning
    */
   async createProject(projectData: Partial<Project>): Promise<Project> {
-    console.log('📋 Creating new project:', projectData.name);
+    log.info('📋 Creating new project:', projectData.name);
 
     try {
       // Use AI to analyze project complexity and requirements
@@ -233,10 +235,10 @@ class TeamCollaborationService {
       // Generate project milestones and tasks using AI
       await this.generateProjectStructureWithAI(project);
 
-      console.log('✅ Project created with AI optimization:', project.id);
+      log.info('✅ Project created with AI optimization:', project.id);
       return project;
     } catch (error) {
-      console.error('Failed to create project:', error);
+      log.error('Failed to create project:', error);
       throw error;
     }
   }
@@ -245,7 +247,7 @@ class TeamCollaborationService {
    * Optimize task assignments across team using AI
    */
   async optimizeTaskAssignments(teamId: string, tasks: any[]): Promise<TaskAssignment[]> {
-    console.log('🎯 Optimizing task assignments for team:', teamId);
+    log.info('🎯 Optimizing task assignments for team:', teamId);
 
     try {
       // Get team members and their current workload
@@ -322,10 +324,10 @@ Return JSON with assignments:
         assignments.push(taskAssignment);
       }
 
-      console.log(`✅ Optimized ${assignments.length} task assignments`);
+      log.info(`✅ Optimized ${assignments.length} task assignments`);
       return assignments;
     } catch (error) {
-      console.error('Task assignment optimization failed:', error);
+      log.error('Task assignment optimization failed:', error);
       return [];
     }
   }
@@ -341,7 +343,7 @@ Return JSON with assignments:
     bottlenecks: string[];
     recommendations: string[];
   }> {
-    console.log('📊 Analyzing team capacity:', teamId);
+    log.info('📊 Analyzing team capacity:', teamId);
 
     try {
       const teamMembers = await this.getTeamMembers(teamId);
@@ -405,7 +407,7 @@ Return JSON with assignments:
         recommendations,
       };
     } catch (error) {
-      console.error('Team capacity analysis failed:', error);
+      log.error('Team capacity analysis failed:', error);
       return {
         averageUtilization: 0,
         totalCapacity: 0,
@@ -421,7 +423,7 @@ Return JSON with assignments:
    * Generate collaboration insights using AI
    */
   async generateCollaborationInsights(teamId: string): Promise<CollaborationInsights> {
-    console.log('🧠 Generating collaboration insights for team:', teamId);
+    log.info('🧠 Generating collaboration insights for team:', teamId);
 
     try {
       // Get team performance data
@@ -478,10 +480,10 @@ Analyze and return JSON:
 
       const insights = JSON.parse(aiResponse);
 
-      console.log('✅ Generated collaboration insights:', insights.teamHealthScore);
+      log.info('✅ Generated collaboration insights:', insights.teamHealthScore);
       return insights;
     } catch (error) {
-      console.error('Collaboration insights generation failed:', error);
+      log.error('Collaboration insights generation failed:', error);
       return {
         teamHealthScore: 0.7,
         productivityTrend: 'stable',
@@ -515,7 +517,7 @@ Analyze and return JSON:
       mitigation: string;
     }>;
   }> {
-    console.log('🤝 Coordinating cross-team dependencies for project:', projectId);
+    log.info('🤝 Coordinating cross-team dependencies for project:', projectId);
 
     try {
       // Mock dependencies - in production, this would query the database
@@ -582,7 +584,7 @@ Generate coordination plan and risk assessment to ensure smooth collaboration.`;
         riskAssessment,
       };
     } catch (error) {
-      console.error('Cross-team coordination failed:', error);
+      log.error('Cross-team coordination failed:', error);
       return {
         dependencies: [],
         coordinationPlan: ['Manual coordination required'],
@@ -642,7 +644,7 @@ Generate coordination plan and risk assessment to ensure smooth collaboration.`;
   }
 
   private async generateProjectStructureWithAI(project: Project): Promise<void> {
-    console.log('🏗️  Generating project structure with AI for:', project.name);
+    log.info('🏗️  Generating project structure with AI for:', project.name);
     // This would create milestones and initial tasks
   }
 
@@ -701,7 +703,7 @@ Generate coordination plan and risk assessment to ensure smooth collaboration.`;
   }
 
   private async rebalanceTeamWorkload(teamId: string): Promise<void> {
-    console.log('⚖️  Rebalancing team workload for team:', teamId);
+    log.info('⚖️  Rebalancing team workload for team:', teamId);
     // This would trigger workload redistribution
   }
 }

@@ -7,6 +7,8 @@ import { desc, asc, sql, count, and, or, like, ilike, eq } from 'drizzle-orm';
 import { db } from './db';
 import { businessRecords, serviceTickets, inventoryItems, invoices } from '../shared/schema';
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-pagination');
 
 interface PaginationQuery {
   page?: string;
@@ -102,7 +104,7 @@ export async function getPaginatedBusinessRecords(req: TenantRequest, res: Respo
 
     res.json(createPaginatedResponse(records, totalCount, page, limit));
   } catch (error) {
-    console.error('Error fetching paginated business records:', error);
+    log.error('Error fetching paginated business records:', error);
     res.status(500).json({ message: 'Failed to fetch business records' });
   }
 }
@@ -152,7 +154,7 @@ export async function getPaginatedServiceTickets(req: TenantRequest, res: Respon
 
     res.json(createPaginatedResponse(tickets, totalCount, page, limit));
   } catch (error) {
-    console.error('Error fetching paginated service tickets:', error);
+    log.error('Error fetching paginated service tickets:', error);
     res.status(500).json({ message: 'Failed to fetch service tickets' });
   }
 }
@@ -203,7 +205,7 @@ export async function getPaginatedInventory(req: TenantRequest, res: Response) {
 
     res.json(createPaginatedResponse(items, totalCount, page, limit));
   } catch (error) {
-    console.error('Error fetching paginated inventory:', error);
+    log.error('Error fetching paginated inventory:', error);
     res.status(500).json({ message: 'Failed to fetch inventory' });
   }
 }
@@ -249,7 +251,7 @@ export async function getPaginatedInvoices(req: TenantRequest, res: Response) {
 
     res.json(createPaginatedResponse(invoiceList, totalCount, page, limit));
   } catch (error) {
-    console.error('Error fetching paginated invoices:', error);
+    log.error('Error fetching paginated invoices:', error);
     res.status(500).json({ message: 'Failed to fetch invoices' });
   }
 }

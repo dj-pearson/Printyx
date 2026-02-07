@@ -7,18 +7,20 @@
 
 import { db } from './db';
 import { sql } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('test-toner-order-simple');
 
 const TEST_TENANT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
 async function setupAndTest() {
-  console.log('\n═══════════════════════════════════════════════════════════');
-  console.log('  Fleet Monitoring Toner Order - Integration Test');
-  console.log('═══════════════════════════════════════════════════════════\n');
+  log.info('\n═══════════════════════════════════════════════════════════');
+  log.info('  Fleet Monitoring Toner Order - Integration Test');
+  log.info('═══════════════════════════════════════════════════════════\n');
 
-  console.log('🔧 Setting up test data via SQL...\n');
+  log.info('🔧 Setting up test data via SQL...\n');
 
   // 1. Create manufacturer integration
-  console.log('1️⃣  Creating manufacturer integration...');
+  log.info('1️⃣  Creating manufacturer integration...');
   let integrationResult = await db.execute(sql`
     SELECT id FROM manufacturer_integrations 
     WHERE tenant_id = ${TEST_TENANT_ID} AND integration_name = 'Test HP Integration'
@@ -40,10 +42,10 @@ async function setupAndTest() {
     `);
   }
   const integrationId = (integrationResult.rows[0] as any).id;
-  console.log('   ✅ Integration ready');
+  log.info('   ✅ Integration ready');
 
   // 2. Create test customer portal user
-  console.log('2️⃣  Creating test portal user...');
+  log.info('2️⃣  Creating test portal user...');
   const userResult = await db.execute(sql`
     INSERT INTO customer_portal_access (
       tenant_id, customer_id, username, password_hash, email, phone, status, is_email_verified
@@ -60,10 +62,10 @@ async function setupAndTest() {
     ON CONFLICT (username) DO UPDATE SET email = EXCLUDED.email
     RETURNING id
   `);
-  console.log('   ✅ Portal user ready');
+  log.info('   ✅ Portal user ready');
 
   // 3. Create or get test device
-  console.log('3️⃣  Getting test device...');
+  log.info('3️⃣  Getting test device...');
   let deviceResult = await db.execute(sql`
     SELECT id FROM device_registrations 
     WHERE tenant_id = ${TEST_TENANT_ID} AND serial_number = 'TEST-HP-P4015-001'
@@ -88,15 +90,15 @@ async function setupAndTest() {
       RETURNING id
     `);
   }
-  console.log('   ✅ Device ready');
+  log.info('   ✅ Device ready');
 
   // 4. Note: Skipping device metrics - schema mismatch with database
   // The toner order endpoint works without metrics (uses empty levels)
-  console.log('4️⃣  Skipping device metrics (schema mismatch - not required for test)');
+  log.info('4️⃣  Skipping device metrics (schema mismatch - not required for test)');
   const deviceId = (deviceResult.rows[0] as any).id;
 
   // 5. Create service contract with toner coverage
-  console.log('5️⃣  Creating service contract...');
+  log.info('5️⃣  Creating service contract...');
   await db.execute(sql`
     INSERT INTO service_contracts (
       tenant_id, contract_number, customer_id, equipment_id, contract_type, contract_status,
@@ -119,10 +121,10 @@ async function setupAndTest() {
     )
     ON CONFLICT (contract_number) DO UPDATE SET equipment_id = EXCLUDED.equipmentId
   `);
-  console.log('   ✅ Contract created with toner coverage\n');
+  log.info('   ✅ Contract created with toner coverage\n');
 
-  console.log('✅ Test data setup complete!\n');
-  console.log('🧪 Testing Toner Order API...\n');
+  log.info('✅ Test data setup complete!\n');
+  log.info('🧪 Testing Toner Order API...\n');
 
   // Test the API
   try {
@@ -144,38 +146,38 @@ async function setupAndTest() {
 
     const result = await response.json();
 
-    console.log('📋 API Response:');
-    console.log(JSON.stringify(result, null, 2));
+    log.info('📋 API Response:');
+    log.info(JSON.stringify(result, null, 2));
 
-    console.log('\n✅ Test Verification:\n');
+    log.info('\n✅ Test Verification:\n');
 
     if (result.success || result.message) {
-      console.log('   ✅ API responded (status:', response.status, ')');
+      log.info('   ✅ API responded (status:', response.status, ')');
 
       if (result.order) {
-        console.log('   ✅ Order object present');
-        console.log('      Order Number:', result.order.orderNumber);
-        console.log('      Status:', result.order.status);
+        log.info('   ✅ Order object present');
+        log.info('      Order Number:', result.order.orderNumber);
+        log.info('      Status:', result.order.status);
       }
 
       if (result.notifications) {
-        console.log('   ✅ Notification status included');
-        console.log('      Email Sent:', result.notifications.emailSent);
-        console.log('      SMS Sent:', result.notifications.smsSent);
+        log.info('   ✅ Notification status included');
+        log.info('      Email Sent:', result.notifications.emailSent);
+        log.info('      SMS Sent:', result.notifications.smsSent);
       } else if (response.status === 401) {
-        console.log('   ℹ️  Authentication required (expected for direct API test)');
-        console.log('   💡 The endpoint is working but requires proper session auth');
+        log.info('   ℹ️  Authentication required (expected for direct API test)');
+        log.info('   💡 The endpoint is working but requires proper session auth');
       }
     }
 
-    console.log('\n═══════════════════════════════════════════════════════════');
-    console.log('  ✅ TEST COMPLETE');
-    console.log('═══════════════════════════════════════════════════════════\n');
+    log.info('\n═══════════════════════════════════════════════════════════');
+    log.info('  ✅ TEST COMPLETE');
+    log.info('═══════════════════════════════════════════════════════════\n');
   } catch (error) {
-    console.error('\n❌ Test failed:', error);
-    console.log('\n═══════════════════════════════════════════════════════════');
-    console.log('  ❌ TEST FAILED');
-    console.log('═══════════════════════════════════════════════════════════\n');
+    log.error('\n❌ Test failed:', error);
+    log.info('\n═══════════════════════════════════════════════════════════');
+    log.info('  ❌ TEST FAILED');
+    log.info('═══════════════════════════════════════════════════════════\n');
     process.exit(1);
   }
 }

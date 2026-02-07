@@ -4,6 +4,8 @@ import { eq } from 'drizzle-orm';
 import { AIEmailParserService } from './ai-email-parser-service';
 import { TicketCreationService } from './ticket-creation-service';
 import { decryptCredential } from '../utils/credentials-encryption';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('email-monitor-service');
 
 interface EmailConfig {
   host: string;
@@ -25,10 +27,10 @@ try {
   const mailparserModule = await import('mailparser');
   simpleParser = mailparserModule.simpleParser;
   imapAvailable = true;
-  console.log('[EmailMonitor] IMAP and mailparser packages are available');
+  log.info('[EmailMonitor] IMAP and mailparser packages are available');
 } catch (error) {
-  console.log('[EmailMonitor] IMAP packages not installed - email monitoring will be unavailable');
-  console.log('[EmailMonitor] To enable: npm install --legacy-peer-deps imap mailparser');
+  log.info('[EmailMonitor] IMAP packages not installed - email monitoring will be unavailable');
+  log.info('[EmailMonitor] To enable: npm install --legacy-peer-deps imap mailparser');
 }
 
 /**
@@ -75,18 +77,18 @@ export class EmailMonitorService {
 
       this.imap.once('ready', () => {
         this.isConnected = true;
-        console.log(`[EmailMonitor] Connected to ${this.config.host} as ${this.config.user}`);
+        log.info(`[EmailMonitor] Connected to ${this.config.host} as ${this.config.user}`);
         resolve();
       });
 
       this.imap.once('error', (err: Error) => {
-        console.error('[EmailMonitor] Connection error:', err);
+        log.error('[EmailMonitor] Connection error:', err);
         this.isConnected = false;
         reject(err);
       });
 
       this.imap.once('end', () => {
-        console.log('[EmailMonitor] Connection ended');
+        log.info('[EmailMonitor] Connection ended');
         this.isConnected = false;
       });
 
@@ -99,12 +101,12 @@ export class EmailMonitorService {
    */
   async checkForNewEmails(): Promise<void> {
     if (!imapAvailable) {
-      console.log('[EmailMonitor] IMAP packages not available - skipping email check');
+      log.info('[EmailMonitor] IMAP packages not available - skipping email check');
       return;
     }
 
     if (this.isProcessing) {
-      console.log('[EmailMonitor] Already processing, skipping this check');
+      log.info('[EmailMonitor] Already processing, skipping this check');
       return;
     }
 
@@ -121,7 +123,7 @@ export class EmailMonitorService {
 
       await this.processInbox();
     } catch (error) {
-      console.error('[EmailMonitor] Error checking emails:', error);
+      log.error('[EmailMonitor] Error checking emails:', error);
       throw error;
     } finally {
       this.isProcessing = false;
@@ -152,12 +154,12 @@ export class EmailMonitorService {
           }
 
           if (results.length === 0) {
-            console.log('[EmailMonitor] No new emails');
+            log.info('[EmailMonitor] No new emails');
             resolve();
             return;
           }
 
-          console.log(`[EmailMonitor] Found ${results.length} new emails`);
+          log.info(`[EmailMonitor] Found ${results.length} new emails`);
 
           try {
             // Process emails one by one
@@ -197,13 +199,13 @@ export class EmailMonitorService {
             // Mark as read after successful processing
             this.imap!.addFlags(uid, ['\\Seen'], (err: any) => {
               if (err) {
-                console.error('[EmailMonitor] Error marking email as read:', err);
+                log.error('[EmailMonitor] Error marking email as read:', err);
               }
             });
 
             resolve();
           } catch (error) {
-            console.error('[EmailMonitor] Error processing email:', error);
+            log.error('[EmailMonitor] Error processing email:', error);
             reject(error);
           }
         });
@@ -223,7 +225,7 @@ export class EmailMonitorService {
     const textBody = email.text || '';
     const htmlBody = email.html || '';
 
-    console.log(`[EmailMonitor] Processing email from: ${from}, subject: ${subject}`);
+    log.info(`[EmailMonitor] Processing email from: ${from}, subject: ${subject}`);
 
     // Check if already processed (idempotency)
     const existing = await db.query.processedEmails.findFirst({
@@ -231,7 +233,7 @@ export class EmailMonitorService {
     });
 
     if (existing) {
-      console.log(`[EmailMonitor] Email ${emailId} already processed, skipping`);
+      log.info(`[EmailMonitor] Email ${emailId} already processed, skipping`);
       return;
     }
 
@@ -285,11 +287,11 @@ export class EmailMonitorService {
       // Update stats
       await this.updateStats('success');
 
-      console.log(
+      log.info(
         `[EmailMonitor] ✓ Ticket ${ticket.id} created from email ${emailId} (${duration}ms)`,
       );
     } catch (error) {
-      console.error('[EmailMonitor] Error creating ticket from email:', error);
+      log.error('[EmailMonitor] Error creating ticket from email:', error);
 
       const duration = Date.now() - startTime;
 
@@ -360,7 +362,7 @@ export class EmailMonitorService {
       this.imap.end();
       this.imap = null;
       this.isConnected = false;
-      console.log('[EmailMonitor] Disconnected');
+      log.info('[EmailMonitor] Disconnected');
     }
   }
 }
@@ -382,7 +384,7 @@ const emailMonitors = new Map<
 export async function startEmailMonitor(tenantId: string): Promise<void> {
   // Check if already running
   if (emailMonitors.has(tenantId)) {
-    console.log(`[EmailMonitor] Already running for tenant ${tenantId}`);
+    log.info(`[EmailMonitor] Already running for tenant ${tenantId}`);
     return;
   }
 
@@ -392,12 +394,12 @@ export async function startEmailMonitor(tenantId: string): Promise<void> {
   });
 
   if (!config || !config.enabled) {
-    console.log(`[EmailMonitor] Monitoring not enabled for tenant ${tenantId}`);
+    log.info(`[EmailMonitor] Monitoring not enabled for tenant ${tenantId}`);
     return;
   }
 
   if (!config.host || !config.username || !config.encryptedPassword) {
-    console.error(`[EmailMonitor] Missing configuration for tenant ${tenantId}`);
+    log.error(`[EmailMonitor] Missing configuration for tenant ${tenantId}`);
     return;
   }
 
@@ -421,14 +423,14 @@ export async function startEmailMonitor(tenantId: string): Promise<void> {
     try {
       await monitor.checkForNewEmails();
     } catch (error) {
-      console.error(`[EmailMonitor] Error checking emails for tenant ${tenantId}:`, error);
+      log.error(`[EmailMonitor] Error checking emails for tenant ${tenantId}:`, error);
       // Don't stop monitoring on error, just log and continue
     }
   }, pollInterval);
 
   emailMonitors.set(tenantId, { monitor, interval });
 
-  console.log(
+  log.info(
     `[EmailMonitor] Started monitoring for tenant ${tenantId} (polling every ${pollInterval / 1000}s)`,
   );
 
@@ -436,7 +438,7 @@ export async function startEmailMonitor(tenantId: string): Promise<void> {
   try {
     await monitor.checkForNewEmails();
   } catch (error) {
-    console.error(`[EmailMonitor] Error in initial check for tenant ${tenantId}:`, error);
+    log.error(`[EmailMonitor] Error in initial check for tenant ${tenantId}:`, error);
   }
 }
 
@@ -446,7 +448,7 @@ export async function startEmailMonitor(tenantId: string): Promise<void> {
 export async function stopEmailMonitor(tenantId: string): Promise<void> {
   const instance = emailMonitors.get(tenantId);
   if (!instance) {
-    console.log(`[EmailMonitor] No monitor running for tenant ${tenantId}`);
+    log.info(`[EmailMonitor] No monitor running for tenant ${tenantId}`);
     return;
   }
 
@@ -454,7 +456,7 @@ export async function stopEmailMonitor(tenantId: string): Promise<void> {
   await instance.monitor.disconnect();
   emailMonitors.delete(tenantId);
 
-  console.log(`[EmailMonitor] Stopped monitoring for tenant ${tenantId}`);
+  log.info(`[EmailMonitor] Stopped monitoring for tenant ${tenantId}`);
 }
 
 /**
@@ -465,13 +467,13 @@ export async function startAllEmailMonitors(): Promise<void> {
     where: eq(emailMonitorConfig.enabled, true),
   });
 
-  console.log(`[EmailMonitor] Starting monitors for ${configs.length} tenants`);
+  log.info(`[EmailMonitor] Starting monitors for ${configs.length} tenants`);
 
   for (const config of configs) {
     try {
       await startEmailMonitor(config.tenantId);
     } catch (error) {
-      console.error(`[EmailMonitor] Failed to start monitor for tenant ${config.tenantId}:`, error);
+      log.error(`[EmailMonitor] Failed to start monitor for tenant ${config.tenantId}:`, error);
     }
   }
 }
@@ -482,7 +484,7 @@ export async function startAllEmailMonitors(): Promise<void> {
 export async function stopAllEmailMonitors(): Promise<void> {
   const tenantIds = Array.from(emailMonitors.keys());
 
-  console.log(`[EmailMonitor] Stopping ${tenantIds.length} monitors`);
+  log.info(`[EmailMonitor] Stopping ${tenantIds.length} monitors`);
 
   for (const tenantId of tenantIds) {
     await stopEmailMonitor(tenantId);

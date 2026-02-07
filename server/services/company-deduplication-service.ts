@@ -8,6 +8,9 @@
 
 import { db } from '../db';
 import { eq, and, sql, inArray } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('company-deduplication-service');
+
 import {
   companies,
   companyContacts,
@@ -273,7 +276,7 @@ export async function mergeCompanies(
       enhancedContactsMoved,
     };
   } catch (error) {
-    console.error('Error merging companies:', error);
+    log.error('Error merging companies:', error);
     return {
       success: false,
       survivorId,

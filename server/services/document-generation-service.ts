@@ -1,4 +1,7 @@
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('document-generation-service');
+
 import {
   documentTemplates,
   generatedDocuments,
@@ -463,7 +466,7 @@ export class DocumentGenerationService {
       })
       .where(eq(documentTemplates.id, template.id));
 
-    console.log(`Generated document ${generatedDoc.id} from template ${templateId}`);
+    log.info(`Generated document ${generatedDoc.id} from template ${templateId}`);
 
     return generatedDoc.id;
   }
@@ -495,7 +498,7 @@ export class DocumentGenerationService {
         const docId = await this.generateDocument(templateId, context, userId, tenantId, options);
         generatedDocIds.push(docId);
       } catch (error: any) {
-        console.error(`Failed to generate document for context:`, context, error);
+        log.error(`Failed to generate document for context:`, context, error);
         // Continue with next document
       }
     }

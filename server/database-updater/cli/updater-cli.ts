@@ -8,6 +8,8 @@
 import * as commander from 'commander';
 import { DatabaseUpdaterManager } from '../DatabaseUpdaterManager';
 import { Logger } from '../core/Logger';
+import { createModuleLogger } from '../../lib/logger';
+const log = createModuleLogger('updater-cli');
 
 const program = new commander.Command();
 
@@ -34,7 +36,7 @@ program
   .option('-l, --log-level <level>', 'Set log level (debug, info, warn, error)', 'info')
   .action(async (options) => {
     try {
-      console.log('🚀 Starting Database Updater System...\n');
+      log.info('🚀 Starting Database Updater System...\n');
 
       const manager = new DatabaseUpdaterManager({
         dryRun: options.dryRun,
@@ -46,39 +48,39 @@ program
 
       const status = manager.getStatus();
 
-      console.log('✅ Database Updater System started successfully!\n');
-      console.log('📊 System Status:');
-      console.log(`   - Running: ${status.isRunning}`);
-      console.log(`   - Total Updaters: ${status.updaters.length}`);
-      console.log(`   - Enabled Updaters: ${status.updaters.filter((u) => u.isEnabled).length}`);
-      console.log(`   - Dry Run Mode: ${options.dryRun || false}\n`);
+      log.info('✅ Database Updater System started successfully!\n');
+      log.info('📊 System Status:');
+      log.info(`   - Running: ${status.isRunning}`);
+      log.info(`   - Total Updaters: ${status.updaters.length}`);
+      log.info(`   - Enabled Updaters: ${status.updaters.filter((u) => u.isEnabled).length}`);
+      log.info(`   - Dry Run Mode: ${options.dryRun || false}\n`);
 
-      console.log('📋 Registered Updaters:');
+      log.info('📋 Registered Updaters:');
       status.updaters.forEach((updater) => {
         const enabledIcon = updater.isEnabled ? '✅' : '❌';
-        console.log(`   ${enabledIcon} ${updater.name}`);
+        log.info(`   ${enabledIcon} ${updater.name}`);
       });
 
-      console.log('\n⏰ Next Executions:');
+      log.info('\n⏰ Next Executions:');
       Object.entries(status.nextExecutions).forEach(([name, date]) => {
         const dateStr = date ? new Date(date).toLocaleString() : 'Not scheduled';
-        console.log(`   - ${name}: ${dateStr}`);
+        log.info(`   - ${name}: ${dateStr}`);
       });
 
-      console.log('\nPress Ctrl+C to stop the system');
+      log.info('\nPress Ctrl+C to stop the system');
 
       // Handle graceful shutdown
       process.on('SIGINT', async () => {
-        console.log('\n🛑 Stopping Database Updater System...');
+        log.info('\n🛑 Stopping Database Updater System...');
         await manager.stop();
-        console.log('✅ System stopped successfully');
+        log.info('✅ System stopped successfully');
         process.exit(0);
       });
 
       // Keep process alive
       await new Promise(() => {});
     } catch (error) {
-      console.error('❌ Failed to start system:', error);
+      log.error('❌ Failed to start system:', error);
       process.exit(1);
     }
   });
@@ -91,7 +93,7 @@ program
   .description('Get system status')
   .action(async () => {
     try {
-      console.log('📊 Database Updater System Status\n');
+      log.info('📊 Database Updater System Status\n');
 
       const manager = new DatabaseUpdaterManager({
         enableScheduling: false,
@@ -99,30 +101,30 @@ program
 
       const status = manager.getStatus();
 
-      console.log('🖥️  System Information:');
-      console.log(`   - Status: ${status.isRunning ? '🟢 Running' : '🔴 Stopped'}`);
-      console.log(`   - Total Updaters: ${status.updaters.length}`);
-      console.log(`   - Enabled Updaters: ${status.updaters.filter((u) => u.isEnabled).length}`);
-      console.log(`   - Target Tenant: ${status.config.targetTenantId}`);
-      console.log(`   - Target Customer: ${status.config.targetCustomerId}\n`);
+      log.info('🖥️  System Information:');
+      log.info(`   - Status: ${status.isRunning ? '🟢 Running' : '🔴 Stopped'}`);
+      log.info(`   - Total Updaters: ${status.updaters.length}`);
+      log.info(`   - Enabled Updaters: ${status.updaters.filter((u) => u.isEnabled).length}`);
+      log.info(`   - Target Tenant: ${status.config.targetTenantId}`);
+      log.info(`   - Target Customer: ${status.config.targetCustomerId}\n`);
 
-      console.log('📋 Updater Details:');
+      log.info('📋 Updater Details:');
       status.updaters.forEach((updater) => {
         const enabledIcon = updater.isEnabled ? '✅' : '❌';
         const lastExec = updater.lastExecution
           ? new Date(updater.lastExecution).toLocaleString()
           : 'Never';
 
-        console.log(`   ${enabledIcon} ${updater.name}`);
-        console.log(`      Last Execution: ${lastExec}`);
+        log.info(`   ${enabledIcon} ${updater.name}`);
+        log.info(`      Last Execution: ${lastExec}`);
       });
 
-      console.log('\n⏰ Schedules:');
-      console.log(`   - Business Activities: ${status.config.scheduleConfig.businessActivities}`);
-      console.log(`   - Service Tickets: ${status.config.scheduleConfig.serviceTickets}`);
-      console.log(`   - New Leads: ${status.config.scheduleConfig.newLeads}`);
+      log.info('\n⏰ Schedules:');
+      log.info(`   - Business Activities: ${status.config.scheduleConfig.businessActivities}`);
+      log.info(`   - Service Tickets: ${status.config.scheduleConfig.serviceTickets}`);
+      log.info(`   - New Leads: ${status.config.scheduleConfig.newLeads}`);
     } catch (error) {
-      console.error('❌ Failed to get status:', error);
+      log.error('❌ Failed to get status:', error);
       process.exit(1);
     }
   });
@@ -136,7 +138,7 @@ program
   .option('-d, --dry-run', 'Run in dry-run mode')
   .action(async (updaterName, options) => {
     try {
-      console.log(`🔄 Executing ${updaterName}...\n`);
+      log.info(`🔄 Executing ${updaterName}...\n`);
 
       const manager = new DatabaseUpdaterManager({
         dryRun: options.dryRun,
@@ -146,13 +148,13 @@ program
 
       await manager.executeUpdater(updaterName);
 
-      console.log(`✅ ${updaterName} executed successfully!`);
+      log.info(`✅ ${updaterName} executed successfully!`);
 
       if (options.dryRun) {
-        console.log('📝 Note: This was a dry-run. No data was actually inserted.');
+        log.info('📝 Note: This was a dry-run. No data was actually inserted.');
       }
     } catch (error) {
-      console.error(`❌ Failed to execute ${updaterName}:`, error);
+      log.error(`❌ Failed to execute ${updaterName}:`, error);
       process.exit(1);
     }
   });
@@ -165,7 +167,7 @@ program
   .description('Test all updaters in dry-run mode')
   .action(async () => {
     try {
-      console.log('🧪 Testing all updaters in dry-run mode...\n');
+      log.info('🧪 Testing all updaters in dry-run mode...\n');
 
       const manager = new DatabaseUpdaterManager({
         dryRun: true,
@@ -177,18 +179,18 @@ program
       const updaterNames = status.updaters.map((u) => u.name);
 
       for (const updaterName of updaterNames) {
-        console.log(`🔄 Testing ${updaterName}...`);
+        log.info(`🔄 Testing ${updaterName}...`);
         try {
           await manager.executeUpdater(updaterName);
-          console.log(`   ✅ ${updaterName} - PASSED`);
+          log.info(`   ✅ ${updaterName} - PASSED`);
         } catch (error) {
-          console.log(`   ❌ ${updaterName} - FAILED: ${error}`);
+          log.info(`   ❌ ${updaterName} - FAILED: ${error}`);
         }
       }
 
-      console.log('\n🏁 Test completed!');
+      log.info('\n🏁 Test completed!');
     } catch (error) {
-      console.error('❌ Test failed:', error);
+      log.error('❌ Test failed:', error);
       process.exit(1);
     }
   });
@@ -201,7 +203,7 @@ program
   .description('Show current configuration')
   .action(async () => {
     try {
-      console.log('⚙️  Database Updater Configuration\n');
+      log.info('⚙️  Database Updater Configuration\n');
 
       const manager = new DatabaseUpdaterManager({
         enableScheduling: false,
@@ -210,38 +212,36 @@ program
       const status = manager.getStatus();
       const config = status.config;
 
-      console.log('🎯 Target Configuration:');
-      console.log(`   - Tenant ID: ${config.targetTenantId}`);
-      console.log(`   - Customer ID: ${config.targetCustomerId}\n`);
+      log.info('🎯 Target Configuration:');
+      log.info(`   - Tenant ID: ${config.targetTenantId}`);
+      log.info(`   - Customer ID: ${config.targetCustomerId}\n`);
 
-      console.log('⏰ Schedule Configuration:');
-      console.log(`   - Business Activities: ${config.scheduleConfig.businessActivities}`);
-      console.log(`   - Service Tickets: ${config.scheduleConfig.serviceTickets}`);
-      console.log(`   - New Leads: ${config.scheduleConfig.newLeads}\n`);
+      log.info('⏰ Schedule Configuration:');
+      log.info(`   - Business Activities: ${config.scheduleConfig.businessActivities}`);
+      log.info(`   - Service Tickets: ${config.scheduleConfig.serviceTickets}`);
+      log.info(`   - New Leads: ${config.scheduleConfig.newLeads}\n`);
 
-      console.log('🔧 Execution Configuration:');
-      console.log(
+      log.info('🔧 Execution Configuration:');
+      log.info(
         `   - Business Activities Enabled: ${config.executionConfig.enabledUpdaters.businessActivities}`,
       );
-      console.log(
+      log.info(
         `   - Service Tickets Enabled: ${config.executionConfig.enabledUpdaters.serviceTickets}`,
       );
-      console.log(`   - New Leads Enabled: ${config.executionConfig.enabledUpdaters.newLeads}`);
-      console.log(
-        `   - Max Concurrent Executions: ${config.executionConfig.maxConcurrentExecutions}`,
-      );
-      console.log(
+      log.info(`   - New Leads Enabled: ${config.executionConfig.enabledUpdaters.newLeads}`);
+      log.info(`   - Max Concurrent Executions: ${config.executionConfig.maxConcurrentExecutions}`);
+      log.info(
         `   - Execution Timeout: ${config.executionConfig.executionTimeoutMinutes} minutes\n`,
       );
 
-      console.log('🕒 Timezone Configuration:');
-      console.log(`   - Timezone: ${config.timezoneConfig.timezone}`);
-      console.log(
+      log.info('🕒 Timezone Configuration:');
+      log.info(`   - Timezone: ${config.timezoneConfig.timezone}`);
+      log.info(
         `   - Business Hours: ${config.timezoneConfig.businessHours.start}:00 - ${config.timezoneConfig.businessHours.end}:00`,
       );
-      console.log(`   - Business Days: ${config.timezoneConfig.businessDays.join(', ')}`);
+      log.info(`   - Business Days: ${config.timezoneConfig.businessDays.join(', ')}`);
     } catch (error) {
-      console.error('❌ Failed to show configuration:', error);
+      log.error('❌ Failed to show configuration:', error);
       process.exit(1);
     }
   });
@@ -255,13 +255,13 @@ program
   .option('-n, --count <number>', 'Number of log entries to show', '50')
   .action(async (options) => {
     try {
-      console.log('📋 Recent Log Entries\n');
+      log.info('📋 Recent Log Entries\n');
 
       const count = parseInt(options.count) || 50;
       const logs = logger.getRecentLogs(count);
 
       if (logs.length === 0) {
-        console.log('No log entries found.');
+        log.info('No log entries found.');
         return;
       }
 
@@ -275,13 +275,13 @@ program
             error: '❌',
           }[log.level] || 'ℹ️';
 
-        console.log(`${levelIcon} [${timestamp}] ${log.level.toUpperCase()}: ${log.message}`);
+        log.info(`${levelIcon} [${timestamp}] ${log.level.toUpperCase()}: ${log.message}`);
         if (log.data) {
-          console.log(`    Data: ${JSON.stringify(log.data, null, 2)}`);
+          log.info(`    Data: ${JSON.stringify(log.data, null, 2)}`);
         }
       });
     } catch (error) {
-      console.error('❌ Failed to show logs:', error);
+      log.error('❌ Failed to show logs:', error);
       process.exit(1);
     }
   });

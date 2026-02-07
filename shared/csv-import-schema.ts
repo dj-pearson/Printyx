@@ -520,6 +520,24 @@ export const ENTITY_TEMPLATES: Record<string, TemplateColumn[]> = {
       example: 'CUST-12345',
       aliases: ['external_customer_id', 'legacy_id', 'old_id'],
     },
+    {
+      name: 'Assigned Sales Rep',
+      dbField: 'assignedSalesRep',
+      type: 'string',
+      required: false,
+      description: 'Sales representative assigned to this account (name, email, or ID)',
+      example: 'John Smith',
+      aliases: ['sales_rep', 'rep', 'salesperson', 'assigned_rep', 'account_rep'],
+    },
+    {
+      name: 'Territory',
+      dbField: 'territory',
+      type: 'string',
+      required: false,
+      description: 'Sales territory for this account',
+      example: 'Northeast',
+      aliases: ['sales_territory', 'area'],
+    },
   ],
 
   contacts: [

@@ -2,6 +2,8 @@ import { db } from '../db';
 import { businessRecords, equipment, users } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { sendEmail } from './email-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('ticket-creation-service');
 
 export interface ParsedTicketData {
   customerName?: string;
@@ -40,7 +42,7 @@ export class TicketCreationService {
    * Create service ticket from parsed email data
    */
   async createTicket(ticketData: ParsedTicketData): Promise<any> {
-    console.log('[TicketCreation] Creating ticket from:', {
+    log.info('[TicketCreation] Creating ticket from:', {
       customerEmail: ticketData.customerEmail,
       issueCategory: ticketData.issueCategory,
       priority: ticketData.priority,
@@ -70,7 +72,7 @@ export class TicketCreationService {
     // Step 4: Auto-assign to technician
     await this.autoAssignTechnician(ticket.id, customerId, equipmentId);
 
-    console.log(`[TicketCreation] ✓ Created ticket ${ticket.id}`);
+    log.info(`[TicketCreation] ✓ Created ticket ${ticket.id}`);
 
     return ticket;
   }
@@ -88,12 +90,12 @@ export class TicketCreationService {
     });
 
     if (customer) {
-      console.log(`[TicketCreation] Found existing customer: ${customer.name} (${customer.id})`);
+      log.info(`[TicketCreation] Found existing customer: ${customer.name} (${customer.id})`);
       return customer.id;
     }
 
     // Create new customer (lead)
-    console.log('[TicketCreation] Creating new customer from email');
+    log.info('[TicketCreation] Creating new customer from email');
 
     const [newCustomer] = await db
       .insert(businessRecords)
@@ -109,7 +111,7 @@ export class TicketCreationService {
       })
       .returning();
 
-    console.log(`[TicketCreation] Created new customer: ${newCustomer.name} (${newCustomer.id})`);
+    log.info(`[TicketCreation] Created new customer: ${newCustomer.name} (${newCustomer.id})`);
 
     return newCustomer.id;
   }
@@ -134,13 +136,13 @@ export class TicketCreationService {
     );
 
     if (match) {
-      console.log(
+      log.info(
         `[TicketCreation] Matched equipment: ${match.manufacturer} ${match.model} (${match.id})`,
       );
       return match.id;
     }
 
-    console.log('[TicketCreation] Could not match equipment');
+    log.info('[TicketCreation] Could not match equipment');
     return null;
   }
 
@@ -239,7 +241,7 @@ export class TicketCreationService {
     } catch (error) {
       // Fallback: create a basic ticket record
       // This is a simplified version - adjust based on your actual schema
-      console.log('[TicketCreation] Using fallback ticket creation');
+      log.info('[TicketCreation] Using fallback ticket creation');
 
       // For now, return a mock ticket object
       // TODO: Replace with actual table when schema is finalized
@@ -262,7 +264,7 @@ export class TicketCreationService {
     equipmentId: string | null,
   ): Promise<void> {
     try {
-      console.log('[SmartDispatch] Starting AI-powered technician assignment...');
+      log.info('[SmartDispatch] Starting AI-powered technician assignment...');
 
       // Get available technicians
       const technicians = await db.query.users.findMany({
@@ -274,7 +276,7 @@ export class TicketCreationService {
       });
 
       if (technicians.length === 0) {
-        console.log('[SmartDispatch] No technicians available for assignment');
+        log.info('[SmartDispatch] No technicians available for assignment');
         return;
       }
 
@@ -347,10 +349,10 @@ export class TicketCreationService {
 
       // Auto-assign if confidence is high enough (>= 80 points)
       if (bestMatch.score >= 80) {
-        console.log(
+        log.info(
           `[SmartDispatch] ✅ AI AUTO-ASSIGNED to ${bestMatch.technician.name} (Score: ${bestMatch.score}/100)`,
         );
-        console.log(`[SmartDispatch] Reasons: ${bestMatch.reasons.join(', ')}`);
+        log.info(`[SmartDispatch] Reasons: ${bestMatch.reasons.join(', ')}`);
 
         // Update ticket with assignment
         // TODO: Update actual ticket table when schema is finalized
@@ -366,12 +368,12 @@ export class TicketCreationService {
         // Send notification to technician
         // await this.notifyTechnician(bestMatch.technician.id, ticketId);
       } else {
-        console.log(
+        log.info(
           `[SmartDispatch] ⚠️  Confidence too low (${bestMatch.score}/100) - queuing for manual assignment`,
         );
-        console.log(`[SmartDispatch] Top candidates:`);
+        log.info(`[SmartDispatch] Top candidates:`);
         scoredTechnicians.slice(0, 3).forEach((match, i) => {
-          console.log(
+          log.info(
             `  ${i + 1}. ${match.technician.name} (${match.score} pts) - ${match.reasons.join(', ')}`,
           );
         });
@@ -380,7 +382,7 @@ export class TicketCreationService {
         // TODO: Create assignment review queue
       }
     } catch (error) {
-      console.error('[SmartDispatch] Error in AI assignment:', error);
+      log.error('[SmartDispatch] Error in AI assignment:', error);
       // Don't fail ticket creation if assignment fails
     }
   }
@@ -413,7 +415,7 @@ export class TicketCreationService {
       if (count <= 11) return 5;
       return 0;
     } catch (error) {
-      console.error('[SmartDispatch] Error calculating workload:', error);
+      log.error('[SmartDispatch] Error calculating workload:', error);
       return 10; // Default middle score
     }
   }
@@ -504,7 +506,7 @@ export class TicketCreationService {
       // Score: 2 points per previous successful service, max 10
       return Math.min(count * 2, 10);
     } catch (error) {
-      console.error('[SmartDispatch] Error calculating history score:', error);
+      log.error('[SmartDispatch] Error calculating history score:', error);
       return 0;
     }
   }
@@ -545,9 +547,9 @@ This ticket was created automatically from your email. If you did not request se
         body,
       });
 
-      console.log(`[TicketCreation] ✓ Sent confirmation email to ${customerEmail}`);
+      log.info(`[TicketCreation] ✓ Sent confirmation email to ${customerEmail}`);
     } catch (error) {
-      console.error('[TicketCreation] Error sending confirmation email:', error);
+      log.error('[TicketCreation] Error sending confirmation email:', error);
       // Don't fail ticket creation if email fails
     }
   }

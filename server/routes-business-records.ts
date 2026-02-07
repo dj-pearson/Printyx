@@ -13,6 +13,14 @@ import { eq, and, or, like, desc, asc, sql, inArray } from 'drizzle-orm';
 import { getUserId, getTenantId, isAuthenticated } from './utils/auth-helpers';
 import { requireSupabaseAuth as requireAuth } from './middleware/supabase-auth';
 import { z } from 'zod';
+import { validate } from './middleware/enhanced-validation';
+import {
+  businessRecordQuerySchema,
+  idParamSchema,
+  identifierParamSchema,
+} from './lib/crm-validation';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-business-records');
 
 const router = Router();
 
@@ -82,107 +90,112 @@ const statusUpdateSchema = z.object({
  * Get all business records with flexible filtering
  * Supports Lead, Prospect, Customer, and Former Customer views
  */
-router.get('/api/business-records', requireAuth, async (req: Request, res: Response) => {
-  try {
-    const tenantId = getTenantId(req);
-    if (!tenantId) {
-      return res.status(400).json({ message: 'Tenant ID is required' });
+router.get(
+  '/api/business-records',
+  requireAuth,
+  validate({ query: businessRecordQuerySchema }),
+  async (req: Request, res: Response) => {
+    try {
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const {
+        recordType,
+        status,
+        search,
+        ownerId,
+        priority,
+        industry,
+        leadSource,
+        customerTier,
+        limit = '100',
+        offset = '0',
+        sortBy = 'createdAt',
+        sortOrder = 'desc',
+      } = req.query;
+
+      // Build WHERE conditions
+      const conditions: any[] = [eq(businessRecords.tenantId, tenantId)];
+
+      if (recordType) {
+        conditions.push(eq(businessRecords.recordType, recordType as string));
+      }
+
+      if (status) {
+        conditions.push(eq(businessRecords.status, status as string));
+      }
+
+      if (ownerId) {
+        conditions.push(eq(businessRecords.ownerId, ownerId as string));
+      }
+
+      if (priority) {
+        conditions.push(eq(businessRecords.priority, priority as string));
+      }
+
+      if (industry) {
+        conditions.push(eq(businessRecords.industry, industry as string));
+      }
+
+      if (leadSource) {
+        conditions.push(eq(businessRecords.leadSource, leadSource as string));
+      }
+
+      if (customerTier) {
+        conditions.push(eq(businessRecords.customerTier, customerTier as string));
+      }
+
+      // Search across multiple fields
+      if (search) {
+        const searchTerm = `%${search}%`;
+        conditions.push(
+          or(
+            like(businessRecords.companyName, searchTerm),
+            like(businessRecords.primaryContactName, searchTerm),
+            like(businessRecords.primaryContactEmail, searchTerm),
+            like(businessRecords.phone, searchTerm),
+            like(businessRecords.city, searchTerm),
+            like(businessRecords.industry, searchTerm),
+          ),
+        );
+      }
+
+      // Execute query with pagination
+      const sortColumn =
+        businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.createdAt;
+      const orderFn = sortOrder === 'asc' ? asc : desc;
+
+      const records = await db
+        .select()
+        .from(businessRecords)
+        .where(and(...conditions))
+        .orderBy(orderFn(sortColumn))
+        .limit(parseInt(limit as string))
+        .offset(parseInt(offset as string));
+
+      // Get total count for pagination
+      const [{ count }] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(businessRecords)
+        .where(and(...conditions));
+
+      res.json({
+        records,
+        pagination: {
+          total: count,
+          limit: parseInt(limit as string),
+          offset: parseInt(offset as string),
+          hasMore: parseInt(offset as string) + records.length < count,
+        },
+      });
+    } catch (error) {
+      log.error('Error fetching business records:', error);
+      res.status(500).json({ message: 'Failed to fetch business records' });
     }
-
-    const {
-      recordType,
-      status,
-      search,
-      ownerId,
-      priority,
-      industry,
-      leadSource,
-      customerTier,
-      limit = '100',
-      offset = '0',
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
-    } = req.query;
-
-    // Build WHERE conditions
-    const conditions: any[] = [eq(businessRecords.tenantId, tenantId)];
-
-    if (recordType) {
-      conditions.push(eq(businessRecords.recordType, recordType as string));
-    }
-
-    if (status) {
-      conditions.push(eq(businessRecords.status, status as string));
-    }
-
-    if (ownerId) {
-      conditions.push(eq(businessRecords.ownerId, ownerId as string));
-    }
-
-    if (priority) {
-      conditions.push(eq(businessRecords.priority, priority as string));
-    }
-
-    if (industry) {
-      conditions.push(eq(businessRecords.industry, industry as string));
-    }
-
-    if (leadSource) {
-      conditions.push(eq(businessRecords.leadSource, leadSource as string));
-    }
-
-    if (customerTier) {
-      conditions.push(eq(businessRecords.customerTier, customerTier as string));
-    }
-
-    // Search across multiple fields
-    if (search) {
-      const searchTerm = `%${search}%`;
-      conditions.push(
-        or(
-          like(businessRecords.companyName, searchTerm),
-          like(businessRecords.primaryContactName, searchTerm),
-          like(businessRecords.primaryContactEmail, searchTerm),
-          like(businessRecords.phone, searchTerm),
-          like(businessRecords.city, searchTerm),
-          like(businessRecords.industry, searchTerm),
-        ),
-      );
-    }
-
-    // Execute query with pagination
-    const sortColumn =
-      businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.createdAt;
-    const orderFn = sortOrder === 'asc' ? asc : desc;
-
-    const records = await db
-      .select()
-      .from(businessRecords)
-      .where(and(...conditions))
-      .orderBy(orderFn(sortColumn))
-      .limit(parseInt(limit as string))
-      .offset(parseInt(offset as string));
-
-    // Get total count for pagination
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(businessRecords)
-      .where(and(...conditions));
-
-    res.json({
-      records,
-      pagination: {
-        total: count,
-        limit: parseInt(limit as string),
-        offset: parseInt(offset as string),
-        hasMore: parseInt(offset as string) + records.length < count,
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching business records:', error);
-    res.status(500).json({ message: 'Failed to fetch business records' });
-  }
-});
+  },
+);
 
 /**
  * Get single business record by ID or slug
@@ -190,6 +203,7 @@ router.get('/api/business-records', requireAuth, async (req: Request, res: Respo
 router.get(
   '/api/business-records/:identifier',
   requireAuth,
+  validate({ params: identifierParamSchema }),
   async (req: Request, res: Response) => {
     try {
       const tenantId = getTenantId(req);
@@ -232,7 +246,7 @@ router.get(
         activities,
       });
     } catch (error) {
-      console.error('Error fetching business record:', error);
+      log.error('Error fetching business record:', error);
       res.status(500).json({ message: 'Failed to fetch business record' });
     }
   },
@@ -301,7 +315,7 @@ router.post('/api/business-records', requireAuth, async (req: Request, res: Resp
 
     res.status(201).json(newRecord);
   } catch (error) {
-    console.error('Error creating business record:', error);
+    log.error('Error creating business record:', error);
     res.status(500).json({ message: 'Failed to create business record' });
   }
 });
@@ -309,62 +323,67 @@ router.post('/api/business-records', requireAuth, async (req: Request, res: Resp
 /**
  * Update business record
  */
-router.patch('/api/business-records/:id', requireAuth, async (req: Request, res: Response) => {
-  try {
-    const tenantId = getTenantId(req);
-    const userId = getUserId(req);
+router.patch(
+  '/api/business-records/:id',
+  requireAuth,
+  validate({ params: idParamSchema }),
+  async (req: Request, res: Response) => {
+    try {
+      const tenantId = getTenantId(req);
+      const userId = getUserId(req);
 
-    if (!tenantId || !userId) {
-      return res.status(400).json({ message: 'Tenant ID and User ID are required' });
-    }
+      if (!tenantId || !userId) {
+        return res.status(400).json({ message: 'Tenant ID and User ID are required' });
+      }
 
-    const { id } = req.params;
+      const { id } = req.params;
 
-    // Verify record exists and belongs to tenant
-    const [existing] = await db
-      .select()
-      .from(businessRecords)
-      .where(and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId)))
-      .limit(1);
+      // Verify record exists and belongs to tenant
+      const [existing] = await db
+        .select()
+        .from(businessRecords)
+        .where(and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId)))
+        .limit(1);
 
-    if (!existing) {
-      return res.status(404).json({ message: 'Record not found' });
-    }
+      if (!existing) {
+        return res.status(404).json({ message: 'Record not found' });
+      }
 
-    const validation = businessRecordSchema.partial().safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({
-        message: 'Validation failed',
-        errors: validation.error.errors,
+      const validation = businessRecordSchema.partial().safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({
+          message: 'Validation failed',
+          errors: validation.error.errors,
+        });
+      }
+
+      const updateData = {
+        ...validation.data,
+        updatedAt: new Date(),
+      };
+
+      const [updated] = await db
+        .update(businessRecords)
+        .set(updateData)
+        .where(eq(businessRecords.id, id))
+        .returning();
+
+      // Log activity
+      await db.insert(businessRecordActivities).values({
+        businessRecordId: id,
+        tenantId,
+        activityType: 'record_updated',
+        description: `Record updated`,
+        createdBy: userId,
       });
+
+      res.json(updated);
+    } catch (error) {
+      log.error('Error updating business record:', error);
+      res.status(500).json({ message: 'Failed to update business record' });
     }
-
-    const updateData = {
-      ...validation.data,
-      updatedAt: new Date(),
-    };
-
-    const [updated] = await db
-      .update(businessRecords)
-      .set(updateData)
-      .where(eq(businessRecords.id, id))
-      .returning();
-
-    // Log activity
-    await db.insert(businessRecordActivities).values({
-      businessRecordId: id,
-      tenantId,
-      activityType: 'record_updated',
-      description: `Record updated`,
-      createdBy: userId,
-    });
-
-    res.json(updated);
-  } catch (error) {
-    console.error('Error updating business record:', error);
-    res.status(500).json({ message: 'Failed to update business record' });
-  }
-});
+  },
+);
 
 /**
  * Quick status update with automatic record type transition
@@ -373,6 +392,7 @@ router.patch('/api/business-records/:id', requireAuth, async (req: Request, res:
 router.patch(
   '/api/business-records/:id/status',
   requireAuth,
+  validate({ params: idParamSchema }),
   async (req: Request, res: Response) => {
     try {
       const tenantId = getTenantId(req);
@@ -464,7 +484,7 @@ router.patch(
 
       res.json(updated);
     } catch (error) {
-      console.error('Error updating status:', error);
+      log.error('Error updating status:', error);
       res.status(500).json({ message: 'Failed to update status' });
     }
   },
@@ -524,7 +544,7 @@ router.post(
         records: updated,
       });
     } catch (error) {
-      console.error('Error bulk updating status:', error);
+      log.error('Error bulk updating status:', error);
       res.status(500).json({ message: 'Failed to bulk update status' });
     }
   },
@@ -533,57 +553,62 @@ router.post(
 /**
  * Delete business record (soft delete by marking as inactive)
  */
-router.delete('/api/business-records/:id', requireAuth, async (req: Request, res: Response) => {
-  try {
-    const tenantId = getTenantId(req);
-    const userId = getUserId(req);
+router.delete(
+  '/api/business-records/:id',
+  requireAuth,
+  validate({ params: idParamSchema }),
+  async (req: Request, res: Response) => {
+    try {
+      const tenantId = getTenantId(req);
+      const userId = getUserId(req);
 
-    if (!tenantId || !userId) {
-      return res.status(400).json({ message: 'Tenant ID and User ID are required' });
+      if (!tenantId || !userId) {
+        return res.status(400).json({ message: 'Tenant ID and User ID are required' });
+      }
+
+      const { id } = req.params;
+
+      // Verify record exists
+      const [existing] = await db
+        .select()
+        .from(businessRecords)
+        .where(and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId)))
+        .limit(1);
+
+      if (!existing) {
+        return res.status(404).json({ message: 'Record not found' });
+      }
+
+      // Soft delete: mark as former_customer with appropriate status
+      const [deleted] = await db
+        .update(businessRecords)
+        .set({
+          recordType: 'former_customer',
+          status: 'deleted',
+          isActive: false,
+          deactivatedBy: userId,
+          customerUntil: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(businessRecords.id, id))
+        .returning();
+
+      // Log activity
+      await db.insert(businessRecordActivities).values({
+        businessRecordId: id,
+        tenantId,
+        activityType: 'record_deleted',
+        description: `Record deleted: ${existing.companyName}`,
+        createdBy: userId,
+      });
+
+      res.json({ message: 'Record deleted successfully', record: deleted });
+    } catch (error) {
+      log.error('Error deleting business record:', error);
+      res.status(500).json({ message: 'Failed to delete business record' });
     }
-
-    const { id } = req.params;
-
-    // Verify record exists
-    const [existing] = await db
-      .select()
-      .from(businessRecords)
-      .where(and(eq(businessRecords.id, id), eq(businessRecords.tenantId, tenantId)))
-      .limit(1);
-
-    if (!existing) {
-      return res.status(404).json({ message: 'Record not found' });
-    }
-
-    // Soft delete: mark as former_customer with appropriate status
-    const [deleted] = await db
-      .update(businessRecords)
-      .set({
-        recordType: 'former_customer',
-        status: 'deleted',
-        isActive: false,
-        deactivatedBy: userId,
-        customerUntil: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(businessRecords.id, id))
-      .returning();
-
-    // Log activity
-    await db.insert(businessRecordActivities).values({
-      businessRecordId: id,
-      tenantId,
-      activityType: 'record_deleted',
-      description: `Record deleted: ${existing.companyName}`,
-      createdBy: userId,
-    });
-
-    res.json({ message: 'Record deleted successfully', record: deleted });
-  } catch (error) {
-    console.error('Error deleting business record:', error);
-    res.status(500).json({ message: 'Failed to delete business record' });
-  }
-});
+  },
+);
 
 /**
  * Get statistics for dashboard
@@ -627,156 +652,166 @@ router.get(
         pipelineValue: pipelineValue.total,
       });
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      log.error('Error fetching stats:', error);
       res.status(500).json({ message: 'Failed to fetch statistics' });
     }
   },
 );
 
 // Backward compatibility routes - GET all customers with pagination
-router.get('/api/customers', requireAuth, async (req: Request, res: Response) => {
-  try {
-    const tenantId = getTenantId(req);
-    if (!tenantId) {
-      return res.status(400).json({ message: 'Tenant ID is required' });
+router.get(
+  '/api/customers',
+  requireAuth,
+  validate({ query: businessRecordQuerySchema }),
+  async (req: Request, res: Response) => {
+    try {
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const {
+        search,
+        status,
+        priority,
+        industry,
+        leadSource,
+        customerTier,
+        limit = '100', // Default to 100 to prevent loading all 15k records
+        offset = '0',
+        sortBy = 'createdAt',
+        sortOrder = 'desc',
+      } = req.query;
+
+      // Build WHERE conditions - filter for customers only
+      const conditions: any[] = [
+        eq(businessRecords.tenantId, tenantId),
+        eq(businessRecords.recordType, 'customer'),
+      ];
+
+      if (status) {
+        conditions.push(eq(businessRecords.status, status as string));
+      }
+
+      if (priority) {
+        conditions.push(eq(businessRecords.priority, priority as string));
+      }
+
+      if (industry) {
+        conditions.push(eq(businessRecords.industry, industry as string));
+      }
+
+      if (leadSource) {
+        conditions.push(eq(businessRecords.leadSource, leadSource as string));
+      }
+
+      if (customerTier) {
+        conditions.push(eq(businessRecords.customerTier, customerTier as string));
+      }
+
+      // Search across multiple fields
+      if (search) {
+        const searchTerm = `%${search}%`;
+        conditions.push(
+          or(
+            like(businessRecords.companyName, searchTerm),
+            like(businessRecords.primaryContactName, searchTerm),
+            like(businessRecords.primaryContactEmail, searchTerm),
+            like(businessRecords.phone, searchTerm),
+            like(businessRecords.city, searchTerm),
+            like(businessRecords.industry, searchTerm),
+          ),
+        );
+      }
+
+      // Execute query with pagination
+      const sortColumn =
+        businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.createdAt;
+      const orderFn = sortOrder === 'asc' ? asc : desc;
+
+      const records = await db
+        .select()
+        .from(businessRecords)
+        .where(and(...conditions))
+        .orderBy(orderFn(sortColumn))
+        .limit(parseInt(limit as string))
+        .offset(parseInt(offset as string));
+
+      // Get total count for pagination
+      const [{ count }] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(businessRecords)
+        .where(and(...conditions));
+
+      res.json({
+        records,
+        pagination: {
+          total: count,
+          limit: parseInt(limit as string),
+          offset: parseInt(offset as string),
+          hasMore: parseInt(offset as string) + records.length < count,
+        },
+      });
+    } catch (error) {
+      log.error('Error fetching customers:', error);
+      res.status(500).json({ message: 'Failed to fetch customers' });
     }
-
-    const {
-      search,
-      status,
-      priority,
-      industry,
-      leadSource,
-      customerTier,
-      limit = '100', // Default to 100 to prevent loading all 15k records
-      offset = '0',
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
-    } = req.query;
-
-    // Build WHERE conditions - filter for customers only
-    const conditions: any[] = [
-      eq(businessRecords.tenantId, tenantId),
-      eq(businessRecords.recordType, 'customer'),
-    ];
-
-    if (status) {
-      conditions.push(eq(businessRecords.status, status as string));
-    }
-
-    if (priority) {
-      conditions.push(eq(businessRecords.priority, priority as string));
-    }
-
-    if (industry) {
-      conditions.push(eq(businessRecords.industry, industry as string));
-    }
-
-    if (leadSource) {
-      conditions.push(eq(businessRecords.leadSource, leadSource as string));
-    }
-
-    if (customerTier) {
-      conditions.push(eq(businessRecords.customerTier, customerTier as string));
-    }
-
-    // Search across multiple fields
-    if (search) {
-      const searchTerm = `%${search}%`;
-      conditions.push(
-        or(
-          like(businessRecords.companyName, searchTerm),
-          like(businessRecords.primaryContactName, searchTerm),
-          like(businessRecords.primaryContactEmail, searchTerm),
-          like(businessRecords.phone, searchTerm),
-          like(businessRecords.city, searchTerm),
-          like(businessRecords.industry, searchTerm),
-        ),
-      );
-    }
-
-    // Execute query with pagination
-    const sortColumn =
-      businessRecords[sortBy as keyof typeof businessRecords] || businessRecords.createdAt;
-    const orderFn = sortOrder === 'asc' ? asc : desc;
-
-    const records = await db
-      .select()
-      .from(businessRecords)
-      .where(and(...conditions))
-      .orderBy(orderFn(sortColumn))
-      .limit(parseInt(limit as string))
-      .offset(parseInt(offset as string));
-
-    // Get total count for pagination
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(businessRecords)
-      .where(and(...conditions));
-
-    res.json({
-      records,
-      pagination: {
-        total: count,
-        limit: parseInt(limit as string),
-        offset: parseInt(offset as string),
-        hasMore: parseInt(offset as string) + records.length < count,
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching customers:', error);
-    res.status(500).json({ message: 'Failed to fetch customers' });
-  }
-});
+  },
+);
 
 // GET single customer by ID or slug
-router.get('/api/customers/:identifier', requireAuth, async (req: Request, res: Response) => {
-  try {
-    const tenantId = getTenantId(req);
-    if (!tenantId) {
-      return res.status(400).json({ message: 'Tenant ID is required' });
-    }
+router.get(
+  '/api/customers/:identifier',
+  requireAuth,
+  validate({ params: identifierParamSchema }),
+  async (req: Request, res: Response) => {
+    try {
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
 
-    const { identifier } = req.params;
+      const { identifier } = req.params;
 
-    // Try to find by ID, URL slug, or display ID
-    const [record] = await db
-      .select()
-      .from(businessRecords)
-      .where(
-        and(
-          eq(businessRecords.tenantId, tenantId),
-          eq(businessRecords.recordType, 'customer'), // Only return customer records
-          or(
-            eq(businessRecords.id, identifier),
-            eq(businessRecords.urlSlug, identifier),
-            eq(businessRecords.companyDisplayId, identifier),
+      // Try to find by ID, URL slug, or display ID
+      const [record] = await db
+        .select()
+        .from(businessRecords)
+        .where(
+          and(
+            eq(businessRecords.tenantId, tenantId),
+            eq(businessRecords.recordType, 'customer'), // Only return customer records
+            or(
+              eq(businessRecords.id, identifier),
+              eq(businessRecords.urlSlug, identifier),
+              eq(businessRecords.companyDisplayId, identifier),
+            ),
           ),
-        ),
-      )
-      .limit(1);
+        )
+        .limit(1);
 
-    if (!record) {
-      return res.status(404).json({ message: 'Customer not found' });
+      if (!record) {
+        return res.status(404).json({ message: 'Customer not found' });
+      }
+
+      // Get recent activities
+      const activities = await db
+        .select()
+        .from(businessRecordActivities)
+        .where(eq(businessRecordActivities.businessRecordId, record.id))
+        .orderBy(desc(businessRecordActivities.createdAt))
+        .limit(20);
+
+      res.json({
+        ...record,
+        activities,
+      });
+    } catch (error) {
+      log.error('Error fetching customer:', error);
+      res.status(500).json({ message: 'Failed to fetch customer' });
     }
-
-    // Get recent activities
-    const activities = await db
-      .select()
-      .from(businessRecordActivities)
-      .where(eq(businessRecordActivities.businessRecordId, record.id))
-      .orderBy(desc(businessRecordActivities.createdAt))
-      .limit(20);
-
-    res.json({
-      ...record,
-      activities,
-    });
-  } catch (error) {
-    console.error('Error fetching customer:', error);
-    res.status(500).json({ message: 'Failed to fetch customer' });
-  }
-});
+  },
+);
 
 router.post('/api/customers', requireAuth, async (req: Request, res: Response) => {
   req.body.recordType = 'customer';

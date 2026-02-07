@@ -1,5 +1,8 @@
 import { db } from '../db';
 import { eq, and, gte, lte, isNull, sql, desc } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('geofence-alerts-service');
+
 import {
   geofenceAlertRules,
   geofenceAlerts,
@@ -415,7 +418,7 @@ export class GeofenceAlertsService {
       .limit(1);
 
     if (!geofence) {
-      console.error(`Geofence not found: ${geofenceId}`);
+      log.error(`Geofence not found: ${geofenceId}`);
       return triggeredAlerts;
     }
 
@@ -462,7 +465,7 @@ export class GeofenceAlertsService {
         const alert = await this.triggerAlert(tenantId, rule, context);
         triggeredAlerts.push(alert);
       } catch (error) {
-        console.error(`Error triggering alert for rule ${rule.id}:`, error);
+        log.error(`Error triggering alert for rule ${rule.id}:`, error);
       }
     }
 
@@ -615,7 +618,7 @@ export class GeofenceAlertsService {
                 })
                 .where(eq(technicianDwellSessions.id, session.id));
             } catch (error) {
-              console.error(`Error triggering dwell alert:`, error);
+              log.error(`Error triggering dwell alert:`, error);
             }
           }
         }

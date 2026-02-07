@@ -6,6 +6,9 @@
 
 import { Router, type Request, type Response } from 'express';
 import { TeamReportingService } from '../services/team-reporting-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('team-reports-api');
+
 import {
   enhanceUserContext,
   requirePermission,
@@ -67,7 +70,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching team pipeline comparison:', error);
+      log.error('Error fetching team pipeline comparison:', error);
       res.status(500).json({
         message: 'Failed to fetch team pipeline comparison',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -128,7 +131,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching team activity leaderboard:', error);
+      log.error('Error fetching team activity leaderboard:', error);
       res.status(500).json({
         message: 'Failed to fetch team activity leaderboard',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -201,7 +204,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching team performance dashboard:', error);
+      log.error('Error fetching team performance dashboard:', error);
       res.status(500).json({
         message: 'Failed to fetch team performance dashboard',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -274,7 +277,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching lead management report:', error);
+      log.error('Error fetching lead management report:', error);
       res.status(500).json({
         message: 'Failed to fetch lead management report',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -351,7 +354,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching coaching report:', error);
+      log.error('Error fetching coaching report:', error);
       res.status(500).json({
         message: 'Failed to fetch coaching report',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -410,7 +413,7 @@ router.get(
         teamSize: pipelineData.teamInfo.teamSize,
       });
     } catch (error) {
-      console.error('Error fetching quick stats:', error);
+      log.error('Error fetching quick stats:', error);
       res.status(500).json({
         message: 'Failed to fetch quick stats',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -444,7 +447,7 @@ router.post(
           : 'All team report caches cleared',
       });
     } catch (error) {
-      console.error('Error clearing cache:', error);
+      log.error('Error clearing cache:', error);
       res.status(500).json({
         message: 'Failed to clear cache',
         error: error instanceof Error ? error.message : 'Unknown error',

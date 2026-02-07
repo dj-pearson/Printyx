@@ -6,6 +6,8 @@
 import { Router, type Request, type Response } from 'express';
 import { ServiceManagerReportingService } from '../services/service-manager-reporting-service';
 import { enhanceUserContext, requirePermission } from '../middleware/enhanced-rbac-middleware';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('service-manager-reports-api');
 
 const router = Router();
 
@@ -63,7 +65,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching regional service calls:', error);
+      log.error('Error fetching regional service calls:', error);
       res.status(500).json({
         message: 'Failed to fetch regional service call overview',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -126,7 +128,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching regional service performance:', error);
+      log.error('Error fetching regional service performance:', error);
       res.status(500).json({
         message: 'Failed to fetch regional service performance metrics',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -189,7 +191,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching regional SLA tracking:', error);
+      log.error('Error fetching regional SLA tracking:', error);
       res.status(500).json({
         message: 'Failed to fetch regional SLA tracking',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -251,7 +253,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching regional technician activity:', error);
+      log.error('Error fetching regional technician activity:', error);
       res.status(500).json({
         message: 'Failed to fetch regional technician activity summary',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -277,7 +279,7 @@ router.post(
       ServiceManagerReportingService.clearCache();
       res.json({ message: 'Cache cleared successfully' });
     } catch (error) {
-      console.error('Error clearing cache:', error);
+      log.error('Error clearing cache:', error);
       res.status(500).json({
         message: 'Failed to clear cache',
         error: error instanceof Error ? error.message : 'Unknown error',

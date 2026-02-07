@@ -1,4 +1,7 @@
 import { db } from '../db';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('intelligent-alerts-service');
+
 import {
   alertTriageResults,
   automatedContainmentLogs,
@@ -845,9 +848,7 @@ export class IntelligentAlertsService {
         case 'block_ip': {
           // IP blocking requires integration with WAF/firewall
           // For now, log the request and mark for manual action or external system integration
-          console.warn(
-            `[SECURITY] IP block requested for ${target} - requires firewall integration`,
-          );
+          log.warn(`[SECURITY] IP block requested for ${target} - requires firewall integration`);
 
           // Create a record in audit logs for tracking
           await db.insert(auditLogs).values({
@@ -871,7 +872,7 @@ export class IntelligentAlertsService {
         case 'quarantine_file': {
           // File quarantine requires file system or storage integration
           // Log the action for manual processing or external system integration
-          console.warn(
+          log.warn(
             `[SECURITY] File quarantine requested for ${target} - requires storage integration`,
           );
 
@@ -895,7 +896,7 @@ export class IntelligentAlertsService {
 
         case 'disable_integration': {
           // Disabling integrations requires integration management system
-          console.warn(`[SECURITY] Integration disable requested for ${target}`);
+          log.warn(`[SECURITY] Integration disable requested for ${target}`);
 
           await db.insert(auditLogs).values({
             tenantId,
@@ -918,7 +919,7 @@ export class IntelligentAlertsService {
         case 'rate_limit': {
           // Rate limiting is typically handled by middleware
           // Log the request for manual configuration or dynamic rate limit adjustment
-          console.warn(`[SECURITY] Rate limit requested for ${target}`);
+          log.warn(`[SECURITY] Rate limit requested for ${target}`);
 
           await db.insert(auditLogs).values({
             tenantId,
@@ -976,7 +977,7 @@ export class IntelligentAlertsService {
               `,
             });
           } catch (emailError) {
-            console.error('[Security] Failed to send password reset email:', emailError);
+            log.error('[Security] Failed to send password reset email:', emailError);
           }
 
           result = `Password reset forced for user ${target} (${user.email})`;
@@ -1025,7 +1026,7 @@ export class IntelligentAlertsService {
               `,
             });
           } catch (emailError) {
-            console.error('[Security] Failed to send MFA notification email:', emailError);
+            log.error('[Security] Failed to send MFA notification email:', emailError);
           }
 
           result = `MFA enforcement flagged for user ${target} (${user.email})`;
@@ -1105,7 +1106,7 @@ export class IntelligentAlertsService {
             result = `Notification sent to security team (${securityTeamEmails.length} recipient(s))`;
             success = true;
           } catch (emailError) {
-            console.error('[Security] Failed to send team notification:', emailError);
+            log.error('[Security] Failed to send team notification:', emailError);
             throw new Error(`Failed to send team notification: ${(emailError as Error).message}`);
           }
           break;
@@ -1314,7 +1315,7 @@ export class IntelligentAlertsService {
     // If risk is high and detected multiple times, create alert
     if (severity in ['high', 'critical'] && existing && existing.detectionCount >= 3) {
       // TODO: Create actual security alert
-      console.log(`High risk anomaly detected for ${entityType} ${entityId} - creating alert`);
+      log.info(`High risk anomaly detected for ${entityType} ${entityId} - creating alert`);
     }
   }
 

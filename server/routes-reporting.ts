@@ -6,6 +6,9 @@
 import express from 'express';
 import { Request, Response } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-reporting');
+
 import {
   reportDefinitions,
   reportExecutions,
@@ -89,7 +92,7 @@ router.get(
         available_scopes: [user.accessScope],
       });
     } catch (error) {
-      console.error('Error fetching reports:', error);
+      log.error('Error fetching reports:', error);
       res.status(500).json({ error: 'Failed to fetch reports' });
     }
   },
@@ -174,7 +177,7 @@ router.get(
           // Add other parameters as needed
         });
       } catch (queryError) {
-        console.error('Report execution error:', queryError);
+        log.error('Report execution error:', queryError);
         return res.status(500).json({ error: 'Failed to execute report query' });
       }
 
@@ -232,7 +235,7 @@ router.get(
         summary_stats: calculateSummaryStats(reportData),
       });
     } catch (error) {
-      console.error('Error executing report:', error);
+      log.error('Error executing report:', error);
       res.status(500).json({ error: 'Failed to execute report' });
     }
   },
@@ -310,7 +313,7 @@ router.get(
         available_categories: [...new Set(kpisWithValues.map((k) => k.category))],
       });
     } catch (error) {
-      console.error('Error fetching KPIs:', error);
+      log.error('Error fetching KPIs:', error);
       res.status(500).json({ error: 'Failed to fetch KPIs' });
     }
   },
@@ -363,7 +366,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching KPI historical data:', error);
+      log.error('Error fetching KPI historical data:', error);
       res.status(500).json({ error: 'Failed to fetch KPI historical data' });
     }
   },
@@ -377,7 +380,7 @@ router.get(
 async function executeReportQuery(sqlQuery: string, parameters: any): Promise<any[]> {
   // This is a placeholder - implement actual SQL execution with parameter substitution
   // and hierarchical access control injection
-  console.log('Executing report query:', sqlQuery, 'with parameters:', parameters);
+  log.info('Executing report query:', sqlQuery, 'with parameters:', parameters);
 
   // Return mock data for now
   return [
@@ -528,7 +531,7 @@ router.post(
 
       res.json(exportResult);
     } catch (error) {
-      console.error('Error exporting report:', error);
+      log.error('Error exporting report:', error);
       res.status(500).json({ error: 'Failed to export report' });
     }
   },
@@ -560,13 +563,13 @@ router.get(
       const stream = fs.createReadStream(exportFile.filePath);
 
       stream.on('error', (error: any) => {
-        console.error('Error streaming export file:', error);
+        log.error('Error streaming export file:', error);
         res.status(500).json({ error: 'Failed to download file' });
       });
 
       stream.pipe(res);
     } catch (error) {
-      console.error('Error downloading export:', error);
+      log.error('Error downloading export:', error);
       res.status(500).json({ error: 'Failed to download export' });
     }
   },
@@ -581,7 +584,7 @@ router.get(
       const stats = await exportService.getExportStats();
       res.json(stats);
     } catch (error) {
-      console.error('Error getting export stats:', error);
+      log.error('Error getting export stats:', error);
       res.status(500).json({ error: 'Failed to get export statistics' });
     }
   },
@@ -670,7 +673,7 @@ router.get(
         recent_activity: recentActivity,
       });
     } catch (error) {
-      console.error('Error getting dashboard summary:', error);
+      log.error('Error getting dashboard summary:', error);
       res.status(500).json({ error: 'Failed to get dashboard summary' });
     }
   },

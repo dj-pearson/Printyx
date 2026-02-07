@@ -9,6 +9,8 @@ import { db } from '../db';
 import { users } from '../../shared/schema';
 import { complianceSettings, securitySessions } from '../../shared/security-schema';
 import { eq, and, desc, gt, lt, or, isNotNull } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('security-storage');
 
 // ============================================================================
 // Types
@@ -136,7 +138,7 @@ export async function getComplianceSettings(
         settings.dataRetentionPeriod ?? DEFAULT_COMPLIANCE_SETTINGS.dataRetentionPeriod,
     };
   } catch (error) {
-    console.error('Error getting compliance settings:', error);
+    log.error('Error getting compliance settings:', error);
     return null;
   }
 }
@@ -170,7 +172,7 @@ export async function updateComplianceSettings(
 
     return true;
   } catch (error) {
-    console.error('Error updating compliance settings:', error);
+    log.error('Error updating compliance settings:', error);
     return false;
   }
 }
@@ -198,7 +200,7 @@ export async function getSecuritySettings(
       ...DEFAULT_SECURITY_SETTINGS,
     };
   } catch (error) {
-    console.error('Error getting security settings:', error);
+    log.error('Error getting security settings:', error);
     return null;
   }
 }
@@ -234,7 +236,7 @@ export async function updateSecuritySettings(
 
     return true;
   } catch (error) {
-    console.error('Error updating security settings:', error);
+    log.error('Error updating security settings:', error);
     return false;
   }
 }
@@ -274,7 +276,7 @@ export async function getTenantAdmins(tenantId: string): Promise<TenantAdmin[]> 
       lastName: admin.lastName,
     }));
   } catch (error) {
-    console.error('Error getting tenant admins:', error);
+    log.error('Error getting tenant admins:', error);
     return [];
   }
 }
@@ -310,7 +312,7 @@ export async function getUserActiveSessions(userId: string): Promise<
       createdAt: session.createdAt,
     }));
   } catch (error) {
-    console.error('Error getting user sessions:', error);
+    log.error('Error getting user sessions:', error);
     return [];
   }
 }
@@ -334,7 +336,7 @@ export async function terminateOtherSessions(
 
     return 1; // Drizzle doesn't return affected count easily
   } catch (error) {
-    console.error('Error terminating other sessions:', error);
+    log.error('Error terminating other sessions:', error);
     return 0;
   }
 }
@@ -361,7 +363,7 @@ export async function createSecuritySession(session: {
       isActive: true,
     });
   } catch (error) {
-    console.error('Error creating security session:', error);
+    log.error('Error creating security session:', error);
   }
 }
 
@@ -382,7 +384,7 @@ export async function cleanupExpiredSessions(): Promise<number> {
 
     return 1;
   } catch (error) {
-    console.error('Error cleaning up expired sessions:', error);
+    log.error('Error cleaning up expired sessions:', error);
     return 0;
   }
 }

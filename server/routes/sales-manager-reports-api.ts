@@ -6,6 +6,8 @@
 import { Router, type Request, type Response } from 'express';
 import { SalesManagerReportingService } from '../services/sales-manager-reporting-service';
 import { enhanceUserContext, requirePermission } from '../middleware/enhanced-rbac-middleware';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('sales-manager-reports-api');
 
 const router = Router();
 
@@ -63,7 +65,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching regional pipeline:', error);
+      log.error('Error fetching regional pipeline:', error);
       res.status(500).json({
         message: 'Failed to fetch regional pipeline overview',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -123,7 +125,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching regional performance:', error);
+      log.error('Error fetching regional performance:', error);
       res.status(500).json({
         message: 'Failed to fetch regional performance metrics',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -183,7 +185,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching regional quota tracking:', error);
+      log.error('Error fetching regional quota tracking:', error);
       res.status(500).json({
         message: 'Failed to fetch regional quota tracking',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -250,7 +252,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Error fetching regional activity:', error);
+      log.error('Error fetching regional activity:', error);
       res.status(500).json({
         message: 'Failed to fetch regional activity summary',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -276,7 +278,7 @@ router.post(
       SalesManagerReportingService.clearCache();
       res.json({ message: 'Cache cleared successfully' });
     } catch (error) {
-      console.error('Error clearing cache:', error);
+      log.error('Error clearing cache:', error);
       res.status(500).json({
         message: 'Failed to clear cache',
         error: error instanceof Error ? error.message : 'Unknown error',

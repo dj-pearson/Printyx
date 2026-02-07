@@ -1,6 +1,8 @@
 import { db } from './db';
 import { subscriptionAddons, type NewSubscriptionAddon } from '@shared/schema';
 import { sql } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-subscription-addons');
 
 /**
  * SUBSCRIPTION ADD-ONS SEED DATA
@@ -231,7 +233,7 @@ const addons: NewSubscriptionAddon[] = [
  * Seed subscription add-ons
  */
 export async function seedSubscriptionAddons() {
-  console.log('🌱 Seeding subscription add-ons...');
+  log.info('🌱 Seeding subscription add-ons...');
 
   try {
     const insertedAddons = await db
@@ -256,11 +258,11 @@ export async function seedSubscriptionAddons() {
       })
       .returning();
 
-    console.log(`✅ Seeded ${insertedAddons.length} add-ons`);
-    console.log('✅ Subscription add-ons seeding completed successfully!');
+    log.info(`✅ Seeded ${insertedAddons.length} add-ons`);
+    log.info('✅ Subscription add-ons seeding completed successfully!');
     return insertedAddons;
   } catch (error) {
-    console.error('❌ Error seeding subscription add-ons:', error);
+    log.error('❌ Error seeding subscription add-ons:', error);
     throw error;
   }
 }
@@ -270,11 +272,11 @@ const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 if (isMainModule) {
   seedSubscriptionAddons()
     .then(() => {
-      console.log('🎉 Seeding complete!');
+      log.info('🎉 Seeding complete!');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('💥 Seeding failed:', error);
+      log.error('💥 Seeding failed:', error);
       process.exit(1);
     });
 }

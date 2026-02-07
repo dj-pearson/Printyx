@@ -6,6 +6,8 @@ import { rbacAuditLog } from './enhanced-rbac-schema';
 import { eq, desc, sql, count, and, gte, lte, like, inArray } from 'drizzle-orm';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-root-admin');
 
 // Middleware to check authentication
 const requireAuth = (req: any, res: any, next: any) => {
@@ -75,7 +77,7 @@ export const requireRootAdmin = async (req: any, res: any, next: any) => {
 
     next();
   } catch (error) {
-    console.error('Root admin check error:', error);
+    log.error('Root admin check error:', error);
     res.status(500).json({ message: 'Internal server error during authorization' });
   }
 };
@@ -127,7 +129,7 @@ router.get('/overview', requireRootAdmin, async (req, res) => {
       systemHealth: criticalAlerts[0]?.count > 0 ? 'warning' : 'healthy',
     });
   } catch (error) {
-    console.error('Error fetching system overview:', error);
+    log.error('Error fetching system overview:', error);
     res.status(500).json({ message: 'Failed to fetch system overview' });
   }
 });
@@ -154,7 +156,7 @@ router.get('/tenants', requireRootAdmin, async (req, res) => {
 
     res.json(tenantMetrics);
   } catch (error) {
-    console.error('Error fetching tenant metrics:', error);
+    log.error('Error fetching tenant metrics:', error);
     res.status(500).json({ message: 'Failed to fetch tenant metrics' });
   }
 });
@@ -213,7 +215,7 @@ router.get(
 
       res.json(enrichedAlerts);
     } catch (error) {
-      console.error('Error fetching security alerts:', error);
+      log.error('Error fetching security alerts:', error);
       res.status(500).json({ message: 'Failed to fetch security alerts' });
     }
   },
@@ -288,7 +290,7 @@ router.get(
 
       res.json(resources);
     } catch (error) {
-      console.error('Error fetching system resources:', error);
+      log.error('Error fetching system resources:', error);
       res.status(500).json({ message: 'Failed to fetch system resources' });
     }
   },
@@ -366,7 +368,7 @@ router.get('/users', requireRootAdmin, async (req, res) => {
 
     res.json(enrichedUsers);
   } catch (error) {
-    console.error('Error fetching users:', error);
+    log.error('Error fetching users:', error);
     res.status(500).json({ message: 'Failed to fetch users' });
   }
 });
@@ -392,7 +394,7 @@ router.get('/roles', requireRootAdmin, async (req, res) => {
 
     res.json(rolesList);
   } catch (error) {
-    console.error('Error fetching roles:', error);
+    log.error('Error fetching roles:', error);
     res.status(500).json({ message: 'Failed to fetch roles' });
   }
 });
@@ -436,7 +438,7 @@ router.get('/audit-logs', requireRootAdmin, async (req, res) => {
 
     res.json(enrichedLogs);
   } catch (error) {
-    console.error('Error fetching audit logs:', error);
+    log.error('Error fetching audit logs:', error);
     res.status(500).json({ message: 'Failed to fetch audit logs' });
   }
 });
@@ -464,7 +466,7 @@ router.get(
 
       res.json(tablesInfo.rows);
     } catch (error) {
-      console.error('Error fetching database tables:', error);
+      log.error('Error fetching database tables:', error);
       res.status(500).json({ message: 'Failed to fetch database tables' });
     }
   },
@@ -503,7 +505,7 @@ router.post(
         executionTime: Date.now(), // Would be actual execution time
       });
     } catch (error) {
-      console.error('Error executing query:', error);
+      log.error('Error executing query:', error);
       res.status(500).json({
         success: false,
         message: error.message || 'Failed to execute query',
@@ -602,7 +604,7 @@ router.get('/rbac-audit-logs', requireRootAdmin, async (req, res) => {
       offset: offsetNum,
     });
   } catch (error) {
-    console.error('Error fetching RBAC audit logs:', error);
+    log.error('Error fetching RBAC audit logs:', error);
     res.status(500).json({ message: 'Failed to fetch RBAC audit logs' });
   }
 });
@@ -675,7 +677,7 @@ router.get('/rbac-audit-logs/stats', requireRootAdmin, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching RBAC audit stats:', error);
+    log.error('Error fetching RBAC audit stats:', error);
     res.status(500).json({ message: 'Failed to fetch RBAC audit stats' });
   }
 });
@@ -733,7 +735,7 @@ router.get('/rbac-audit-logs/admin-bypass', requireRootAdmin, async (req, res) =
       count: enrichedLogs.length,
     });
   } catch (error) {
-    console.error('Error fetching admin bypass logs:', error);
+    log.error('Error fetching admin bypass logs:', error);
     res.status(500).json({ message: 'Failed to fetch admin bypass logs' });
   }
 });

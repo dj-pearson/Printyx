@@ -5,6 +5,9 @@
 
 import { db } from './db';
 import { sql } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-knowledge-base');
+
 import {
   knowledgeCategories,
   knowledgeArticles,
@@ -23,7 +26,7 @@ interface CategoryMap {
  * Seed knowledge base categories
  */
 async function seedCategories(): Promise<CategoryMap> {
-  console.log('📚 Seeding knowledge base categories...');
+  log.info('📚 Seeding knowledge base categories...');
 
   const categories: Array<{ name: string; description: string; icon: string; slug: string }> = [
     {
@@ -104,7 +107,7 @@ async function seedCategories(): Promise<CategoryMap> {
       .returning();
 
     categoryMap[cat.slug] = inserted.id;
-    console.log(`✅ Created category: ${cat.name}`);
+    log.info(`✅ Created category: ${cat.name}`);
   }
 
   return categoryMap;
@@ -114,7 +117,7 @@ async function seedCategories(): Promise<CategoryMap> {
  * Seed knowledge base articles
  */
 async function seedArticles(categoryMap: CategoryMap): Promise<void> {
-  console.log('📝 Seeding knowledge base articles...');
+  log.info('📝 Seeding knowledge base articles...');
 
   const articles = [
     // Getting Started Articles
@@ -562,7 +565,7 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
   for (const article of articles) {
     const categoryId = categoryMap[article.category];
     if (!categoryId) {
-      console.error(`Category not found: ${article.category}`);
+      log.error(`Category not found: ${article.category}`);
       continue;
     }
 
@@ -588,7 +591,7 @@ async function seedArticles(categoryMap: CategoryMap): Promise<void> {
       createdBy: SYSTEM_USER_ID,
     });
 
-    console.log(`✅ Created article: ${article.title}`);
+    log.info(`✅ Created article: ${article.title}`);
   }
 }
 
@@ -625,21 +628,21 @@ function generateSlug(text: string): string {
  * Main seeding function
  */
 async function seedKnowledgeBase(): Promise<void> {
-  console.log('🌱 Starting knowledge base seeding...\n');
+  log.info('🌱 Starting knowledge base seeding...\n');
 
   try {
     // Seed categories first
     const categoryMap = await seedCategories();
-    console.log('');
+    log.info('');
 
     // Seed articles
     await seedArticles(categoryMap);
-    console.log('');
+    log.info('');
 
-    console.log('✅ Knowledge base seeding completed successfully!');
-    console.log(`📊 Created ${Object.keys(categoryMap).length} categories`);
+    log.info('✅ Knowledge base seeding completed successfully!');
+    log.info(`📊 Created ${Object.keys(categoryMap).length} categories`);
   } catch (error) {
-    console.error('❌ Error seeding knowledge base:', error);
+    log.error('❌ Error seeding knowledge base:', error);
     throw error;
   }
 }
@@ -649,11 +652,11 @@ const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 if (isMainModule) {
   seedKnowledgeBase()
     .then(() => {
-      console.log('\n✨ All done!');
+      log.info('\n✨ All done!');
       process.exit(0);
     })
     .catch((error) => {
-      console.error('\n❌ Seeding failed:', error);
+      log.error('\n❌ Seeding failed:', error);
       process.exit(1);
     });
 }

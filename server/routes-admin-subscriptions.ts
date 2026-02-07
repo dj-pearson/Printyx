@@ -2,6 +2,9 @@ import { Router } from 'express';
 import { SubscriptionService } from './services/subscription-service';
 import { UsageTrackingService } from './services/usage-tracking-service';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-admin-subscriptions');
+
 import {
   subscriptionPlans,
   subscriptionFeatures,
@@ -87,7 +90,7 @@ router.get('/subscriptions', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Failed to fetch subscriptions:', error);
+    log.error('Failed to fetch subscriptions:', error);
     res.status(500).json({ error: 'Failed to fetch subscriptions' });
   }
 });
@@ -114,7 +117,7 @@ router.get('/subscriptions/:id', async (req, res) => {
       status,
     });
   } catch (error) {
-    console.error('Failed to fetch subscription:', error);
+    log.error('Failed to fetch subscription:', error);
     res.status(500).json({ error: 'Failed to fetch subscription details' });
   }
 });
@@ -144,7 +147,7 @@ router.post('/subscriptions/grant-free', async (req, res) => {
       message: 'Free subscription granted successfully',
     });
   } catch (error) {
-    console.error('Failed to grant free subscription:', error);
+    log.error('Failed to grant free subscription:', error);
     res.status(500).json({
       error: 'Failed to grant free subscription',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -186,7 +189,7 @@ router.patch('/subscriptions/:id', async (req, res) => {
       message: 'Subscription updated successfully',
     });
   } catch (error) {
-    console.error('Failed to update subscription:', error);
+    log.error('Failed to update subscription:', error);
     res.status(500).json({ error: 'Failed to update subscription' });
   }
 });
@@ -239,7 +242,7 @@ router.post('/subscriptions/:id/extend-trial', async (req, res) => {
       newTrialEndDate,
     });
   } catch (error) {
-    console.error('Failed to extend trial:', error);
+    log.error('Failed to extend trial:', error);
     res.status(500).json({ error: 'Failed to extend trial' });
   }
 });
@@ -288,7 +291,7 @@ router.get('/discounts', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Failed to fetch discounts:', error);
+    log.error('Failed to fetch discounts:', error);
     res.status(500).json({ error: 'Failed to fetch discounts' });
   }
 });
@@ -320,7 +323,7 @@ router.get('/discounts/:id', async (req, res) => {
       redemptions,
     });
   } catch (error) {
-    console.error('Failed to fetch discount:', error);
+    log.error('Failed to fetch discount:', error);
     res.status(500).json({ error: 'Failed to fetch discount details' });
   }
 });
@@ -419,7 +422,7 @@ router.post('/discounts', async (req, res) => {
       message: 'Discount code created successfully',
     });
   } catch (error) {
-    console.error('Failed to create discount:', error);
+    log.error('Failed to create discount:', error);
     res.status(500).json({
       error: 'Failed to create discount',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -459,7 +462,7 @@ router.patch('/discounts/:id', async (req, res) => {
       message: 'Discount updated successfully',
     });
   } catch (error) {
-    console.error('Failed to update discount:', error);
+    log.error('Failed to update discount:', error);
     res.status(500).json({ error: 'Failed to update discount' });
   }
 });
@@ -487,7 +490,7 @@ router.delete('/discounts/:id', async (req, res) => {
       message: 'Discount deactivated successfully',
     });
   } catch (error) {
-    console.error('Failed to deactivate discount:', error);
+    log.error('Failed to deactivate discount:', error);
     res.status(500).json({ error: 'Failed to deactivate discount' });
   }
 });
@@ -506,7 +509,7 @@ router.get('/plans', async (req, res) => {
 
     res.json({ plans });
   } catch (error) {
-    console.error('Failed to fetch plans:', error);
+    log.error('Failed to fetch plans:', error);
     res.status(500).json({ error: 'Failed to fetch plans' });
   }
 });
@@ -538,7 +541,7 @@ router.patch('/plans/:id', async (req, res) => {
       message: 'Plan updated successfully',
     });
   } catch (error) {
-    console.error('Failed to update plan:', error);
+    log.error('Failed to update plan:', error);
     res.status(500).json({ error: 'Failed to update plan' });
   }
 });
@@ -607,7 +610,7 @@ router.get('/analytics/subscriptions', async (req, res) => {
       totalConverted: trialStats.converted,
     });
   } catch (error) {
-    console.error('Failed to fetch analytics:', error);
+    log.error('Failed to fetch analytics:', error);
     res.status(500).json({ error: 'Failed to fetch analytics' });
   }
 });
@@ -639,7 +642,7 @@ router.get('/analytics/revenue', async (req, res) => {
       revenue,
     });
   } catch (error) {
-    console.error('Failed to fetch revenue:', error);
+    log.error('Failed to fetch revenue:', error);
     res.status(500).json({ error: 'Failed to fetch revenue analytics' });
   }
 });
@@ -656,14 +659,14 @@ router.post('/usage/recalculate-all', async (req, res) => {
   try {
     // Run asynchronously
     UsageTrackingService.recalculateAllUsage().catch((error) => {
-      console.error('Failed to recalculate all usage:', error);
+      log.error('Failed to recalculate all usage:', error);
     });
 
     res.json({
       message: 'Usage recalculation started in background',
     });
   } catch (error) {
-    console.error('Failed to start usage recalculation:', error);
+    log.error('Failed to start usage recalculation:', error);
     res.status(500).json({ error: 'Failed to start usage recalculation' });
   }
 });
@@ -681,7 +684,7 @@ router.post('/trials/check-expirations', async (req, res) => {
       message: 'Trial expiration check completed',
     });
   } catch (error) {
-    console.error('Failed to check trial expirations:', error);
+    log.error('Failed to check trial expirations:', error);
     res.status(500).json({ error: 'Failed to check trial expirations' });
   }
 });

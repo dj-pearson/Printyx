@@ -6,6 +6,8 @@
 import { db } from '../db';
 import ClaudeAIService from './claude-ai-service';
 import { eq, and, sql, desc, asc, like, ilike } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('ai-search-knowledge-service');
 
 interface VectorEmbedding {
   id: string;
@@ -215,7 +217,7 @@ class AISearchKnowledgeService {
       accessPermissions?: string[];
     },
   ): Promise<VectorEmbedding> {
-    console.log('🔍 Creating vector embedding for content:', contentId);
+    log.info('🔍 Creating vector embedding for content:', contentId);
 
     try {
       // Generate embedding vector
@@ -260,10 +262,10 @@ class AISearchKnowledgeService {
         updatedAt: new Date(),
       };
 
-      console.log('✅ Vector embedding created successfully');
+      log.info('✅ Vector embedding created successfully');
       return embedding;
     } catch (error) {
-      console.error('Failed to create vector embedding:', error);
+      log.error('Failed to create vector embedding:', error);
       throw error;
     }
   }
@@ -312,7 +314,7 @@ class AISearchKnowledgeService {
       answerTime?: number;
     };
   }> {
-    console.log('🔍 Performing semantic search:', queryText);
+    log.info('🔍 Performing semantic search:', queryText);
 
     const startTime = Date.now();
 
@@ -405,7 +407,7 @@ class AISearchKnowledgeService {
       searchQuery.topResultScores = formattedResults.slice(0, 5).map((r) => r.relevanceScore);
       searchQuery.responseTimeMs = totalTime;
 
-      console.log(
+      log.info(
         `✅ Semantic search completed: ${formattedResults.length} results in ${totalTime}ms`,
       );
 
@@ -423,7 +425,7 @@ class AISearchKnowledgeService {
         },
       };
     } catch (error) {
-      console.error('Semantic search failed:', error);
+      log.error('Semantic search failed:', error);
       throw error;
     }
   }
@@ -435,7 +437,7 @@ class AISearchKnowledgeService {
     query: SearchQuery,
     searchResults: Array<any>,
   ): Promise<AIGeneratedAnswer> {
-    console.log('🧠 Generating AI answer for query:', query.queryText);
+    log.info('🧠 Generating AI answer for query:', query.queryText);
 
     try {
       // Prepare context from search results
@@ -526,10 +528,10 @@ Return JSON format:
         updatedAt: new Date(),
       };
 
-      console.log('✅ AI answer generated successfully');
+      log.info('✅ AI answer generated successfully');
       return aiAnswer;
     } catch (error) {
-      console.error('AI answer generation failed:', error);
+      log.error('AI answer generation failed:', error);
       throw error;
     }
   }
@@ -549,7 +551,7 @@ Return JSON format:
       relatedEntities?: string[];
     },
   ): Promise<KnowledgeEntity> {
-    console.log('📚 Creating knowledge entity:', entityData.name);
+    log.info('📚 Creating knowledge entity:', entityData.name);
 
     try {
       const entity: KnowledgeEntity = {
@@ -580,10 +582,10 @@ Return JSON format:
         updatedAt: new Date(),
       };
 
-      console.log('✅ Knowledge entity created successfully');
+      log.info('✅ Knowledge entity created successfully');
       return entity;
     } catch (error) {
-      console.error('Failed to create knowledge entity:', error);
+      log.error('Failed to create knowledge entity:', error);
       throw error;
     }
   }
@@ -616,7 +618,7 @@ Return JSON format:
     optimizationRecommendations: string[];
     contentSuggestions: string[];
   }> {
-    console.log('📊 Generating search analytics...');
+    log.info('📊 Generating search analytics...');
 
     // Mock analytics data - in production, this would aggregate from actual data
     return {

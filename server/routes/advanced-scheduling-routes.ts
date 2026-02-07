@@ -7,6 +7,8 @@ import express from 'express';
 import AdvancedSchedulingService from '../services/advanced-scheduling-service';
 import DynamicReschedulingService from '../services/dynamic-rescheduling-service';
 import ConstraintSolver from '../services/constraint-solver';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('advanced-scheduling-routes');
 
 const router = express.Router();
 
@@ -88,7 +90,7 @@ router.post('/optimize', async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Advanced scheduling error:', error);
+    log.error('Advanced scheduling error:', error);
     res.status(500).json({ error: 'Failed to optimize schedule' });
   }
 });
@@ -120,7 +122,7 @@ router.post('/reschedule', async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Dynamic rescheduling error:', error);
+    log.error('Dynamic rescheduling error:', error);
     res.status(500).json({ error: 'Failed to process rescheduling event' });
   }
 });
@@ -200,7 +202,7 @@ router.get('/constraints', async (req, res) => {
 
     res.json(constraintTypes);
   } catch (error) {
-    console.error('Error fetching constraint types:', error);
+    log.error('Error fetching constraint types:', error);
     res.status(500).json({ error: 'Failed to fetch constraint types' });
   }
 });
@@ -248,7 +250,7 @@ router.post('/constraints/validate', async (req, res) => {
 
     res.json(validationResult);
   } catch (error) {
-    console.error('Constraint validation error:', error);
+    log.error('Constraint validation error:', error);
     res.status(500).json({ error: 'Failed to validate constraints' });
   }
 });
@@ -303,7 +305,7 @@ router.get('/patterns/:userId', async (req, res) => {
 
     res.json(userPatterns);
   } catch (error) {
-    console.error('Error fetching user patterns:', error);
+    log.error('Error fetching user patterns:', error);
     res.status(500).json({ error: 'Failed to fetch user patterns' });
   }
 });
@@ -334,7 +336,7 @@ router.post('/patterns/:userId/update', async (req, res) => {
 
     res.json(updateResult);
   } catch (error) {
-    console.error('Error updating user patterns:', error);
+    log.error('Error updating user patterns:', error);
     res.status(500).json({ error: 'Failed to update user patterns' });
   }
 });
@@ -396,7 +398,7 @@ router.get('/strategies', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching strategies:', error);
+    log.error('Error fetching strategies:', error);
     res.status(500).json({ error: 'Failed to fetch rescheduling strategies' });
   }
 });
@@ -434,7 +436,7 @@ router.post('/strategies', async (req, res) => {
       strategy: validatedStrategy,
     });
   } catch (error) {
-    console.error('Error adding strategy:', error);
+    log.error('Error adding strategy:', error);
     res.status(500).json({ error: 'Failed to add rescheduling strategy' });
   }
 });
@@ -488,7 +490,7 @@ router.get('/analytics', async (req, res) => {
 
     res.json(analytics);
   } catch (error) {
-    console.error('Error fetching analytics:', error);
+    log.error('Error fetching analytics:', error);
     res.status(500).json({ error: 'Failed to fetch scheduling analytics' });
   }
 });

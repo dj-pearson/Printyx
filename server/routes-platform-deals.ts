@@ -15,6 +15,9 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-platform-deals');
+
 import {
   platformDeals,
   platformBusinessRecords,
@@ -142,7 +145,7 @@ router.get('/', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching deals:', error);
+    log.error('Error fetching deals:', error);
     res.status(500).json({
       error: 'Failed to fetch deals',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -218,7 +221,7 @@ router.get('/pipeline', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching pipeline:', error);
+    log.error('Error fetching pipeline:', error);
     res.status(500).json({
       error: 'Failed to fetch pipeline',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -308,7 +311,7 @@ router.get('/stats', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching deal stats:', error);
+    log.error('Error fetching deal stats:', error);
     res.status(500).json({
       error: 'Failed to fetch statistics',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -356,7 +359,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       activities,
     });
   } catch (error) {
-    console.error('Error fetching deal:', error);
+    log.error('Error fetching deal:', error);
     res.status(500).json({
       error: 'Failed to fetch deal',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -414,7 +417,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     res.status(201).json(newDeal);
   } catch (error) {
-    console.error('Error creating deal:', error);
+    log.error('Error creating deal:', error);
     res.status(500).json({
       error: 'Failed to create deal',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -484,7 +487,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
 
     res.json(updatedDeal);
   } catch (error) {
-    console.error('Error updating deal:', error);
+    log.error('Error updating deal:', error);
     res.status(500).json({
       error: 'Failed to update deal',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -549,7 +552,7 @@ router.post('/:id/move-stage', async (req: Request, res: Response) => {
 
     res.json(updatedDeal);
   } catch (error) {
-    console.error('Error moving deal stage:', error);
+    log.error('Error moving deal stage:', error);
     res.status(500).json({
       error: 'Failed to move deal stage',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -599,7 +602,7 @@ router.post('/:id/close-won', async (req: Request, res: Response) => {
 
     res.json(closedDeal);
   } catch (error) {
-    console.error('Error closing deal as won:', error);
+    log.error('Error closing deal as won:', error);
     res.status(500).json({
       error: 'Failed to close deal as won',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -650,7 +653,7 @@ router.post('/:id/close-lost', async (req: Request, res: Response) => {
 
     res.json(closedDeal);
   } catch (error) {
-    console.error('Error closing deal as lost:', error);
+    log.error('Error closing deal as lost:', error);
     res.status(500).json({
       error: 'Failed to close deal as lost',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -681,7 +684,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     res.json({ message: 'Deal deleted successfully', deal: deletedDeal });
   } catch (error) {
-    console.error('Error deleting deal:', error);
+    log.error('Error deleting deal:', error);
     res.status(500).json({
       error: 'Failed to delete deal',
       message: error instanceof Error ? error.message : 'Unknown error',

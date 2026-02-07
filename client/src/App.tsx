@@ -89,6 +89,7 @@ const PredictiveContractProfitability = React.lazy(
   () => import('@/pages/PredictiveContractProfitability'),
 );
 const AIServiceIntelligence = React.lazy(() => import('@/pages/AIServiceIntelligence'));
+const SalesRepAssignments = React.lazy(() => import('@/pages/SalesRepAssignments'));
 
 // Core app pages - lazy load everything for optimal bundle splitting
 const Dashboard = React.lazy(() => import('@/pages/dashboard'));
@@ -567,6 +568,7 @@ function Router() {
           {/* Competitive Differentiation Routes */}
           <Route path="/autopilot" component={AutopilotDashboard} />
           <Route path="/auto-lead-routing" component={AutoLeadRoutingDashboard} />
+          <Route path="/sales-rep-assignments" component={SalesRepAssignments} />
           <Route
             path="/predictive-service-dispatch"
             component={PredictiveServiceDispatchDashboard}

@@ -11,6 +11,8 @@
 
 import { db } from '../db';
 import { tasks } from '../../shared/task-schema.js';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('workflow-triggers');
 
 export interface TriggerEvent {
   type: string;
@@ -314,19 +316,19 @@ export const WorkflowTriggers = {
  */
 export async function triggerWorkflow(event: TriggerEvent): Promise<void> {
   try {
-    console.log(`🔔 Workflow trigger: ${event.type} for ${event.entityType}:${event.entityId}`);
+    log.info(`🔔 Workflow trigger: ${event.type} for ${event.entityType}:${event.entityId}`);
 
     const triggerHandler = WorkflowTriggers[event.type as keyof typeof WorkflowTriggers];
 
     if (!triggerHandler) {
-      console.log(`⚠️  No trigger handler found for ${event.type}`);
+      log.info(`⚠️  No trigger handler found for ${event.type}`);
       return;
     }
 
     const taskTemplates = await triggerHandler(event);
 
     if (!taskTemplates || taskTemplates.length === 0) {
-      console.log(`ℹ️  No tasks generated for ${event.type}`);
+      log.info(`ℹ️  No tasks generated for ${event.type}`);
       return;
     }
 
@@ -356,12 +358,12 @@ export async function triggerWorkflow(event: TriggerEvent): Promise<void> {
       };
 
       await db.insert(tasks).values(taskData);
-      console.log(`✅ Created task: ${template.title}`);
+      log.info(`✅ Created task: ${template.title}`);
     }
 
-    console.log(`✨ Workflow completed: ${taskTemplates.length} tasks created`);
+    log.info(`✨ Workflow completed: ${taskTemplates.length} tasks created`);
   } catch (error) {
-    console.error('Error triggering workflow:', error);
+    log.error('Error triggering workflow:', error);
     throw error;
   }
 }

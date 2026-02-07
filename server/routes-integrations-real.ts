@@ -6,6 +6,9 @@
 import express from 'express';
 import { db } from './db';
 import { eq, and, desc } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-integrations-real');
+
 import {
   platformIntegrations,
   integrationSyncLogs,
@@ -65,7 +68,7 @@ router.post('/api/integrations', async (req: any, res) => {
 
     res.status(201).json(integration);
   } catch (error) {
-    console.error('Error creating integration:', error);
+    log.error('Error creating integration:', error);
     res.status(400).json({ error: 'Invalid integration configuration' });
   }
 });
@@ -140,7 +143,7 @@ router.post('/api/integrations/:id/test', async (req: any, res) => {
       return res.status(400).json({ error: 'Connection test failed' });
     }
   } catch (error) {
-    console.error('Error testing connection:', error);
+    log.error('Error testing connection:', error);
     res.status(500).json({ error: 'Failed to test connection' });
   }
 });
@@ -251,7 +254,7 @@ router.post('/api/integrations/:id/sync', async (req: any, res) => {
       throw syncError;
     }
   } catch (error) {
-    console.error('Error syncing integration:', error);
+    log.error('Error syncing integration:', error);
     res.status(500).json({ error: 'Failed to sync integration' });
   }
 });

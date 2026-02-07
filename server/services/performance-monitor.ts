@@ -1,4 +1,8 @@
 /**
+
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('performance-monitor');
+
  * Performance Monitoring Service
  * Monitors and optimizes Motion AI system performance
  */
@@ -71,7 +75,7 @@ class PerformanceMonitor {
 
     // Log critical metrics
     if (this.isCriticalMetric(name, value)) {
-      console.warn(`⚠️  Critical metric detected: ${name} = ${value} ${unit}`);
+      log.warn(`⚠️  Critical metric detected: ${name} = ${value} ${unit}`);
     }
   }
 

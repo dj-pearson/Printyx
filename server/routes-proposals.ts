@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-proposals');
+
 import {
   proposals,
   proposalLineItems,
@@ -85,7 +88,7 @@ router.get(
       const templates = [];
       res.json(templates);
     } catch (error) {
-      console.error('Error fetching proposal templates:', error);
+      log.error('Error fetching proposal templates:', error);
       res.status(500).json({ error: 'Failed to fetch proposal templates' });
     }
   },
@@ -108,7 +111,7 @@ router.post(
 
       res.status(201).json(template);
     } catch (error) {
-      console.error('Error creating proposal template:', error);
+      log.error('Error creating proposal template:', error);
       res.status(500).json({ error: 'Failed to create proposal template' });
     }
   },
@@ -135,7 +138,7 @@ router.put('/proposal-templates/:id', async (req: any, res) => {
 
     res.json(template);
   } catch (error) {
-    console.error('Error updating proposal template:', error);
+    log.error('Error updating proposal template:', error);
     res.status(500).json({ error: 'Failed to update proposal template' });
   }
 });
@@ -153,7 +156,7 @@ router.get('/equipment-packages', async (req: any, res) => {
 
     res.json(packages);
   } catch (error) {
-    console.error('Error fetching equipment packages:', error);
+    log.error('Error fetching equipment packages:', error);
     res.status(500).json({ error: 'Failed to fetch equipment packages' });
   }
 });
@@ -170,7 +173,7 @@ router.post('/equipment-packages', async (req: any, res) => {
 
     res.status(201).json(package_);
   } catch (error) {
-    console.error('Error creating equipment package:', error);
+    log.error('Error creating equipment package:', error);
     res.status(500).json({ error: 'Failed to create equipment package' });
   }
 });
@@ -234,7 +237,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      console.error('Error fetching proposals:', error);
+      log.error('Error fetching proposals:', error);
       res.status(500).json({ error: 'Failed to fetch proposals' });
     }
   },
@@ -272,7 +275,7 @@ router.get('/new', async (req: any, res) => {
 
     res.json(newProposal);
   } catch (error) {
-    console.error('Error creating new proposal template:', error);
+    log.error('Error creating new proposal template:', error);
     res.status(500).json({ error: 'Failed to create new proposal template' });
   }
 });
@@ -312,7 +315,7 @@ router.get('/:id', async (req: any, res) => {
       lineItems,
     });
   } catch (error) {
-    console.error('Error fetching proposal:', error);
+    log.error('Error fetching proposal:', error);
     res.status(500).json({ error: 'Failed to fetch proposal' });
   }
 });
@@ -323,15 +326,15 @@ router.post(
 
   requirePermission([PERMISSIONS.SALES.QUOTE.CREATE]),
   async (req: any, res) => {
-    console.log('🚀 POST /api/proposals endpoint hit!');
+    log.info('🚀 POST /api/proposals endpoint hit!');
     try {
-      console.log('=== PROPOSAL CREATION DEBUG ===');
-      console.log('Request body:', JSON.stringify(req.body, null, 2));
-      console.log('User:', req.user);
+      log.info('=== PROPOSAL CREATION DEBUG ===');
+      log.info('Request body:', JSON.stringify(req.body, null, 2));
+      log.info('User:', req.user);
 
       // Generate proposal number
       const proposalNumber = await generateProposalNumber(req.user.tenantId);
-      console.log('Generated proposal number:', proposalNumber);
+      log.info('Generated proposal number:', proposalNumber);
 
       const dataToValidate = {
         ...req.body,
@@ -342,14 +345,14 @@ router.post(
         // Convert ISO date string to Date object if validUntil exists
         validUntil: req.body.validUntil ? new Date(req.body.validUntil) : undefined,
       };
-      console.log('Data to validate:', JSON.stringify(dataToValidate, null, 2));
+      log.info('Data to validate:', JSON.stringify(dataToValidate, null, 2));
 
       const validatedData = insertProposalSchema.parse(dataToValidate);
-      console.log('Validated data:', JSON.stringify(validatedData, null, 2));
+      log.info('Validated data:', JSON.stringify(validatedData, null, 2));
 
       const [proposal] = await db.insert(proposals).values([validatedData]).returning();
 
-      console.log('Created proposal:', proposal);
+      log.info('Created proposal:', proposal);
 
       // If line items provided, add them
       if (req.body.lineItems && req.body.lineItems.length > 0) {
@@ -382,11 +385,11 @@ router.post(
 
       res.status(201).json(proposal);
     } catch (error) {
-      console.error('=== PROPOSAL CREATION ERROR ===');
-      console.error('Error creating proposal:', error);
+      log.error('=== PROPOSAL CREATION ERROR ===');
+      log.error('Error creating proposal:', error);
       if (error instanceof Error) {
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
+        log.error('Error message:', error.message);
+        log.error('Error stack:', error.stack);
       }
       res.status(500).json({ error: 'Failed to create proposal', details: error.message });
     }
@@ -448,7 +451,7 @@ router.put('/:id', async (req: any, res) => {
 
     res.json(proposal);
   } catch (error) {
-    console.error('Error updating proposal:', error);
+    log.error('Error updating proposal:', error);
     res.status(500).json({ error: 'Failed to update proposal' });
   }
 });
@@ -474,9 +477,9 @@ router.patch('/:id', async (req: any, res) => {
       updateData.estimatedEndDate = new Date(updateData.estimatedEndDate);
     }
 
-    console.log('📝 PATCH /api/proposals/:id - Updating proposal:', id);
-    console.log('📝 Update data:', JSON.stringify(updateData, null, 2));
-    console.log('📝 Line items to update:', JSON.stringify(lineItemsToUpdate, null, 2));
+    log.info('📝 PATCH /api/proposals/:id - Updating proposal:', id);
+    log.info('📝 Update data:', JSON.stringify(updateData, null, 2));
+    log.info('📝 Line items to update:', JSON.stringify(lineItemsToUpdate, null, 2));
 
     const [proposal] = await db
       .update(proposals)
@@ -490,7 +493,7 @@ router.patch('/:id', async (req: any, res) => {
 
     // Handle line items if provided
     if (lineItemsToUpdate && lineItemsToUpdate.length > 0) {
-      console.log('📦 Updating line items...');
+      log.info('📦 Updating line items...');
 
       // Delete existing line items
       await db
@@ -511,14 +514,14 @@ router.patch('/:id', async (req: any, res) => {
         itemType: item.itemType || 'equipment',
       }));
 
-      console.log('📦 Inserting line items:', JSON.stringify(lineItemsData, null, 2));
+      log.info('📦 Inserting line items:', JSON.stringify(lineItemsData, null, 2));
 
       const insertedLineItems = await db
         .insert(proposalLineItems)
         .values(lineItemsData)
         .returning();
 
-      console.log('✅ Successfully inserted', insertedLineItems.length, 'line items');
+      log.info('✅ Successfully inserted', insertedLineItems.length, 'line items');
     }
 
     // Fetch the updated proposal with line items for response
@@ -543,10 +546,10 @@ router.patch('/:id', async (req: any, res) => {
       lineItems: updatedLineItems,
     };
 
-    console.log('✅ Returning updated proposal with', updatedLineItems.length, 'line items');
+    log.info('✅ Returning updated proposal with', updatedLineItems.length, 'line items');
     res.json(proposalWithLineItems);
   } catch (error) {
-    console.error('❌ Error updating proposal:', error);
+    log.error('❌ Error updating proposal:', error);
     res.status(500).json({ error: 'Failed to update proposal' });
   }
 });
@@ -597,7 +600,7 @@ router.patch('/:id/status', async (req: any, res) => {
         await createContractFromProposal(proposal, req.user.tenantId, req.user.id);
       }
     } catch (syncError) {
-      console.error('[PROPOSALS] Sync error (deal/contract):', syncError);
+      log.error('[PROPOSALS] Sync error (deal/contract):', syncError);
       // Don't fail the status update because of downstream sync
     }
 
@@ -615,7 +618,7 @@ router.patch('/:id/status', async (req: any, res) => {
 
     res.json(proposal);
   } catch (error) {
-    console.error('Error updating proposal status:', error);
+    log.error('Error updating proposal status:', error);
     res.status(500).json({ error: 'Failed to update proposal status' });
   }
 });
@@ -654,7 +657,7 @@ router.post('/:proposalId/line-items', async (req: any, res) => {
 
     res.status(201).json(lineItem);
   } catch (error) {
-    console.error('Error adding line item:', error);
+    log.error('Error adding line item:', error);
     res.status(500).json({ error: 'Failed to add line item' });
   }
 });
@@ -686,7 +689,7 @@ router.put('/:proposalId/line-items/:lineItemId', async (req: any, res) => {
 
     res.json(lineItem);
   } catch (error) {
-    console.error('Error updating line item:', error);
+    log.error('Error updating line item:', error);
     res.status(500).json({ error: 'Failed to update line item' });
   }
 });
@@ -715,7 +718,7 @@ router.delete('/:proposalId/line-items/:lineItemId', async (req: any, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error deleting line item:', error);
+    log.error('Error deleting line item:', error);
     res.status(500).json({ error: 'Failed to delete line item' });
   }
 });
@@ -739,7 +742,7 @@ router.post('/:proposalId/comments', async (req: any, res) => {
 
     res.status(201).json(comment);
   } catch (error) {
-    console.error('Error adding comment:', error);
+    log.error('Error adding comment:', error);
     res.status(500).json({ error: 'Failed to add comment' });
   }
 });
@@ -775,7 +778,7 @@ router.post('/:id/track-view', async (req: any, res) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error tracking proposal view:', error);
+    log.error('Error tracking proposal view:', error);
     res.status(500).json({ error: 'Failed to track view' });
   }
 });
@@ -1009,7 +1012,7 @@ async function createContractFromProposal(
       .returning({ id: contracts.id });
     return created?.id || null;
   } catch (e) {
-    console.error('[CONTRACTS] Failed to create contract from proposal:', e);
+    log.error('[CONTRACTS] Failed to create contract from proposal:', e);
     return null;
   }
 }
@@ -1018,7 +1021,7 @@ async function createContractFromProposal(
 
 // Helper function to get quote data with all related information
 async function getQuoteDataForExport(proposalId: string, tenantId: string) {
-  console.log(`🔍 Fetching quote data for proposal ${proposalId}, tenant ${tenantId}`);
+  log.info(`🔍 Fetching quote data for proposal ${proposalId}, tenant ${tenantId}`);
 
   const [quote] = await db
     .select()
@@ -1029,7 +1032,7 @@ async function getQuoteDataForExport(proposalId: string, tenantId: string) {
     throw new Error(`Quote not found: ${proposalId}`);
   }
 
-  console.log(`📋 Found quote: ${quote.proposalNumber} - ${quote.title}`);
+  log.info(`📋 Found quote: ${quote.proposalNumber} - ${quote.title}`);
 
   const lineItems = await db
     .select()
@@ -1039,7 +1042,7 @@ async function getQuoteDataForExport(proposalId: string, tenantId: string) {
     )
     .orderBy(proposalLineItems.lineNumber);
 
-  console.log(`📦 Found ${lineItems.length} line items`);
+  log.info(`📦 Found ${lineItems.length} line items`);
 
   // Get company/customer info
   let company = null;
@@ -1056,9 +1059,9 @@ async function getQuoteDataForExport(proposalId: string, tenantId: string) {
             eq(businessRecords.tenantId, tenantId),
           ),
         );
-      console.log(`🏢 Found company: ${company?.companyName || 'Unknown'}`);
+      log.info(`🏢 Found company: ${company?.companyName || 'Unknown'}`);
     } catch (error) {
-      console.warn(`Failed to fetch company data for ${quote.businessRecordId}:`, error);
+      log.warn(`Failed to fetch company data for ${quote.businessRecordId}:`, error);
     }
   }
 
@@ -1070,9 +1073,9 @@ async function getQuoteDataForExport(proposalId: string, tenantId: string) {
         .where(
           and(eq(companyContacts.id, quote.contactId), eq(companyContacts.tenantId, tenantId)),
         );
-      console.log(`👤 Found contact: ${contact?.firstName} ${contact?.lastName}`);
+      log.info(`👤 Found contact: ${contact?.firstName} ${contact?.lastName}`);
     } catch (error) {
-      console.warn(`Failed to fetch contact data for ${quote.contactId}:`, error);
+      log.warn(`Failed to fetch contact data for ${quote.contactId}:`, error);
     }
   }
 
@@ -1081,9 +1084,7 @@ async function getQuoteDataForExport(proposalId: string, tenantId: string) {
 
 // Helper function to get product cost information
 async function getProductCostInfo(lineItems: any[], pricingType: string) {
-  console.log(
-    `💰 Getting cost info for ${lineItems.length} items with pricing type: ${pricingType}`,
-  );
+  log.info(`💰 Getting cost info for ${lineItems.length} items with pricing type: ${pricingType}`);
   const costInfo = [];
 
   for (const item of lineItems) {
@@ -1131,7 +1132,7 @@ async function getProductCostInfo(lineItems: any[], pricingType: string) {
           .where(eq(productAccessories.id, item.productId));
       }
     } catch (error) {
-      console.warn(`Failed to fetch product details for item ${item.id}:`, error);
+      log.warn(`Failed to fetch product details for item ${item.id}:`, error);
     }
 
     // Default values if product not found or fields missing
@@ -1154,7 +1155,7 @@ async function getProductCostInfo(lineItems: any[], pricingType: string) {
     });
   }
 
-  console.log(`💰 Generated cost info for ${costInfo.length} items`);
+  log.info(`💰 Generated cost info for ${costInfo.length} items`);
   return costInfo;
 }
 
@@ -1351,19 +1352,19 @@ router.get('/:id/export/pdf', async (req: any, res: any) => {
     const { id } = req.params;
     const tenantId = req.user.tenantId;
 
-    console.log(`📄 PDF Export: Starting export for proposal ${id}, tenant ${tenantId}`);
+    log.info(`📄 PDF Export: Starting export for proposal ${id}, tenant ${tenantId}`);
 
     const { quote, lineItems, company, contact } = await getQuoteDataForExport(id, tenantId);
 
-    console.log(`📄 PDF Export: Retrieved quote data - ${lineItems.length} line items`);
+    log.info(`📄 PDF Export: Retrieved quote data - ${lineItems.length} line items`);
 
     const html = generateQuoteHTML(quote, lineItems, company, contact, false);
 
-    console.log(`📄 PDF Export: Generated HTML (${html.length} chars)`);
+    log.info(`📄 PDF Export: Generated HTML (${html.length} chars)`);
 
     // Check if we're in a browser environment like Replit
     const isReplit = process.env.REPL_ID || process.env.REPLIT || false;
-    console.log(`📄 PDF Export: Environment check - isReplit: ${isReplit}`);
+    log.info(`📄 PDF Export: Environment check - isReplit: ${isReplit}`);
 
     try {
       // Enhanced Puppeteer configuration for various environments
@@ -1394,27 +1395,27 @@ router.get('/:id/export/pdf', async (req: any, res: any) => {
         timeout: 30000,
       };
 
-      console.log(
+      log.info(
         `📄 PDF Export: Launching browser with options:`,
         JSON.stringify(puppeteerOptions, null, 2),
       );
 
       browser = await puppeteer.launch(puppeteerOptions);
 
-      console.log(`📄 PDF Export: Browser launched successfully`);
+      log.info(`📄 PDF Export: Browser launched successfully`);
 
       const page = await browser.newPage();
 
       // Set viewport and wait for fonts to load
       await page.setViewport({ width: 1200, height: 800 });
 
-      console.log(`📄 PDF Export: Setting HTML content`);
+      log.info(`📄 PDF Export: Setting HTML content`);
       await page.setContent(html, {
         waitUntil: 'networkidle0',
         timeout: 20000,
       });
 
-      console.log(`📄 PDF Export: Generating PDF`);
+      log.info(`📄 PDF Export: Generating PDF`);
       const pdf = await page.pdf({
         format: 'A4',
         printBackground: true,
@@ -1430,7 +1431,7 @@ router.get('/:id/export/pdf', async (req: any, res: any) => {
       await browser.close();
       browser = null;
 
-      console.log(`📄 PDF Export: Generated PDF (${pdf.length} bytes)`);
+      log.info(`📄 PDF Export: Generated PDF (${pdf.length} bytes)`);
 
       res.set({
         'Content-Type': 'application/pdf',
@@ -1440,7 +1441,7 @@ router.get('/:id/export/pdf', async (req: any, res: any) => {
 
       res.send(pdf);
     } catch (puppeteerError) {
-      console.error('📄 Puppeteer failed, trying fallback:', puppeteerError);
+      log.error('📄 Puppeteer failed, trying fallback:', puppeteerError);
 
       // Fallback: Return a printable HTML page
       const printableHtml = `
@@ -1533,14 +1534,14 @@ router.get('/:id/export/pdf', async (req: any, res: any) => {
       res.send(printableHtml);
     }
   } catch (error) {
-    console.error('📄 PDF export error:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    log.error('📄 PDF export error:', error);
+    log.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
 
     if (browser) {
       try {
         await browser.close();
       } catch (closeError) {
-        console.error('Error closing browser:', closeError);
+        log.error('Error closing browser:', closeError);
       }
     }
 
@@ -1559,7 +1560,7 @@ router.get('/:id/export/manager-pdf', async (req: any, res: any) => {
     const { id } = req.params;
     const tenantId = req.user.tenantId;
 
-    console.log(`📊 Manager PDF Export: Starting export for proposal ${id}, tenant ${tenantId}`);
+    log.info(`📊 Manager PDF Export: Starting export for proposal ${id}, tenant ${tenantId}`);
 
     // Check if user has manager-level access
     const userRole = req.user.role?.toLowerCase() || req.user.roleId?.toLowerCase() || '';
@@ -1574,28 +1575,28 @@ router.get('/:id/export/manager-pdf', async (req: any, res: any) => {
       !['sales_rep', 'salesperson', 'sales'].some((role) => userRole.includes(role));
 
     if (!isManager) {
-      console.log(`📊 Manager PDF Export: Access denied for role: ${userRole}`);
+      log.info(`📊 Manager PDF Export: Access denied for role: ${userRole}`);
       return res.status(403).json({ error: 'Access denied. Manager level access required.' });
     }
 
     const { quote, lineItems, company, contact } = await getQuoteDataForExport(id, tenantId);
 
-    console.log(`📊 Manager PDF Export: Retrieved quote data - ${lineItems.length} line items`);
+    log.info(`📊 Manager PDF Export: Retrieved quote data - ${lineItems.length} line items`);
 
     // Get pricing type - assume 'new' if not available in quote data
     // In a production system, this should be stored with the quote when created
     const pricingType = 'new'; // Default to 'new' pricing for now
     const costInfo = await getProductCostInfo(lineItems, pricingType);
 
-    console.log(`📊 Manager PDF Export: Retrieved cost info for ${costInfo.length} items`);
+    log.info(`📊 Manager PDF Export: Retrieved cost info for ${costInfo.length} items`);
 
     const html = generateQuoteHTML(quote, lineItems, company, contact, true, costInfo);
 
-    console.log(`📊 Manager PDF Export: Generated HTML (${html.length} chars)`);
+    log.info(`📊 Manager PDF Export: Generated HTML (${html.length} chars)`);
 
     // Check if we're in a browser environment like Replit
     const isReplit = process.env.REPL_ID || process.env.REPLIT || false;
-    console.log(`📊 Manager PDF Export: Environment check - isReplit: ${isReplit}`);
+    log.info(`📊 Manager PDF Export: Environment check - isReplit: ${isReplit}`);
 
     // Enhanced Puppeteer configuration for various environments
     const puppeteerOptions = {
@@ -1627,7 +1628,7 @@ router.get('/:id/export/manager-pdf', async (req: any, res: any) => {
       ...(isReplit && { executablePath: '/nix/store/*/bin/chromium' }),
     };
 
-    console.log(
+    log.info(
       `📊 Manager PDF Export: Launching browser with options:`,
       JSON.stringify(puppeteerOptions, null, 2),
     );
@@ -1635,20 +1636,20 @@ router.get('/:id/export/manager-pdf', async (req: any, res: any) => {
     try {
       browser = await puppeteer.launch(puppeteerOptions);
 
-      console.log(`📊 Manager PDF Export: Browser launched successfully`);
+      log.info(`📊 Manager PDF Export: Browser launched successfully`);
 
       const page = await browser.newPage();
 
       // Set viewport and wait for fonts to load
       await page.setViewport({ width: 1200, height: 800 });
 
-      console.log(`📊 Manager PDF Export: Setting HTML content`);
+      log.info(`📊 Manager PDF Export: Setting HTML content`);
       await page.setContent(html, {
         waitUntil: 'networkidle0',
         timeout: 20000,
       });
 
-      console.log(`📊 Manager PDF Export: Generating PDF`);
+      log.info(`📊 Manager PDF Export: Generating PDF`);
       const pdf = await page.pdf({
         format: 'A4',
         printBackground: true,
@@ -1664,7 +1665,7 @@ router.get('/:id/export/manager-pdf', async (req: any, res: any) => {
       await browser.close();
       browser = null;
 
-      console.log(`📊 Manager PDF Export: Generated PDF (${pdf.length} bytes)`);
+      log.info(`📊 Manager PDF Export: Generated PDF (${pdf.length} bytes)`);
 
       res.set({
         'Content-Type': 'application/pdf',
@@ -1674,7 +1675,7 @@ router.get('/:id/export/manager-pdf', async (req: any, res: any) => {
 
       res.send(pdf);
     } catch (puppeteerError) {
-      console.error('📊 Puppeteer failed for manager export, trying fallback:', puppeteerError);
+      log.error('📊 Puppeteer failed for manager export, trying fallback:', puppeteerError);
 
       // Fallback: Return a printable HTML page with cost information
       const printableHtml = `
@@ -1781,14 +1782,14 @@ router.get('/:id/export/manager-pdf', async (req: any, res: any) => {
       res.send(printableHtml);
     }
   } catch (error) {
-    console.error('📊 Manager PDF export error:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    log.error('📊 Manager PDF export error:', error);
+    log.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
 
     if (browser) {
       try {
         await browser.close();
       } catch (closeError) {
-        console.error('Error closing browser:', closeError);
+        log.error('Error closing browser:', closeError);
       }
     }
 

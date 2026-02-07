@@ -20,6 +20,8 @@ import { getUserId, getTenantId } from './utils/auth-helpers';
 import { requireSupabaseAuth as requireAuth } from './middleware/supabase-auth';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-import');
 
 const router = Router();
 
@@ -235,7 +237,7 @@ router.get('/api/import/entity-types', requireAuth, async (req: Request, res: Re
 
     res.json(entityTypes);
   } catch (error) {
-    console.error('Error fetching entity types:', error);
+    log.error('Error fetching entity types:', error);
     res.status(500).json({ message: 'Failed to fetch entity types' });
   }
 });
@@ -266,7 +268,7 @@ router.get(
 
       res.json({ columns });
     } catch (error) {
-      console.error('Error fetching template:', error);
+      log.error('Error fetching template:', error);
       res.status(500).json({ message: 'Failed to fetch template' });
     }
   },
@@ -297,7 +299,7 @@ router.get(
       res.setHeader('Content-Disposition', `attachment; filename="${entityType}_template.csv"`);
       res.send(csvContent);
     } catch (error) {
-      console.error('Error downloading template:', error);
+      log.error('Error downloading template:', error);
       res.status(500).json({ message: 'Failed to download template' });
     }
   },
@@ -389,7 +391,7 @@ router.post(
         aiMappingConfidence: job.aiMappingConfidence,
       });
     } catch (error) {
-      console.error('Error uploading file:', error);
+      log.error('Error uploading file:', error);
       res.status(500).json({ message: 'Failed to upload file' });
     }
   },
@@ -412,7 +414,7 @@ router.get('/api/import/jobs/:jobId', requireAuth, async (req: Request, res: Res
 
     res.json(jobInfo);
   } catch (error) {
-    console.error('Error fetching job:', error);
+    log.error('Error fetching job:', error);
     res.status(500).json({ message: 'Failed to fetch import job' });
   }
 });
@@ -478,7 +480,7 @@ router.post(
         validationErrors: validationErrors.slice(0, 100), // Limit errors in response
       });
     } catch (error) {
-      console.error('Error validating data:', error);
+      log.error('Error validating data:', error);
       res.status(500).json({ message: 'Failed to validate data' });
     }
   },
@@ -503,7 +505,7 @@ router.get(
         duplicates: job.duplicates,
       });
     } catch (error) {
-      console.error('Error fetching duplicates:', error);
+      log.error('Error fetching duplicates:', error);
       res.status(500).json({ message: 'Failed to fetch duplicates' });
     }
   },
@@ -534,7 +536,7 @@ router.post(
 
       res.json({ message: 'Duplicates resolved' });
     } catch (error) {
-      console.error('Error resolving duplicates:', error);
+      log.error('Error resolving duplicates:', error);
       res.status(500).json({ message: 'Failed to resolve duplicates' });
     }
   },
@@ -598,7 +600,7 @@ router.post('/api/import/jobs/:jobId/execute', requireAuth, async (req: Request,
 
         importedRows++;
       } catch (error) {
-        console.error('Error importing row:', error);
+        log.error('Error importing row:', error);
         skippedRows++;
       }
     }
@@ -616,7 +618,7 @@ router.post('/api/import/jobs/:jobId/execute', requireAuth, async (req: Request,
       mergedRows,
     });
   } catch (error) {
-    console.error('Error executing import:', error);
+    log.error('Error executing import:', error);
     const job = importJobs.get(req.params.jobId);
     if (job) {
       job.status = 'failed';
@@ -634,7 +636,7 @@ router.get('/api/import/ai/status', requireAuth, async (req: Request, res: Respo
     const available = !!process.env.ANTHROPIC_API_KEY;
     res.json({ available });
   } catch (error) {
-    console.error('Error checking AI status:', error);
+    log.error('Error checking AI status:', error);
     res.status(500).json({ message: 'Failed to check AI status' });
   }
 });

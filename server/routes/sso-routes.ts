@@ -7,6 +7,8 @@
 import { Router, Request, Response } from 'express';
 import { ssoService, SsoCallbackData } from '../services/sso-service';
 import { z } from 'zod';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('sso-routes');
 
 const router = Router();
 
@@ -90,7 +92,7 @@ router.get('/providers', async (req: Request, res: Response) => {
 
     res.json(sanitizedProviders);
   } catch (error: any) {
-    console.error('[SSO Routes] Error listing providers:', error);
+    log.error('[SSO Routes] Error listing providers:', error);
     res.status(500).json({ error: 'Failed to list SSO providers' });
   }
 });
@@ -122,7 +124,7 @@ router.get('/providers/:id', async (req: Request, res: Response) => {
       hasClientSecret: !!oidcClientSecret,
     });
   } catch (error: any) {
-    console.error('[SSO Routes] Error getting provider:', error);
+    log.error('[SSO Routes] Error getting provider:', error);
     res.status(500).json({ error: 'Failed to get SSO provider' });
   }
 });
@@ -160,7 +162,7 @@ router.post('/providers', async (req: Request, res: Response) => {
 
     res.status(201).json(safeProvider);
   } catch (error: any) {
-    console.error('[SSO Routes] Error creating provider:', error);
+    log.error('[SSO Routes] Error creating provider:', error);
     res.status(500).json({ error: 'Failed to create SSO provider' });
   }
 });
@@ -199,7 +201,7 @@ router.patch('/providers/:id', async (req: Request, res: Response) => {
     const { oidcClientSecret, ...safeProvider } = provider;
     res.json(safeProvider);
   } catch (error: any) {
-    console.error('[SSO Routes] Error updating provider:', error);
+    log.error('[SSO Routes] Error updating provider:', error);
     res.status(500).json({ error: 'Failed to update SSO provider' });
   }
 });
@@ -225,7 +227,7 @@ router.delete('/providers/:id', async (req: Request, res: Response) => {
 
     res.status(204).send();
   } catch (error: any) {
-    console.error('[SSO Routes] Error deleting provider:', error);
+    log.error('[SSO Routes] Error deleting provider:', error);
     res.status(500).json({ error: 'Failed to delete SSO provider' });
   }
 });
@@ -259,7 +261,7 @@ router.post('/auth/initiate', async (req: Request, res: Response) => {
 
     res.json(authResponse);
   } catch (error: any) {
-    console.error('[SSO Routes] Error initiating auth:', error);
+    log.error('[SSO Routes] Error initiating auth:', error);
     res.status(500).json({ error: error.message || 'Failed to initiate SSO authentication' });
   }
 });
@@ -309,7 +311,7 @@ router.post('/callback/saml/:providerId', async (req: Request, res: Response) =>
     const redirectUrl = RelayState || '/dashboard';
     res.redirect(redirectUrl);
   } catch (error: any) {
-    console.error('[SSO Routes] SAML callback error:', error);
+    log.error('[SSO Routes] SAML callback error:', error);
     const errorUrl = new URL('/login', process.env.BASE_URL || 'http://localhost:5000');
     errorUrl.searchParams.set('error', 'SSO authentication failed');
     res.redirect(errorUrl.toString());
@@ -378,7 +380,7 @@ router.get('/callback/oidc/:providerId', async (req: Request, res: Response) => 
 
     res.redirect(redirectUrl);
   } catch (error: any) {
-    console.error('[SSO Routes] OIDC callback error:', error);
+    log.error('[SSO Routes] OIDC callback error:', error);
     const errorUrl = new URL('/login', process.env.BASE_URL || 'http://localhost:5000');
     errorUrl.searchParams.set('error', 'SSO authentication failed');
     res.redirect(errorUrl.toString());
@@ -397,7 +399,7 @@ router.get('/metadata/:providerId', async (req: Request, res: Response) => {
     res.type('application/xml');
     res.send(metadata);
   } catch (error: any) {
-    console.error('[SSO Routes] Error generating metadata:', error);
+    log.error('[SSO Routes] Error generating metadata:', error);
     res.status(500).json({ error: 'Failed to generate SAML metadata' });
   }
 });
@@ -423,7 +425,7 @@ router.post('/logout', async (req: Request, res: Response) => {
 
     res.json({ success: true });
   } catch (error: any) {
-    console.error('[SSO Routes] Logout error:', error);
+    log.error('[SSO Routes] Logout error:', error);
     res.status(500).json({ error: 'Failed to logout' });
   }
 });
@@ -443,7 +445,7 @@ router.get('/session/validate', async (req: Request, res: Response) => {
     const result = await ssoService.validateSession(ssoSessionId);
     res.json(result);
   } catch (error: any) {
-    console.error('[SSO Routes] Session validation error:', error);
+    log.error('[SSO Routes] Session validation error:', error);
     res.status(500).json({ error: 'Failed to validate session' });
   }
 });
@@ -478,7 +480,7 @@ router.post('/logout/saml/:providerId', async (req: Request, res: Response) => {
       res.status(400).json({ error: 'Invalid SLO request' });
     }
   } catch (error: any) {
-    console.error('[SSO Routes] SLO error:', error);
+    log.error('[SSO Routes] SLO error:', error);
     res.status(500).json({ error: 'Failed to process single logout' });
   }
 });
@@ -562,7 +564,7 @@ router.post('/providers/:id/test', async (req: Request, res: Response) => {
       tests,
     });
   } catch (error: any) {
-    console.error('[SSO Routes] Test error:', error);
+    log.error('[SSO Routes] Test error:', error);
     res.status(500).json({ error: 'Failed to test SSO provider' });
   }
 });
@@ -618,7 +620,7 @@ router.post('/providers/import', async (req: Request, res: Response) => {
     const { oidcClientSecret, ...safeProvider } = provider;
     res.status(201).json(safeProvider);
   } catch (error: any) {
-    console.error('[SSO Routes] Import error:', error);
+    log.error('[SSO Routes] Import error:', error);
     res.status(500).json({ error: 'Failed to import SSO provider from metadata' });
   }
 });

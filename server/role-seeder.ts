@@ -3,6 +3,8 @@ import { roles, users, tenants } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('role-seeder');
 
 /**
  * Generate a secure random password meeting complexity requirements.
@@ -297,7 +299,7 @@ const ROLE_DEFINITIONS = [
 ];
 
 export async function seedRoles() {
-  console.log('Seeding role hierarchy...');
+  log.info('Seeding role hierarchy...');
 
   // Create/update all role definitions
   for (const roleDef of ROLE_DEFINITIONS) {
@@ -325,7 +327,7 @@ export async function seedRoles() {
           canViewSystemMetrics: roleDef.canViewSystemMetrics,
           isSystemRole: roleDef.isSystemRole,
         });
-        console.log(`✓ Created role: ${roleDef.name}`);
+        log.info(`✓ Created role: ${roleDef.name}`);
       } else {
         // Update existing role
         await db
@@ -343,16 +345,16 @@ export async function seedRoles() {
             isSystemRole: roleDef.isSystemRole,
           })
           .where(eq(roles.code, roleDef.code));
-        console.log(`✓ Updated role: ${roleDef.name}`);
+        log.info(`✓ Updated role: ${roleDef.name}`);
       }
     } catch (error) {
-      console.error(`Error seeding role ${roleDef.name}:`, error);
+      log.error(`Error seeding role ${roleDef.name}:`, error);
     }
   }
 }
 
 export async function createDemoTenant() {
-  console.log('Creating demo tenant...');
+  log.info('Creating demo tenant...');
 
   const demoTenantId = process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000';
 
@@ -369,14 +371,14 @@ export async function createDemoTenant() {
       name: 'Demo Copier Company',
       domain: 'demo.printyx.com',
     });
-    console.log('✓ Created demo tenant');
+    log.info('✓ Created demo tenant');
   }
 
   return demoTenantId;
 }
 
 export async function seedDemoUsers(tenantId: string) {
-  console.log('Seeding demo users with new role hierarchy...');
+  log.info('Seeding demo users with new role hierarchy...');
 
   // SECURITY: Passwords are now generated securely at runtime
   // Generated passwords are logged once during seeding and should be saved securely
@@ -486,17 +488,17 @@ export async function seedDemoUsers(tenantId: string) {
   }));
 
   // Log generated credentials securely (only shown once during seeding)
-  console.log('\n' + '='.repeat(70));
-  console.log('⚠️  IMPORTANT: Save these credentials securely - they are shown only once!');
-  console.log('='.repeat(70));
-  console.log('\nGenerated Demo User Credentials:');
-  console.log('-'.repeat(70));
+  log.info('\n' + '='.repeat(70));
+  log.info('⚠️  IMPORTANT: Save these credentials securely - they are shown only once!');
+  log.info('='.repeat(70));
+  log.info('\nGenerated Demo User Credentials:');
+  log.info('-'.repeat(70));
   for (const user of demoUsers) {
-    console.log(`${user.email.padEnd(40)} | ${user.password}`);
+    log.info(`${user.email.padEnd(40)} | ${user.password}`);
   }
-  console.log('-'.repeat(70));
-  console.log('⚠️  Store these credentials in a secure password manager!');
-  console.log('='.repeat(70) + '\n');
+  log.info('-'.repeat(70));
+  log.info('⚠️  Store these credentials in a secure password manager!');
+  log.info('='.repeat(70) + '\n');
 
   for (const userData of demoUsers) {
     try {
@@ -507,7 +509,7 @@ export async function seedDemoUsers(tenantId: string) {
         .where(eq(roles.code, userData.roleCode))
         .limit(1);
       if (roleResult.length === 0) {
-        console.error(`Role not found: ${userData.roleCode}`);
+        log.error(`Role not found: ${userData.roleCode}`);
         continue;
       }
       const roleId = roleResult[0].id;
@@ -535,7 +537,7 @@ export async function seedDemoUsers(tenantId: string) {
           isPlatformUser: userData.isPlatformUser,
           isActive: true,
         });
-        console.log(`✓ Created user: ${userData.email} (${userData.roleCode})`);
+        log.info(`✓ Created user: ${userData.email} (${userData.roleCode})`);
       } else {
         // Update existing user's role
         await db
@@ -545,16 +547,16 @@ export async function seedDemoUsers(tenantId: string) {
             isPlatformUser: userData.isPlatformUser,
           })
           .where(eq(users.email, userData.email));
-        console.log(`✓ Updated user: ${userData.email} (${userData.roleCode})`);
+        log.info(`✓ Updated user: ${userData.email} (${userData.roleCode})`);
       }
     } catch (error) {
-      console.error(`Error creating user ${userData.email}:`, error);
+      log.error(`Error creating user ${userData.email}:`, error);
     }
   }
 }
 
 export async function initializeRoleHierarchy() {
-  console.log('Initializing comprehensive role hierarchy...');
+  log.info('Initializing comprehensive role hierarchy...');
 
   // SECURITY: Prevent running in production with hardcoded passwords
   if (process.env.NODE_ENV === 'production') {
@@ -565,8 +567,8 @@ export async function initializeRoleHierarchy() {
           'Set ALLOW_DEMO_SEEDING=true environment variable only if this is a demo/test environment.',
       );
     }
-    console.warn('⚠️  WARNING: Running demo seeder with hardcoded passwords in production mode!');
-    console.warn('⚠️  This should ONLY be done in isolated demo/test environments.');
+    log.warn('⚠️  WARNING: Running demo seeder with hardcoded passwords in production mode!');
+    log.warn('⚠️  This should ONLY be done in isolated demo/test environments.');
   }
 
   try {
@@ -579,25 +581,25 @@ export async function initializeRoleHierarchy() {
     // Step 3: Seed demo users with new hierarchy
     await seedDemoUsers(tenantId);
 
-    console.log('✓ Role hierarchy initialization complete!');
-    console.log('\nRole Hierarchy Summary:');
-    console.log('├── Printyx Platform Roles (Level 6-7)');
-    console.log('│   ├── Root Administrator (Level 7) - Backend system control');
-    console.log('│   ├── Printyx Support Specialist (Level 6) - Customer troubleshooting');
-    console.log('│   └── Printyx Technical Specialist (Level 6) - System diagnostics');
-    console.log('├── Company Admin Roles (Level 5)');
-    console.log('│   └── Company Administrator - High-level company management');
-    console.log('└── Department Roles (Level 1-4)');
-    console.log('    ├── Sales: Director (4) → Manager (3) → Representative (1)');
-    console.log('    ├── Service: Director (4) → Manager (3) → Technician (1)');
-    console.log('    └── Finance: Director (4) → Manager (3)');
+    log.info('✓ Role hierarchy initialization complete!');
+    log.info('\nRole Hierarchy Summary:');
+    log.info('├── Printyx Platform Roles (Level 6-7)');
+    log.info('│   ├── Root Administrator (Level 7) - Backend system control');
+    log.info('│   ├── Printyx Support Specialist (Level 6) - Customer troubleshooting');
+    log.info('│   └── Printyx Technical Specialist (Level 6) - System diagnostics');
+    log.info('├── Company Admin Roles (Level 5)');
+    log.info('│   └── Company Administrator - High-level company management');
+    log.info('└── Department Roles (Level 1-4)');
+    log.info('    ├── Sales: Director (4) → Manager (3) → Representative (1)');
+    log.info('    ├── Service: Director (4) → Manager (3) → Technician (1)');
+    log.info('    └── Finance: Director (4) → Manager (3)');
 
-    console.log('\nPricing Permission Hierarchy:');
-    console.log('├── Sales Director/Finance Director: Full pricing authority');
-    console.log('├── Sales Manager: Pricing approval authority');
-    console.log('└── Sales Rep: Request pricing approval (manual overrides)');
+    log.info('\nPricing Permission Hierarchy:');
+    log.info('├── Sales Director/Finance Director: Full pricing authority');
+    log.info('├── Sales Manager: Pricing approval authority');
+    log.info('└── Sales Rep: Request pricing approval (manual overrides)');
   } catch (error) {
-    console.error('Error initializing role hierarchy:', error);
+    log.error('Error initializing role hierarchy:', error);
     throw error;
   }
 }

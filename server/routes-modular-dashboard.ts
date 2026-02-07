@@ -1,6 +1,9 @@
 import type { Express, Request, Response, NextFunction } from 'express';
 import { db } from './db';
 import { eq, and, sql, desc, sum, count, gte, lte } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-modular-dashboard');
+
 import {
   businessRecords,
   serviceTickets,
@@ -61,7 +64,7 @@ export function registerModularDashboardRoutes(app: Express) {
         allCards: [...config.defaultCards, ...config.availableCards],
       });
     } catch (error) {
-      console.error('Error fetching card config:', error);
+      log.error('Error fetching card config:', error);
       res.status(500).json({ message: 'Failed to fetch card configuration' });
     }
   });
@@ -335,7 +338,7 @@ export function registerModularDashboardRoutes(app: Express) {
           });
         }
       } catch (queryError) {
-        console.error('Error in individual queries:', queryError);
+        log.error('Error in individual queries:', queryError);
         // If queries fail, provide fallback modules
         modules.push({
           id: 'fallback',
@@ -357,7 +360,7 @@ export function registerModularDashboardRoutes(app: Express) {
         },
       });
     } catch (error) {
-      console.error('Error fetching dashboard modules:', error);
+      log.error('Error fetching dashboard modules:', error);
       res.status(500).json({ message: 'Failed to fetch dashboard modules' });
     }
   });

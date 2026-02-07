@@ -3,6 +3,9 @@ import { SubscriptionService } from './services/subscription-service';
 import { UsageTrackingService } from './services/usage-tracking-service';
 import { StripeService } from './services/stripe-service';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-subscriptions');
+
 import {
   subscriptionPlans,
   subscriptionFeatures,
@@ -53,7 +56,7 @@ router.get('/plans', async (req, res) => {
       features,
     });
   } catch (error) {
-    console.error('Failed to fetch plans:', error);
+    log.error('Failed to fetch plans:', error);
     res.status(500).json({ error: 'Failed to fetch subscription plans' });
   }
 });
@@ -88,7 +91,7 @@ router.get('/plans/:slug', async (req, res) => {
       featureDetails: features,
     });
   } catch (error) {
-    console.error('Failed to fetch plan:', error);
+    log.error('Failed to fetch plan:', error);
     res.status(500).json({ error: 'Failed to fetch plan details' });
   }
 });
@@ -131,7 +134,7 @@ router.get('/current', softCheckSubscription, async (req, res) => {
       features: status.features,
     });
   } catch (error) {
-    console.error('Failed to fetch subscription:', error);
+    log.error('Failed to fetch subscription:', error);
     res.status(500).json({ error: 'Failed to fetch subscription status' });
   }
 });
@@ -190,7 +193,7 @@ router.post('/create', async (req, res) => {
       message: 'Subscription created successfully',
     });
   } catch (error) {
-    console.error('Failed to create subscription:', error);
+    log.error('Failed to create subscription:', error);
     res.status(500).json({
       error: 'Failed to create subscription',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -223,7 +226,7 @@ router.post('/upgrade', requireActiveSubscription, async (req, res) => {
       message: 'Subscription updated successfully',
     });
   } catch (error) {
-    console.error('Failed to upgrade subscription:', error);
+    log.error('Failed to upgrade subscription:', error);
     res.status(500).json({
       error: 'Failed to upgrade subscription',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -248,7 +251,7 @@ router.post('/cancel', requireActiveSubscription, async (req, res) => {
         : 'Subscription will be canceled at the end of the current period',
     });
   } catch (error) {
-    console.error('Failed to cancel subscription:', error);
+    log.error('Failed to cancel subscription:', error);
     res.status(500).json({
       error: 'Failed to cancel subscription',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -276,7 +279,7 @@ router.post('/convert-trial', async (req, res) => {
       message: 'Trial converted to paid subscription successfully',
     });
   } catch (error) {
-    console.error('Failed to convert trial:', error);
+    log.error('Failed to convert trial:', error);
     res.status(500).json({
       error: 'Failed to convert trial',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -304,7 +307,7 @@ router.get('/usage', requireActiveSubscription, async (req, res) => {
 
     res.json(summary);
   } catch (error) {
-    console.error('Failed to fetch usage:', error);
+    log.error('Failed to fetch usage:', error);
     res.status(500).json({ error: 'Failed to fetch usage statistics' });
   }
 });
@@ -335,7 +338,7 @@ router.get('/usage/history', requireActiveSubscription, async (req, res) => {
 
     res.json({ history });
   } catch (error) {
-    console.error('Failed to fetch usage history:', error);
+    log.error('Failed to fetch usage history:', error);
     res.status(500).json({ error: 'Failed to fetch usage history' });
   }
 });
@@ -352,7 +355,7 @@ router.post('/usage/recalculate', requireActiveSubscription, async (req, res) =>
 
     res.json({ message: 'Usage recalculated successfully' });
   } catch (error) {
-    console.error('Failed to recalculate usage:', error);
+    log.error('Failed to recalculate usage:', error);
     res.status(500).json({ error: 'Failed to recalculate usage' });
   }
 });
@@ -401,7 +404,7 @@ router.get('/features', requireActiveSubscription, async (req, res) => {
       planSlug: status.plan.slug,
     });
   } catch (error) {
-    console.error('Failed to fetch features:', error);
+    log.error('Failed to fetch features:', error);
     res.status(500).json({ error: 'Failed to fetch features' });
   }
 });
@@ -425,7 +428,7 @@ router.get('/features/check/:slug', async (req, res) => {
       hasAccess: hasFeature,
     });
   } catch (error) {
-    console.error('Failed to check feature:', error);
+    log.error('Failed to check feature:', error);
     res.status(500).json({ error: 'Failed to check feature access' });
   }
 });
@@ -462,7 +465,7 @@ router.get('/notifications', async (req, res) => {
 
     res.json({ notifications });
   } catch (error) {
-    console.error('Failed to fetch notifications:', error);
+    log.error('Failed to fetch notifications:', error);
     res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 });
@@ -496,7 +499,7 @@ router.post('/notifications/:id/dismiss', async (req, res) => {
 
     res.json({ message: 'Notification dismissed' });
   } catch (error) {
-    console.error('Failed to dismiss notification:', error);
+    log.error('Failed to dismiss notification:', error);
     res.status(500).json({ error: 'Failed to dismiss notification' });
   }
 });
@@ -530,7 +533,7 @@ router.post('/notifications/:id/read', async (req, res) => {
 
     res.json({ message: 'Notification marked as read' });
   } catch (error) {
-    console.error('Failed to mark notification as read:', error);
+    log.error('Failed to mark notification as read:', error);
     res.status(500).json({ error: 'Failed to update notification' });
   }
 });
@@ -556,7 +559,7 @@ router.get('/history', requireActiveSubscription, async (req, res) => {
 
     res.json({ events });
   } catch (error) {
-    console.error('Failed to fetch subscription history:', error);
+    log.error('Failed to fetch subscription history:', error);
     res.status(500).json({ error: 'Failed to fetch subscription history' });
   }
 });
@@ -635,7 +638,7 @@ router.post('/validate-discount', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Failed to validate discount:', error);
+    log.error('Failed to validate discount:', error);
     res.status(500).json({ error: 'Failed to validate discount code' });
   }
 });
@@ -661,7 +664,7 @@ router.get('/stripe/config', (req, res) => {
       publishableKey: StripeService.getPublishableKey(),
     });
   } catch (error) {
-    console.error('Failed to get Stripe config:', error);
+    log.error('Failed to get Stripe config:', error);
     res.status(500).json({ error: 'Failed to get Stripe configuration' });
   }
 });
@@ -748,7 +751,7 @@ router.post('/checkout', async (req, res) => {
       sessionUrl: session.url,
     });
   } catch (error) {
-    console.error('Failed to create checkout session:', error);
+    log.error('Failed to create checkout session:', error);
     res.status(500).json({
       error: 'Failed to create checkout session',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -826,7 +829,7 @@ router.post('/checkout/addon', async (req, res) => {
       sessionUrl: session.url,
     });
   } catch (error) {
-    console.error('Failed to create addon checkout session:', error);
+    log.error('Failed to create addon checkout session:', error);
     res.status(500).json({
       error: 'Failed to create checkout session',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -865,7 +868,7 @@ router.get('/checkout/session/:sessionId', async (req, res) => {
         typeof session.subscription === 'string' ? session.subscription : session.subscription?.id,
     });
   } catch (error) {
-    console.error('Failed to retrieve checkout session:', error);
+    log.error('Failed to retrieve checkout session:', error);
     res.status(500).json({ error: 'Failed to retrieve checkout session' });
   }
 });
@@ -898,7 +901,7 @@ router.post('/portal', async (req, res) => {
       url: portalSession.url,
     });
   } catch (error) {
-    console.error('Failed to create portal session:', error);
+    log.error('Failed to create portal session:', error);
 
     // Check if the error is due to missing Stripe customer
     if (error instanceof Error && error.message.includes('No Stripe customer ID')) {
@@ -942,7 +945,7 @@ router.post('/setup-intent', async (req, res) => {
       clientSecret: setupIntent.client_secret,
     });
   } catch (error) {
-    console.error('Failed to create setup intent:', error);
+    log.error('Failed to create setup intent:', error);
     res.status(500).json({ error: 'Failed to create setup intent' });
   }
 });
@@ -1024,7 +1027,7 @@ router.get('/preview-upgrade', requireActiveSubscription, async (req, res) => {
       billingCycle: cycle,
     });
   } catch (error) {
-    console.error('Failed to preview upgrade:', error);
+    log.error('Failed to preview upgrade:', error);
     res.status(500).json({
       error: 'Failed to preview upgrade',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -1044,14 +1047,14 @@ router.get('/preview-upgrade', requireActiveSubscription, async (req, res) => {
 router.post('/webhooks/stripe', raw({ type: 'application/json' }), async (req, res) => {
   try {
     if (!StripeService.isConfigured()) {
-      console.error('Stripe webhook received but Stripe is not configured');
+      log.error('Stripe webhook received but Stripe is not configured');
       return res.status(503).json({ error: 'Stripe is not configured' });
     }
 
     const signature = req.headers['stripe-signature'] as string;
 
     if (!signature) {
-      console.error('Missing stripe-signature header');
+      log.error('Missing stripe-signature header');
       return res.status(400).json({ error: 'Missing stripe-signature header' });
     }
 
@@ -1060,7 +1063,7 @@ router.post('/webhooks/stripe', raw({ type: 'application/json' }), async (req, r
     try {
       event = StripeService.verifyWebhookSignature(req.body, signature);
     } catch (err) {
-      console.error('Webhook signature verification failed:', err);
+      log.error('Webhook signature verification failed:', err);
       return res.status(400).json({
         error: 'Webhook signature verification failed',
         message: err instanceof Error ? err.message : 'Invalid signature',
@@ -1074,11 +1077,11 @@ router.post('/webhooks/stripe', raw({ type: 'application/json' }), async (req, r
       res.json({ received: true, message: result.message });
     } else {
       // Still return 200 to acknowledge receipt, but log the error
-      console.error('Webhook processing error:', result.message);
+      log.error('Webhook processing error:', result.message);
       res.json({ received: true, error: result.message });
     }
   } catch (error) {
-    console.error('Webhook error:', error);
+    log.error('Webhook error:', error);
     // Return 200 to prevent Stripe from retrying on our errors
     // Only return 4xx/5xx for signature verification failures
     res.json({

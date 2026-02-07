@@ -10,6 +10,8 @@
 
 import { TenantRequest } from './middleware/tenancy';
 import { BusinessRecordsTransformer } from './data-field-mapping';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('fix-data-consistency');
 
 // Routes that need hardcoded tenant ID replacement
 export const ROUTES_TO_FIX = [
@@ -117,7 +119,7 @@ app.get("${routeFunction}", resolveTenant, requireTenant, async (req: TenantRequ
     
     res.json(transformedRecords);
   } catch (error) {
-    console.error('Error fetching ${entityName}:', error);
+    log.error('Error fetching ${entityName}:', error);
     res.status(500).json({ message: 'Failed to fetch ${entityName}' });
   }
 });`;

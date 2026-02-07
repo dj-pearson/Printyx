@@ -4,6 +4,8 @@ import { z } from 'zod';
 import crypto from 'crypto';
 // SECURITY FIX: Import requireRootAdmin middleware for admin-only endpoints
 import { requireRootAdmin } from '../routes-root-admin';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('mfa-routes');
 
 const router = Router();
 
@@ -138,7 +140,7 @@ router.post('/enroll/init', async (req: Request, res: Response) => {
       backupCodes: [], // Will be generated after verification
     });
   } catch (error) {
-    console.error('MFA enrollment init error:', error);
+    log.error('MFA enrollment init error:', error);
     res.status(500).json({ error: 'Failed to initialize MFA enrollment' });
   }
 });
@@ -247,7 +249,7 @@ router.post('/enroll/verify', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('MFA enrollment verify error:', error);
+    log.error('MFA enrollment verify error:', error);
     res.status(500).json({ error: 'Failed to complete MFA enrollment' });
   }
 });
@@ -320,7 +322,7 @@ router.post('/verify', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('MFA verification error:', error);
+    log.error('MFA verification error:', error);
     res.status(500).json({ error: 'Failed to verify MFA code' });
   }
 });
@@ -338,7 +340,7 @@ router.get('/status', async (req: Request, res: Response) => {
     const status = await storage.getUserMfaStatus(user.id);
     res.json(status);
   } catch (error) {
-    console.error('Get MFA status error:', error);
+    log.error('Get MFA status error:', error);
     res.status(500).json({ error: 'Failed to get MFA status' });
   }
 });
@@ -387,7 +389,7 @@ router.post('/disable', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('MFA disable error:', error);
+    log.error('MFA disable error:', error);
     res.status(500).json({ error: 'Failed to disable MFA' });
   }
 });
@@ -432,7 +434,7 @@ router.post('/backup-codes/regenerate', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Regenerate backup codes error:', error);
+    log.error('Regenerate backup codes error:', error);
     res.status(500).json({ error: 'Failed to regenerate backup codes' });
   }
 });
@@ -448,7 +450,7 @@ router.get('/backup-codes/count', async (req: Request, res: Response) => {
     const unusedCodes = await storage.getUnusedBackupCodes(user.id);
     res.json({ count: unusedCodes.length });
   } catch (error) {
-    console.error('Get backup codes count error:', error);
+    log.error('Get backup codes count error:', error);
     res.status(500).json({ error: 'Failed to get backup codes count' });
   }
 });
@@ -481,7 +483,7 @@ router.post('/admin/reset/:userId', requireRootAdmin, async (req: Request, res: 
 
     res.json({ success: true, message: 'MFA reset successfully for user' });
   } catch (error) {
-    console.error('Admin MFA reset error:', error);
+    log.error('Admin MFA reset error:', error);
     res.status(500).json({ error: 'Failed to reset MFA' });
   }
 });
@@ -501,7 +503,7 @@ router.get('/admin/compliance-report', async (req: Request, res: Response) => {
     const report = await storage.getMfaComplianceReport(user.tenantId);
     res.json(report);
   } catch (error) {
-    console.error('Get compliance report error:', error);
+    log.error('Get compliance report error:', error);
     res.status(500).json({ error: 'Failed to get compliance report' });
   }
 });
@@ -521,7 +523,7 @@ router.get('/admin/users-without-mfa', async (req: Request, res: Response) => {
     const users = await storage.getUsersWithoutMfa(user.tenantId);
     res.json(users);
   } catch (error) {
-    console.error('Get users without MFA error:', error);
+    log.error('Get users without MFA error:', error);
     res.status(500).json({ error: 'Failed to get users without MFA' });
   }
 });
@@ -547,7 +549,7 @@ router.get('/audit-logs', async (req: Request, res: Response) => {
     const logs = await storage.getMfaAuditLogs(user.id, filters);
     res.json(logs);
   } catch (error) {
-    console.error('Get audit logs error:', error);
+    log.error('Get audit logs error:', error);
     res.status(500).json({ error: 'Failed to get audit logs' });
   }
 });
@@ -577,7 +579,7 @@ router.get('/admin/audit-logs', async (req: Request, res: Response) => {
     const logs = await storage.getMfaAuditLogsByTenant(user.tenantId, filters);
     res.json(logs);
   } catch (error) {
-    console.error('Get tenant audit logs error:', error);
+    log.error('Get tenant audit logs error:', error);
     res.status(500).json({ error: 'Failed to get tenant audit logs' });
   }
 });
@@ -634,7 +636,7 @@ router.post('/otp/email/send', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Send email OTP error:', error);
+    log.error('Send email OTP error:', error);
     res.status(500).json({ error: 'Failed to send verification code' });
   }
 });
@@ -676,7 +678,7 @@ router.post('/otp/sms/send', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Send SMS OTP error:', error);
+    log.error('Send SMS OTP error:', error);
     res.status(500).json({ error: 'Failed to send verification code' });
   }
 });
@@ -738,7 +740,7 @@ router.post('/otp/verify', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('Verify OTP error:', error);
+    log.error('Verify OTP error:', error);
     res.status(500).json({ error: 'Failed to verify code' });
   }
 });
@@ -784,7 +786,7 @@ router.get('/methods', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error('Get MFA methods error:', error);
+    log.error('Get MFA methods error:', error);
     res.status(500).json({ error: 'Failed to get MFA methods' });
   }
 });
@@ -851,7 +853,7 @@ router.post('/challenge', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request data', details: error.errors });
     }
-    console.error('MFA challenge error:', error);
+    log.error('MFA challenge error:', error);
     res.status(500).json({ error: 'Failed to initiate MFA challenge' });
   }
 });

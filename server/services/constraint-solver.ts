@@ -4,6 +4,8 @@
  */
 
 import ClaudeAIService from './claude-ai-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('constraint-solver');
 
 interface Variable {
   id: string;
@@ -69,7 +71,7 @@ class ConstraintSolver {
    * Solve the constraint satisfaction problem using advanced algorithms
    */
   async solve(): Promise<OptimizationResult> {
-    console.log('🧮 Starting advanced constraint satisfaction solving...');
+    log.info('🧮 Starting advanced constraint satisfaction solving...');
 
     try {
       // Use hybrid approach: start with heuristics, then optimize with AI
@@ -78,7 +80,7 @@ class ConstraintSolver {
 
       return optimizedSolution;
     } catch (error) {
-      console.error('Constraint solving failed:', error);
+      log.error('Constraint solving failed:', error);
       return this.fallbackSolution();
     }
   }
@@ -160,7 +162,7 @@ Provide optimization suggestions as JSON with:
         confidence: Math.min(0.95, optimizedSolution.confidence + 0.1),
       };
     } catch (error) {
-      console.error('AI optimization failed:', error);
+      log.error('AI optimization failed:', error);
       return initialSolution;
     }
   }

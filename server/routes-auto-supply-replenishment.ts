@@ -3,6 +3,9 @@ import { db } from './db';
 import { eq, and, desc } from 'drizzle-orm';
 import { supplyMonitoring, autoSupplyOrders } from '@shared/schema';
 import * as supplyService from './services/auto-supply-replenishment-service';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-auto-supply-replenishment');
+
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -43,7 +46,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
     const metrics = await supplyService.getDashboardMetrics(tenantId);
     res.json(metrics);
   } catch (error) {
-    console.error('Error fetching dashboard metrics:', error);
+    log.error('Error fetching dashboard metrics:', error);
     res.status(500).json({
       error: 'Failed to fetch dashboard metrics',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -69,7 +72,7 @@ router.get('/supplies', async (req: Request, res: Response) => {
     const supplies = await query;
     res.json(supplies);
   } catch (error) {
-    console.error('Error fetching supplies:', error);
+    log.error('Error fetching supplies:', error);
     res.status(500).json({
       error: 'Failed to fetch supplies',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -87,7 +90,7 @@ router.get('/low-supplies', async (req: Request, res: Response) => {
     const lowSupplies = await supplyService.getLowSupplyAlerts(tenantId);
     res.json(lowSupplies);
   } catch (error) {
-    console.error('Error fetching low supplies:', error);
+    log.error('Error fetching low supplies:', error);
     res.status(500).json({
       error: 'Failed to fetch low supplies',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -111,7 +114,7 @@ router.post('/analyze/:supplyMonitoringId', async (req: Request, res: Response) 
     const analysis = await supplyService.analyzeSupplyLevel(tenantId, supplyMonitoringId);
     res.json(analysis);
   } catch (error) {
-    console.error('Error analyzing supply:', error);
+    log.error('Error analyzing supply:', error);
     res.status(500).json({
       error: 'Failed to analyze supply',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -129,7 +132,7 @@ router.post('/analyze-all', async (req: Request, res: Response) => {
     const results = await supplyService.analyzeTenantSupplies(tenantId);
     res.json(results);
   } catch (error) {
-    console.error('Error analyzing all supplies:', error);
+    log.error('Error analyzing all supplies:', error);
     res.status(500).json({
       error: 'Failed to analyze supplies',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -157,7 +160,7 @@ router.post('/create-order/:supplyMonitoringId', async (req: Request, res: Respo
     const order = await supplyService.createAutoSupplyOrder(tenantId, supplyMonitoringId, analysis);
     res.json(order);
   } catch (error) {
-    console.error('Error creating supply order:', error);
+    log.error('Error creating supply order:', error);
     res.status(500).json({
       error: 'Failed to create supply order',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -176,7 +179,7 @@ router.get('/orders', async (req: Request, res: Response) => {
     const orders = await supplyService.getRecentOrders(tenantId, limit);
     res.json(orders);
   } catch (error) {
-    console.error('Error fetching orders:', error);
+    log.error('Error fetching orders:', error);
     res.status(500).json({
       error: 'Failed to fetch orders',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -207,7 +210,7 @@ router.get('/orders/:orderId', async (req: Request, res: Response) => {
 
     res.json(order);
   } catch (error) {
-    console.error('Error fetching order:', error);
+    log.error('Error fetching order:', error);
     res.status(500).json({
       error: 'Failed to fetch order',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -250,7 +253,7 @@ router.patch('/orders/:orderId/status', async (req: Request, res: Response) => {
 
     res.json(updatedOrder);
   } catch (error) {
-    console.error('Error updating order status:', error);
+    log.error('Error updating order status:', error);
     res.status(500).json({
       error: 'Failed to update order status',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -268,7 +271,7 @@ router.get('/rules', async (req: Request, res: Response) => {
     const rules = await supplyService.getReplenishmentRules(tenantId);
     res.json(rules);
   } catch (error) {
-    console.error('Error fetching rules:', error);
+    log.error('Error fetching rules:', error);
     res.status(500).json({
       error: 'Failed to fetch rules',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -287,7 +290,7 @@ router.put('/rules', async (req: Request, res: Response) => {
     const rules = await supplyService.updateReplenishmentRules(tenantId, updates);
     res.json(rules);
   } catch (error) {
-    console.error('Error updating rules:', error);
+    log.error('Error updating rules:', error);
     res.status(500).json({
       error: 'Failed to update rules',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -331,7 +334,7 @@ router.get('/supply/:supplyMonitoringId', async (req: Request, res: Response) =>
 
     res.json(supply);
   } catch (error) {
-    console.error('Error fetching supply details:', error);
+    log.error('Error fetching supply details:', error);
     res.status(500).json({
       error: 'Failed to fetch supply details',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -375,7 +378,7 @@ router.patch('/supply/:supplyMonitoringId', async (req: Request, res: Response) 
 
     res.json(updatedSupply);
   } catch (error) {
-    console.error('Error updating supply:', error);
+    log.error('Error updating supply:', error);
     res.status(500).json({
       error: 'Failed to update supply',
       details: error instanceof Error ? error.message : 'Unknown error',

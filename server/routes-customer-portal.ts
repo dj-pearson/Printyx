@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import { db } from './db';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-customer-portal');
+
 import {
   customerPortalAccess,
   customerServiceRequests,
@@ -120,7 +123,7 @@ const requireCustomerPortalAuth = async (req: any, res: any, next: any) => {
 
     next();
   } catch (error) {
-    console.error('Customer portal auth error:', error);
+    log.error('Customer portal auth error:', error);
     return res.status(500).json({ message: 'Authentication validation failed' });
   }
 };
@@ -182,7 +185,7 @@ router.get(
 
       res.json({ success: true, stats });
     } catch (error) {
-      console.error('Error fetching customer portal stats:', error);
+      log.error('Error fetching customer portal stats:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch customer portal statistics',
@@ -208,7 +211,7 @@ router.get('/users', async (req, res) => {
 
     res.json({ success: true, users });
   } catch (error) {
-    console.error('Error fetching customer portal users:', error);
+    log.error('Error fetching customer portal users:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch portal users',
@@ -236,7 +239,7 @@ router.get('/service-requests/recent', async (req, res) => {
 
     res.json({ success: true, requests });
   } catch (error) {
-    console.error('Error fetching recent service requests:', error);
+    log.error('Error fetching recent service requests:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch recent service requests',
@@ -264,7 +267,7 @@ router.get('/meter-submissions/recent', async (req, res) => {
 
     res.json({ success: true, submissions });
   } catch (error) {
-    console.error('Error fetching recent meter submissions:', error);
+    log.error('Error fetching recent meter submissions:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch recent meter submissions',
@@ -304,7 +307,7 @@ router.get('/test', async (req, res) => {
       tenantId,
     });
   } catch (error) {
-    console.error('Error testing customer portal database:', error);
+    log.error('Error testing customer portal database:', error);
     res.status(500).json({
       success: false,
       message: 'Database test failed',
@@ -377,7 +380,7 @@ router.get('/equipment-health', requireCustomerPortalAuth, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching equipment health data:', error);
+    log.error('Error fetching equipment health data:', error);
 
     if (error.message === 'CUSTOMER_ACCESS_DENIED') {
       return res.status(403).json({
@@ -439,7 +442,7 @@ router.post('/equipment-maintenance', requireCustomerPortalAuth, async (req, res
 
     res.json({ success: true, maintenanceRequest });
   } catch (error) {
-    console.error('Error scheduling equipment maintenance:', error);
+    log.error('Error scheduling equipment maintenance:', error);
 
     if (error.message === 'EQUIPMENT_ACCESS_DENIED') {
       return res.status(403).json({
@@ -493,7 +496,7 @@ router.get('/equipment-analytics/:equipmentId', requireCustomerPortalAuth, async
 
     res.json({ success: true, analytics });
   } catch (error) {
-    console.error('Error fetching equipment usage analytics:', error);
+    log.error('Error fetching equipment usage analytics:', error);
 
     if (error.message === 'EQUIPMENT_ACCESS_DENIED') {
       return res.status(403).json({
@@ -559,7 +562,7 @@ router.get('/usage-analytics', requireCustomerPortalAuth, async (req, res) => {
       meta,
     });
   } catch (error) {
-    console.error('Error fetching usage analytics:', error);
+    log.error('Error fetching usage analytics:', error);
 
     if (error.message === 'CUSTOMER_ACCESS_DENIED') {
       return res.status(403).json({
@@ -631,7 +634,7 @@ router.get('/equipment-usage/:equipmentId', requireCustomerPortalAuth, async (re
       equipment: analytics.equipmentUsage.find((eq) => eq.equipmentId === equipmentId),
     });
   } catch (error) {
-    console.error('Error fetching equipment usage details:', error);
+    log.error('Error fetching equipment usage details:', error);
 
     if (error.message === 'EQUIPMENT_ACCESS_DENIED') {
       return res.status(403).json({
@@ -687,7 +690,7 @@ router.get('/maintenance-availability', requireCustomerPortalAuth, async (req, r
       data: availability,
     });
   } catch (error) {
-    console.error('Error fetching available time slots:', error);
+    log.error('Error fetching available time slots:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch available time slots',
@@ -733,7 +736,7 @@ router.post('/maintenance-appointments', requireCustomerPortalAuth, async (req, 
       message: 'Maintenance appointment booked successfully',
     });
   } catch (error) {
-    console.error('Error booking maintenance appointment:', error);
+    log.error('Error booking maintenance appointment:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to book maintenance appointment',
@@ -773,7 +776,7 @@ router.get('/maintenance-appointments', requireCustomerPortalAuth, async (req, r
       data: appointments,
     });
   } catch (error) {
-    console.error('Error fetching customer appointments:', error);
+    log.error('Error fetching customer appointments:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch customer appointments',
@@ -817,7 +820,7 @@ router.get(
         data: appointment,
       });
     } catch (error) {
-      console.error('Error fetching appointment details:', error);
+      log.error('Error fetching appointment details:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to fetch appointment details',
@@ -871,7 +874,7 @@ router.put(
         message: 'Appointment rescheduled successfully',
       });
     } catch (error) {
-      console.error('Error rescheduling appointment:', error);
+      log.error('Error rescheduling appointment:', error);
 
       if (error.message === 'Appointment not found') {
         return res.status(404).json({
@@ -929,7 +932,7 @@ router.delete(
         message: 'Appointment cancelled successfully',
       });
     } catch (error) {
-      console.error('Error cancelling appointment:', error);
+      log.error('Error cancelling appointment:', error);
 
       if (error.message === 'Appointment not found') {
         return res.status(404).json({
@@ -1001,7 +1004,7 @@ router.post('/service-requests', requireCustomerPortalAuth, async (req, res) => 
       message: 'Service request created successfully',
     });
   } catch (error) {
-    console.error('Error creating service request:', error);
+    log.error('Error creating service request:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create service request',
@@ -1052,7 +1055,7 @@ router.get('/service-requests', requireCustomerPortalAuth, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching service requests:', error);
+    log.error('Error fetching service requests:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch service requests',
@@ -1093,7 +1096,7 @@ router.get('/service-requests/:requestId', requireCustomerPortalAuth, async (req
       data: serviceRequest,
     });
   } catch (error) {
-    console.error('Error fetching service request:', error);
+    log.error('Error fetching service request:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch service request',
@@ -1128,7 +1131,7 @@ router.get('/service-requests/:requestId/history', requireCustomerPortalAuth, as
       count: statusHistory.length,
     });
   } catch (error) {
-    console.error('Error fetching service request status history:', error);
+    log.error('Error fetching service request status history:', error);
 
     if (error.message === 'Service request not found') {
       return res.status(404).json({
@@ -1201,7 +1204,7 @@ router.get('/satisfaction/surveys', requireCustomerPortalAuth, async (req, res) 
       count: availableSurveys.length,
     });
   } catch (error) {
-    console.error('Error fetching satisfaction surveys:', error);
+    log.error('Error fetching satisfaction surveys:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch satisfaction surveys',
@@ -1287,7 +1290,7 @@ router.get('/satisfaction/surveys/:surveyId', requireCustomerPortalAuth, async (
       },
     });
   } catch (error) {
-    console.error('Error fetching survey details:', error);
+    log.error('Error fetching survey details:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch survey details',
@@ -1370,7 +1373,7 @@ router.post(
         message: 'Survey started successfully',
       });
     } catch (error) {
-      console.error('Error starting survey:', error);
+      log.error('Error starting survey:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to start survey',
@@ -1546,7 +1549,7 @@ router.post(
         message: 'Survey responses submitted successfully',
       });
     } catch (error) {
-      console.error('Error submitting survey responses:', error);
+      log.error('Error submitting survey responses:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to submit survey responses',
@@ -1701,7 +1704,7 @@ router.get('/satisfaction/analytics', requireCustomerPortalAuth, async (req, res
       },
     });
   } catch (error) {
-    console.error('Error fetching satisfaction analytics:', error);
+    log.error('Error fetching satisfaction analytics:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch satisfaction analytics',

@@ -9,6 +9,8 @@ import express, { Request, Response } from 'express';
 import { isAuthenticated } from '../replitAuth';
 import { leadIntelligenceService } from '../services/lead-intelligence-service';
 import { z } from 'zod';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('lead-intelligence-routes');
 
 const router = express.Router();
 
@@ -41,7 +43,7 @@ router.get('/:leadId', isAuthenticated, async (req: Request, res: Response) => {
 
     res.json(intelligence);
   } catch (error: any) {
-    console.error('Get lead intelligence error:', error);
+    log.error('Get lead intelligence error:', error);
     res.status(500).json({ error: 'Failed to get lead intelligence', message: error.message });
   }
 });
@@ -69,7 +71,7 @@ router.post('/:leadId/score', isAuthenticated, async (req: Request, res: Respons
       score,
     });
   } catch (error: any) {
-    console.error('Calculate lead score error:', error);
+    log.error('Calculate lead score error:', error);
     res.status(500).json({ error: 'Failed to calculate lead score', message: error.message });
   }
 });
@@ -97,7 +99,7 @@ router.post('/:leadId/enrich', isAuthenticated, async (req: Request, res: Respon
       enrichment,
     });
   } catch (error: any) {
-    console.error('Enrich lead error:', error);
+    log.error('Enrich lead error:', error);
     res.status(500).json({ error: 'Failed to enrich lead', message: error.message });
   }
 });
@@ -125,7 +127,7 @@ router.post('/:leadId/process', isAuthenticated, async (req: Request, res: Respo
       ...result,
     });
   } catch (error: any) {
-    console.error('Process lead error:', error);
+    log.error('Process lead error:', error);
     res.status(500).json({ error: 'Failed to process lead', message: error.message });
   }
 });
@@ -157,7 +159,7 @@ router.post('/batch/score', isAuthenticated, async (req: Request, res: Response)
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid request', details: error.errors });
     }
-    console.error('Batch score error:', error);
+    log.error('Batch score error:', error);
     res.status(500).json({ error: 'Failed to batch score leads', message: error.message });
   }
 });
@@ -177,7 +179,7 @@ router.get('/analytics/overview', isAuthenticated, async (req: Request, res: Res
 
     res.json(analytics);
   } catch (error: any) {
-    console.error('Get analytics error:', error);
+    log.error('Get analytics error:', error);
     res.status(500).json({ error: 'Failed to get analytics', message: error.message });
   }
 });
@@ -198,7 +200,7 @@ router.get('/attention/required', isAuthenticated, async (req: Request, res: Res
 
     res.json(leads);
   } catch (error: any) {
-    console.error('Get attention required error:', error);
+    log.error('Get attention required error:', error);
     res
       .status(500)
       .json({ error: 'Failed to get leads requiring attention', message: error.message });

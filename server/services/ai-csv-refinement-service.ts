@@ -18,6 +18,8 @@ import {
 import { db } from '../db';
 import { eq, and } from 'drizzle-orm';
 import { csvImportJobs } from '@shared/csv-import-schema';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('ai-csv-refinement-service');
 
 interface ClaudeMessage {
   role: 'user' | 'assistant';
@@ -216,7 +218,7 @@ Respond with this exact JSON structure:
         tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
       };
     } catch (error: any) {
-      console.error('AI column mapping failed:', error);
+      log.error('AI column mapping failed:', error);
       throw new Error(`AI mapping failed: ${error.message}`);
     }
   }
@@ -316,7 +318,7 @@ Respond with this JSON structure:
 
         totalTokens += response.usage.input_tokens + response.usage.output_tokens;
       } catch (error: any) {
-        console.error(`AI data cleaning failed for batch starting at row ${startRow}:`, error);
+        log.error(`AI data cleaning failed for batch starting at row ${startRow}:`, error);
         // Fall back to original data for this batch
         cleanedData.push(...batch);
       }
@@ -396,7 +398,7 @@ If none are true duplicates, return { "matches": [] }`;
         suggestedAction: m.suggestedAction || 'review',
       }));
     } catch (error: any) {
-      console.error('AI duplicate analysis failed:', error);
+      log.error('AI duplicate analysis failed:', error);
       return [];
     }
   }
@@ -420,7 +422,7 @@ If none are true duplicates, return { "matches": [] }`;
     let totalTokens = 0;
 
     // Step 1: AI Column Mapping
-    console.log(`[AI Import] Starting AI column mapping for job ${jobId}`);
+    log.info(`[AI Import] Starting AI column mapping for job ${jobId}`);
     const mappingResult = await this.aiMapColumns(headers, csvData.slice(0, 5), entityType);
     totalTokens += mappingResult.tokensUsed;
 
@@ -440,7 +442,7 @@ If none are true duplicates, return { "matches": [] }`;
     let issues: DataIssue[] = [];
 
     if (mappingResult.confidence >= 70) {
-      console.log(`[AI Import] Starting AI data cleaning for job ${jobId}`);
+      log.info(`[AI Import] Starting AI data cleaning for job ${jobId}`);
       const cleaningResult = await this.aiCleanData(csvData, mappingResult.mappings, entityType);
       cleanedData = cleaningResult.cleanedData;
       issues = cleaningResult.issues;
@@ -448,7 +450,7 @@ If none are true duplicates, return { "matches": [] }`;
 
       // Log transformations for audit
       if (cleaningResult.transformations.length > 0) {
-        console.log(
+        log.info(
           `[AI Import] Applied ${cleaningResult.transformations.length} data transformations`,
         );
       }

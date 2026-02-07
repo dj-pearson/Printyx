@@ -5,14 +5,10 @@ if (!process.env.DATABASE_URL) {
 }
 
 export default defineConfig({
-  out: './migrations',
-  // Include all schema files that define tables
-  schema: [
-    './shared/schema.ts',
-    './shared/product-pricing-schema.ts',
-    './server/sales-forecasting-schema.ts',
-    './shared/reporting-schema.ts',
-  ],
+  out: './drizzle/migrations',
+  // Single entry point that exports ALL pgTable/pgEnum definitions exactly once.
+  // See shared/drizzle-schema.ts for details on conflict resolution.
+  schema: './shared/drizzle-schema.ts',
   dialect: 'postgresql',
   dbCredentials: {
     url: process.env.DATABASE_URL,

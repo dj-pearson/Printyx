@@ -1,5 +1,7 @@
 import { db } from './db';
 import { roles } from '@shared/schema';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('multi-location-role-seeder');
 
 // Comprehensive multi-location role definitions for 1000+ employee scaling
 const multiLocationRoles = [
@@ -484,7 +486,7 @@ const multiLocationRoles = [
 ];
 
 export async function seedMultiLocationRoles() {
-  console.log('Seeding multi-location roles...');
+  log.info('Seeding multi-location roles...');
 
   try {
     // Insert all roles
@@ -525,9 +527,9 @@ export async function seedMultiLocationRoles() {
         .onConflictDoNothing();
     }
 
-    console.log(`Successfully seeded ${multiLocationRoles.length} multi-location roles`);
+    log.info(`Successfully seeded ${multiLocationRoles.length} multi-location roles`);
   } catch (error) {
-    console.error('Error seeding multi-location roles:', error);
+    log.error('Error seeding multi-location roles:', error);
     throw error;
   }
 }

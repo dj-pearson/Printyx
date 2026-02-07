@@ -6,6 +6,9 @@
 import { Router } from 'express';
 import { db } from './db';
 import { eq, desc, and, gte, lte, count } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-signup-crm');
+
 import {
   platformSignups,
   trialActivityLog,
@@ -65,7 +68,7 @@ router.get('/signups', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching signups:', error);
+    log.error('Error fetching signups:', error);
     res.status(500).json({ error: 'Failed to fetch signups' });
   }
 });
@@ -117,7 +120,7 @@ router.get('/signups/:id', async (req, res) => {
       funnelEvents,
     });
   } catch (error) {
-    console.error('Error fetching signup details:', error);
+    log.error('Error fetching signup details:', error);
     res.status(500).json({ error: 'Failed to fetch signup details' });
   }
 });
@@ -147,7 +150,7 @@ router.patch('/signups/:id', async (req, res) => {
 
     res.json({ data: updated[0] });
   } catch (error) {
-    console.error('Error updating signup:', error);
+    log.error('Error updating signup:', error);
     res.status(500).json({ error: 'Failed to update signup' });
   }
 });
@@ -220,7 +223,7 @@ router.get('/signups-analytics', async (req, res) => {
       dateRange: { start, end },
     });
   } catch (error) {
-    console.error('Error fetching analytics:', error);
+    log.error('Error fetching analytics:', error);
     res.status(500).json({ error: 'Failed to fetch analytics' });
   }
 });
@@ -267,7 +270,7 @@ router.get('/trial-funnel', async (req, res) => {
 
     res.json({ funnel: funnelWithDropoff });
   } catch (error) {
-    console.error('Error fetching funnel data:', error);
+    log.error('Error fetching funnel data:', error);
     res.status(500).json({ error: 'Failed to fetch funnel data' });
   }
 });
@@ -307,7 +310,7 @@ router.post('/signups/:id/log-activity', async (req, res) => {
 
     res.json({ data: activity[0] });
   } catch (error) {
-    console.error('Error logging activity:', error);
+    log.error('Error logging activity:', error);
     res.status(500).json({ error: 'Failed to log activity' });
   }
 });
@@ -335,7 +338,7 @@ router.post('/signups/:id/send-email', async (req, res) => {
 
     res.json({ data: communication[0] });
   } catch (error) {
-    console.error('Error logging email:', error);
+    log.error('Error logging email:', error);
     res.status(500).json({ error: 'Failed to log email' });
   }
 });
@@ -357,7 +360,7 @@ router.get('/high-value-signups', async (req, res) => {
 
     res.json({ data: signups });
   } catch (error) {
-    console.error('Error fetching high-value signups:', error);
+    log.error('Error fetching high-value signups:', error);
     res.status(500).json({ error: 'Failed to fetch high-value signups' });
   }
 });

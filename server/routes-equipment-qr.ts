@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { db } from './db';
 import { equipment } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-equipment-qr');
 
 const router = Router();
 
@@ -36,7 +38,7 @@ router.get('/:id/qr-code', async (req: any, res) => {
       res.status(503).json({ message: 'QR code generation is temporarily unavailable' });
     }
   } catch (error) {
-    console.error('[QRCodeAPI] Error generating QR code:', error);
+    log.error('[QRCodeAPI] Error generating QR code:', error);
     res.status(500).json({ message: 'Failed to generate QR code' });
   }
 });
@@ -164,7 +166,7 @@ router.get('/:id/asset-label', async (req: any, res) => {
     res.setHeader('Content-Type', 'text/html');
     res.send(html);
   } catch (error) {
-    console.error('[QRCodeAPI] Error generating asset label:', error);
+    log.error('[QRCodeAPI] Error generating asset label:', error);
     res.status(500).json({ message: 'Failed to generate asset label' });
   }
 });
@@ -213,7 +215,7 @@ router.post('/bulk-qr-codes', async (req: any, res) => {
 
     res.json({ qrCodes });
   } catch (error) {
-    console.error('[QRCodeAPI] Error generating bulk QR codes:', error);
+    log.error('[QRCodeAPI] Error generating bulk QR codes:', error);
     res.status(500).json({ message: 'Failed to generate QR codes' });
   }
 });

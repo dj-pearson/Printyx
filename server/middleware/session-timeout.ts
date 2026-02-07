@@ -10,6 +10,8 @@ import { db } from '../db';
 import { securitySessions, complianceSettings } from '../../shared/security-schema';
 import { eq, and, lt, isNull } from 'drizzle-orm';
 import { getComplianceSettings } from '../storage/security-storage';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('session-timeout');
 
 // Default timeout settings (in milliseconds)
 export const DEFAULT_SESSION_CONFIG = {
@@ -75,7 +77,7 @@ export async function getSessionConfig(tenantId?: string): Promise<SessionTimeou
       };
     }
   } catch (error) {
-    console.warn('Failed to fetch tenant session config:', error);
+    log.warn('Failed to fetch tenant session config:', error);
   }
 
   return { ...DEFAULT_SESSION_CONFIG };
@@ -210,9 +212,7 @@ export function enforceSessionTimeout(options?: {
 
       if (expired) {
         // Log the timeout
-        console.log(
-          `[SESSION] Session expired due to ${reason} timeout for user ${session.userId}`,
-        );
+        log.info(`[SESSION] Session expired due to ${reason} timeout for user ${session.userId}`);
 
         // Call custom callback if provided
         if (onTimeout) {
@@ -226,7 +226,7 @@ export function enforceSessionTimeout(options?: {
         return new Promise<void>((resolve) => {
           session.destroy((err: any) => {
             if (err) {
-              console.error('Session destroy error:', err);
+              log.error('Session destroy error:', err);
             }
             res.clearCookie('connect.sid');
             res.status(401).json({
@@ -265,7 +265,7 @@ export function enforceSessionTimeout(options?: {
       // Continue to next middleware
       next();
     } catch (error) {
-      console.error('Session timeout check error:', error);
+      log.error('Session timeout check error:', error);
       next();
     }
   };
@@ -296,7 +296,7 @@ async function recordSessionTermination(session: any, reason: string): Promise<v
       })
       .onConflictDoNothing();
   } catch (error) {
-    console.error('Failed to record session termination:', error);
+    log.error('Failed to record session termination:', error);
   }
 }
 
@@ -320,7 +320,7 @@ export function extendSessionOnActivity() {
           session.sessionMetadata.warningShown = false;
         }
       } catch (error) {
-        console.error('Error extending session:', error);
+        log.error('Error extending session:', error);
       }
     }
 
@@ -355,10 +355,10 @@ export async function logoutOtherSessions(
         ),
       );
 
-    console.log(`[SESSION] Logged out other sessions for user ${userId}`);
+    log.info(`[SESSION] Logged out other sessions for user ${userId}`);
     return 1; // Return count of affected sessions
   } catch (error) {
-    console.error('Failed to logout other sessions:', error);
+    log.error('Failed to logout other sessions:', error);
     return 0;
   }
 }
@@ -379,10 +379,10 @@ export async function cleanupExpiredSessions(): Promise<number> {
       })
       .where(and(eq(securitySessions.isActive, true), lt(securitySessions.expiresAt, now)));
 
-    console.log('[SESSION] Cleaned up expired sessions');
+    log.info('[SESSION] Cleaned up expired sessions');
     return 1;
   } catch (error) {
-    console.error('Failed to cleanup expired sessions:', error);
+    log.error('Failed to cleanup expired sessions:', error);
     return 0;
   }
 }
@@ -415,7 +415,7 @@ export async function getActiveSessions(userId: string): Promise<
       isCurrent: false, // Will be set by the caller based on current session ID
     }));
   } catch (error) {
-    console.error('Failed to get active sessions:', error);
+    log.error('Failed to get active sessions:', error);
     return [];
   }
 }
@@ -441,7 +441,7 @@ export async function terminateSession(
 
     return true;
   } catch (error) {
-    console.error('Failed to terminate session:', error);
+    log.error('Failed to terminate session:', error);
     return false;
   }
 }

@@ -3,6 +3,9 @@ import { db } from './db';
 import { clientCollectedMetrics, tonerAlerts } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-device-monitoring');
+
 // RBAC Integration
 import {
   enhanceUserContext,
@@ -37,7 +40,7 @@ router.get('/latest-metrics', resolveTenant, requireTenant, async (req: TenantRe
 
     res.json({ metrics });
   } catch (error) {
-    console.error('Error fetching latest metrics:', error);
+    log.error('Error fetching latest metrics:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -66,7 +69,7 @@ router.get(
 
       res.json({ metrics });
     } catch (error) {
-      console.error('Error fetching device history:', error);
+      log.error('Error fetching device history:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   },
@@ -86,7 +89,7 @@ router.get('/active-alerts', resolveTenant, requireTenant, async (req: TenantReq
 
     res.json({ alerts });
   } catch (error) {
-    console.error('Error fetching active alerts:', error);
+    log.error('Error fetching active alerts:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -119,7 +122,7 @@ router.get(
 
       res.json({ alerts });
     } catch (error) {
-      console.error('Error fetching device alerts:', error);
+      log.error('Error fetching device alerts:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   },
@@ -160,7 +163,7 @@ router.post(
 
       res.json({ message: 'Alert acknowledged successfully' });
     } catch (error) {
-      console.error('Error acknowledging alert:', error);
+      log.error('Error acknowledging alert:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   },
@@ -199,7 +202,7 @@ router.post(
 
       res.json({ message: 'Alert resolved successfully' });
     } catch (error) {
-      console.error('Error resolving alert:', error);
+      log.error('Error resolving alert:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   },
@@ -239,7 +242,7 @@ router.get('/statistics', resolveTenant, requireTenant, async (req: TenantReques
       },
     });
   } catch (error) {
-    console.error('Error fetching statistics:', error);
+    log.error('Error fetching statistics:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

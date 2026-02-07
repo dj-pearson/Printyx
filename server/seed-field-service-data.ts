@@ -1,5 +1,8 @@
 import { db } from './db';
 import { eq } from 'drizzle-orm';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('seed-field-service-data');
+
 import {
   installations,
   serviceSignatures,
@@ -8,25 +11,25 @@ import {
 } from '@shared/schema';
 
 async function seedFieldServiceData() {
-  console.log('Starting field service data seeding...');
+  log.info('Starting field service data seeding...');
 
   try {
     // Get the first tenant for testing
     const tenants = await db.query.tenants.findMany({ limit: 1 });
     if (tenants.length === 0) {
-      console.error('No tenants found. Please seed tenants first.');
+      log.error('No tenants found. Please seed tenants first.');
       return;
     }
     const tenantId = tenants[0].id;
-    console.log(`Using tenant: ${tenantId}`);
+    log.info(`Using tenant: ${tenantId}`);
 
     // Clean up existing field service data for this tenant
-    console.log('Cleaning up existing field service data...');
+    log.info('Cleaning up existing field service data...');
     await db.delete(servicePhotos).where(eq(servicePhotos.tenantId, tenantId));
     await db.delete(installationChecklists).where(eq(installationChecklists.tenantId, tenantId));
     await db.delete(serviceSignatures).where(eq(serviceSignatures.tenantId, tenantId));
     await db.delete(installations).where(eq(installations.tenantId, tenantId));
-    console.log('✓ Cleanup complete');
+    log.info('✓ Cleanup complete');
 
     // Get some customers for testing
     const customers = await db.query.businessRecords.findMany({
@@ -35,7 +38,7 @@ async function seedFieldServiceData() {
     });
 
     if (customers.length === 0) {
-      console.error('No customers found. Please seed business records first.');
+      log.error('No customers found. Please seed business records first.');
       return;
     }
 
@@ -61,7 +64,7 @@ async function seedFieldServiceData() {
     });
 
     if (users.length === 0) {
-      console.error('No users found. Please seed users first.');
+      log.error('No users found. Please seed users first.');
       return;
     }
     const userId = users[0].id;
@@ -70,7 +73,7 @@ async function seedFieldServiceData() {
     // SEED INSTALLATIONS
     // ============================================================================
 
-    console.log('Seeding installations...');
+    log.info('Seeding installations...');
 
     const installationData = [
       {
@@ -172,13 +175,13 @@ async function seedFieldServiceData() {
       .values(installationData)
       .returning();
 
-    console.log(`✓ Created ${createdInstallations.length} installations`);
+    log.info(`✓ Created ${createdInstallations.length} installations`);
 
     // ============================================================================
     // SEED SERVICE SIGNATURES
     // ============================================================================
 
-    console.log('Seeding service signatures...');
+    log.info('Seeding service signatures...');
 
     const signatureData = [
       {
@@ -301,13 +304,13 @@ async function seedFieldServiceData() {
 
     const createdSignatures = await db.insert(serviceSignatures).values(signatureData).returning();
 
-    console.log(`✓ Created ${createdSignatures.length} service signatures`);
+    log.info(`✓ Created ${createdSignatures.length} service signatures`);
 
     // ============================================================================
     // SEED INSTALLATION CHECKLISTS
     // ============================================================================
 
-    console.log('Seeding installation checklists...');
+    log.info('Seeding installation checklists...');
 
     const checklistData = [
       // Checklists for Installation 1 (completed)
@@ -542,13 +545,13 @@ async function seedFieldServiceData() {
       .values(checklistData)
       .returning();
 
-    console.log(`✓ Created ${createdChecklists.length} installation checklist items`);
+    log.info(`✓ Created ${createdChecklists.length} installation checklist items`);
 
     // ============================================================================
     // SEED SERVICE PHOTOS
     // ============================================================================
 
-    console.log('Seeding service photos...');
+    log.info('Seeding service photos...');
 
     const photoData = [
       {
@@ -625,30 +628,30 @@ async function seedFieldServiceData() {
 
     const createdPhotos = await db.insert(servicePhotos).values(photoData).returning();
 
-    console.log(`✓ Created ${createdPhotos.length} service photos`);
+    log.info(`✓ Created ${createdPhotos.length} service photos`);
 
     // ============================================================================
     // SUMMARY
     // ============================================================================
 
-    console.log('\n=== Field Service Data Seeding Complete ===');
-    console.log(`Installations: ${createdInstallations.length}`);
-    console.log(`Service Signatures: ${createdSignatures.length}`);
-    console.log(`Installation Checklist Items: ${createdChecklists.length}`);
-    console.log(`Service Photos: ${createdPhotos.length}`);
-    console.log('===========================================\n');
+    log.info('\n=== Field Service Data Seeding Complete ===');
+    log.info(`Installations: ${createdInstallations.length}`);
+    log.info(`Service Signatures: ${createdSignatures.length}`);
+    log.info(`Installation Checklist Items: ${createdChecklists.length}`);
+    log.info(`Service Photos: ${createdPhotos.length}`);
+    log.info('===========================================\n');
   } catch (error) {
-    console.error('Error seeding field service data:', error);
+    log.error('Error seeding field service data:', error);
     throw error;
   }
 }
 
 seedFieldServiceData()
   .then(() => {
-    console.log('Field service data seeding completed successfully!');
+    log.info('Field service data seeding completed successfully!');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('Failed to seed field service data:', error);
+    log.error('Failed to seed field service data:', error);
     process.exit(1);
   });

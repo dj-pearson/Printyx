@@ -5,6 +5,8 @@ import { requireAuth } from './auth-setup';
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 import { businessRecords } from '../shared/schema';
 import { demoSchedules, demoEquipmentRequirements, demoOutcomes } from './demo-scheduling-schema';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-demo-scheduling');
 
 const router = express.Router();
 
@@ -25,7 +27,7 @@ router.get('/api/demos', resolveTenant, requireTenant, async (req: TenantRequest
 
     res.json(demos);
   } catch (error) {
-    console.error('Error fetching demos:', error);
+    log.error('Error fetching demos:', error);
 
     // Fallback to sample data if schema tables don't exist yet
     const sampleDemos = [
@@ -102,7 +104,7 @@ router.get('/api/demos/customers', async (req: any, res) => {
 
     res.json(customers);
   } catch (error) {
-    console.error('Error fetching customers for demo:', error);
+    log.error('Error fetching customers for demo:', error);
     res.status(500).json({ message: 'Failed to fetch customers' });
   }
 });
@@ -192,7 +194,7 @@ router.post('/api/demos', async (req: any, res) => {
 
     res.status(201).json(newDemo);
   } catch (error) {
-    console.error('Error creating demo:', error);
+    log.error('Error creating demo:', error);
     res.status(500).json({ message: 'Failed to create demo' });
   }
 });
@@ -212,7 +214,7 @@ router.put('/api/demos/:id/status', async (req: any, res) => {
       updatedAt: new Date(),
     });
   } catch (error) {
-    console.error('Error updating demo status:', error);
+    log.error('Error updating demo status:', error);
     res.status(500).json({ message: 'Failed to update demo status' });
   }
 });
@@ -266,7 +268,7 @@ router.get('/api/demos/:id/checklist', async (req: any, res) => {
 
     res.json(checklist);
   } catch (error) {
-    console.error('Error fetching demo checklist:', error);
+    log.error('Error fetching demo checklist:', error);
     res.status(500).json({ message: 'Failed to fetch demo checklist' });
   }
 });
@@ -287,7 +289,7 @@ router.put('/api/demos/:demoId/checklist/:itemId', async (req: any, res) => {
       updatedAt: new Date(),
     });
   } catch (error) {
-    console.error('Error updating checklist item:', error);
+    log.error('Error updating checklist item:', error);
     res.status(500).json({ message: 'Failed to update checklist item' });
   }
 });
@@ -336,7 +338,7 @@ router.get('/api/demos/equipment-availability', async (req: any, res) => {
 
     res.json(equipment);
   } catch (error) {
-    console.error('Error fetching equipment availability:', error);
+    log.error('Error fetching equipment availability:', error);
     res.status(500).json({ message: 'Failed to fetch equipment availability' });
   }
 });

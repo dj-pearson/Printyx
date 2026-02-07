@@ -1,4 +1,8 @@
 /**
+
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('integrations-service');
+
  * INTEGRATIONS SERVICE
  * Handles connections to real third-party APIs for copier dealer platforms
  */
@@ -44,7 +48,7 @@ export class IntegrationsService {
           return false;
       }
     } catch (error) {
-      console.error(`Error testing ${key} connection:`, error);
+      log.error(`Error testing ${key} connection:`, error);
       return false;
     }
   }
@@ -91,7 +95,7 @@ export class IntegrationsService {
       const data = await response.json();
       return data.records || [];
     } catch (error) {
-      console.error('Error syncing Salesforce leads:', error);
+      log.error('Error syncing Salesforce leads:', error);
       return [];
     }
   }
@@ -141,7 +145,7 @@ export class IntegrationsService {
       const data = await response.json();
       return data.QueryResponse?.Invoice || [];
     } catch (error) {
-      console.error('Error syncing QuickBooks invoices:', error);
+      log.error('Error syncing QuickBooks invoices:', error);
       return [];
     }
   }
@@ -180,7 +184,7 @@ export class IntegrationsService {
       const data = await response.json();
       return data.equipment || [];
     } catch (error) {
-      console.error('Error syncing E-Automate equipment:', error);
+      log.error('Error syncing E-Automate equipment:', error);
       return [];
     }
   }
@@ -228,7 +232,7 @@ export class IntegrationsService {
       const data = await response.json();
       return data.contacts || [];
     } catch (error) {
-      console.error('Error searching Apollo prospects:', error);
+      log.error('Error searching Apollo prospects:', error);
       return [];
     }
   }
@@ -274,7 +278,7 @@ export class IntegrationsService {
       const data = await response.json();
       return data.results || [];
     } catch (error) {
-      console.error('Error searching ZoomInfo companies:', error);
+      log.error('Error searching ZoomInfo companies:', error);
       return [];
     }
   }
@@ -437,7 +441,7 @@ export class IntegrationsService {
       );
       return response.ok;
     } catch (error) {
-      console.error('Error sending SMS:', error);
+      log.error('Error sending SMS:', error);
       return false;
     }
   }
@@ -465,7 +469,7 @@ export class IntegrationsService {
       });
       return response.ok;
     } catch (error) {
-      console.error('Error sending email:', error);
+      log.error('Error sending email:', error);
       return false;
     }
   }
@@ -483,7 +487,7 @@ export class IntegrationsService {
       const data = await response.json();
       return data.equipment || [];
     } catch (error) {
-      console.error('Error syncing E-Automate equipment:', error);
+      log.error('Error syncing E-Automate equipment:', error);
       return [];
     }
   }

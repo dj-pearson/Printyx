@@ -5,6 +5,9 @@
 
 import { Router, type Request, type Response } from 'express';
 import { DirectorReportingService } from '../services/director-reporting-service';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('director-reports-api');
+
 import {
   enhanceUserContext,
   requirePermission,
@@ -51,7 +54,7 @@ router.get('/sales/company-performance', requireLevel(5), async (req: Request, r
       },
     });
   } catch (error) {
-    console.error('Error fetching company sales performance:', error);
+    log.error('Error fetching company sales performance:', error);
     res.status(500).json({
       message: 'Failed to fetch company sales performance',
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -95,7 +98,7 @@ router.get('/service/company-performance', requireLevel(5), async (req: Request,
       },
     });
   } catch (error) {
-    console.error('Error fetching company service performance:', error);
+    log.error('Error fetching company service performance:', error);
     res.status(500).json({
       message: 'Failed to fetch company service performance',
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -117,7 +120,7 @@ router.post('/clear-cache', requireLevel(5), async (req: Request, res: Response)
     DirectorReportingService.clearCache();
     res.json({ message: 'Cache cleared successfully' });
   } catch (error) {
-    console.error('Error clearing cache:', error);
+    log.error('Error clearing cache:', error);
     res.status(500).json({
       message: 'Failed to clear cache',
       error: error instanceof Error ? error.message : 'Unknown error',

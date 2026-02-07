@@ -6,6 +6,8 @@ import { masterProductModels } from '../shared/schema';
 import { eq } from 'drizzle-orm';
 import { insertMasterProductModelSchema } from '../shared/schema';
 import multer from 'multer';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('routes-catalog');
 
 const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
@@ -77,7 +79,7 @@ router.get('/api/catalog/models', async (req: any, res) => {
 
     res.json(rows);
   } catch (error) {
-    console.error('Error browsing master catalog:', error);
+    log.error('Error browsing master catalog:', error);
     res.status(500).json({ message: 'Failed to fetch master catalog' });
   }
 });
@@ -107,7 +109,7 @@ router.post('/api/catalog/models', async (req: any, res) => {
     const saved = await storage.upsertMasterProduct(payload);
     res.status(201).json(saved);
   } catch (error: any) {
-    console.error('Error creating master product:', error);
+    log.error('Error creating master product:', error);
     res.status(500).json({
       message: 'Failed to create master product',
       detail: error?.message,
@@ -152,7 +154,7 @@ router.patch('/api/catalog/models/:id', async (req: any, res) => {
 
     res.json({ success: true, updated: updateData });
   } catch (error: any) {
-    console.error('Error updating master product:', error);
+    log.error('Error updating master product:', error);
     res.status(500).json({
       message: 'Failed to update master product',
       detail: error?.message,
@@ -169,7 +171,7 @@ router.get('/api/catalog/manufacturers', async (_req: any, res) => {
     const rows = await storage.listMasterManufacturers();
     res.json(rows);
   } catch (error) {
-    console.error('Error fetching manufacturers:', error);
+    log.error('Error fetching manufacturers:', error);
     res.status(500).json({ message: 'Failed to fetch manufacturers' });
   }
 });
@@ -193,7 +195,7 @@ router.get('/api/enabled-products', async (req: any, res) => {
     const rows = await storage.getEnabledProducts(tenantId);
     res.json(rows);
   } catch (error) {
-    console.error('Error fetching enabled products:', error);
+    log.error('Error fetching enabled products:', error);
     res.status(500).json({ message: 'Failed to fetch enabled products' });
   }
 });
@@ -219,7 +221,7 @@ router.post('/api/catalog/models/:id/enable', async (req: any, res) => {
     const result = await storage.enableMasterProduct(tenantId, id, overrides);
     res.json(result);
   } catch (error) {
-    console.error('Error enabling product:', error);
+    log.error('Error enabling product:', error);
     res.status(500).json({ message: 'Failed to enable product' });
   }
 });
@@ -258,7 +260,7 @@ router.post('/api/catalog/models/bulk-enable', async (req: any, res) => {
 
     res.json({ enabled, skipped });
   } catch (error) {
-    console.error('Error bulk enabling products:', error);
+    log.error('Error bulk enabling products:', error);
     res.status(500).json({ message: 'Failed to bulk enable products' });
   }
 });
@@ -341,7 +343,7 @@ router.post('/api/catalog/models/enable-from-csv', upload.single('file'), async 
 
     res.json({ enabled, skipped });
   } catch (error: any) {
-    console.error('Error enabling products from CSV:', error);
+    log.error('Error enabling products from CSV:', error);
     res.status(500).json({
       message: 'Failed to enable from CSV',
       detail: error?.message,
@@ -391,7 +393,7 @@ router.post('/api/catalog/normalize-categories', async (req: any, res) => {
       total: products.length,
     });
   } catch (error: any) {
-    console.error('Error normalizing categories:', error);
+    log.error('Error normalizing categories:', error);
     res.status(500).json({
       message: 'Failed to normalize categories',
       detail: error?.message,

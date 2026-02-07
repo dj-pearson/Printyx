@@ -14,6 +14,9 @@
  */
 
 import { Command } from 'commander';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('company-dedup-cli');
+
 import {
   findDuplicateGroups,
   mergeCompanies,
@@ -42,64 +45,64 @@ program
   .option('-v, --verbose', 'Show detailed information for each group')
   .action(async (options) => {
     try {
-      console.log('\n🔍 Scanning for duplicate companies...\n');
-      console.log(`Tenant ID: ${options.tenant}\n`);
+      log.info('\n🔍 Scanning for duplicate companies...\n');
+      log.info(`Tenant ID: ${options.tenant}\n`);
 
       const summary: DeduplicationSummary = await findDuplicateGroups(options.tenant);
 
-      console.log('═══════════════════════════════════════════════════════════════');
-      console.log('                    DEDUPLICATION SCAN RESULTS                  ');
-      console.log('═══════════════════════════════════════════════════════════════\n');
+      log.info('═══════════════════════════════════════════════════════════════');
+      log.info('                    DEDUPLICATION SCAN RESULTS                  ');
+      log.info('═══════════════════════════════════════════════════════════════\n');
 
-      console.log(`Total companies in tenant:     ${summary.totalCompanies}`);
-      console.log(`Duplicate groups found:        ${summary.duplicateGroups}`);
-      console.log(`Total duplicate records:       ${summary.totalDuplicates}`);
-      console.log(
+      log.info(`Total companies in tenant:     ${summary.totalCompanies}`);
+      log.info(`Duplicate groups found:        ${summary.duplicateGroups}`);
+      log.info(`Total duplicate records:       ${summary.totalDuplicates}`);
+      log.info(
         `Records to be merged:          ${summary.totalDuplicates} → ${summary.duplicateGroups} survivors\n`,
       );
 
       if (summary.groups.length === 0) {
-        console.log('✅ No duplicates found! Your data is clean.\n');
+        log.info('✅ No duplicates found! Your data is clean.\n');
         process.exit(0);
       }
 
-      console.log('───────────────────────────────────────────────────────────────');
-      console.log('                      DUPLICATE GROUPS                          ');
-      console.log('───────────────────────────────────────────────────────────────\n');
+      log.info('───────────────────────────────────────────────────────────────');
+      log.info('                      DUPLICATE GROUPS                          ');
+      log.info('───────────────────────────────────────────────────────────────\n');
 
       for (let i = 0; i < summary.groups.length; i++) {
         const group = summary.groups[i];
-        console.log(`Group ${i + 1}: ${group.key.split('|')[0] || 'Unknown'}`);
-        console.log(`  Location: ${group.key.split('|').slice(1).join(', ') || 'No location'}`);
-        console.log(`  Duplicate count: ${group.companies.length}`);
-        console.log(`  Total contacts: ${group.contactCount}`);
-        console.log(`  Survivor ID: ${group.survivorId}`);
-        console.log(`  To be deleted: ${group.duplicateIds.length} records`);
+        log.info(`Group ${i + 1}: ${group.key.split('|')[0] || 'Unknown'}`);
+        log.info(`  Location: ${group.key.split('|').slice(1).join(', ') || 'No location'}`);
+        log.info(`  Duplicate count: ${group.companies.length}`);
+        log.info(`  Total contacts: ${group.contactCount}`);
+        log.info(`  Survivor ID: ${group.survivorId}`);
+        log.info(`  To be deleted: ${group.duplicateIds.length} records`);
 
         if (options.verbose) {
-          console.log('  Companies in group:');
+          log.info('  Companies in group:');
           for (const company of group.companies) {
             const isSurvivor = company.id === group.survivorId;
             const marker = isSurvivor ? '→ [SURVIVOR]' : '  [DELETE]';
-            console.log(`    ${marker} ${company.id}`);
-            console.log(`             Name: ${company.businessName}`);
-            console.log(`             Created: ${company.createdAt}`);
-            console.log(`             Phone: ${company.phone || 'N/A'}`);
+            log.info(`    ${marker} ${company.id}`);
+            log.info(`             Name: ${company.businessName}`);
+            log.info(`             Created: ${company.createdAt}`);
+            log.info(`             Phone: ${company.phone || 'N/A'}`);
           }
         }
-        console.log('');
+        log.info('');
       }
 
-      console.log('───────────────────────────────────────────────────────────────');
-      console.log('                         NEXT STEPS                            ');
-      console.log('───────────────────────────────────────────────────────────────\n');
-      console.log('To execute the merge, run:');
-      console.log(`  npx tsx server/cli/company-dedup-cli.ts merge -t ${options.tenant}\n`);
-      console.log('⚠️  IMPORTANT: Make sure to backup your database before merging!\n');
+      log.info('───────────────────────────────────────────────────────────────');
+      log.info('                         NEXT STEPS                            ');
+      log.info('───────────────────────────────────────────────────────────────\n');
+      log.info('To execute the merge, run:');
+      log.info(`  npx tsx server/cli/company-dedup-cli.ts merge -t ${options.tenant}\n`);
+      log.info('⚠️  IMPORTANT: Make sure to backup your database before merging!\n');
 
       process.exit(0);
     } catch (error) {
-      console.error('Error scanning for duplicates:', error);
+      log.error('Error scanning for duplicates:', error);
       process.exit(1);
     }
   });
@@ -116,30 +119,30 @@ program
   .action(async (options) => {
     try {
       if (!options.confirm) {
-        console.log('\n⚠️  WARNING: This operation will permanently modify your database!');
-        console.log('Make sure you have a database backup before proceeding.\n');
-        console.log('To confirm, add the --confirm flag:\n');
-        console.log(
+        log.info('\n⚠️  WARNING: This operation will permanently modify your database!');
+        log.info('Make sure you have a database backup before proceeding.\n');
+        log.info('To confirm, add the --confirm flag:\n');
+        log.info(
           `  npx tsx server/cli/company-dedup-cli.ts merge -t ${options.tenant} --confirm\n`,
         );
         process.exit(0);
       }
 
-      console.log('\n🔄 Starting company deduplication merge...\n');
-      console.log(`Tenant ID: ${options.tenant}`);
-      console.log(`Performed by: ${options.user}\n`);
+      log.info('\n🔄 Starting company deduplication merge...\n');
+      log.info(`Tenant ID: ${options.tenant}`);
+      log.info(`Performed by: ${options.user}\n`);
 
       const result = await runDeduplication(options.tenant, {
         dryRun: false,
         performedBy: options.user,
       });
 
-      console.log('═══════════════════════════════════════════════════════════════');
-      console.log('                      MERGE RESULTS                             ');
-      console.log('═══════════════════════════════════════════════════════════════\n');
+      log.info('═══════════════════════════════════════════════════════════════');
+      log.info('                      MERGE RESULTS                             ');
+      log.info('═══════════════════════════════════════════════════════════════\n');
 
-      console.log(`Groups processed: ${result.summary.duplicateGroups}`);
-      console.log(`Duplicates merged: ${result.summary.totalDuplicates}\n`);
+      log.info(`Groups processed: ${result.summary.duplicateGroups}`);
+      log.info(`Duplicates merged: ${result.summary.totalDuplicates}\n`);
 
       let totalContactsMoved = 0;
       let totalActivitiesMoved = 0;
@@ -151,34 +154,34 @@ program
           successCount++;
           totalContactsMoved += mergeResult.contactsMoved;
           totalActivitiesMoved += mergeResult.activitiesMoved;
-          console.log(
+          log.info(
             `✅ Merged ${mergeResult.mergedCompanyIds.length} companies into ${mergeResult.survivorId}`,
           );
-          console.log(`   - Contacts moved: ${mergeResult.contactsMoved}`);
-          console.log(`   - Activities moved: ${mergeResult.activitiesMoved}`);
+          log.info(`   - Contacts moved: ${mergeResult.contactsMoved}`);
+          log.info(`   - Activities moved: ${mergeResult.activitiesMoved}`);
         } else {
           failCount++;
-          console.log(`❌ Failed to merge into ${mergeResult.survivorId}: ${mergeResult.error}`);
+          log.info(`❌ Failed to merge into ${mergeResult.survivorId}: ${mergeResult.error}`);
         }
       }
 
-      console.log('\n───────────────────────────────────────────────────────────────');
-      console.log('                         SUMMARY                               ');
-      console.log('───────────────────────────────────────────────────────────────\n');
-      console.log(`Successful merges:    ${successCount}`);
-      console.log(`Failed merges:        ${failCount}`);
-      console.log(`Total contacts moved: ${totalContactsMoved}`);
-      console.log(`Total activities moved: ${totalActivitiesMoved}\n`);
+      log.info('\n───────────────────────────────────────────────────────────────');
+      log.info('                         SUMMARY                               ');
+      log.info('───────────────────────────────────────────────────────────────\n');
+      log.info(`Successful merges:    ${successCount}`);
+      log.info(`Failed merges:        ${failCount}`);
+      log.info(`Total contacts moved: ${totalContactsMoved}`);
+      log.info(`Total activities moved: ${totalActivitiesMoved}\n`);
 
       if (failCount === 0) {
-        console.log('✅ All merges completed successfully!\n');
+        log.info('✅ All merges completed successfully!\n');
       } else {
-        console.log('⚠️  Some merges failed. Check the errors above.\n');
+        log.info('⚠️  Some merges failed. Check the errors above.\n');
       }
 
       process.exit(failCount > 0 ? 1 : 0);
     } catch (error) {
-      console.error('Error executing merge:', error);
+      log.error('Error executing merge:', error);
       process.exit(1);
     }
   });
@@ -195,53 +198,53 @@ program
     try {
       const companyIds = options.ids.split(',').map((id: string) => id.trim());
 
-      console.log('\n📋 Fetching details for company IDs...\n');
+      log.info('\n📋 Fetching details for company IDs...\n');
 
       const details = await getDuplicateGroupDetails(options.tenant, companyIds);
 
-      console.log('═══════════════════════════════════════════════════════════════');
-      console.log('                     COMPANY DETAILS                            ');
-      console.log('═══════════════════════════════════════════════════════════════\n');
+      log.info('═══════════════════════════════════════════════════════════════');
+      log.info('                     COMPANY DETAILS                            ');
+      log.info('═══════════════════════════════════════════════════════════════\n');
 
-      console.log(`Companies found: ${details.companies.length}`);
-      console.log(`Total contacts: ${details.contacts.length}`);
-      console.log(`Total activities: ${details.activities.length}`);
-      console.log(`Recommended survivor: ${details.recommendedSurvivor?.id || 'None'}\n`);
+      log.info(`Companies found: ${details.companies.length}`);
+      log.info(`Total contacts: ${details.contacts.length}`);
+      log.info(`Total activities: ${details.activities.length}`);
+      log.info(`Recommended survivor: ${details.recommendedSurvivor?.id || 'None'}\n`);
 
-      console.log('───────────────────────────────────────────────────────────────');
-      console.log('                       COMPANIES                               ');
-      console.log('───────────────────────────────────────────────────────────────\n');
+      log.info('───────────────────────────────────────────────────────────────');
+      log.info('                       COMPANIES                               ');
+      log.info('───────────────────────────────────────────────────────────────\n');
 
       for (const company of details.companies) {
         const isSurvivor = company.id === details.recommendedSurvivor?.id;
-        console.log(`${isSurvivor ? '→ [RECOMMENDED SURVIVOR]' : '  [DUPLICATE]'}`);
-        console.log(`  ID: ${company.id}`);
-        console.log(`  Name: ${company.businessName}`);
-        console.log(`  City: ${company.billingCity || 'N/A'}`);
-        console.log(`  State: ${company.billingState || 'N/A'}`);
-        console.log(`  Phone: ${company.phone || 'N/A'}`);
-        console.log(`  Created: ${company.createdAt}`);
-        console.log('');
+        log.info(`${isSurvivor ? '→ [RECOMMENDED SURVIVOR]' : '  [DUPLICATE]'}`);
+        log.info(`  ID: ${company.id}`);
+        log.info(`  Name: ${company.businessName}`);
+        log.info(`  City: ${company.billingCity || 'N/A'}`);
+        log.info(`  State: ${company.billingState || 'N/A'}`);
+        log.info(`  Phone: ${company.phone || 'N/A'}`);
+        log.info(`  Created: ${company.createdAt}`);
+        log.info('');
       }
 
       if (details.contacts.length > 0) {
-        console.log('───────────────────────────────────────────────────────────────');
-        console.log('                       CONTACTS                                ');
-        console.log('───────────────────────────────────────────────────────────────\n');
+        log.info('───────────────────────────────────────────────────────────────');
+        log.info('                       CONTACTS                                ');
+        log.info('───────────────────────────────────────────────────────────────\n');
 
         for (const contact of details.contacts) {
-          console.log(
+          log.info(
             `  • ${contact.firstName || ''} ${contact.lastName || ''} (${contact.email || 'no email'})`,
           );
-          console.log(`    Company ID: ${contact.companyId}`);
-          console.log(`    Phone: ${contact.phone || 'N/A'}`);
-          console.log('');
+          log.info(`    Company ID: ${contact.companyId}`);
+          log.info(`    Phone: ${contact.phone || 'N/A'}`);
+          log.info('');
         }
       }
 
       process.exit(0);
     } catch (error) {
-      console.error('Error fetching details:', error);
+      log.error('Error fetching details:', error);
       process.exit(1);
     }
   });
@@ -258,10 +261,10 @@ program
   .option('-s, --state <state>', 'State (optional)')
   .action(async (options) => {
     try {
-      console.log('\n🔍 Checking for existing company...\n');
-      console.log(`Name: ${options.name}`);
-      console.log(`City: ${options.city || 'Any'}`);
-      console.log(`State: ${options.state || 'Any'}\n`);
+      log.info('\n🔍 Checking for existing company...\n');
+      log.info(`Name: ${options.name}`);
+      log.info(`City: ${options.city || 'Any'}`);
+      log.info(`State: ${options.state || 'Any'}\n`);
 
       const existing = await findExistingCompany(
         options.tenant,
@@ -271,23 +274,23 @@ program
       );
 
       if (existing) {
-        console.log('⚠️  DUPLICATE FOUND!\n');
-        console.log(`Existing company ID: ${existing.id}`);
-        console.log(`Name: ${existing.businessName}`);
-        console.log(`City: ${existing.billingCity || 'N/A'}`);
-        console.log(`State: ${existing.billingState || 'N/A'}`);
-        console.log(`Phone: ${existing.phone || 'N/A'}`);
-        console.log(`Created: ${existing.createdAt}\n`);
-        console.log(
+        log.info('⚠️  DUPLICATE FOUND!\n');
+        log.info(`Existing company ID: ${existing.id}`);
+        log.info(`Name: ${existing.businessName}`);
+        log.info(`City: ${existing.billingCity || 'N/A'}`);
+        log.info(`State: ${existing.billingState || 'N/A'}`);
+        log.info(`Phone: ${existing.phone || 'N/A'}`);
+        log.info(`Created: ${existing.createdAt}\n`);
+        log.info(
           'Recommendation: Add contacts to the existing company instead of creating a new one.\n',
         );
       } else {
-        console.log('✅ No duplicate found. Safe to create new company.\n');
+        log.info('✅ No duplicate found. Safe to create new company.\n');
       }
 
       process.exit(0);
     } catch (error) {
-      console.error('Error checking for duplicate:', error);
+      log.error('Error checking for duplicate:', error);
       process.exit(1);
     }
   });

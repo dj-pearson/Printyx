@@ -3,6 +3,8 @@ import { smsService } from './sms-service';
 import { db } from '../db';
 import { businessRecords, serviceTickets } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('customer-notification-service');
 
 /**
  * Customer Notification Service
@@ -93,7 +95,7 @@ export class CustomerNotificationService {
         preferredContact: 'both', // Default to both channels
       };
     } catch (error) {
-      console.error('[CUSTOMER NOTIFICATION] Error fetching customer contact:', error);
+      log.error('[CUSTOMER NOTIFICATION] Error fetching customer contact:', error);
       return null;
     }
   }
@@ -173,7 +175,7 @@ export class CustomerNotificationService {
 
         if (emailResult.success) {
           result.emailSent = true;
-          console.log(
+          log.info(
             `[CUSTOMER NOTIFICATION] Email sent to ${data.customerContact.email} for ticket ${data.ticketId}`,
           );
         } else {
@@ -181,7 +183,7 @@ export class CustomerNotificationService {
         }
       } catch (error: any) {
         result.errors.push(`Email error: ${error.message}`);
-        console.error('[CUSTOMER NOTIFICATION] Email send error:', error);
+        log.error('[CUSTOMER NOTIFICATION] Email send error:', error);
       }
     }
 
@@ -201,7 +203,7 @@ export class CustomerNotificationService {
 
         if (smsResult.success) {
           result.smsSent = true;
-          console.log(
+          log.info(
             `[CUSTOMER NOTIFICATION] SMS sent to ${data.customerContact.phone} for ticket ${data.ticketId}`,
           );
         } else {
@@ -209,14 +211,14 @@ export class CustomerNotificationService {
         }
       } catch (error: any) {
         result.errors.push(`SMS error: ${error.message}`);
-        console.error('[CUSTOMER NOTIFICATION] SMS send error:', error);
+        log.error('[CUSTOMER NOTIFICATION] SMS send error:', error);
       }
     }
 
     result.success = result.emailSent || result.smsSent;
 
     if (!result.success) {
-      console.warn(
+      log.warn(
         `[CUSTOMER NOTIFICATION] Failed to send any notifications for ticket ${data.ticketId}`,
       );
     }
@@ -254,7 +256,7 @@ export class CustomerNotificationService {
 
         if (smsResult.success) {
           result.smsSent = true;
-          console.log(
+          log.info(
             `[CUSTOMER NOTIFICATION] 30-min reminder SMS sent to ${data.customerContact.phone}`,
           );
         } else {
@@ -262,7 +264,7 @@ export class CustomerNotificationService {
         }
       } catch (error: any) {
         result.errors.push(`SMS error: ${error.message}`);
-        console.error('[CUSTOMER NOTIFICATION] 30-min reminder SMS error:', error);
+        log.error('[CUSTOMER NOTIFICATION] 30-min reminder SMS error:', error);
       }
     }
 
@@ -333,7 +335,7 @@ export class CustomerNotificationService {
 
         if (smsResult.success) {
           result.smsSent = true;
-          console.log(`[CUSTOMER NOTIFICATION] Arrival SMS sent to ${data.customerContact.phone}`);
+          log.info(`[CUSTOMER NOTIFICATION] Arrival SMS sent to ${data.customerContact.phone}`);
         } else {
           result.errors.push(`SMS failed: ${smsResult.error}`);
         }
@@ -353,7 +355,7 @@ export class CustomerNotificationService {
   scheduleReminder(ticketId: string, delayMinutes: number): void {
     // In production, this would integrate with a job scheduler like Bull, Agenda, or node-cron
     // For now, we'll just log the intent
-    console.log(
+    log.info(
       `[CUSTOMER NOTIFICATION] Reminder scheduled for ticket ${ticketId} in ${delayMinutes} minutes`,
     );
 

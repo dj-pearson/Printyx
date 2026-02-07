@@ -1,4 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('document-ocr-ai-service');
+
 let createWorker: any;
 try {
   const tesseract = require('tesseract.js');
@@ -54,7 +57,7 @@ export class OCRService {
       this.worker = await createWorker('eng', 1, {
         logger: (m) => {
           if (m.status === 'recognizing text') {
-            console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
+            log.info(`OCR Progress: ${Math.round(m.progress * 100)}%`);
           }
         },
       });
@@ -75,7 +78,7 @@ export class OCRService {
         confidence: Math.round(data.confidence),
       };
     } catch (error: any) {
-      console.error('OCR Error:', error);
+      log.error('OCR Error:', error);
       return {
         text: '',
         confidence: 0,
@@ -101,7 +104,7 @@ export class OCRService {
         confidence: 85, // PDF text extraction is generally reliable
       };
     } catch (error: any) {
-      console.error('PDF OCR Error:', error);
+      log.error('PDF OCR Error:', error);
       return {
         text: '',
         confidence: 0,
@@ -195,7 +198,7 @@ export class AIFieldExtractionService {
         requiresReview: result.requiresReview !== false, // Default to true
       };
     } catch (error: any) {
-      console.error('AI Field Extraction Error:', error);
+      log.error('AI Field Extraction Error:', error);
       return {
         extractedFields: {},
         requiresReview: true,
@@ -467,7 +470,7 @@ export class DocumentProcessingService {
       }
 
       // Step 1: OCR
-      console.log(`Starting OCR for document ${uploadId}`);
+      log.info(`Starting OCR for document ${uploadId}`);
       await db
         .update(documentUploads)
         .set({ ocrStatus: 'processing' })
@@ -491,7 +494,7 @@ export class DocumentProcessingService {
       }
 
       // Step 2: AI Field Extraction
-      console.log(`Starting AI field extraction for document ${uploadId}`);
+      log.info(`Starting AI field extraction for document ${uploadId}`);
 
       const aiResult = await AIFieldExtractionService.extractFields(
         ocrResult.text,
@@ -518,9 +521,9 @@ export class DocumentProcessingService {
         })
         .where(eq(documentUploads.id, uploadId));
 
-      console.log(`Document ${uploadId} processed successfully`);
+      log.info(`Document ${uploadId} processed successfully`);
     } catch (error: any) {
-      console.error(`Document processing failed for ${uploadId}:`, error);
+      log.error(`Document processing failed for ${uploadId}:`, error);
 
       await db
         .update(documentUploads)

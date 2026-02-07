@@ -4,6 +4,9 @@
 // =====================================================================
 
 import { Router, Response } from 'express';
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('warehouse-reports-api');
+
 import {
   enhanceUserContext,
   requirePermission,
@@ -52,7 +55,7 @@ router.get(
 
       res.json(stats);
     } catch (error) {
-      console.error('Error fetching warehouse team quick stats:', error);
+      log.error('Error fetching warehouse team quick stats:', error);
       res.status(500).json({
         message: 'Failed to fetch warehouse team stats',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -83,7 +86,7 @@ router.post(
         pattern: pattern || 'all',
       });
     } catch (error) {
-      console.error('Error invalidating cache:', error);
+      log.error('Error invalidating cache:', error);
       res.status(500).json({ message: 'Failed to invalidate cache' });
     }
   },
