@@ -1,7 +1,7 @@
 {
   "project": "Printyx Enterprise Production Readiness",
   "branchName": "ralph/enterprise-production-readiness",
-  "description": "Make Printyx print shop management SaaS enterprise-grade, professional, and production-ready. Platform: React 18 + TypeScript + Express + PostgreSQL (Drizzle ORM) + Supabase. Architecture: multi-tenant 4-tier hierarchy (Platform > Company > Regional > Location), 8-level RBAC, 213 pages, 127 route files, 91 services, 51 schema files. Critical gaps: 13,197-line monolithic routes.ts (288 inline handlers remaining), minimal test coverage (~13 unit test files for 127 route files), placeholder K8s deployments (echo commands), no proper DB migrations (using db:push), poor accessibility (7 ARIA usages), no i18n, inconsistent error handling and input validation, console.log scattered alongside structured logger. Quality checks: npm run check (typecheck), npm run test (unit tests), npm run lint (eslint), npm run build (vite build).",
+  "description": "Make Printyx print shop management SaaS enterprise-grade, professional, and production-ready. Platform: React 18 + TypeScript + Express + PostgreSQL (Drizzle ORM) + Supabase. Architecture: multi-tenant 4-tier hierarchy (Platform > Company > Regional > Location), 8-level RBAC, 213 pages, 127 route files, 91 services, 51 schema files. Quality checks: npm run check (typecheck), npm run test (unit tests), npm run lint (eslint), npm run build (vite build).",
   "userStories": [
     {
       "id": "US-001",
@@ -888,6 +888,183 @@
       "priority": 50,
       "passes": false,
       "notes": "server/services/equipment-lifecycle-state-machine.ts has 7 TODOs. The state machine pattern is already implemented - just the side effects (notifications, external calls) are stubbed."
+    },
+    {
+      "id": "US-051",
+      "title": "Session Guard with graceful session expiry handling",
+      "description": "As a user, I want to see a clear session expired modal instead of cascading error toasts when my JWT expires, so that I understand what happened and can sign in again cleanly.",
+      "acceptanceCriteria": [
+        "SessionGuard component wraps the authenticated app and monitors Supabase auth events",
+        "A modal dialog appears when session expires instead of multiple error toasts",
+        "Global flag prevents cascading 401 toasts from multiple simultaneous API calls",
+        "User is redirected to login cleanly after clicking Sign In Again",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented in client/src/components/SessionGuard.tsx, integrated into App.tsx",
+      "category": "core"
+    },
+    {
+      "id": "US-052",
+      "title": "API retry with automatic token refresh on 401",
+      "description": "As a user, I want the platform to automatically refresh my access token when it expires during a request, so that I don't get unnecessarily logged out.",
+      "acceptanceCriteria": [
+        "apiRequest attempts token refresh via refreshSession() on 401 before failing",
+        "apiFormRequest has the same retry-with-refresh behavior",
+        "getQueryFn (TanStack Query default) has the same retry-with-refresh behavior",
+        "Concurrent refresh attempts are deduplicated via a shared promise",
+        "If refresh fails, the SessionGuard modal is triggered via custom event",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented in client/src/lib/queryClient.ts with refreshTokenOnce() and emitAuthError()",
+      "category": "core"
+    },
+    {
+      "id": "US-053",
+      "title": "Frontend route guards for admin pages",
+      "description": "As a platform admin, I want non-admin users to see an access denied page instead of broken API errors when they navigate to admin routes.",
+      "acceptanceCriteria": [
+        "Create a RouteGuard component that checks user.role.level before rendering admin pages",
+        "Admin routes (/admin/*, /root-admin-*, /platform-crm/*) require role level >= 7",
+        "Non-authorized users see a friendly Access Denied page with navigation back to dashboard",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "category": "core"
+    },
+    {
+      "id": "US-054",
+      "title": "In-app notification center with real-time updates",
+      "description": "As a user, I want an in-app notification bell/dropdown that shows real-time notifications for important events.",
+      "acceptanceCriteria": [
+        "Notification bell icon in top nav with unread count badge",
+        "Dropdown panel showing recent notifications grouped by type",
+        "Mark individual or all notifications as read",
+        "WebSocket integration for real-time delivery",
+        "Backend notification service with database persistence",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "WebSocket hook exists but no notification system built on it",
+      "category": "core"
+    },
+    {
+      "id": "US-055",
+      "title": "Guided onboarding wizard for new tenants",
+      "description": "As a new tenant admin, I want a step-by-step onboarding wizard after signup that helps me configure my company, invite team members, and set up key integrations.",
+      "acceptanceCriteria": [
+        "Multi-step wizard triggered on first login after signup",
+        "Steps: Company profile, Team invitation, Integration setup, Product catalog import",
+        "Progress indicator showing completion",
+        "Skip option for each step with ability to return later",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "OnboardingDashboard page exists but is a management view, not a first-run wizard",
+      "category": "integration"
+    },
+    {
+      "id": "US-056",
+      "title": "Enhanced global search with backend API integration",
+      "description": "As a user, I want the Cmd/Ctrl+K command palette to actually search across customers, leads, quotes, invoices, and equipment.",
+      "acceptanceCriteria": [
+        "Search endpoint that queries across business_records, quotes, invoices, equipment",
+        "Results grouped by entity type with icons and quick actions",
+        "Recent searches persisted in localStorage",
+        "Keyboard navigation through results",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "CommandPalette exists at client/src/components/navigation/command-palette.tsx but needs real search backend",
+      "category": "core"
+    },
+    {
+      "id": "US-057",
+      "title": "Comprehensive audit trail viewer UI for platform admins",
+      "description": "As a platform admin, I want a searchable, filterable audit log viewer for compliance and debugging.",
+      "acceptanceCriteria": [
+        "Admin page at /admin/audit-logs with table of audit events",
+        "Filters by: date range, user, tenant, action type, resource type",
+        "Export to CSV/JSON for compliance reporting",
+        "Pagination with server-side filtering",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Backend audit-log-service.ts and routes-audit-logs.ts exist but no dedicated admin viewer UI",
+      "category": "core"
+    },
+    {
+      "id": "US-058",
+      "title": "API key management self-service UI",
+      "description": "As a tenant admin, I want to create, rotate, and revoke API keys from a self-service UI for integration setup.",
+      "acceptanceCriteria": [
+        "Settings page for API key management",
+        "Create new API key with name, expiration, and permission scopes",
+        "List existing keys with last used timestamp",
+        "Revoke/rotate keys with confirmation dialog",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Backend api-key-service.ts and api-key-routes.ts exist but no frontend UI",
+      "category": "core"
+    },
+    {
+      "id": "US-059",
+      "title": "Dashboard widget customization with drag-and-drop",
+      "description": "As a user, I want to customize my dashboard by adding, removing, and rearranging widgets relevant to my role.",
+      "acceptanceCriteria": [
+        "Drag-and-drop widget rearrangement on the main dashboard",
+        "Widget library with available widgets based on user role",
+        "Layout persisted per user in database",
+        "Responsive grid that adapts to screen size",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "CustomDashboard page exists but is separate from the main dashboard",
+      "category": "polish"
+    },
+    {
+      "id": "US-060",
+      "title": "Bulk operations framework with progress tracking",
+      "description": "As a sales manager, I want to perform bulk operations on selected records with progress tracking.",
+      "acceptanceCriteria": [
+        "Multi-select checkboxes on list pages",
+        "Bulk action toolbar appears when items are selected",
+        "Actions: assign to user, change status, export, delete",
+        "Progress bar for long-running bulk operations",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "",
+      "category": "core"
+    },
+    {
+      "id": "US-061",
+      "title": "Data export with scheduled reports via email",
+      "description": "As a manager, I want to schedule recurring data exports that are emailed to me automatically.",
+      "acceptanceCriteria": [
+        "Schedule configuration: daily, weekly, monthly, custom cron",
+        "Report format options: CSV, Excel, PDF",
+        "Email delivery with attachment or download link",
+        "Manage scheduled exports from Reports page",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "ScheduledReportsDashboard page exists as a feature demo but needs real backend",
+      "category": "integration"
     }
   ]
 }
