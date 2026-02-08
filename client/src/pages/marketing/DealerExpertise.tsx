@@ -24,7 +24,7 @@ const DealerExpertise = () => {
           name: 'Dealer Expertise - Built by Dealers, for Dealers',
           description:
             'Printyx is built on deep copier dealer domain expertise. Every workflow, metric, and feature designed by people who understand your business inside-out. Defensible through superior execution.',
-          url: 'https://printyx.com/dealer-expertise',
+          url: 'https://printyx.net/dealer-expertise',
           mainEntity: {
             '@type': 'SoftwareApplication',
             name: 'Printyx',

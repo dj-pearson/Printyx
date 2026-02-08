@@ -362,6 +362,14 @@ function applySEO(config: SEORouteConfig, dynamicData?: DynamicSEOData): () => v
   setMeta('twitter:image', ogImage);
   setMeta('twitter:site', '@printyx');
 
+  // Content freshness signals for GEO - AI engines weight recency heavily
+  const currentDate = new Date().toISOString().split('T')[0];
+  setMeta('article:modified_time', currentDate, true);
+  if (config.ogType === 'article') {
+    setMeta('article:section', 'Copier Dealer Management', true);
+    setMeta('article:tag', (keywords || []).slice(0, 5).join(', '), true);
+  }
+
   // Generate and inject schemas
   const configWithBreadcrumbs = { ...config, breadcrumbs };
   const schemas = dynamicData?.schema

@@ -56,17 +56,17 @@ const Homepage = () => {
       'managed print services',
       'MPS platform',
     ],
-    ogImage: 'https://printyx.com/og-image-homepage.jpg',
+    ogImage: 'https://printyx.net/og-image-homepage.jpg',
     ogType: 'website',
-    canonicalUrl: 'https://printyx.com',
+    canonicalUrl: 'https://printyx.net',
     schema: {
       '@context': 'https://schema.org',
       '@graph': [
         // Organization Schema
         generateOrganizationSchema({
           name: 'Printyx',
-          url: 'https://printyx.com',
-          logoUrl: 'https://printyx.com/logo.png',
+          url: 'https://printyx.net',
+          logoUrl: 'https://printyx.net/logo.png',
           description:
             'AI-powered predictive intelligence platform for copier dealers. Modern architecture with predictive equipment failure detection, dynamic pricing engine, and smart service dispatch.',
           socialProfiles: ['https://linkedin.com/company/printyx', 'https://twitter.com/printyx'],
