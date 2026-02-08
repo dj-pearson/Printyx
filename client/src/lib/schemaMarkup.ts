@@ -333,7 +333,7 @@ export function generateArticleSchema(params: {
     name: 'Printyx',
     logo: {
       '@type': 'ImageObject',
-      url: 'https://printyx.com/logo.png',
+      url: 'https://printyx.net/logo.png',
     },
   };
 
