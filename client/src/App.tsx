@@ -12,6 +12,7 @@ import { CommandPalette } from '@/components/navigation/command-palette';
 import { useCommandPalette } from '@/hooks/useCommandPalette';
 import { PWAProvider } from '@/components/pwa/PWAProvider';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { SessionGuard } from '@/components/SessionGuard';
 import { AccessibilityProvider } from '@/hooks/useAccessibility';
 import { LiveRegionProvider } from '@/components/accessibility/LiveRegion';
 
@@ -797,45 +798,47 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AccessibilityProvider>
-          <LiveRegionProvider>
-            <TooltipProvider>
-              <PWAProvider>
-                <SEOProvider>
-                  <Toaster />
-                  <ErrorBoundary
-                    level="critical"
-                    onError={(error, errorInfo) => {
-                      // Log to console in development, send to monitoring in production
-                      console.error('[App Error Boundary]', error, errorInfo);
-                    }}
-                  >
-                    <React.Suspense
-                      fallback={
-                        <div
-                          className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
-                          role="status"
-                          aria-busy="true"
-                          aria-label="Loading application"
-                        >
-                          <div className="text-center">
-                            <div
-                              className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"
-                              aria-hidden="true"
-                            />
-                            <p className="mt-4 text-gray-600">Loading...</p>
-                          </div>
-                        </div>
-                      }
+        <SessionGuard>
+          <AccessibilityProvider>
+            <LiveRegionProvider>
+              <TooltipProvider>
+                <PWAProvider>
+                  <SEOProvider>
+                    <Toaster />
+                    <ErrorBoundary
+                      level="critical"
+                      onError={(error, errorInfo) => {
+                        // Log to console in development, send to monitoring in production
+                        console.error('[App Error Boundary]', error, errorInfo);
+                      }}
                     >
-                      <Router />
-                    </React.Suspense>
-                  </ErrorBoundary>
-                </SEOProvider>
-              </PWAProvider>
-            </TooltipProvider>
-          </LiveRegionProvider>
-        </AccessibilityProvider>
+                      <React.Suspense
+                        fallback={
+                          <div
+                            className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
+                            role="status"
+                            aria-busy="true"
+                            aria-label="Loading application"
+                          >
+                            <div className="text-center">
+                              <div
+                                className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"
+                                aria-hidden="true"
+                              />
+                              <p className="mt-4 text-gray-600">Loading...</p>
+                            </div>
+                          </div>
+                        }
+                      >
+                        <Router />
+                      </React.Suspense>
+                    </ErrorBoundary>
+                  </SEOProvider>
+                </PWAProvider>
+              </TooltipProvider>
+            </LiveRegionProvider>
+          </AccessibilityProvider>
+        </SessionGuard>
       </AuthProvider>
     </QueryClientProvider>
   );
