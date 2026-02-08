@@ -10,6 +10,30 @@ import {
   Building2,
   MapPin,
 } from 'lucide-react';
+import { GEOFaqSection } from '@/lib/seo/GEOFaqSection';
+
+const caseStudyFaqs = [
+  {
+    question: 'What results do copier dealers see after switching to Printyx?',
+    answer:
+      'Copier dealers switching to Printyx see an average 30-40% reduction in emergency service calls, 15-25% increase in profitability, and payback within 4-7 months. For example, MidAtlantic Office Solutions saved $47,000 annually, while Pacific Print Services found $1.2M in additional annual profit through AI-powered contract optimization.',
+  },
+  {
+    question: 'How long does it take to migrate from E-Automate to Printyx?',
+    answer:
+      'Migration from E-Automate to Printyx typically takes 6-8 weeks. This includes data migration (weeks 1-2), team training (weeks 3-4), workflow optimization (weeks 5-6), and full production rollout (weeks 7-8). Southern Business Systems completed their migration in 6 weeks with zero data loss and reported 45 minutes saved per technician per day.',
+  },
+  {
+    question: 'What is the ROI of switching to Printyx from legacy dealer management software?',
+    answer:
+      'Dealers achieve payback in 4-7 months. ROI sources include emergency call reduction (30-40%), contract repricing from AI analysis (15-25% margin improvement), and efficiency gains from mobile-first tools. One dealer identified 147 underpriced contracts at renewal and generated $1.2M in additional annual profit.',
+  },
+  {
+    question: 'Do field technicians like using Printyx mobile app?',
+    answer:
+      'Yes, technicians rate the Printyx mobile app 4.8 out of 5. The offline-first design works without connectivity, training takes 2-3 hours versus days for legacy systems, and 90%+ of technicians report satisfaction. Southern Business Systems reported 92% technician satisfaction after switching from E-Automate.',
+  },
+];
 
 const CaseStudies = () => {
   const caseStudies = [
@@ -85,7 +109,7 @@ const CaseStudies = () => {
           name: 'Customer Success Stories - Printyx Case Studies',
           description:
             "See how copier dealers increased profitability 15-25%, reduced emergency calls 30-40%, and improved customer satisfaction with Printyx's predictive intelligence platform.",
-          url: 'https://printyx.com/case-studies',
+          url: 'https://printyx.net/case-studies',
         })}
       </script>
 
@@ -367,6 +391,16 @@ const CaseStudies = () => {
                 </CardContent>
               </Card>
             </div>
+          </div>
+        </section>
+
+        {/* FAQ Section for GEO/SEO */}
+        <section className="py-16 bg-white">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <GEOFaqSection
+              faqs={caseStudyFaqs}
+              title="Common Questions About Switching to Printyx"
+            />
           </div>
         </section>
 
