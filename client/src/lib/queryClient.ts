@@ -1,7 +1,36 @@
 import { QueryClient, QueryFunction } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { config, getApiUrl } from '@/lib/config';
-import { getAccessToken } from '@/lib/supabase';
+import { getAccessToken, refreshSession } from '@/lib/supabase';
+import { isSessionExpired, markSessionExpired } from '@/components/SessionGuard';
+
+// Prevent concurrent token refresh attempts
+let _refreshPromise: Promise<string | null> | null = null;
+
+/**
+ * Attempt to refresh the Supabase token exactly once.
+ * Deduplicates concurrent refresh calls so only one network request is made.
+ */
+async function refreshTokenOnce(): Promise<string | null> {
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = refreshSession()
+    .then((session) => session?.access_token ?? null)
+    .finally(() => {
+      _refreshPromise = null;
+    });
+  return _refreshPromise;
+}
+
+/**
+ * Notify the SessionGuard about a fatal auth error.
+ * This is done via a custom event so queryClient (a non-React module)
+ * can communicate with the React component tree.
+ */
+function emitAuthError(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('printyx:auth-error'));
+  }
+}
 
 // Generate a unique request ID for correlation
 function generateRequestId(): string {
@@ -175,9 +204,43 @@ export async function apiRequest(
     });
   }
 
-  // Handle 401 for Supabase mode - may need token refresh
+  // Handle 401 for Supabase mode - attempt token refresh before failing
   if (res.status === 401 && isSupabaseMode) {
-    // Token may have expired, the auth provider will handle refresh
+    // If the session was already marked expired, skip refresh to avoid loops
+    if (isSessionExpired()) {
+      throw new Error('401: Session expired. Please log in again.');
+    }
+
+    // Attempt to refresh the token
+    const newToken = await refreshTokenOnce();
+    if (newToken) {
+      // Retry the original request with the refreshed token
+      requestHeaders['Authorization'] = `Bearer ${newToken}`;
+      const retryRes = await fetch(requestUrl, {
+        method: safeMethod,
+        headers: requestHeaders,
+        body: getBodyString(finalBody),
+        credentials: 'omit',
+      });
+
+      if (retryRes.ok) {
+        return await retryRes.json();
+      }
+
+      // Retry also failed with 401 — session is truly expired
+      if (retryRes.status === 401) {
+        markSessionExpired();
+        emitAuthError();
+        throw new Error('401: Session expired. Please log in again.');
+      }
+
+      await throwIfResNotOk(retryRes);
+      return await retryRes.json();
+    }
+
+    // Token refresh failed — session is expired
+    markSessionExpired();
+    emitAuthError();
     throw new Error('401: Session expired. Please log in again.');
   }
 
@@ -258,6 +321,42 @@ export async function apiFormRequest(
       variant: 'destructive',
     });
   }
+
+  // Handle 401 for Supabase mode - attempt token refresh before failing
+  if (res.status === 401 && isSupabaseMode) {
+    if (isSessionExpired()) {
+      throw new Error('401: Session expired. Please log in again.');
+    }
+
+    const newToken = await refreshTokenOnce();
+    if (newToken) {
+      requestHeaders['Authorization'] = `Bearer ${newToken}`;
+      const retryRes = await fetch(requestUrl, {
+        method,
+        headers: requestHeaders,
+        body: formData,
+        credentials: 'omit',
+      });
+
+      if (retryRes.ok) {
+        return await retryRes.json();
+      }
+
+      if (retryRes.status === 401) {
+        markSessionExpired();
+        emitAuthError();
+        throw new Error('401: Session expired. Please log in again.');
+      }
+
+      await throwIfResNotOk(retryRes);
+      return await retryRes.json();
+    }
+
+    markSessionExpired();
+    emitAuthError();
+    throw new Error('401: Session expired. Please log in again.');
+  }
+
   await throwIfResNotOk(res);
   return await res.json();
 }
@@ -298,10 +397,32 @@ export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryF
     const url = queryKey.join('/') as string;
     const requestUrl = getRequestUrl(url.startsWith('/') ? url : `/${url}`);
 
-    const res = await fetch(requestUrl, {
+    let res = await fetch(requestUrl, {
       headers,
       credentials: authMode === 'legacy' ? 'include' : 'omit',
     });
+
+    // Handle 401 with token refresh for Supabase mode
+    if (res.status === 401 && isSupabaseMode && !isSessionExpired()) {
+      const newToken = await refreshTokenOnce();
+      if (newToken) {
+        headers['Authorization'] = `Bearer ${newToken}`;
+        res = await fetch(requestUrl, {
+          headers,
+          credentials: 'omit',
+        });
+      }
+
+      // If still 401 after refresh, mark session as expired
+      if (res.status === 401) {
+        markSessionExpired();
+        emitAuthError();
+        if (unauthorizedBehavior === 'returnNull') {
+          return null;
+        }
+        throw new Error('401: Session expired. Please log in again.');
+      }
+    }
 
     if (unauthorizedBehavior === 'returnNull' && res.status === 401) {
       return null;
@@ -335,7 +456,12 @@ export const queryClient = new QueryClient({
       refetchOnMount: true,
       refetchOnReconnect: true,
       onError: (error: any) => {
+        // Suppress cascading error toasts when session is already expired
+        // The SessionGuard modal handles this case
         const message = typeof error === 'string' ? error : error?.message || 'Failed to load data';
+        if (isSessionExpired() && message.includes('401')) {
+          return;
+        }
         toast({
           title: 'Load error',
           description: message,
@@ -355,6 +481,10 @@ export const queryClient = new QueryClient({
       retry: false,
       onError: (error: any) => {
         const message = typeof error === 'string' ? error : error?.message || 'Action failed';
+        // Suppress cascading error toasts when session is already expired
+        if (isSessionExpired() && message.includes('401')) {
+          return;
+        }
         toast({
           title: 'Action failed',
           description: message,
