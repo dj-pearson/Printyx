@@ -25,7 +25,7 @@ const ModernArchitecture = () => {
           name: 'Modern Cloud Architecture - Built for 2025, Not 2005',
           description:
             "Printyx's modern cloud-native architecture delivers a 2-3 year technical advantage over legacy dealer management systems. Real-time updates, offline-first mobile, AI/ML infrastructure, and 99.9% uptime.",
-          url: 'https://printyx.com/modern-architecture',
+          url: 'https://printyx.net/modern-architecture',
           mainEntity: {
             '@type': 'SoftwareApplication',
             name: 'Printyx Platform',

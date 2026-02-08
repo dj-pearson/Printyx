@@ -36,7 +36,8 @@ export type SchemaType =
   | 'HowTo'
   | 'LocalBusiness'
   | 'SoftwareApplication'
-  | 'BreadcrumbList';
+  | 'BreadcrumbList'
+  | 'ItemList';
 
 // Base URL for the site
 export const SITE_URL = 'https://printyx.net';
@@ -401,6 +402,168 @@ export const PUBLIC_ROUTES_SEO: SEORouteConfig[] = [
     changefreq: 'yearly',
     noindex: false,
     breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Terms and Conditions' }],
+  },
+
+  // Comparison & Competitive Pages
+  {
+    path: '/compare-eautomate',
+    title: 'Printyx vs E-Automate | Modern Cloud Alternative for Copier Dealers',
+    description:
+      'Detailed comparison of Printyx vs ConnectWise E-Automate. See why copier dealers are switching to modern cloud-based dealer management with AI-powered intelligence.',
+    keywords: [
+      'Printyx vs E-Automate',
+      'E-Automate alternative',
+      'E-Automate replacement',
+      'copier dealer software comparison',
+      'ConnectWise E-Automate vs cloud',
+      'modern dealer management',
+    ],
+    ogType: 'article',
+    schema: 'Article',
+    priority: 0.9,
+    changefreq: 'monthly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Printyx vs E-Automate' }],
+    relatedPaths: ['/battle-card', '/modern-architecture', '/case-studies'],
+  },
+
+  // Pricing Page
+  {
+    path: '/pricing',
+    title: 'Pricing | Printyx - Transparent Plans for Copier Dealers',
+    description:
+      'Simple, transparent pricing for copier dealers and MPS providers. Starter at $49/user/month, Professional at $79/user/month. Free trial, no credit card required.',
+    keywords: [
+      'copier dealer software pricing',
+      'MPS software cost',
+      'dealer management pricing',
+      'E-Automate pricing alternative',
+      'copier CRM pricing',
+    ],
+    ogType: 'product',
+    schema: 'Product',
+    priority: 0.9,
+    changefreq: 'monthly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Pricing' }],
+    relatedPaths: ['/roi-calculator', '/case-studies', '/signup'],
+  },
+
+  // Knowledge Base
+  {
+    path: '/knowledge-base',
+    title: 'Knowledge Base | Printyx Help Center & Documentation',
+    description:
+      'Find answers, tutorials, and guides for using Printyx. Searchable knowledge base for copier dealer platform setup, configuration, and best practices.',
+    keywords: [
+      'Printyx documentation',
+      'copier dealer software help',
+      'MPS platform tutorials',
+      'Printyx knowledge base',
+      'dealer management guides',
+    ],
+    ogType: 'website',
+    schema: 'WebPage',
+    priority: 0.7,
+    changefreq: 'weekly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Knowledge Base' }],
+    relatedPaths: ['/blog', '/case-studies'],
+  },
+
+  // Accessibility
+  {
+    path: '/accessibility',
+    title: 'Accessibility Statement | Printyx',
+    description: 'Printyx accessibility commitment. How we ensure our platform is accessible to all users.',
+    ogType: 'website',
+    schema: 'WebPage',
+    priority: 0.3,
+    changefreq: 'yearly',
+    noindex: false,
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Accessibility' }],
+  },
+
+  // Feature-specific landing pages for GEO
+  {
+    path: '/autopilot',
+    title: 'Autopilot Workflows | Automate Copier Dealer Operations | Printyx',
+    description:
+      'Automate repetitive tasks across your copier dealership. Printyx Autopilot handles lead routing, service dispatch, billing triggers, and supply reordering automatically.',
+    keywords: [
+      'copier dealer automation',
+      'MPS workflow automation',
+      'automated service dispatch',
+      'dealer task automation',
+      'copier business automation',
+    ],
+    ogType: 'product',
+    schema: 'SoftwareApplication',
+    priority: 0.8,
+    changefreq: 'monthly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Autopilot Workflows' }],
+    relatedPaths: ['/predictive-intelligence', '/p/print-service-dispatch-mobile'],
+  },
+  {
+    path: '/fleet-monitoring',
+    title: 'Fleet Monitoring Dashboard | Real-Time Copier Fleet Visibility | Printyx',
+    description:
+      'Monitor your entire copier fleet in real time. Track device status, meter counts, supply levels, and service alerts across all customer locations from one dashboard.',
+    keywords: [
+      'copier fleet monitoring',
+      'print fleet dashboard',
+      'MPS fleet management',
+      'device monitoring software',
+      'PrintFleet alternative',
+      'FMAudit alternative',
+    ],
+    ogType: 'product',
+    schema: 'SoftwareApplication',
+    priority: 0.8,
+    changefreq: 'monthly',
+    breadcrumbs: [{ label: 'Home', path: '/' }, { label: 'Fleet Monitoring' }],
+    relatedPaths: ['/predictive-intelligence', '/p/print-service-dispatch-mobile'],
+  },
+  {
+    path: '/quickbooks-integration',
+    title: 'QuickBooks Integration for Copier Dealers | Printyx',
+    description:
+      'Sync Printyx with QuickBooks Online and Desktop. Automate invoicing, payment tracking, and financial reporting for your copier dealership.',
+    keywords: [
+      'QuickBooks copier dealer',
+      'copier billing QuickBooks',
+      'MPS QuickBooks integration',
+      'dealer accounting integration',
+    ],
+    ogType: 'product',
+    schema: 'Product',
+    priority: 0.7,
+    changefreq: 'monthly',
+    breadcrumbs: [
+      { label: 'Home', path: '/' },
+      { label: 'Integrations', path: '/integration-marketplace' },
+      { label: 'QuickBooks' },
+    ],
+    relatedPaths: ['/integration-marketplace', '/erp-integration'],
+  },
+  {
+    path: '/erp-integration',
+    title: 'ERP Integration for Copier Dealers | Connect Your Business Systems | Printyx',
+    description:
+      'Connect Printyx to your existing ERP system. Bi-directional sync with SAP, Oracle, Microsoft Dynamics, and other enterprise platforms.',
+    keywords: [
+      'copier dealer ERP integration',
+      'MPS ERP sync',
+      'dealer management ERP',
+      'SAP copier integration',
+    ],
+    ogType: 'product',
+    schema: 'Product',
+    priority: 0.7,
+    changefreq: 'monthly',
+    breadcrumbs: [
+      { label: 'Home', path: '/' },
+      { label: 'Integrations', path: '/integration-marketplace' },
+      { label: 'ERP Integration' },
+    ],
+    relatedPaths: ['/integration-marketplace', '/quickbooks-integration'],
   },
 
   // Auth Pages (noindex)

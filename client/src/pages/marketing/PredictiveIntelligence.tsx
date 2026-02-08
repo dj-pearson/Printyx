@@ -12,6 +12,35 @@ import {
   BarChart3,
   Printer,
 } from 'lucide-react';
+import { GEOFaqSection } from '@/lib/seo/GEOFaqSection';
+
+const predictiveIntelFaqs = [
+  {
+    question: 'What is predictive maintenance for copiers and how does it work?',
+    answer:
+      'Predictive maintenance for copiers uses AI and machine learning to analyze service history, meter readings, error codes, and equipment data to predict device failures before they happen. Printyx achieves 80%+ prediction accuracy with 30-day advance warning, allowing dealers to schedule proactive maintenance and reduce emergency calls by 30-40%.',
+  },
+  {
+    question: 'How accurate is AI-powered copier failure prediction?',
+    answer:
+      'Printyx predictive maintenance achieves over 80% accuracy in predicting copier and printer failures. The system analyzes multiple data sources including service request patterns, usage velocity changes, equipment age, historical failure data, and error code combinations to generate component-level predictions with specific timelines.',
+  },
+  {
+    question: 'Can predictive maintenance reduce service costs for copier dealers?',
+    answer:
+      'Yes. Copier dealers using Printyx predictive intelligence see an average 20% decrease in total service costs. A mid-sized dealer with 15 technicians saved $47,000 annually through 38% fewer emergency calls, optimized scheduling, and automated parts ordering. Most dealers achieve ROI within 4-7 months.',
+  },
+  {
+    question: 'How is Printyx predictive intelligence different from PrintFleet or FMAudit?',
+    answer:
+      'PrintFleet and FMAudit focus on device monitoring and supply management. Printyx goes beyond monitoring to predict actual equipment failures using GPU-accelerated machine learning. Printyx provides component-level failure predictions, automated preventive service scheduling, and AI-powered contract profitability analysis that monitoring tools cannot offer.',
+  },
+  {
+    question: 'How long does it take to implement predictive maintenance with Printyx?',
+    answer:
+      'Printyx predictive intelligence begins producing insights within 2-4 weeks of deployment. The AI models improve continuously as they process more data from your fleet. Full implementation including data migration and team training takes 6-8 weeks, with meaningful prediction accuracy achieved within the first month.',
+  },
+];
 
 const PredictiveIntelligence = () => {
   return (
@@ -24,7 +53,7 @@ const PredictiveIntelligence = () => {
           name: 'Predictive Intelligence for Copier Dealers - Stop Reacting, Start Predicting',
           description:
             'Transform your copier dealership with AI-powered predictive intelligence. Prevent equipment failures 30 days in advance, reduce emergency calls by 30-40%, and optimize operations with machine learning.',
-          url: 'https://printyx.com/predictive-intelligence',
+          url: 'https://printyx.net/predictive-intelligence',
           mainEntity: {
             '@type': 'SoftwareApplication',
             name: 'Printyx Predictive Intelligence',
@@ -488,6 +517,16 @@ const PredictiveIntelligence = () => {
                 </CardContent>
               </Card>
             </div>
+          </div>
+        </section>
+
+        {/* FAQ Section for GEO/SEO */}
+        <section className="py-16 bg-white">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <GEOFaqSection
+              faqs={predictiveIntelFaqs}
+              title="Frequently Asked Questions About Predictive Maintenance"
+            />
           </div>
         </section>
 
