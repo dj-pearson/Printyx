@@ -159,6 +159,7 @@ export function registerSeoCoreRoutes(app: Express) {
       const baseUrl = settings?.siteUrl?.replace(/\/$/, '') || 'https://printyx.net';
       const allowIndexing = true; // If needed later, wire to settings
       const lines = [
+        `# Traditional Search Engine Crawlers`,
         `User-agent: *`,
         allowIndexing ? `Allow: /` : `Disallow: /`,
         `Disallow: /api/`,
@@ -170,9 +171,61 @@ export function registerSeoCoreRoutes(app: Express) {
         `Disallow: /settings`,
         `Disallow: /customers`,
         `Disallow: /crm`,
-        `Disallow: /service-`,
+        `Disallow: /service-dispatch`,
+        `Disallow: /service-hub`,
         `Disallow: /quotes`,
         `Disallow: /proposal-`,
+        `Disallow: /deals`,
+        `Disallow: /inventory`,
+        `Disallow: /billing`,
+        `Disallow: /invoices`,
+        `Disallow: /reports`,
+        `Disallow: /dashboard`,
+        `Disallow: /onboarding`,
+        `Disallow: /tenant-setup`,
+        ``,
+        `# AI Search Crawlers - ALLOW for citation and search`,
+        `User-agent: GPTBot`,
+        `Allow: /`,
+        `Disallow: /api/`,
+        `Disallow: /admin/`,
+        `Disallow: /dashboard`,
+        `Disallow: /settings`,
+        ``,
+        `User-agent: ChatGPT-User`,
+        `Allow: /`,
+        `Disallow: /api/`,
+        `Disallow: /admin/`,
+        ``,
+        `User-agent: OAI-SearchBot`,
+        `Allow: /`,
+        `Disallow: /api/`,
+        ``,
+        `User-agent: ClaudeBot`,
+        `Allow: /`,
+        `Disallow: /api/`,
+        `Disallow: /admin/`,
+        ``,
+        `User-agent: PerplexityBot`,
+        `Allow: /`,
+        `Disallow: /api/`,
+        ``,
+        `User-agent: Google-Extended`,
+        `Allow: /`,
+        `Disallow: /api/`,
+        ``,
+        `User-agent: Googlebot`,
+        `Allow: /`,
+        `Disallow: /api/`,
+        `Disallow: /admin/`,
+        ``,
+        `# Block pure AI training bots (not search/citation)`,
+        `User-agent: CCBot`,
+        `Disallow: /`,
+        ``,
+        `User-agent: anthropic-ai`,
+        `Disallow: /`,
+        ``,
         `Sitemap: ${baseUrl}/sitemap.xml`,
         `LLMS: ${baseUrl}/llms.txt`,
       ];
@@ -231,42 +284,66 @@ export function registerSeoCoreRoutes(app: Express) {
       const settings = settingsRows[0] as any;
       const baseUrl = process.env.BASE_URL || 'https://printyx.net';
 
-      // Enhanced llms.txt with comprehensive platform information
-      const llmsTxt = `# Printyx - AI-Powered Print Fleet Management Platform
-# This file helps AI assistants understand what Printyx offers
+      // Enhanced llms.txt with comprehensive platform information for AI citation
+      const llmsTxt = `# Printyx
 
-# Platform Overview
-Printyx is a modern cloud-based CRM and service management platform designed specifically for copier/printer dealers and managed print services providers.
+> Printyx is a modern cloud-based CRM, service dispatch, billing, and analytics platform built specifically for copier dealers and managed print services (MPS) providers.
 
-# Core Features
-- Customer Relationship Management (CRM) with AI-powered lead scoring
-- Service Dispatch & Field Service Management
-- Inventory & Warehouse Management
-- Advanced Billing & Meter Billing
-- Sales Forecasting & Analytics
-- Equipment Lifecycle Management
-- Mobile-First Service Technician App
-- QuickBooks & Salesforce Integration
+## About
+Printyx replaces legacy dealer management systems like E-Automate with a modern cloud platform. Built by copier industry veterans with 30+ years of combined experience, Printyx provides AI-powered predictive intelligence, mobile-first field service tools, and unified workflows for sales, service, inventory, and finance. The platform serves copier/printer dealers, MPS providers, and office technology companies across the United States.
 
-# Key Differentiators
-- Built for copier dealers (vs generic CRM)
-- Mobile-first design for field technicians
-- AI-powered predictive maintenance
-- Real-time meter reading collection
-- Automated supply replenishment
-- White-label capabilities
+## Key Features
+- **CRM & Sales Pipeline**: Lead scoring, deal management, quote generation, and proposal builder with AI-powered sales forecasting
+- **Service Dispatch**: Mobile-first field service with GPS routing, real-time job updates, parts inventory, and customer e-signatures
+- **Predictive Maintenance**: AI-driven equipment failure prediction and proactive service scheduling to reduce downtime by up to 40%
+- **Meter Billing**: Automated meter reading collection and billing with support for cost-per-copy, tiered, and overage pricing models
+- **Inventory Management**: Master product catalog, warehouse operations, purchase orders, and automated supply replenishment
+- **Equipment Lifecycle**: Track devices from deployment through retirement with full service history and contract association
+- **Financial Analytics**: Revenue intelligence dashboards, contract profitability analysis, and dynamic pricing optimization
+- **Integration Marketplace**: Pre-built integrations with QuickBooks, Salesforce, Microsoft 365, and manufacturer APIs (Canon, Ricoh, HP)
+- **Mobile-First Design**: Offline-capable mobile app for field technicians with real-time sync
 
-# Documentation
-Documentation: ${baseUrl}/docs
-API Docs: ${baseUrl}/api/docs
-Knowledge Base: ${baseUrl}/knowledge-base
+## Why Copier Dealers Choose Printyx Over E-Automate
+- Modern cloud architecture vs legacy on-premise infrastructure
+- AI-powered predictive intelligence vs reactive workflows
+- Mobile-first technician app vs desktop-only interface
+- Real-time dashboards and analytics vs static reporting
+- No server maintenance or IT overhead required
+- 2-3 year technical advantage in cloud, AI, and mobile capabilities
 
-# Contact
-Website: ${baseUrl}
-Support: support@printyx.net
+## Pricing
+- Starter: $49/user/month for small dealers (up to 10 users)
+- Professional: $79/user/month for mid-size dealers with full feature access
+- Enterprise: Custom pricing for large multi-location operations
+- Free trial available with no credit card required
 
-# AI Crawling Policy
-${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
+## Industry Focus
+Printyx serves the copier/printer dealer and managed print services industry, including:
+- Independent copier dealers
+- Multi-brand office technology dealers
+- Managed print services providers
+- Copier/printer service organizations
+- Office equipment leasing companies
+
+## Comparison Pages
+- [Printyx vs E-Automate](${baseUrl}/compare-eautomate): Side-by-side feature comparison
+- [Competitive Battle Card](${baseUrl}/battle-card): Why modern dealers are switching
+- [ROI Calculator](${baseUrl}/roi-calculator): Calculate savings from switching
+
+## Resources
+- [Product Overview](${baseUrl}/p/copier-dealer-crm)
+- [Mobile Service Dispatch](${baseUrl}/p/print-service-dispatch-mobile)
+- [Predictive Intelligence](${baseUrl}/predictive-intelligence)
+- [Modern Architecture](${baseUrl}/modern-architecture)
+- [Integration Marketplace](${baseUrl}/integration-marketplace)
+- [Case Studies](${baseUrl}/case-studies)
+- [Blog](${baseUrl}/blog)
+- [Knowledge Base](${baseUrl}/knowledge-base)
+
+## Contact
+- Website: ${baseUrl}
+- Email: support@printyx.net
+- Sales: sales@printyx.com
 `;
 
       const etag = createHash('sha1').update(llmsTxt).digest('hex');
@@ -493,6 +570,116 @@ ${settings?.allowAiCrawling !== false ? 'Allow: /' : 'Disallow: /'}
           priority: '0.6',
           schemaType: 'WebSite',
           schemaData: { name: 'Printyx Reports' },
+        },
+        {
+          path: '/compare-eautomate',
+          title: 'Printyx vs E-Automate | Modern Cloud Alternative for Copier Dealers',
+          description:
+            'Detailed comparison of Printyx vs ConnectWise E-Automate. See why copier dealers switch to modern cloud-based dealer management.',
+          changefreq: 'monthly',
+          priority: '0.9',
+          schemaType: 'Article',
+          schemaData: { name: 'Printyx vs E-Automate Comparison' },
+        },
+        {
+          path: '/battle-card',
+          title: 'Printyx vs E-Automate Comparison | Feature Battle Card',
+          description:
+            'Side-by-side comparison of Printyx vs E-Automate. See why modern dealers are making the switch.',
+          changefreq: 'monthly',
+          priority: '0.8',
+          schemaType: 'Article',
+          schemaData: { name: 'Competitive Battle Card' },
+        },
+        {
+          path: '/blog',
+          title: 'Printyx Blog | Insights for Copier Dealers & MPS Providers',
+          description:
+            'Expert insights on copier dealer operations, managed print services, and industry trends.',
+          changefreq: 'daily',
+          priority: '0.8',
+          schemaType: 'WebPage',
+          schemaData: { name: 'Printyx Blog' },
+        },
+        {
+          path: '/predictive-intelligence',
+          title: 'AI-Powered Predictive Intelligence for Copier Dealers | Printyx',
+          description:
+            'Leverage AI to predict service needs, optimize routes, forecast sales, and reduce downtime.',
+          changefreq: 'weekly',
+          priority: '0.9',
+          schemaType: 'SoftwareApplication',
+          schemaData: { name: 'Printyx Predictive Intelligence', applicationCategory: 'BusinessApplication' },
+        },
+        {
+          path: '/modern-architecture',
+          title: 'Modern Cloud Architecture | Why Printyx Beats Legacy Systems',
+          description:
+            'Built on modern cloud infrastructure. Real-time sync, mobile-first design, API-driven integrations.',
+          changefreq: 'weekly',
+          priority: '0.9',
+          schemaType: 'Article',
+          schemaData: { name: 'Modern Architecture' },
+        },
+        {
+          path: '/integration-marketplace',
+          title: 'Integration Marketplace | Connect Printyx to Your Stack',
+          description:
+            'Pre-built integrations with Salesforce, QuickBooks, Microsoft 365, and more.',
+          changefreq: 'weekly',
+          priority: '0.8',
+          schemaType: 'Product',
+          schemaData: { name: 'Integration Marketplace' },
+        },
+        {
+          path: '/roi-calculator',
+          title: 'ROI Calculator | See Your Savings with Printyx',
+          description:
+            'Calculate your potential savings by switching to Printyx from legacy dealer management systems.',
+          changefreq: 'monthly',
+          priority: '0.8',
+          schemaType: 'WebPage',
+          schemaData: { name: 'ROI Calculator' },
+        },
+        {
+          path: '/case-studies',
+          title: 'Customer Success Stories | Printyx Case Studies',
+          description:
+            'See how copier dealers are transforming their business with Printyx. Real results from real customers.',
+          changefreq: 'monthly',
+          priority: '0.7',
+          schemaType: 'Article',
+          schemaData: { name: 'Case Studies' },
+        },
+        {
+          path: '/p/copier-dealer-crm',
+          title: 'CRM for Copier Dealers | Printyx - Built for Print Industry',
+          description:
+            'Purpose-built CRM for copier dealers. Manage leads, customers, contracts, and service all in one platform.',
+          changefreq: 'weekly',
+          priority: '0.9',
+          schemaType: 'Product',
+          schemaData: { name: 'Copier Dealer CRM' },
+        },
+        {
+          path: '/p/print-service-dispatch-mobile',
+          title: 'Mobile Service Dispatch for Copier Technicians | Printyx',
+          description:
+            'Empower your technicians with mobile-first service dispatch. Real-time job updates, GPS tracking, and more.',
+          changefreq: 'weekly',
+          priority: '0.9',
+          schemaType: 'Product',
+          schemaData: { name: 'Mobile Service Dispatch' },
+        },
+        {
+          path: '/knowledge-base',
+          title: 'Knowledge Base | Printyx Help Center & Documentation',
+          description:
+            'Find answers, tutorials, and guides for using Printyx copier dealer management platform.',
+          changefreq: 'weekly',
+          priority: '0.7',
+          schemaType: 'WebPage',
+          schemaData: { name: 'Printyx Knowledge Base' },
         },
       ];
 

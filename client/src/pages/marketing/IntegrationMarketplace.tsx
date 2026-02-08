@@ -24,7 +24,7 @@ const IntegrationMarketplace = () => {
           name: 'Integration Marketplace - Network Effects That Compound Over Time',
           description:
             "Printyx's integration marketplace connects your dealer ecosystem. Pre-built integrations for accounting, CRM, MPS tools, and more. API-first platform that grows more valuable as the network expands.",
-          url: 'https://printyx.com/integration-marketplace',
+          url: 'https://printyx.net/integration-marketplace',
           mainEntity: {
             '@type': 'SoftwareApplication',
             name: 'Printyx Integration Marketplace',

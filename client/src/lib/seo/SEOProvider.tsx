@@ -224,6 +224,26 @@ function generateProductSchema(config: SEORouteConfig): Record<string, unknown> 
 }
 
 /**
+ * Generate Service schema
+ */
+function generateServiceSchema(config: SEORouteConfig): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: config.title.split(' | ')[0],
+    description: config.description,
+    provider: {
+      '@type': 'Organization',
+      name: ORGANIZATION_DATA.name,
+      url: ORGANIZATION_DATA.url,
+      logo: ORGANIZATION_DATA.logo,
+    },
+    areaServed: 'United States',
+    serviceType: 'Software as a Service',
+  };
+}
+
+/**
  * Generate schema based on type
  */
 function generateSchema(config: SEORouteConfig): Record<string, unknown>[] {
@@ -251,6 +271,15 @@ function generateSchema(config: SEORouteConfig): Record<string, unknown>[] {
       break;
     case 'Product':
       schemas.push(generateProductSchema(config));
+      break;
+    case 'Service':
+      schemas.push(generateServiceSchema(config));
+      break;
+    case 'FAQPage':
+    case 'HowTo':
+    case 'ItemList':
+      // These schema types are injected dynamically by page components using FAQSchemaScript
+      // or useDynamicSEO. The SEOProvider only adds breadcrumbs for these.
       break;
     case 'WebPage':
     case 'WebSite':
@@ -332,6 +361,14 @@ function applySEO(config: SEORouteConfig, dynamicData?: DynamicSEOData): () => v
   setMeta('twitter:description', description);
   setMeta('twitter:image', ogImage);
   setMeta('twitter:site', '@printyx');
+
+  // Content freshness signals for GEO - AI engines weight recency heavily
+  const currentDate = new Date().toISOString().split('T')[0];
+  setMeta('article:modified_time', currentDate, true);
+  if (config.ogType === 'article') {
+    setMeta('article:section', 'Copier Dealer Management', true);
+    setMeta('article:tag', (keywords || []).slice(0, 5).join(', '), true);
+  }
 
   // Generate and inject schemas
   const configWithBreadcrumbs = { ...config, breadcrumbs };

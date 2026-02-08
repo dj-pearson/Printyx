@@ -40,7 +40,7 @@ const ROICalculator = () => {
           name: 'ROI Calculator - Calculate Your Printyx Savings',
           description:
             'Calculate your potential savings with Printyx. See how predictive intelligence, modern architecture, and AI-powered features impact your bottom line.',
-          url: 'https://printyx.com/roi-calculator',
+          url: 'https://printyx.net/roi-calculator',
         })}
       </script>
 

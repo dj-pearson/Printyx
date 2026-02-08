@@ -37,6 +37,9 @@ export {
   ContextualCTA,
 } from './InternalLinking';
 
+// GEO-Optimized Components
+export { GEOFaqSection, type FAQItem } from './GEOFaqSection';
+
 // Re-export schema utilities from schemaMarkup (consolidated)
 export {
   generateArticleSchema,
