@@ -1,7 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation, Link } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+// useQuery removed - permissions are now resolved via usePermissions hook
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
+import {
+  SECTION_PERMISSIONS,
+  ITEM_PERMISSIONS,
+  checkNavigationAccess,
+} from '@/lib/navigation-permissions';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/ui/logo';
 import { Badge } from '@/components/ui/badge';
@@ -102,341 +108,307 @@ interface RoleAwareCollapsibleSidebarProps {
   className?: string;
 }
 
-// Static navigation structure - prevents hook ordering issues
-const createNavigationSections = (userRole: any): NavigationSection[] => {
-  if (!userRole) return [];
-
-  const permissions = userRole.permissions || {};
-  const isPlatformRole = userRole.canAccessAllTenants === true;
-  const isCompanyAdmin = userRole.name?.includes('Admin');
-  const level = userRole.level || 1;
-  const useAdminRoutes = isPlatformRole || isCompanyAdmin || level >= 4;
-  const adminPrefix = useAdminRoutes ? '/admin' : '';
-
-  const sections: NavigationSection[] = [];
-
+/**
+ * Complete navigation structure - ALL sections and items are defined here.
+ * Filtering by role/permissions happens separately using the permission map.
+ * This separation ensures consistent hook ordering and avoids conditional rendering issues.
+ */
+const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
   // Always visible
-  sections.push({
+  {
     id: 'dashboard',
     title: 'Dashboard',
     icon: LayoutDashboard,
     path: '/',
     matchPatterns: ['/dashboard*'],
-  });
+  },
 
-  // Platform Admin Hub - Only for platform roles with hierarchical structure
-  if (isPlatformRole) {
-    sections.push({
-      id: 'platform-admin-hub',
-      title: 'Platform Admin Hub',
-      icon: Crown,
-      path: '/admin-hub',
-      matchPatterns: ['/admin-hub*'],
-    });
+  // Platform Admin Hub (platform admins only)
+  {
+    id: 'platform-admin-hub',
+    title: 'Platform Admin Hub',
+    icon: Crown,
+    path: '/admin-hub',
+    matchPatterns: ['/admin-hub*'],
+  },
 
-    // Tenant & Organization Management
-    sections.push({
-      id: 'tenant-org-management',
-      title: 'Tenant & Organization',
-      icon: Building2,
-      path: `${adminPrefix}/tenant-management`,
-      matchPatterns: [
-        `${adminPrefix}/tenant*`,
-        '/root-admin-signups*',
-        '/customer-self-service-portal*',
-      ],
-      children: [
-        { title: 'Tenant Management', path: `${adminPrefix}/tenant-management`, icon: Building2 },
-        { title: 'Tenant Onboarding', path: '/tenant-setup', icon: Rocket },
-        { title: 'Signups & Trials CRM', path: '/root-admin-signups-crm', icon: TrendingUp },
-        { title: 'Customer Portal', path: '/customer-self-service-portal', icon: UserCheck },
-      ],
-    });
+  // Tenant & Organization Management (platform admins only)
+  {
+    id: 'tenant-org-management',
+    title: 'Tenant & Organization',
+    icon: Building2,
+    path: '/admin/tenant-management',
+    matchPatterns: ['/admin/tenant*', '/root-admin-signups*', '/customer-self-service-portal*'],
+    children: [
+      { title: 'Tenant Management', path: '/admin/tenant-management', icon: Building2 },
+      { title: 'Tenant Onboarding', path: '/tenant-setup', icon: Rocket },
+      { title: 'Signups & Trials CRM', path: '/root-admin-signups-crm', icon: TrendingUp },
+      { title: 'Customer Portal', path: '/customer-self-service-portal', icon: UserCheck },
+    ],
+  },
 
-    // User & Access Management
-    sections.push({
-      id: 'user-access-management',
-      title: 'User & Access',
-      icon: UserCheck,
-      path: `${adminPrefix}/user-management`,
-      matchPatterns: [
-        `${adminPrefix}/user*`,
-        `${adminPrefix}/root-admin-security*`,
-        `${adminPrefix}/system-security*`,
-        '/role-management*',
-        '/security-compliance-management*',
-      ],
-      children: [
-        { title: 'User Management', path: `${adminPrefix}/user-management`, icon: Users },
-        { title: 'Role Management', path: '/role-management', icon: Shield },
-        {
-          title: 'Security & Permissions',
-          path: `${adminPrefix}/root-admin-security`,
-          icon: Shield,
-        },
-        { title: 'Audit & Compliance', path: '/security-compliance-management', icon: FileText },
-      ],
-    });
+  // User & Access Management (platform admins only)
+  {
+    id: 'user-access-management',
+    title: 'User & Access',
+    icon: UserCheck,
+    path: '/admin/user-management',
+    matchPatterns: [
+      '/admin/user*',
+      '/admin/root-admin-security*',
+      '/admin/system-security*',
+      '/role-management*',
+      '/security-compliance-management*',
+    ],
+    children: [
+      { title: 'User Management', path: '/admin/user-management', icon: Users },
+      { title: 'Role Management', path: '/role-management', icon: Shield },
+      { title: 'Security & Permissions', path: '/admin/root-admin-security', icon: Shield },
+      { title: 'Audit & Compliance', path: '/security-compliance-management', icon: FileText },
+    ],
+  },
 
-    // System Operations & Monitoring
-    sections.push({
-      id: 'system-operations',
-      title: 'System Operations',
-      icon: Monitor,
-      path: '/root-admin-dashboard',
-      matchPatterns: [
-        '/root-admin-dashboard*',
-        '/system-monitoring*',
-        '/database-management*',
-        `${adminPrefix}/platform*`,
-        `${adminPrefix}/system*`,
-        '/platform-configuration*',
-        '/mobile-optimization*',
-      ],
-      children: [
-        { title: 'System Dashboard', path: '/root-admin-dashboard', icon: Activity },
-        { title: 'Database Management', path: '/database-management', icon: Database },
-        { title: 'Platform Analytics', path: `${adminPrefix}/platform-analytics`, icon: BarChart3 },
-        { title: 'System Configuration', path: '/platform-configuration', icon: Settings },
-        { title: 'Mobile Optimization', path: '/mobile-optimization', icon: Smartphone },
-      ],
-    });
+  // System Operations & Monitoring (platform admins only)
+  {
+    id: 'system-operations',
+    title: 'System Operations',
+    icon: Monitor,
+    path: '/root-admin-dashboard',
+    matchPatterns: [
+      '/root-admin-dashboard*',
+      '/system-monitoring*',
+      '/database-management*',
+      '/admin/platform*',
+      '/admin/system*',
+      '/platform-configuration*',
+      '/mobile-optimization*',
+    ],
+    children: [
+      { title: 'System Dashboard', path: '/root-admin-dashboard', icon: Activity },
+      { title: 'Database Management', path: '/database-management', icon: Database },
+      { title: 'Platform Analytics', path: '/admin/platform-analytics', icon: BarChart3 },
+      { title: 'System Configuration', path: '/platform-configuration', icon: Settings },
+      { title: 'Mobile Optimization', path: '/mobile-optimization', icon: Smartphone },
+    ],
+  },
 
-    // Platform Features & Tools
-    sections.push({
-      id: 'platform-features',
-      title: 'Platform Features',
-      icon: Zap,
-      path: '/root-admin/seo',
-      matchPatterns: ['/root-admin/seo*', '/social-media*', '/gpt5*'],
-      children: [
-        { title: 'SEO Management', path: '/root-admin/seo', icon: Globe },
-        { title: 'Social Media Generator', path: '/social-media-generator', icon: Share2 },
-        { title: 'GPT-5 AI Dashboard', path: '/gpt5-dashboard', icon: Brain },
-      ],
-    });
-  }
+  // Platform Features & Tools (platform admins only)
+  {
+    id: 'platform-features',
+    title: 'Platform Features',
+    icon: Zap,
+    path: '/root-admin/seo',
+    matchPatterns: ['/root-admin/seo*', '/social-media*', '/gpt5*'],
+    children: [
+      { title: 'SEO Management', path: '/root-admin/seo', icon: Globe },
+      { title: 'Social Media Generator', path: '/social-media-generator', icon: Share2 },
+      { title: 'GPT-5 AI Dashboard', path: '/gpt5-dashboard', icon: Brain },
+    ],
+  },
 
   // Sales Hub
-  if (permissions.sales || isPlatformRole || isCompanyAdmin) {
-    sections.push({
-      id: 'crm',
-      title: 'Sales Hub',
-      icon: Target,
-      path: '/opportunities',
-      matchPatterns: [
-        '/leads*',
-        '/contacts*',
-        '/deals*',
-        '/opportunities*',
-        '/sales-pipeline*',
-        '/quote*',
-        '/proposal*',
-        '/demo*',
-        '/contracts*',
-        '/commission*',
-        '/customer-success*',
-        '/sales-command*',
-        '/sales-performance*',
-        '/data-enrichment*',
-        '/document-builder*',
-        '/deal-desk*',
-        '/crm-goals*',
-        '/pipeline-config*',
-        '/sales-rep-assignments*',
-      ],
-      children: [
-        { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
-        { title: 'Lead Enrichment', path: '/data-enrichment', icon: Search },
-        { title: 'Contacts', path: '/contacts', icon: Users },
-        { title: 'Opportunities', path: '/opportunities', icon: Target },
-        { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
-        { title: 'Pipeline Forecasting', path: '/sales-pipeline-forecasting', icon: TrendingUp },
-        { title: 'CRM Goals Dashboard', path: '/crm-goals-dashboard', icon: TrendingUp },
-        { title: 'Demo Scheduling', path: '/demo-scheduling', icon: Calendar },
-        { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
-        { title: 'Proposal Builder', path: '/proposal-builder', icon: FileText },
-        { title: 'Deal Desk', path: '/deal-desk', icon: CheckCircle2 },
-        { title: 'Pipeline Configuration', path: '/pipeline-config', icon: Settings },
-        { title: 'Contracts', path: '/contracts', icon: FileSignature },
-        { title: 'Document Builder', path: '/document-builder', icon: FileText },
-        { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck },
-        { title: 'Sales Command Center', path: '/sales-command-center', icon: Monitor },
-        { title: 'Sales Performance', path: '/sales-performance-analytics', icon: BarChart3 },
-        { title: 'Commission Management', path: '/commission-management', icon: DollarSign },
-        { title: 'Rep Assignments', path: '/sales-rep-assignments', icon: MapPin },
-      ],
-    });
-  }
+  {
+    id: 'crm',
+    title: 'Sales Hub',
+    icon: Target,
+    path: '/opportunities',
+    matchPatterns: [
+      '/leads*',
+      '/contacts*',
+      '/deals*',
+      '/opportunities*',
+      '/sales-pipeline*',
+      '/quote*',
+      '/proposal*',
+      '/demo*',
+      '/contracts*',
+      '/commission*',
+      '/customer-success*',
+      '/sales-command*',
+      '/sales-performance*',
+      '/data-enrichment*',
+      '/document-builder*',
+      '/deal-desk*',
+      '/crm-goals*',
+      '/pipeline-config*',
+      '/sales-rep-assignments*',
+    ],
+    children: [
+      { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
+      { title: 'Lead Enrichment', path: '/data-enrichment', icon: Search },
+      { title: 'Contacts', path: '/contacts', icon: Users },
+      { title: 'Opportunities', path: '/opportunities', icon: Target },
+      { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
+      { title: 'Pipeline Forecasting', path: '/sales-pipeline-forecasting', icon: TrendingUp },
+      { title: 'CRM Goals Dashboard', path: '/crm-goals-dashboard', icon: TrendingUp },
+      { title: 'Demo Scheduling', path: '/demo-scheduling', icon: Calendar },
+      { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
+      { title: 'Proposal Builder', path: '/proposal-builder', icon: FileText },
+      { title: 'Deal Desk', path: '/deal-desk', icon: CheckCircle2 },
+      { title: 'Pipeline Configuration', path: '/pipeline-config', icon: Settings },
+      { title: 'Contracts', path: '/contracts', icon: FileSignature },
+      { title: 'Document Builder', path: '/document-builder', icon: FileText },
+      { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck },
+      { title: 'Sales Command Center', path: '/sales-command-center', icon: Monitor },
+      { title: 'Sales Performance', path: '/sales-performance-analytics', icon: BarChart3 },
+      { title: 'Commission Management', path: '/commission-management', icon: DollarSign },
+      { title: 'Rep Assignments', path: '/sales-rep-assignments', icon: MapPin },
+    ],
+  },
 
   // Service Hub
-  if (permissions.service || isPlatformRole || isCompanyAdmin) {
-    sections.push({
-      id: 'service',
-      title: 'Service Hub',
-      icon: Wrench,
-      path: '/service-hub',
-      matchPatterns: [
-        '/service*',
-        '/meter-readings*',
-        '/technician*',
-        '/preventive*',
-        '/mobile-service*',
-        '/mobile-field*',
-        '/remote-monitoring*',
-        '/fleet-monitoring*',
-        '/vehicle*',
-        '/asset*',
-        '/onboarding*',
-        '/incident*',
-        '/manufacturer*',
-      ],
-      children: [
-        { title: 'Service Hub', path: '/service-hub', icon: Wrench },
-        { title: 'Onboarding Checklists', path: '/onboarding', icon: CheckSquare },
-        { title: 'Service Dispatch', path: '/service-dispatch', icon: Activity },
-        { title: 'Technician Management', path: '/technician-management', icon: Users },
-        { title: 'Vehicle Management', path: '/vehicle-management', icon: Truck },
-        { title: 'Asset Management', path: '/asset-management', icon: Package },
-        { title: 'Remote Monitoring', path: '/remote-monitoring', icon: Monitor },
-        { title: 'Fleet Monitoring', path: '/fleet-monitoring', icon: Activity },
-        { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
-        {
-          title: 'Preventive Maintenance',
-          path: '/preventive-maintenance',
-          icon: Calendar,
-        },
-        { title: 'Maintenance Automation', path: '/preventive-maintenance-automation', icon: Zap },
-        { title: 'Mobile Field Service', path: '/mobile-field-service', icon: MapPin },
-        { title: 'Mobile Field Operations', path: '/mobile-field-operations', icon: Activity },
-        { title: 'Mobile Service App', path: '/mobile-service-app', icon: Smartphone },
-        { title: 'Service Analytics', path: '/service-analytics', icon: BarChart3 },
-        { title: 'Service Forecasting', path: '/service-forecasting-analytics', icon: TrendingUp },
-        { title: 'Incident Response', path: '/incident-response-system', icon: AlertTriangle },
-        { title: 'Manufacturer Integration', path: '/manufacturer-integration', icon: Plug },
-      ],
-    });
-  }
+  {
+    id: 'service',
+    title: 'Service Hub',
+    icon: Wrench,
+    path: '/service-hub',
+    matchPatterns: [
+      '/service*',
+      '/meter-readings*',
+      '/technician*',
+      '/preventive*',
+      '/mobile-service*',
+      '/mobile-field*',
+      '/remote-monitoring*',
+      '/fleet-monitoring*',
+      '/vehicle*',
+      '/asset*',
+      '/onboarding*',
+      '/incident*',
+      '/manufacturer*',
+    ],
+    children: [
+      { title: 'Service Hub', path: '/service-hub', icon: Wrench },
+      { title: 'Onboarding Checklists', path: '/onboarding', icon: CheckSquare },
+      { title: 'Service Dispatch', path: '/service-dispatch', icon: Activity },
+      { title: 'Technician Management', path: '/technician-management', icon: Users },
+      { title: 'Vehicle Management', path: '/vehicle-management', icon: Truck },
+      { title: 'Asset Management', path: '/asset-management', icon: Package },
+      { title: 'Remote Monitoring', path: '/remote-monitoring', icon: Monitor },
+      { title: 'Fleet Monitoring', path: '/fleet-monitoring', icon: Activity },
+      { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
+      { title: 'Preventive Maintenance', path: '/preventive-maintenance', icon: Calendar },
+      { title: 'Maintenance Automation', path: '/preventive-maintenance-automation', icon: Zap },
+      { title: 'Mobile Field Service', path: '/mobile-field-service', icon: MapPin },
+      { title: 'Mobile Field Operations', path: '/mobile-field-operations', icon: Activity },
+      { title: 'Mobile Service App', path: '/mobile-service-app', icon: Smartphone },
+      { title: 'Service Analytics', path: '/service-analytics', icon: BarChart3 },
+      { title: 'Service Forecasting', path: '/service-forecasting-analytics', icon: TrendingUp },
+      { title: 'Incident Response', path: '/incident-response-system', icon: AlertTriangle },
+      { title: 'Manufacturer Integration', path: '/manufacturer-integration', icon: Plug },
+    ],
+  },
 
   // Product Hub
-  if (permissions.products || isPlatformRole || isCompanyAdmin) {
-    sections.push({
-      id: 'products',
-      title: 'Product Hub',
-      icon: Package,
-      path: '/product-hub',
-      matchPatterns: [
-        '/product*',
-        '/supplies*',
-        '/professional-services*',
-        '/managed-services*',
-        '/software-products*',
-        '/service-products*',
-      ],
-      children: [
-        { title: 'Product Hub', path: '/product-hub', icon: Package },
-        { title: 'Product Catalog', path: '/product-catalog', icon: Package },
-        { title: 'Product Models', path: '/product-models', icon: Package },
-        { title: 'Product Accessories', path: '/product-accessories', icon: Layers },
-        { title: 'Supplies', path: '/supplies', icon: Package },
-        { title: 'Software Products', path: '/software-products', icon: Code },
-        { title: 'Professional Services', path: '/professional-services', icon: FileText },
-        { title: 'Managed Services', path: '/managed-services', icon: Crown },
-        { title: 'Service Products', path: '/service-products', icon: Wrench },
-      ],
-    });
-  }
+  {
+    id: 'products',
+    title: 'Product Hub',
+    icon: Package,
+    path: '/product-hub',
+    matchPatterns: [
+      '/product*',
+      '/supplies*',
+      '/professional-services*',
+      '/managed-services*',
+      '/software-products*',
+      '/service-products*',
+    ],
+    children: [
+      { title: 'Product Hub', path: '/product-hub', icon: Package },
+      { title: 'Product Catalog', path: '/product-catalog', icon: Package },
+      { title: 'Product Models', path: '/product-models', icon: Package },
+      { title: 'Product Accessories', path: '/product-accessories', icon: Layers },
+      { title: 'Supplies', path: '/supplies', icon: Package },
+      { title: 'Software Products', path: '/software-products', icon: Code },
+      { title: 'Professional Services', path: '/professional-services', icon: FileText },
+      { title: 'Managed Services', path: '/managed-services', icon: Crown },
+      { title: 'Service Products', path: '/service-products', icon: Wrench },
+    ],
+  },
 
   // Equipment Lifecycle Hub
-  if (permissions.inventory || permissions.purchasing || isPlatformRole || isCompanyAdmin) {
-    sections.push({
-      id: 'equipment',
-      title: 'Equipment Lifecycle',
-      icon: Truck,
-      path: '/equipment-lifecycle',
-      matchPatterns: ['/equipment*', '/purchase-orders*', '/warehouse*', '/inventory*'],
-      children: [
-        { title: 'Equipment Lifecycle', path: '/equipment-lifecycle', icon: Truck },
-        { title: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
-        { title: 'PO Optimization', path: '/purchase-orders', icon: ShoppingCart },
-        { title: 'Warehouse Operations', path: '/warehouse-operations', icon: Building2 },
-        { title: 'Inventory Management', path: '/inventory', icon: Package },
-        { title: 'Equipment Management', path: '/equipment-lifecycle-management', icon: Cog },
-      ],
-    });
-  }
+  {
+    id: 'equipment',
+    title: 'Equipment Lifecycle',
+    icon: Truck,
+    path: '/equipment-lifecycle',
+    matchPatterns: ['/equipment*', '/purchase-orders*', '/warehouse*', '/inventory*'],
+    children: [
+      { title: 'Equipment Lifecycle', path: '/equipment-lifecycle', icon: Truck },
+      { title: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
+      { title: 'Warehouse Operations', path: '/warehouse-operations', icon: Building2 },
+      { title: 'Inventory Management', path: '/inventory', icon: Package },
+      { title: 'Equipment Management', path: '/equipment-lifecycle-management', icon: Cog },
+    ],
+  },
 
   // Billing Hub
-  if (permissions.billing || permissions.finance || isPlatformRole || isCompanyAdmin) {
-    sections.push({
-      id: 'billing',
-      title: 'Billing Hub',
-      icon: DollarSign,
-      path: '/billing-hub',
-      matchPatterns: [
-        '/billing*',
-        '/invoices*',
-        '/accounts*',
-        '/meter-billing*',
-        '/journal*',
-        '/chart-of-accounts*',
-        '/financial*',
-        '/leases*',
-        '/advanced-billing*',
-        '/vendors*',
-      ],
-      children: [
-        { title: 'Billing Hub', path: '/billing', icon: DollarSign },
-        { title: 'Leases', path: '/leases', icon: FileText },
-        { title: 'Chart of Accounts', path: '/chart-of-accounts', icon: Database },
-        { title: 'Advanced Billing Engine', path: '/advanced-billing', icon: Zap },
-        { title: 'Meter Billing', path: '/meter-billing', icon: Calculator },
-        { title: 'Invoices', path: '/invoices', icon: FileText },
-        { title: 'Accounts Receivable', path: '/accounts-receivable', icon: CreditCard },
-        { title: 'Accounts Payable', path: '/accounts-payable', icon: CreditCard },
-        { title: 'Vendors', path: '/vendors', icon: Building2 },
-        { title: 'Journal Entries', path: '/journal-entries', icon: BookOpen },
-        { title: 'Financial Forecasting', path: '/financial-forecasting', icon: TrendingUp },
-      ],
-    });
-  }
+  {
+    id: 'billing',
+    title: 'Billing Hub',
+    icon: DollarSign,
+    path: '/billing-hub',
+    matchPatterns: [
+      '/billing*',
+      '/invoices*',
+      '/accounts*',
+      '/meter-billing*',
+      '/journal*',
+      '/chart-of-accounts*',
+      '/financial*',
+      '/leases*',
+      '/advanced-billing*',
+      '/vendors*',
+    ],
+    children: [
+      { title: 'Billing Hub', path: '/billing', icon: DollarSign },
+      { title: 'Leases', path: '/leases', icon: FileText },
+      { title: 'Chart of Accounts', path: '/chart-of-accounts', icon: Database },
+      { title: 'Advanced Billing Engine', path: '/advanced-billing', icon: Zap },
+      { title: 'Meter Billing', path: '/meter-billing', icon: Calculator },
+      { title: 'Invoices', path: '/invoices', icon: FileText },
+      { title: 'Accounts Receivable', path: '/accounts-receivable', icon: CreditCard },
+      { title: 'Accounts Payable', path: '/accounts-payable', icon: CreditCard },
+      { title: 'Vendors', path: '/vendors', icon: Building2 },
+      { title: 'Journal Entries', path: '/journal-entries', icon: BookOpen },
+      { title: 'Financial Forecasting', path: '/financial-forecasting', icon: TrendingUp },
+    ],
+  },
 
   // Reports Hub
-  if (permissions.reports || isPlatformRole || isCompanyAdmin) {
-    sections.push({
-      id: 'reports',
-      title: 'Reports',
-      icon: BarChart3,
-      path: '/reports',
-      matchPatterns: [
-        '/reports*',
-        '/advanced-reporting*',
-        '/performance-monitoring*',
-        '/analytics*',
-        '/advanced-analytics*',
-        '/executive*',
-        '/financial-intelligence*',
-        '/predictive*',
-      ],
-      children: [
-        { title: 'Reports Hub', path: '/reports', icon: BarChart3 },
-        { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
-        { title: 'Advanced Reporting', path: '/advanced-reporting', icon: BarChart3 },
-        { title: 'Advanced Analytics', path: '/advanced-analytics', icon: Brain },
-        {
-          title: 'Financial Intelligence',
-          path: '/financial-intelligence-dashboard',
-          icon: PieChart,
-        },
-        { title: 'Predictive Analytics', path: '/predictive-analytics', icon: TrendingUp },
-        { title: 'AI Analytics Dashboard', path: '/ai-analytics-dashboard', icon: Brain },
-        { title: 'Executive Dashboard', path: '/executive-dashboard', icon: Crown },
-      ],
-    });
-  }
+  {
+    id: 'reports',
+    title: 'Reports',
+    icon: BarChart3,
+    path: '/reports',
+    matchPatterns: [
+      '/reports*',
+      '/advanced-reporting*',
+      '/performance-monitoring*',
+      '/analytics*',
+      '/advanced-analytics*',
+      '/executive*',
+      '/financial-intelligence*',
+      '/predictive*',
+    ],
+    children: [
+      { title: 'Reports Hub', path: '/reports', icon: BarChart3 },
+      { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
+      { title: 'Advanced Reporting', path: '/advanced-reporting', icon: BarChart3 },
+      { title: 'Advanced Analytics', path: '/advanced-analytics', icon: Brain },
+      {
+        title: 'Financial Intelligence',
+        path: '/financial-intelligence-dashboard',
+        icon: PieChart,
+      },
+      { title: 'Predictive Analytics', path: '/predictive-analytics', icon: TrendingUp },
+      { title: 'AI Analytics Dashboard', path: '/ai-analytics-dashboard', icon: Brain },
+      { title: 'Executive Dashboard', path: '/executive-dashboard', icon: Crown },
+    ],
+  },
 
   // Task Management Hub - Always available
-  sections.push({
+  {
     id: 'tasks',
     title: 'Task Management',
     icon: CheckSquare,
@@ -446,10 +418,10 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       { title: 'Advanced Tasks', path: '/task-management', icon: Brain },
       { title: 'Basic Tasks', path: '/basic-tasks', icon: CheckSquare },
     ],
-  });
+  },
 
   // AI Hub - Always available for AI-powered features
-  sections.push({
+  {
     id: 'ai-hub',
     title: 'AI Hub',
     icon: Brain,
@@ -463,124 +435,148 @@ const createNavigationSections = (userRole: any): NavigationSection[] => {
       { title: 'AI Task Scheduling', path: '/ai-task-scheduling', icon: Brain },
       { title: 'Conversation AI', path: '/conversational-ai-dashboard', icon: MessageSquare },
     ],
-  });
+  },
 
   // Knowledge Base - Always available for all users
-  sections.push({
+  {
     id: 'knowledge-base',
     title: 'Knowledge Base',
     icon: BookOpen,
     path: '/knowledge-base',
     matchPatterns: ['/knowledge-base*'],
-  });
+  },
 
-  // Integrations Hub - show if user has system permissions or is admin
-  if (permissions.system || isPlatformRole || isCompanyAdmin || level >= 3) {
-    sections.push({
-      id: 'integrations-hub',
-      title: 'Integrations',
-      icon: Plug,
-      path: '/integration-hub',
-      matchPatterns: [
-        '/integration*',
-        '/quickbooks*',
-        '/erp*',
-        '/esignature*',
-        '/system-integrations*',
-      ],
-      children: [
-        { title: 'Integration Hub', path: '/integration-hub', icon: Plug },
-        { title: 'QuickBooks Integration', path: '/quickbooks-integration', icon: DollarSign },
-        { title: 'ERP Integration', path: '/erp-integration', icon: Globe },
-        { title: 'E-Signature Integration', path: '/esignature-integration', icon: FileSignature },
-        { title: 'System Integrations', path: '/system-integrations', icon: Plug },
-      ],
-    });
-  }
+  // Integrations Hub
+  {
+    id: 'integrations-hub',
+    title: 'Integrations',
+    icon: Plug,
+    path: '/integration-hub',
+    matchPatterns: [
+      '/integration*',
+      '/quickbooks*',
+      '/erp*',
+      '/esignature*',
+      '/system-integrations*',
+    ],
+    children: [
+      { title: 'Integration Hub', path: '/integration-hub', icon: Plug },
+      { title: 'QuickBooks Integration', path: '/quickbooks-integration', icon: DollarSign },
+      { title: 'ERP Integration', path: '/erp-integration', icon: Globe },
+      { title: 'E-Signature Integration', path: '/esignature-integration', icon: FileSignature },
+      { title: 'System Integrations', path: '/system-integrations', icon: Plug },
+    ],
+  },
 
-  // System Administration - show if user has system permissions or is admin
-  if (permissions.system || isPlatformRole || isCompanyAdmin || level >= 4) {
-    sections.push({
-      id: 'system-admin',
-      title: 'System Administration',
-      icon: Settings,
-      path: '/workflow-automation',
-      matchPatterns: [
-        '/workflow*',
-        '/business-process*',
-        '/document-management*',
-        '/security-compliance*',
-        '/deployment*',
-        '/customer-number*',
-        '/seo*',
-      ],
-      children: [
-        { title: 'SEO Management', path: '/seo', icon: Search },
-        { title: 'Workflow Automation', path: '/workflow-automation', icon: Zap },
-        {
-          title: 'Business Process Optimization',
-          path: '/business-process-optimization',
-          icon: TrendingUp,
-        },
-        { title: 'Document Management', path: '/document-management', icon: FileText },
-        { title: 'Security & Compliance', path: '/security-compliance-management', icon: Shield },
-        { title: 'Deployment Readiness', path: '/deployment-readiness', icon: Rocket },
-        { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
-        { title: 'Customer Number Settings', path: '/customer-number-settings', icon: Hash },
-      ],
-    });
-  }
+  // System Administration
+  {
+    id: 'system-admin',
+    title: 'System Administration',
+    icon: Settings,
+    path: '/workflow-automation',
+    matchPatterns: [
+      '/workflow*',
+      '/business-process*',
+      '/document-management*',
+      '/security-compliance*',
+      '/deployment*',
+      '/customer-number*',
+      '/seo*',
+    ],
+    children: [
+      { title: 'SEO Management', path: '/seo', icon: Search },
+      { title: 'Workflow Automation', path: '/workflow-automation', icon: Zap },
+      {
+        title: 'Business Process Optimization',
+        path: '/business-process-optimization',
+        icon: TrendingUp,
+      },
+      { title: 'Document Management', path: '/document-management', icon: FileText },
+      { title: 'Security & Compliance', path: '/security-compliance-management', icon: Shield },
+      { title: 'Deployment Readiness', path: '/deployment-readiness', icon: Rocket },
+      { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
+      { title: 'Customer Number Settings', path: '/customer-number-settings', icon: Hash },
+    ],
+  },
 
-  // Always visible core sections
-  sections.push(
-    {
-      id: 'customers',
-      title: 'Customers & CRM',
-      icon: Building2,
-      path: '/customers',
-      matchPatterns: ['/customers*', '/crm*', '/business-records*'],
-      children: [
-        { title: 'All Records', path: '/customers', icon: Building2 },
-        { title: 'Leads', path: '/customers?tab=leads', icon: UserPlus },
-        { title: 'Prospects', path: '/customers?tab=prospects', icon: Users },
-        { title: 'Active Customers', path: '/customers?tab=active', icon: UserCheck },
-      ],
-    },
-    {
-      id: 'settings',
-      title: 'Settings',
-      icon: Settings,
-      path: '/settings',
-      matchPatterns: ['/settings*'],
-    },
-  );
+  // Customers & CRM - Always visible core section
+  {
+    id: 'customers',
+    title: 'Customers & CRM',
+    icon: Building2,
+    path: '/customers',
+    matchPatterns: ['/customers*', '/crm*', '/business-records*'],
+    children: [
+      { title: 'All Records', path: '/customers', icon: Building2 },
+      { title: 'Leads', path: '/customers?tab=leads', icon: UserPlus },
+      { title: 'Prospects', path: '/customers?tab=prospects', icon: Users },
+      { title: 'Active Customers', path: '/customers?tab=active', icon: UserCheck },
+    ],
+  },
 
-  return sections;
-};
+  // Settings - Always visible
+  {
+    id: 'settings',
+    title: 'Settings',
+    icon: Settings,
+    path: '/settings',
+    matchPatterns: ['/settings*'],
+  },
+];
+
+/**
+ * Filter navigation sections and their children based on the user's permissions.
+ * Uses the granular permission map from navigation-permissions.ts.
+ */
+function filterNavigationByPermissions(
+  sections: NavigationSection[],
+  userPermissions: Set<string>,
+  userLevel: number,
+  isPlatformUser: boolean,
+): NavigationSection[] {
+  return sections
+    .filter((section) => {
+      // Check section-level access
+      const sectionRule = SECTION_PERMISSIONS[section.id];
+      return checkNavigationAccess(sectionRule, userPermissions, userLevel, isPlatformUser);
+    })
+    .map((section) => {
+      // Filter children based on item-level permissions
+      if (!section.children) return section;
+
+      const filteredChildren = section.children.filter((child) => {
+        const itemRule = ITEM_PERMISSIONS[child.path];
+        return checkNavigationAccess(itemRule, userPermissions, userLevel, isPlatformUser);
+      });
+
+      // If no children remain after filtering, hide the section entirely
+      if (filteredChildren.length === 0) return null;
+
+      return { ...section, children: filteredChildren };
+    })
+    .filter((section): section is NavigationSection => section !== null);
+}
 
 export function RoleAwareCollapsibleSidebar({
   className,
   ...props
 }: RoleAwareCollapsibleSidebarProps) {
   const { user, isAuthenticated } = useAuth();
+  const { permissions, level, isPlatformUser } = usePermissions();
   const [location] = useLocation();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [userExpandedSections, setUserExpandedSections] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [compactMode, setCompactMode] = useState(false);
 
-  // Use role from user object instead of separate API call
+  // Use role from user object for display
   const userRole = user?.role;
 
-  // Stable navigation sections
+  // Filter navigation sections based on granular RBAC permissions
   const navigationSections = useMemo(
-    () => createNavigationSections(userRole),
-    [
-      (userRole as any)?.name,
-      (userRole as any)?.canAccessAllTenants,
-      (userRole as any)?.level,
-      JSON.stringify((userRole as any)?.permissions),
-    ],
+    () =>
+      filterNavigationByPermissions(ALL_NAVIGATION_SECTIONS, permissions, level, isPlatformUser),
+    [permissions, level, isPlatformUser],
   );
 
   // Debug removed for cleaner console output
