@@ -1952,6 +1952,318 @@ const ROLE_TEMPLATES: RoleTemplate[] = [
     ],
     isSystemRole: true,
   },
+
+  // ============================================================================
+  // ADDITIONAL DEALER-INDUSTRY ROLES
+  // These roles are specific to the copier/print dealer industry corporate
+  // structure and complement the generic roles above.
+  // ============================================================================
+
+  // LEVEL 6: Area Manager (oversees multiple regions)
+  {
+    name: 'Area Manager',
+    code: 'AREA_MANAGER',
+    description: 'Area Manager - oversees multiple regions in a geographic area',
+    hierarchyLevel: 'level_6',
+    organizationalTier: 'company',
+    department: 'sales',
+    permissions: [
+      'sales.lead.view_company',
+      'sales.lead.edit_location',
+      'sales.lead.assign',
+      'sales.lead.import',
+      'sales.lead.delete',
+      'sales.opportunity.view_company',
+      'sales.customer.view_location',
+      'sales.customer.create',
+      'sales.quote.approve_high_value',
+      'sales.quote.custom_pricing',
+      'sales.territory.manage_assignments',
+      'sales.commission.view_team',
+      'sales.commission.approve',
+      'reporting.sales.view',
+      'reporting.executive.view',
+      'reporting.report.create',
+      'reporting.kpi.manage',
+      'admin.user.create_company',
+      'admin.role.assign',
+      'audit.logs.view_regional',
+    ],
+    isSystemRole: true,
+  },
+
+  // LEVEL 5: District Manager (manages locations within a district/region)
+  {
+    name: 'District Manager',
+    code: 'DISTRICT_MANAGER',
+    description: 'District Manager - manages sales/service across a district of locations',
+    hierarchyLevel: 'level_5',
+    organizationalTier: 'regional',
+    department: 'sales',
+    permissions: [
+      'sales.lead.view_regional',
+      'sales.lead.edit_location',
+      'sales.lead.assign',
+      'sales.lead.import',
+      'sales.opportunity.view_regional',
+      'sales.customer.view_location',
+      'sales.customer.create',
+      'sales.quote.approve_high_value',
+      'sales.territory.manage_assignments',
+      'sales.territory.view_performance',
+      'sales.commission.view_team',
+      'service.ticket.view_location',
+      'service.equipment.view',
+      'reporting.sales.view',
+      'reporting.service.view',
+      'reporting.report.create',
+      'reporting.dashboard.customize',
+      'admin.user.create_regional',
+      'admin.role.assign',
+    ],
+    isSystemRole: true,
+  },
+
+  // LEVEL 4: IT Administrator (location-level IT management)
+  {
+    name: 'IT Administrator',
+    code: 'IT_ADMIN',
+    description: 'IT Administrator - manages system configuration and user access',
+    hierarchyLevel: 'level_4',
+    organizationalTier: 'location',
+    department: 'it',
+    permissions: [
+      'admin.user.view',
+      'admin.user.create_location',
+      'admin.user.edit_profile',
+      'admin.user.deactivate',
+      'admin.role.view',
+      'admin.role.assign',
+      'admin.settings.view',
+      'admin.settings.update',
+      'admin.settings.integrations',
+      'audit.logs.view_location',
+      'reporting.report.view',
+      'reporting.report.create',
+    ],
+    isSystemRole: true,
+  },
+
+  // LEVEL 4: HR Manager (location-level human resources)
+  {
+    name: 'HR Manager',
+    code: 'HR_MANAGER',
+    description: 'HR Manager - manages employee records and onboarding',
+    hierarchyLevel: 'level_4',
+    organizationalTier: 'location',
+    department: 'hr',
+    permissions: [
+      'admin.user.view',
+      'admin.user.create_location',
+      'admin.user.edit_profile',
+      'admin.user.deactivate',
+      'admin.role.view',
+      'admin.role.assign',
+      'audit.logs.view_location',
+      'reporting.report.view',
+      'reporting.report.create',
+      'reporting.dashboard.customize',
+    ],
+    isSystemRole: true,
+  },
+
+  // LEVEL 6: VP of Administration
+  {
+    name: 'VP Administration',
+    code: 'VP_ADMIN',
+    description: 'VP of Administration - company-wide admin, IT, and HR oversight',
+    hierarchyLevel: 'level_6',
+    organizationalTier: 'company',
+    department: 'admin',
+    permissions: [
+      'admin.user.view',
+      'admin.user.create_company',
+      'admin.user.edit_profile',
+      'admin.user.deactivate',
+      'admin.role.view',
+      'admin.role.create',
+      'admin.role.assign',
+      'admin.role.manage_permissions',
+      'admin.settings.view',
+      'admin.settings.update',
+      'admin.settings.integrations',
+      'audit.logs.view_company',
+      'compliance.manage',
+      'compliance.reports.view',
+      'reporting.executive.view',
+      'reporting.report.create',
+      'reporting.kpi.manage',
+    ],
+    isSystemRole: true,
+  },
+
+  // LEVEL 3: Account Executive (senior sales, handles major accounts)
+  {
+    name: 'Account Executive',
+    code: 'ACCOUNT_EXECUTIVE',
+    description: 'Account Executive - manages major/enterprise accounts',
+    hierarchyLevel: 'level_3',
+    organizationalTier: 'location',
+    department: 'sales',
+    permissions: [
+      'sales.lead.view_own',
+      'sales.lead.create',
+      'sales.lead.edit_own',
+      'sales.lead.view_team',
+      'sales.opportunity.view_own',
+      'sales.opportunity.create',
+      'sales.opportunity.edit_own',
+      'sales.opportunity.view_team',
+      'sales.customer.view_own',
+      'sales.customer.edit_own',
+      'sales.customer.view_location',
+      'sales.quote.create',
+      'sales.quote.edit_own',
+      'sales.quote.approve_standard',
+      'sales.quote.custom_pricing',
+      'sales.commission.view_own',
+      'sales.territory.view_own',
+      'sales.territory.view_performance',
+      'reporting.sales.view',
+      'reporting.report.export',
+      'reporting.dashboard.customize',
+    ],
+    isSystemRole: true,
+  },
+
+  // LEVEL 2: Inside Sales Representative
+  {
+    name: 'Inside Sales Representative',
+    code: 'INSIDE_SALES_REP',
+    description: 'Inside Sales Representative - phone/online sales with team visibility',
+    hierarchyLevel: 'level_2',
+    organizationalTier: 'location',
+    department: 'sales',
+    permissions: [
+      'sales.lead.view_own',
+      'sales.lead.create',
+      'sales.lead.edit_own',
+      'sales.lead.view_team',
+      'sales.opportunity.view_own',
+      'sales.opportunity.create',
+      'sales.opportunity.edit_own',
+      'sales.customer.view_own',
+      'sales.customer.edit_own',
+      'sales.quote.create',
+      'sales.quote.edit_own',
+      'sales.commission.view_own',
+      'sales.territory.view_own',
+      'reporting.sales.view',
+      'reporting.report.export',
+      'reporting.dashboard.customize',
+    ],
+    isSystemRole: true,
+  },
+
+  // LEVEL 1: Dispatch Coordinator
+  {
+    name: 'Dispatch Coordinator',
+    code: 'DISPATCH_COORDINATOR',
+    description: 'Dispatch Coordinator - schedules service calls and manages dispatch board',
+    hierarchyLevel: 'level_1',
+    organizationalTier: 'location',
+    department: 'service',
+    permissions: [
+      'service.ticket.view_own',
+      'service.ticket.view_team',
+      'service.ticket.create',
+      'service.ticket.assign',
+      'service.schedule.view_own',
+      'service.schedule.view_team',
+      'service.schedule.manage',
+      'service.equipment.view',
+      'service.parts.view',
+      'reporting.report.view',
+    ],
+    isSystemRole: true,
+  },
+
+  // LEVEL 2: Solutions Consultant (pre-sales technical)
+  {
+    name: 'Solutions Consultant',
+    code: 'SOLUTIONS_CONSULTANT',
+    description: 'Solutions Consultant - pre-sales technical assessment and configuration',
+    hierarchyLevel: 'level_2',
+    organizationalTier: 'location',
+    department: 'sales',
+    permissions: [
+      'sales.lead.view_own',
+      'sales.lead.view_team',
+      'sales.opportunity.view_own',
+      'sales.opportunity.view_team',
+      'sales.customer.view_own',
+      'sales.quote.create',
+      'sales.quote.edit_own',
+      'service.equipment.view',
+      'service.equipment.configure',
+      'operations.inventory.view',
+      'reporting.report.view',
+      'reporting.report.export',
+      'reporting.dashboard.customize',
+    ],
+    isSystemRole: true,
+  },
+
+  // LEVEL 1: Customer Service Representative
+  {
+    name: 'Customer Service Representative',
+    code: 'CSR',
+    description: 'Customer Service Representative - handles supplies orders and basic inquiries',
+    hierarchyLevel: 'level_1',
+    organizationalTier: 'location',
+    department: 'service',
+    permissions: [
+      'service.ticket.view_own',
+      'service.ticket.create',
+      'service.ticket.edit_own',
+      'service.equipment.view',
+      'service.parts.view',
+      'service.parts.request',
+      'sales.customer.view_own',
+      'operations.inventory.view',
+      'reporting.report.view',
+    ],
+    isSystemRole: true,
+  },
+
+  // LEVEL 5: Company Administrator (non-executive admin across company)
+  {
+    name: 'Company Administrator',
+    code: 'COMPANY_ADMIN',
+    description: 'Company Administrator - system and user administration across the company',
+    hierarchyLevel: 'level_5',
+    organizationalTier: 'company',
+    department: 'admin',
+    permissions: [
+      'admin.user.view',
+      'admin.user.create_company',
+      'admin.user.edit_profile',
+      'admin.user.deactivate',
+      'admin.role.view',
+      'admin.role.create',
+      'admin.role.assign',
+      'admin.settings.view',
+      'admin.settings.update',
+      'admin.settings.integrations',
+      'audit.logs.view_company',
+      'compliance.reports.view',
+      'reporting.report.view',
+      'reporting.report.create',
+      'reporting.report.export',
+      'reporting.dashboard.customize',
+    ],
+    isSystemRole: true,
+  },
 ];
 
 // ============================================================================
@@ -2089,15 +2401,15 @@ export async function seedRBAC() {
     log.info(`\n🎯 Role Breakdown:`);
     log.info(`   - Level 8 (Platform): 1 role`);
     log.info(`   - Level 7 (Executive): 3 roles`);
-    log.info(`   - Level 6 (Director): 4 roles`);
-    log.info(`   - Level 5 (Regional): 2 roles`);
-    log.info(`   - Level 4 (Manager): 5 roles`);
-    log.info(`   - Level 3 (Supervisor): 3 roles`);
-    log.info(`   - Level 2 (Team Lead): 2 roles`);
-    log.info(`   - Level 1 (Individual): 4 roles`);
+    log.info(`   - Level 6 (Director): 7 roles (+Area Mgr, VP Admin)`);
+    log.info(`   - Level 5 (Regional): 4 roles (+District Mgr, Company Admin)`);
+    log.info(`   - Level 4 (Manager): 7 roles (+IT Admin, HR Manager)`);
+    log.info(`   - Level 3 (Supervisor): 4 roles (+Account Executive)`);
+    log.info(`   - Level 2 (Team Lead): 5 roles (+Inside Sales, Solutions Consultant)`);
+    log.info(`   - Level 1 (Individual): 7 roles (+Dispatch Coordinator, CSR)`);
     log.info('='.repeat(60));
   } catch (error) {
-    log.error('❌ RBAC Seeding Failed:', error);
+    log.error('❌ RBAC Seeding Failed:', error as string);
     throw error;
   }
 }

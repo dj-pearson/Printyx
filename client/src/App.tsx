@@ -15,6 +15,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { SessionGuard } from '@/components/SessionGuard';
 import { AccessibilityProvider } from '@/hooks/useAccessibility';
 import { LiveRegionProvider } from '@/components/accessibility/LiveRegion';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 // Critical auth pages - keep eager for fast initial load
 import NotFound from '@/pages/not-found';
@@ -498,7 +499,15 @@ function Router() {
           <Route path="/forgot-password" component={RedirectToDashboard} />
           <Route path="/auth/callback" component={AuthCallback} />
           <Route path="/" component={Dashboard} />
-          <Route path="/executive-dashboard" component={ExecutiveDashboard} />
+          <Route path="/executive-dashboard">
+            {() => (
+              <ProtectedRoute
+                component={ExecutiveDashboard}
+                permissions={['reporting.executive.view']}
+                minLevel={6}
+              />
+            )}
+          </Route>
           <Route path="/today" component={TodayDashboard} />
           <Route path="/dashboard/today" component={TodayDashboard} />
           <Route path="/customers" component={Customers} />
@@ -533,11 +542,31 @@ function Router() {
           <Route path="/quotes/:quoteId/view" component={QuoteView} />
           <Route path="/proposal-builder" component={ProposalBuilder} />
           {/* Deal Desk & Approval Workflows */}
-          <Route path="/deal-desk" component={DealDeskDashboard} />
+          <Route path="/deal-desk">
+            {() => (
+              <ProtectedRoute
+                component={DealDeskDashboard}
+                permissions={[
+                  'sales.quote.approve_standard',
+                  'sales.quote.approve_high_value',
+                  'sales.quote.approve_enterprise',
+                ]}
+                minLevel={3}
+              />
+            )}
+          </Route>
           <Route path="/deal-desk/requests/:id" component={ApprovalRequestDetail} />
           <Route path="/deal-desk/rules" component={ApprovalRulesConfiguration} />
           {/* Pipeline Configuration */}
-          <Route path="/pipeline-config" component={PipelineConfiguration} />
+          <Route path="/pipeline-config">
+            {() => (
+              <ProtectedRoute
+                component={PipelineConfiguration}
+                permissions={['sales.territory.manage_assignments']}
+                minLevel={4}
+              />
+            )}
+          </Route>
           {/* Use /preventive-maintenance as primary route */}
           <Route path="/preventive-maintenance" component={PreventiveMaintenanceScheduling} />
           {/* Unified Predictive Maintenance Hub - consolidates proactive + AI predictions */}
@@ -545,11 +574,24 @@ function Router() {
           <Route path="/incident-response-system" component={IncidentResponseSystem} />
           <Route path="/customer-portal" component={CustomerSelfServicePortal} />
           <Route path="/advanced-billing" component={AdvancedBillingEngine} />
-          <Route path="/financial-forecasting" component={FinancialForecasting} />
-          <Route
-            path="/financial-intelligence-dashboard"
-            component={FinancialIntelligenceDashboard}
-          />
+          <Route path="/financial-forecasting">
+            {() => (
+              <ProtectedRoute
+                component={FinancialForecasting}
+                permissions={['finance.reports.view', 'finance.reports.view_sensitive']}
+                minLevel={5}
+              />
+            )}
+          </Route>
+          <Route path="/financial-intelligence-dashboard">
+            {() => (
+              <ProtectedRoute
+                component={FinancialIntelligenceDashboard}
+                permissions={['reporting.finance.view', 'finance.reports.view_sensitive']}
+                minLevel={5}
+              />
+            )}
+          </Route>
           {/* Equipment Lifecycle Management - now redirects to unified hub */}
           <Route path="/equipment-lifecycle-management" component={EquipmentLifecycleHub} />
           {/* Legacy Equipment Lifecycle Management (keeping for reference during transition) */}
@@ -638,8 +680,24 @@ function Router() {
           <Route path="/vendors" component={Vendors} />
           <Route path="/accounts-payable" component={AccountsPayable} />
           <Route path="/accounts-receivable" component={AccountsReceivable} />
-          <Route path="/chart-of-accounts" component={ChartOfAccounts} />
-          <Route path="/journal-entries" component={JournalEntries} />
+          <Route path="/chart-of-accounts">
+            {() => (
+              <ProtectedRoute
+                component={ChartOfAccounts}
+                permissions={['finance.gl.view']}
+                minLevel={4}
+              />
+            )}
+          </Route>
+          <Route path="/journal-entries">
+            {() => (
+              <ProtectedRoute
+                component={JournalEntries}
+                permissions={['finance.gl.view', 'finance.gl.post']}
+                minLevel={4}
+              />
+            )}
+          </Route>
           <Route path="/reports" component={Reports} />
           <Route path="/reports/custom/new" component={CustomReportBuilder} />
           <Route path="/custom-dashboard" component={CustomDashboard} />
@@ -651,7 +709,15 @@ function Router() {
           <Route path="/mobile-optimization" component={MobileOptimization} />
           <Route path="/performance-monitoring" component={PerformanceMonitoring} />
           <Route path="/system-integrations" component={SystemIntegrations} />
-          <Route path="/deployment-readiness" component={DeploymentReadiness} />
+          <Route path="/deployment-readiness">
+            {() => (
+              <ProtectedRoute
+                component={DeploymentReadiness}
+                permissions={['admin.settings.update']}
+                minLevel={6}
+              />
+            )}
+          </Route>
           {/* Unified Task Hub - consolidates all task management */}
           <Route path="/task-hub" component={TaskHub} />
           <Route path="/tasks" component={TaskHub} />
@@ -693,13 +759,29 @@ function Router() {
           <Route path="/business-process-optimization" component={BusinessProcessOptimization} />
           {/* Consolidated into /security-compliance-management */}
           <Route path="/security-compliance" component={SecurityComplianceManagement} />
-          <Route path="/security-compliance-management" component={SecurityComplianceManagement} />
+          <Route path="/security-compliance-management">
+            {() => (
+              <ProtectedRoute
+                component={SecurityComplianceManagement}
+                permissions={['audit.logs.view_location', 'compliance.reports.view']}
+                minLevel={5}
+              />
+            )}
+          </Route>
           <Route path="/customer-portal" component={CustomerSelfServicePortal} />
           <Route path="/customer-self-service-portal" component={CustomerSelfServicePortal} />
           <Route path="/incident-response" component={IncidentResponseSystem} />
           {/* Removed duplicate /ai-analytics route - using /ai-analytics-dashboard as primary */}
           <Route path="/ai-analytics-dashboard" component={AIAnalyticsDashboard} />
-          <Route path="/predictive-analytics" component={PredictiveAnalytics} />
+          <Route path="/predictive-analytics">
+            {() => (
+              <ProtectedRoute
+                component={PredictiveAnalytics}
+                permissions={['reporting.executive.view']}
+                minLevel={5}
+              />
+            )}
+          </Route>
           <Route
             path="/predictive-contract-profitability"
             component={PredictiveContractProfitability}
@@ -714,11 +796,23 @@ function Router() {
           <Route path="/system-monitoring" component={SystemMonitoring} />
           {/* Consolidated into /role-management - AccessControl had mock data duplicating UserManagement + RoleManagement */}
           <Route path="/access-control" component={RoleManagement} />
-          <Route path="/role-management" component={RoleManagement} />
+          <Route path="/role-management">
+            {() => (
+              <ProtectedRoute
+                component={RoleManagement}
+                permissions={['admin.role.view', 'admin.role.create']}
+                minLevel={4}
+              />
+            )}
+          </Route>
           <Route path="/gpt5-dashboard" component={GPT5Dashboard} />
-          <Route path="/admin-hub" component={AdminHub} />
+          <Route path="/admin-hub">
+            {() => <ProtectedRoute component={AdminHub} platformOnly />}
+          </Route>
           <Route path="/admin-command-center" component={AdminCommandCenter} />
-          <Route path="/root-admin-dashboard" component={RootAdminDashboard} />
+          <Route path="/root-admin-dashboard">
+            {() => <ProtectedRoute component={RootAdminDashboard} platformOnly />}
+          </Route>
           <Route path="/root-admin-signups-crm" component={RootAdminSignupsCRM} />
           <Route path="/root-admin/seo" component={RootAdminSEO} />
           <Route path="/seo" component={SEODashboard} />
@@ -741,18 +835,34 @@ function Router() {
           <Route path="/platform-crm/cohort-analysis" component={PlatformCohortAnalysis} />
 
           {/* Platform Admin Routes - RBAC-protected, no /admin prefix needed */}
-          <Route path="/admin/root-admin-security" component={RootAdminSecurity} />
+          <Route path="/admin/root-admin-security">
+            {() => <ProtectedRoute component={RootAdminSecurity} platformOnly />}
+          </Route>
           <Route path="/admin/system-security" component={SystemSecurity} />
           <Route path="/admin/database-updater" component={DatabaseUpdaterPage} />
-          <Route path="/admin/tenant-management" component={TenantManagement} />
-          <Route path="/admin/user-management" component={UserManagement} />
+          <Route path="/admin/tenant-management">
+            {() => <ProtectedRoute component={TenantManagement} platformOnly />}
+          </Route>
+          <Route path="/admin/user-management">
+            {() => (
+              <ProtectedRoute
+                component={UserManagement}
+                permissions={['admin.user.view']}
+                minLevel={4}
+              />
+            )}
+          </Route>
           <Route path="/admin/system-settings" component={Settings} />
           <Route path="/admin/platform-analytics" component={AdvancedAnalyticsDashboard} />
           <Route path="/admin/knowledge-base" component={KnowledgeBaseAdmin} />
           <Route path="/admin/knowledge-base/new" component={ArticleEditor} />
           <Route path="/admin/knowledge-base/edit/:id" component={ArticleEditor} />
-          <Route path="/platform-configuration" component={PlatformConfiguration} />
-          <Route path="/database-management" component={DatabaseManagement} />
+          <Route path="/platform-configuration">
+            {() => <ProtectedRoute component={PlatformConfiguration} platformOnly />}
+          </Route>
+          <Route path="/database-management">
+            {() => <ProtectedRoute component={DatabaseManagement} platformOnly />}
+          </Route>
           <Route path="/erp-integration" component={ERPIntegration} />
           <Route path="/customer-access-management" component={CustomerAccessManagement} />
           <Route path="/manufacturer-integration" component={ManufacturerIntegration} />
