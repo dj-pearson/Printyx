@@ -73,6 +73,13 @@ export interface AuthUser {
     id: string;
     name: string;
     level: number;
+    permissions?: Record<string, boolean>;
+    canAccessAllTenants?: boolean;
+    /** Granular permission codes from the enhanced RBAC system */
+    enhancedPermissions?: string[];
+    code?: string;
+    organizationalTier?: string;
+    department?: string;
   };
   team?: {
     id: string;
@@ -223,12 +230,33 @@ export function useSupabaseAuth() {
         }
 
         // Determine role - use role_id (FK) column
-        const roleId = profile?.role_id || authUser.roleId;
-        let roleData = null;
-        const roleString = null; // Legacy role string no longer used
+        const roleId = profile?.role_id || profile?.roleId || authUser.roleId;
+        let roleData: AuthUser['role'] | null = null;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        let roleString: string | null = null; // Legacy role string no longer used
 
-        // First try to fetch from roles table if we have role_id
-        if (roleId) {
+        // If the backend API returned a complete role object (with enhancedPermissions),
+        // use it directly instead of re-fetching from the roles table.
+        if (profile?.role && typeof profile.role === 'object' && profile.role.id) {
+          const apiRole = profile.role;
+          roleData = {
+            id: apiRole.id,
+            name: apiRole.name,
+            level: apiRole.level || 1,
+            permissions: normalizePermissions(apiRole.permissions),
+            canAccessAllTenants:
+              apiRole.canAccessAllTenants || apiRole.can_access_all_tenants || false,
+            enhancedPermissions: Array.isArray(apiRole.enhancedPermissions)
+              ? apiRole.enhancedPermissions
+              : undefined,
+            code: apiRole.code,
+            organizationalTier: apiRole.organizationalTier,
+            department: apiRole.department,
+          };
+        }
+
+        // Fallback: fetch from roles table if we have role_id but no API role
+        if (!roleData && roleId) {
           const { data: role, error: roleError } = await supabase
             .from('roles')
             .select('id, name, level, permissions, can_access_all_tenants')
@@ -240,7 +268,7 @@ export function useSupabaseAuth() {
               id: role.id,
               name: role.name,
               level: role.level || 1,
-              permissions: role.permissions || {},
+              permissions: normalizePermissions(role.permissions),
               canAccessAllTenants: role.can_access_all_tenants || false,
             };
           } else {
@@ -249,9 +277,10 @@ export function useSupabaseAuth() {
         }
 
         // If no role from roles table, use role string to determine permissions
+        // (Legacy fallback - roleString is currently always null but kept for future use)
         if (!roleData && roleString) {
           // Map string role to permissions
-          const roleLowerCase = roleString.toLowerCase();
+          const roleLowerCase = (roleString as string).toLowerCase();
 
           // Determine if this is an admin role
           const isAdmin =
@@ -342,12 +371,12 @@ export function useSupabaseAuth() {
         }
 
         // Detect isPlatformUser based on role or explicit flag from auth metadata
+        const roleName = (roleData.name || '').toLowerCase();
         const isPlatformUser =
           authUser.isPlatformUser ||
           roleData.level >= 8 ||
-          roleString?.toLowerCase().includes('admin') ||
-          roleString?.toLowerCase().includes('root') ||
-          roleString?.toLowerCase().includes('platform');
+          roleName.includes('platform_admin') ||
+          roleName.includes('root_admin');
 
         // Merge profile data with auth user
         return {
