@@ -267,7 +267,7 @@ export function usePermissions(): PermissionContext & {
   const { user } = useAuth();
 
   return useMemo(() => {
-    const role = user?.role as any;
+    const role = user?.role;
     const level: number = role?.level || 1;
     const isPlatformUser: boolean = user?.isPlatformUser || false;
     const roleCode: string = role?.code || role?.name || 'USER';
