@@ -12,17 +12,23 @@ import type { Session, User } from '@supabase/supabase-js';
 
 type RolePermissions = Record<string, boolean>;
 
+/**
+ * Minimal default permissions for unauthenticated/fallback users.
+ * Only grants basic read access - users must have a proper role
+ * assigned for full module access. This prevents a security hole
+ * where failed role resolution grants full access.
+ */
 function defaultRolePermissions(): RolePermissions {
   return {
-    sales: true,
-    service: true,
-    products: true,
-    inventory: true,
-    purchasing: true,
-    billing: true,
-    finance: true,
-    reports: true,
-    system: true,
+    sales: false,
+    service: false,
+    products: false,
+    inventory: false,
+    purchasing: false,
+    billing: false,
+    finance: false,
+    reports: false,
+    system: false,
   };
 }
 
@@ -45,7 +51,7 @@ function normalizePermissions(input: unknown): RolePermissions {
 function getDefaultRole() {
   return {
     id: 'default',
-    name: 'User',
+    name: 'Restricted User',
     level: 1,
     permissions: defaultRolePermissions(),
     canAccessAllTenants: false,
@@ -317,26 +323,20 @@ export function useSupabaseAuth() {
           }
         }
 
-        // If still no role found, provide a default role for navigation
+        // If still no role found, provide a restricted default role.
+        // Users without a proper role assignment get minimal access
+        // until an administrator assigns them a role.
         if (!roleData) {
-          // Only log in development to reduce console noise in production
           if (import.meta.env.DEV) {
             console.warn(
-              'No role found (neither role string nor role_id), using default user role',
+              'No role found (neither role string nor role_id), using restricted default role',
             );
           }
           roleData = {
             id: 'default',
             name: 'User',
             level: 1,
-            permissions: {
-              sales: true,
-              service: true,
-              products: true,
-              inventory: true,
-              billing: true,
-              reports: true,
-            },
+            permissions: defaultRolePermissions(),
             canAccessAllTenants: false,
           };
         }
