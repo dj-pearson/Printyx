@@ -61,7 +61,8 @@
       "Bash(else echo \"$f: NOT CREATED\")",
       "Bash(fi)",
       "Bash(for f in routes-sample-data.ts routes-seo-core.ts routes-workflow-mobile.ts)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(powershell -c \"Get-Content ''C:\\\\Users\\\\dpearson\\\\.claude\\\\projects\\\\C--Users-dpearson-Documents-Printyx\\\\5b4d8c49-82e3-4ca8-aebc-b550b59906d7\\\\tool-results\\\\toolu_01JgHpXJi6PJRF3DA3uhnuzD.txt'' | Select-Object -Last 5\")"
     ],
     "deny": [],
     "ask": []
