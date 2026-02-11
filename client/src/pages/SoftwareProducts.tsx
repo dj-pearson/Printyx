@@ -55,7 +55,7 @@ import {
   type SoftwareProduct,
   type InsertSoftwareProduct,
 } from '@shared/schema';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, apiFormRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 
@@ -189,16 +189,7 @@ export default function SoftwareProducts() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/software-products/import', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Import failed');
-      }
-
-      return response.json();
+      return apiFormRequest('/api/software-products/import', 'POST', formData);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/software-products'] });

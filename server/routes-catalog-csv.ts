@@ -26,6 +26,7 @@ import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-catalog-csv');
 
 import { insertCpcRateSchema, productAccessories, masterProductModels } from '@shared/schema';
+import { isAuthenticated } from './replitAuth';
 
 // Configure multer for CSV file uploads
 const upload = multer({
@@ -866,6 +867,7 @@ export function registerCatalogCsvRoutes(app: Express) {
 
   app.post(
     '/api/software-products/import',
+    isAuthenticated,
     upload.single('file'),
 
     async (req: any, res) => {
