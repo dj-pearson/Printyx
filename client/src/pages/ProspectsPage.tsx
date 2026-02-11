@@ -271,28 +271,19 @@ export default function ProspectsPage() {
   // ─── KPI Stats ──────────────────────────────────────────────────────────
 
   const { data: stats } = useQuery({
-    queryKey: ['/api/business-records/stats', 'prospect'],
+    queryKey: ['/api/companies/stats', 'prospect'],
     enabled: isAuthenticated,
     queryFn: async () => {
-      const resp = await apiRequest(
-        '/api/business-records?recordType=prospect&limit=1&offset=0',
-        'GET',
-      );
+      const resp = await apiRequest('/api/companies?recordType=Prospect&limit=1&offset=0', 'GET');
       const total = resp?.pagination?.total || 0;
 
       const [qualifiedResp, proposalResp, negotiationResp] = await Promise.all([
+        apiRequest('/api/companies?recordType=Prospect&status=qualified&limit=1&offset=0', 'GET'),
         apiRequest(
-          '/api/business-records?recordType=prospect&status=qualified&limit=1&offset=0',
+          '/api/companies?recordType=Prospect&status=proposal_sent&limit=1&offset=0',
           'GET',
         ),
-        apiRequest(
-          '/api/business-records?recordType=prospect&status=proposal_sent&limit=1&offset=0',
-          'GET',
-        ),
-        apiRequest(
-          '/api/business-records?recordType=prospect&status=negotiation&limit=1&offset=0',
-          'GET',
-        ),
+        apiRequest('/api/companies?recordType=Prospect&status=negotiation&limit=1&offset=0', 'GET'),
       ]);
 
       return {
@@ -310,17 +301,31 @@ export default function ProspectsPage() {
   // ─── Create Prospect Mutation ─────────────────────────────────────────────
 
   const createMutation = useMutation({
-    mutationFn: (data: any) =>
-      apiRequest('/api/business-records', 'POST', {
-        ...data,
-        recordType: 'prospect',
-        status: data.salesStage || 'qualified',
-        estimatedAmount: data.estimatedAmount ? parseFloat(data.estimatedAmount) : undefined,
-        probability: data.probability ? parseInt(data.probability) : 50,
-      }),
+    mutationFn: (data: any) => {
+      const nameParts = (data.primaryContactName || '').trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      return apiRequest('/api/companies', 'POST', {
+        business_name: data.companyName,
+        business_record_type: 'Prospect',
+        activity: data.salesStage || 'qualified',
+        industry: data.industry || undefined,
+        contacts: firstName
+          ? [
+              {
+                first_name: firstName,
+                last_name: lastName,
+                email: data.primaryContactEmail || undefined,
+                phone: data.primaryContactPhone || undefined,
+                is_primary: true,
+              },
+            ]
+          : [],
+      });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
       setIsCreateOpen(false);
       form.reset();
       toast({ title: 'Prospect Created', description: 'New prospect has been added.' });
@@ -334,14 +339,12 @@ export default function ProspectsPage() {
 
   const convertToCustomerMutation = useMutation({
     mutationFn: (record: any) =>
-      apiRequest(`/api/business-records/${record.id}/status`, 'PATCH', {
-        status: 'active',
-        recordType: 'customer',
-        notes: 'Converted from prospect to customer',
+      apiRequest(`/api/companies/${record.id}`, 'PATCH', {
+        business_record_type: 'Customer',
+        activity: 'active',
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
       toast({ title: 'Converted', description: 'Prospect has been converted to customer.' });
     },
   });
@@ -361,9 +364,8 @@ export default function ProspectsPage() {
       label: 'Delete',
       icon: Trash2,
       onClick: (record) => {
-        apiRequest(`/api/business-records/${record.id}`, 'DELETE').then(() => {
-          queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/business-records/stats'] });
+        apiRequest(`/api/companies/${record.id}`, 'DELETE').then(() => {
+          queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
           toast({ title: 'Deleted', description: 'Prospect has been removed.' });
         });
       },

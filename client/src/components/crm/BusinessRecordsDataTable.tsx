@@ -287,7 +287,7 @@ export function BusinessRecordsDataTable({
 
   const queryKey = useMemo(
     () => [
-      '/api/business-records',
+      '/api/companies',
       recordType,
       { page, pageSize, search: debouncedSearch, sortBy, sortOrder, ...activeFilters },
     ],
@@ -298,8 +298,10 @@ export function BusinessRecordsDataTable({
     queryKey,
     enabled: isAuthenticated,
     queryFn: async () => {
+      // Capitalize recordType for companies endpoint (lead → Lead, customer → Customer)
+      const companiesType = recordType.charAt(0).toUpperCase() + recordType.slice(1);
       const params = new URLSearchParams({
-        recordType,
+        recordType: companiesType,
         limit: pageSize.toString(),
         offset: ((page - 1) * pageSize).toString(),
         sortBy,
@@ -318,7 +320,7 @@ export function BusinessRecordsDataTable({
         }
       }
 
-      const resp = await apiRequest(`/api/business-records?${params}`, 'GET');
+      const resp = await apiRequest(`/api/companies?${params}`, 'GET');
       const rawRecords = resp?.records || resp?.data || [];
       return {
         records: rawRecords.map(normalizeRecord),
@@ -344,11 +346,10 @@ export function BusinessRecordsDataTable({
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      await Promise.all(ids.map((id) => apiRequest(`/api/business-records/${id}`, 'DELETE')));
+      await Promise.all(ids.map((id) => apiRequest(`/api/companies/${id}`, 'DELETE')));
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
       bulkSelection.clearSelection();
       toast({
         title: 'Deleted',

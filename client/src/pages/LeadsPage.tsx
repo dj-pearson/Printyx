@@ -284,29 +284,17 @@ export default function LeadsPage() {
   // ─── KPI Stats ──────────────────────────────────────────────────────────
 
   const { data: stats } = useQuery({
-    queryKey: ['/api/business-records/stats', 'lead'],
+    queryKey: ['/api/companies/stats', 'lead'],
     enabled: isAuthenticated,
     queryFn: async () => {
-      const resp = await apiRequest(
-        '/api/business-records?recordType=lead&limit=1&offset=0',
-        'GET',
-      );
+      const resp = await apiRequest('/api/companies?recordType=Lead&limit=1&offset=0', 'GET');
       const total = resp?.pagination?.total || 0;
 
       const [newResp, contactedResp, qualifiedResp, proposalResp] = await Promise.all([
-        apiRequest('/api/business-records?recordType=lead&status=new&limit=1&offset=0', 'GET'),
-        apiRequest(
-          '/api/business-records?recordType=lead&status=contacted&limit=1&offset=0',
-          'GET',
-        ),
-        apiRequest(
-          '/api/business-records?recordType=lead&status=qualified&limit=1&offset=0',
-          'GET',
-        ),
-        apiRequest(
-          '/api/business-records?recordType=lead&status=proposal_sent&limit=1&offset=0',
-          'GET',
-        ),
+        apiRequest('/api/companies?recordType=Lead&status=new&limit=1&offset=0', 'GET'),
+        apiRequest('/api/companies?recordType=Lead&status=contacted&limit=1&offset=0', 'GET'),
+        apiRequest('/api/companies?recordType=Lead&status=qualified&limit=1&offset=0', 'GET'),
+        apiRequest('/api/companies?recordType=Lead&status=proposal_sent&limit=1&offset=0', 'GET'),
       ]);
 
       return {
@@ -315,7 +303,7 @@ export default function LeadsPage() {
         contactedCount: contactedResp?.pagination?.total || 0,
         qualifiedCount:
           (qualifiedResp?.pagination?.total || 0) + (proposalResp?.pagination?.total || 0),
-        pipeline: 0, // Pipeline value requires summing estimated_deal_value
+        pipeline: 0,
       };
     },
     staleTime: 60_000,
@@ -324,16 +312,31 @@ export default function LeadsPage() {
   // ─── Create Lead Mutation ─────────────────────────────────────────────────
 
   const createMutation = useMutation({
-    mutationFn: (data: any) =>
-      apiRequest('/api/business-records', 'POST', {
-        ...data,
-        recordType: 'lead',
-        status: 'new',
-        estimatedAmount: data.estimatedAmount ? parseFloat(data.estimatedAmount) : undefined,
-      }),
+    mutationFn: (data: any) => {
+      const nameParts = (data.primaryContactName || '').trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      return apiRequest('/api/companies', 'POST', {
+        business_name: data.companyName,
+        business_record_type: 'Lead',
+        activity: 'new',
+        industry: data.industry || undefined,
+        contacts: firstName
+          ? [
+              {
+                first_name: firstName,
+                last_name: lastName,
+                email: data.primaryContactEmail || undefined,
+                phone: data.primaryContactPhone || undefined,
+                is_primary: true,
+              },
+            ]
+          : [],
+      });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
       setIsCreateOpen(false);
       form.reset();
       toast({ title: 'Lead Created', description: 'New lead has been added successfully.' });
@@ -347,14 +350,12 @@ export default function LeadsPage() {
 
   const convertToProspectMutation = useMutation({
     mutationFn: (record: any) =>
-      apiRequest(`/api/business-records/${record.id}/status`, 'PATCH', {
-        status: 'qualified',
-        recordType: 'prospect',
-        notes: 'Converted from lead to prospect',
+      apiRequest(`/api/companies/${record.id}`, 'PATCH', {
+        business_record_type: 'Prospect',
+        activity: 'qualified',
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
       toast({ title: 'Converted', description: 'Lead has been converted to prospect.' });
     },
   });
@@ -374,9 +375,8 @@ export default function LeadsPage() {
       label: 'Delete',
       icon: Trash2,
       onClick: (record) => {
-        apiRequest(`/api/business-records/${record.id}`, 'DELETE').then(() => {
-          queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/business-records/stats'] });
+        apiRequest(`/api/companies/${record.id}`, 'DELETE').then(() => {
+          queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
           toast({ title: 'Deleted', description: 'Lead has been removed.' });
         });
       },
