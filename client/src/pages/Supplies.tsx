@@ -289,14 +289,8 @@ export default function Supplies() {
 
   return (
     <MainLayout title="Supplies" description="Manage supply inventory and pricing">
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Supplies</h1>
-            <p className="text-muted-foreground">
-              Manage supply products, consumables, and inventory items for your customers
-            </p>
-          </div>
           <ManagementToolbar
             title="Supplies"
             description="Manage supply products, consumables, and inventory items for your customers"

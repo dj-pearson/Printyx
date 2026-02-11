@@ -411,7 +411,7 @@ export default function ProductModels() {
 
   return (
     <MainLayout title="Product Models" description="Manage product models and specifications">
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <ManagementToolbar
           title="Product Models"
           description="Manage your copier and MFP product catalog with pricing tiers"
