@@ -78,6 +78,7 @@ import { registerDataEnrichmentRoutes } from './routes-data-enrichment';
 import { registerQuickBooksRoutes } from './routes-quickbooks-integration';
 import { setupSalesPipelineRoutes } from './routes-sales-pipeline';
 import { registerModularDashboardRoutes } from './routes-modular-dashboard';
+import { registerDashboardWidgetRoutes } from './routes-dashboard-widgets';
 import { registerTodayDashboardRoutes } from './routes-today-dashboard';
 import { registerManufacturerIntegrationRoutes } from './routes-manufacturer-integration';
 import { registerLeadAssignmentRoutes } from './routes-lead-assignment';
@@ -342,6 +343,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── Dashboard & Onboarding ───────────────────────────────────────
   registerModularDashboardRoutes(app);
+  registerDashboardWidgetRoutes(app);
   registerTodayDashboardRoutes(app);
   registerOnboardingRoutes(app);
 
