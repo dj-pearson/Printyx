@@ -148,8 +148,22 @@ export default async function handler(req: Request) {
         };
 
         let imported = 0;
+        let updated = 0;
         let skipped = 0;
         const errors: string[] = [];
+
+        // Pre-fetch existing product codes for dedup
+        const { data: existingProducts } = await admin
+          .from('software_products')
+          .select('id, product_code')
+          .eq('tenant_id', tenantId);
+
+        const existingByCode = new Map<string, string>();
+        for (const p of existingProducts || []) {
+          if (p.product_code) {
+            existingByCode.set(p.product_code.toLowerCase().trim(), p.id);
+          }
+        }
 
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
@@ -197,18 +211,44 @@ export default async function handler(req: Request) {
             upgrade_cost: parseNum(getVal(row, 'upgradeCost', 'upgrade_cost')),
             upgrade_rep_price: parseNum(getVal(row, 'upgradeRepPrice', 'upgrade_rep_price')),
             price_book_id: getVal(row, 'priceBookId', 'price_book_id') || null,
-            created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
 
           try {
-            const { error: insertError } = await admin.from('software_products').insert(dbData);
+            // Check for existing product by product_code (dedup)
+            const existingId = productCode
+              ? existingByCode.get(productCode.toLowerCase().trim())
+              : null;
 
-            if (insertError) {
-              errors.push(`Row ${i + 2}: ${insertError.message}`);
-              skipped++;
+            if (existingId) {
+              // Update existing product
+              delete dbData.tenant_id; // Don't update tenant_id
+              const { error: updateError } = await admin
+                .from('software_products')
+                .update(dbData)
+                .eq('id', existingId);
+
+              if (updateError) {
+                errors.push(`Row ${i + 2}: ${updateError.message}`);
+                skipped++;
+              } else {
+                updated++;
+              }
             } else {
-              imported++;
+              // Insert new product
+              dbData.created_at = new Date().toISOString();
+              const { error: insertError } = await admin.from('software_products').insert(dbData);
+
+              if (insertError) {
+                errors.push(`Row ${i + 2}: ${insertError.message}`);
+                skipped++;
+              } else {
+                imported++;
+                // Track the new product code for within-file dedup
+                if (productCode) {
+                  existingByCode.set(productCode.toLowerCase().trim(), 'new');
+                }
+              }
             }
           } catch (rowError: any) {
             errors.push(`Row ${i + 2}: ${rowError.message || 'Unknown error'}`);
@@ -220,6 +260,7 @@ export default async function handler(req: Request) {
           {
             success: errors.length === 0,
             imported,
+            updated,
             skipped,
             errors,
           },

@@ -66,7 +66,6 @@ import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
 import PageAlerts from '@/components/contextual/PageAlerts';
-import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
 import MobileFAB from '@/components/layout/MobileFAB';
 
 // Form schemas
@@ -312,16 +311,74 @@ export default function QuoteProposalGeneration() {
       title="Quote & Proposal Generation"
       description="Create professional proposals and manage the sales pipeline"
     >
-      <div className="container mx-auto p-6 space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <ContextualHelp page="quote-proposal-generation" />
-        <KpiSummaryBar className="mb-4" />
         <PageAlerts
           categories={['business']}
           severities={['medium', 'high', 'critical']}
           className="-mt-2"
         />
-        <div className="flex justify-end items-center">
-          <div className="flex gap-2">
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Proposals</CardTitle>
+              <FileText className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {Array.isArray(proposals) ? proposals.length : 0}
+              </div>
+              <p className="text-xs text-muted-foreground">All proposals</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Draft</CardTitle>
+              <Edit className="h-4 w-4 text-gray-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {Array.isArray(proposals)
+                  ? proposals.filter((p: any) => p.status === 'draft').length
+                  : 0}
+              </div>
+              <p className="text-xs text-muted-foreground">Awaiting send</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Sent</CardTitle>
+              <Send className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {Array.isArray(proposals)
+                  ? proposals.filter((p: any) => p.status === 'sent').length
+                  : 0}
+              </div>
+              <p className="text-xs text-muted-foreground">Awaiting response</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Accepted</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {Array.isArray(proposals)
+                  ? proposals.filter((p: any) => p.status === 'accepted').length
+                  : 0}
+              </div>
+              <p className="text-xs text-muted-foreground">Ready for contract</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="flex flex-col sm:flex-row justify-end sm:items-center gap-3">
+          <div className="hidden sm:flex gap-2">
             <Button
               onClick={() => setLocation('/quotes/new')}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
@@ -579,7 +636,10 @@ export default function QuoteProposalGeneration() {
             <TabsTrigger value="quotes">Quotes</TabsTrigger>
             <TabsTrigger value="proposals">Proposals</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
-            <TabsTrigger value="packages">Equipment Packages</TabsTrigger>
+            <TabsTrigger value="packages">
+              <span className="hidden sm:inline">Equipment Packages</span>
+              <span className="sm:hidden">Packages</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="quotes" className="space-y-4">
@@ -949,6 +1009,8 @@ export default function QuoteProposalGeneration() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <MobileFAB onClick={() => setLocation('/quotes/new')} label="New Quote" />
       </div>
     </MainLayout>
   );

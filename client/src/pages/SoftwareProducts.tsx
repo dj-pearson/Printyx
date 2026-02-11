@@ -78,14 +78,24 @@ export default function SoftwareProducts() {
     queryKey: ['/api/software-products'],
     queryFn: async () => {
       const response = await apiRequest('/api/software-products', 'GET');
-      return (response || []).map((product: any) => ({
+      // Edge function returns { data: [...], total: N }
+      const items = response?.data || (Array.isArray(response) ? response : []);
+      return (items || []).map((product: any) => ({
         ...product,
         id: product.id,
-        productName: product.productName || product.productName || '',
-        productType: product.productType || product.productType || '',
-        baseCost: product.base_cost || product.baseCost || 0,
-        createdAt: product.createdAt || product.createdAt || '',
-        updatedAt: product.updatedAt || product.updatedAt || '',
+        productCode: product.product_code || product.productCode || '',
+        productName: product.product_name || product.productName || '',
+        productType: product.product_type || product.productType || '',
+        vendor: product.vendor || '',
+        category: product.category || '',
+        description: product.description || '',
+        isActive: product.is_active ?? product.isActive ?? true,
+        standardCost: product.standard_cost || product.standardCost || 0,
+        standardRepPrice: product.standard_rep_price || product.standardRepPrice || 0,
+        newCost: product.new_cost || product.newCost || 0,
+        newRepPrice: product.new_rep_price || product.newRepPrice || 0,
+        createdAt: product.created_at || product.createdAt || '',
+        updatedAt: product.updated_at || product.updatedAt || '',
       }));
     },
   });
@@ -199,7 +209,7 @@ export default function SoftwareProducts() {
       }
       toast({
         title: 'Import Completed',
-        description: `Successfully imported ${data.imported} products. ${data.skipped > 0 ? `Skipped ${data.skipped} rows.` : ''}`,
+        description: `Imported ${data.imported || 0} new, updated ${data.updated || 0} existing. ${data.skipped > 0 ? `Skipped ${data.skipped} rows.` : ''}`,
       });
     },
     onError: (error) => {

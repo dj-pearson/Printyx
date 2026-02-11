@@ -404,7 +404,10 @@ export default function PipelineConfiguration() {
 
   if (isLoading) {
     return (
-      <MainLayout>
+      <MainLayout
+        title="Pipeline Configuration"
+        description="Configure custom sales pipelines with dynamic stages and automation"
+      >
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -416,19 +419,18 @@ export default function PipelineConfiguration() {
   }
 
   return (
-    <MainLayout>
-      <div className="space-y-6">
+    <MainLayout
+      title="Pipeline Configuration"
+      description="Configure custom sales pipelines with dynamic stages and automation"
+    >
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Pipeline Configuration</h1>
-            <p className="text-gray-600 mt-1">
-              Configure custom sales pipelines with dynamic stages and automation
-            </p>
-          </div>
-          <Button onClick={handleCreateTemplate} className="gap-2">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <h2 className="text-2xl font-bold">Pipeline Configuration</h2>
+          <Button onClick={handleCreateTemplate} className="gap-2 w-fit">
             <Plus className="h-4 w-4" />
-            Create Pipeline
+            <span className="hidden sm:inline">Create Pipeline</span>
+            <span className="sm:hidden">New</span>
           </Button>
         </div>
 
