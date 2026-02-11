@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Calendar,
   Clock,
@@ -13,7 +12,12 @@ import {
   CheckCircle,
   AlertCircle,
   Plus,
-  Settings,
+  CalendarCheck,
+  Play,
+  TrendingUp,
+  MoreHorizontal,
+  XCircle,
+  RotateCcw,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
@@ -25,6 +29,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,9 +47,10 @@ import {
 } from '@/components/ui/select';
 import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
-import { demoSchedulingSchema } from '@/lib/validation';
+import { EmptyState } from '@/components/ui/empty-state';
+import MobileFAB from '@/components/layout/MobileFAB';
+import { relativeFuture, relativeDate } from '@/lib/date-utils';
 import { CalendarProvider } from '@/components/calendar/CalendarProvider';
-import { CalendarSetup } from '@/components/calendar/CalendarSetup';
 
 interface DemoSchedule {
   id: string;
@@ -58,6 +69,7 @@ interface DemoSchedule {
   preparationCompleted: boolean;
   demoObjectives?: string;
   proposalAmount?: number;
+  contactEmail?: string;
   createdAt: Date;
 }
 
@@ -72,6 +84,8 @@ interface Customer {
   state: string;
   zipCode: string;
 }
+
+type QuickFilter = 'all' | 'today' | 'this_week' | 'upcoming' | 'completed';
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -90,29 +104,11 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const getConfirmationColor = (status: string) => {
-  switch (status) {
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'confirmed':
-      return 'bg-green-100 text-green-800';
-    case 'declined':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
-
 function DemoSchedulingContent() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>('all');
   const queryClient = useQueryClient();
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    reset,
-    formState: { errors },
-  } = useForm({
+  const { register, handleSubmit, setValue, reset } = useForm({
     defaultValues: {
       businessRecordId: '',
       demoType: '',
@@ -124,10 +120,11 @@ function DemoSchedulingContent() {
       assignedSalesRep: '',
       demoObjectives: '',
       proposalAmount: 0,
+      demoAddress: '',
+      customerRequirements: '',
     },
   });
 
-  // Fetch demo schedules
   const { data: demos = [], isLoading } = useQuery({
     queryKey: ['/api/demos'],
     select: (data: any[]) =>
@@ -138,12 +135,10 @@ function DemoSchedulingContent() {
       })),
   });
 
-  // Fetch customers for dropdown
   const { data: customers = [] } = useQuery<Customer[]>({
     queryKey: ['/api/demos/customers'],
   });
 
-  // Create demo mutation
   const createDemoMutation = useMutation({
     mutationFn: (data: any) =>
       apiRequest('/api/demos', {
@@ -159,7 +154,7 @@ function DemoSchedulingContent() {
         description: 'The equipment demonstration has been scheduled successfully.',
       });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: 'Error',
         description: 'Failed to schedule demo. Please try again.',
@@ -168,7 +163,6 @@ function DemoSchedulingContent() {
     },
   });
 
-  // Update demo status mutation
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status, confirmationStatus }: any) =>
       apiRequest(`/api/demos/${id}/status`, {
@@ -177,10 +171,7 @@ function DemoSchedulingContent() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/demos'] });
-      toast({
-        title: 'Status Updated',
-        description: 'Demo status has been updated successfully.',
-      });
+      toast({ title: 'Status Updated', description: 'Demo status has been updated successfully.' });
     },
   });
 
@@ -203,122 +194,211 @@ function DemoSchedulingContent() {
     });
   };
 
-  // Phase 2: Calendar integration handler
-  const handleCalendarSync = async (demoId: string) => {
-    try {
-      // This would integrate with MS Graph or Google Calendar API
-      const demo = demos.find((d) => d.id === demoId);
-      if (!demo) return;
+  // KPI stats
+  const kpiStats = useMemo(() => {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
 
-      // Create calendar event data
-      const eventData = {
-        subject: `Demo: ${demo.customerName}`,
-        start: {
-          dateTime: new Date(
-            `${demo.scheduledDate.toISOString().split('T')[0]}T${demo.scheduledTime}`,
-          ),
-          timeZone: 'America/New_York',
-        },
-        end: {
-          dateTime: new Date(
-            new Date(
-              `${demo.scheduledDate.toISOString().split('T')[0]}T${demo.scheduledTime}`,
-            ).getTime() +
-              demo.duration * 60000,
-          ),
-          timeZone: 'America/New_York',
-        },
-        body: {
-          contentType: 'HTML',
-          content: `
-            <p><strong>Customer:</strong> ${demo.customerName}</p>
-            <p><strong>Contact:</strong> ${demo.contactPerson}</p>
-            <p><strong>Location:</strong> ${demo.demoLocation.replace('_', ' ')}</p>
-            <p><strong>Equipment:</strong> ${demo.equipmentModels.join(', ')}</p>
-            <p><strong>Objectives:</strong> ${demo.demoObjectives || 'Not specified'}</p>
-          `,
-        },
-        location: {
-          displayName: demo.demoLocation.replace('_', ' '),
-        },
-        attendees: [
-          {
-            emailAddress: {
-              address: demo.contactEmail || '',
-              name: demo.contactPerson,
-            },
-            type: 'required',
-          },
-        ],
-      };
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      // TODO: Implement actual calendar API integration
-      console.log('Calendar event data:', eventData);
+    const scheduledThisWeek = demos.filter((d) => {
+      const date = new Date(d.scheduledDate);
+      return date >= weekStart && date < weekEnd && d.status !== 'cancelled';
+    }).length;
 
-      toast({
-        title: 'Calendar Integration',
-        description:
-          'Calendar integration will be available in the next update. Event details logged to console.',
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to sync with calendar. Please try again.',
-        variant: 'destructive',
-      });
+    const upcoming = demos.filter(
+      (d) =>
+        new Date(d.scheduledDate) >= now && d.status !== 'cancelled' && d.status !== 'completed',
+    ).length;
+
+    const completedThisMonth = demos.filter((d) => {
+      const date = new Date(d.scheduledDate);
+      return date >= monthStart && d.status === 'completed';
+    }).length;
+
+    const totalCompleted = demos.filter((d) => d.status === 'completed').length;
+    const totalDemos = demos.filter((d) => d.status !== 'cancelled').length;
+    const conversionRate = totalDemos > 0 ? Math.round((totalCompleted / totalDemos) * 100) : 0;
+
+    return { scheduledThisWeek, upcoming, completedThisMonth, conversionRate };
+  }, [demos]);
+
+  // Filter demos
+  const filteredDemos = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const weekEnd = new Date(today);
+    weekEnd.setDate(today.getDate() + 7);
+
+    switch (quickFilter) {
+      case 'today':
+        return demos.filter((d) => {
+          const date = new Date(d.scheduledDate);
+          return date >= today && date < tomorrow;
+        });
+      case 'this_week':
+        return demos.filter((d) => {
+          const date = new Date(d.scheduledDate);
+          return date >= today && date < weekEnd && d.status !== 'cancelled';
+        });
+      case 'upcoming':
+        return demos.filter(
+          (d) =>
+            new Date(d.scheduledDate) >= now &&
+            d.status !== 'cancelled' &&
+            d.status !== 'completed',
+        );
+      case 'completed':
+        return demos.filter((d) => d.status === 'completed');
+      default:
+        return demos;
+    }
+  }, [demos, quickFilter]);
+
+  const quickFilterTabs: { key: QuickFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'today', label: 'Today' },
+    { key: 'this_week', label: 'This Week' },
+    { key: 'upcoming', label: 'Upcoming' },
+    { key: 'completed', label: 'Completed' },
+  ];
+
+  // Get the next action button for a demo based on status
+  const getNextAction = (demo: DemoSchedule) => {
+    switch (demo.status) {
+      case 'scheduled':
+        return (
+          <Button
+            size="sm"
+            onClick={() => handleStatusChange(demo.id, 'confirmed')}
+            disabled={updateStatusMutation.isPending}
+          >
+            <CheckCircle className="h-3 w-3 mr-1" /> Confirm
+          </Button>
+        );
+      case 'confirmed':
+        return (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleStatusChange(demo.id, 'in_progress')}
+            disabled={updateStatusMutation.isPending}
+          >
+            <Play className="h-3 w-3 mr-1" /> Start
+          </Button>
+        );
+      case 'in_progress':
+        return (
+          <Button
+            size="sm"
+            onClick={() => handleStatusChange(demo.id, 'completed')}
+            disabled={updateStatusMutation.isPending}
+          >
+            <CheckCircle className="h-3 w-3 mr-1" /> Complete
+          </Button>
+        );
+      default:
+        return null;
     }
   };
 
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading demo schedules...</p>
+      <MainLayout>
+        <div className="space-y-4 sm:space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-4">
+                  <div className="h-12 bg-gray-200 rounded"></div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
-      </div>
+      </MainLayout>
     );
   }
 
-  const upcomingDemos = demos.filter(
-    (demo) => new Date(demo.scheduledDate) >= new Date() && demo.status !== 'cancelled',
-  );
-  const pastDemos = demos.filter(
-    (demo) => new Date(demo.scheduledDate) < new Date() || demo.status === 'completed',
-  );
-
   return (
     <MainLayout>
-      <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
+      <div className="space-y-4 sm:space-y-6">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">This Week</CardTitle>
+              <Calendar className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpiStats.scheduledThisWeek}</div>
+              <p className="text-xs text-muted-foreground">Scheduled demos</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
+              <CalendarCheck className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpiStats.upcoming}</div>
+              <p className="text-xs text-muted-foreground">Pending demos</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Completed</CardTitle>
+              <CheckCircle className="h-4 w-4 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpiStats.completedThisMonth}</div>
+              <p className="text-xs text-muted-foreground">This month</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
+              <TrendingUp className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpiStats.conversionRate}%</div>
+              <p className="text-xs text-muted-foreground">Of all demos</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Demo Scheduling</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Demo Scheduling</h1>
+            <p className="text-gray-600 mt-1 text-sm">
               Manage equipment demonstrations and customer meetings
             </p>
           </div>
-
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
+              <Button className="hidden sm:flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 Schedule Demo
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Schedule Equipment Demo</DialogTitle>
                 <DialogDescription>
-                  Create a new equipment demonstration appointment with a customer.
+                  Create a new equipment demonstration appointment.
                 </DialogDescription>
               </DialogHeader>
-
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="businessRecordId">Customer</Label>
+                    <Label>Customer</Label>
                     <Select onValueChange={(value) => setValue('businessRecordId', value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select customer" />
@@ -332,9 +412,8 @@ function DemoSchedulingContent() {
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div className="space-y-2">
-                    <Label htmlFor="demoType">Demo Type</Label>
+                    <Label>Demo Type</Label>
                     <Select onValueChange={(value) => setValue('demoType', value)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select type" />
@@ -347,35 +426,30 @@ function DemoSchedulingContent() {
                     </Select>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="scheduledDate">Date</Label>
+                    <Label>Date</Label>
                     <Input type="date" {...register('scheduledDate', { required: true })} />
                   </div>
-
                   <div className="space-y-2">
-                    <Label htmlFor="scheduledTime">Time</Label>
+                    <Label>Time</Label>
                     <Input type="time" {...register('scheduledTime', { required: true })} />
                   </div>
-
                   <div className="space-y-2">
-                    <Label htmlFor="duration">Duration (minutes)</Label>
+                    <Label>Duration (min)</Label>
                     <Input type="number" placeholder="60" {...register('duration')} />
                   </div>
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="equipmentModels">Equipment Models</Label>
+                  <Label>Equipment Models</Label>
                   <Input
-                    placeholder="Canon imageRUNNER ADVANCE C3330i, Xerox VersaLink C7000"
+                    placeholder="Canon imageRUNNER, Xerox VersaLink..."
                     {...register('equipmentModels')}
                   />
-                  <p className="text-sm text-gray-500">Separate multiple models with commas</p>
+                  <p className="text-xs text-gray-500">Separate multiple models with commas</p>
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="demoLocation">Location</Label>
+                  <Label>Location</Label>
                   <Select onValueChange={(value) => setValue('demoLocation', value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select location" />
@@ -387,10 +461,9 @@ function DemoSchedulingContent() {
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="proposalAmount">Expected Deal Value</Label>
+                    <Label>Expected Deal Value</Label>
                     <Input
                       type="number"
                       step="0.01"
@@ -398,32 +471,18 @@ function DemoSchedulingContent() {
                       {...register('proposalAmount')}
                     />
                   </div>
-
                   <div className="space-y-2">
-                    <Label htmlFor="demoAddress">Address (if on-site)</Label>
-                    <Input
-                      placeholder="123 Main St, City, State 12345"
-                      {...register('demoAddress')}
-                    />
+                    <Label>Address (if on-site)</Label>
+                    <Input placeholder="123 Main St, City, State" {...register('demoAddress')} />
                   </div>
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="demoObjectives">Demo Objectives</Label>
+                  <Label>Demo Objectives</Label>
                   <Textarea
-                    placeholder="What do you want to achieve in this demo? Key features to highlight, customer pain points to address..."
+                    placeholder="What do you want to achieve?"
                     {...register('demoObjectives')}
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="customerRequirements">Customer Requirements</Label>
-                  <Textarea
-                    placeholder="Special requirements, focus areas, specific features the customer is interested in..."
-                    {...register('customerRequirements')}
-                  />
-                </div>
-
                 <div className="flex justify-end gap-2">
                   <Button
                     type="button"
@@ -441,211 +500,139 @@ function DemoSchedulingContent() {
           </Dialog>
         </div>
 
-        <Tabs defaultValue="upcoming" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="upcoming">Upcoming Demos ({upcomingDemos.length})</TabsTrigger>
-            <TabsTrigger value="past">Past Demos ({pastDemos.length})</TabsTrigger>
-            <TabsTrigger value="calendar">Calendar View</TabsTrigger>
-          </TabsList>
+        {/* Quick Filter Tabs */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {quickFilterTabs.map((tab) => (
+            <Button
+              key={tab.key}
+              variant={quickFilter === tab.key ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setQuickFilter(tab.key)}
+              className="touch-manipulation"
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
 
-          <TabsContent value="upcoming" className="space-y-4">
-            {upcomingDemos.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-12">
-                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Upcoming Demos</h3>
-                  <p className="text-gray-600 mb-4">
-                    Schedule your first equipment demonstration to get started.
-                  </p>
-                  <Button onClick={() => setIsCreateDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Schedule Demo
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {upcomingDemos.map((demo) => (
-                  <Card key={demo.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-lg">{demo.customerName}</CardTitle>
-                          <CardDescription>{demo.contactPerson}</CardDescription>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <Badge className={getStatusColor(demo.status)}>{demo.status}</Badge>
-                          <Badge className={getConfirmationColor(demo.confirmationStatus)}>
-                            {demo.confirmationStatus}
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="h-4 w-4" />
-                        {format(demo.scheduledDate, 'PPP')}
-                      </div>
-
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Clock className="h-4 w-4" />
-                        {demo.scheduledTime} ({demo.duration} min)
-                      </div>
-
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin className="h-4 w-4" />
-                        {demo.demoLocation.replace('_', ' ')}
-                      </div>
-
-                      {demo.equipmentModels.length > 0 && (
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">Equipment:</p>
-                          <div className="flex flex-wrap gap-1">
-                            {demo.equipmentModels.map((model, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
-                                {model}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {demo.proposalAmount && (
-                        <div className="text-sm">
-                          <span className="font-medium">Expected Value: </span>$
-                          {demo.proposalAmount.toLocaleString()}
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-2">
-                        {demo.preparationCompleted ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <AlertCircle className="h-4 w-4 text-yellow-600" />
-                        )}
-                        <span className="text-sm text-gray-600">
-                          Preparation {demo.preparationCompleted ? 'Complete' : 'Pending'}
-                        </span>
-                      </div>
-
-                      <div className="flex gap-2">
-                        {demo.status === 'scheduled' && (
-                          <>
-                            <Button
-                              size="sm"
-                              onClick={() => handleStatusChange(demo.id, 'confirmed')}
-                              disabled={updateStatusMutation.isPending}
-                            >
-                              Confirm
-                            </Button>
-                            {/* Phase 2: Calendar Integration */}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleCalendarSync(demo.id)}
-                              disabled={updateStatusMutation.isPending}
-                              title="Add to calendar"
-                            >
-                              📅
-                            </Button>
-                          </>
-                        )}
-                        {demo.status === 'confirmed' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleStatusChange(demo.id, 'in_progress')}
-                            disabled={updateStatusMutation.isPending}
-                          >
-                            Start Demo
-                          </Button>
-                        )}
-                        <Button size="sm" variant="outline">
-                          View Details
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="past" className="space-y-4">
-            {pastDemos.length === 0 ? (
-              <Card>
-                <CardContent className="text-center py-12">
-                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Past Demos</h3>
-                  <p className="text-gray-600">Completed demonstrations will appear here.</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {pastDemos.map((demo) => (
-                  <Card key={demo.id}>
-                    <CardContent className="py-4">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h3 className="font-medium">{demo.customerName}</h3>
-                          <p className="text-sm text-gray-600">
-                            {format(demo.scheduledDate, 'PPP')} at {demo.scheduledTime}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <Badge className={getStatusColor(demo.status)}>{demo.status}</Badge>
-                          <Button size="sm" variant="outline">
-                            View Results
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="calendar" className="space-y-6">
-            {/* Phase 2: Calendar Integration */}
-            <CalendarSetup />
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Calendar View
-                </CardTitle>
-                <CardDescription>
-                  Integrated calendar view with automatic event creation for scheduled demos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Enhanced Calendar View</h3>
-                  <p className="text-gray-600 mb-4">
-                    Phase 2 calendar integration includes provider connections, automatic event
-                    creation, and two-way synchronization.
-                  </p>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div>✓ Microsoft Graph and Google Calendar integration</div>
-                    <div>✓ Automatic demo event creation with attendee notifications</div>
-                    <div>✓ Real-time sync with calendar providers</div>
-                    <div>✓ Meeting links for virtual demonstrations</div>
+        {/* Demo Cards */}
+        {filteredDemos.length === 0 ? (
+          <EmptyState
+            icon={Calendar}
+            title={quickFilter !== 'all' ? 'No demos match this filter' : 'No Demos Scheduled'}
+            description={
+              quickFilter !== 'all'
+                ? 'Try a different filter or schedule a new demo.'
+                : 'Schedule your first equipment demonstration to get started.'
+            }
+            type={quickFilter !== 'all' ? 'search' : 'default'}
+            action={{
+              label: quickFilter !== 'all' ? 'Show All' : 'Schedule Demo',
+              onClick: () =>
+                quickFilter !== 'all' ? setQuickFilter('all') : setIsCreateDialogOpen(true),
+              icon: quickFilter !== 'all' ? undefined : Plus,
+            }}
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredDemos.map((demo) => (
+              <Card key={demo.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg truncate">{demo.customerName}</CardTitle>
+                      <CardDescription className="truncate">{demo.contactPerson}</CardDescription>
+                    </div>
+                    <div className="flex flex-col gap-1 ml-2">
+                      <Badge className={getStatusColor(demo.status)}>
+                        {demo.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Calendar className="h-4 w-4 flex-shrink-0" />
+                    <span className="font-medium">
+                      {relativeFuture(demo.scheduledDate, demo.scheduledTime)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Clock className="h-4 w-4 flex-shrink-0" />
+                    {demo.scheduledTime} ({demo.duration} min)
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <MapPin className="h-4 w-4 flex-shrink-0" />
+                    {demo.demoLocation.replace('_', ' ')}
+                  </div>
+
+                  {demo.equipmentModels?.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {demo.equipmentModels.map((model, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {model}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  {demo.proposalAmount != null && demo.proposalAmount > 0 && (
+                    <div className="text-sm">
+                      <span className="font-medium">Expected Value: </span>$
+                      {Number(demo.proposalAmount).toLocaleString()}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2">
+                    {demo.preparationCompleted ? (
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    )}
+                    <span className="text-sm text-gray-600">
+                      Prep {demo.preparationCompleted ? 'Complete' : 'Pending'}
+                    </span>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex gap-2 pt-1">
+                    {getNextAction(demo)}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <RotateCcw className="h-4 w-4 mr-2" />
+                          Reschedule
+                        </DropdownMenuItem>
+                        {demo.status !== 'cancelled' && demo.status !== 'completed' && (
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => handleStatusChange(demo.id, 'cancelled')}
+                          >
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Cancel
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Mobile FAB */}
+        <MobileFAB onClick={() => setIsCreateDialogOpen(true)} label="Schedule Demo" />
       </div>
     </MainLayout>
   );
 }
 
-// Phase 2: Wrap component with Calendar Provider
 export default function DemoScheduling() {
   return (
     <CalendarProvider>
