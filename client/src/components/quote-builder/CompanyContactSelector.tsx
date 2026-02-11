@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -11,6 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog,
   DialogContent,
@@ -19,8 +20,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Building2, User, MapPin, Phone, Mail, Plus, Search } from 'lucide-react';
+import {
+  Building2,
+  User,
+  MapPin,
+  Phone,
+  Mail,
+  Plus,
+  Search,
+  ChevronsUpDown,
+  Check,
+} from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { cn } from '@/lib/utils';
 
 interface Company {
   id: string;
@@ -61,7 +73,20 @@ export default function CompanyContactSelector({
   onContactSelect,
 }: CompanyContactSelectorProps) {
   const [companySearchTerm, setCompanySearchTerm] = useState('');
+  const [companyOpen, setCompanyOpen] = useState(false);
   const [showNewCompanyDialog, setShowNewCompanyDialog] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus search input when popover opens
+  useEffect(() => {
+    if (companyOpen) {
+      // Small delay to let the popover render
+      const timer = setTimeout(() => searchInputRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
+    } else {
+      setCompanySearchTerm('');
+    }
+  }, [companyOpen]);
 
   // Fetch companies
   const { data: companies = [], isLoading: companiesLoading } = useQuery<Company[]>({
@@ -95,15 +120,22 @@ export default function CompanyContactSelector({
     },
   });
 
-  // Filter companies based on search
-  const filteredCompanies = companies.filter((company) => {
+  // Filter companies based on search - memoized for performance with large lists
+  const filteredCompanies = useMemo(() => {
+    if (!companySearchTerm) return companies.slice(0, 50); // Show first 50 when no search
     const searchLower = companySearchTerm.toLowerCase();
-    const companyName = company.companyName || `${company.firstName} ${company.lastName}`;
-    return (
-      companyName.toLowerCase().includes(searchLower) ||
-      company.email?.toLowerCase().includes(searchLower)
-    );
-  });
+    return companies
+      .filter((company) => {
+        const companyName = company.companyName || `${company.firstName} ${company.lastName}`;
+        return (
+          companyName.toLowerCase().includes(searchLower) ||
+          company.email?.toLowerCase().includes(searchLower) ||
+          company.city?.toLowerCase().includes(searchLower) ||
+          company.phone?.includes(companySearchTerm)
+        );
+      })
+      .slice(0, 50); // Cap at 50 results for rendering performance
+  }, [companies, companySearchTerm]);
 
   const getCompanyDisplayName = (company: Company) => {
     return company.companyName || `${company.firstName} ${company.lastName}`;
@@ -113,12 +145,10 @@ export default function CompanyContactSelector({
     return `${contact.firstName} ${contact.lastName}`;
   };
 
-  const handleCompanyChange = (companyId: string) => {
-    const company = companies.find((c) => c.id === companyId);
-    if (company) {
-      onCompanySelect(company);
-      onContactSelect(null); // Reset contact when company changes
-    }
+  const handleCompanySelect = (company: Company) => {
+    onCompanySelect(company);
+    onContactSelect(null);
+    setCompanyOpen(false);
   };
 
   const handleContactChange = (contactId: string) => {
@@ -142,60 +172,106 @@ export default function CompanyContactSelector({
         </CardDescription>
       </CardHeader>
       <CardContent className="p-4 sm:p-6 space-y-4">
-        {/* Company Selection */}
+        {/* Company Selection - Searchable Combobox */}
         <div className="space-y-2">
           <Label className="text-sm font-medium">Company *</Label>
           <div className="flex gap-2">
-            <div className="flex-1">
-              <Select value={selectedCompany?.id || ''} onValueChange={handleCompanyChange}>
-                <SelectTrigger className="min-h-[44px]">
-                  <SelectValue placeholder="Select a company...">
-                    {selectedCompany && (
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        {getCompanyDisplayName(selectedCompany)}
-                      </div>
-                    )}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <div className="p-2">
-                    <div className="relative">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search companies..."
-                        value={companySearchTerm}
-                        onChange={(e) => setCompanySearchTerm(e.target.value)}
-                        className="pl-8"
-                      />
+            <Popover open={companyOpen} onOpenChange={setCompanyOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={companyOpen}
+                  className="flex-1 min-h-[44px] justify-between font-normal"
+                >
+                  {selectedCompany ? (
+                    <div className="flex items-center gap-2 truncate">
+                      <Building2 className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{getCompanyDisplayName(selectedCompany)}</span>
+                      {selectedCompany.city && selectedCompany.state && (
+                        <span className="text-muted-foreground text-xs hidden sm:inline">
+                          ({selectedCompany.city}, {selectedCompany.state})
+                        </span>
+                      )}
                     </div>
+                  ) : (
+                    <span className="text-muted-foreground">Search for a company...</span>
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-[var(--radix-popover-trigger-width)] p-0"
+                align="start"
+                side="bottom"
+                sideOffset={4}
+              >
+                {/* Fixed search input at top */}
+                <div className="p-2 border-b">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      ref={searchInputRef}
+                      placeholder="Type to search companies..."
+                      value={companySearchTerm}
+                      onChange={(e) => setCompanySearchTerm(e.target.value)}
+                      className="pl-8 h-9"
+                    />
                   </div>
+                  {companies.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1.5 px-0.5">
+                      {companySearchTerm
+                        ? `${filteredCompanies.length} result${filteredCompanies.length !== 1 ? 's' : ''} found`
+                        : `${companies.length} companies total - type to search`}
+                    </p>
+                  )}
+                </div>
+
+                {/* Scrollable results list */}
+                <div className="max-h-[280px] overflow-y-auto">
                   {companiesLoading ? (
-                    <div className="p-2 text-center text-muted-foreground">
+                    <div className="p-4 text-center text-sm text-muted-foreground">
                       Loading companies...
                     </div>
                   ) : filteredCompanies.length === 0 ? (
-                    <div className="p-2 text-center text-muted-foreground">No companies found</div>
+                    <div className="p-4 text-center text-sm text-muted-foreground">
+                      {companySearchTerm ? 'No companies match your search' : 'No companies found'}
+                    </div>
                   ) : (
                     filteredCompanies.map((company) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          <div>
-                            <div className="font-medium">{getCompanyDisplayName(company)}</div>
-                            {company.city && company.state && (
-                              <div className="text-xs text-muted-foreground">
-                                {company.city}, {company.state}
-                              </div>
-                            )}
+                      <button
+                        key={company.id}
+                        type="button"
+                        className={cn(
+                          'flex items-center gap-2 w-full px-3 py-2.5 text-left text-sm hover:bg-accent transition-colors cursor-pointer',
+                          selectedCompany?.id === company.id && 'bg-accent',
+                        )}
+                        onClick={() => handleCompanySelect(company)}
+                      >
+                        <Check
+                          className={cn(
+                            'h-4 w-4 shrink-0',
+                            selectedCompany?.id === company.id ? 'opacity-100' : 'opacity-0',
+                          )}
+                        />
+                        <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium truncate">
+                            {getCompanyDisplayName(company)}
                           </div>
+                          {company.city && company.state && (
+                            <div className="text-xs text-muted-foreground truncate">
+                              {company.city}, {company.state}
+                            </div>
+                          )}
                         </div>
-                      </SelectItem>
+                      </button>
                     ))
                   )}
-                </SelectContent>
-              </Select>
-            </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
             <Dialog open={showNewCompanyDialog} onOpenChange={setShowNewCompanyDialog}>
               <DialogTrigger asChild>
                 <Button
