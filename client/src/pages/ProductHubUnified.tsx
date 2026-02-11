@@ -229,10 +229,17 @@ export default function ProductHubUnified() {
 
   // Queries
   const { data: masterProducts = [], isLoading: isLoadingMaster } = useQuery<MasterProductModel[]>({
-    queryKey: [
-      '/api/catalog/models',
-      { manufacturer: selectedManufacturer, search: catalogSearchTerm, category: catalogCategory },
-    ],
+    queryKey: ['/api/catalog/models', selectedManufacturer, catalogSearchTerm, catalogCategory],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedManufacturer) params.set('manufacturer', selectedManufacturer);
+      if (catalogSearchTerm) params.set('search', catalogSearchTerm);
+      if (catalogCategory) params.set('category', catalogCategory);
+      const qs = params.toString();
+      const url = qs ? `/api/catalog/models?${qs}` : '/api/catalog/models';
+      const res = await apiRequest(url, 'GET');
+      return res?.data || (Array.isArray(res) ? res : []);
+    },
   });
 
   const { data: enabledProducts = [], isLoading: isLoadingEnabled } = useQuery<EnabledProduct[]>({
@@ -247,10 +254,18 @@ export default function ProductHubUnified() {
     ProductWithPricing[]
   >({
     queryKey: ['/api/products/with-pricing'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/products/with-pricing', 'GET');
+      return res?.data || (Array.isArray(res) ? res : []);
+    },
   });
 
   const { data: companySettings } = useQuery({
     queryKey: ['/api/pricing/company-settings'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/pricing/company-settings', 'GET');
+      return res || null;
+    },
   });
 
   // Mutations

@@ -85,16 +85,28 @@ export default function ProductManagementHub() {
   // Fetch all products with pricing information
   const { data: products = [], isLoading } = useQuery<ProductWithPricing[]>({
     queryKey: ['/api/products/with-pricing'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/products/with-pricing', 'GET');
+      return res?.data || (Array.isArray(res) ? res : []);
+    },
   });
 
   // Fetch company pricing settings
   const { data: companySettings } = useQuery({
     queryKey: ['/api/pricing/company-settings'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/pricing/company-settings', 'GET');
+      return res || null;
+    },
   });
 
   // Fetch product pricing for inline editing
   const { data: productPricing = [] } = useQuery({
     queryKey: ['/api/pricing/products'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/pricing/products', 'GET');
+      return res?.data || (Array.isArray(res) ? res : []);
+    },
   });
 
   // Update product pricing mutation
