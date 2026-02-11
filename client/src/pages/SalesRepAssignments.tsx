@@ -30,9 +30,19 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Users, MapPin, Map, History, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Loader2,
+  Users,
+  MapPin,
+  Map,
+  History,
+  ChevronDown,
+  ChevronRight,
+  AlertCircle,
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { loadZipCentroids, getZipCentroid } from '@/lib/zip-centroids';
+import MainLayout from '@/components/layout/main-layout';
 
 const TerritoryMap = lazy(() => import('@/components/maps/TerritoryMap'));
 
@@ -941,57 +951,114 @@ export default function SalesRepAssignments() {
 
   if (repsQuery.isLoading) {
     return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
+      <MainLayout
+        title="Sales Rep Assignments"
+        description="Manage account assignments, territories, and sales rep workload"
+      >
+        <div className="flex items-center justify-center h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6 max-w-7xl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Sales Rep Assignments</h1>
-        <p className="text-muted-foreground">
-          Manage account assignments, territories, and sales rep workload
-        </p>
+    <MainLayout
+      title="Sales Rep Assignments"
+      description="Manage account assignments, territories, and sales rep workload"
+    >
+      <div className="space-y-4 sm:space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Sales Rep Assignments</h1>
+          <p className="text-muted-foreground text-sm">
+            Manage account assignments, territories, and sales rep workload
+          </p>
+        </div>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Accounts</CardTitle>
+              <Users className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{summary.totalAccounts}</div>
+              <p className="text-xs text-muted-foreground">Across all reps</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Unassigned</CardTitle>
+              <AlertCircle className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{summary.unassignedCount}</div>
+              <p className="text-xs text-muted-foreground">Need assignment</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Sales Reps</CardTitle>
+              <Users className="h-4 w-4 text-indigo-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{summary.totalReps}</div>
+              <p className="text-xs text-muted-foreground">Active reps</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg Per Rep</CardTitle>
+              <MapPin className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{summary.avgPerRep}</div>
+              <p className="text-xs text-muted-foreground">Accounts per rep</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Tabs defaultValue="overview">
+          <TabsList>
+            <TabsTrigger value="overview" className="gap-1.5">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Rep Overview</span>
+              <span className="sm:hidden">Reps</span>
+            </TabsTrigger>
+            <TabsTrigger value="map" className="gap-1.5">
+              <Map className="h-4 w-4" />
+              <span className="hidden sm:inline">Territory Map</span>
+              <span className="sm:hidden">Map</span>
+            </TabsTrigger>
+            <TabsTrigger value="area" className="gap-1.5">
+              <MapPin className="h-4 w-4" />
+              <span className="hidden sm:inline">Area Assignment</span>
+              <span className="sm:hidden">Area</span>
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-1.5">
+              <History className="h-4 w-4" />
+              <span className="hidden sm:inline">History</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview">
+            <RepOverviewTab reps={reps} summary={summary} />
+          </TabsContent>
+
+          <TabsContent value="map">
+            <TerritoryMapTab reps={reps} />
+          </TabsContent>
+
+          <TabsContent value="area">
+            <AreaAssignmentTab reps={reps} />
+          </TabsContent>
+
+          <TabsContent value="history">
+            <AssignmentHistoryTab reps={reps} />
+          </TabsContent>
+        </Tabs>
       </div>
-
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview" className="gap-1.5">
-            <Users className="h-4 w-4" />
-            Rep Overview
-          </TabsTrigger>
-          <TabsTrigger value="map" className="gap-1.5">
-            <Map className="h-4 w-4" />
-            Territory Map
-          </TabsTrigger>
-          <TabsTrigger value="area" className="gap-1.5">
-            <MapPin className="h-4 w-4" />
-            Area Assignment
-          </TabsTrigger>
-          <TabsTrigger value="history" className="gap-1.5">
-            <History className="h-4 w-4" />
-            History
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview">
-          <RepOverviewTab reps={reps} summary={summary} />
-        </TabsContent>
-
-        <TabsContent value="map">
-          <TerritoryMapTab reps={reps} />
-        </TabsContent>
-
-        <TabsContent value="area">
-          <AreaAssignmentTab reps={reps} />
-        </TabsContent>
-
-        <TabsContent value="history">
-          <AssignmentHistoryTab reps={reps} />
-        </TabsContent>
-      </Tabs>
-    </div>
+    </MainLayout>
   );
 }

@@ -399,75 +399,69 @@ export default function DealDeskDashboard() {
   };
 
   return (
-    <MainLayout>
-      <div className="p-6 space-y-6">
+    <MainLayout title="Deal Desk" description="Approval workflows and pricing governance">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Deal Desk</h1>
-            <p className="text-slate-600 mt-1">Approval workflows and pricing governance</p>
+            <h1 className="text-2xl font-bold">Deal Desk</h1>
+            <p className="text-muted-foreground text-sm">
+              Approval workflows and pricing governance
+            </p>
           </div>
-          <Button onClick={() => navigate('/deal-desk/rules')}>
+          <Button onClick={() => navigate('/deal-desk/rules')} className="hidden sm:flex">
             <Target className="h-4 w-4 mr-2" />
             Configure Rules
           </Button>
         </div>
 
         {/* Dashboard Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
-            <CardHeader className="pb-2">
-              <CardDescription className="text-xs">My Queue</CardDescription>
-              <CardTitle className="text-3xl font-bold">{stats?.myPendingApprovals || 0}</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">My Queue</CardTitle>
+              <Zap className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <p className="text-xs text-slate-600 flex items-center gap-1">
-                <Zap className="h-3 w-3" />
-                Requiring your approval
-              </p>
+              <div className="text-2xl font-bold">{stats?.myPendingApprovals || 0}</div>
+              <p className="text-xs text-muted-foreground">Requiring your approval</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-2">
-              <CardDescription className="text-xs">Total Pending</CardDescription>
-              <CardTitle className="text-3xl font-bold">{stats?.totalPending || 0}</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Pending</CardTitle>
+              <Clock className="h-4 w-4 text-amber-500" />
             </CardHeader>
             <CardContent>
-              <p className="text-xs text-slate-600 flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Across all approvers
-              </p>
+              <div className="text-2xl font-bold">{stats?.totalPending || 0}</div>
+              <p className="text-xs text-muted-foreground">Across all approvers</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-2">
-              <CardDescription className="text-xs">SLA Breached</CardDescription>
-              <CardTitle
-                className={`text-3xl font-bold ${(stats?.slaBreached || 0) > 0 ? 'text-red-600' : ''}`}
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">SLA Breached</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div
+                className={`text-2xl font-bold ${(stats?.slaBreached || 0) > 0 ? 'text-red-600' : ''}`}
               >
                 {stats?.slaBreached || 0}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-slate-600 flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                Need immediate attention
-              </p>
+              </div>
+              <p className="text-xs text-muted-foreground">Need immediate attention</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-2">
-              <CardDescription className="text-xs">Approval Rate (30d)</CardDescription>
-              <CardTitle className="text-3xl font-bold">
-                {stats?.approvalRate?.toFixed(0) || 0}%
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Approval Rate (30d)</CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              <p className="text-xs text-slate-600 flex items-center gap-1">
-                <TrendingUp className="h-3 w-3" />
+              <div className="text-2xl font-bold">{stats?.approvalRate?.toFixed(0) || 0}%</div>
+              <p className="text-xs text-muted-foreground">
                 Avg time: {stats?.avgApprovalTimeHours?.toFixed(1) || 0}h
               </p>
             </CardContent>
@@ -476,7 +470,7 @@ export default function DealDeskDashboard() {
 
         {/* Tabs and Filters */}
         <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as any)}>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <TabsList>
               <TabsTrigger value="my-queue">
                 My Queue
@@ -484,25 +478,24 @@ export default function DealDeskDashboard() {
                   <Badge className="ml-2 bg-blue-600">{stats.myPendingApprovals}</Badge>
                 ) : null}
               </TabsTrigger>
-              <TabsTrigger value="all">All Requests</TabsTrigger>
-              <TabsTrigger value="completed">Completed</TabsTrigger>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="completed">Done</TabsTrigger>
             </TabsList>
 
             <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <div className="relative flex-1 sm:flex-none">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search requests..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 w-64"
+                  className="pl-9 w-full sm:w-64"
                 />
               </div>
               {selectedTab !== 'my-queue' && (
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-40">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue />
+                  <SelectTrigger className="w-32 sm:w-40">
+                    <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
