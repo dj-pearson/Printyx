@@ -68,8 +68,9 @@ export default function CompanyContactSelector({
     queryKey: ['/api/companies'],
     queryFn: async () => {
       const response = await apiRequest('/api/companies', 'GET');
-      // Ensure response is always an array
-      return Array.isArray(response) ? response : [];
+      // Handle both formats: { records: [...] } wrapper or direct array
+      const data = response?.records || (Array.isArray(response) ? response : []);
+      return Array.isArray(data) ? data : [];
     },
   });
 
@@ -79,8 +80,18 @@ export default function CompanyContactSelector({
     enabled: !!selectedCompany?.id,
     queryFn: async () => {
       const response = await apiRequest(`/api/companies/${selectedCompany.id}/contacts`, 'GET');
-      // Ensure response is always an array
-      return Array.isArray(response) ? response : [];
+      const data = Array.isArray(response) ? response : [];
+      // Map snake_case fields from edge function to camelCase
+      return data.map((c: any) => ({
+        id: c.id,
+        firstName: c.firstName || c.first_name || '',
+        lastName: c.lastName || c.last_name || '',
+        email: c.email || null,
+        phone: c.phone || null,
+        title: c.title || c.job_title || null,
+        department: c.department || null,
+        isPrimary: c.isPrimary || c.is_primary || c.is_primary_contact || false,
+      }));
     },
   });
 

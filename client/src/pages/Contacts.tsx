@@ -213,7 +213,7 @@ export default function Contacts() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('companies')
-        .select('id, business_name, status')
+        .select('id, business_name, activity')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
@@ -222,7 +222,7 @@ export default function Contacts() {
       return (data || []).map((row: any) => ({
         id: row.id,
         companyName: row.business_name,
-        status: row.status,
+        status: row.activity || 'active',
       }));
     },
   });
@@ -272,10 +272,10 @@ export default function Contacts() {
         .insert({
           tenant_id: tenantId,
           business_name: companyName,
-          status: 'active',
+          activity: 'active',
           created_by: user.id,
         })
-        .select('id, business_name, status')
+        .select('id, business_name, activity')
         .single();
 
       if (error) throw error;
@@ -283,7 +283,7 @@ export default function Contacts() {
       return {
         id: data.id,
         companyName: data.business_name,
-        status: data.status,
+        status: data.activity || 'active',
       };
     },
     onSuccess: () => {
