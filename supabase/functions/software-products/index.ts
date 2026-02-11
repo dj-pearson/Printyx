@@ -76,6 +76,165 @@ export default async function handler(req: Request) {
       return createCorsResponse(product, 200, req);
     }
 
+    // POST /software-products/import - CSV import
+    if (req.method === 'POST' && productId === 'import') {
+      try {
+        const formData = await req.formData();
+        const file = formData.get('file') as File;
+
+        if (!file) {
+          return createCorsResponse({ message: 'No file uploaded' }, 400, req);
+        }
+
+        const text = await file.text();
+        const lines = text.split('\n').filter((line: string) => line.trim());
+
+        if (lines.length < 2) {
+          return createCorsResponse({ message: 'CSV file is empty or has no data rows' }, 400, req);
+        }
+
+        // Parse CSV header and rows
+        const parseCSVLine = (line: string): string[] => {
+          const result: string[] = [];
+          let current = '';
+          let inQuotes = false;
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              result.push(current.trim());
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          result.push(current.trim());
+          return result.map((cell) => cell.replace(/^"|"$/g, '').trim());
+        };
+
+        const headers = parseCSVLine(lines[0]);
+        const rows = lines.slice(1).map((line: string) => parseCSVLine(line));
+
+        // Build header-to-index map (case-insensitive, underscore/camelCase tolerant)
+        const normalize = (s: string) => s.toLowerCase().replace(/[_\s]/g, '');
+        const headerMap: Record<string, number> = {};
+        headers.forEach((h, i) => {
+          headerMap[normalize(h)] = i;
+        });
+
+        const getVal = (row: string[], ...keys: string[]): string | null => {
+          for (const key of keys) {
+            const idx = headerMap[normalize(key)];
+            if (idx !== undefined && row[idx] !== undefined && row[idx] !== '') {
+              return row[idx];
+            }
+          }
+          return null;
+        };
+
+        const parseBool = (val: string | null): boolean => {
+          if (!val) return false;
+          const lower = val.toLowerCase().trim();
+          return lower === 'true' || lower === 'yes' || lower === '1';
+        };
+
+        const parseNum = (val: string | null): number | null => {
+          if (!val) return null;
+          const cleaned = val.replace(/[,$]/g, '').trim();
+          const num = parseFloat(cleaned);
+          return isNaN(num) ? null : num;
+        };
+
+        let imported = 0;
+        let skipped = 0;
+        const errors: string[] = [];
+
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          if (row.length === 0 || (row.length === 1 && row[0] === '')) continue;
+
+          const productCode = getVal(row, 'productCode', 'product_code');
+          const productName = getVal(row, 'productName', 'product_name');
+
+          if (!productCode && !productName) {
+            errors.push(`Row ${i + 2}: Product code or product name is required`);
+            skipped++;
+            continue;
+          }
+
+          const dbData: Record<string, any> = {
+            tenant_id: tenantId,
+            product_code: productCode || null,
+            product_name: productName || productCode || 'Unknown',
+            vendor: getVal(row, 'vendor') || null,
+            product_type: getVal(row, 'productType', 'product_type') || null,
+            category: getVal(row, 'category') || null,
+            accessory_type: getVal(row, 'accessoryType', 'accessory_type') || null,
+            description: getVal(row, 'description') || null,
+            summary: getVal(row, 'summary') || null,
+            note: getVal(row, 'note') || null,
+            ea_notes: getVal(row, 'eaNotes', 'ea_notes') || null,
+            config_note: getVal(row, 'configNote', 'config_note') || null,
+            related_products: getVal(row, 'relatedProducts', 'related_products') || null,
+            is_active: parseBool(getVal(row, 'isActive', 'is_active') || 'true'),
+            available_for_all: parseBool(getVal(row, 'availableForAll', 'available_for_all')),
+            repost_edit: parseBool(getVal(row, 'repostEdit', 'repost_edit')),
+            sales_rep_credit: parseBool(
+              getVal(row, 'salesRepCredit', 'sales_rep_credit') || 'true',
+            ),
+            funding: parseBool(getVal(row, 'funding') || 'true'),
+            lease: parseBool(getVal(row, 'lease')),
+            payment_type: getVal(row, 'paymentType', 'payment_type') || null,
+            standard_active: parseBool(getVal(row, 'standardActive', 'standard_active')),
+            standard_cost: parseNum(getVal(row, 'standardCost', 'standard_cost')),
+            standard_rep_price: parseNum(getVal(row, 'standardRepPrice', 'standard_rep_price')),
+            new_active: parseBool(getVal(row, 'newActive', 'new_active')),
+            new_cost: parseNum(getVal(row, 'newCost', 'new_cost')),
+            new_rep_price: parseNum(getVal(row, 'newRepPrice', 'new_rep_price')),
+            upgrade_active: parseBool(getVal(row, 'upgradeActive', 'upgrade_active')),
+            upgrade_cost: parseNum(getVal(row, 'upgradeCost', 'upgrade_cost')),
+            upgrade_rep_price: parseNum(getVal(row, 'upgradeRepPrice', 'upgrade_rep_price')),
+            price_book_id: getVal(row, 'priceBookId', 'price_book_id') || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+
+          try {
+            const { error: insertError } = await admin.from('software_products').insert(dbData);
+
+            if (insertError) {
+              errors.push(`Row ${i + 2}: ${insertError.message}`);
+              skipped++;
+            } else {
+              imported++;
+            }
+          } catch (rowError: any) {
+            errors.push(`Row ${i + 2}: ${rowError.message || 'Unknown error'}`);
+            skipped++;
+          }
+        }
+
+        return createCorsResponse(
+          {
+            success: errors.length === 0,
+            imported,
+            skipped,
+            errors,
+          },
+          200,
+          req,
+        );
+      } catch (importError: any) {
+        console.error('Error importing software products:', importError);
+        return createCorsResponse(
+          { message: 'Failed to import software products', error: importError.message },
+          500,
+          req,
+        );
+      }
+    }
+
     // POST /software-products - Create new software product
     if (req.method === 'POST') {
       const body = await req.json();
