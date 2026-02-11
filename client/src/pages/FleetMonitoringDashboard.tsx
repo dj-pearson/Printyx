@@ -287,17 +287,15 @@ export default function FleetMonitoringDashboard() {
   );
 
   return (
-    <MainLayout>
-      <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Fleet Monitoring Dashboard</h1>
-            <p className="text-gray-600 mt-2">
-              Real-time monitoring of all devices with toner level alerts
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
+    <MainLayout
+      title="Fleet Monitoring"
+      description="Real-time monitoring of all devices with toner level alerts"
+    >
+      <div className="space-y-4 sm:space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <h2 className="text-2xl font-bold">Fleet Monitoring Dashboard</h2>
+          <div className="hidden sm:flex items-center gap-3">
             <div className="flex items-center gap-2">
               <Label htmlFor="auto-refresh">Auto Refresh</Label>
               <Button
@@ -310,7 +308,6 @@ export default function FleetMonitoringDashboard() {
                 {autoRefresh ? 'On' : 'Off'}
               </Button>
             </div>
-
             <Button
               variant="outline"
               onClick={handleRefreshAll}
@@ -323,7 +320,7 @@ export default function FleetMonitoringDashboard() {
         </div>
 
         {/* Fleet Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Devices</CardTitle>

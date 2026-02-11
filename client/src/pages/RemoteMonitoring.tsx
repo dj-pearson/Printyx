@@ -295,17 +295,15 @@ export default function RemoteMonitoring() {
   const totalAlerts = equipmentStatus.reduce((sum, eq) => sum + eq.alerts.length, 0);
 
   return (
-    <MainLayout>
-      <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Remote Monitoring & IoT</h1>
-            <p className="text-gray-600 mt-2">
-              Real-time equipment monitoring and predictive analytics
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
+    <MainLayout
+      title="Remote Monitoring & IoT"
+      description="Real-time equipment monitoring and predictive analytics"
+    >
+      <div className="space-y-4 sm:space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <h2 className="text-2xl font-bold">Remote Monitoring & IoT</h2>
+          <div className="hidden sm:flex items-center gap-3">
             <div className="flex items-center gap-2">
               <Label htmlFor="auto-refresh">Auto Refresh</Label>
               <Button
@@ -318,7 +316,6 @@ export default function RemoteMonitoring() {
                 {autoRefresh ? 'On' : 'Off'}
               </Button>
             </div>
-
             <Button
               variant="outline"
               onClick={() => {
@@ -333,7 +330,7 @@ export default function RemoteMonitoring() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Online Equipment</CardTitle>

@@ -382,17 +382,15 @@ export default function ServiceDispatchOptimization() {
   };
 
   return (
-    <MainLayout>
-      <div className="container mx-auto p-6 space-y-6">
+    <MainLayout
+      title="Service Dispatch"
+      description="AI-powered route optimization and real-time technician tracking"
+    >
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Service Dispatch Optimization</h1>
-            <p className="text-gray-600 mt-1">
-              AI-powered route optimization and real-time technician tracking
-            </p>
-          </div>
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <h2 className="text-2xl font-bold">Service Dispatch Optimization</h2>
+          <div className="hidden sm:flex items-center space-x-4">
             <Button
               variant="outline"
               onClick={() => setIsSettingsDialogOpen(true)}
@@ -403,7 +401,7 @@ export default function ServiceDispatchOptimization() {
             </Button>
             <Badge variant="outline" className="px-3 py-2">
               <Activity className="h-4 w-4 mr-2" />
-              Live Tracking: {realTimeTrackingEnabled ? 'ON' : 'OFF'}
+              Live: {realTimeTrackingEnabled ? 'ON' : 'OFF'}
             </Badge>
           </div>
         </div>
@@ -434,7 +432,7 @@ export default function ServiceDispatchOptimization() {
         <ServiceTeamStatsWidget variant="full" showAutoRefresh={true} />
 
         {/* Key Metrics Dashboard */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Technicians</CardTitle>

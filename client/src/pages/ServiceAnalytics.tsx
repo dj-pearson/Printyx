@@ -416,396 +416,392 @@ export default function ServiceAnalytics() {
   };
 
   return (
-    <MainLayout>
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Service Analytics & Performance</h1>
-            <p className="text-muted-foreground mt-2">
-              Comprehensive business intelligence and performance metrics for service operations
-            </p>
-          </div>
-          <div className="flex space-x-2">
-            <Dialog open={isDashboardDialogOpen} onOpenChange={setIsDashboardDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Dashboard
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Create Analytics Dashboard</DialogTitle>
-                </DialogHeader>
-                <Form {...dashboardForm}>
-                  <form
-                    onSubmit={dashboardForm.handleSubmit(onDashboardSubmit)}
-                    className="space-y-4"
-                  >
+    <MainLayout
+      title="Service Analytics"
+      description="Business intelligence and performance metrics for service operations"
+    >
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex justify-end items-center gap-2">
+          <Dialog open={isDashboardDialogOpen} onOpenChange={setIsDashboardDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="hidden sm:flex">
+                <Plus className="mr-2 h-4 w-4" />
+                New Dashboard
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Create Analytics Dashboard</DialogTitle>
+              </DialogHeader>
+              <Form {...dashboardForm}>
+                <form
+                  onSubmit={dashboardForm.handleSubmit(onDashboardSubmit)}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={dashboardForm.control}
+                    name="dashboard_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Dashboard Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Service Performance Dashboard" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={dashboardForm.control}
-                      name="dashboard_name"
+                      name="dashboard_type"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Dashboard Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Service Performance Dashboard" {...field} />
-                          </FormControl>
+                          <FormLabel>Dashboard Type</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="executive">Executive</SelectItem>
+                              <SelectItem value="operational">Operational</SelectItem>
+                              <SelectItem value="financial">Financial</SelectItem>
+                              <SelectItem value="customer">Customer</SelectItem>
+                              <SelectItem value="technician">Technician</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={dashboardForm.control}
-                        name="dashboard_type"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Dashboard Type</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="executive">Executive</SelectItem>
-                                <SelectItem value="operational">Operational</SelectItem>
-                                <SelectItem value="financial">Financial</SelectItem>
-                                <SelectItem value="customer">Customer</SelectItem>
-                                <SelectItem value="technician">Technician</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={dashboardForm.control}
-                        name="category"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Category</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="service_analytics">Service Analytics</SelectItem>
-                                <SelectItem value="performance">Performance</SelectItem>
-                                <SelectItem value="forecasting">Forecasting</SelectItem>
-                                <SelectItem value="benchmarking">Benchmarking</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={dashboardForm.control}
-                        name="visibility"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Visibility</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="private">Private</SelectItem>
-                                <SelectItem value="team">Team</SelectItem>
-                                <SelectItem value="department">Department</SelectItem>
-                                <SelectItem value="organization">Organization</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={dashboardForm.control}
-                        name="refresh_interval"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Refresh Interval (seconds)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="60"
-                                max="3600"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 300)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
                     <FormField
                       control={dashboardForm.control}
-                      name="auto_refresh"
+                      name="category"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                          <FormControl>
-                            <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                          </FormControl>
-                          <FormLabel>Enable auto-refresh</FormLabel>
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="service_analytics">Service Analytics</SelectItem>
+                              <SelectItem value="performance">Performance</SelectItem>
+                              <SelectItem value="forecasting">Forecasting</SelectItem>
+                              <SelectItem value="benchmarking">Benchmarking</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
+                  </div>
 
+                  <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={dashboardForm.control}
-                      name="description"
+                      name="visibility"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Description (Optional)</FormLabel>
+                          <FormLabel>Visibility</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="private">Private</SelectItem>
+                              <SelectItem value="team">Team</SelectItem>
+                              <SelectItem value="department">Department</SelectItem>
+                              <SelectItem value="organization">Organization</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={dashboardForm.control}
+                      name="refresh_interval"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Refresh Interval (seconds)</FormLabel>
                           <FormControl>
-                            <Textarea
-                              placeholder="Dashboard description and purpose..."
-                              rows={3}
+                            <Input
+                              type="number"
+                              min="60"
+                              max="3600"
                               {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value) || 300)}
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+                  </div>
 
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsDashboardDialogOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={createDashboardMutation.isPending}>
-                        {createDashboardMutation.isPending ? 'Creating...' : 'Create Dashboard'}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+                  <FormField
+                    control={dashboardForm.control}
+                    name="auto_refresh"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        <FormLabel>Enable auto-refresh</FormLabel>
+                      </FormItem>
+                    )}
+                  />
 
-            <Dialog open={isBenchmarkDialogOpen} onOpenChange={setIsBenchmarkDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Target className="mr-2 h-4 w-4" />
-                  Set Benchmark
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Set Performance Benchmark</DialogTitle>
-                </DialogHeader>
-                <Form {...benchmarkForm}>
-                  <form
-                    onSubmit={benchmarkForm.handleSubmit(onBenchmarkSubmit)}
-                    className="space-y-4"
-                  >
+                  <FormField
+                    control={dashboardForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Dashboard description and purpose..."
+                            rows={3}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsDashboardDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={createDashboardMutation.isPending}>
+                      {createDashboardMutation.isPending ? 'Creating...' : 'Create Dashboard'}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isBenchmarkDialogOpen} onOpenChange={setIsBenchmarkDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="hidden sm:flex">
+                <Target className="mr-2 h-4 w-4" />
+                Set Benchmark
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Set Performance Benchmark</DialogTitle>
+              </DialogHeader>
+              <Form {...benchmarkForm}>
+                <form
+                  onSubmit={benchmarkForm.handleSubmit(onBenchmarkSubmit)}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={benchmarkForm.control}
+                    name="benchmark_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Benchmark Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Customer Satisfaction Target" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={benchmarkForm.control}
-                      name="benchmark_name"
+                      name="benchmark_category"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Benchmark Name</FormLabel>
+                          <FormLabel>Category</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="response_time">Response Time</SelectItem>
+                              <SelectItem value="satisfaction">Satisfaction</SelectItem>
+                              <SelectItem value="efficiency">Efficiency</SelectItem>
+                              <SelectItem value="revenue">Revenue</SelectItem>
+                              <SelectItem value="quality">Quality</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={benchmarkForm.control}
+                      name="company_target"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company Target</FormLabel>
                           <FormControl>
-                            <Input placeholder="Customer Satisfaction Target" {...field} />
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              {...field}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={benchmarkForm.control}
-                        name="benchmark_category"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Category</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="response_time">Response Time</SelectItem>
-                                <SelectItem value="satisfaction">Satisfaction</SelectItem>
-                                <SelectItem value="efficiency">Efficiency</SelectItem>
-                                <SelectItem value="revenue">Revenue</SelectItem>
-                                <SelectItem value="quality">Quality</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={benchmarkForm.control}
-                        name="company_target"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Company Target</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={benchmarkForm.control}
-                        name="industry_average"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Industry Average (Optional)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                {...field}
-                                onChange={(e) =>
-                                  field.onChange(parseFloat(e.target.value) || undefined)
-                                }
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={benchmarkForm.control}
-                        name="investment_required"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Investment Required ($)</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                {...field}
-                                onChange={(e) =>
-                                  field.onChange(parseFloat(e.target.value) || undefined)
-                                }
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={benchmarkForm.control}
-                        name="improvement_priority"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Priority</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="high">High</SelectItem>
-                                <SelectItem value="medium">Medium</SelectItem>
-                                <SelectItem value="low">Low</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={benchmarkForm.control}
-                        name="business_impact"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Business Impact</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="critical">Critical</SelectItem>
-                                <SelectItem value="high">High</SelectItem>
-                                <SelectItem value="medium">Medium</SelectItem>
-                                <SelectItem value="low">Low</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
+                  <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={benchmarkForm.control}
-                      name="target_completion_date"
+                      name="industry_average"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Target Completion Date</FormLabel>
+                          <FormLabel>Industry Average (Optional)</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(parseFloat(e.target.value) || undefined)
+                              }
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={benchmarkForm.control}
+                      name="investment_required"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Investment Required ($)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              {...field}
+                              onChange={(e) =>
+                                field.onChange(parseFloat(e.target.value) || undefined)
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsBenchmarkDialogOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={createBenchmarkMutation.isPending}>
-                        {createBenchmarkMutation.isPending ? 'Creating...' : 'Set Benchmark'}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={benchmarkForm.control}
+                      name="improvement_priority"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Priority</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="low">Low</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={benchmarkForm.control}
+                      name="business_impact"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Business Impact</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="critical">Critical</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="low">Low</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-            <Button
-              onClick={() => generateReportsMutation.mutate()}
-              disabled={generateReportsMutation.isPending}
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              {generateReportsMutation.isPending ? 'Generating...' : 'Generate Reports'}
-            </Button>
-          </div>
+                  <FormField
+                    control={benchmarkForm.control}
+                    name="target_completion_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Target Completion Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsBenchmarkDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={createBenchmarkMutation.isPending}>
+                      {createBenchmarkMutation.isPending ? 'Creating...' : 'Set Benchmark'}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+
+          <Button
+            onClick={() => generateReportsMutation.mutate()}
+            disabled={generateReportsMutation.isPending}
+            className="hidden sm:flex"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            {generateReportsMutation.isPending ? 'Generating...' : 'Generate Reports'}
+          </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -830,13 +826,13 @@ export default function ServiceAnalytics() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="space-y-4 sm:space-y-6">
             {/* Key Metrics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Service Calls</CardTitle>
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Service Calls</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-blue-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
@@ -847,8 +843,8 @@ export default function ServiceAnalytics() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Response Time</CardTitle>
+                  <Clock className="h-4 w-4 text-amber-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics?.averageResponseTime || 0} min</div>
@@ -857,14 +853,28 @@ export default function ServiceAnalytics() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Customer Satisfaction</CardTitle>
-                  <Star className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Satisfaction</CardTitle>
+                  <Star className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
                     {metrics?.customerSatisfaction?.toFixed(1) || '0.0'}/5
                   </div>
                   <p className="text-xs text-muted-foreground">Target: 4.5/5</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">FCR Rate</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-purple-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {metrics?.firstCallResolution?.toFixed(1) || '0'}%
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {metrics?.utilizationRate?.toFixed(0) || '0'}% utilization
+                  </p>
                 </CardContent>
               </Card>
             </div>

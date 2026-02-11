@@ -393,7 +393,7 @@ export default function MeterReadings() {
       title="Meter Readings"
       description="Manage equipment meter readings and calculate billing"
     >
-      <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* URL Filter Banner */}
         {urlFilter?.type === 'missed_cycles' && (
           <div className="p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

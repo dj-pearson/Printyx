@@ -49,7 +49,7 @@ import {
   Monitor,
 } from 'lucide-react';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
-import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
+// KpiSummaryBar removed - using inline KPI cards
 import MobileFAB from '@/components/layout/MobileFAB';
 import PageAlerts from '@/components/contextual/PageAlerts';
 import {
@@ -284,9 +284,8 @@ export default function ServiceHub() {
       title="Enhanced Service System"
       description="Comprehensive service management with phone-in tickets and guided technician workflows"
     >
-      <div className="container mx-auto p-3 md:p-6 space-y-4 md:space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <ContextualHelp page="service-hub" />
-        <KpiSummaryBar className="mb-4" />
         <PageAlerts
           categories={['business', 'performance']}
           severities={['medium', 'high', 'critical']}
@@ -315,80 +314,73 @@ export default function ServiceHub() {
           </div>
         </div>
 
+        {/* Auto-conversion banner */}
+        {typeof window !== 'undefined' &&
+          window.localStorage?.getItem('phoneInAutoConverted') === '1' && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded text-sm text-green-800 flex items-center justify-between">
+              <span>Phone-in ticket was converted to a service ticket automatically.</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.localStorage?.removeItem('phoneInAutoConverted')}
+              >
+                Dismiss
+              </Button>
+            </div>
+          )}
+
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          {typeof window !== 'undefined' &&
-            window.localStorage?.getItem('phoneInAutoConverted') === '1' && (
-              <div className="md:col-span-4 p-3 bg-green-50 border border-green-200 rounded text-sm text-green-800 flex items-center justify-between">
-                <span>Phone-in ticket was converted to a service ticket automatically.</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.localStorage?.removeItem('phoneInAutoConverted')}
-                >
-                  Dismiss
-                </Button>
-              </div>
-            )}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm text-gray-600">Active Tickets</p>
-                  <p className="text-xl md:text-2xl font-bold text-gray-900">
-                    {
-                      tickets.filter((t: any) => !['completed', 'cancelled'].includes(t.status))
-                        .length
-                    }
-                  </p>
-                </div>
-                <Activity className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Tickets</CardTitle>
+              <Activity className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {tickets.filter((t: any) => !['completed', 'cancelled'].includes(t.status)).length}
               </div>
+              <p className="text-xs text-muted-foreground">In progress</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm text-gray-600">Phone-In Queue</p>
-                  <p className="text-xl md:text-2xl font-bold text-gray-900">
-                    {phoneInTickets.length}
-                  </p>
-                </div>
-                <Phone className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Phone-In Queue</CardTitle>
+              <Phone className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{phoneInTickets.length}</div>
+              <p className="text-xs text-muted-foreground">Awaiting triage</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm text-gray-600">On-Site Techs</p>
-                  <p className="text-xl md:text-2xl font-bold text-gray-900">
-                    {tickets.filter((t: any) => t.status === 'on_site').length}
-                  </p>
-                </div>
-                <MapPin className="h-6 w-6 md:h-8 md:w-8 text-orange-600" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">On-Site Techs</CardTitle>
+              <MapPin className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {tickets.filter((t: any) => t.status === 'on_site').length}
               </div>
+              <p className="text-xs text-muted-foreground">Currently deployed</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-3 md:p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs md:text-sm text-gray-600">Completed Today</p>
-                  <p className="text-xl md:text-2xl font-bold text-gray-900">
-                    {
-                      tickets.filter(
-                        (t: any) =>
-                          t.status === 'completed' &&
-                          new Date(t.updatedAt).toDateString() === new Date().toDateString(),
-                      ).length
-                    }
-                  </p>
-                </div>
-                <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Completed Today</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {
+                  tickets.filter(
+                    (t: any) =>
+                      t.status === 'completed' &&
+                      new Date(t.updatedAt).toDateString() === new Date().toDateString(),
+                  ).length
+                }
               </div>
+              <p className="text-xs text-muted-foreground">Resolved</p>
             </CardContent>
           </Card>
         </div>

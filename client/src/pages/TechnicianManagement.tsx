@@ -252,10 +252,10 @@ export default function TechnicianManagement() {
       >
         <div className="space-y-6">
           <div className="h-8 bg-gray-200 rounded animate-pulse" />
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {[...Array(4)].map((_, i) => (
               <Card key={i}>
-                <CardContent className="p-6">
+                <CardContent className="pt-6">
                   <div className="space-y-2">
                     <div className="h-4 bg-gray-200 rounded animate-pulse" />
                     <div className="h-6 bg-gray-200 rounded animate-pulse" />
@@ -274,12 +274,12 @@ export default function TechnicianManagement() {
       title="Technician Management"
       description="Manage your field service technicians and track their performance"
     >
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex justify-end items-center">
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="hidden sm:flex">
                 <UserPlus className="mr-2 h-4 w-4" />
                 Add Technician
               </Button>
@@ -519,62 +519,47 @@ export default function TechnicianManagement() {
 
         {/* Dashboard Stats */}
         {dashboardStats && (
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <div className="ml-2">
-                    <p className="text-sm font-medium">Total Technicians</p>
-                    <p className="text-2xl font-bold">{dashboardStats.totalTechnicians}</p>
-                  </div>
-                </div>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Technicians</CardTitle>
+                <Users className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboardStats.totalTechnicians}</div>
+                <p className="text-xs text-muted-foreground">
+                  {dashboardStats.utilizationRate.toFixed(0)}% utilization
+                </p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <div className="ml-2">
-                    <p className="text-sm font-medium">Active</p>
-                    <p className="text-2xl font-bold">{dashboardStats.activeTechnicians}</p>
-                  </div>
-                </div>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboardStats.activeTechnicians}</div>
+                <p className="text-xs text-muted-foreground">On duty</p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <Activity className="h-4 w-4 text-blue-600" />
-                  <div className="ml-2">
-                    <p className="text-sm font-medium">Available</p>
-                    <p className="text-2xl font-bold">{dashboardStats.availableTechnicians}</p>
-                  </div>
-                </div>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Available</CardTitle>
+                <Activity className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboardStats.availableTechnicians}</div>
+                <p className="text-xs text-muted-foreground">Ready to dispatch</p>
               </CardContent>
             </Card>
             <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <AlertCircle className="h-4 w-4 text-red-600" />
-                  <div className="ml-2">
-                    <p className="text-sm font-medium">Busy</p>
-                    <p className="text-2xl font-bold">{dashboardStats.busyTechnicians}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <Star className="h-4 w-4 text-yellow-600" />
-                  <div className="ml-2">
-                    <p className="text-sm font-medium">Utilization</p>
-                    <p className="text-2xl font-bold">
-                      {dashboardStats.utilizationRate.toFixed(1)}%
-                    </p>
-                  </div>
-                </div>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Busy</CardTitle>
+                <AlertCircle className="h-4 w-4 text-red-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dashboardStats.busyTechnicians}</div>
+                <p className="text-xs text-muted-foreground">On assignment</p>
               </CardContent>
             </Card>
           </div>
@@ -741,6 +726,14 @@ export default function TechnicianManagement() {
           </Card>
         )}
       </div>
+
+      {/* Mobile FAB */}
+      <Button
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg md:hidden z-50"
+        onClick={() => setIsCreateDialogOpen(true)}
+      >
+        <UserPlus className="h-6 w-6" />
+      </Button>
     </MainLayout>
   );
 }

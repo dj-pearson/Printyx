@@ -206,7 +206,7 @@ export default function ServiceForecastingAnalytics() {
       title="Service Demand Forecasting"
       description="Predictive analytics for proactive customer service management"
     >
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Filters and Controls */}
         <Card>
           <CardContent className="p-6">
@@ -249,7 +249,7 @@ export default function ServiceForecastingAnalytics() {
                 </Select>
               </div>
 
-              <div className="flex gap-2">
+              <div className="hidden sm:flex gap-2">
                 <Button variant="outline" size="sm">
                   <Download className="h-4 w-4 mr-2" />
                   Export
@@ -264,66 +264,50 @@ export default function ServiceForecastingAnalytics() {
         </Card>
 
         {/* Summary Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Predicted Service Calls
-                  </p>
-                  <p className="text-2xl font-bold">{summaryMetrics?.predictedCalls || 0}</p>
-                  <p className="text-xs text-blue-600">
-                    {summaryMetrics?.callsIncrease || 0}% increase expected
-                  </p>
-                </div>
-                <Zap className="h-8 w-8 text-blue-600" />
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Predicted Calls</CardTitle>
+              <Zap className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{summaryMetrics?.predictedCalls || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                {summaryMetrics?.callsIncrease || 0}% increase expected
+              </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">High Risk Customers</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    {summaryMetrics?.highRiskCustomers || 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Require immediate attention</p>
-                </div>
-                <AlertTriangle className="h-8 w-8 text-red-600" />
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">High Risk</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{summaryMetrics?.highRiskCustomers || 0}</div>
+              <p className="text-xs text-muted-foreground">Require immediate attention</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Avg Technician Utilization
-                  </p>
-                  <p className="text-2xl font-bold">{summaryMetrics?.avgUtilization || 0}%</p>
-                  <Progress value={summaryMetrics?.avgUtilization || 0} className="mt-2" />
-                </div>
-                <Users className="h-8 w-8 text-purple-600" />
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Utilization</CardTitle>
+              <Users className="h-4 w-4 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{summaryMetrics?.avgUtilization || 0}%</div>
+              <p className="text-xs text-muted-foreground">Avg technician utilization</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Inventory Alerts</p>
-                  <p className="text-2xl font-bold text-orange-600">
-                    {summaryMetrics?.inventoryAlerts || 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Items need reordering</p>
-                </div>
-                <Package className="h-8 w-8 text-orange-600" />
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Inventory Alerts</CardTitle>
+              <Package className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{summaryMetrics?.inventoryAlerts || 0}</div>
+              <p className="text-xs text-muted-foreground">Items need reordering</p>
             </CardContent>
           </Card>
         </div>

@@ -250,11 +250,11 @@ export default function OnboardingDashboard() {
 
   if (isLoading) {
     return (
-      <MainLayout>
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl sm:text-3xl font-bold">Onboarding Checklists</h1>
-          </div>
+      <MainLayout
+        title="Onboarding"
+        description="Manage equipment installation and customer onboarding processes"
+      >
+        <div className="space-y-4 sm:space-y-6">
           <div className="grid gap-4 sm:gap-6">
             {[1, 2, 3].map((i) => (
               <Card key={i} className="animate-pulse">
@@ -274,182 +274,176 @@ export default function OnboardingDashboard() {
   }
 
   return (
-    <MainLayout>
-      <div className="space-y-6">
+    <MainLayout
+      title="Onboarding"
+      description="Manage equipment installation and customer onboarding processes"
+    >
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Onboarding Checklists</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Manage equipment installation and customer onboarding processes
-            </p>
-          </div>
+        <div className="flex justify-end gap-2">
+          <Button
+            onClick={() => (window.location.href = '/onboarding/new')}
+            size="default"
+            className="hidden sm:flex"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Comprehensive Checklist
+          </Button>
 
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button
-              onClick={() => (window.location.href = '/onboarding/new')}
-              size="default"
-              className="w-full sm:w-auto"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Comprehensive Checklist
-            </Button>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="default" variant="outline" className="hidden sm:flex">
+                <Plus className="w-4 h-4 mr-2" />
+                Quick Checklist
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create New Onboarding Checklist</DialogTitle>
+                <DialogDescription>
+                  Set up a new installation and onboarding checklist for a customer
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateChecklist} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="checklistTitle">Checklist Title</Label>
+                    <Input
+                      id="checklistTitle"
+                      name="checklistTitle"
+                      placeholder="e.g., ABC Company Installation"
+                      required
+                      className="min-h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="installationType">Installation Type</Label>
+                    <Select name="installationType" required>
+                      <SelectTrigger className="min-h-11">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new_site">New Site</SelectItem>
+                        <SelectItem value="equipment_upgrade">Equipment Upgrade</SelectItem>
+                        <SelectItem value="relocation">Relocation</SelectItem>
+                        <SelectItem value="expansion">Expansion</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="default" variant="outline" className="w-full sm:w-auto">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Quick Checklist
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create New Onboarding Checklist</DialogTitle>
-                  <DialogDescription>
-                    Set up a new installation and onboarding checklist for a customer
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleCreateChecklist} className="space-y-4">
+                <div className="space-y-4">
+                  <h4 className="font-medium">Customer Information</h4>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="checklistTitle">Checklist Title</Label>
+                      <Label htmlFor="companyName">Company Name</Label>
                       <Input
-                        id="checklistTitle"
-                        name="checklistTitle"
-                        placeholder="e.g., ABC Company Installation"
+                        id="companyName"
+                        name="companyName"
+                        placeholder="ABC Company"
                         required
                         className="min-h-11"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="installationType">Installation Type</Label>
-                      <Select name="installationType" required>
-                        <SelectTrigger className="min-h-11">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new_site">New Site</SelectItem>
-                          <SelectItem value="equipment_upgrade">Equipment Upgrade</SelectItem>
-                          <SelectItem value="relocation">Relocation</SelectItem>
-                          <SelectItem value="expansion">Expansion</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Customer Information</h4>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="companyName">Company Name</Label>
-                        <Input
-                          id="companyName"
-                          name="companyName"
-                          placeholder="ABC Company"
-                          required
-                          className="min-h-11"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="primaryContact">Primary Contact</Label>
-                        <Input
-                          id="primaryContact"
-                          name="primaryContact"
-                          placeholder="John Doe"
-                          required
-                          className="min-h-11"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="phone">Phone</Label>
-                        <Input
-                          id="phone"
-                          name="phone"
-                          type="tel"
-                          placeholder="(555) 123-4567"
-                          className="min-h-11"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          name="email"
-                          type="email"
-                          placeholder="john@company.com"
-                          className="min-h-11"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Site Information</h4>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="address">Installation Address</Label>
-                        <Input
-                          id="address"
-                          name="address"
-                          placeholder="123 Main St, City, State 12345"
-                          required
-                          className="min-h-11"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="scheduledInstallDate">Scheduled Install Date</Label>
-                        <Input
-                          id="scheduledInstallDate"
-                          name="scheduledInstallDate"
-                          type="date"
-                          className="min-h-11"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="accessRequirements">Access Requirements</Label>
-                      <Textarea
-                        id="accessRequirements"
-                        name="accessRequirements"
-                        placeholder="Building access codes, contact person, parking instructions..."
-                        rows={3}
+                      <Label htmlFor="primaryContact">Primary Contact</Label>
+                      <Input
+                        id="primaryContact"
+                        name="primaryContact"
+                        placeholder="John Doe"
+                        required
+                        className="min-h-11"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="specialInstructions">Special Instructions</Label>
-                      <Textarea
-                        id="specialInstructions"
-                        name="specialInstructions"
-                        placeholder="Any special requirements or notes for the installation..."
-                        rows={3}
+                      <Label htmlFor="phone">Phone</Label>
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        placeholder="(555) 123-4567"
+                        className="min-h-11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        placeholder="john@company.com"
+                        className="min-h-11"
                       />
                     </div>
                   </div>
+                </div>
 
-                  <div className="flex justify-end gap-3 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsCreateDialogOpen(false)}
-                      className="min-h-11"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={createChecklistMutation.isPending}
-                      className="min-h-11"
-                    >
-                      {createChecklistMutation.isPending ? 'Creating...' : 'Create Checklist'}
-                    </Button>
+                <div className="space-y-4">
+                  <h4 className="font-medium">Site Information</h4>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="address">Installation Address</Label>
+                      <Input
+                        id="address"
+                        name="address"
+                        placeholder="123 Main St, City, State 12345"
+                        required
+                        className="min-h-11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="scheduledInstallDate">Scheduled Install Date</Label>
+                      <Input
+                        id="scheduledInstallDate"
+                        name="scheduledInstallDate"
+                        type="date"
+                        className="min-h-11"
+                      />
+                    </div>
                   </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="accessRequirements">Access Requirements</Label>
+                    <Textarea
+                      id="accessRequirements"
+                      name="accessRequirements"
+                      placeholder="Building access codes, contact person, parking instructions..."
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="specialInstructions">Special Instructions</Label>
+                    <Textarea
+                      id="specialInstructions"
+                      name="specialInstructions"
+                      placeholder="Any special requirements or notes for the installation..."
+                      rows={3}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCreateDialogOpen(false)}
+                    className="min-h-11"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createChecklistMutation.isPending}
+                    className="min-h-11"
+                  >
+                    {createChecklistMutation.isPending ? 'Creating...' : 'Create Checklist'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Filters */}
@@ -477,38 +471,45 @@ export default function OnboardingDashboard() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Checklists</CardTitle>
+              <FileText className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{checklists.length}</div>
+              <p className="text-xs text-muted-foreground">All onboarding items</p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+              <Clock className="h-4 w-4 text-amber-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold">
                 {checklists.filter((c: OnboardingChecklist) => c.status === 'in_progress').length}
               </div>
+              <p className="text-xs text-muted-foreground">Active installations</p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Completed</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold">
                 {checklists.filter((c: OnboardingChecklist) => c.status === 'completed').length}
               </div>
+              <p className="text-xs text-muted-foreground">Finished onboarding</p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Avg. Progress</CardTitle>
+              <AlertCircle className="h-4 w-4 text-purple-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -522,6 +523,7 @@ export default function OnboardingDashboard() {
                   : 0}
                 %
               </div>
+              <p className="text-xs text-muted-foreground">Across all checklists</p>
             </CardContent>
           </Card>
         </div>
@@ -664,6 +666,14 @@ export default function OnboardingDashboard() {
             ))
           )}
         </div>
+
+        {/* Mobile FAB */}
+        <Button
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg md:hidden z-50"
+          onClick={() => setIsCreateDialogOpen(true)}
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
       </div>
     </MainLayout>
   );
