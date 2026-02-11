@@ -5,6 +5,19 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
+// Convert camelCase request body keys to snake_case for DB compatibility
+function camelToSnake(str: string): string {
+  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+}
+
+function normalizeBodyToSnake(body: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body)) {
+    result[camelToSnake(key)] = value;
+  }
+  return result;
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -129,35 +142,7 @@ export default async function handler(req: Request) {
         const status = url.searchParams.get('status');
         const search = url.searchParams.get('search');
 
-        // Check if they want leads or customers specifically
-        if (recordType === 'lead' || recordType === 'customer') {
-          const table = recordType === 'lead' ? 'leads' : 'customers';
-          const { data: records, error } = await admin
-            .from(table)
-            .select(
-              `
-              *,
-              companies!inner(*),
-              company_contacts(*)
-            `,
-            )
-            .eq('tenant_id', tenantId);
-
-          if (!error) {
-            return createCorsResponse(
-              {
-                data: records,
-                _message: `Use /${table} endpoint instead of /business-records`,
-                _migrated: true,
-              },
-              200,
-              req,
-              deprecationMessage,
-            );
-          }
-        }
-
-        // Fall back to business_records for backwards compatibility
+        // Always use business_records table for backwards compatibility
         // Handle pagination parameters
         const limit = parseInt(url.searchParams.get('limit') || '100');
         const offset = parseInt(url.searchParams.get('offset') || '0');
@@ -293,7 +278,7 @@ export default async function handler(req: Request) {
       // Handle regular business record creation (lead/customer)
       const recordData = {
         tenant_id: tenantId,
-        ...body,
+        ...normalizeBodyToSnake(body),
         created_by: user.id,
         updated_at: new Date().toISOString(),
       };
@@ -316,7 +301,7 @@ export default async function handler(req: Request) {
       const body = await req.json();
 
       const updateData = {
-        ...body,
+        ...normalizeBodyToSnake(body),
         updated_by: user.id,
         updated_at: new Date().toISOString(),
       };
