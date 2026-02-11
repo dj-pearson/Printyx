@@ -221,17 +221,11 @@ export default function ServiceProducts() {
 
   return (
     <MainLayout title="Service Products" description="Manage service products and offerings">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Service Products</h1>
-            <p className="text-muted-foreground">
-              Manage service-based products and offerings for your customers
-            </p>
-          </div>
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex justify-end">
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="hidden sm:flex">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Service
               </Button>

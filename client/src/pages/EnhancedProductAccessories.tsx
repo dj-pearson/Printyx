@@ -254,7 +254,10 @@ export default function EnhancedProductAccessories() {
 
   if (isLoading) {
     return (
-      <MainLayout>
+      <MainLayout
+        title="Product Accessories"
+        description="Manage product accessories and model compatibility"
+      >
         <div className="flex items-center justify-center h-64">
           <div className="text-lg">Loading accessories...</div>
         </div>
@@ -263,8 +266,11 @@ export default function EnhancedProductAccessories() {
   }
 
   return (
-    <MainLayout>
-      <div className="space-y-6">
+    <MainLayout
+      title="Product Accessories"
+      description="Manage product accessories and model compatibility"
+    >
+      <div className="space-y-4 sm:space-y-6">
         <ManagementToolbar
           title="Product Accessories"
           description="Manage product accessories and model compatibility"
