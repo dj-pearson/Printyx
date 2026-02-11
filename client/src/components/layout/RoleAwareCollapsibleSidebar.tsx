@@ -505,12 +505,11 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     title: 'Customers & CRM',
     icon: Building2,
     path: '/customers',
-    matchPatterns: ['/customers*', '/crm*', '/business-records*'],
+    matchPatterns: ['/customers*', '/leads*', '/prospects*', '/crm*', '/business-records*'],
     children: [
-      { title: 'All Records', path: '/customers', icon: Building2 },
-      { title: 'Leads', path: '/customers?tab=leads', icon: UserPlus },
-      { title: 'Prospects', path: '/customers?tab=prospects', icon: Users },
-      { title: 'Active Customers', path: '/customers?tab=active', icon: UserCheck },
+      { title: 'Leads', path: '/leads', icon: UserPlus },
+      { title: 'Prospects', path: '/prospects', icon: Users },
+      { title: 'Customers', path: '/customers', icon: UserCheck },
     ],
   },
 
