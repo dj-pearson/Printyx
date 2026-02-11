@@ -88,10 +88,10 @@ export default function SalesPipelineForecasting() {
       title="Pipeline Forecasting"
       description="Plan revenue and track pipeline against goals"
     >
-      <div className="p-6 space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Unified Filter Bar */}
         <Card>
-          <CardContent className="p-4 flex flex-wrap items-center gap-3">
+          <CardContent className="p-4 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
             <Select value={selectedForecast} onValueChange={setSelectedForecast}>
               <SelectTrigger className="w-56">
                 <SelectValue placeholder="Select forecast" />

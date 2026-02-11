@@ -55,7 +55,8 @@ import {
 } from 'lucide-react';
 
 // Icon mapping for dynamic stages
-const ICON_MAP: Record<string, any> = {
+import type { LucideIcon } from 'lucide-react';
+const ICON_MAP: Record<string, LucideIcon> = {
   Users,
   Phone,
   Calendar,
@@ -251,10 +252,8 @@ export default function SalesPipelineWorkflow() {
     if (!selectedOpportunity) return;
 
     if (actionType === 'move_stage') {
-      const currentStageIndex = PIPELINE_STAGES.findIndex(
-        (s) => s.id === selectedOpportunity.stage,
-      );
-      const nextStage = PIPELINE_STAGES[currentStageIndex + 1];
+      const currentStageIndex = pipelineStages.findIndex((s) => s.id === selectedOpportunity.stage);
+      const nextStage = pipelineStages[currentStageIndex + 1];
 
       if (nextStage) {
         moveToNextStageMutation.mutate({
@@ -273,12 +272,12 @@ export default function SalesPipelineWorkflow() {
   };
 
   const getStageColor = (stageId: string) => {
-    const stage = PIPELINE_STAGES.find((s) => s.id === stageId);
+    const stage = pipelineStages.find((s) => s.id === stageId);
     return stage?.color || '#6B7280';
   };
 
   const getStageIcon = (stageId: string) => {
-    const stage = PIPELINE_STAGES.find((s) => s.id === stageId);
+    const stage = pipelineStages.find((s) => s.id === stageId);
     return stage?.icon || AlertCircle;
   };
 
@@ -298,13 +297,14 @@ export default function SalesPipelineWorkflow() {
 
   if (pipelineLoading || opportunitiesLoading || metricsLoading) {
     return (
-      <MainLayout>
-        <div className="container mx-auto p-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading sales pipeline...</p>
-            </div>
+      <MainLayout
+        title="Sales Pipeline Workflow"
+        description="Assembly line sales process from lead to customer"
+      >
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading sales pipeline...</p>
           </div>
         </div>
       </MainLayout>
@@ -312,16 +312,15 @@ export default function SalesPipelineWorkflow() {
   }
 
   return (
-    <MainLayout>
-      <div className="container mx-auto p-6 space-y-6">
+    <MainLayout
+      title="Sales Pipeline Workflow"
+      description="Assembly line sales process from lead to customer"
+    >
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Sales Pipeline Workflow</h1>
-            <p className="text-gray-600 mt-2">Assembly line sales process from lead to customer</p>
-          </div>
-
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <h2 className="text-2xl font-bold">Sales Pipeline Workflow</h2>
+          <div className="hidden sm:flex items-center gap-3">
             <Select
               value={viewMode}
               onValueChange={(value: 'pipeline' | 'metrics' | 'team') => setViewMode(value)}
@@ -335,7 +334,6 @@ export default function SalesPipelineWorkflow() {
                 <SelectItem value="team">Team Overview</SelectItem>
               </SelectContent>
             </Select>
-
             <Button variant="outline">
               <Download className="h-4 w-4 mr-2" />
               Export
@@ -344,87 +342,62 @@ export default function SalesPipelineWorkflow() {
         </div>
 
         {/* Pipeline Summary KPIs */}
-        {pipelineSummary && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Pipeline Value</p>
-                    <p className="text-2xl font-bold text-blue-900">
-                      ${pipelineSummary.totalValue?.toLocaleString() || 0}
-                    </p>
-                  </div>
-                  <DollarSign className="h-8 w-8 text-blue-600" />
-                </div>
-                <div className="flex items-center mt-2 text-sm">
-                  <TrendingUp className="h-4 w-4 text-green-600 mr-1" />
-                  <span className="text-green-600">+{pipelineSummary.growthRate || 0}%</span>
-                  <span className="text-gray-500 ml-1">vs last month</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Active Opportunities</p>
-                    <p className="text-2xl font-bold text-green-900">
-                      {pipelineSummary.activeOpportunities || 0}
-                    </p>
-                  </div>
-                  <Briefcase className="h-8 w-8 text-green-600" />
-                </div>
-                <div className="flex items-center mt-2 text-sm">
-                  <CheckCircle className="h-4 w-4 text-blue-600 mr-1" />
-                  <span className="text-gray-600">
-                    {pipelineSummary.qualifiedOpportunities || 0} qualified
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Conversion Rate</p>
-                    <p className="text-2xl font-bold text-purple-900">
-                      {pipelineSummary.conversionRate?.toFixed(1) || 0}%
-                    </p>
-                  </div>
-                  <Target className="h-8 w-8 text-purple-600" />
-                </div>
-                <div className="flex items-center mt-2 text-sm">
-                  <Activity className="h-4 w-4 text-orange-600 mr-1" />
-                  <span className="text-gray-600">
-                    {pipelineSummary.avgSalesCycle || 0} day cycle
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">This Month Closed</p>
-                    <p className="text-2xl font-bold text-orange-900">
-                      ${pipelineSummary.monthlyRevenue?.toLocaleString() || 0}
-                    </p>
-                  </div>
-                  <Award className="h-8 w-8 text-orange-600" />
-                </div>
-                <div className="flex items-center mt-2 text-sm">
-                  <Target className="h-4 w-4 text-green-600 mr-1" />
-                  <span className="text-green-600">{pipelineSummary.goalAchievement || 0}%</span>
-                  <span className="text-gray-500 ml-1">of goal</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pipeline Value</CardTitle>
+              <DollarSign className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${pipelineSummary?.totalValue?.toLocaleString() || '0'}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                +{pipelineSummary?.growthRate || 0}% vs last month
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Opps</CardTitle>
+              <Briefcase className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{pipelineSummary?.activeOpportunities || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                {pipelineSummary?.qualifiedOpportunities || 0} qualified
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+              <Target className="h-4 w-4 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {pipelineSummary?.conversionRate?.toFixed(1) || 0}%
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {pipelineSummary?.avgSalesCycle || 0} day cycle
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Month Closed</CardTitle>
+              <Award className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${pipelineSummary?.monthlyRevenue?.toLocaleString() || '0'}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {pipelineSummary?.goalAchievement || 0}% of goal
+              </p>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Main Content Tabs */}
         <Tabs
@@ -432,9 +405,18 @@ export default function SalesPipelineWorkflow() {
           onValueChange={(value: string) => setViewMode(value as 'pipeline' | 'metrics' | 'team')}
         >
           <TabsList>
-            <TabsTrigger value="pipeline">Pipeline Flow</TabsTrigger>
-            <TabsTrigger value="metrics">Sales Rep Performance</TabsTrigger>
-            <TabsTrigger value="team">Team Management</TabsTrigger>
+            <TabsTrigger value="pipeline">
+              <span className="hidden sm:inline">Pipeline Flow</span>
+              <span className="sm:hidden">Pipeline</span>
+            </TabsTrigger>
+            <TabsTrigger value="metrics">
+              <span className="hidden sm:inline">Sales Rep Performance</span>
+              <span className="sm:hidden">Reps</span>
+            </TabsTrigger>
+            <TabsTrigger value="team">
+              <span className="hidden sm:inline">Team Management</span>
+              <span className="sm:hidden">Team</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Pipeline Flow View */}

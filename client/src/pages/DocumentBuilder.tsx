@@ -211,20 +211,16 @@ export default function DocumentBuilder() {
       title="Document Builder"
       description="Create combined purchase agreements and service contracts"
     >
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header Actions */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold">Document Builder</h2>
-            <p className="text-muted-foreground">
-              Create comprehensive purchase agreements with service contracts
-            </p>
-          </div>
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <h2 className="text-2xl font-bold">Document Builder</h2>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-fit">
                 <Plus className="w-4 h-4 mr-2" />
-                Create Document
+                <span className="hidden sm:inline">Create Document</span>
+                <span className="sm:hidden">New</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
