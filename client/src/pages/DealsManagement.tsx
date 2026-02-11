@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
 import PageAlerts from '@/components/contextual/PageAlerts';
-import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
+import { relativeDate } from '@/lib/date-utils';
 import { MobileFAB } from '@/components/ui/mobile-fab';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -997,6 +997,25 @@ export default function DealsManagement() {
       return map;
     }, [stages, dealsByStage]);
 
+  // Deal KPI stats
+  const dealKpis = useMemo(() => {
+    const totalValue = filteredDeals.reduce((sum, d) => {
+      const n = typeof d.amount === 'number' ? d.amount : parseFloat(String(d.amount || '0'));
+      return sum + (isFinite(n) && !isNaN(n) ? n : 0);
+    }, 0);
+    const weightedValue = filteredDeals.reduce((sum, d) => {
+      const amt = typeof d.amount === 'number' ? d.amount : parseFloat(String(d.amount || '0'));
+      const prob =
+        typeof d.probability === 'number'
+          ? d.probability
+          : parseFloat(String(d.probability || '0'));
+      return sum + ((isFinite(amt) ? amt : 0) * (isFinite(prob) ? prob : 0)) / 100;
+    }, 0);
+    const wonStages = stages.filter((s) => s.isWonStage).map((s) => s.id);
+    const wonCount = filteredDeals.filter((d) => wonStages.includes(d.stageId)).length;
+    return { total: filteredDeals.length, totalValue, weightedValue, wonCount };
+  }, [filteredDeals, stages]);
+
   const scrollToStage = (stageId: string) => {
     const el = stageRefs.current[stageId];
     if (el) {
@@ -1022,7 +1041,48 @@ export default function DealsManagement() {
       <div className="flex flex-col h-full">
         <div className="mb-4">
           <ContextualHelp page="deals-management" />
-          <KpiSummaryBar className="mt-2 mb-4" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-2 mb-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Deals</CardTitle>
+                <TrendingUp className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dealKpis.total}</div>
+                <p className="text-xs text-muted-foreground">In pipeline</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pipeline Value</CardTitle>
+                <DollarSign className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatAmount(dealKpis.totalValue)}</div>
+                <p className="text-xs text-muted-foreground">Total deal value</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Weighted Value</CardTitle>
+                <TrendingUp className="h-4 w-4 text-indigo-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{formatAmount(dealKpis.weightedValue)}</div>
+                <p className="text-xs text-muted-foreground">Probability-adjusted</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Won Deals</CardTitle>
+                <DollarSign className="h-4 w-4 text-emerald-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{dealKpis.wonCount}</div>
+                <p className="text-xs text-muted-foreground">Closed won</p>
+              </CardContent>
+            </Card>
+          </div>
           <PageAlerts
             categories={['business']}
             severities={['medium', 'high', 'critical']}
@@ -2395,8 +2455,8 @@ export default function DealsManagement() {
                           )}
                           {visibleColumns.includes('created') && (
                             <TableCell>
-                              <span className="text-sm">
-                                {format(new Date(deal.createdAt), 'MMM d, yyyy')}
+                              <span className="text-sm text-muted-foreground">
+                                {relativeDate(deal.createdAt)}
                               </span>
                             </TableCell>
                           )}

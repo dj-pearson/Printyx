@@ -278,17 +278,20 @@ export default function CommissionManagement() {
   const pendingDisputes = disputes.filter((d) => d.status !== 'resolved').length;
 
   return (
-    <MainLayout>
-      <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
+    <MainLayout
+      title="Commission Management"
+      description="Automated commission calculations and performance tracking"
+    >
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Commission Management</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-2xl font-bold">Commission Management</h1>
+            <p className="text-muted-foreground text-sm">
               Automated commission calculations and performance tracking
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3">
             <Dialog open={isCalculateOpen} onOpenChange={setIsCalculateOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="flex items-center gap-2">
@@ -363,7 +366,7 @@ export default function CommissionManagement() {
         </div>
 
         {analytics && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Commissions</CardTitle>
@@ -427,7 +430,7 @@ export default function CommissionManagement() {
           </div>
         )}
 
-        <Tabs defaultValue="calculations" className="space-y-6">
+        <Tabs defaultValue="calculations" className="space-y-4 sm:space-y-6">
           <TabsList>
             <TabsTrigger value="calculations">Commission Calculations</TabsTrigger>
             <TabsTrigger value="plans">Commission Plans</TabsTrigger>

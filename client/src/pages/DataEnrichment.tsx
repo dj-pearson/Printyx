@@ -165,20 +165,23 @@ export default function DataEnrichment() {
   };
 
   return (
-    <MainLayout>
-      <div className="space-y-6 p-6">
+    <MainLayout
+      title="Data Enrichment"
+      description="Unified prospecting with ZoomInfo and Apollo.io integration"
+    >
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">Data Enrichment</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl font-bold">Data Enrichment</h1>
+            <p className="text-muted-foreground text-sm">
               Unified prospecting with ZoomInfo and Apollo.io integration
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="hidden sm:flex gap-2">
             <Button variant="outline" size="sm">
               <Upload className="w-4 h-4 mr-2" />
-              Import Data
+              Import
             </Button>
             <Button variant="outline" size="sm">
               <Download className="w-4 h-4 mr-2" />
@@ -193,7 +196,7 @@ export default function DataEnrichment() {
 
         {/* Analytics Cards */}
         {analyticsData && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
