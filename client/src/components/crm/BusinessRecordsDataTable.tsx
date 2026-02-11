@@ -63,6 +63,21 @@ import {
   X,
 } from 'lucide-react';
 
+// ─── Snake-to-Camel Helpers ──────────────────────────────────────────────────
+
+function snakeToCamel(str: string): string {
+  return str.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase());
+}
+
+export function normalizeRecord(record: any): any {
+  if (!record || typeof record !== 'object' || Array.isArray(record)) return record;
+  const result: any = {};
+  for (const [key, value] of Object.entries(record)) {
+    result[snakeToCamel(key)] = value;
+  }
+  return result;
+}
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export type RecordType = 'lead' | 'prospect' | 'customer' | 'former_customer';
@@ -116,13 +131,7 @@ export interface BusinessRecordsDataTableProps {
 
 // ─── Status Badge ───────────────────────────────────────────────────────────
 
-function StatusBadge({
-  status,
-  configs,
-}: {
-  status: string;
-  configs: StatusConfig[];
-}) {
+function StatusBadge({ status, configs }: { status: string; configs: StatusConfig[] }) {
   const config = configs.find((c) => c.value === status);
   if (!config) {
     return (
@@ -310,9 +319,10 @@ export function BusinessRecordsDataTable({
       }
 
       const resp = await apiRequest(`/api/business-records?${params}`, 'GET');
+      const rawRecords = resp?.records || resp?.data || [];
       return {
-        records: resp?.records || [],
-        pagination: resp?.pagination || { total: 0, hasMore: false },
+        records: rawRecords.map(normalizeRecord),
+        pagination: resp?.pagination || { total: rawRecords.length, hasMore: false },
       };
     },
     placeholderData: (prev) => prev,
@@ -320,7 +330,12 @@ export function BusinessRecordsDataTable({
   });
 
   const records = response?.records || [];
-  const pagination = response?.pagination || { total: 0, hasMore: false, limit: pageSize, offset: 0 };
+  const pagination = response?.pagination || {
+    total: 0,
+    hasMore: false,
+    limit: pageSize,
+    offset: 0,
+  };
   const totalPages = Math.ceil((pagination.total || 0) / pageSize);
 
   // ─── Bulk Selection ───────────────────────────────────────────────────────
@@ -341,7 +356,11 @@ export function BusinessRecordsDataTable({
       });
     },
     onError: () => {
-      toast({ title: 'Error', description: 'Failed to delete some records', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Failed to delete some records',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -579,16 +598,13 @@ export function BusinessRecordsDataTable({
                       </TableCell>
                       {columns.map((col) => (
                         <TableCell key={col.key}>
-                          {col.render
-                            ? col.render(record[col.key], record)
-                            : col.key === 'status'
-                              ? (
-                                  <StatusBadge
-                                    status={record.status}
-                                    configs={statusConfigs}
-                                  />
-                                )
-                              : (record[col.key] || '—')}
+                          {col.render ? (
+                            col.render(record[col.key], record)
+                          ) : col.key === 'status' ? (
+                            <StatusBadge status={record.status} configs={statusConfigs} />
+                          ) : (
+                            record[col.key] || '—'
+                          )}
                         </TableCell>
                       ))}
                       {rowActions.length > 0 && (
@@ -669,9 +685,7 @@ export function BusinessRecordsDataTable({
                           {[record.city, record.state].filter(Boolean).join(', ')}
                         </p>
                       )}
-                      {record.industry && (
-                        <p className="truncate text-xs">{record.industry}</p>
-                      )}
+                      {record.industry && <p className="truncate text-xs">{record.industry}</p>}
                     </div>
 
                     <div className="mt-3 pt-3 border-t flex items-center justify-between">
@@ -815,9 +829,7 @@ export function BusinessRecordsDataTable({
               }
               type={debouncedSearch || activeFilterCount > 0 ? 'filter' : 'default'}
               action={
-                onCreateNew
-                  ? { label: createLabel, onClick: onCreateNew, icon: Plus }
-                  : undefined
+                onCreateNew ? { label: createLabel, onClick: onCreateNew, icon: Plus } : undefined
               }
               secondaryAction={
                 debouncedSearch || activeFilterCount > 0

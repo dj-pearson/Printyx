@@ -16,12 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -43,6 +38,7 @@ import {
   FilterDef,
   StatusConfig,
   ActionDef,
+  normalizeRecord,
 } from '@/components/crm/BusinessRecordsDataTable';
 import {
   Users,
@@ -81,12 +77,42 @@ const prospectFormSchema = z.object({
 // ─── Status Configurations ──────────────────────────────────────────────────
 
 const prospectStatusConfigs: StatusConfig[] = [
-  { value: 'qualified', label: 'Qualified', variant: 'default', className: 'bg-emerald-500 hover:bg-emerald-600 text-white' },
-  { value: 'proposal_sent', label: 'Proposal Sent', variant: 'default', className: 'bg-amber-500 hover:bg-amber-600 text-white' },
-  { value: 'negotiation', label: 'Negotiation', variant: 'default', className: 'bg-purple-500 hover:bg-purple-600 text-white' },
-  { value: 'demo_scheduled', label: 'Demo Scheduled', variant: 'default', className: 'bg-indigo-500 hover:bg-indigo-600 text-white' },
-  { value: 'contract_review', label: 'Contract Review', variant: 'default', className: 'bg-orange-500 hover:bg-orange-600 text-white' },
-  { value: 'closed_won', label: 'Won', variant: 'default', className: 'bg-green-600 hover:bg-green-700 text-white' },
+  {
+    value: 'qualified',
+    label: 'Qualified',
+    variant: 'default',
+    className: 'bg-emerald-500 hover:bg-emerald-600 text-white',
+  },
+  {
+    value: 'proposal_sent',
+    label: 'Proposal Sent',
+    variant: 'default',
+    className: 'bg-amber-500 hover:bg-amber-600 text-white',
+  },
+  {
+    value: 'negotiation',
+    label: 'Negotiation',
+    variant: 'default',
+    className: 'bg-purple-500 hover:bg-purple-600 text-white',
+  },
+  {
+    value: 'demo_scheduled',
+    label: 'Demo Scheduled',
+    variant: 'default',
+    className: 'bg-indigo-500 hover:bg-indigo-600 text-white',
+  },
+  {
+    value: 'contract_review',
+    label: 'Contract Review',
+    variant: 'default',
+    className: 'bg-orange-500 hover:bg-orange-600 text-white',
+  },
+  {
+    value: 'closed_won',
+    label: 'Won',
+    variant: 'default',
+    className: 'bg-green-600 hover:bg-green-700 text-white',
+  },
   { value: 'closed_lost', label: 'Lost', variant: 'destructive' },
   { value: 'on_hold', label: 'On Hold', variant: 'secondary' },
 ];
@@ -147,11 +173,7 @@ const prospectColumns: ColumnDef[] = [
     label: 'Deal Value',
     sortable: true,
     render: (value) =>
-      value ? (
-        <span className="font-medium">${Number(value).toLocaleString()}</span>
-      ) : (
-        '—'
-      ),
+      value ? <span className="font-medium">${Number(value).toLocaleString()}</span> : '—',
   },
   {
     key: 'probability',
@@ -160,8 +182,7 @@ const prospectColumns: ColumnDef[] = [
     render: (value) => {
       if (!value && value !== 0) return '—';
       const num = Number(value);
-      const color =
-        num >= 70 ? 'text-green-600' : num >= 40 ? 'text-amber-600' : 'text-red-500';
+      const color = num >= 70 ? 'text-green-600' : num >= 40 ? 'text-amber-600' : 'text-red-500';
       return <span className={`font-medium ${color}`}>{num}%</span>;
     },
   },
@@ -253,32 +274,35 @@ export default function ProspectsPage() {
     queryKey: ['/api/business-records/stats', 'prospect'],
     enabled: isAuthenticated,
     queryFn: async () => {
-      const resp = await apiRequest('/api/business-records/stats/overview', 'GET');
-      const allStats = resp?.stats || [];
-      const prospectStats = allStats.filter((s: any) => s.recordType === 'prospect');
-
-      let total = 0;
-      let qualifiedCount = 0;
-      let proposalCount = 0;
-      let negotiationCount = 0;
-
-      for (const s of prospectStats) {
-        const count = Number(s.count);
-        total += count;
-        if (s.status === 'qualified') qualifiedCount = count;
-        if (s.status === 'proposal_sent') proposalCount = count;
-        if (s.status === 'negotiation') negotiationCount = count;
-      }
-
-      // Get average deal value from a separate query
-      const avgResp = await apiRequest(
+      const resp = await apiRequest(
         '/api/business-records?recordType=prospect&limit=1&offset=0',
         'GET',
       );
-      const pipelineTotal = resp?.pipelineValue || 0;
-      const avgDealValue = total > 0 ? Math.round(pipelineTotal / total) : 0;
+      const total = resp?.pagination?.total || 0;
 
-      return { total, qualifiedCount, proposalCount, negotiationCount, pipelineTotal, avgDealValue };
+      const [qualifiedResp, proposalResp, negotiationResp] = await Promise.all([
+        apiRequest(
+          '/api/business-records?recordType=prospect&status=qualified&limit=1&offset=0',
+          'GET',
+        ),
+        apiRequest(
+          '/api/business-records?recordType=prospect&status=proposal_sent&limit=1&offset=0',
+          'GET',
+        ),
+        apiRequest(
+          '/api/business-records?recordType=prospect&status=negotiation&limit=1&offset=0',
+          'GET',
+        ),
+      ]);
+
+      return {
+        total,
+        qualifiedCount: qualifiedResp?.pagination?.total || 0,
+        proposalCount: proposalResp?.pagination?.total || 0,
+        negotiationCount: negotiationResp?.pagination?.total || 0,
+        pipelineTotal: 0,
+        avgDealValue: 0,
+      };
     },
     staleTime: 60_000,
   });
@@ -371,7 +395,9 @@ export default function ProspectsPage() {
               <Target className="h-4 w-4 text-emerald-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.qualifiedCount?.toLocaleString() || '0'}</div>
+              <div className="text-2xl font-bold">
+                {stats?.qualifiedCount?.toLocaleString() || '0'}
+              </div>
               <p className="text-xs text-muted-foreground">Needs proposal</p>
             </CardContent>
           </Card>
@@ -382,7 +408,9 @@ export default function ProspectsPage() {
               <CalendarClock className="h-4 w-4 text-amber-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.proposalCount?.toLocaleString() || '0'}</div>
+              <div className="text-2xl font-bold">
+                {stats?.proposalCount?.toLocaleString() || '0'}
+              </div>
               <p className="text-xs text-muted-foreground">Awaiting response</p>
             </CardContent>
           </Card>
@@ -393,7 +421,9 @@ export default function ProspectsPage() {
               <TrendingUp className="h-4 w-4 text-purple-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.negotiationCount?.toLocaleString() || '0'}</div>
+              <div className="text-2xl font-bold">
+                {stats?.negotiationCount?.toLocaleString() || '0'}
+              </div>
               <p className="text-xs text-muted-foreground">Closing soon</p>
             </CardContent>
           </Card>
@@ -438,7 +468,10 @@ export default function ProspectsPage() {
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-5">
+            <form
+              onSubmit={form.handleSubmit((data) => createMutation.mutate(data))}
+              className="space-y-5"
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -640,7 +673,14 @@ export default function ProspectsPage() {
               />
 
               <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => { setIsCreateOpen(false); form.reset(); }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsCreateOpen(false);
+                    form.reset();
+                  }}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={createMutation.isPending}>

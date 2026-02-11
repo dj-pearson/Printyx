@@ -17,12 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -44,6 +39,7 @@ import {
   FilterDef,
   StatusConfig,
   ActionDef,
+  normalizeRecord,
 } from '@/components/crm/BusinessRecordsDataTable';
 import {
   Building2,
@@ -86,11 +82,26 @@ const customerFormSchema = z.object({
 // ─── Status Configurations ──────────────────────────────────────────────────
 
 const customerStatusConfigs: StatusConfig[] = [
-  { value: 'active', label: 'Active', variant: 'default', className: 'bg-green-500 hover:bg-green-600 text-white' },
+  {
+    value: 'active',
+    label: 'Active',
+    variant: 'default',
+    className: 'bg-green-500 hover:bg-green-600 text-white',
+  },
   { value: 'inactive', label: 'Inactive', variant: 'secondary' },
-  { value: 'on_hold', label: 'On Hold', variant: 'outline', className: 'border-amber-400 text-amber-700 bg-amber-50' },
+  {
+    value: 'on_hold',
+    label: 'On Hold',
+    variant: 'outline',
+    className: 'border-amber-400 text-amber-700 bg-amber-50',
+  },
   { value: 'churned', label: 'Churned', variant: 'destructive' },
-  { value: 'pending', label: 'Pending', variant: 'outline', className: 'border-blue-400 text-blue-700 bg-blue-50' },
+  {
+    value: 'pending',
+    label: 'Pending',
+    variant: 'outline',
+    className: 'border-blue-400 text-blue-700 bg-blue-50',
+  },
 ];
 
 // ─── Column Definitions ─────────────────────────────────────────────────────
@@ -140,7 +151,10 @@ const customerColumns: ColumnDef[] = [
         bronze: 'bg-orange-50 text-orange-700 border-orange-300',
       };
       return (
-        <Badge variant="outline" className={`text-xs capitalize ${colors[value.toLowerCase()] || ''}`}>
+        <Badge
+          variant="outline"
+          className={`text-xs capitalize ${colors[value.toLowerCase()] || ''}`}
+        >
           {value}
         </Badge>
       );
@@ -150,9 +164,7 @@ const customerColumns: ColumnDef[] = [
     key: 'industry',
     label: 'Industry',
     sortable: true,
-    render: (value) => (
-      <span className="truncate max-w-[120px] block text-sm">{value || '—'}</span>
-    ),
+    render: (value) => <span className="truncate max-w-[120px] block text-sm">{value || '—'}</span>,
   },
   {
     key: 'city',
@@ -166,8 +178,7 @@ const customerColumns: ColumnDef[] = [
     key: 'customerSince',
     label: 'Customer Since',
     sortable: true,
-    render: (value) =>
-      value ? new Date(value).toLocaleDateString() : '—',
+    render: (value) => (value ? new Date(value).toLocaleDateString() : '—'),
   },
   {
     key: 'currentBalance',
@@ -261,24 +272,34 @@ export default function CustomersPage() {
     queryKey: ['/api/business-records/stats', 'customer'],
     enabled: isAuthenticated,
     queryFn: async () => {
-      const resp = await apiRequest('/api/business-records/stats/overview', 'GET');
-      const allStats = resp?.stats || [];
-      const customerStats = allStats.filter((s: any) => s.recordType === 'customer');
+      const resp = await apiRequest(
+        '/api/business-records?recordType=customer&limit=1&offset=0',
+        'GET',
+      );
+      const total = resp?.pagination?.total || 0;
 
-      let total = 0;
-      let activeCount = 0;
-      let inactiveCount = 0;
-      let onHoldCount = 0;
+      // Fetch status counts in parallel
+      const [activeResp, inactiveResp, onHoldResp] = await Promise.all([
+        apiRequest(
+          '/api/business-records?recordType=customer&status=active&limit=1&offset=0',
+          'GET',
+        ),
+        apiRequest(
+          '/api/business-records?recordType=customer&status=inactive&limit=1&offset=0',
+          'GET',
+        ),
+        apiRequest(
+          '/api/business-records?recordType=customer&status=on_hold&limit=1&offset=0',
+          'GET',
+        ),
+      ]);
 
-      for (const s of customerStats) {
-        const count = Number(s.count);
-        total += count;
-        if (s.status === 'active') activeCount = count;
-        if (s.status === 'inactive') inactiveCount = count;
-        if (s.status === 'on_hold') onHoldCount = count;
-      }
-
-      return { total, activeCount, inactiveCount, onHoldCount };
+      return {
+        total,
+        activeCount: activeResp?.pagination?.total || 0,
+        inactiveCount: inactiveResp?.pagination?.total || 0,
+        onHoldCount: onHoldResp?.pagination?.total || 0,
+      };
     },
     staleTime: 60_000,
   });
@@ -444,7 +465,10 @@ export default function CustomersPage() {
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-5">
+            <form
+              onSubmit={form.handleSubmit((data) => createMutation.mutate(data))}
+              className="space-y-5"
+            >
               {/* Company Info */}
               <div>
                 <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
@@ -746,7 +770,14 @@ export default function CustomersPage() {
               />
 
               <div className="flex justify-end gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => { setIsCreateOpen(false); form.reset(); }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsCreateOpen(false);
+                    form.reset();
+                  }}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={createMutation.isPending}>
