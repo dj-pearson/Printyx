@@ -261,15 +261,12 @@ export default function MobileFieldService() {
   }, [currentSession]);
 
   return (
-    <MainLayout>
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Mobile Field Service</h1>
-            <p className="text-muted-foreground">
-              GPS tracking, time logging, and photo documentation
-            </p>
-          </div>
+    <MainLayout
+      title="Mobile Field Service"
+      description="GPS tracking, time logging, and photo documentation"
+    >
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex justify-end items-center">
           <Badge variant={activeSession ? 'default' : 'secondary'}>
             {activeSession ? 'On Site' : 'Available'}
           </Badge>

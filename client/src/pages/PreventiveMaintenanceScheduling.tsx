@@ -191,18 +191,15 @@ export default function PreventiveMaintenanceScheduling() {
   };
 
   return (
-    <MainLayout>
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Preventive Maintenance Scheduling</h1>
-            <p className="text-muted-foreground mt-2">
-              Manage equipment maintenance schedules and ensure optimal performance
-            </p>
-          </div>
+    <MainLayout
+      title="Preventive Maintenance"
+      description="Manage equipment maintenance schedules and ensure optimal performance"
+    >
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex justify-end items-center">
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="hidden sm:flex">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Schedule
               </Button>
@@ -457,43 +454,47 @@ export default function PreventiveMaintenanceScheduling() {
 
           <TabsContent value="dashboard" className="space-y-6">
             {/* Analytics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Schedules</CardTitle>
-                  <Settings className="h-4 w-4 text-muted-foreground" />
+                  <Settings className="h-4 w-4 text-blue-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{analytics?.totalSchedules || 0}</div>
+                  <p className="text-xs text-muted-foreground">All maintenance</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Schedules</CardTitle>
-                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <CardTitle className="text-sm font-medium">Active</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{analytics?.activeSchedules || 0}</div>
+                  <p className="text-xs text-muted-foreground">Currently running</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Due This Week</CardTitle>
-                  <Clock className="h-4 w-4 text-blue-600" />
+                  <Clock className="h-4 w-4 text-amber-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{analytics?.dueThisWeek || 0}</div>
+                  <p className="text-xs text-muted-foreground">Upcoming service</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Overdue</CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-red-600">
                     {analytics?.overdueSchedules || 0}
                   </div>
+                  <p className="text-xs text-muted-foreground">Needs attention</p>
                 </CardContent>
               </Card>
             </div>
@@ -702,6 +703,14 @@ export default function PreventiveMaintenanceScheduling() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Mobile FAB */}
+      <Button
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg md:hidden z-50"
+        onClick={() => setIsCreateDialogOpen(true)}
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
     </MainLayout>
   );
 }

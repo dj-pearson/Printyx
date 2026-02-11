@@ -190,72 +190,60 @@ const VehicleManagement: React.FC = () => {
   });
 
   return (
-    <MainLayout>
-      <div className="space-y-6">
+    <MainLayout
+      title="Vehicle Fleet Management"
+      description="Manage your service and delivery vehicle fleet"
+    >
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Vehicle Fleet Management
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Manage your service and delivery vehicle fleet
-          </p>
-        </div>
+        <h2 className="text-2xl font-bold">Vehicle Fleet Management</h2>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Vehicles</p>
-                  <p className="text-2xl font-bold text-gray-900">{vehicles.length}</p>
-                </div>
-                <Car className="h-8 w-8 text-blue-600" />
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Vehicles</CardTitle>
+              <Car className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{vehicles.length}</div>
+              <p className="text-xs text-muted-foreground">All fleet vehicles</p>
             </CardContent>
           </Card>
-
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Active Vehicles</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {vehicles.filter((v) => v.status === 'active').length}
-                  </p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-green-600" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {vehicles.filter((v) => v.status === 'active').length}
               </div>
+              <p className="text-xs text-muted-foreground">In service</p>
             </CardContent>
           </Card>
-
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Maintenance Due</p>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {vehicles.filter((v) => isMaintenanceDue(v)).length}
-                  </p>
-                </div>
-                <AlertTriangle className="h-8 w-8 text-yellow-600" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Maintenance Due</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {vehicles.filter((v) => isMaintenanceDue(v)).length}
               </div>
+              <p className="text-xs text-muted-foreground">Needs attention</p>
             </CardContent>
           </Card>
-
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Monthly Lease Cost</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    $
-                    {vehicles.reduce((sum, v) => sum + (v.monthlyPayment || 0), 0).toLocaleString()}
-                  </p>
-                </div>
-                <DollarSign className="h-8 w-8 text-blue-600" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Monthly Cost</CardTitle>
+              <DollarSign className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${vehicles.reduce((sum, v) => sum + (v.monthlyPayment || 0), 0).toLocaleString()}
               </div>
+              <p className="text-xs text-muted-foreground">Lease payments</p>
             </CardContent>
           </Card>
         </div>

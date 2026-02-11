@@ -246,8 +246,11 @@ export default function PreventiveMaintenanceAutomation() {
 
   if (schedulesLoading) {
     return (
-      <MainLayout>
-        <div className="container mx-auto p-6">
+      <MainLayout
+        title="Maintenance Automation"
+        description="Automated scheduling and predictive maintenance management"
+      >
+        <div className="space-y-4 sm:space-y-6">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -266,17 +269,13 @@ export default function PreventiveMaintenanceAutomation() {
   }).length;
 
   return (
-    <MainLayout>
-      <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Preventive Maintenance Automation</h1>
-            <p className="text-gray-600 mt-2">
-              Automated scheduling and predictive maintenance management
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
+    <MainLayout
+      title="Maintenance Automation"
+      description="Automated scheduling and predictive maintenance management"
+    >
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex justify-end items-center gap-3">
+          <div className="hidden sm:flex items-center gap-3">
             <Button
               onClick={handleAutoGenerate}
               disabled={autoGenerateMutation.isPending}
@@ -284,7 +283,7 @@ export default function PreventiveMaintenanceAutomation() {
               className="flex items-center gap-2"
             >
               <Zap className="h-4 w-4" />
-              Auto-Generate Schedules
+              Auto-Generate
             </Button>
 
             <Dialog open={isCreateScheduleOpen} onOpenChange={setIsCreateScheduleOpen}>
@@ -311,11 +310,11 @@ export default function PreventiveMaintenanceAutomation() {
         </div>
 
         {analytics && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Maintenance Compliance</CardTitle>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Compliance</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -329,7 +328,7 @@ export default function PreventiveMaintenanceAutomation() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Cost Savings</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <DollarSign className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -345,7 +344,7 @@ export default function PreventiveMaintenanceAutomation() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Response Time</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <Clock className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
@@ -361,7 +360,7 @@ export default function PreventiveMaintenanceAutomation() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Equipment Health</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <TrendingUp className="h-4 w-4 text-purple-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{analytics.summary.totalEquipment}</div>
@@ -862,6 +861,14 @@ export default function PreventiveMaintenanceAutomation() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Mobile FAB */}
+      <Button
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg md:hidden z-50"
+        onClick={() => setIsCreateScheduleOpen(true)}
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
     </MainLayout>
   );
 }

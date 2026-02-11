@@ -277,67 +277,54 @@ const AssetManagement: React.FC = () => {
   const warrantyExpiringCount = assets.filter((asset) => isWarrantyExpiring(asset)).length;
 
   return (
-    <MainLayout>
-      <div className="space-y-6">
+    <MainLayout
+      title="Asset Management"
+      description="Track and manage all business assets, equipment, and tools"
+    >
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            Asset Management
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Track and manage all business assets, equipment, and tools
-          </p>
-        </div>
+        <h2 className="text-2xl font-bold">Asset Management</h2>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Assets</p>
-                  <p className="text-2xl font-bold text-gray-900">{assets.length}</p>
-                </div>
-                <Settings className="h-8 w-8 text-blue-600" />
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Assets</CardTitle>
+              <Settings className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{assets.length}</div>
+              <p className="text-xs text-muted-foreground">All tracked assets</p>
             </CardContent>
           </Card>
-
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Value</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    ${totalValue.toLocaleString()}
-                  </p>
-                </div>
-                <DollarSign className="h-8 w-8 text-green-600" />
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+              <DollarSign className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${totalValue.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">Asset portfolio</p>
             </CardContent>
           </Card>
-
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Maintenance Due</p>
-                  <p className="text-2xl font-bold text-yellow-600">{maintenanceDueCount}</p>
-                </div>
-                <AlertTriangle className="h-8 w-8 text-yellow-600" />
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Maintenance Due</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{maintenanceDueCount}</div>
+              <p className="text-xs text-muted-foreground">Needs service</p>
             </CardContent>
           </Card>
-
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Warranty Expiring</p>
-                  <p className="text-2xl font-bold text-red-600">{warrantyExpiringCount}</p>
-                </div>
-                <Calendar className="h-8 w-8 text-red-600" />
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Warranty Expiring</CardTitle>
+              <Calendar className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{warrantyExpiringCount}</div>
+              <p className="text-xs text-muted-foreground">Within 90 days</p>
             </CardContent>
           </Card>
         </div>

@@ -390,17 +390,13 @@ export default function MobileFieldOperations() {
   };
 
   return (
-    <MainLayout>
-      <div className="container mx-auto p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Mobile Field Operations</h1>
-            <p className="text-muted-foreground mt-2">
-              Offline-capable mobile field service with GPS tracking, time tracking, and
-              voice-to-text capabilities
-            </p>
-          </div>
-          <div className="flex space-x-2">
+    <MainLayout
+      title="Mobile Field Operations"
+      description="Offline-capable mobile field service with GPS tracking, time tracking, and voice-to-text capabilities"
+    >
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex justify-end items-center">
+          <div className="hidden sm:flex space-x-2">
             <Dialog open={isTechnicianDialogOpen} onOpenChange={setIsTechnicianDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline">
@@ -956,19 +952,19 @@ export default function MobileFieldOperations() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="technicians">Technicians</TabsTrigger>
-            <TabsTrigger value="work-orders">Work Orders</TabsTrigger>
-            <TabsTrigger value="voice-notes">Voice Notes</TabsTrigger>
-            <TabsTrigger value="tracking">GPS Tracking</TabsTrigger>
+            <TabsTrigger value="technicians">Techs</TabsTrigger>
+            <TabsTrigger value="work-orders">Orders</TabsTrigger>
+            <TabsTrigger value="voice-notes">Voice</TabsTrigger>
+            <TabsTrigger value="tracking">GPS</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
             {/* Mobile Field Metrics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Active Technicians</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <Users className="h-4 w-4 text-blue-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics?.activeTechnicians || 0}</div>
@@ -977,8 +973,8 @@ export default function MobileFieldOperations() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Work Orders Today</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Orders Today</CardTitle>
+                  <Calendar className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics?.workOrdersToday || 0}</div>
@@ -989,8 +985,8 @@ export default function MobileFieldOperations() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Average Response</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Avg Response</CardTitle>
+                  <Clock className="h-4 w-4 text-amber-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{metrics?.averageResponseTime || 0}m</div>
@@ -1498,6 +1494,14 @@ export default function MobileFieldOperations() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Mobile FAB */}
+      <Button
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg md:hidden z-50"
+        onClick={() => setIsWorkOrderDialogOpen(true)}
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
     </MainLayout>
   );
 }

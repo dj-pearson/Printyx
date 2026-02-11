@@ -231,21 +231,11 @@ export default function ManufacturerIntegration() {
       title="Manufacturer Integration"
       description="Automated meter reading and device management across all major copier manufacturers"
     >
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <Network className="h-8 w-8" />
-              Manufacturer Integration Hub
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Automated meter reading and device management across all major copier manufacturers
-            </p>
-          </div>
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex justify-end">
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
+              <Button className="hidden sm:flex items-center gap-2">
                 <Plus className="h-4 w-4" />
                 Add Integration
               </Button>
@@ -354,50 +344,50 @@ export default function ManufacturerIntegration() {
 
         {/* Statistics Cards */}
         {stats && (
-          <div className="grid gap-4 md:grid-cols-5">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Integrations</CardTitle>
-                <Network className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Integrations</CardTitle>
+                <Network className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalIntegrations}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Integrations</CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{stats.activeIntegrations}</div>
+                <p className="text-xs text-muted-foreground">{stats.activeIntegrations} active</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
-                <Printer className="h-4 w-4 text-muted-foreground" />
+                <Printer className="h-4 w-4 text-purple-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.totalDevices}</div>
+                <p className="text-xs text-muted-foreground">{stats.onlineDevices} online</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Online Devices</CardTitle>
-                <Wifi className="h-4 w-4 text-green-600" />
+                <Wifi className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">{stats.onlineDevices}</div>
+                <div className="text-2xl font-bold">{stats.onlineDevices}</div>
+                <p className="text-xs text-muted-foreground">
+                  {stats.totalDevices > 0
+                    ? Math.round((stats.onlineDevices / stats.totalDevices) * 100)
+                    : 0}
+                  % online
+                </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Today's Collections</CardTitle>
-                <Activity className="h-4 w-4 text-blue-600" />
+                <Activity className="h-4 w-4 text-amber-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{stats.todayMetrics}</div>
+                <div className="text-2xl font-bold">{stats.todayMetrics}</div>
+                <p className="text-xs text-muted-foreground">Meter readings collected</p>
               </CardContent>
             </Card>
           </div>
@@ -490,6 +480,14 @@ export default function ManufacturerIntegration() {
             )}
           </CardContent>
         </Card>
+
+        {/* Mobile FAB */}
+        <Button
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg md:hidden z-50"
+          onClick={() => setIsCreateDialogOpen(true)}
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
       </div>
     </MainLayout>
   );

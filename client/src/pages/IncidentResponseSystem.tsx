@@ -316,13 +316,14 @@ export default function IncidentResponseSystem() {
 
   if (isLoading) {
     return (
-      <MainLayout>
-        <div className="container mx-auto p-4">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading incident response dashboard...</p>
-            </div>
+      <MainLayout
+        title="Incident Response"
+        description="Real-time incident detection, response coordination, and threat management"
+      >
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading incident response dashboard...</p>
           </div>
         </div>
       </MainLayout>
@@ -330,33 +331,26 @@ export default function IncidentResponseSystem() {
   }
 
   return (
-    <MainLayout>
-      <div className="container mx-auto p-4 max-w-7xl">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Siren className="h-6 w-6 text-red-600" />
-              Security Incident Response System
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Real-time incident detection, response coordination, and threat management
-            </p>
-          </div>
+    <MainLayout
+      title="Incident Response"
+      description="Real-time incident detection, response coordination, and threat management"
+    >
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
+            <SelectTrigger className="w-full sm:w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Severity</SelectItem>
+              <SelectItem value="critical">Critical</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+            </SelectContent>
+          </Select>
 
-          <div className="flex items-center gap-3">
-            <Select value={selectedSeverity} onValueChange={setSelectedSeverity}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Severity</SelectItem>
-                <SelectItem value="critical">Critical</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-              </SelectContent>
-            </Select>
-
+          <div className="hidden sm:flex items-center gap-3">
             <Button onClick={() => refetch()} variant="outline">
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
@@ -419,92 +413,63 @@ export default function IncidentResponseSystem() {
         {responseData && (
           <>
             {/* Response Overview KPIs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
-              <Card className="border-red-200">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Active Incidents</p>
-                      <p className="text-2xl font-bold text-red-900">
-                        {responseData.responseOverview.activeIncidents}
-                      </p>
-                    </div>
-                    <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
-                      <AlertTriangle className="h-6 w-6 text-red-600" />
-                    </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Incidents</CardTitle>
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {responseData.responseOverview.activeIncidents}
                   </div>
-                  <div className="flex items-center gap-2 mt-2 text-sm">
-                    <Badge className={getSeverityColor('critical')} variant="outline">
-                      {responseData.responseOverview.criticalIncidents} Critical
-                    </Badge>
-                    <Badge className={getSeverityColor('high')} variant="outline">
-                      {responseData.responseOverview.highIncidents} High
-                    </Badge>
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {responseData.responseOverview.criticalIncidents} critical,{' '}
+                    {responseData.responseOverview.highIncidents} high
+                  </p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Avg Response Time</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {formatDuration(responseData.responseOverview.avgResponseTime / 60)}
-                      </p>
-                    </div>
-                    <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Timer className="h-6 w-6 text-blue-600" />
-                    </div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Response Time</CardTitle>
+                  <Timer className="h-4 w-4 text-blue-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatDuration(responseData.responseOverview.avgResponseTime / 60)}
                   </div>
-                  <div className="flex items-center mt-2 text-sm">
-                    <TrendingUp className="h-4 w-4 text-green-600 mr-1" />
-                    <span className="text-green-600">
-                      MTTR: {formatDuration(responseData.responseOverview.mttr)}
-                    </span>
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    MTTR: {formatDuration(responseData.responseOverview.mttr)}
+                  </p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">SLA Compliance</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {formatPercentage(responseData.responseOverview.slaCompliance)}
-                      </p>
-                    </div>
-                    <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                      <Target className="h-6 w-6 text-green-600" />
-                    </div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">SLA Compliance</CardTitle>
+                  <Target className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatPercentage(responseData.responseOverview.slaCompliance)}
                   </div>
-                  <div className="mt-2">
-                    <Progress value={responseData.responseOverview.slaCompliance} className="h-2" />
-                    <p className="text-sm text-green-600 mt-1">Excellent performance</p>
-                  </div>
+                  <p className="text-xs text-muted-foreground">Excellent performance</p>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">False Positives</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {responseData.responseOverview.falsePositives}
-                      </p>
-                    </div>
-                    <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
-                      <Activity className="h-6 w-6 text-purple-600" />
-                    </div>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">False Positives</CardTitle>
+                  <Activity className="h-4 w-4 text-purple-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {responseData.responseOverview.falsePositives}
                   </div>
-                  <div className="flex items-center mt-2 text-sm">
-                    <TrendingDown className="h-4 w-4 text-green-600 mr-1" />
-                    <span className="text-green-600">
-                      {responseData.responseOverview.escalatedIncidents} escalated
-                    </span>
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {responseData.responseOverview.escalatedIncidents} escalated
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -1183,6 +1148,14 @@ export default function IncidentResponseSystem() {
             </Tabs>
           </>
         )}
+
+        {/* Mobile FAB */}
+        <Button
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg md:hidden z-50 bg-red-600 hover:bg-red-700"
+          onClick={() => setShowCreateIncident(true)}
+        >
+          <Siren className="h-6 w-6" />
+        </Button>
       </div>
     </MainLayout>
   );
