@@ -160,8 +160,9 @@ export default function QuoteBuilder({
     queryKey: ['/api/companies'],
     queryFn: async () => {
       const response = await apiRequest('/api/companies', 'GET');
-      // Ensure response is always an array
-      return Array.isArray(response) ? response : [];
+      // Handle both formats: { records: [...] } wrapper or direct array
+      const data = response?.records || (Array.isArray(response) ? response : []);
+      return Array.isArray(data) ? data : [];
     },
   });
 
