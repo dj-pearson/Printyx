@@ -174,6 +174,9 @@ const ManufacturerIntegrationAudit = React.lazy(
   () => import('@/pages/ManufacturerIntegrationAudit'),
 );
 const LeadsManagement = React.lazy(() => import('@/pages/LeadsManagement'));
+const LeadsPage = React.lazy(() => import('@/pages/LeadsPage'));
+const ProspectsPage = React.lazy(() => import('@/pages/ProspectsPage'));
+const CustomersPage = React.lazy(() => import('@/pages/CustomersPage'));
 const QuoteProposalGeneration = React.lazy(() => import('@/pages/QuoteProposalGeneration'));
 const QuoteBuilderPage = React.lazy(() => import('@/pages/QuoteBuilderPage'));
 const QuotesManagement = React.lazy(() => import('@/pages/QuotesManagement'));
@@ -510,17 +513,19 @@ function Router() {
           </Route>
           <Route path="/today" component={TodayDashboard} />
           <Route path="/dashboard/today" component={TodayDashboard} />
-          <Route path="/customers" component={Customers} />
+          {/* CRM - Dedicated pages for each record type */}
+          <Route path="/leads" component={LeadsPage} />
+          <Route path="/prospects" component={ProspectsPage} />
+          <Route path="/customers" component={CustomersPage} />
           <Route path="/customers/:slug" component={CustomerDetail} />
-          {/* Removed duplicate route - /leads/:slug should use LeadDetail component (defined below) */}
-          {/* Consolidated into /customers */}
-          <Route path="/crm" component={Customers} />
-          <Route path="/business-records" component={Customers} />
+          {/* Legacy routes - redirect to new pages */}
+          <Route path="/crm" component={CustomersPage} />
+          <Route path="/business-records" component={CustomersPage} />
+          <Route path="/leads-management" component={LeadsPage} />
           <Route path="/contacts" component={Contacts} />
           <Route path="/deals" component={DealsManagement} />
           <Route path="/opportunities" component={DealsManagement} />
           <Route path="/deals-management" component={DealsManagement} />
-          <Route path="/leads-management" component={LeadsManagement} />
           {/* Unified Product Hub - consolidates product-hub, product-catalog, and product-management-hub */}
           <Route path="/product-hub" component={ProductHubUnified} />
           {/* Legacy Product Hub (keeping for reference during transition) */}
