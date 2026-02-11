@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { MainLayout } from '@/components/layout/main-layout';
@@ -81,6 +81,7 @@ import PageAlerts from '@/components/contextual/PageAlerts';
 import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
 import MobileFAB from '@/components/layout/MobileFAB';
 import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
+import { relativeDate, expiryDisplay } from '@/lib/date-utils';
 
 interface Quote {
   id: string;
@@ -430,55 +431,71 @@ export default function QuotesManagement() {
           </Button>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Quotes</p>
-                  <p className="text-2xl font-bold">{stats.total}</p>
-                </div>
-                <FileText className="h-8 w-8 text-blue-600" />
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Quotes</CardTitle>
+              <FileText className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.total}</div>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrency(stats.totalValue)} total value
+              </p>
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Draft</CardTitle>
+              <Edit className="h-4 w-4 text-gray-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.draft}</div>
+              <p className="text-xs text-muted-foreground">Not yet sent</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Sent</CardTitle>
+              <Send className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.sent}</div>
+              <p className="text-xs text-muted-foreground">Awaiting response</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Accepted</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.accepted}</div>
+              <p className="text-xs text-muted-foreground">{stats.winRate.toFixed(0)}% win rate</p>
+            </CardContent>
+          </Card>
+        </div>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Value</p>
-                  <p className="text-2xl font-bold">{formatCurrency(stats.totalValue)}</p>
-                </div>
-                <DollarSign className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Win Rate</p>
-                  <p className="text-2xl font-bold">{stats.winRate.toFixed(1)}%</p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-purple-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold">{stats.draft + stats.sent}</p>
-                </div>
-                <Clock className="h-8 w-8 text-yellow-600" />
-              </div>
-            </CardContent>
-          </Card>
+        {/* Quick Filter Tabs */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {[
+            { key: 'all', label: 'All' },
+            { key: 'draft', label: 'Draft' },
+            { key: 'sent', label: 'Sent' },
+            { key: 'accepted', label: 'Accepted' },
+            { key: 'closed_lost', label: 'Closed Lost' },
+          ].map((tab) => (
+            <Button
+              key={tab.key}
+              variant={statusFilter === tab.key ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => filterState.updateFilter('statusFilter', tab.key)}
+              className="touch-manipulation"
+            >
+              {tab.label}
+            </Button>
+          ))}
         </div>
 
         {/* Filters */}
@@ -676,13 +693,26 @@ export default function QuotesManagement() {
                           <div className="font-medium">{formatCurrency(quote.totalAmount)}</div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1 text-sm">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            {quote.validUntil ? formatDate(quote.validUntil) : 'Not set'}
-                          </div>
+                          {quote.validUntil ? (
+                            <div>
+                              <div className="text-sm">{formatDate(quote.validUntil)}</div>
+                              {(() => {
+                                const exp = expiryDisplay(quote.validUntil);
+                                return exp.urgent ? (
+                                  <span className="text-xs text-red-600 font-medium">
+                                    {exp.text}
+                                  </span>
+                                ) : null;
+                              })()}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Not set</span>
+                          )}
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm">{formatDate(quote.createdAt)}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {relativeDate(quote.createdAt)}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-sm">

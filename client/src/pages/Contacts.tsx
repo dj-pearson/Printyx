@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -75,12 +75,17 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  UserPlus,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { getApiUrl } from '@/lib/config';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import { useAuthContext } from '@/providers/AuthProvider';
+import MobileFAB from '@/components/layout/MobileFAB';
+import { relativeDate } from '@/lib/date-utils';
 
 // Contact form schema
 const contactFormSchema = z.object({
@@ -535,6 +540,27 @@ export default function Contacts() {
   const totalContacts = contactsData?.total || 0;
   const totalPages = Math.ceil(totalContacts / pageSize);
 
+  // KPI calculations
+  const kpiStats = useMemo(() => {
+    const all = contacts;
+    const active = all.filter(
+      (c: Contact) =>
+        c.leadStatus && !['unqualified', 'inactive'].includes(c.leadStatus.toLowerCase()),
+    );
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const newThisMonth = all.filter(
+      (c: Contact) => c.createdAt && new Date(c.createdAt) >= monthStart,
+    );
+    const unassigned = all.filter((c: Contact) => !c.ownerId);
+    return {
+      total: totalContacts,
+      active: active.length,
+      newThisMonth: newThisMonth.length,
+      unassigned: unassigned.length,
+    };
+  }, [contacts, totalContacts]);
+
   // Use the bulk selection hook
   const {
     selectedIds: selectedContacts,
@@ -660,7 +686,51 @@ export default function Contacts() {
 
   return (
     <MainLayout title="Contacts" description="Manage your contacts and leads">
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
+              <Users className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpiStats.total}</div>
+              <p className="text-xs text-muted-foreground">All contacts in system</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active</CardTitle>
+              <UserCheck className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpiStats.active}</div>
+              <p className="text-xs text-muted-foreground">Engaged contacts</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">New This Month</CardTitle>
+              <UserPlus className="h-4 w-4 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpiStats.newThisMonth}</div>
+              <p className="text-xs text-muted-foreground">Added this month</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Unassigned</CardTitle>
+              <UserX className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpiStats.unassigned}</div>
+              <p className="text-xs text-muted-foreground">Need an owner</p>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -1379,10 +1449,9 @@ export default function Contacts() {
                         <th className="text-left p-4 font-medium text-gray-700">NAME</th>
                         <th className="text-left p-4 font-medium text-gray-700">EMAIL</th>
                         <th className="text-left p-4 font-medium text-gray-700">PHONE</th>
-                        <th className="text-left p-4 font-medium text-gray-700">DEPARTMENT</th>
                         <th className="text-left p-4 font-medium text-gray-700">STATUS</th>
                         <th className="text-left p-4 font-medium text-gray-700">COMPANY</th>
-                        <th className="text-left p-4 font-medium text-gray-700">OWNER</th>
+                        <th className="text-left p-4 font-medium text-gray-700">CREATED</th>
                         <th className="w-12"></th>
                       </tr>
                     </thead>
@@ -1405,21 +1474,41 @@ export default function Contacts() {
                               </Avatar>
                               <div>
                                 <button
-                                  className="font-medium text-blue-600 hover:text-blue-800 text-left"
+                                  className="font-semibold text-blue-600 hover:text-blue-800 text-left"
                                   onClick={() => handleViewContact(contact)}
                                 >
-                                  {contact.salutation ? `${contact.salutation} ` : ''}
                                   {contact.firstName || ''} {contact.lastName}
                                 </button>
-                                {contact.title && (
-                                  <p className="text-sm text-gray-500">{contact.title}</p>
-                                )}
+                                <p className="text-xs text-gray-500">
+                                  {contact.companyName || getCompanyName(contact.companyId)}
+                                </p>
                               </div>
                             </div>
                           </td>
-                          <td className="p-4 text-gray-900">{contact.email || '--'}</td>
-                          <td className="p-4 text-gray-900">{contact.phone || '--'}</td>
-                          <td className="p-4 text-gray-900">{contact.department || '--'}</td>
+                          <td className="p-4">
+                            {contact.email ? (
+                              <a
+                                href={`mailto:${contact.email}`}
+                                className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
+                              >
+                                {contact.email}
+                              </a>
+                            ) : (
+                              <span className="text-gray-400">--</span>
+                            )}
+                          </td>
+                          <td className="p-4">
+                            {contact.phone ? (
+                              <a
+                                href={`tel:${contact.phone}`}
+                                className="text-gray-900 hover:text-blue-600 text-sm"
+                              >
+                                {contact.phone}
+                              </a>
+                            ) : (
+                              <span className="text-gray-400">--</span>
+                            )}
+                          </td>
                           <td className="p-4">
                             <Badge className={`${getStatusColor(contact.leadStatus)} border-0`}>
                               {contact.leadStatus || 'New'}
@@ -1428,12 +1517,14 @@ export default function Contacts() {
                           <td className="p-4">
                             <div className="flex items-center space-x-2">
                               <Building2 className="w-4 h-4 text-gray-400" />
-                              <span className="text-gray-900">
-                                {getCompanyName(contact.companyId)}
+                              <span className="text-gray-900 text-sm">
+                                {contact.companyName || getCompanyName(contact.companyId)}
                               </span>
                             </div>
                           </td>
-                          <td className="p-4 text-gray-900">{getUserName(contact.ownerId)}</td>
+                          <td className="p-4 text-sm text-gray-500">
+                            {relativeDate(contact.createdAt)}
+                          </td>
 
                           <td className="p-4">
                             <DropdownMenu>
@@ -1575,21 +1666,21 @@ export default function Contacts() {
                             <span className="text-sm font-medium text-gray-600 flex-shrink-0">
                               Email
                             </span>
-                            <span className="text-sm text-gray-900 truncate">{contact.email}</span>
+                            <a
+                              href={`mailto:${contact.email}`}
+                              className="text-sm text-blue-600 truncate"
+                            >
+                              {contact.email}
+                            </a>
                           </div>
                         )}
 
                         {contact.phone && (
                           <div className="flex items-center justify-between min-h-[32px]">
                             <span className="text-sm font-medium text-gray-600">Phone</span>
-                            <span className="text-sm text-gray-900">{contact.phone}</span>
-                          </div>
-                        )}
-
-                        {contact.department && (
-                          <div className="flex items-center justify-between min-h-[32px]">
-                            <span className="text-sm font-medium text-gray-600">Department</span>
-                            <span className="text-sm text-gray-900">{contact.department}</span>
+                            <a href={`tel:${contact.phone}`} className="text-sm text-blue-600">
+                              {contact.phone}
+                            </a>
                           </div>
                         )}
 
@@ -1784,11 +1875,29 @@ export default function Contacts() {
                   <div className="space-y-4">
                     <div>
                       <Label className="text-sm font-medium text-gray-500">Email</Label>
-                      <p className="text-gray-900">{selectedContact.email || 'Not provided'}</p>
+                      {selectedContact.email ? (
+                        <a
+                          href={`mailto:${selectedContact.email}`}
+                          className="text-blue-600 hover:underline block"
+                        >
+                          {selectedContact.email}
+                        </a>
+                      ) : (
+                        <p className="text-gray-400">Not provided</p>
+                      )}
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-500">Phone</Label>
-                      <p className="text-gray-900">{selectedContact.phone || 'Not provided'}</p>
+                      {selectedContact.phone ? (
+                        <a
+                          href={`tel:${selectedContact.phone}`}
+                          className="text-gray-900 hover:text-blue-600 block"
+                        >
+                          {selectedContact.phone}
+                        </a>
+                      ) : (
+                        <p className="text-gray-400">Not provided</p>
+                      )}
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-500">Company</Label>
@@ -1805,12 +1914,14 @@ export default function Contacts() {
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-500">Last Activity</Label>
-                      <p className="text-gray-900">{formatDate(selectedContact.lastContactDate)}</p>
+                      <p className="text-gray-900">
+                        {relativeDate(selectedContact.lastContactDate)}
+                      </p>
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-500">Next Follow-up</Label>
                       <p className="text-gray-900">
-                        {formatDate(selectedContact.nextFollowUpDate)}
+                        {relativeDate(selectedContact.nextFollowUpDate)}
                       </p>
                     </div>
                   </div>
@@ -1832,6 +1943,12 @@ export default function Contacts() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Mobile FAB */}
+        <MobileFAB
+          onClick={() => setDialogs((prev) => ({ ...prev, createContact: true }))}
+          label="Add Contact"
+        />
       </div>
     </MainLayout>
   );

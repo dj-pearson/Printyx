@@ -57,6 +57,7 @@ import {
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
+import MobileFAB from '@/components/layout/MobileFAB';
 import TeamStatsWidget from '@/components/stats/TeamStatsWidget';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -194,10 +195,36 @@ export default function CrmGoalsDashboard() {
   const filteredProgress = useMemo(() => {
     let rows = goalProgress as any[];
     if (ownerFilter !== 'all')
-      rows = rows.filter((r) => r.ownerId === ownerFilter || r.teamId === ownerFilter);
-    if (goalTypeFilter !== 'all') rows = rows.filter((r) => r.goalType === goalTypeFilter);
+      rows = rows.filter((r: any) => r.ownerId === ownerFilter || r.teamId === ownerFilter);
+    if (goalTypeFilter !== 'all') rows = rows.filter((r: any) => r.goalType === goalTypeFilter);
     return rows;
   }, [goalProgress, ownerFilter, goalTypeFilter]);
+
+  // KPI stats derived from goal progress
+  const kpiStats = useMemo(() => {
+    const rows = goalProgress as any[];
+    let active = 0;
+    let onTrack = 0;
+    let atRisk = 0;
+    let completed = 0;
+
+    rows.forEach((r: any) => {
+      const current = r.currentCount ?? r.currentValue ?? 0;
+      const target = r.targetCount ?? r.targetValue ?? 1;
+      const pct = Math.round((current / (target || 1)) * 100);
+      if (pct >= 100) {
+        completed++;
+      } else if (pct >= 75) {
+        onTrack++;
+      } else if (pct >= 50) {
+        atRisk++;
+      } else {
+        active++;
+      }
+    });
+
+    return { total: rows.length, active: active + onTrack + atRisk, onTrack, atRisk, completed };
+  }, [goalProgress]);
 
   const handleApplyTemplate = (assignees: { userIds: string[]; teamIds: string[] }) => {
     const template = GOAL_TEMPLATES.find((t) => t.id === selectedTemplateId);
@@ -219,13 +246,15 @@ export default function CrmGoalsDashboard() {
       title="CRM Goals Dashboard"
       description="Set sales goals, monitor activity, and track progress"
     >
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-3">
           <div>
             <h1 className="text-2xl font-bold">CRM Goals Dashboard</h1>
-            <p className="text-gray-600">Manager and rep goals with progress tracking</p>
+            <p className="text-muted-foreground text-sm">
+              Manager and rep goals with progress tracking
+            </p>
           </div>
-          <div className="flex gap-2">
+          <div className="hidden sm:flex gap-2">
             <Button variant="outline" onClick={() => setShowAssignDialog(true)}>
               Assign Goals
             </Button>
@@ -233,6 +262,50 @@ export default function CrmGoalsDashboard() {
               <Plus className="h-4 w-4 mr-2" /> New Goal
             </Button>
           </div>
+        </div>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Goals</CardTitle>
+              <Target className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpiStats.active}</div>
+              <p className="text-xs text-muted-foreground">{kpiStats.total} total goals</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">On Track</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpiStats.onTrack}</div>
+              <p className="text-xs text-muted-foreground">&ge;75% attainment</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">At Risk</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpiStats.atRisk}</div>
+              <p className="text-xs text-muted-foreground">50-75% attainment</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Completed</CardTitle>
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpiStats.completed}</div>
+              <p className="text-xs text-muted-foreground">100%+ attained</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Team Performance Stats */}
@@ -296,30 +369,48 @@ export default function CrmGoalsDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredProgress?.map((row: any) => (
-                <div key={row.id} className="p-3 border rounded-lg">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="font-medium truncate">
-                      {row.ownerName || row.teamName || 'Goal'}
+              {filteredProgress && filteredProgress.length > 0 ? (
+                filteredProgress.map((row: any) => {
+                  const current = row.currentCount ?? row.currentValue ?? 0;
+                  const target = row.targetCount ?? row.targetValue ?? 1;
+                  const pct = Math.min(100, Math.round((current / (target || 1)) * 100));
+                  return (
+                    <div key={row.id} className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="font-medium truncate">
+                          {row.ownerName || row.teamName || 'Goal'}
+                        </div>
+                        <Badge variant="secondary">{row.goalType}</Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                        <span>{row.period || ''}</span>
+                        <span className="font-medium">{pct}%</span>
+                      </div>
+                      <Progress
+                        value={pct}
+                        className={`h-2 ${
+                          pct >= 75
+                            ? '[&>div]:bg-green-500'
+                            : pct >= 50
+                              ? '[&>div]:bg-amber-500'
+                              : '[&>div]:bg-red-500'
+                        }`}
+                      />
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {current} / {target}
+                      </div>
                     </div>
-                    <Badge variant="secondary">{row.goalType}</Badge>
-                  </div>
-                  <div className="text-xs text-gray-500 mb-2">{row.period || ''}</div>
-                  <Progress
-                    value={Math.min(
-                      100,
-                      Math.round(
-                        ((row.currentCount ?? row.currentValue) /
-                          ((row.targetCount ?? row.targetValue) || 1)) *
-                          100,
-                      ),
-                    )}
-                  />
-                  <div className="text-xs text-gray-600 mt-1">
-                    {row.currentCount ?? row.currentValue} / {row.targetCount ?? row.targetValue}
-                  </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 col-span-full">
+                  <Target className="h-10 w-10 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No goal progress data yet.</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Create goals and track activities to see progress here.
+                  </p>
                 </div>
-              )) || <div className="text-sm text-gray-500">No progress yet.</div>}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -398,6 +489,8 @@ export default function CrmGoalsDashboard() {
       </Dialog>
 
       {/* Existing create goal/team dialogs remain below */}
+
+      <MobileFAB onClick={() => setShowCreateGoalDialog(true)} label="New Goal" />
     </MainLayout>
   );
 }
