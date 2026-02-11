@@ -286,12 +286,12 @@ export default function SalesPerformanceAnalytics() {
       title="Sales Performance Analytics"
       description="Rep-specific insights and coaching recommendations for sales managers"
     >
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Basic Controls */}
         <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-              <div className="flex flex-col md:flex-row gap-4">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Select value={selectedRep} onValueChange={setSelectedRep}>
                   <SelectTrigger className="w-[250px]">
                     <SelectValue placeholder="Select sales rep" />
@@ -357,7 +357,7 @@ export default function SalesPerformanceAnalytics() {
           {/* Team Overview */}
           <TabsContent value="overview" className="space-y-6">
             {/* Key Performance Indicators */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <KPICard
                 title="Team Pipeline"
                 value={`$${teamMetrics?.totalPipeline?.toLocaleString() || '0'}`}
@@ -489,7 +489,7 @@ export default function SalesPerformanceAnalytics() {
                 </Card>
 
                 {/* Performance Metrics */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {/* Revenue Performance */}
                   <Card>
                     <CardHeader className="pb-3">
