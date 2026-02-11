@@ -35,8 +35,9 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1];
-    const contractId = pathParts[2];
+    // Server strips function name, so /managed-services/contracts becomes /contracts
+    const endpoint = pathParts[0];
+    const contractId = pathParts[1];
 
     // GET /managed-services/contracts - List MPS contracts
     if (req.method === 'GET' && endpoint === 'contracts' && !contractId) {

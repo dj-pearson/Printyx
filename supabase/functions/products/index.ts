@@ -41,7 +41,8 @@ export default async function handler(req: Request) {
 
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    const action = pathParts[1]; // 'with-pricing', etc.
+    // Server strips function name, so /products/with-pricing becomes /with-pricing
+    const action = pathParts[0]; // 'with-pricing', etc.
 
     // GET /products/with-pricing - Get all products with pricing information
     if (req.method === 'GET' && action === 'with-pricing') {

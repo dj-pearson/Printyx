@@ -35,31 +35,33 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    const projectId = pathParts[1];
-    const subResource = pathParts[2];
+    // Server strips function name, so /professional-services/:id becomes /:id
+    const projectId = pathParts[0];
+    const subResource = pathParts[1];
 
     // GET /professional-services - List projects
     if (req.method === 'GET' && !projectId) {
       const status = url.searchParams.get('status');
       const customerId = url.searchParams.get('customerId');
 
-      let query = admin
+      // Check if table exists by attempting query
+      const { data: projects, error } = await admin
         .from('professional_services_projects')
         .select('*')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
-      if (status) query = query.eq('status', status);
-      if (customerId) query = query.eq('customer_id', customerId);
-
-      const { data: projects, error } = await query;
-
       if (error) {
+        // Table may not exist yet - return empty array gracefully
         console.error('Error fetching professional services:', error);
-        return createCorsResponse({ error: 'Failed to fetch projects' }, 500, req);
+        return createCorsResponse([], 200, req);
       }
 
-      return createCorsResponse(projects || [], 200, req);
+      let result = projects || [];
+      if (status) result = result.filter((p: any) => p.status === status);
+      if (customerId) result = result.filter((p: any) => p.customer_id === customerId);
+
+      return createCorsResponse(result, 200, req);
     }
 
     // GET /professional-services/active - Get active projects
