@@ -45,15 +45,7 @@ export default async function handler(req: Request) {
 
       let query = admin
         .from('professional_services_projects')
-        .select(
-          `
-          *,
-          customer:customer_id (
-            id,
-            company_name
-          )
-        `,
-        )
+        .select('*')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
