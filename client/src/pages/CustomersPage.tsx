@@ -269,29 +269,17 @@ export default function CustomersPage() {
   // ─── KPI Stats ──────────────────────────────────────────────────────────
 
   const { data: stats } = useQuery({
-    queryKey: ['/api/business-records/stats', 'customer'],
+    queryKey: ['/api/companies/stats', 'customer'],
     enabled: isAuthenticated,
     queryFn: async () => {
-      const resp = await apiRequest(
-        '/api/business-records?recordType=customer&limit=1&offset=0',
-        'GET',
-      );
+      const resp = await apiRequest('/api/companies?recordType=Customer&limit=1&offset=0', 'GET');
       const total = resp?.pagination?.total || 0;
 
       // Fetch status counts in parallel
       const [activeResp, inactiveResp, onHoldResp] = await Promise.all([
-        apiRequest(
-          '/api/business-records?recordType=customer&status=active&limit=1&offset=0',
-          'GET',
-        ),
-        apiRequest(
-          '/api/business-records?recordType=customer&status=inactive&limit=1&offset=0',
-          'GET',
-        ),
-        apiRequest(
-          '/api/business-records?recordType=customer&status=on_hold&limit=1&offset=0',
-          'GET',
-        ),
+        apiRequest('/api/companies?recordType=Customer&status=active&limit=1&offset=0', 'GET'),
+        apiRequest('/api/companies?recordType=Customer&status=inactive&limit=1&offset=0', 'GET'),
+        apiRequest('/api/companies?recordType=Customer&status=on_hold&limit=1&offset=0', 'GET'),
       ]);
 
       return {
@@ -307,16 +295,37 @@ export default function CustomersPage() {
   // ─── Create Customer Mutation ─────────────────────────────────────────────
 
   const createMutation = useMutation({
-    mutationFn: (data: any) =>
-      apiRequest('/api/business-records', 'POST', {
-        ...data,
-        recordType: 'customer',
-        status: 'active',
-        creditLimit: data.creditLimit ? parseFloat(data.creditLimit) : undefined,
-      }),
+    mutationFn: (data: any) => {
+      // Split contact name into first/last for companies format
+      const nameParts = (data.primaryContactName || '').trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      return apiRequest('/api/companies', 'POST', {
+        business_name: data.companyName,
+        business_record_type: 'Customer',
+        activity: 'active',
+        website: data.website || undefined,
+        industry: data.industry || undefined,
+        billing_address: data.addressLine1 || undefined,
+        billing_city: data.city || undefined,
+        billing_state: data.state || undefined,
+        billing_zip: data.postalCode || undefined,
+        contacts: firstName
+          ? [
+              {
+                first_name: firstName,
+                last_name: lastName,
+                email: data.primaryContactEmail || undefined,
+                phone: data.primaryContactPhone || undefined,
+                is_primary: true,
+              },
+            ]
+          : [],
+      });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
       setIsCreateOpen(false);
       form.reset();
       toast({ title: 'Customer Created', description: 'New customer has been added.' });
@@ -330,13 +339,11 @@ export default function CustomersPage() {
 
   const deactivateMutation = useMutation({
     mutationFn: (record: any) =>
-      apiRequest(`/api/business-records/${record.id}/status`, 'PATCH', {
-        status: 'inactive',
-        notes: 'Deactivated by user',
+      apiRequest(`/api/companies/${record.id}`, 'PATCH', {
+        activity: 'inactive',
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/business-records/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
       toast({ title: 'Deactivated', description: 'Customer has been deactivated.' });
     },
   });
@@ -356,9 +363,8 @@ export default function CustomersPage() {
       label: 'Delete',
       icon: Trash2,
       onClick: (record) => {
-        apiRequest(`/api/business-records/${record.id}`, 'DELETE').then(() => {
-          queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/business-records/stats'] });
+        apiRequest(`/api/companies/${record.id}`, 'DELETE').then(() => {
+          queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
           toast({ title: 'Deleted', description: 'Customer has been removed.' });
         });
       },
@@ -795,8 +801,7 @@ export default function CustomersPage() {
         onOpenChange={setIsImportOpen}
         defaultEntityType="business_records"
         onImportComplete={() => {
-          queryClient.invalidateQueries({ queryKey: ['/api/business-records'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/business-records/stats'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
           toast({ title: 'Import Complete', description: 'Records imported successfully.' });
         }}
       />
