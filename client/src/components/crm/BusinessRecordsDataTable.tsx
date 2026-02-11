@@ -114,6 +114,13 @@ export interface ActionDef {
   show?: (record: any) => boolean;
 }
 
+export interface QuickFilterTab {
+  key: string;
+  label: string;
+  filter: Record<string, string>;
+  count?: number;
+}
+
 export interface BusinessRecordsDataTableProps {
   recordType: RecordType;
   title: string;
@@ -127,6 +134,8 @@ export interface BusinessRecordsDataTableProps {
   emptyTitle?: string;
   emptyDescription?: string;
   pageSize?: number;
+  quickFilterTabs?: QuickFilterTab[];
+  extraHeaderContent?: React.ReactNode;
 }
 
 // ─── Status Badge ───────────────────────────────────────────────────────────
@@ -197,6 +206,8 @@ export function BusinessRecordsDataTable({
   emptyTitle,
   emptyDescription,
   pageSize = 50,
+  quickFilterTabs,
+  extraHeaderContent,
 }: BusinessRecordsDataTableProps) {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
@@ -229,6 +240,9 @@ export function BusinessRecordsDataTable({
   // Sort state
   const [sortBy, setSortBy] = useState('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Quick filter tab state
+  const [activeTab, setActiveTab] = useState<string>(quickFilterTabs?.[0]?.key || '');
 
   // Filter state
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
@@ -285,13 +299,28 @@ export function BusinessRecordsDataTable({
 
   // ─── Data Fetching ────────────────────────────────────────────────────────
 
+  // Merge active tab filter into active filters for the query
+  const tabFilter = useMemo(() => {
+    if (!quickFilterTabs || !activeTab) return {};
+    const tab = quickFilterTabs.find((t) => t.key === activeTab);
+    return tab?.filter || {};
+  }, [quickFilterTabs, activeTab]);
+
   const queryKey = useMemo(
     () => [
       '/api/companies',
       recordType,
-      { page, pageSize, search: debouncedSearch, sortBy, sortOrder, ...activeFilters },
+      {
+        page,
+        pageSize,
+        search: debouncedSearch,
+        sortBy,
+        sortOrder,
+        ...activeFilters,
+        ...tabFilter,
+      },
     ],
-    [recordType, page, pageSize, debouncedSearch, sortBy, sortOrder, activeFilters],
+    [recordType, page, pageSize, debouncedSearch, sortBy, sortOrder, activeFilters, tabFilter],
   );
 
   const { data: response, isLoading } = useQuery({
@@ -318,6 +347,11 @@ export function BusinessRecordsDataTable({
         if (value && value !== 'all') {
           params.set(filter.serverKey, value);
         }
+      }
+
+      // Apply quick filter tab params
+      for (const [key, value] of Object.entries(tabFilter)) {
+        if (value) params.set(key, value);
       }
 
       const resp = await apiRequest(`/api/companies?${params}`, 'GET');
@@ -425,6 +459,42 @@ export function BusinessRecordsDataTable({
 
   return (
     <div className="space-y-4">
+      {/* Quick Filter Tabs */}
+      {quickFilterTabs && quickFilterTabs.length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          {quickFilterTabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => {
+                setActiveTab(tab.key);
+                setPage(1);
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                activeTab === tab.key
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+            >
+              {tab.label}
+              {tab.count !== undefined && (
+                <span
+                  className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-semibold ${
+                    activeTab === tab.key
+                      ? 'bg-primary-foreground/20 text-primary-foreground'
+                      : 'bg-background text-muted-foreground'
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Extra Header Content (e.g. import buttons) */}
+      {extraHeaderContent}
+
       {/* Search + Filters Bar */}
       <Card>
         <CardContent className="p-4">

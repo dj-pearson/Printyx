@@ -1,9 +1,8 @@
 /**
- * Customers Page - Dedicated customer management with customer-specific KPIs,
- * columns, and actions.
+ * Customers Page - Active account management.
  *
- * Designed for handling thousands of active customers with server-side
- * search, filtering, sorting, and pagination.
+ * Focus on retention, service quality, and growth opportunities.
+ * Account managers track customer health, equipment, contracts, and service history.
  */
 
 import { useState } from 'react';
@@ -39,23 +38,25 @@ import {
   FilterDef,
   StatusConfig,
   ActionDef,
-  normalizeRecord,
+  QuickFilterTab,
 } from '@/components/crm/BusinessRecordsDataTable';
 import {
   Building2,
   UserCheck,
-  DollarSign,
-  Crown,
+  Pause,
   TrendingUp,
   Trash2,
-  Pause,
-  Star,
+  Play,
   Upload,
+  Plus,
+  Phone,
+  Mail,
 } from 'lucide-react';
 import { CsvImportWizard } from '@/components/import';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useMemo } from 'react';
 
 // ─── Form Schema ────────────────────────────────────────────────────────────
 
@@ -74,8 +75,6 @@ const customerFormSchema = z.object({
   customerTier: z.string().optional(),
   paymentTerms: z.string().optional(),
   creditLimit: z.string().optional(),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
-  assignedSalesRep: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -124,41 +123,28 @@ const customerColumns: ColumnDef[] = [
     key: 'primaryContactName',
     label: 'Contact',
     sortable: true,
-    render: (value, record) => (
-      <div>
-        <p className="truncate max-w-[160px]">{value || '—'}</p>
-        {record.primaryContactEmail && (
-          <p className="text-xs text-muted-foreground truncate">{record.primaryContactEmail}</p>
-        )}
-      </div>
-    ),
+    render: (value, record) => {
+      if (!value) return '—';
+      return (
+        <div>
+          <p className="truncate max-w-[160px]">{value}</p>
+          {record.primaryContactEmail && (
+            <a
+              href={`mailto:${record.primaryContactEmail}`}
+              className="text-xs text-blue-600 hover:underline truncate block"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {record.primaryContactEmail}
+            </a>
+          )}
+        </div>
+      );
+    },
   },
   {
     key: 'status',
     label: 'Status',
     sortable: true,
-  },
-  {
-    key: 'customerTier',
-    label: 'Tier',
-    sortable: true,
-    render: (value) => {
-      if (!value) return '—';
-      const colors: Record<string, string> = {
-        platinum: 'bg-slate-100 text-slate-800 border-slate-300',
-        gold: 'bg-amber-50 text-amber-800 border-amber-300',
-        silver: 'bg-gray-100 text-gray-700 border-gray-300',
-        bronze: 'bg-orange-50 text-orange-700 border-orange-300',
-      };
-      return (
-        <Badge
-          variant="outline"
-          className={`text-xs capitalize ${colors[value.toLowerCase()] || ''}`}
-        >
-          {value}
-        </Badge>
-      );
-    },
   },
   {
     key: 'industry',
@@ -210,28 +196,6 @@ const customerFilters: FilterDef[] = [
       { value: 'churned', label: 'Churned' },
     ],
   },
-  {
-    key: 'customerTier',
-    label: 'Tier',
-    serverKey: 'customerTier',
-    options: [
-      { value: 'platinum', label: 'Platinum' },
-      { value: 'gold', label: 'Gold' },
-      { value: 'silver', label: 'Silver' },
-      { value: 'bronze', label: 'Bronze' },
-    ],
-  },
-  {
-    key: 'priority',
-    label: 'Priority',
-    serverKey: 'priority',
-    options: [
-      { value: 'urgent', label: 'Urgent' },
-      { value: 'high', label: 'High' },
-      { value: 'medium', label: 'Medium' },
-      { value: 'low', label: 'Low' },
-    ],
-  },
 ];
 
 // ─── Main Component ─────────────────────────────────────────────────────────
@@ -260,8 +224,6 @@ export default function CustomersPage() {
       customerTier: '',
       paymentTerms: '',
       creditLimit: '',
-      priority: 'medium' as const,
-      assignedSalesRep: '',
       notes: '',
     },
   });
@@ -272,18 +234,15 @@ export default function CustomersPage() {
     queryKey: ['/api/companies/stats', 'customer'],
     enabled: isAuthenticated,
     queryFn: async () => {
-      const resp = await apiRequest('/api/companies?recordType=Customer&limit=1&offset=0', 'GET');
-      const total = resp?.pagination?.total || 0;
-
-      // Fetch status counts in parallel
-      const [activeResp, inactiveResp, onHoldResp] = await Promise.all([
+      const [totalResp, activeResp, inactiveResp, onHoldResp] = await Promise.all([
+        apiRequest('/api/companies?recordType=Customer&limit=1&offset=0', 'GET'),
         apiRequest('/api/companies?recordType=Customer&status=active&limit=1&offset=0', 'GET'),
         apiRequest('/api/companies?recordType=Customer&status=inactive&limit=1&offset=0', 'GET'),
         apiRequest('/api/companies?recordType=Customer&status=on_hold&limit=1&offset=0', 'GET'),
       ]);
 
       return {
-        total,
+        total: totalResp?.pagination?.total || 0,
         activeCount: activeResp?.pagination?.total || 0,
         inactiveCount: inactiveResp?.pagination?.total || 0,
         onHoldCount: onHoldResp?.pagination?.total || 0,
@@ -292,11 +251,37 @@ export default function CustomersPage() {
     staleTime: 60_000,
   });
 
+  // ─── Quick Filter Tabs ──────────────────────────────────────────────────
+
+  const quickFilterTabs: QuickFilterTab[] = useMemo(
+    () => [
+      { key: 'all', label: 'All', filter: {}, count: stats?.total },
+      {
+        key: 'active',
+        label: 'Active',
+        filter: { status: 'active' },
+        count: stats?.activeCount,
+      },
+      {
+        key: 'on_hold',
+        label: 'On Hold',
+        filter: { status: 'on_hold' },
+        count: stats?.onHoldCount,
+      },
+      {
+        key: 'inactive',
+        label: 'Inactive',
+        filter: { status: 'inactive' },
+        count: stats?.inactiveCount,
+      },
+    ],
+    [stats],
+  );
+
   // ─── Create Customer Mutation ─────────────────────────────────────────────
 
   const createMutation = useMutation({
     mutationFn: (data: any) => {
-      // Split contact name into first/last for companies format
       const nameParts = (data.primaryContactName || '').trim().split(/\s+/);
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
@@ -335,7 +320,7 @@ export default function CustomersPage() {
     },
   });
 
-  // ─── Deactivate Mutation ──────────────────────────────────────────────────
+  // ─── Deactivate / Reactivate Mutations ──────────────────────────────────
 
   const deactivateMutation = useMutation({
     mutationFn: (record: any) =>
@@ -348,15 +333,57 @@ export default function CustomersPage() {
     },
   });
 
+  const reactivateMutation = useMutation({
+    mutationFn: (record: any) =>
+      apiRequest(`/api/companies/${record.id}`, 'PATCH', {
+        activity: 'active',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+      toast({ title: 'Reactivated', description: 'Customer has been reactivated.' });
+    },
+  });
+
   // ─── Row Actions ──────────────────────────────────────────────────────────
 
   const rowActions: ActionDef[] = [
+    {
+      key: 'call',
+      label: 'Call',
+      icon: Phone,
+      onClick: (record) => {
+        if (record.primaryContactPhone) {
+          window.open(`tel:${record.primaryContactPhone}`, '_self');
+        } else {
+          toast({ title: 'No Phone', description: 'No phone number on file.' });
+        }
+      },
+    },
+    {
+      key: 'email',
+      label: 'Email',
+      icon: Mail,
+      onClick: (record) => {
+        if (record.primaryContactEmail) {
+          window.open(`mailto:${record.primaryContactEmail}`, '_self');
+        } else {
+          toast({ title: 'No Email', description: 'No email address on file.' });
+        }
+      },
+    },
     {
       key: 'deactivate',
       label: 'Deactivate',
       icon: Pause,
       onClick: (record) => deactivateMutation.mutate(record),
       show: (record) => record.status === 'active',
+    },
+    {
+      key: 'reactivate',
+      label: 'Reactivate',
+      icon: Play,
+      onClick: (record) => reactivateMutation.mutate(record),
+      show: (record) => ['inactive', 'on_hold', 'churned'].includes(record.status),
     },
     {
       key: 'delete',
@@ -372,13 +399,24 @@ export default function CustomersPage() {
     },
   ];
 
+  // ─── Import button as extra header content ────────────────────────────────
+
+  const importButton = (
+    <div className="flex justify-end">
+      <Button variant="outline" size="sm" className="gap-2" onClick={() => setIsImportOpen(true)}>
+        <Upload className="h-4 w-4" />
+        Import CSV
+      </Button>
+    </div>
+  );
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <MainLayout title="Customers" description="Manage your active customer relationships">
       <div className="space-y-4 sm:space-y-6">
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
@@ -418,36 +456,23 @@ export default function CustomersPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Inactive</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Retention</CardTitle>
+              <TrendingUp className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-muted-foreground">
-                {stats?.inactiveCount?.toLocaleString() || '0'}
+              <div className="text-2xl font-bold">
+                {stats?.total
+                  ? `${Math.round(((stats.activeCount || 0) / stats.total) * 100)}%`
+                  : '—'}
               </div>
               <p className="text-xs text-muted-foreground">
-                {stats?.total
-                  ? `${Math.round(((stats.activeCount || 0) / stats.total) * 100)}% retention`
-                  : 'No data'}
+                {stats?.inactiveCount?.toLocaleString() || '0'} inactive
               </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Import button row */}
-        <div className="flex justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => setIsImportOpen(true)}
-          >
-            <Upload className="h-4 w-4" />
-            Import CSV
-          </Button>
-        </div>
-
-        {/* Data Table */}
+        {/* Data Table with Quick Filter Tabs */}
         <BusinessRecordsDataTable
           recordType="customer"
           title="Customers"
@@ -460,8 +485,18 @@ export default function CustomersPage() {
           detailPath="/customers"
           emptyTitle="No customers yet"
           emptyDescription="Add your first customer or convert prospects to build your customer base"
+          quickFilterTabs={quickFilterTabs}
+          extraHeaderContent={importButton}
         />
       </div>
+
+      {/* Mobile FAB */}
+      <Button
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg md:hidden z-50"
+        onClick={() => setIsCreateOpen(true)}
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
 
       {/* Create Customer Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -656,7 +691,7 @@ export default function CustomersPage() {
                 </div>
               </div>
 
-              {/* Account Management */}
+              {/* Account Details */}
               <div>
                 <h4 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
                   Account Details
@@ -717,42 +752,6 @@ export default function CustomersPage() {
                         <FormLabel>Credit Limit</FormLabel>
                         <FormControl>
                           <Input type="number" placeholder="10000" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="priority"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Priority</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                            <SelectItem value="urgent">Urgent</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="assignedSalesRep"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Account Manager</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
