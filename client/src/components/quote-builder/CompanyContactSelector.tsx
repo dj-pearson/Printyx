@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -73,6 +73,7 @@ export default function CompanyContactSelector({
   onContactSelect,
 }: CompanyContactSelectorProps) {
   const [companySearchTerm, setCompanySearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [companyOpen, setCompanyOpen] = useState(false);
   const [showNewCompanyDialog, setShowNewCompanyDialog] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -80,23 +81,42 @@ export default function CompanyContactSelector({
   // Focus search input when popover opens
   useEffect(() => {
     if (companyOpen) {
-      // Small delay to let the popover render
       const timer = setTimeout(() => searchInputRef.current?.focus(), 50);
       return () => clearTimeout(timer);
     } else {
       setCompanySearchTerm('');
+      setDebouncedSearch('');
     }
   }, [companyOpen]);
 
-  // Fetch companies
-  const { data: companies = [], isLoading: companiesLoading } = useQuery<Company[]>({
-    queryKey: ['/api/companies'],
+  // Debounce search term - wait 300ms after user stops typing before querying API
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(companySearchTerm.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [companySearchTerm]);
+
+  // Server-side company search - queries the full database
+  const {
+    data: searchResults = [],
+    isLoading: companiesLoading,
+    isFetching: companiesFetching,
+  } = useQuery<Company[]>({
+    queryKey: ['/api/companies', 'search', debouncedSearch],
     queryFn: async () => {
-      const response = await apiRequest('/api/companies', 'GET');
-      // Handle both formats: { records: [...] } wrapper or direct array
+      const params = new URLSearchParams({ limit: '50', includeContacts: 'false' });
+      if (debouncedSearch) {
+        params.set('search', debouncedSearch);
+      }
+      const response = await apiRequest(`/api/companies?${params.toString()}`, 'GET');
       const data = response?.records || (Array.isArray(response) ? response : []);
       return Array.isArray(data) ? data : [];
     },
+    // Only fetch when popover is open
+    enabled: companyOpen,
+    // Keep previous results visible while fetching new ones
+    placeholderData: (prev) => prev,
   });
 
   // Fetch contacts for selected company
@@ -104,7 +124,7 @@ export default function CompanyContactSelector({
     queryKey: [`/api/companies/${selectedCompany?.id}/contacts`],
     enabled: !!selectedCompany?.id,
     queryFn: async () => {
-      const response = await apiRequest(`/api/companies/${selectedCompany.id}/contacts`, 'GET');
+      const response = await apiRequest(`/api/companies/${selectedCompany!.id}/contacts`, 'GET');
       const data = Array.isArray(response) ? response : [];
       // Map snake_case fields from edge function to camelCase
       return data.map((c: any) => ({
@@ -119,23 +139,6 @@ export default function CompanyContactSelector({
       }));
     },
   });
-
-  // Filter companies based on search - memoized for performance with large lists
-  const filteredCompanies = useMemo(() => {
-    if (!companySearchTerm) return companies.slice(0, 50); // Show first 50 when no search
-    const searchLower = companySearchTerm.toLowerCase();
-    return companies
-      .filter((company) => {
-        const companyName = company.companyName || `${company.firstName} ${company.lastName}`;
-        return (
-          companyName.toLowerCase().includes(searchLower) ||
-          company.email?.toLowerCase().includes(searchLower) ||
-          company.city?.toLowerCase().includes(searchLower) ||
-          company.phone?.includes(companySearchTerm)
-        );
-      })
-      .slice(0, 50); // Cap at 50 results for rendering performance
-  }, [companies, companySearchTerm]);
 
   const getCompanyDisplayName = (company: Company) => {
     return company.companyName || `${company.firstName} ${company.lastName}`;
@@ -218,27 +221,30 @@ export default function CompanyContactSelector({
                       className="pl-8 h-9"
                     />
                   </div>
-                  {companies.length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-1.5 px-0.5">
-                      {companySearchTerm
-                        ? `${filteredCompanies.length} result${filteredCompanies.length !== 1 ? 's' : ''} found`
-                        : `${companies.length} companies total - type to search`}
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground mt-1.5 px-0.5">
+                    {companiesFetching
+                      ? 'Searching...'
+                      : debouncedSearch
+                        ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''} found`
+                        : 'Type to search all companies'}
+                  </p>
                 </div>
 
                 {/* Scrollable results list */}
                 <div className="max-h-[280px] overflow-y-auto">
-                  {companiesLoading ? (
-                    <div className="p-4 text-center text-sm text-muted-foreground">
-                      Loading companies...
+                  {companiesLoading && !searchResults.length ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
+                  ) : !debouncedSearch && searchResults.length === 0 ? (
+                    <div className="p-6 text-center text-sm text-muted-foreground">
+                      <Search className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      Start typing to search across all companies
                     </div>
-                  ) : filteredCompanies.length === 0 ? (
+                  ) : debouncedSearch && searchResults.length === 0 ? (
                     <div className="p-4 text-center text-sm text-muted-foreground">
-                      {companySearchTerm ? 'No companies match your search' : 'No companies found'}
+                      No companies match "{debouncedSearch}"
                     </div>
                   ) : (
-                    filteredCompanies.map((company) => (
+                    searchResults.map((company) => (
                       <button
                         key={company.id}
                         type="button"
