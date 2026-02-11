@@ -147,52 +147,66 @@ export default function SalesPipelineForecasting() {
           </TabsList>
 
           <TabsContent value="overview">
-            <Card>
-              <CardHeader>
-                <CardTitle>Forecast Overview</CardTitle>
-                <CardDescription>Summary KPIs</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {(() => {
-                    const total = forecastData?.pipeline?.totalValue || 0;
-                    const weighted = [
-                      forecastData?.pipeline?.breakdown?.deals?.weightedValue || 0,
-                      forecastData?.pipeline?.breakdown?.quotes?.weightedValue || 0,
-                      forecastData?.pipeline?.breakdown?.proposals?.weightedValue || 0,
-                    ].reduce((a: number, b: number) => a + b, 0);
-                    const toGoal = forecastData?.remaining?.toGoalValue ?? null;
-                    const goalAttainmentPct = forecastData?.goals?.totalValue
-                      ? Math.min(
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {(() => {
+                const total = forecastData?.pipeline?.totalValue || 0;
+                const weighted = [
+                  forecastData?.pipeline?.breakdown?.deals?.weightedValue || 0,
+                  forecastData?.pipeline?.breakdown?.quotes?.weightedValue || 0,
+                  forecastData?.pipeline?.breakdown?.proposals?.weightedValue || 0,
+                ].reduce((a: number, b: number) => a + b, 0);
+                const toGoal = forecastData?.remaining?.toGoalValue ?? null;
+                const goalAttainmentPct = forecastData?.goals?.totalValue
+                  ? Math.min(
+                      100,
+                      Math.round(
+                        ((forecastData.pipeline?.totalValue || 0) / forecastData.goals.totalValue) *
                           100,
-                          Math.round(
-                            ((forecastData.pipeline?.totalValue || 0) /
-                              forecastData.goals.totalValue) *
-                              100,
-                          ),
-                        )
-                      : 0;
-                    const cards = [
-                      { label: 'Pipeline (Total)', value: `$${total.toLocaleString()}` },
-                      { label: 'Weighted Pipeline', value: `$${weighted.toLocaleString()}` },
-                      {
-                        label: 'Remaining To Goal',
-                        value: toGoal !== null ? `$${Number(toGoal).toLocaleString()}` : '—',
-                      },
-                      { label: 'Goal Attainment', value: `${goalAttainmentPct}%` },
-                    ];
-                    return cards.map((c, i) => (
-                      <Card key={i} className="border-dashed">
-                        <CardContent className="p-5">
-                          <div className="text-xs text-gray-500">{c.label}</div>
-                          <div className="text-2xl font-semibold">{c.value}</div>
-                        </CardContent>
-                      </Card>
-                    ));
-                  })()}
-                </div>
-              </CardContent>
-            </Card>
+                      ),
+                    )
+                  : 0;
+                const icons = [DollarSign, TrendingUp, Target, PieChart];
+                const colors = [
+                  'text-blue-500',
+                  'text-green-500',
+                  'text-amber-500',
+                  'text-purple-500',
+                ];
+                const cards = [
+                  {
+                    label: 'Pipeline Total',
+                    value: `$${total.toLocaleString()}`,
+                    sub: 'Total value',
+                  },
+                  {
+                    label: 'Weighted',
+                    value: `$${weighted.toLocaleString()}`,
+                    sub: 'Probability-weighted',
+                  },
+                  {
+                    label: 'To Goal',
+                    value: toGoal !== null ? `$${Number(toGoal).toLocaleString()}` : '—',
+                    sub: 'Remaining',
+                  },
+                  { label: 'Attainment', value: `${goalAttainmentPct}%`, sub: 'Goal progress' },
+                ];
+                return cards.map((c, i) => {
+                  const Icon = icons[i];
+                  return (
+                    <Card key={i}>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">{c.label}</CardTitle>
+                        <Icon className={`h-4 w-4 ${colors[i]}`} />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{c.value}</div>
+                        <p className="text-xs text-muted-foreground">{c.sub}</p>
+                      </CardContent>
+                    </Card>
+                  );
+                });
+              })()}
+            </div>
           </TabsContent>
 
           <TabsContent value="breakdown">
