@@ -39,8 +39,9 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    const supplyId = pathParts[1];
-    const subResource = pathParts[2];
+    // Server strips function name, so /supplies/:id becomes /:id
+    const supplyId = pathParts[0];
+    const subResource = pathParts[1];
 
     // GET /supplies - List all supplies
     if (req.method === 'GET' && !supplyId) {
@@ -52,10 +53,10 @@ export default async function handler(req: Request) {
         .from('supplies')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('name', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (category) query = query.eq('category', category);
-      if (search) query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%`);
+      if (search) query = query.or(`sku.ilike.%${search}%,note.ilike.%${search}%`);
 
       const { data: supplies, error } = await query;
 
@@ -126,7 +127,7 @@ export default async function handler(req: Request) {
 
       const supplyData = {
         tenant_id: tenantId,
-        name: body.name,
+        note: body.name || body.note,
         sku: body.sku,
         description: body.description,
         category: body.category,

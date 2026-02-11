@@ -41,9 +41,10 @@ export default async function handler(req: Request) {
 
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    const resource = pathParts[1]; // 'settings', 'products', 'company-settings', etc.
-    const resourceId = pathParts[2];
-    const action = pathParts[3]; // 'bulk-update', etc.
+    // Server strips function name, so /pricing/company-settings becomes /company-settings
+    const resource = pathParts[0]; // 'settings', 'products', 'company-settings', etc.
+    const resourceId = pathParts[1];
+    const action = pathParts[2]; // 'bulk-update', etc.
 
     // GET /pricing/company-settings - Get company pricing settings
     if (req.method === 'GET' && (resource === 'company-settings' || resource === 'settings')) {

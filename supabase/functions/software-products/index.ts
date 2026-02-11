@@ -41,7 +41,8 @@ export default async function handler(req: Request) {
 
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    const productId = pathParts[1]; // Get ID from path if present
+    // Server strips function name, so /software-products/import becomes /import
+    const productId = pathParts[0]; // Get ID or action from path
 
     // GET /software-products - List all software products
     if (req.method === 'GET' && !productId) {
