@@ -1,8 +1,8 @@
 /**
- * Leads Page - Dedicated lead management with lead-specific KPIs, columns, and actions.
+ * Leads Page - Lead capture & qualification management.
  *
- * Designed for handling thousands of leads with server-side search,
- * filtering, sorting, and pagination.
+ * Sales reps capture new leads, track initial outreach, score/qualify,
+ * and convert to prospects. Managers see team-level lead flow and conversion metrics.
  */
 
 import { useState, useMemo } from 'react';
@@ -38,22 +38,20 @@ import {
   FilterDef,
   StatusConfig,
   ActionDef,
-  normalizeRecord,
+  QuickFilterTab,
 } from '@/components/crm/BusinessRecordsDataTable';
 import {
   UserPlus,
   Target,
-  TrendingUp,
-  DollarSign,
-  Clock,
-  ArrowRightCircle,
-  Pencil,
-  Trash2,
   Phone,
   Mail,
+  Clock,
+  ArrowRightCircle,
+  Trash2,
   Flame,
   Thermometer,
   Snowflake,
+  Plus,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -68,9 +66,6 @@ const leadFormSchema = z.object({
   primaryContactPhone: z.string().optional(),
   industry: z.string().optional(),
   leadSource: z.string().default('website'),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
-  interestLevel: z.string().optional(),
-  estimatedAmount: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -139,75 +134,62 @@ const leadColumns: ColumnDef[] = [
     ),
   },
   {
+    key: 'primaryContactName',
+    label: 'Contact',
+    sortable: true,
+    render: (value, record) => {
+      if (!value) return '—';
+      return (
+        <div>
+          <p className="truncate max-w-[160px]">{value}</p>
+          {record.primaryContactEmail && (
+            <a
+              href={`mailto:${record.primaryContactEmail}`}
+              className="text-xs text-blue-600 hover:underline truncate block"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {record.primaryContactEmail}
+            </a>
+          )}
+        </div>
+      );
+    },
+  },
+  {
     key: 'status',
     label: 'Status',
     sortable: true,
   },
   {
-    key: 'interestLevel',
-    label: 'Interest',
+    key: 'industry',
+    label: 'Industry',
     sortable: true,
-    render: (value) => {
-      if (!value) return '—';
-      const config: Record<string, { icon: any; color: string }> = {
-        hot: { icon: Flame, color: 'text-red-500' },
-        warm: { icon: Thermometer, color: 'text-amber-500' },
-        cold: { icon: Snowflake, color: 'text-blue-400' },
-      };
-      const c = config[value.toLowerCase()];
-      if (!c) return <span className="capitalize">{value}</span>;
-      const Icon = c.icon;
-      return (
-        <span className={`flex items-center gap-1 capitalize ${c.color}`}>
-          <Icon className="h-3.5 w-3.5" />
-          {value}
-        </span>
-      );
+    render: (value) => <span className="truncate max-w-[120px] block text-sm">{value || '—'}</span>,
+  },
+  {
+    key: 'city',
+    label: 'Location',
+    render: (value, record) => {
+      const location = [record.city, record.state].filter(Boolean).join(', ');
+      return <span className="text-sm">{location || '—'}</span>;
     },
-  },
-  {
-    key: 'leadSource',
-    label: 'Source',
-    sortable: true,
-    render: (value) => (
-      <span className="capitalize text-sm">{value?.replace(/_/g, ' ') || '—'}</span>
-    ),
-  },
-  {
-    key: 'priority',
-    label: 'Priority',
-    sortable: true,
-    render: (value) => {
-      const colors: Record<string, string> = {
-        urgent: 'bg-red-100 text-red-800 border-red-200',
-        high: 'bg-orange-100 text-orange-800 border-orange-200',
-        medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        low: 'bg-gray-100 text-gray-600 border-gray-200',
-      };
-      return (
-        <Badge variant="outline" className={`text-xs capitalize ${colors[value] || ''}`}>
-          {value || '—'}
-        </Badge>
-      );
-    },
-  },
-  {
-    key: 'estimatedAmount',
-    label: 'Est. Value',
-    sortable: true,
-    render: (value) =>
-      value ? <span className="font-medium">${Number(value).toLocaleString()}</span> : '—',
-  },
-  {
-    key: 'assignedSalesRep',
-    label: 'Assigned To',
-    render: (value) => value || '—',
   },
   {
     key: 'createdAt',
     label: 'Created',
     sortable: true,
-    render: (value) => (value ? new Date(value).toLocaleDateString() : '—'),
+    render: (value) => {
+      if (!value) return '—';
+      const date = new Date(value);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays}d ago`;
+      if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+      return date.toLocaleDateString();
+    },
   },
 ];
 
@@ -229,32 +211,6 @@ const leadFilters: FilterDef[] = [
       { value: 'closed_lost', label: 'Lost' },
     ],
   },
-  {
-    key: 'priority',
-    label: 'Priority',
-    serverKey: 'priority',
-    options: [
-      { value: 'urgent', label: 'Urgent' },
-      { value: 'high', label: 'High' },
-      { value: 'medium', label: 'Medium' },
-      { value: 'low', label: 'Low' },
-    ],
-  },
-  {
-    key: 'leadSource',
-    label: 'Source',
-    serverKey: 'leadSource',
-    options: [
-      { value: 'website', label: 'Website' },
-      { value: 'referral', label: 'Referral' },
-      { value: 'cold_call', label: 'Cold Call' },
-      { value: 'trade_show', label: 'Trade Show' },
-      { value: 'social_media', label: 'Social Media' },
-      { value: 'email_campaign', label: 'Email Campaign' },
-      { value: 'partner', label: 'Partner' },
-      { value: 'other', label: 'Other' },
-    ],
-  },
 ];
 
 // ─── Main Component ─────────────────────────────────────────────────────────
@@ -274,9 +230,6 @@ export default function LeadsPage() {
       primaryContactPhone: '',
       industry: '',
       leadSource: 'website',
-      priority: 'medium' as const,
-      interestLevel: '',
-      estimatedAmount: '',
       notes: '',
     },
   });
@@ -287,27 +240,44 @@ export default function LeadsPage() {
     queryKey: ['/api/companies/stats', 'lead'],
     enabled: isAuthenticated,
     queryFn: async () => {
-      const resp = await apiRequest('/api/companies?recordType=Lead&limit=1&offset=0', 'GET');
-      const total = resp?.pagination?.total || 0;
-
-      const [newResp, contactedResp, qualifiedResp, proposalResp] = await Promise.all([
+      const [totalResp, newResp, contactedResp, qualifiedResp] = await Promise.all([
+        apiRequest('/api/companies?recordType=Lead&limit=1&offset=0', 'GET'),
         apiRequest('/api/companies?recordType=Lead&status=new&limit=1&offset=0', 'GET'),
         apiRequest('/api/companies?recordType=Lead&status=contacted&limit=1&offset=0', 'GET'),
         apiRequest('/api/companies?recordType=Lead&status=qualified&limit=1&offset=0', 'GET'),
-        apiRequest('/api/companies?recordType=Lead&status=proposal_sent&limit=1&offset=0', 'GET'),
       ]);
 
       return {
-        total,
+        total: totalResp?.pagination?.total || 0,
         newCount: newResp?.pagination?.total || 0,
         contactedCount: contactedResp?.pagination?.total || 0,
-        qualifiedCount:
-          (qualifiedResp?.pagination?.total || 0) + (proposalResp?.pagination?.total || 0),
-        pipeline: 0,
+        qualifiedCount: qualifiedResp?.pagination?.total || 0,
       };
     },
     staleTime: 60_000,
   });
+
+  // ─── Quick Filter Tabs ──────────────────────────────────────────────────
+
+  const quickFilterTabs: QuickFilterTab[] = useMemo(
+    () => [
+      { key: 'all', label: 'All', filter: {}, count: stats?.total },
+      { key: 'new', label: 'New', filter: { status: 'new' }, count: stats?.newCount },
+      {
+        key: 'contacted',
+        label: 'Contacted',
+        filter: { status: 'contacted' },
+        count: stats?.contactedCount,
+      },
+      {
+        key: 'qualified',
+        label: 'Qualified',
+        filter: { status: 'qualified' },
+        count: stats?.qualifiedCount,
+      },
+    ],
+    [stats],
+  );
 
   // ─── Create Lead Mutation ─────────────────────────────────────────────────
 
@@ -364,6 +334,30 @@ export default function LeadsPage() {
 
   const rowActions: ActionDef[] = [
     {
+      key: 'call',
+      label: 'Log Call',
+      icon: Phone,
+      onClick: (record) => {
+        if (record.primaryContactPhone) {
+          window.open(`tel:${record.primaryContactPhone}`, '_self');
+        } else {
+          toast({ title: 'No Phone', description: 'No phone number on file.' });
+        }
+      },
+    },
+    {
+      key: 'email',
+      label: 'Send Email',
+      icon: Mail,
+      onClick: (record) => {
+        if (record.primaryContactEmail) {
+          window.open(`mailto:${record.primaryContactEmail}`, '_self');
+        } else {
+          toast({ title: 'No Email', description: 'No email address on file.' });
+        }
+      },
+    },
+    {
       key: 'convert-prospect',
       label: 'Convert to Prospect',
       icon: ArrowRightCircle,
@@ -390,7 +384,7 @@ export default function LeadsPage() {
     <MainLayout title="Leads" description="Track and manage your sales leads pipeline">
       <div className="space-y-4 sm:space-y-6">
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
@@ -438,20 +432,9 @@ export default function LeadsPage() {
               <p className="text-xs text-muted-foreground">Ready to advance</p>
             </CardContent>
           </Card>
-
-          <Card className="col-span-2 sm:col-span-1">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pipeline Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${(stats?.pipeline || 0).toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Total estimated</p>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Data Table */}
+        {/* Data Table with Quick Filter Tabs */}
         <BusinessRecordsDataTable
           recordType="lead"
           title="Leads"
@@ -464,8 +447,17 @@ export default function LeadsPage() {
           detailPath="/customers"
           emptyTitle="No leads yet"
           emptyDescription="Start building your pipeline by adding your first lead"
+          quickFilterTabs={quickFilterTabs}
         />
       </div>
+
+      {/* Mobile FAB */}
+      <Button
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg md:hidden z-50"
+        onClick={() => setIsCreateOpen(true)}
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
 
       {/* Create Lead Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -573,67 +565,6 @@ export default function LeadsPage() {
                           <SelectItem value="other">Other</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="priority"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Priority</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="urgent">Urgent</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="interestLevel"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Interest Level</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ''}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select level" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="hot">Hot</SelectItem>
-                          <SelectItem value="warm">Warm</SelectItem>
-                          <SelectItem value="cold">Cold</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="estimatedAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Estimated Deal Value</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="50000" {...field} />
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

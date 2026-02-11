@@ -1,18 +1,18 @@
 /**
- * Prospects Page - Dedicated prospect management with prospect-specific KPIs,
- * columns, and actions.
+ * Prospects Page - Visual pipeline management.
  *
- * Prospects are qualified leads actively being worked through the sales pipeline.
+ * Sales reps drag prospects through stages. Managers see total pipeline value,
+ * stage distribution, and forecast. Dual view: Pipeline Board (Kanban) + List View.
  */
 
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -40,18 +40,17 @@ import {
   ActionDef,
   normalizeRecord,
 } from '@/components/crm/BusinessRecordsDataTable';
+import { PipelineBoard, PIPELINE_STAGES } from '@/components/crm/PipelineBoard';
 import {
   Users,
   Target,
   TrendingUp,
-  DollarSign,
-  Percent,
+  CalendarClock,
+  Kanban,
+  List,
   ArrowRightCircle,
   Trash2,
-  Flame,
-  Thermometer,
-  Snowflake,
-  CalendarClock,
+  Plus,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -66,11 +65,6 @@ const prospectFormSchema = z.object({
   primaryContactPhone: z.string().optional(),
   industry: z.string().optional(),
   salesStage: z.string().optional(),
-  interestLevel: z.string().optional(),
-  estimatedAmount: z.string().optional(),
-  probability: z.string().optional(),
-  assignedSalesRep: z.string().optional(),
-  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   notes: z.string().optional(),
 });
 
@@ -84,6 +78,12 @@ const prospectStatusConfigs: StatusConfig[] = [
     className: 'bg-emerald-500 hover:bg-emerald-600 text-white',
   },
   {
+    value: 'demo_scheduled',
+    label: 'Demo Scheduled',
+    variant: 'default',
+    className: 'bg-indigo-500 hover:bg-indigo-600 text-white',
+  },
+  {
     value: 'proposal_sent',
     label: 'Proposal Sent',
     variant: 'default',
@@ -94,12 +94,6 @@ const prospectStatusConfigs: StatusConfig[] = [
     label: 'Negotiation',
     variant: 'default',
     className: 'bg-purple-500 hover:bg-purple-600 text-white',
-  },
-  {
-    value: 'demo_scheduled',
-    label: 'Demo Scheduled',
-    variant: 'default',
-    className: 'bg-indigo-500 hover:bg-indigo-600 text-white',
   },
   {
     value: 'contract_review',
@@ -117,7 +111,7 @@ const prospectStatusConfigs: StatusConfig[] = [
   { value: 'on_hold', label: 'On Hold', variant: 'secondary' },
 ];
 
-// ─── Column Definitions ─────────────────────────────────────────────────────
+// ─── Column Definitions (List View) ─────────────────────────────────────────
 
 const prospectColumns: ColumnDef[] = [
   {
@@ -134,110 +128,81 @@ const prospectColumns: ColumnDef[] = [
     ),
   },
   {
+    key: 'primaryContactName',
+    label: 'Contact',
+    sortable: true,
+    render: (value, record) => {
+      if (!value) return '—';
+      return (
+        <div>
+          <p className="truncate max-w-[160px]">{value}</p>
+          {record.primaryContactEmail && (
+            <a
+              href={`mailto:${record.primaryContactEmail}`}
+              className="text-xs text-blue-600 hover:underline truncate block"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {record.primaryContactEmail}
+            </a>
+          )}
+        </div>
+      );
+    },
+  },
+  {
     key: 'status',
-    label: 'Status',
+    label: 'Stage',
     sortable: true,
   },
   {
-    key: 'salesStage',
-    label: 'Sales Stage',
+    key: 'industry',
+    label: 'Industry',
     sortable: true,
-    render: (value) => (
-      <span className="capitalize text-sm">{value?.replace(/_/g, ' ') || '—'}</span>
-    ),
+    render: (value) => <span className="truncate max-w-[120px] block text-sm">{value || '—'}</span>,
   },
   {
-    key: 'interestLevel',
-    label: 'Interest',
+    key: 'city',
+    label: 'Location',
+    render: (value, record) => {
+      const location = [record.city, record.state].filter(Boolean).join(', ');
+      return <span className="text-sm">{location || '—'}</span>;
+    },
+  },
+  {
+    key: 'createdAt',
+    label: 'Created',
     sortable: true,
     render: (value) => {
       if (!value) return '—';
-      const config: Record<string, { icon: any; color: string }> = {
-        hot: { icon: Flame, color: 'text-red-500' },
-        warm: { icon: Thermometer, color: 'text-amber-500' },
-        cold: { icon: Snowflake, color: 'text-blue-400' },
-      };
-      const c = config[value.toLowerCase()];
-      if (!c) return <span className="capitalize">{value}</span>;
-      const Icon = c.icon;
-      return (
-        <span className={`flex items-center gap-1 capitalize ${c.color}`}>
-          <Icon className="h-3.5 w-3.5" />
-          {value}
-        </span>
-      );
+      const date = new Date(value);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays}d ago`;
+      if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+      return date.toLocaleDateString();
     },
-  },
-  {
-    key: 'estimatedAmount',
-    label: 'Deal Value',
-    sortable: true,
-    render: (value) =>
-      value ? <span className="font-medium">${Number(value).toLocaleString()}</span> : '—',
-  },
-  {
-    key: 'probability',
-    label: 'Win %',
-    sortable: true,
-    render: (value) => {
-      if (!value && value !== 0) return '—';
-      const num = Number(value);
-      const color = num >= 70 ? 'text-green-600' : num >= 40 ? 'text-amber-600' : 'text-red-500';
-      return <span className={`font-medium ${color}`}>{num}%</span>;
-    },
-  },
-  {
-    key: 'priority',
-    label: 'Priority',
-    sortable: true,
-    render: (value) => {
-      const colors: Record<string, string> = {
-        urgent: 'bg-red-100 text-red-800 border-red-200',
-        high: 'bg-orange-100 text-orange-800 border-orange-200',
-        medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        low: 'bg-gray-100 text-gray-600 border-gray-200',
-      };
-      return (
-        <Badge variant="outline" className={`text-xs capitalize ${colors[value] || ''}`}>
-          {value || '—'}
-        </Badge>
-      );
-    },
-  },
-  {
-    key: 'assignedSalesRep',
-    label: 'Sales Rep',
-    render: (value) => value || '—',
   },
 ];
 
-// ─── Filter Definitions ─────────────────────────────────────────────────────
+// ─── Filter Definitions (List View) ─────────────────────────────────────────
 
 const prospectFilters: FilterDef[] = [
   {
     key: 'status',
-    label: 'Status',
+    label: 'Stage',
     serverKey: 'status',
     options: [
       { value: 'qualified', label: 'Qualified' },
+      { value: 'demo_scheduled', label: 'Demo Scheduled' },
       { value: 'proposal_sent', label: 'Proposal Sent' },
       { value: 'negotiation', label: 'Negotiation' },
-      { value: 'demo_scheduled', label: 'Demo Scheduled' },
       { value: 'contract_review', label: 'Contract Review' },
       { value: 'closed_won', label: 'Won' },
       { value: 'closed_lost', label: 'Lost' },
       { value: 'on_hold', label: 'On Hold' },
-    ],
-  },
-  {
-    key: 'priority',
-    label: 'Priority',
-    serverKey: 'priority',
-    options: [
-      { value: 'urgent', label: 'Urgent' },
-      { value: 'high', label: 'High' },
-      { value: 'medium', label: 'Medium' },
-      { value: 'low', label: 'Low' },
     ],
   },
 ];
@@ -248,7 +213,9 @@ export default function ProspectsPage() {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
 
   const form = useForm({
     resolver: zodResolver(prospectFormSchema),
@@ -259,11 +226,6 @@ export default function ProspectsPage() {
       primaryContactPhone: '',
       industry: '',
       salesStage: '',
-      interestLevel: '',
-      estimatedAmount: '',
-      probability: '50',
-      assignedSalesRep: '',
-      priority: 'medium' as const,
       notes: '',
     },
   });
@@ -274,10 +236,8 @@ export default function ProspectsPage() {
     queryKey: ['/api/companies/stats', 'prospect'],
     enabled: isAuthenticated,
     queryFn: async () => {
-      const resp = await apiRequest('/api/companies?recordType=Prospect&limit=1&offset=0', 'GET');
-      const total = resp?.pagination?.total || 0;
-
-      const [qualifiedResp, proposalResp, negotiationResp] = await Promise.all([
+      const [totalResp, qualifiedResp, proposalResp, negotiationResp] = await Promise.all([
+        apiRequest('/api/companies?recordType=Prospect&limit=1&offset=0', 'GET'),
         apiRequest('/api/companies?recordType=Prospect&status=qualified&limit=1&offset=0', 'GET'),
         apiRequest(
           '/api/companies?recordType=Prospect&status=proposal_sent&limit=1&offset=0',
@@ -287,16 +247,70 @@ export default function ProspectsPage() {
       ]);
 
       return {
-        total,
+        total: totalResp?.pagination?.total || 0,
         qualifiedCount: qualifiedResp?.pagination?.total || 0,
         proposalCount: proposalResp?.pagination?.total || 0,
         negotiationCount: negotiationResp?.pagination?.total || 0,
-        pipelineTotal: 0,
-        avgDealValue: 0,
       };
     },
     staleTime: 60_000,
   });
+
+  // ─── Pipeline Data (all prospects for Kanban) ───────────────────────────
+
+  const { data: pipelineData } = useQuery({
+    queryKey: ['/api/companies', 'prospect', 'pipeline'],
+    enabled: isAuthenticated && viewMode === 'board',
+    queryFn: async () => {
+      const resp = await apiRequest('/api/companies?recordType=Prospect&limit=500&offset=0', 'GET');
+      const rawRecords = resp?.records || resp?.data || [];
+      return rawRecords.map(normalizeRecord);
+    },
+    staleTime: 30_000,
+  });
+
+  const pipelineRecords = pipelineData || [];
+
+  // ─── Stage Change Mutation (drag-and-drop) ──────────────────────────────
+
+  const stageChangeMutation = useMutation({
+    mutationFn: ({ recordId, newStage }: { recordId: string; newStage: string }) =>
+      apiRequest(`/api/companies/${recordId}`, 'PATCH', {
+        activity: newStage,
+      }),
+    onMutate: async ({ recordId, newStage }) => {
+      // Optimistic update
+      await queryClient.cancelQueries({ queryKey: ['/api/companies', 'prospect', 'pipeline'] });
+      const previousData = queryClient.getQueryData(['/api/companies', 'prospect', 'pipeline']);
+
+      queryClient.setQueryData(
+        ['/api/companies', 'prospect', 'pipeline'],
+        (old: any[] | undefined) =>
+          old?.map((record) =>
+            record.id === recordId ? { ...record, status: newStage, activity: newStage } : record,
+          ),
+      );
+
+      return { previousData };
+    },
+    onError: (_err, _vars, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(['/api/companies', 'prospect', 'pipeline'], context.previousData);
+      }
+      toast({ title: 'Error', description: 'Failed to update stage.', variant: 'destructive' });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+    },
+  });
+
+  const handleStageChange = useCallback(
+    (recordId: string, newStage: string) => {
+      stageChangeMutation.mutate({ recordId, newStage });
+    },
+    [stageChangeMutation],
+  );
 
   // ─── Create Prospect Mutation ─────────────────────────────────────────────
 
@@ -349,7 +363,7 @@ export default function ProspectsPage() {
     },
   });
 
-  // ─── Row Actions ──────────────────────────────────────────────────────────
+  // ─── Row Actions (List View) ──────────────────────────────────────────────
 
   const rowActions: ActionDef[] = [
     {
@@ -373,13 +387,33 @@ export default function ProspectsPage() {
     },
   ];
 
+  // ─── Navigation helpers for Pipeline Board ────────────────────────────────
+
+  const handleViewDetail = useCallback(
+    (record: any) => {
+      const slug = record.urlSlug || record.url_slug || record.id;
+      navigate(`/customers/${slug}`);
+    },
+    [navigate],
+  );
+
+  const handleDelete = useCallback(
+    (record: any) => {
+      apiRequest(`/api/companies/${record.id}`, 'DELETE').then(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+        toast({ title: 'Deleted', description: 'Prospect has been removed.' });
+      });
+    },
+    [queryClient, toast],
+  );
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <MainLayout title="Prospects" description="Manage qualified prospects in your sales pipeline">
       <div className="space-y-4 sm:space-y-6">
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Prospects</CardTitle>
@@ -429,38 +463,72 @@ export default function ProspectsPage() {
               <p className="text-xs text-muted-foreground">Closing soon</p>
             </CardContent>
           </Card>
-
-          <Card className="col-span-2 sm:col-span-1">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pipeline Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                ${(stats?.pipelineTotal || 0).toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Avg ${(stats?.avgDealValue || 0).toLocaleString()}/deal
-              </p>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Data Table */}
-        <BusinessRecordsDataTable
-          recordType="prospect"
-          title="Prospects"
-          columns={prospectColumns}
-          filters={prospectFilters}
-          statusConfigs={prospectStatusConfigs}
-          rowActions={rowActions}
-          onCreateNew={() => setIsCreateOpen(true)}
-          createLabel="Add Prospect"
-          detailPath="/customers"
-          emptyTitle="No prospects yet"
-          emptyDescription="Prospects appear here when leads are qualified or you can create them directly"
-        />
+        {/* View Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+            <Button
+              variant={viewMode === 'board' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setViewMode('board')}
+            >
+              <Kanban className="h-4 w-4" />
+              <span className="hidden sm:inline">Pipeline</span>
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+              <span className="hidden sm:inline">List</span>
+            </Button>
+          </div>
+
+          <Button size="default" className="gap-2" onClick={() => setIsCreateOpen(true)}>
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Add Prospect</span>
+          </Button>
+        </div>
+
+        {/* Pipeline Board View */}
+        {viewMode === 'board' && (
+          <PipelineBoard
+            records={pipelineRecords}
+            onStageChange={handleStageChange}
+            onViewDetail={handleViewDetail}
+            onConvertToCustomer={(record) => convertToCustomerMutation.mutate(record)}
+            onDelete={handleDelete}
+          />
+        )}
+
+        {/* List View */}
+        {viewMode === 'list' && (
+          <BusinessRecordsDataTable
+            recordType="prospect"
+            title="Prospects"
+            columns={prospectColumns}
+            filters={prospectFilters}
+            statusConfigs={prospectStatusConfigs}
+            rowActions={rowActions}
+            createLabel="Add Prospect"
+            detailPath="/customers"
+            emptyTitle="No prospects yet"
+            emptyDescription="Prospects appear here when leads are qualified or you can create them directly"
+          />
+        )}
       </div>
+
+      {/* Mobile FAB */}
+      <Button
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg md:hidden z-50"
+        onClick={() => setIsCreateOpen(true)}
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
 
       {/* Create Prospect Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -550,7 +618,7 @@ export default function ProspectsPage() {
                   name="salesStage"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Sales Stage</FormLabel>
+                      <FormLabel>Pipeline Stage</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || ''}>
                         <FormControl>
                           <SelectTrigger>
@@ -559,101 +627,12 @@ export default function ProspectsPage() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="qualified">Qualified</SelectItem>
+                          <SelectItem value="demo_scheduled">Demo Scheduled</SelectItem>
                           <SelectItem value="proposal_sent">Proposal Sent</SelectItem>
                           <SelectItem value="negotiation">Negotiation</SelectItem>
-                          <SelectItem value="demo_scheduled">Demo Scheduled</SelectItem>
                           <SelectItem value="contract_review">Contract Review</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="interestLevel"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Interest Level</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ''}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select level" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="hot">Hot</SelectItem>
-                          <SelectItem value="warm">Warm</SelectItem>
-                          <SelectItem value="cold">Cold</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="priority"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Priority</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="urgent">Urgent</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="estimatedAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Estimated Deal Value</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="50000" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="probability"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Win Probability (%)</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="0" max="100" placeholder="50" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="assignedSalesRep"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Assigned Sales Rep</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Sales rep name" {...field} />
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
