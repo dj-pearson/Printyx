@@ -12,6 +12,7 @@ import {
   useKeyboardNavigation,
 } from '@/components/layout/keyboard-shortcuts-dialog';
 import { SkipNavigation } from '@/components/accessibility/SkipNavigation';
+import { AccessibilityWidget } from '@/components/accessibility/AccessibilityWidget';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -94,6 +95,9 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
           <MobileBottomNav />
         </div>
       </div>
+
+      {/* Accessibility Widget - Available on all pages for WCAG 2.1 AA compliance */}
+      <AccessibilityWidget />
     </SidebarProvider>
   );
 }
