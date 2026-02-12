@@ -1092,3 +1092,35 @@ import { requireAuth } from '../auth-setup';
 
 ---
 
+## Iteration 27 - US-053: Frontend route guards for admin pages
+**Started**: 2026-02-12
+**Status**: COMPLETE
+
+### What Was Done:
+1. Created `client/src/components/auth/RouteGuard.tsx` with:
+   - `RouteGuard` component: wraps children with role level check (default minLevel=7)
+   - `AdminRouteGuard` component: takes component prop, enforces level >= 7
+   - `AccessDeniedPage` internal component: shows shield icon, required level info, user's level, "Back to Dashboard" button
+   - Platform admins (`isPlatformUser`) bypass all checks
+2. Updated `client/src/App.tsx`:
+   - Imported `AdminRouteGuard` from `@/components/auth/RouteGuard`
+   - Wrapped 22 previously unprotected admin routes with `AdminRouteGuard`
+   - Routes protected: /admin-command-center, /root-admin-signups-crm, /root-admin/seo, all 12 /platform-crm/* routes, /admin/system-security, /admin/database-updater, /admin/system-settings, /admin/platform-analytics, /admin/knowledge-base (3 routes)
+
+### Build Verification:
+- `npm run build` (Vite): PASS
+- Unit tests (1174 passed, 28 pre-existing failures, 66 skipped): PASS (no regressions)
+
+### Files Created:
+- client/src/components/auth/RouteGuard.tsx - RouteGuard + AdminRouteGuard components
+
+### Files Modified:
+- client/src/App.tsx - Added AdminRouteGuard import, wrapped 22 admin routes
+- prd.json - Marked US-053 as passes: true
+
+### Story Status:
+- US-053: **COMPLETE**
+- passes: true
+
+---
+

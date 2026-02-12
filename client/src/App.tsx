@@ -824,37 +824,66 @@ function Router() {
           <Route path="/admin-hub">
             {() => <ProtectedRoute component={AdminHub} platformOnly />}
           </Route>
-          <Route path="/admin-command-center" component={AdminCommandCenter} />
+          <Route path="/admin-command-center">
+            {() => <AdminRouteGuard component={AdminCommandCenter} />}
+          </Route>
           <Route path="/root-admin-dashboard">
             {() => <ProtectedRoute component={RootAdminDashboard} platformOnly />}
           </Route>
-          <Route path="/root-admin-signups-crm" component={RootAdminSignupsCRM} />
-          <Route path="/root-admin/seo" component={RootAdminSEO} />
+          <Route path="/root-admin-signups-crm">
+            {() => <AdminRouteGuard component={RootAdminSignupsCRM} />}
+          </Route>
+          <Route path="/root-admin/seo">{() => <AdminRouteGuard component={RootAdminSEO} />}</Route>
           <Route path="/seo" component={SEODashboard} />
 
-          {/* Platform CRM Routes - Full tenant lifecycle management */}
-          <Route path="/platform-crm" component={PlatformCRMDashboard} />
-          <Route path="/platform-crm/dashboard" component={PlatformCRMDashboard} />
-          <Route
-            path="/platform-crm/business-records/:id"
-            component={PlatformBusinessRecordDetail}
-          />
-          <Route path="/platform-crm/business-records" component={PlatformBusinessRecords} />
-          <Route path="/platform-crm/deals/:id" component={PlatformDealDetail} />
-          <Route path="/platform-crm/pipeline" component={PlatformDealsPipeline} />
-          <Route path="/platform-crm/territories" component={PlatformTerritories} />
-          <Route path="/platform-crm/lead-scoring" component={PlatformLeadScoring} />
-          <Route path="/platform-crm/assignment-rules" component={PlatformAssignmentRules} />
-          <Route path="/platform-crm/customer-success" component={PlatformCustomerSuccess} />
-          <Route path="/platform-crm/analytics" component={PlatformAnalytics} />
-          <Route path="/platform-crm/cohort-analysis" component={PlatformCohortAnalysis} />
+          {/* Platform CRM Routes - Full tenant lifecycle management (admin-guarded) */}
+          <Route path="/platform-crm">
+            {() => <AdminRouteGuard component={PlatformCRMDashboard} />}
+          </Route>
+          <Route path="/platform-crm/dashboard">
+            {() => <AdminRouteGuard component={PlatformCRMDashboard} />}
+          </Route>
+          <Route path="/platform-crm/business-records/:id">
+            {() => <AdminRouteGuard component={PlatformBusinessRecordDetail} />}
+          </Route>
+          <Route path="/platform-crm/business-records">
+            {() => <AdminRouteGuard component={PlatformBusinessRecords} />}
+          </Route>
+          <Route path="/platform-crm/deals/:id">
+            {() => <AdminRouteGuard component={PlatformDealDetail} />}
+          </Route>
+          <Route path="/platform-crm/pipeline">
+            {() => <AdminRouteGuard component={PlatformDealsPipeline} />}
+          </Route>
+          <Route path="/platform-crm/territories">
+            {() => <AdminRouteGuard component={PlatformTerritories} />}
+          </Route>
+          <Route path="/platform-crm/lead-scoring">
+            {() => <AdminRouteGuard component={PlatformLeadScoring} />}
+          </Route>
+          <Route path="/platform-crm/assignment-rules">
+            {() => <AdminRouteGuard component={PlatformAssignmentRules} />}
+          </Route>
+          <Route path="/platform-crm/customer-success">
+            {() => <AdminRouteGuard component={PlatformCustomerSuccess} />}
+          </Route>
+          <Route path="/platform-crm/analytics">
+            {() => <AdminRouteGuard component={PlatformAnalytics} />}
+          </Route>
+          <Route path="/platform-crm/cohort-analysis">
+            {() => <AdminRouteGuard component={PlatformCohortAnalysis} />}
+          </Route>
 
           {/* Platform Admin Routes - RBAC-protected, no /admin prefix needed */}
           <Route path="/admin/root-admin-security">
             {() => <ProtectedRoute component={RootAdminSecurity} platformOnly />}
           </Route>
-          <Route path="/admin/system-security" component={SystemSecurity} />
-          <Route path="/admin/database-updater" component={DatabaseUpdaterPage} />
+          <Route path="/admin/system-security">
+            {() => <AdminRouteGuard component={SystemSecurity} />}
+          </Route>
+          <Route path="/admin/database-updater">
+            {() => <AdminRouteGuard component={DatabaseUpdaterPage} />}
+          </Route>
           <Route path="/admin/tenant-management">
             {() => <ProtectedRoute component={TenantManagement} platformOnly />}
           </Route>
@@ -867,11 +896,21 @@ function Router() {
               />
             )}
           </Route>
-          <Route path="/admin/system-settings" component={Settings} />
-          <Route path="/admin/platform-analytics" component={AdvancedAnalyticsDashboard} />
-          <Route path="/admin/knowledge-base" component={KnowledgeBaseAdmin} />
-          <Route path="/admin/knowledge-base/new" component={ArticleEditor} />
-          <Route path="/admin/knowledge-base/edit/:id" component={ArticleEditor} />
+          <Route path="/admin/system-settings">
+            {() => <AdminRouteGuard component={Settings} />}
+          </Route>
+          <Route path="/admin/platform-analytics">
+            {() => <AdminRouteGuard component={AdvancedAnalyticsDashboard} />}
+          </Route>
+          <Route path="/admin/knowledge-base">
+            {() => <AdminRouteGuard component={KnowledgeBaseAdmin} />}
+          </Route>
+          <Route path="/admin/knowledge-base/new">
+            {() => <AdminRouteGuard component={ArticleEditor} />}
+          </Route>
+          <Route path="/admin/knowledge-base/edit/:id">
+            {() => <AdminRouteGuard component={ArticleEditor} />}
+          </Route>
           <Route path="/platform-configuration">
             {() => <ProtectedRoute component={PlatformConfiguration} platformOnly />}
           </Route>
