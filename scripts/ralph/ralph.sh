@@ -90,7 +90,7 @@ while [ $CURRENT_ITERATION -lt $MAX_ITERATIONS ]; do
     fi
     
     echo "🧠 Running Claude Code..."
-    claude-code "$(cat $PROMPT_FILE)"
+    claude "$(cat $PROMPT_FILE)"
   else
     PROMPT_FILE="scripts/ralph/prompt.md"
     if [ ! -f "$PROMPT_FILE" ]; then

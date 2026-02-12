@@ -1,0 +1,1070 @@
+{
+  "project": "Printyx Enterprise Production Readiness",
+  "branchName": "ralph/enterprise-production-readiness",
+  "description": "Make Printyx print shop management SaaS enterprise-grade, professional, and production-ready. Platform: React 18 + TypeScript + Express + PostgreSQL (Drizzle ORM) + Supabase. Architecture: multi-tenant 4-tier hierarchy (Platform > Company > Regional > Location), 8-level RBAC, 213 pages, 127 route files, 91 services, 51 schema files. Quality checks: npm run check (typecheck), npm run test (unit tests), npm run lint (eslint), npm run build (vite build).",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Set up Drizzle migration system replacing db:push",
+      "description": "As a platform operator, I need proper database migrations instead of db:push so schema changes are versioned, auditable, and safely deployable to production without data loss.",
+      "acceptanceCriteria": [
+        "Configure drizzle-kit to generate migration SQL files in a drizzle/migrations/ directory",
+        "drizzle-kit migrate applies pending migrations in order",
+        "Add npm scripts: db:generate, db:migrate, db:migrate:status",
+        "Create an initial baseline migration from the current schema in shared/schema.ts",
+        "Add a migration lockfile pattern to prevent concurrent migrations in production",
+        "Update the Database section in CLAUDE.md with new migration workflow replacing db:push references",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Currently using db:push which is not safe for production. Drizzle supports generate+migrate workflow. Main schema: shared/schema.ts (293KB) with 43 additional files in shared/*-schema.ts. Forecasting DB config: drizzle.forecasting.config.ts. See drizzle.config.ts for current setup."
+    },
+    {
+      "id": "US-002",
+      "title": "Add comprehensive test infrastructure with factories and helpers",
+      "description": "As a developer, I need proper test infrastructure with coverage reporting, test utilities, and factory functions so writing tests is fast and consistent.",
+      "acceptanceCriteria": [
+        "Create server/tests/helpers/test-utils.ts with: mock Express request/response factories, authenticated request helpers with JWT mock, tenant context helpers",
+        "Create server/tests/helpers/db-helpers.ts with: test database setup/teardown helpers, seed data factories for key entities (tenant, user, lead, customer, quote, order, invoice)",
+        "Create server/tests/helpers/auth-mocks.ts with: mock implementations for requireAuth, requireSupabaseAuth, protectedRoute that set req.user and req.supabaseUser",
+        "Configure vitest.config.ts with coverage provider and statements threshold of 50% for new files",
+        "Add npm script test:coverage:check that fails if coverage thresholds not met",
+        "Verify test infrastructure works by writing 3 smoke tests using the helpers",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Currently only ~13 unit test files in server/tests/unit/. vitest is configured. This infrastructure is prerequisite for US-008 through US-010 and US-028/US-039."
+    },
+    {
+      "id": "US-003",
+      "title": "Create standardized API error classes and global error handler",
+      "description": "As an API consumer, I need consistent error response format across all endpoints so error handling is predictable. The format must be: { message, code, details, requestId }.",
+      "acceptanceCriteria": [
+        "Create server/lib/api-errors.ts with: AppError base class, NotFoundError (404), ValidationError (400), AuthenticationError (401), AuthorizationError (403), ConflictError (409), RateLimitError (429) - each with HTTP status and error code",
+        "Create server/middleware/error-handler.ts global error handler that catches AppError instances and formats: { message, code, details, requestId }",
+        "Register error handler as the LAST middleware in server/index.ts (after all routes)",
+        "Error handler logs all 5xx errors with full stack trace using createModuleLogger",
+        "Error handler returns sanitized message for 5xx in production (no stack traces to client)",
+        "Update at least 5 route files to throw AppError subclasses instead of manual res.status().json()",
+        "Add unit tests for the error handler middleware covering each error type",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "server/utils/apiErrorHandler.ts exists with ErrorCodes enum and handleApiError() but is not adopted (0/174 routes use it). Build on or replace that foundation. CLAUDE.md documents the target format: { message, code, details, requestId }."
+    },
+    {
+      "id": "US-004",
+      "title": "Extract auth routes from monolithic routes.ts",
+      "description": "As a developer, I need auth-related routes extracted from the 13,197-line routes.ts into a dedicated module so the codebase is maintainable.",
+      "acceptanceCriteria": [
+        "Create server/routes-auth-core.ts containing all authentication and session routes extracted from routes.ts",
+        "Routes include: login, logout, signup, password reset, email verification, session management, MFA setup endpoints, /api/me, /api/auth/* paths",
+        "Export a registerAuthRoutes(app: Express) function following the existing route module pattern",
+        "Register the new route module in routes.ts via import and function call",
+        "Remove all extracted route handlers from routes.ts",
+        "All auth endpoints respond identically at the same paths with the same behavior",
+        "Typecheck passes: npm run check",
+        "Existing tests still pass: npm run test"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "routes.ts is 13,197 lines with 288 inline handlers. 124 modular route files already exist (server/routes-*.ts pattern). This is the first extraction story. Previous iteration (ROUTES-001) removed 7 duplicates and 211 lines."
+    },
+    {
+      "id": "US-005",
+      "title": "Extract CRM routes (leads, customers, contacts) from routes.ts",
+      "description": "As a developer, I need CRM routes extracted from routes.ts to continue the monolith decomposition.",
+      "acceptanceCriteria": [
+        "Create server/routes-crm-core.ts with all leads, customers, contacts, and business records route handlers from routes.ts",
+        "Include /api/leads*, /api/customers*, /api/contacts*, /api/business-records* routes",
+        "Export a registerCrmRoutes(app: Express) function",
+        "Register in routes.ts and remove all extracted handlers",
+        "All CRM API endpoints work identically at the same paths",
+        "Typecheck passes: npm run check",
+        "Existing tests still pass: npm run test"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "routes-business-records.ts already exists as a modular file. Check for overlap. The Unified Business Records pattern means leads and customers share the same table - be careful with route extraction."
+    },
+    {
+      "id": "US-006",
+      "title": "Extract dashboard, analytics, and billing routes from routes.ts",
+      "description": "As a developer, I need dashboard/analytics and billing routes extracted from routes.ts.",
+      "acceptanceCriteria": [
+        "Create server/routes-dashboards-core.ts with all /api/dashboard*, /api/kpi*, /api/analytics*, /api/widgets* handlers from routes.ts",
+        "Create server/routes-billing-core.ts with all /api/billing*, /api/subscriptions*, /api/invoices*, /api/payments*, /api/stripe* handlers from routes.ts",
+        "Both files export register functions following existing patterns",
+        "Register both in routes.ts and remove all extracted handlers",
+        "All endpoints work identically",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Billing may be mounted twice (consolidatedBillingRoutes + advancedBillingRoutes). Investigate and consolidate if appropriate."
+    },
+    {
+      "id": "US-007",
+      "title": "Complete routes.ts decomposition to under 500 lines",
+      "description": "As a developer, I need routes.ts to be a clean registry file that only imports and registers route modules, under 500 lines.",
+      "acceptanceCriteria": [
+        "All remaining business route handlers in routes.ts are extracted to appropriately named route modules",
+        "routes.ts contains only: imports, middleware setup, route module registration calls, and the catch-all SPA handler",
+        "routes.ts is under 500 lines total",
+        "Every extracted module follows the pattern: export function registerXxxRoutes(app: Express)",
+        "All API endpoints work identically at the same paths",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "After US-004 through US-006, extract whatever remains. Categories may include: pricing (18 handlers), user (8), seo (7), security-compliance (6), settings, platform management, etc. The goal is routes.ts as a pure registry."
+    },
+    {
+      "id": "US-008",
+      "title": "Add unit tests for auth middleware and helpers",
+      "description": "As a developer, I need the authentication middleware thoroughly tested since it protects every route in the system.",
+      "acceptanceCriteria": [
+        "Tests for server/middleware/supabase-auth.ts: valid JWT, expired JWT, missing token, malformed token, tenant extraction from app_metadata",
+        "Tests for server/utils/auth-helpers.ts: getUserId, getTenantId, isAuthenticated, isPlatformAdmin for JWT and session fallback sources",
+        "Tests for server/replitAuth.ts: requireAuth middleware with session fallback behavior",
+        "Tests for server/middleware/enhanced-rbac-middleware.ts: permission checking with requirePermission, role hierarchy enforcement, scope filtering (own, team, all)",
+        "At least 30 test cases covering positive and negative paths",
+        "All tests pass: npm run test",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Uses test helpers from US-002. Auth middleware files: server/middleware/supabase-auth.ts, server/replitAuth.ts, server/middleware/enhanced-rbac-middleware.ts, server/utils/auth-helpers.ts. Some tests already exist from previous work (tenant validation has 13 tests, admin detection has 37 tests)."
+    },
+    {
+      "id": "US-009",
+      "title": "Add unit tests for tenant isolation and multi-tenancy",
+      "description": "As a security auditor, I need tests proving tenant isolation is enforced across all data access patterns.",
+      "acceptanceCriteria": [
+        "Tests for server/middleware/tenancy.ts: tenant resolution from x-tenant-id header, JWT app_metadata.tenantId, and session fallback; rejection when all sources missing",
+        "Tests for server/middleware/hierarchical-query-builder.ts: query scoping at platform, company, regional, and location hierarchy levels",
+        "Tests for server/middleware/requireTenant.ts: tenant requirement enforcement and 401 on missing tenant",
+        "Test demonstrating that a request with Tenant A context cannot access Tenant B data via the query builder",
+        "At least 20 test cases",
+        "All tests pass: npm run test",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Tenant resolution priority: x-tenant-id header > JWT app_metadata.tenantId > Session. The 4-tier hierarchy (Platform > Company > Regional > Location) affects query scoping. Previous audit (SVC-011) confirmed 74/91 services have proper tenantId handling."
+    },
+    {
+      "id": "US-010",
+      "title": "Add unit tests for billing and subscription services",
+      "description": "As a developer, I need billing logic tested to prevent revenue-impacting bugs in the Stripe integration.",
+      "acceptanceCriteria": [
+        "Tests for server/services/billing-engine-service.ts: plan pricing calculation, proration for mid-cycle changes, trial period handling, overage billing",
+        "Tests for server/services/automated-billing-service.ts: invoice generation, payment retry logic on failure, billing cycle management",
+        "Tests for server/middleware/subscription.ts: feature gating based on subscription plan, expired subscription handling",
+        "Mock Stripe API calls with realistic response shapes",
+        "At least 20 test cases covering billing edge cases",
+        "All tests pass: npm run test",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "Stripe integration uses server/services/stripe-service.ts and related services. billing-analytics-service.ts and payment-audit-service.ts also exist. Mock all Stripe SDK calls."
+    },
+    {
+      "id": "US-011",
+      "title": "Replace console.log with structured logger across server",
+      "description": "As a platform operator, I need all server logging to use the structured logger so logs are parseable, searchable, and include context.",
+      "acceptanceCriteria": [
+        "Find and replace all console.log, console.error, console.warn in server/ directory with createModuleLogger calls",
+        "Each file gets its own module logger: const log = createModuleLogger('module-name')",
+        "Log levels are appropriate: log.error() for errors, log.warn() for warnings, log.info() for operations, log.debug() for verbose",
+        "CORS logging in server/index.ts uses structured logger instead of console.log/console.error",
+        "No remaining console.log/console.error/console.warn in server/ except server/vite.ts (which handles Vite dev server output)",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "server/lib/logger.ts and server/lib/monitoring.ts provide createModuleLogger(). server/index.ts already uses it (const serverLog = createModuleLogger('server')). Many route files and services still use console.log. Do NOT change client/ files."
+    },
+    {
+      "id": "US-012",
+      "title": "Apply rate limiting consistently across all API endpoints",
+      "description": "As a security engineer, I need rate limiting on all API endpoints to prevent abuse, with stricter limits on auth and billing endpoints.",
+      "acceptanceCriteria": [
+        "Update server/middleware/user-rate-limit.ts to export tiered rate limiters: authLimiter (5 req/min), billingLimiter (20 req/min), mutationLimiter (100 req/min), readLimiter (200 req/min)",
+        "Apply authLimiter to all auth routes: login, signup, password reset, MFA verification",
+        "Apply billingLimiter to all /api/billing*, /api/stripe*, /api/subscriptions* routes",
+        "Apply mutationLimiter as global middleware for POST/PUT/PATCH/DELETE requests",
+        "Apply readLimiter as global middleware for GET requests",
+        "Rate limit headers included in all responses: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset",
+        "429 responses return standardized error format: { message, code: 'RATE_LIMITED', details: { retryAfter } }",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "server/middleware/user-rate-limit.ts exists but is only applied in ~10 route files. Redis client at server/lib/redis-client.ts can be used for distributed rate limiting across instances. Apply globally via middleware, not per-route."
+    },
+    {
+      "id": "US-013",
+      "title": "Add Zod input validation to all CRM routes",
+      "description": "As a security engineer, I need all CRM API inputs validated with Zod schemas to prevent injection and data corruption.",
+      "acceptanceCriteria": [
+        "Every POST/PUT/PATCH endpoint in CRM routes (leads, customers, contacts, business records) validates request body with a Zod schema",
+        "Every GET endpoint with query parameters validates them with Zod (pagination: page, limit, sort, filter)",
+        "Validation errors return 400 with: { message: 'Validation error', code: 'VALIDATION_ERROR', details: zodError.flatten() }",
+        "Reuse existing Zod schemas from shared/ directory where they exist (e.g., shared/schema.ts insert schemas)",
+        "Create missing schemas in the appropriate shared/*-schema.ts file",
+        "At least 20 CRM endpoints have input validation",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": "shared/ has 51 schema files with Zod schemas (drizzle-zod generates insert/select schemas). server/middleware/enhanced-validation.ts exists. Focus on the extracted CRM routes from US-005 or the existing routes-business-records.ts."
+    },
+    {
+      "id": "US-014",
+      "title": "Add comprehensive health check and readiness endpoints",
+      "description": "As a platform operator, I need health, readiness, and liveness endpoints so Kubernetes can properly manage pod lifecycle.",
+      "acceptanceCriteria": [
+        "GET /health returns 200 with: { status: 'ok', version: process.env.APP_VERSION, uptime: process.uptime(), timestamp: new Date().toISOString() }",
+        "GET /ready returns 200 only when database AND Redis are reachable; returns 503 with { status: 'degraded', checks: { database: 'ok'|'fail', redis: 'ok'|'fail' } } otherwise",
+        "GET /live returns 200 if the event loop is responsive (not deadlocked)",
+        "GET /health/detailed requires authentication + platform admin role and returns: memory usage, CPU, connection pool stats, active WebSocket count, queue depths",
+        "All health endpoints are excluded from logging middleware (already configured in server/index.ts excludePaths)",
+        "Update Dockerfile HEALTHCHECK to use /ready instead of /health for proper K8s readiness",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": "Dockerfile has HEALTHCHECK pointing to /health. server/lib/monitoring.ts has getMonitoringHealth() and getQueryStats(). server/routes/health-routes.ts may already exist. Enhance into proper K8s-compatible liveness/readiness/startup probes."
+    },
+    {
+      "id": "US-015",
+      "title": "Implement graceful shutdown with connection draining",
+      "description": "As a platform operator, I need the server to drain connections on SIGTERM so rolling deployments don't drop in-flight requests.",
+      "acceptanceCriteria": [
+        "SIGTERM handler stops accepting new HTTP connections via server.close()",
+        "In-flight HTTP requests are given 30 seconds to complete before force-closing",
+        "Database connection pool is drained via closeDbConnections() from server/db.ts",
+        "Redis connections are closed cleanly",
+        "WebSocket connections receive a 'server-shutdown' event and are closed after 5 seconds",
+        "shutdownMonitoring() from server/lib/monitoring.ts is called for cleanup",
+        "Process exits with code 0 after all cleanup completes",
+        "SIGINT (Ctrl+C in dev) triggers the same graceful shutdown",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": "Dockerfile uses dumb-init for signal forwarding. server/lib/monitoring.ts exports shutdownMonitoring(). Extend to cover all resources. Check if any shutdown logic already exists in server/index.ts."
+    },
+    {
+      "id": "US-016",
+      "title": "Add CSRF protection to all state-changing endpoints",
+      "description": "As a security engineer, I need CSRF protection on all mutation endpoints to prevent cross-site request forgery on cookie-based sessions.",
+      "acceptanceCriteria": [
+        "Install csrf-csrf or equivalent modern CSRF library (csurf is deprecated)",
+        "Generate CSRF token on session initialization, expose via GET /api/csrf-token",
+        "All POST/PUT/PATCH/DELETE requests validate CSRF token from X-CSRF-Token header",
+        "CSRF validation is skipped for requests authenticated via API key (server-to-server)",
+        "CSRF validation is skipped for requests authenticated via Bearer JWT without cookies",
+        "Frontend TanStack Query client in client/src/lib/queryClient.ts includes X-CSRF-Token in all mutation requests",
+        "CORS already exposes X-CSRF-Token header (verified in server/index.ts line 146)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 16,
+      "passes": true,
+      "notes": "Platform uses JWT auth primarily (which has built-in CSRF protection) but also has cookie-based session fallback which needs CSRF protection. CORS config already lists X-CSRF-Token in allowedHeaders and exposedHeaders."
+    },
+    {
+      "id": "US-017",
+      "title": "Implement comprehensive audit logging for sensitive operations",
+      "description": "As a compliance officer, I need an immutable audit trail of all sensitive operations for security and regulatory compliance.",
+      "acceptanceCriteria": [
+        "Create audit_logs table in shared/schema.ts: id, action (string), resourceType (string), resourceId (string), userId (string), tenantId (string), details (jsonb), ipAddress (string), userAgent (string), createdAt (timestamp) with indexes on tenantId+createdAt and userId+createdAt",
+        "Create server/services/audit-log-service.ts with: logAction(action, resourceType, resourceId, userId, tenantId, details, req) function",
+        "Log all auth events: login_success, login_failure, logout, password_change, mfa_enable, mfa_disable",
+        "Log all admin actions: user_create, user_delete, role_change, permission_change, tenant_config_update",
+        "Log all data deletion events: record_delete, bulk_delete",
+        "Audit logs table has no UPDATE or DELETE permissions (append-only)",
+        "Add GET /api/audit-logs endpoint (platform admin only) with pagination, date range filter, action filter, user filter",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 17,
+      "passes": true,
+      "notes": "server/services/audit-archival-service.ts exists with 7-year retention. Previous work (AUTH-006) added admin bypass logging with logAdminBypass(). Build a comprehensive system that covers all sensitive operations, not just admin bypasses."
+    },
+    {
+      "id": "US-018",
+      "title": "Implement request correlation IDs end-to-end",
+      "description": "As a developer debugging production issues, I need every request to carry a correlation ID from frontend through backend into logs.",
+      "acceptanceCriteria": [
+        "Every HTTP request gets a unique X-Request-ID (server generates UUID if client doesn't provide one)",
+        "X-Request-ID is returned in ALL API responses (success and error)",
+        "All structured log entries include the requestId in their context",
+        "All error responses include requestId in the JSON body",
+        "Frontend API client in client/src/lib/queryClient.ts generates and sends X-Request-ID with every request",
+        "Frontend stores last requestId for error reporting UI",
+        "Database queries from Drizzle include request ID as SQL comment for slow query log correlation",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 18,
+      "passes": true,
+      "notes": "server/lib/monitoring.ts setupMonitoringMiddleware already handles request ID generation. Verify it flows through all layers. Frontend queryClient is in client/src/lib/queryClient.ts. Drizzle logger is in server/lib/db-logger.ts."
+    },
+    {
+      "id": "US-019",
+      "title": "Add input sanitization middleware for XSS prevention",
+      "description": "As a security engineer, I need all user input sanitized to prevent XSS and injection attacks across the entire API.",
+      "acceptanceCriteria": [
+        "Create server/middleware/input-sanitization.ts that processes all req.body, req.query, and req.params string values",
+        "Strip HTML tags from all string inputs using a sanitization library (e.g., sanitize-html or xss)",
+        "Detect and strip null bytes and control characters from all inputs",
+        "Detect and reject path traversal patterns (../, %2e%2e) with 400 error",
+        "Apply sanitization middleware globally after body parser in server/index.ts",
+        "Whitelist specific fields that need rich HTML (e.g., emailBody, description with formatting) via a configuration map",
+        "Add unit tests with common XSS payloads: <script>, onerror=, javascript:, data:text/html",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 19,
+      "passes": true,
+      "notes": "Drizzle ORM uses parameterized queries preventing SQL injection at ORM level, but XSS is the main concern for user-facing content. Some content fields (emails, knowledge base articles) may need rich HTML."
+    },
+    {
+      "id": "US-020",
+      "title": "Enhance API key management for external integrations",
+      "description": "As an enterprise admin, I need to manage API keys with scoped permissions, expiration, and usage tracking.",
+      "acceptanceCriteria": [
+        "Verify server/services/api-key-service.ts properly hashes API keys (bcrypt or argon2, never plaintext storage)",
+        "POST /api/api-keys creates key with: name, scopes (permission list), expiresAt; returns the key ONCE on creation",
+        "GET /api/api-keys lists all keys for tenant showing: name, lastUsed, expiresAt, scopes, masked key (last 4 chars only)",
+        "DELETE /api/api-keys/:id revokes a key immediately",
+        "API key auth via server/middleware/api-key-auth.ts respects the key's scopes - rejects requests outside scope",
+        "Each API key usage logs: timestamp, IP, endpoint, response status to an api_key_usage_logs table",
+        "Expired keys are rejected with 401",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": "server/middleware/api-key-auth.ts and server/services/api-key-service.ts already exist. Audit and enhance to enterprise standards: proper hashing, rotation support, scoped permissions, usage logging."
+    },
+    {
+      "id": "US-021",
+      "title": "Add ARIA labels and keyboard navigation to core UI",
+      "description": "As a user with disabilities, I need the core navigation, forms, and data tables to be screen reader and keyboard accessible.",
+      "acceptanceCriteria": [
+        "Main sidebar/navigation has ARIA roles: nav with aria-label, menuitem roles, aria-current for active item",
+        "All form inputs across Login, Signup, and Settings pages have associated <label> elements with htmlFor or aria-label",
+        "Data tables have <caption>, <th scope='col'>, and aria-sort on sortable columns",
+        "Modal dialogs have aria-modal='true', aria-labelledby pointing to title, and focus trap",
+        "Toast notifications use role='alert' or role='status' with aria-live='polite'",
+        "SkipNavigation component from client/src/components/accessibility/SkipNavigation.tsx is rendered in the root App component",
+        "Keyboard: Tab navigates all interactive elements in logical order, Escape closes modals and dropdowns, Enter/Space activates buttons",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": "client/src/components/accessibility/ has FocusManager.tsx, SkipNavigation.tsx, ColorBlindnessFilters.tsx but only 7 ARIA usages total across all components. shadcn/ui provides some built-in a11y. Focus on app shell, navigation sidebar, and the most-used DataTable component."
+    },
+    {
+      "id": "US-022",
+      "title": "Add visible focus indicators and color contrast compliance",
+      "description": "As a user with visual impairments, I need sufficient color contrast and visible focus indicators throughout the app.",
+      "acceptanceCriteria": [
+        "Create a Tailwind utility class ring-focus or similar that provides a visible 2px focus ring with 3:1 contrast ratio",
+        "Apply focus-visible styles to all interactive elements (buttons, links, inputs, selects) via global CSS in client/src/index.css",
+        "Remove any outline: none or outline: 0 that hides focus indicators without replacement",
+        "All status indicators (success/error/warning badges) include an icon alongside color, not color alone",
+        "Primary text (#foreground on #background) meets 4.5:1 WCAG AA contrast ratio",
+        "Large text (18px+ or 14px bold) meets 3:1 contrast ratio",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": "Check tailwind.config.ts for theme colors. shadcn/ui components should have ring focus styles. Custom components may not. Global focus-visible styles in index.css will cover most cases."
+    },
+    {
+      "id": "US-023",
+      "title": "Set up i18n foundation with extracted navigation strings",
+      "description": "As a product owner, I need internationalization infrastructure so the platform can support multiple languages for global enterprise customers.",
+      "acceptanceCriteria": [
+        "Install react-i18next and i18next packages",
+        "Create client/src/i18n/ directory with: config.ts (i18next initialization), locales/en.json (English messages)",
+        "Wrap the root App component with I18nextProvider in client/src/main.tsx",
+        "Extract all hardcoded strings from the main navigation/sidebar component into en.json using t() function",
+        "Extract all hardcoded strings from Login.tsx and Signup.tsx pages into en.json",
+        "Create a useTranslation wrapper hook at client/src/hooks/useTranslation.ts if needed for convenience",
+        "Add a language selector dropdown in the Settings page that switches between en and a placeholder locale",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": "No i18n exists. Start with foundation and extract strings from the most visible components. Full string extraction across 213 pages is a separate future effort. react-i18next is the most popular React i18n library."
+    },
+    {
+      "id": "US-024",
+      "title": "Add React Error Boundaries to all route pages",
+      "description": "As a user, I need page crashes to be contained rather than crashing the entire application.",
+      "acceptanceCriteria": [
+        "Create client/src/components/ErrorBoundary.tsx with: error display, 'Try Again' button that resets error state, and optional onError callback",
+        "Create client/src/components/PageErrorBoundary.tsx that shows error with navigation still accessible (sidebar/header remain functional)",
+        "Create client/src/components/SectionErrorBoundary.tsx for dashboard widgets that shows a compact error card in the widget space",
+        "Wrap every route in client/src/App.tsx with PageErrorBoundary",
+        "Dashboard page wraps each widget/section with SectionErrorBoundary",
+        "Error boundary onError callback sends error details to /api/client-errors endpoint for server-side logging",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": "Check for existing error boundary in client/src/components/. TanStack Query handles API errors, but React rendering errors need Error Boundaries. The dashboard.tsx page is the highest-value target for section-level boundaries."
+    },
+    {
+      "id": "US-025",
+      "title": "Standardize loading and empty states across top pages",
+      "description": "As a user, I need consistent loading indicators and empty state messages so the UI feels polished and professional.",
+      "acceptanceCriteria": [
+        "Create client/src/components/ui/loading-state.tsx with variants: Spinner (inline), Skeleton (content placeholder), PageLoader (full-page centered spinner with message)",
+        "Create client/src/components/ui/empty-state.tsx with: icon slot, title, description, and optional CTA button",
+        "Update these 10 pages to use the components: dashboard, LeadsManagement, customers, QuotesManagement, Invoices, contracts, EquipmentLifecycleHub, contacts (from any of the contact pages), Reports/ReportsHub, Settings",
+        "Every TanStack Query isLoading state in updated pages shows the appropriate loading component",
+        "Every empty data array in updated pages shows the empty state component with contextual message and action",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": "shadcn/ui has a Skeleton component already. Build loading-state on top of it. Check client/src/components/ui/ for existing loading components to avoid duplication."
+    },
+    {
+      "id": "US-026",
+      "title": "Add E2E tests for 5 critical user flows",
+      "description": "As a QA engineer, I need E2E tests covering the most critical user flows to catch regressions before production.",
+      "acceptanceCriteria": [
+        "E2E test: Login flow - valid credentials succeed, invalid credentials show error, locked account shows message",
+        "E2E test: Lead creation - navigate to leads, fill creation form, submit, verify lead appears in list",
+        "E2E test: Quote creation - select customer, add line items, save draft, verify quote in list",
+        "E2E test: Dashboard load - verify all widget sections render, data displays, no console errors",
+        "E2E test: Settings page - update a profile field, save, refresh page, verify value persisted",
+        "All E2E tests use Playwright following existing patterns in tests/ directory",
+        "All tests pass: npm run test:e2e:chromium"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": "tests/ has page-audit.spec.ts, smoke.spec.ts, satisfaction-rating-api.spec.ts as examples. Playwright is configured with playwright.config.ts. Tests need proper setup (running dev server, test user credentials)."
+    },
+    {
+      "id": "US-027",
+      "title": "Add multi-tenant data isolation integration tests",
+      "description": "As a security auditor, I need automated tests proving Tenant A can never access Tenant B's data across all major endpoints.",
+      "acceptanceCriteria": [
+        "Create server/tests/integration/tenant-isolation.test.ts",
+        "Test setup creates 2 tenants with separate users and seed data for each",
+        "Test: GET endpoints (leads, customers, contacts, quotes, orders) with Tenant A auth return ONLY Tenant A data",
+        "Test: GET single resource of Tenant B with Tenant A auth returns 404 (not the data)",
+        "Test: PUT/DELETE on Tenant B resource with Tenant A auth returns 403 or 404",
+        "Cover at least 8 resource types: leads, customers, contacts, quotes, invoices, equipment, reports, users",
+        "Tests run with test database in CI: npm run test:integration",
+        "All tests pass: npm run test:integration"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": "CI already runs integration tests with a PostgreSQL 16 Alpine service container (see .github/workflows/ci.yml). These tests are the most critical for enterprise multi-tenancy compliance. Use the test helpers from US-002."
+    },
+    {
+      "id": "US-028",
+      "title": "Complete OpenAPI documentation for CRM and billing endpoints",
+      "description": "As an API consumer, I need complete OpenAPI 3.0 documentation for CRM and billing endpoints for confident integration.",
+      "acceptanceCriteria": [
+        "server/openapi/ contains complete schema definitions derived from Zod schemas in shared/ for: leads, customers, contacts, quotes, invoices, subscriptions",
+        "At least 25 CRM and billing endpoints documented with: path, method, request body schema, response schema, error responses, auth requirements",
+        "Swagger UI accessible at /api-docs in development mode (NODE_ENV !== 'production')",
+        "OpenAPI spec exportable as JSON at GET /api-docs/spec.json",
+        "Each documented endpoint includes at least one example request/response",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": "server/openapi/ already has config.ts, index.ts, setup.ts. Build on this. Use zod-to-openapi or manually map the Drizzle-Zod schemas from shared/ to OpenAPI components."
+    },
+    {
+      "id": "US-029",
+      "title": "Add API versioning support with v1 default",
+      "description": "As a platform architect, I need API versioning so the API can evolve without breaking existing integrations.",
+      "acceptanceCriteria": [
+        "server/middleware/api-versioning.ts implements URL prefix versioning: /api/v1/* routes to existing /api/* handlers",
+        "All existing /api/* routes continue to work (backward compatible, treated as v1)",
+        "New /api/v1/* prefix routes to the same handlers as /api/*",
+        "req.apiVersion is set on all requests (defaults to 'v1')",
+        "Header-based override via Accept-Version or X-API-Version header",
+        "Document versioning strategy and deprecation policy in CLAUDE.md",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": "server/middleware/api-versioning.ts already exists. Verify and complete its implementation. URL prefix versioning is most standard for REST APIs."
+    },
+    {
+      "id": "US-030",
+      "title": "Complete Kubernetes deployment manifests",
+      "description": "As a DevOps engineer, I need working K8s manifests so the platform deploys to a production cluster.",
+      "acceptanceCriteria": [
+        "Create k8s/ directory with: deployment.yaml, service.yaml, ingress.yaml, configmap.yaml, secret.yaml (template with placeholders)",
+        "Deployment spec includes: 2 replicas, resource limits (512Mi memory, 500m CPU), resource requests (256Mi, 250m), rolling update strategy (maxUnavailable: 0, maxSurge: 1)",
+        "Liveness probe: httpGet /live, readiness probe: httpGet /ready, startup probe: httpGet /health with failureThreshold: 30",
+        "Service: ClusterIP type, port 5000",
+        "Ingress: TLS termination with cert-manager annotation, host: printyx.net",
+        "HorizontalPodAutoscaler: min 2, max 10 replicas, target CPU 70%",
+        "Update .github/workflows/ci.yml deploy-staging and deploy-production jobs to use kubectl set image with the Docker image digest",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": "CI pipeline has placeholder echo commands in deploy jobs. Docker image pushes to ghcr.io/${{ github.repository }}. The Dockerfile exposes port 5000 with health check."
+    },
+    {
+      "id": "US-031",
+      "title": "Add database backup automation with cloud storage",
+      "description": "As a platform operator, I need automated database backups with tested restore procedures for disaster recovery.",
+      "acceptanceCriteria": [
+        "Create scripts/db-backup.sh that: runs pg_dump on the production database, compresses output with gzip, uploads to Google Cloud Storage bucket",
+        "Create scripts/db-restore.sh that: downloads a specific backup from GCS, decompresses, restores to target database with confirmation prompt",
+        "Add npm scripts: db:backup, db:restore, db:backup:list",
+        "Backup naming: printyx-backup-YYYY-MM-DD-HHmmss.sql.gz",
+        "Create k8s/cronjob-backup.yaml for daily automated backups at 2 AM UTC",
+        "Implement retention: keep daily for 7 days, weekly for 4 weeks, monthly for 12 months (cleanup script)",
+        "Document backup/restore procedures in CLAUDE.md"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": "Database: PostgreSQL at 209.145.59.219:5433. @google-cloud/storage is already installed as a dependency. Forecasting database also needs backup (drizzle.forecasting.config.ts)."
+    },
+    {
+      "id": "US-032",
+      "title": "Add frontend code splitting and bundle optimization",
+      "description": "As a user, I need the application to load fast with optimized bundle sizes.",
+      "acceptanceCriteria": [
+        "Verify all 213 page components in client/src/App.tsx use React.lazy() for route-level code splitting",
+        "Add Suspense boundaries at route level with a loading spinner fallback",
+        "Configure Vite manualChunks in vite.config.ts to split: react-vendor (react, react-dom), ui-vendor (radix-ui), query-vendor (tanstack), chart-vendor (recharts), date-vendor (date-fns)",
+        "Add dynamic import for heavy components: PDF viewer, rich text editor, map components, chart libraries",
+        "Add rollup-plugin-visualizer for bundle analysis: npm run build:analyze",
+        "Initial JS bundle (excluding lazy chunks) under 350KB gzipped",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 32,
+      "passes": false,
+      "notes": "Check client/src/App.tsx for existing React.lazy usage. vite.config.ts handles the build. 213 pages means code splitting is critical for initial load performance."
+    },
+    {
+      "id": "US-033",
+      "title": "Add environment-specific configuration management",
+      "description": "As a DevOps engineer, I need clear separation of environment configs to prevent misconfigurations across dev/staging/production.",
+      "acceptanceCriteria": [
+        "Create server/config/ directory with: index.ts (loader), default.ts, development.ts, staging.ts, production.ts, test.ts",
+        "Config includes: database pool sizes, rate limit values, cache TTLs, log levels, feature toggles, CORS origins",
+        "server/config/index.ts loads and merges: default.ts + {NODE_ENV}.ts + environment variable overrides",
+        "Replace at least 10 hardcoded constants scattered in server/ with config references",
+        "Create .env.example with ALL required and optional environment variables, each with a description comment",
+        "Extend server/lib/env-validation.ts to validate all required vars exist at startup with clear error messages",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 33,
+      "passes": false,
+      "notes": "server/lib/env-validation.ts exists for startup validation. Many configs are inline constants (rate limit values, cache TTLs, pool sizes). .env.example may already exist - update it."
+    },
+    {
+      "id": "US-034",
+      "title": "Add WebSocket authentication and reconnection resilience",
+      "description": "As a developer, I need WebSocket connections authenticated and resilient to network failures.",
+      "acceptanceCriteria": [
+        "WebSocket upgrade request validates JWT token from query param or Authorization header before accepting",
+        "Unauthenticated WebSocket upgrade requests are rejected with HTTP 401",
+        "WebSocket messages include tenantId context for multi-tenant data isolation",
+        "Client useWebSocket hook implements auto-reconnect with exponential backoff: 1s, 2s, 4s, 8s, max 30s",
+        "On reconnection, client re-subscribes to all previous channels/topics automatically",
+        "Server sends ping every 30 seconds, client responds with pong; stale connections are cleaned up after 90s",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 34,
+      "passes": false,
+      "notes": "Client hook: client/src/hooks/useWebSocket. Redis at server/lib/redis-client.ts can be used for pub/sub to support multi-instance WebSocket broadcasting. Check ENABLE_WEBSOCKET feature flag from ROUTES-003."
+    },
+    {
+      "id": "US-035",
+      "title": "Implement feature flags system for controlled rollouts",
+      "description": "As a product owner, I need feature flags to gradually roll out features and quickly disable broken ones without deployment.",
+      "acceptanceCriteria": [
+        "Create feature_flags table in shared/schema.ts: id, name (unique), description, enabled (boolean), rolloutPercentage (int 0-100), tenantOverrides (jsonb), createdAt, updatedAt",
+        "Create server/services/feature-flags-service.ts with: isEnabled(flagName, { tenantId, userId }) that checks: tenant override > rollout percentage > global enabled",
+        "Create server/middleware/feature-flag.ts: requireFeatureFlag(flagName) middleware for route-level gating",
+        "Create client/src/hooks/useFeatureFlag.ts hook that calls GET /api/feature-flags and caches for 5 minutes",
+        "Create client/src/components/FeatureGate.tsx: <FeatureGate flag='name'>{children}</FeatureGate> for conditional rendering",
+        "CRUD endpoints: GET /api/feature-flags, PUT /api/feature-flags/:name (platform admin only)",
+        "Seed 5 default flags: new_dashboard, ai_features, advanced_reporting, mobile_pwa, beta_integrations",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 35,
+      "passes": false,
+      "notes": "No feature flag system exists. ROUTES-003 created env-var based feature toggles (ENABLE_DATABASE_UPDATER, etc.) but a proper feature flag system supports per-tenant overrides and percentage rollouts."
+    },
+    {
+      "id": "US-036",
+      "title": "Add Sentry error tracking integration",
+      "description": "As a developer, I need production error tracking so bugs are automatically reported with full context.",
+      "acceptanceCriteria": [
+        "Install @sentry/node for backend and @sentry/react for frontend",
+        "Configure Sentry in server/index.ts: DSN from SENTRY_DSN env var, environment from NODE_ENV, release from APP_VERSION",
+        "Configure Sentry in client/src/main.tsx: React error boundary integration, browser tracing, replay",
+        "All unhandled server exceptions are captured by Sentry with context: userId, tenantId, requestId",
+        "All frontend React errors are captured with user context and route information",
+        "Source maps uploaded to Sentry during CI build step (add to .github/workflows/ci.yml build job)",
+        "Add SENTRY_DSN to .env.example",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 36,
+      "passes": false,
+      "notes": "server/lib/monitoring.ts provides custom monitoring but Sentry is the industry standard. Can coexist with existing APM at server/lib/apm.ts. Sentry traces sample rate should be 0.1 in production to control costs."
+    },
+    {
+      "id": "US-037",
+      "title": "Add data table virtualization for large datasets",
+      "description": "As a user working with 10K+ records, I need data tables to render smoothly without lag.",
+      "acceptanceCriteria": [
+        "Install @tanstack/react-virtual for virtual scrolling",
+        "Create client/src/components/ui/virtualized-data-table.tsx extending the existing DataTable pattern",
+        "Virtual table renders only visible rows plus 5 row overscan buffer",
+        "Supports all existing DataTable features: sorting, filtering, column selection, row selection, pagination",
+        "Replace DataTable with VirtualizedDataTable in the 5 highest-volume pages: LeadsManagement, customers, Invoices, QuotesManagement, inventory",
+        "Rendering a dataset of 10,000 rows shows no visible jank (smooth 60fps scrolling)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 37,
+      "passes": false,
+      "notes": "@tanstack/react-query already used. @tanstack/react-virtual integrates well. Check client/src/components/ui/ for existing DataTable implementation to extend."
+    },
+    {
+      "id": "US-038",
+      "title": "Add PWA support with offline capability",
+      "description": "As a field service technician, I need the app installable as a PWA with offline support for areas with poor connectivity.",
+      "acceptanceCriteria": [
+        "Install and configure vite-plugin-pwa in vite.config.ts",
+        "Create public/manifest.json with: app name 'Printyx', theme color, icons (192x192, 512x512), display: 'standalone'",
+        "Service worker caches: app shell HTML/CSS/JS, static assets, and GET API responses for the current page",
+        "Offline fallback page shows last cached data and a 'You are offline' banner",
+        "Add an 'Install App' prompt component that appears when PWA install criteria are met (shown once, dismissible)",
+        "Add online/offline status indicator in the app header bar",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 38,
+      "passes": false,
+      "notes": "Mobile field pages exist: MobileFieldOperations.tsx, MobileFieldService.tsx, MobileServiceApp.tsx. PWA is especially valuable for field technicians. vite-plugin-pwa handles service worker generation."
+    },
+    {
+      "id": "US-039",
+      "title": "Add automated security scanning to CI pipeline",
+      "description": "As a security engineer, I need automated security scanning in CI to catch vulnerabilities before production.",
+      "acceptanceCriteria": [
+        "Add npm audit --audit-level=high to CI lint-and-typecheck job that fails on high/critical vulnerabilities",
+        "Install eslint-plugin-security and add security rules to ESLint config",
+        "Add gitleaks or similar secrets detection as a CI step that scans for credential patterns in code",
+        "Verify the existing Trivy container scan in ci.yml security-scan job works end-to-end",
+        "Create SECURITY.md with: vulnerability disclosure policy, security contact email, responsible disclosure timeline",
+        "Add npm script: npm run audit:security that runs npm audit + eslint security rules locally",
+        "Typecheck passes: npm run check",
+        "Lint passes: npm run lint"
+      ],
+      "priority": 39,
+      "passes": false,
+      "notes": "CI has Trivy container scanning. scripts/audit/security-audit.ts and tools/automated-testing/check-no-secrets.ts exist. Integrate into a unified security pipeline."
+    },
+    {
+      "id": "US-040",
+      "title": "Add request payload size limits and file upload security",
+      "description": "As a security engineer, I need request body size limits and secure file upload handling to prevent DoS and malicious uploads.",
+      "acceptanceCriteria": [
+        "JSON body parser in server/index.ts limits normal routes to 1MB",
+        "File upload routes (identified by multer/busboy usage) allow up to 25MB",
+        "File uploads validate: file type against whitelist (pdf, png, jpg, gif, xlsx, csv, docx), file size, filename sanitization (strip special chars)",
+        "Reject files with double extensions (e.g., .pdf.exe), null bytes in name, or path separators in name",
+        "Upload rate limiting: max 10 file uploads per minute per user",
+        "Temporary uploaded files are cleaned up after processing (within 1 hour)",
+        "Add tests for payload rejection and file validation",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 40,
+      "passes": false,
+      "notes": "Check server/index.ts for existing express.json({ limit }) configuration. Platform handles document uploads, logos, CSV imports, etc."
+    },
+    {
+      "id": "US-041",
+      "title": "Add session management with concurrent session control",
+      "description": "As an enterprise admin, I need to view active sessions, revoke sessions, and limit concurrent sessions for compliance.",
+      "acceptanceCriteria": [
+        "Create active_sessions table or use Redis to track: userId, tenantId, deviceInfo (user-agent parsed), ipAddress, lastActive, sessionToken hash",
+        "GET /api/sessions returns all active sessions for the current user with device/IP/lastActive info",
+        "DELETE /api/sessions/:id revokes a specific session",
+        "POST /api/sessions/revoke-all revokes all sessions except the current one",
+        "GET /api/admin/sessions/:userId shows sessions for any user (admin only)",
+        "Configurable max concurrent sessions per tenant (default: 5), new login beyond limit revokes oldest",
+        "Session lastActive updated on each authenticated API request",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 41,
+      "passes": false,
+      "notes": "server/middleware/session-timeout.ts exists. Supabase GoTrue manages JWTs. Need server-side session tracking (Redis via server/lib/redis-client.ts) to complement JWT for features like forced logout and concurrent limits."
+    },
+    {
+      "id": "US-042",
+      "title": "Complete approval workflow email notifications",
+      "description": "As a sales manager, I need email notifications when approvals are requested, granted, or denied so deals aren't blocked by unnoticed approval requests.",
+      "acceptanceCriteria": [
+        "When an approval is requested: email sent to all approvers with: requester name, item details, direct link to approve/deny",
+        "When an approval is granted: email sent to requester with approver name and any comments",
+        "When an approval is denied: email sent to requester with reason and next steps",
+        "Email templates use server/services/email-templates.ts for consistent branding",
+        "Email sending uses server/services/email-service.ts with retry on failure",
+        "Approvals pending > 24 hours trigger a reminder email to approvers",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 42,
+      "passes": false,
+      "notes": "server/services/approval-workflow-service.ts has 3 TODOs for email integration. server/services/email-service.ts and server/services/email-templates.ts exist. Wire them together."
+    },
+    {
+      "id": "US-043",
+      "title": "Complete Stripe webhook notification implementations",
+      "description": "As a billing admin, I need Stripe webhook events to trigger proper notifications so customers are informed about billing changes.",
+      "acceptanceCriteria": [
+        "customer.subscription.trial_will_end webhook sends trial ending email 3 days before expiry",
+        "invoice.upcoming webhook sends upcoming invoice notification with amount and due date",
+        "invoice.payment_failed webhook sends payment failure notification with: amount, failure reason, retry schedule, update payment method link",
+        "customer.subscription.updated webhook sends add-on activation confirmation when new features enabled",
+        "All notification emails use branded templates from server/services/email-templates.ts",
+        "Webhook handler logs all events to audit log for reconciliation",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 43,
+      "passes": false,
+      "notes": "server/services/stripe-service.ts has 4 TODOs for these notifications. Test with Stripe CLI: stripe trigger customer.subscription.trial_will_end"
+    },
+    {
+      "id": "US-044",
+      "title": "Implement GDPR data export and deletion endpoints",
+      "description": "As a data protection officer, I need GDPR-compliant data export and deletion for regulatory compliance with enterprise EU customers.",
+      "acceptanceCriteria": [
+        "GET /api/gdpr/export/:userId generates complete JSON+CSV data export of all user data (profile, activities, records, files metadata)",
+        "POST /api/gdpr/delete-request creates a deletion request with 30-day grace period before execution",
+        "DELETE /api/gdpr/execute-deletion/:requestId hard-deletes user data after grace period (platform admin only with confirmation)",
+        "GET /api/gdpr/requests lists all pending/completed deletion requests with status and dates",
+        "Data export includes: user profile, all created/modified records, activity logs, uploaded file metadata",
+        "Consent management tracks what the user consented to and when via server/services/consent-management-service.ts",
+        "All endpoints require authentication; export limited to own data unless admin",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 44,
+      "passes": false,
+      "notes": "Existing services: server/services/gdpr-data-export-service.ts, server/services/consent-management-service.ts, server/services/data-retention-service.ts, server/services/dpa-management-service.ts. Build on these existing services."
+    },
+    {
+      "id": "US-045",
+      "title": "Add performance load tests with k6",
+      "description": "As a platform operator, I need load tests to validate the platform handles enterprise traffic and identify bottlenecks before they hit production.",
+      "acceptanceCriteria": [
+        "Create tests/load/ directory with k6 JavaScript test scripts",
+        "Smoke test script: 1 virtual user, verify critical endpoints (login, dashboard, leads list, create lead) respond in < 500ms",
+        "Load test script: 50 concurrent users for 5 minutes, p95 response time < 2 seconds, error rate < 1%",
+        "Stress test script: ramp from 10 to 200 users over 10 minutes to find breaking point",
+        "All test scripts authenticate with JWT and use proper tenant context headers",
+        "Add npm script: npm run test:load:smoke that runs the smoke test",
+        "Create tests/load/README.md documenting how to run tests, interpret results, and current baselines"
+      ],
+      "priority": 45,
+      "passes": false,
+      "notes": "No performance tests exist. k6 is the industry standard (install via brew install k6 or docker). Tests should hit actual API endpoints with realistic data patterns."
+    },
+    {
+      "id": "US-046",
+      "title": "Cache user role data to reduce database lookups per request",
+      "description": "As a platform operator, I need user role data cached to reduce per-request database queries and improve response times.",
+      "acceptanceCriteria": [
+        "Implement in-memory LRU cache (or Redis cache) for user role/permission data in server/middleware/supabase-auth.ts",
+        "Cache TTL: 5 minutes for role data",
+        "Cache key: userId (role data rarely changes within a session)",
+        "Cache invalidation on role/permission update endpoints (PUT /api/roles/*, PUT /api/permissions/*)",
+        "Add cache hit/miss metrics to monitoring: log.debug with cache_status in context",
+        "Measure improvement: log query time before and after for the auth middleware DB lookup",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 46,
+      "passes": false,
+      "notes": "supabase-auth.ts does a DB lookup for user role on every request. Redis client exists at server/lib/redis-client.ts. Even a simple Map with TTL would help for single-instance deployments."
+    },
+    {
+      "id": "US-047",
+      "title": "Resolve TODO/FIXME items in high-density route files",
+      "description": "As a developer, I need placeholder TODOs resolved in the route files with the most technical debt.",
+      "acceptanceCriteria": [
+        "Review and resolve or implement all 18 TODOs in server/routes-purchase-orders.ts",
+        "Review and resolve or implement all 11 TODOs in server/routes-product-models.ts",
+        "Review and resolve or implement all 9 TODOs in server/routes-technician-management.ts",
+        "For each TODO: implement the feature, remove the TODO comment, or convert to a tracked issue with explanation",
+        "No remaining TODO comments that are trivially implementable (< 30 min each)",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 47,
+      "passes": false,
+      "notes": "37+ TODO/FIXME across 21 route files. These three files have the highest density. Many TODOs are for: missing validation, incomplete error handling, placeholder calculations, missing tenant filtering."
+    },
+    {
+      "id": "US-048",
+      "title": "Fix N+1 query patterns in services",
+      "description": "As a platform operator, I need N+1 query patterns eliminated to prevent performance degradation under load.",
+      "acceptanceCriteria": [
+        "Enable Drizzle query logging in development to identify N+1 patterns",
+        "Fix N+1 in auto-lead-routing-service.ts: batch getUserFullName calls into single query",
+        "Audit and fix N+1 patterns in the 5 most-used services: leads listing, customer listing, dashboard widgets, quote details, invoice listing",
+        "Replace loops containing individual DB queries with batch queries using Drizzle's inArray() or with() for eager loading",
+        "Add a development-mode warning that logs when > 10 queries are made per request",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 48,
+      "passes": false,
+      "notes": "server/lib/db-logger.ts exists for query logging. Drizzle supports with() for relations and inArray() for batch lookups. Focus on the highest-traffic endpoints first."
+    },
+    {
+      "id": "US-049",
+      "title": "Implement query result caching for expensive reports",
+      "description": "As a user running reports, I need report results cached so repeated queries are instant and the database isn't overloaded.",
+      "acceptanceCriteria": [
+        "Create server/lib/query-cache.ts using Redis (server/lib/redis-client.ts) with: get(key), set(key, data, ttlSeconds), invalidate(pattern)",
+        "Cache expensive report queries in: executive-reporting-service.ts, sales-reporting-service.ts, director-reporting-service.ts",
+        "Cache TTL by report type: real-time dashboards 30s, daily reports 5min, historical reports 1 hour",
+        "Cache key includes: tenantId, report type, date range, filters (to prevent cross-tenant data leak)",
+        "Add cache invalidation when underlying data changes (e.g., new invoice created invalidates revenue reports)",
+        "Add cache hit/miss metrics to monitoring",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 49,
+      "passes": false,
+      "notes": "Redis client exists at server/lib/redis-client.ts. Cache middleware exists at server/middleware/cache-middleware.ts. Build on these. Report services do heavy aggregation queries that are perfect caching candidates."
+    },
+    {
+      "id": "US-050",
+      "title": "Complete equipment lifecycle state machine TODOs",
+      "description": "As an equipment manager, I need the full equipment lifecycle automated from procurement through disposal.",
+      "acceptanceCriteria": [
+        "Implement QR code generation for equipment asset tags (use qrcode npm package)",
+        "Implement automatic first service check scheduling when equipment is installed",
+        "Implement monitoring activation workflow when equipment goes into active state",
+        "Implement warranty registration tracking with manufacturer and expiry date",
+        "Implement customer notification emails on equipment status changes (delivered, installed, service needed)",
+        "Implement retirement/disposal workflow with asset write-off recording",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 50,
+      "passes": false,
+      "notes": "server/services/equipment-lifecycle-state-machine.ts has 7 TODOs. The state machine pattern is already implemented - just the side effects (notifications, external calls) are stubbed."
+    },
+    {
+      "id": "US-051",
+      "title": "Session Guard with graceful session expiry handling",
+      "description": "As a user, I want to see a clear session expired modal instead of cascading error toasts when my JWT expires, so that I understand what happened and can sign in again cleanly.",
+      "acceptanceCriteria": [
+        "SessionGuard component wraps the authenticated app and monitors Supabase auth events",
+        "A modal dialog appears when session expires instead of multiple error toasts",
+        "Global flag prevents cascading 401 toasts from multiple simultaneous API calls",
+        "User is redirected to login cleanly after clicking Sign In Again",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented in client/src/components/SessionGuard.tsx, integrated into App.tsx",
+      "category": "core"
+    },
+    {
+      "id": "US-052",
+      "title": "API retry with automatic token refresh on 401",
+      "description": "As a user, I want the platform to automatically refresh my access token when it expires during a request, so that I don't get unnecessarily logged out.",
+      "acceptanceCriteria": [
+        "apiRequest attempts token refresh via refreshSession() on 401 before failing",
+        "apiFormRequest has the same retry-with-refresh behavior",
+        "getQueryFn (TanStack Query default) has the same retry-with-refresh behavior",
+        "Concurrent refresh attempts are deduplicated via a shared promise",
+        "If refresh fails, the SessionGuard modal is triggered via custom event",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented in client/src/lib/queryClient.ts with refreshTokenOnce() and emitAuthError()",
+      "category": "core"
+    },
+    {
+      "id": "US-053",
+      "title": "Frontend route guards for admin pages",
+      "description": "As a platform admin, I want non-admin users to see an access denied page instead of broken API errors when they navigate to admin routes.",
+      "acceptanceCriteria": [
+        "Create a RouteGuard component that checks user.role.level before rendering admin pages",
+        "Admin routes (/admin/*, /root-admin-*, /platform-crm/*) require role level >= 7",
+        "Non-authorized users see a friendly Access Denied page with navigation back to dashboard",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "category": "core"
+    },
+    {
+      "id": "US-054",
+      "title": "In-app notification center with real-time updates",
+      "description": "As a user, I want an in-app notification bell/dropdown that shows real-time notifications for important events.",
+      "acceptanceCriteria": [
+        "Notification bell icon in top nav with unread count badge",
+        "Dropdown panel showing recent notifications grouped by type",
+        "Mark individual or all notifications as read",
+        "WebSocket integration for real-time delivery",
+        "Backend notification service with database persistence",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "WebSocket hook exists but no notification system built on it",
+      "category": "core"
+    },
+    {
+      "id": "US-055",
+      "title": "Guided onboarding wizard for new tenants",
+      "description": "As a new tenant admin, I want a step-by-step onboarding wizard after signup that helps me configure my company, invite team members, and set up key integrations.",
+      "acceptanceCriteria": [
+        "Multi-step wizard triggered on first login after signup",
+        "Steps: Company profile, Team invitation, Integration setup, Product catalog import",
+        "Progress indicator showing completion",
+        "Skip option for each step with ability to return later",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "OnboardingDashboard page exists but is a management view, not a first-run wizard",
+      "category": "integration"
+    },
+    {
+      "id": "US-056",
+      "title": "Enhanced global search with backend API integration",
+      "description": "As a user, I want the Cmd/Ctrl+K command palette to actually search across customers, leads, quotes, invoices, and equipment.",
+      "acceptanceCriteria": [
+        "Search endpoint that queries across business_records, quotes, invoices, equipment",
+        "Results grouped by entity type with icons and quick actions",
+        "Recent searches persisted in localStorage",
+        "Keyboard navigation through results",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "CommandPalette exists at client/src/components/navigation/command-palette.tsx but needs real search backend",
+      "category": "core"
+    },
+    {
+      "id": "US-057",
+      "title": "Comprehensive audit trail viewer UI for platform admins",
+      "description": "As a platform admin, I want a searchable, filterable audit log viewer for compliance and debugging.",
+      "acceptanceCriteria": [
+        "Admin page at /admin/audit-logs with table of audit events",
+        "Filters by: date range, user, tenant, action type, resource type",
+        "Export to CSV/JSON for compliance reporting",
+        "Pagination with server-side filtering",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Backend audit-log-service.ts and routes-audit-logs.ts exist but no dedicated admin viewer UI",
+      "category": "core"
+    },
+    {
+      "id": "US-058",
+      "title": "API key management self-service UI",
+      "description": "As a tenant admin, I want to create, rotate, and revoke API keys from a self-service UI for integration setup.",
+      "acceptanceCriteria": [
+        "Settings page for API key management",
+        "Create new API key with name, expiration, and permission scopes",
+        "List existing keys with last used timestamp",
+        "Revoke/rotate keys with confirmation dialog",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Backend api-key-service.ts and api-key-routes.ts exist but no frontend UI",
+      "category": "core"
+    },
+    {
+      "id": "US-059",
+      "title": "Dashboard widget customization with drag-and-drop",
+      "description": "As a user, I want to customize my dashboard by adding, removing, and rearranging widgets relevant to my role.",
+      "acceptanceCriteria": [
+        "Drag-and-drop widget rearrangement on the main dashboard",
+        "Widget library with available widgets based on user role",
+        "Layout persisted per user in database",
+        "Responsive grid that adapts to screen size",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "CustomDashboard page exists but is separate from the main dashboard",
+      "category": "polish"
+    },
+    {
+      "id": "US-060",
+      "title": "Bulk operations framework with progress tracking",
+      "description": "As a sales manager, I want to perform bulk operations on selected records with progress tracking.",
+      "acceptanceCriteria": [
+        "Multi-select checkboxes on list pages",
+        "Bulk action toolbar appears when items are selected",
+        "Actions: assign to user, change status, export, delete",
+        "Progress bar for long-running bulk operations",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "",
+      "category": "core"
+    },
+    {
+      "id": "US-061",
+      "title": "Data export with scheduled reports via email",
+      "description": "As a manager, I want to schedule recurring data exports that are emailed to me automatically.",
+      "acceptanceCriteria": [
+        "Schedule configuration: daily, weekly, monthly, custom cron",
+        "Report format options: CSV, Excel, PDF",
+        "Email delivery with attachment or download link",
+        "Manage scheduled exports from Reports page",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "ScheduledReportsDashboard page exists as a feature demo but needs real backend",
+      "category": "integration"
+    }
+  ]
+}
