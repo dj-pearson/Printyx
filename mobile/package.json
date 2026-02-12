@@ -17,7 +17,12 @@
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "update": "eas update"
+    "update": "eas update",
+    "screenshots": "./scripts/screenshots.sh",
+    "screenshots:ios": "./scripts/screenshots.sh --ios",
+    "screenshots:android": "./scripts/screenshots.sh --android",
+    "screenshots:clean": "./scripts/screenshots.sh --clean",
+    "screenshots:frame": "./scripts/frame-screenshots.sh"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.4",

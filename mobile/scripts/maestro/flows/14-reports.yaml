@@ -1,0 +1,12 @@
+appId: com.printyx.app
+name: "14 - Reports"
+---
+
+- waitForAnimationToEnd
+
+# Navigate to Reports tab
+- tapOn: "Reports"
+- waitForAnimationToEnd
+
+# Screenshot: Reports hub with categories
+- takeScreenshot: "14-reports"

@@ -1,0 +1,12 @@
+appId: com.printyx.app
+name: "15 - Settings"
+---
+
+- waitForAnimationToEnd
+
+# Navigate to More/Settings tab
+- tapOn: "More"
+- waitForAnimationToEnd
+
+# Screenshot: Settings with profile
+- takeScreenshot: "15-settings"
