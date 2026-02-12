@@ -1,0 +1,14 @@
+appId: com.printyx.app
+name: "09 - Service Hub"
+---
+
+- waitForAnimationToEnd
+
+# Navigate to Service tab
+- tapOn:
+    text: "Service"
+    index: 0
+- waitForAnimationToEnd
+
+# Screenshot: Service hub with ticket stats
+- takeScreenshot: "09-service-hub"

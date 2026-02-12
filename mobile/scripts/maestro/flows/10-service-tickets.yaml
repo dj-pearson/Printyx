@@ -1,0 +1,12 @@
+appId: com.printyx.app
+name: "10 - Service Tickets"
+---
+
+- waitForAnimationToEnd
+
+# Navigate to Service Tickets
+- tapOn: "Service Tickets"
+- waitForAnimationToEnd
+
+# Screenshot: Ticket list with filter chips
+- takeScreenshot: "10-service-tickets"

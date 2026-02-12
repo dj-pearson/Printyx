@@ -1,0 +1,16 @@
+appId: com.printyx.app
+name: "12 - Field Service"
+---
+
+- waitForAnimationToEnd
+
+# Go back to Service hub
+- back
+- waitForAnimationToEnd
+
+# Navigate to Field Service
+- tapOn: "Field Service"
+- waitForAnimationToEnd
+
+# Screenshot: Field service with time tracking
+- takeScreenshot: "12-field-service"
