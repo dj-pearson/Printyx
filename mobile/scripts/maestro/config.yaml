@@ -1,0 +1,17 @@
+# Maestro Screenshot Configuration
+#
+# This file defines the app flow for capturing all screenshots
+# needed for Apple App Store and Google Play Store submissions.
+#
+# Prerequisites:
+#   brew install maestro
+#   (or: curl -Ls "https://get.maestro.mobile.dev" | bash)
+#
+# Usage:
+#   cd mobile && ../scripts/screenshots.sh
+
+# Test credentials (use a dedicated screenshot account)
+- env:
+    TEST_EMAIL: "screenshots@printyx.net"
+    TEST_PASSWORD: "Screenshots2024!"
+    APP_ID: "com.printyx.app"

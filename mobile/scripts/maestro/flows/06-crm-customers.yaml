@@ -1,0 +1,16 @@
+appId: com.printyx.app
+name: "06 - Customers"
+---
+
+- waitForAnimationToEnd
+
+# Go back to CRM hub
+- back
+- waitForAnimationToEnd
+
+# Navigate to Customers
+- tapOn: "Customers"
+- waitForAnimationToEnd
+
+# Screenshot: Customers list
+- takeScreenshot: "06-customers"

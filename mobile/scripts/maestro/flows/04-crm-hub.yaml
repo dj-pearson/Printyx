@@ -1,0 +1,12 @@
+appId: com.printyx.app
+name: "04 - CRM Hub"
+---
+
+- waitForAnimationToEnd
+
+# Navigate to CRM tab
+- tapOn: "CRM"
+- waitForAnimationToEnd
+
+# Screenshot: CRM hub with stats
+- takeScreenshot: "04-crm-hub"
