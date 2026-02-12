@@ -16,6 +16,8 @@ import { SessionGuard } from '@/components/SessionGuard';
 import { AccessibilityProvider } from '@/hooks/useAccessibility';
 import { LiveRegionProvider } from '@/components/accessibility/LiveRegion';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { useRouteAnnouncer } from '@/hooks/useRouteAnnouncer';
+import { AccessibilityWidget } from '@/components/accessibility/AccessibilityWidget';
 
 // Critical auth pages - keep eager for fast initial load
 import NotFound from '@/pages/not-found';
@@ -310,6 +312,9 @@ function Router() {
   const [pathname, setLocation] = useLocation();
   const { open, setOpen } = useCommandPalette();
 
+  // Announce route changes to screen readers (WCAG 2.4.2, 4.1.3)
+  useRouteAnnouncer();
+
   // Save current route to localStorage when authenticated
   React.useEffect(() => {
     // Don't save auth pages or API routes
@@ -410,53 +415,58 @@ function Router() {
 
   if (!isAuthenticated) {
     return (
-      <Switch>
-        <Route path="/export-logos" component={LogoExport} />
-        <Route path="/login" component={Login} />
-        <Route path="/signup" component={Signup} />
-        <Route path="/forgot-password" component={ForgotPassword} />
-        <Route path="/reset-password" component={ResetPassword} />
-        <Route path="/verify-email" component={VerifyEmail} />
-        <Route path="/auth/callback" component={AuthCallback} />
-        <Route path="/eula" component={EndUserLicenseAgreement} />
-        <Route path="/privacy" component={PrivacyPolicy} />
-        <Route path="/terms" component={TermsAndConditions} />
-        <Route path="/accessibility" component={AccessibilityStatement} />
-        <Route path="/" component={Homepage} />
+      <>
+        <Switch>
+          <Route path="/export-logos" component={LogoExport} />
+          <Route path="/login" component={Login} />
+          <Route path="/signup" component={Signup} />
+          <Route path="/forgot-password" component={ForgotPassword} />
+          <Route path="/reset-password" component={ResetPassword} />
+          <Route path="/verify-email" component={VerifyEmail} />
+          <Route path="/auth/callback" component={AuthCallback} />
+          <Route path="/eula" component={EndUserLicenseAgreement} />
+          <Route path="/privacy" component={PrivacyPolicy} />
+          <Route path="/terms" component={TermsAndConditions} />
+          <Route path="/accessibility" component={AccessibilityStatement} />
+          <Route path="/" component={Homepage} />
 
-        {/* Strategic landing pages */}
-        <Route path="/predictive-intelligence" component={PredictiveIntelligence} />
-        <Route path="/modern-architecture" component={ModernArchitecture} />
-        <Route path="/integration-marketplace" component={IntegrationMarketplace} />
-        <Route path="/dealer-expertise" component={DealerExpertise} />
+          {/* Strategic landing pages */}
+          <Route path="/predictive-intelligence" component={PredictiveIntelligence} />
+          <Route path="/modern-architecture" component={ModernArchitecture} />
+          <Route path="/integration-marketplace" component={IntegrationMarketplace} />
+          <Route path="/dealer-expertise" component={DealerExpertise} />
 
-        {/* Blog routes */}
-        <Route path="/blog" component={BlogIndex} />
-        <Route
-          path="/blog/ai-predictive-maintenance-vs-reactive-service"
-          component={AIPredictiveMaintenanceBlog}
-        />
-        <Route
-          path="/blog/e-automate-vs-modern-cloud-platforms"
-          component={EAutomateVsModernBlog}
-        />
-        <Route path="/blog/dynamic-pricing-ai-copier-dealers" component={DynamicPricingAIBlog} />
+          {/* Blog routes */}
+          <Route path="/blog" component={BlogIndex} />
+          <Route
+            path="/blog/ai-predictive-maintenance-vs-reactive-service"
+            component={AIPredictiveMaintenanceBlog}
+          />
+          <Route
+            path="/blog/e-automate-vs-modern-cloud-platforms"
+            component={EAutomateVsModernBlog}
+          />
+          <Route path="/blog/dynamic-pricing-ai-copier-dealers" component={DynamicPricingAIBlog} />
 
-        {/* Conversion pages */}
-        <Route path="/roi-calculator" component={ROICalculator} />
-        <Route path="/case-studies" component={CaseStudies} />
-        <Route path="/battle-card" component={CompetitiveBattleCard} />
+          {/* Conversion pages */}
+          <Route path="/roi-calculator" component={ROICalculator} />
+          <Route path="/case-studies" component={CaseStudies} />
+          <Route path="/battle-card" component={CompetitiveBattleCard} />
 
-        {/* Other marketing pages */}
-        <Route path="/p/copier-dealer-crm" component={CopierDealerCRM} />
-        <Route path="/p/print-service-dispatch-mobile" component={PrintServiceDispatchMobile} />
-        <Route
-          path="/p/master-product-catalog-canon-imagerunner"
-          component={CanonMasterProductCatalog}
-        />
-        <Route path="/export-logos" component={LogoExport} />
-        <Route component={Homepage} />
-      </Switch>
+          {/* Other marketing pages */}
+          <Route path="/p/copier-dealer-crm" component={CopierDealerCRM} />
+          <Route path="/p/print-service-dispatch-mobile" component={PrintServiceDispatchMobile} />
+          <Route
+            path="/p/master-product-catalog-canon-imagerunner"
+            component={CanonMasterProductCatalog}
+          />
+          <Route path="/export-logos" component={LogoExport} />
+          <Route component={Homepage} />
+        </Switch>
+
+        {/* Accessibility Widget - Available on public pages for WCAG 2.1 AA */}
+        <AccessibilityWidget />
+      </>
     );
   }
 
