@@ -1,0 +1,12 @@
+appId: com.printyx.app
+name: "05 - Leads List"
+---
+
+- waitForAnimationToEnd
+
+# Navigate to Leads from CRM hub
+- tapOn: "Leads"
+- waitForAnimationToEnd
+
+# Screenshot: Leads list
+- takeScreenshot: "05-leads-list"

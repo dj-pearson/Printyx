@@ -1,0 +1,12 @@
+appId: com.printyx.app
+name: "13 - Equipment"
+---
+
+- waitForAnimationToEnd
+
+# Navigate to Equipment tab
+- tapOn: "Equipment"
+- waitForAnimationToEnd
+
+# Screenshot: Equipment list with barcode scan
+- takeScreenshot: "13-equipment-list"

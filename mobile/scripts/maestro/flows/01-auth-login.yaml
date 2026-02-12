@@ -1,0 +1,9 @@
+appId: com.printyx.app
+name: "01 - Login Screen"
+---
+
+# Wait for the app to fully load
+- waitForAnimationToEnd
+
+# Screenshot: Login screen (before entering credentials)
+- takeScreenshot: "01-login"

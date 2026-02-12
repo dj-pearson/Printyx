@@ -1,0 +1,25 @@
+appId: com.printyx.app
+name: "03 - Dashboard"
+---
+
+# Perform login
+- waitForAnimationToEnd
+
+- tapOn:
+    id: "Email"
+- inputText: ${TEST_EMAIL}
+
+- tapOn:
+    id: "Password"
+- inputText: ${TEST_PASSWORD}
+
+- tapOn: "Sign In"
+
+# Wait for dashboard to load
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "Dashboard"
+    timeout: 15000
+
+# Screenshot: Main dashboard
+- takeScreenshot: "03-dashboard"

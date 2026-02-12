@@ -9,6 +9,13 @@ vite.config.ts.*
 testing/test-results/
 testing/debug-*.js
 testing/test-*.js
+
+# Mobile app build artifacts
+mobile/screenshots/
+mobile/.expo/
+mobile/ios/
+mobile/android/
+mobile/coverage/
 neondb_backup.sql
 database-exports/
 Pgress.md
