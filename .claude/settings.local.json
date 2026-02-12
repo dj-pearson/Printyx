@@ -83,7 +83,10 @@
       "Bash(then echo \"DONE: settings/$file\")",
       "Bash(else echo \"PARTIAL: settings/$file\")",
       "Bash(then echo \"NEEDS_AUDIT: settings/$file\")",
-      "Bash(else echo \"NOT_APPLICABLE: settings/$file\")"
+      "Bash(else echo \"NOT_APPLICABLE: settings/$file\")",
+      "Bash(npm run test)",
+      "Bash(npx prettier:*)",
+      "Bash(git -C \"C:/Users/dpearson/Documents/Printyx\" status --short)"
     ],
     "deny": [],
     "ask": []
