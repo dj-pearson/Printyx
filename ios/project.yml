@@ -49,8 +49,6 @@ targets:
     entitlements:
       path: Printyx/Printyx.entitlements
       properties:
-        com.apple.security.application-groups:
-          - group.net.printyx.mainapp
         keychain-access-groups:
           - $(AppIdentifierPrefix)net.printyx.mainapp
 
