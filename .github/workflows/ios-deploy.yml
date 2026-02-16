@@ -240,8 +240,7 @@ jobs:
             -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
             SUPABASE_URL='${{ secrets.SUPABASE_URL }}' \
             SUPABASE_ANON_KEY='${{ secrets.SUPABASE_ANON_KEY }}' \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
+            CODE_SIGN_STYLE=Automatic \
             DEVELOPMENT_TEAM=${{ secrets.APPLE_DEVELOPER_TEAM_ID }} \
             | xcpretty
 
@@ -256,6 +255,8 @@ jobs:
           <dict>
             <key>method</key>
             <string>app-store-connect</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
             <key>teamID</key>
             <string>${{ secrets.APPLE_DEVELOPER_TEAM_ID }}</string>
             <key>uploadBitcode</key>
