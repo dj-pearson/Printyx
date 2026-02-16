@@ -232,7 +232,6 @@ jobs:
 
       - name: Archive
         run: |
-          set -o pipefail
           xcodebuild archive \
             -project Printyx.xcodeproj \
             -scheme ${{ env.SCHEME }} \
@@ -244,8 +243,7 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             DEVELOPMENT_TEAM=${{ secrets.APPLE_DEVELOPER_TEAM_ID }} \
-            PROVISIONING_PROFILE="$PROVISIONING_PROFILE_UUID" \
-            | xcpretty
+            PROVISIONING_PROFILE="$PROVISIONING_PROFILE_UUID"
 
       # ── Export & Upload ──
 
