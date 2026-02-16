@@ -48,8 +48,8 @@ concurrency:
 
 env:
   SCHEME: Printyx
-  BUNDLE_ID: net.printyx.ios
-  XCODE_VERSION: '15.4'
+  BUNDLE_ID: net.printyx.mainapp
+  XCODE_VERSION: '26.2'
 
 jobs:
   # ─────────────────────────────────────────────────
@@ -57,7 +57,7 @@ jobs:
   # ─────────────────────────────────────────────────
   version:
     name: Determine Version
-    runs-on: macos-14
+    runs-on: macos-15
     outputs:
       marketing_version: ${{ steps.version.outputs.marketing_version }}
       build_number: ${{ steps.version.outputs.build_number }}
@@ -98,7 +98,7 @@ jobs:
   build-test:
     name: Build & Test
     needs: version
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -129,7 +129,7 @@ jobs:
           xcodebuild build-for-testing \
             -project Printyx.xcodeproj \
             -scheme ${{ env.SCHEME }} \
-            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
             -clonedSourcePackagesDirPath .spm \
             SUPABASE_URL='${{ secrets.SUPABASE_URL }}' \
             SUPABASE_ANON_KEY='${{ secrets.SUPABASE_ANON_KEY }}' \
@@ -140,7 +140,7 @@ jobs:
           xcodebuild test-without-building \
             -project Printyx.xcodeproj \
             -scheme ${{ env.SCHEME }} \
-            -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
             -clonedSourcePackagesDirPath .spm \
             -resultBundlePath TestResults.xcresult \
             | xcpretty
@@ -160,7 +160,7 @@ jobs:
     name: Deploy to App Store
     needs: [version, build-test]
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
     steps:
       - name: Checkout
