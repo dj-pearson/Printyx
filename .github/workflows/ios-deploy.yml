@@ -17,11 +17,6 @@
 name: iOS Deploy
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'ios/**'
-      - '.github/workflows/ios-deploy.yml'
   workflow_dispatch:
     inputs:
       version:
