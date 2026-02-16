@@ -228,9 +228,10 @@ final class APIClient: ObservableObject {
     private func refreshAccessToken() async throws {
         guard !isRefreshingToken else {
             // Wait for the in-progress refresh
-            return try await withCheckedThrowingContinuation { continuation in
+            _ = try await withCheckedThrowingContinuation { continuation in
                 pendingRequests.append(continuation)
             }
+            return
         }
 
         isRefreshingToken = true
