@@ -50,9 +50,9 @@ targets:
       path: Printyx/Printyx.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.net.printyx.ios
+          - group.net.printyx.mainapp
         keychain-access-groups:
-          - $(AppIdentifierPrefix)net.printyx.ios
+          - $(AppIdentifierPrefix)net.printyx.mainapp
 
   PrintyxTests:
     type: bundle.unit-test
