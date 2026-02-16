@@ -121,6 +121,7 @@ jobs:
 
       - name: Build for testing
         run: |
+          set -o pipefail
           xcodebuild build-for-testing \
             -project Printyx.xcodeproj \
             -scheme ${{ env.SCHEME }} \
@@ -132,6 +133,7 @@ jobs:
 
       - name: Run tests
         run: |
+          set -o pipefail
           xcodebuild test-without-building \
             -project Printyx.xcodeproj \
             -scheme ${{ env.SCHEME }} \
@@ -225,6 +227,7 @@ jobs:
 
       - name: Archive
         run: |
+          set -o pipefail
           xcodebuild archive \
             -project Printyx.xcodeproj \
             -scheme ${{ env.SCHEME }} \

@@ -33,7 +33,7 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: Printyx/Resources/Info.plist
-        PRODUCT_BUNDLE_IDENTIFIER: net.printyx.ios
+        PRODUCT_BUNDLE_IDENTIFIER: net.printyx.mainapp
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
@@ -63,7 +63,8 @@ targets:
       - target: Printyx
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: net.printyx.ios.tests
+        PRODUCT_BUNDLE_IDENTIFIER: net.printyx.mainapp.tests
+        GENERATE_INFOPLIST_FILE: "YES"
 
   PrintyxUITests:
     type: bundle.ui-testing
@@ -74,7 +75,8 @@ targets:
       - target: Printyx
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: net.printyx.ios.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: net.printyx.mainapp.uitests
+        GENERATE_INFOPLIST_FILE: "YES"
 
 schemes:
   Printyx:
