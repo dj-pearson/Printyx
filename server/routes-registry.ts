@@ -36,6 +36,7 @@ import { trialRoutes } from './routes-trial';
 import emailParserRoutes from './routes-email-parser';
 import mobileTechnicianRoutes from './routes-mobile-technician';
 import equipmentQRRoutes from './routes-equipment-qr';
+import { registerMobileApiRoutes } from './routes-mobile-api';
 import businessRecordsRoutes from './routes-business-records';
 import accessibilityRoutes from './routes-accessibility';
 
@@ -405,6 +406,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use('/api/email-parser', emailParserRoutes);
   app.use('/api/mobile', mobileTechnicianRoutes);
   app.use('/api/equipment', equipmentQRRoutes);
+
+  // ─── Mobile App API (service-tickets, equipment list, time tracking) ──
+  registerMobileApiRoutes(app);
 
   // ─── Platform CRM ─────────────────────────────────────────────────
   const platformBusinessRecordsRoutes = (await import('./routes-platform-business-records'))

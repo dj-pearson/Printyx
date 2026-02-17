@@ -10,7 +10,8 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://api.printyx.net",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoiYW5vbiJ9.deZlFDdzzNQtSseKfZc2PXZpiYYHHsy6V8NE2cByL7c",
-        "EXPO_PUBLIC_API_BASE_URL": "https://functions.printyx.net",
+        "EXPO_PUBLIC_API_BASE_URL": "https://app.printyx.net",
+        "EXPO_PUBLIC_EDGE_FUNCTIONS_URL": "https://functions.printyx.net",
         "EXPO_PUBLIC_APP_URL": "https://app.printyx.net"
       },
       "ios": {
@@ -22,7 +23,8 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://api.printyx.net",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoiYW5vbiJ9.deZlFDdzzNQtSseKfZc2PXZpiYYHHsy6V8NE2cByL7c",
-        "EXPO_PUBLIC_API_BASE_URL": "https://functions.printyx.net",
+        "EXPO_PUBLIC_API_BASE_URL": "https://app.printyx.net",
+        "EXPO_PUBLIC_EDGE_FUNCTIONS_URL": "https://functions.printyx.net",
         "EXPO_PUBLIC_APP_URL": "https://app.printyx.net"
       },
       "ios": {
@@ -36,7 +38,8 @@
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://api.printyx.net",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoiYW5vbiJ9.deZlFDdzzNQtSseKfZc2PXZpiYYHHsy6V8NE2cByL7c",
-        "EXPO_PUBLIC_API_BASE_URL": "https://functions.printyx.net",
+        "EXPO_PUBLIC_API_BASE_URL": "https://app.printyx.net",
+        "EXPO_PUBLIC_EDGE_FUNCTIONS_URL": "https://functions.printyx.net",
         "EXPO_PUBLIC_APP_URL": "https://app.printyx.net"
       },
       "ios": {

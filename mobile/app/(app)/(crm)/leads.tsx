@@ -6,14 +6,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, FlatList, RefreshControl, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -24,51 +17,56 @@ export default function LeadsScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
 
-  const { data: leads, isLoading, refetch, isRefetching } = useQuery<any[]>({
-    queryKey: ['/api/business-records', `?type=lead&search=${search}&limit=50`],
+  const {
+    data: leads,
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useQuery<any[]>({
+    queryKey: ['/api/business-records', `?recordType=lead&search=${search}&limit=50`],
   });
 
-  const renderItem = useCallback(({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.leadCard}
-      onPress={() => router.push({ pathname: '/(app)/(crm)/[id]', params: { id: item.id, type: 'lead' } })}
-      activeOpacity={0.7}
-      accessibilityLabel={`Lead: ${item.companyName || item.name}`}
-    >
-      <View style={styles.leadHeader}>
-        <Text style={styles.leadName} numberOfLines={1}>
-          {item.companyName || item.name || 'Unnamed Lead'}
-        </Text>
-        <Badge
-          label={item.status || 'New'}
-          variant={getStatusVariant(item.status)}
-        />
-      </View>
-      {item.contactName && (
-        <Text style={styles.leadContact} numberOfLines={1}>{item.contactName}</Text>
-      )}
-      {item.email && (
-        <Text style={styles.leadEmail} numberOfLines={1}>{item.email}</Text>
-      )}
-      <View style={styles.leadFooter}>
-        <Text style={styles.leadSource}>{item.source || 'Direct'}</Text>
-        {item.estimatedValue && (
-          <Text style={styles.leadValue}>
-            ${Number(item.estimatedValue).toLocaleString()}
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => (
+      <TouchableOpacity
+        style={styles.leadCard}
+        onPress={() =>
+          router.push({ pathname: '/(app)/(crm)/[id]', params: { id: item.id, type: 'lead' } })
+        }
+        activeOpacity={0.7}
+        accessibilityLabel={`Lead: ${item.companyName || item.name}`}
+      >
+        <View style={styles.leadHeader}>
+          <Text style={styles.leadName} numberOfLines={1}>
+            {item.companyName || item.name || 'Unnamed Lead'}
+          </Text>
+          <Badge label={item.status || 'New'} variant={getStatusVariant(item.status)} />
+        </View>
+        {item.contactName && (
+          <Text style={styles.leadContact} numberOfLines={1}>
+            {item.contactName}
           </Text>
         )}
-      </View>
-    </TouchableOpacity>
-  ), [router]);
+        {item.email && (
+          <Text style={styles.leadEmail} numberOfLines={1}>
+            {item.email}
+          </Text>
+        )}
+        <View style={styles.leadFooter}>
+          <Text style={styles.leadSource}>{item.source || 'Direct'}</Text>
+          {item.estimatedValue && (
+            <Text style={styles.leadValue}>${Number(item.estimatedValue).toLocaleString()}</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    ),
+    [router],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
       <View style={styles.searchContainer}>
-        <SearchBar
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search leads..."
-        />
+        <SearchBar value={search} onChangeText={setSearch} placeholder="Search leads..." />
       </View>
 
       <FlatList
@@ -99,11 +97,16 @@ export default function LeadsScreen() {
 
 function getStatusVariant(status?: string): 'default' | 'success' | 'warning' | 'error' | 'info' {
   switch (status?.toLowerCase()) {
-    case 'qualified': return 'success';
-    case 'contacted': return 'info';
-    case 'proposal': return 'warning';
-    case 'lost': return 'error';
-    default: return 'default';
+    case 'qualified':
+      return 'success';
+    case 'contacted':
+      return 'info';
+    case 'proposal':
+      return 'warning';
+    case 'lost':
+      return 'error';
+    default:
+      return 'default';
   }
 }
 
