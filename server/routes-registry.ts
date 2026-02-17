@@ -19,6 +19,7 @@ import { registerSeoCoreRoutes } from './routes-seo-core';
 import { registerFinancialForecastingRoutes } from './routes-financial-forecasting';
 import { registerOperationsExtendedRoutes } from './routes-operations-extended';
 import { registerAuditLogRoutes } from './routes-audit-logs';
+import { registerNotificationRoutes } from './routes-notifications';
 import { registerWorkflowMobileRoutes } from './routes-workflow-mobile';
 
 // ─── Static Route Module Imports ──────────────────────────────────────
@@ -177,6 +178,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerOperationsExtendedRoutes(app);
   registerWorkflowMobileRoutes(app);
   registerAuditLogRoutes(app);
+  registerNotificationRoutes(app);
 
   // ─── Pricing ───────────────────────────────────────────────────────
   app.get('/api/pricing/company-settings', getCompanyPricingSettings);

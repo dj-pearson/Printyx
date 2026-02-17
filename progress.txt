@@ -1092,3 +1092,65 @@ import { requireAuth } from '../auth-setup';
 
 ---
 
+
+Iteration 1 (Tue, Feb 17, 2026  9:40:34 AM): Story US-020
+Status: Needs Review
+
+---
+
+## Iteration 2 (Tue, Feb 17, 2026): Stories US-053 + US-054
+**Status**: COMPLETE
+
+### US-053: Frontend route guards for admin pages
+- Already implemented: RouteGuard.tsx, AdminRouteGuard, ProtectedRoute.tsx
+- All admin routes (/admin/*, /root-admin-*, /platform-crm/*) already guarded in App.tsx
+- Marked as passes: true (no code changes needed)
+
+### US-054: In-app notification center with real-time updates
+**Implementation:**
+
+1. **Schema**: Created `shared/notification-schema.ts` with `userNotifications` table
+   - Fields: id, tenantId, userId, type, priority, category, title, message, read, readAt, actionUrl, actionLabel, metadata, createdAt
+   - Indexes: user+tenant, tenant+created, user+unread+created
+
+2. **Backend Service**: Created `server/services/notification-service.ts`
+   - `create()` - Create notification + WebSocket broadcast
+   - `getForUser()` - Paginated list with unreadOnly filter
+   - `getUnreadCount()` - Count unread
+   - `markAsRead()` / `markAllAsRead()` - Mark read
+   - `delete()` - Delete notification
+   - `cleanupOld()` - Cleanup read notifications older than 30 days
+
+3. **API Routes**: Created `server/routes-notifications.ts`
+   - GET /api/notifications - List user's notifications
+   - GET /api/notifications/unread-count - Unread count
+   - POST /api/notifications/:id/read - Mark one as read
+   - POST /api/notifications/read-all - Mark all as read
+   - DELETE /api/notifications/:id - Delete notification
+
+4. **WebSocket**: Added `sendToUser()` method to `server/websocket-service.ts`
+   - Sends to all connected clients for a specific userId
+
+5. **Frontend**: Replaced `SystemAlertBell` with `EnhancedNotificationBell` in `header.tsx`
+   - EnhancedNotificationBell was pre-existing with full UI (bell + badge + dropdown + tabs)
+   - Already queries /api/notifications with 30s refetch interval
+
+6. **Route Registration**: Added to `server/routes-registry.ts`
+
+### Build Verification:
+- `npm run build` (Vite): PASS
+- Unit tests (1174 passed, 28 pre-existing failures, 66 skipped): PASS (no regressions)
+
+### Files Created:
+- shared/notification-schema.ts
+- server/services/notification-service.ts
+- server/routes-notifications.ts
+
+### Files Modified:
+- shared/schema.ts - Added `export * from './notification-schema'`
+- server/routes-registry.ts - Added notification routes registration
+- server/websocket-service.ts - Added `sendToUser()` method
+- client/src/components/layout/header.tsx - Replaced SystemAlertBell with EnhancedNotificationBell
+- prd.json - Marked US-053 and US-054 as passes: true
+
+---

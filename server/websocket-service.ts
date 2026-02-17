@@ -302,6 +302,28 @@ export class WebSocketService {
     );
   }
 
+  // Send notification to a specific user (all their connected clients)
+  public sendToUser(userId: string, data: any): void {
+    const message: ServerMessage = {
+      type: 'data_update',
+      channel: `notification:${userId}`,
+      data,
+      timestamp: Date.now(),
+    };
+
+    let sent = 0;
+    this.clients.forEach((client) => {
+      if (client.userId === userId) {
+        this.sendToClient(client, message);
+        sent++;
+      }
+    });
+
+    if (sent > 0) {
+      log.info(`Sent notification to user ${userId} (${sent} connections)`);
+    }
+  }
+
   // Send message to specific client
   private sendToClient(client: WebSocketClient, message: ServerMessage): void {
     if (client.socket.readyState === WebSocket.OPEN) {

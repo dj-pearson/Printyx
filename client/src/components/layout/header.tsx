@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import SystemAlertBell from '@/components/layout/SystemAlertBell';
+import { EnhancedNotificationBell } from '@/components/layout/enhanced-notification-bell';
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -68,7 +68,7 @@ export default function Header({ title, description, onSearchClick }: HeaderProp
 
         <div className="flex items-center space-x-2 sm:space-x-4">
           {/* Notifications */}
-          <SystemAlertBell />
+          <EnhancedNotificationBell />
 
           {/* User Menu */}
           <DropdownMenu>

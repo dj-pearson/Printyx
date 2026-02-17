@@ -1,0 +1,367 @@
+# iOS App - Build, Test & Deploy to App Store Connect
+#
+# Trigger: Push to main with ios/ changes, or manual dispatch with version control.
+#
+# Required GitHub Secrets (see SECRETS.md in ios/ directory):
+#   - APPLE_DEVELOPER_TEAM_ID        : Apple Developer Team ID (e.g., "A1B2C3D4E5")
+#   - APP_STORE_CONNECT_API_KEY_ID   : App Store Connect API Key ID
+#   - APP_STORE_CONNECT_ISSUER_ID    : App Store Connect API Issuer ID
+#   - APP_STORE_CONNECT_API_KEY_P8   : App Store Connect API Private Key (.p8 contents, base64-encoded)
+#   - IOS_CERTIFICATE_P12            : iOS Distribution Certificate (.p12 file, base64-encoded)
+#   - IOS_CERTIFICATE_PASSWORD       : Password for the .p12 certificate
+#   - IOS_PROVISIONING_PROFILE       : App Store provisioning profile (base64-encoded)
+#   - KEYCHAIN_PASSWORD              : Temporary keychain password (any random string)
+#   - SUPABASE_URL                   : Supabase API URL for the app
+#   - SUPABASE_ANON_KEY              : Supabase anonymous key for the app
+
+name: iOS Deploy
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App version (e.g., 1.2.0). Leave empty to auto-increment patch.'
+        required: false
+        type: string
+      build_number:
+        description: 'Build number (e.g., 42). Leave empty to auto-increment.'
+        required: false
+        type: string
+      submit_for_review:
+        description: 'Submit to App Store Review after upload?'
+        required: false
+        type: boolean
+        default: false
+
+defaults:
+  run:
+    working-directory: ios
+
+concurrency:
+  group: ios-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SCHEME: Printyx
+  BUNDLE_ID: net.printyx.mainapp
+  XCODE_VERSION: '26.2'
+
+jobs:
+  # ─────────────────────────────────────────────────
+  # 1. Determine Version
+  # ─────────────────────────────────────────────────
+  version:
+    name: Determine Version
+    runs-on: macos-15
+    outputs:
+      marketing_version: ${{ steps.version.outputs.marketing_version }}
+      build_number: ${{ steps.version.outputs.build_number }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version numbers
+        id: version
+        run: |
+          # Read current version from project.yml
+          CURRENT_VERSION=$(grep 'MARKETING_VERSION:' project.yml | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+          CURRENT_BUILD=$(grep 'CURRENT_PROJECT_VERSION:' project.yml | head -1 | sed 's/.*: *"\(.*\)"/\1/')
+
+          # Use input version or current
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="$CURRENT_VERSION"
+          fi
+
+          # Use input build number or auto-increment
+          if [ -n "${{ github.event.inputs.build_number }}" ]; then
+            BUILD="${{ github.event.inputs.build_number }}"
+          else
+            BUILD=$((CURRENT_BUILD + 1))
+          fi
+
+          echo "marketing_version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION ($BUILD)"
+
+  # ─────────────────────────────────────────────────
+  # 2. Build & Test
+  # ─────────────────────────────────────────────────
+  build-test:
+    name: Build & Test
+    needs: version
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: |
+          # Set version in project.yml before generating
+          sed -i '' 's/MARKETING_VERSION: .*/MARKETING_VERSION: "${{ needs.version.outputs.marketing_version }}"/' project.yml
+          sed -i '' 's/CURRENT_PROJECT_VERSION: .*/CURRENT_PROJECT_VERSION: "${{ needs.version.outputs.build_number }}"/' project.yml
+          xcodegen generate
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Printyx.xcodeproj \
+            -scheme ${{ env.SCHEME }} \
+            -clonedSourcePackagesDirPath .spm
+
+      - name: Build for testing
+        run: |
+          set -o pipefail
+          xcodebuild build-for-testing \
+            -project Printyx.xcodeproj \
+            -scheme ${{ env.SCHEME }} \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+            -clonedSourcePackagesDirPath .spm \
+            SUPABASE_URL='${{ secrets.SUPABASE_URL }}' \
+            SUPABASE_ANON_KEY='${{ secrets.SUPABASE_ANON_KEY }}' \
+            | xcpretty
+
+      - name: Run tests
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project Printyx.xcodeproj \
+            -scheme ${{ env.SCHEME }} \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+            -clonedSourcePackagesDirPath .spm \
+            -resultBundlePath TestResults.xcresult \
+            | xcpretty
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ios/TestResults.xcresult
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────
+  # 3. Archive & Upload to App Store Connect
+  # ─────────────────────────────────────────────────
+  deploy:
+    name: Deploy to App Store
+    needs: [version, build-test]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+
+      # ── Code Signing Setup (BEFORE xcodegen so UUID can be injected into project.yml) ──
+
+      - name: Install Apple certificate and provisioning profile
+        env:
+          P12_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE_P12 }}
+          P12_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          PROVISIONING_PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
+          PROFILE_PATH=$RUNNER_TEMP/profile.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # Decode from base64
+          echo -n "$P12_CERTIFICATE" | base64 --decode -o $CERTIFICATE_PATH
+          echo -n "$PROVISIONING_PROFILE" | base64 --decode -o $PROFILE_PATH
+
+          # Create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # Extract provisioning profile UUID and install with correct filename
+          PROFILE_UUID=$(security cms -D -i $PROFILE_PATH | plutil -extract UUID raw -)
+          echo "Provisioning Profile UUID: $PROFILE_UUID"
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PROFILE_PATH ~/Library/MobileDevice/Provisioning\ Profiles/${PROFILE_UUID}.mobileprovision
+
+          # Export for use in later steps
+          echo "PROVISIONING_PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project with version and code signing
+        run: |
+          # Set version info
+          sed -i '' 's/MARKETING_VERSION: .*/MARKETING_VERSION: "${{ needs.version.outputs.marketing_version }}"/' project.yml
+          sed -i '' 's/CURRENT_PROJECT_VERSION: .*/CURRENT_PROJECT_VERSION: "${{ needs.version.outputs.build_number }}"/' project.yml
+          sed -i '' 's/DEVELOPMENT_TEAM: .*/DEVELOPMENT_TEAM: "${{ secrets.APPLE_DEVELOPER_TEAM_ID }}"/' project.yml
+
+          # Inject provisioning profile UUID into the Printyx target Release config
+          sed -i '' "s/__PROVISIONING_PROFILE_UUID__/$PROVISIONING_PROFILE_UUID/" project.yml
+
+          echo "=== project.yml Release config ==="
+          grep -A 5 'Release:' project.yml
+          xcodegen generate
+
+      - name: Create App Store Connect API key file
+        env:
+          API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+        run: |
+          mkdir -p ~/.private_keys
+          echo -n "$API_KEY_P8" | base64 --decode > ~/.private_keys/AuthKey_${API_KEY_ID}.p8
+
+      # ── Build Archive ──
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Printyx.xcodeproj \
+            -scheme ${{ env.SCHEME }} \
+            -clonedSourcePackagesDirPath .spm
+
+      - name: Archive
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project Printyx.xcodeproj \
+            -scheme ${{ env.SCHEME }} \
+            -archivePath $RUNNER_TEMP/Printyx.xcarchive \
+            -destination 'generic/platform=iOS' \
+            -clonedSourcePackagesDirPath .spm \
+            SUPABASE_URL='${{ secrets.SUPABASE_URL }}' \
+            SUPABASE_ANON_KEY='${{ secrets.SUPABASE_ANON_KEY }}' \
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_DEVELOPER_TEAM_ID }} \
+            | xcpretty
+
+      # ── Export & Upload ──
+
+      - name: Create ExportOptions.plist
+        run: |
+          cat > $RUNNER_TEMP/ExportOptions.plist << PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>teamID</key>
+            <string>${{ secrets.APPLE_DEVELOPER_TEAM_ID }}</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>${{ env.BUNDLE_ID }}</key>
+              <string>$PROVISIONING_PROFILE_UUID</string>
+            </dict>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          PLIST
+
+          echo "=== ExportOptions.plist ==="
+          cat $RUNNER_TEMP/ExportOptions.plist
+
+      - name: Export archive
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/Printyx.xcarchive \
+            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
+            -exportPath $RUNNER_TEMP/export
+
+      - name: Verify API key and IPA
+        run: |
+          echo "=== API Key Diagnostics ==="
+          KEY_PATH=~/.private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+          echo "Key file exists: $(test -f $KEY_PATH && echo YES || echo NO)"
+          echo "Key file size: $(wc -c < $KEY_PATH) bytes"
+          echo "Key file starts with: $(head -1 $KEY_PATH)"
+          echo "Key ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}"
+          echo "Issuer ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
+          echo ""
+          echo "=== IPA file ==="
+          ls -la $RUNNER_TEMP/export/
+          echo "IPA size: $(wc -c < $RUNNER_TEMP/export/Printyx.ipa) bytes"
+
+      - name: Upload to App Store Connect
+        run: |
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$RUNNER_TEMP/export/Printyx.ipa" \
+            --apiKey ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }} \
+            --apiIssuer ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
+            --show-progress \
+            --verbose
+
+      # ── Optional: Submit for Review ──
+
+      - name: Submit for Review (if requested)
+        if: github.event.inputs.submit_for_review == 'true'
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          echo "Submission for review requested. Use App Store Connect or fastlane for automated submission."
+          echo "Version: ${{ needs.version.outputs.marketing_version }} (${{ needs.version.outputs.build_number }})"
+
+      # ── Cleanup ──
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
+          rm -f ~/.private_keys/AuthKey_*.p8 2>/dev/null || true
+
+      # ── Create Git Tag ──
+
+      - name: Tag release
+        if: success()
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag -a "ios/v${{ needs.version.outputs.marketing_version }}-${{ needs.version.outputs.build_number }}" \
+            -m "iOS v${{ needs.version.outputs.marketing_version }} build ${{ needs.version.outputs.build_number }}"
+          git push origin "ios/v${{ needs.version.outputs.marketing_version }}-${{ needs.version.outputs.build_number }}"
+
+  # ─────────────────────────────────────────────────
+  # 4. Notify on completion
+  # ─────────────────────────────────────────────────
+  notify:
+    name: Notify
+    needs: [version, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Summary
+        run: |
+          echo "## iOS Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ needs.version.outputs.marketing_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build**: ${{ needs.version.outputs.build_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ needs.deploy.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by**: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY

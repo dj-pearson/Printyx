@@ -8621,3 +8621,6 @@ export {
   type BillingSchedule,
   type InvoiceGenerationLog,
 } from './advanced-billing-schema';
+
+// Export notification schema
+export * from './notification-schema';
