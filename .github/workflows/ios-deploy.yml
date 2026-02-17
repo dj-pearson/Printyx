@@ -306,13 +306,19 @@ jobs:
 
       - name: Upload to App Store Connect
         run: |
-          xcrun altool --upload-app \
+          set -o pipefail
+          UPLOAD_OUTPUT=$(xcrun altool --upload-app \
             --type ios \
             --file "$RUNNER_TEMP/export/Printyx.ipa" \
             --apiKey ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }} \
             --apiIssuer ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
             --show-progress \
-            --verbose
+            --verbose 2>&1) || true
+          echo "$UPLOAD_OUTPUT"
+          if echo "$UPLOAD_OUTPUT" | grep -q "UPLOAD FAILED\|Upload failed\|Validation failed"; then
+            echo "::error::App Store Connect upload failed with validation errors"
+            exit 1
+          fi
 
       # ── Optional: Submit for Review ──
 
