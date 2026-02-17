@@ -16,6 +16,9 @@
 
 name: iOS Deploy
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -287,6 +290,20 @@ jobs:
             -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
             -exportPath $RUNNER_TEMP/export
 
+      - name: Verify API key and IPA
+        run: |
+          echo "=== API Key Diagnostics ==="
+          KEY_PATH=~/.private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+          echo "Key file exists: $(test -f $KEY_PATH && echo YES || echo NO)"
+          echo "Key file size: $(wc -c < $KEY_PATH) bytes"
+          echo "Key file starts with: $(head -1 $KEY_PATH)"
+          echo "Key ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}"
+          echo "Issuer ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}"
+          echo ""
+          echo "=== IPA file ==="
+          ls -la $RUNNER_TEMP/export/
+          echo "IPA size: $(wc -c < $RUNNER_TEMP/export/Printyx.ipa) bytes"
+
       - name: Upload to App Store Connect
         run: |
           xcrun altool --upload-app \
@@ -294,7 +311,8 @@ jobs:
             --file "$RUNNER_TEMP/export/Printyx.ipa" \
             --apiKey ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }} \
             --apiIssuer ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
-            --show-progress
+            --show-progress \
+            --verbose
 
       # ── Optional: Submit for Review ──
 
