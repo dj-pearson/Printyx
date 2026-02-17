@@ -97,7 +97,7 @@ jobs:
     name: Build & Test
     needs: version
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -107,6 +107,11 @@ jobs:
 
       - name: Install XcodeGen
         run: brew install xcodegen
+
+      - name: Install iOS Simulator runtime
+        run: |
+          xcodebuild -downloadPlatform iOS
+          xcrun simctl list devices available
 
       - name: Generate Xcode project
         run: |
@@ -125,10 +130,23 @@ jobs:
       - name: Build for testing
         run: |
           set -o pipefail
+          # Find first available iPhone simulator
+          DEST=$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          for runtime, devices in data['devices'].items():
+              if 'iOS' in runtime:
+                  for d in devices:
+                      if 'iPhone' in d['name']:
+                          print(f\"platform=iOS Simulator,id={d['udid']}\")
+                          sys.exit(0)
+          print('platform=iOS Simulator,name=Any iOS Simulator Device')
+          ")
+          echo "Using simulator: $DEST"
           xcodebuild build-for-testing \
             -project Printyx.xcodeproj \
             -scheme ${{ env.SCHEME }} \
-            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+            -destination "$DEST" \
             -clonedSourcePackagesDirPath .spm \
             SUPABASE_URL='${{ secrets.SUPABASE_URL }}' \
             SUPABASE_ANON_KEY='${{ secrets.SUPABASE_ANON_KEY }}' \
@@ -137,10 +155,23 @@ jobs:
       - name: Run tests
         run: |
           set -o pipefail
+          # Find first available iPhone simulator
+          DEST=$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          for runtime, devices in data['devices'].items():
+              if 'iOS' in runtime:
+                  for d in devices:
+                      if 'iPhone' in d['name']:
+                          print(f\"platform=iOS Simulator,id={d['udid']}\")
+                          sys.exit(0)
+          print('platform=iOS Simulator,name=Any iOS Simulator Device')
+          ")
+          echo "Using simulator: $DEST"
           xcodebuild test-without-building \
             -project Printyx.xcodeproj \
             -scheme ${{ env.SCHEME }} \
-            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+            -destination "$DEST" \
             -clonedSourcePackagesDirPath .spm \
             -resultBundlePath TestResults.xcresult \
             | xcpretty
