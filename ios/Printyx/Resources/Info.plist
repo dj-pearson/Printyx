@@ -46,6 +46,8 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSAppTransportSecurity</key>
