@@ -58,12 +58,12 @@ export function registerTaskRoutes(app: Express) {
   // Get tasks - filter by assigned user if requested
   app.get('/api/tasks', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       const { assignedTo, my } = req.query;
 
       let userId: string | undefined;
       if (my === 'true') {
-        userId = req.user?.id || req.user?.claims?.sub;
+        userId = getUserId(req);
       } else if (assignedTo) {
         userId = assignedTo as string;
       }
@@ -79,12 +79,12 @@ export function registerTaskRoutes(app: Express) {
   // Get task statistics
   app.get('/api/tasks/stats', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       const { my } = req.query;
 
       let userId: string | undefined;
       if (my === 'true') {
-        userId = req.user?.claims?.sub;
+        userId = getUserId(req);
       }
 
       const stats = await storage.getTaskStats(tenantId, userId);
@@ -98,8 +98,8 @@ export function registerTaskRoutes(app: Express) {
   // Create new task
   app.post('/api/tasks', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
-      const userId = req.user?.id || req.user?.claims?.sub;
+      const tenantId = getTenantId(req);
+      const userId = getUserId(req);
 
       // Convert string dates to Date objects and clean up data
       const taskData = { ...req.body };
@@ -138,7 +138,7 @@ export function registerTaskRoutes(app: Express) {
   // Update task (PUT method)
   app.put('/api/tasks/:id', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       const taskId = req.params.id;
 
       const task = await storage.updateTask(taskId, req.body, tenantId);
@@ -157,7 +157,7 @@ export function registerTaskRoutes(app: Express) {
   // Update task (PATCH method)
   app.patch('/api/tasks/:id', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       const taskId = req.params.id;
 
       const task = await storage.updateTask(taskId, req.body, tenantId);
@@ -176,12 +176,12 @@ export function registerTaskRoutes(app: Express) {
   // Get projects
   app.get('/api/projects', async (req: any, res) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       const { assignedTo, my } = req.query;
 
       let userId: string | undefined;
       if (my === 'true') {
-        userId = req.user?.id || req.user?.claims?.sub;
+        userId = getUserId(req);
       } else if (assignedTo) {
         userId = assignedTo as string;
       }
@@ -198,8 +198,8 @@ export function registerTaskRoutes(app: Express) {
   app.post('/api/projects', async (req: any, res) => {
     try {
       log.info('Creating project - request body:', req.body);
-      const tenantId = req.user?.tenantId;
-      const userId = req.user?.id || req.user?.claims?.sub;
+      const tenantId = getTenantId(req);
+      const userId = getUserId(req);
       log.info('Creating project - tenant:', tenantId, 'user:', userId);
 
       // Convert string dates to Date objects and clean up data
