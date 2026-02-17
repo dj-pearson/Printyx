@@ -352,6 +352,9 @@ jobs:
     needs: [version, deploy]
     if: always()
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
     steps:
       - name: Summary
         run: |
