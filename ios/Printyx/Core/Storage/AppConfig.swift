@@ -7,7 +7,7 @@ enum AppConfig {
         #if DEBUG
         return ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:5000"
         #else
-        return "https://app.printyx.net"
+        return "https://printyx.net"
         #endif
     }
 

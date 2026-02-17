@@ -5,7 +5,7 @@
  * Uses EXPO_PUBLIC_ prefixed env vars which are inlined at build time.
  *
  * API Routing:
- * - Regular /api/* calls → Express backend at app.printyx.net (same as website)
+ * - Regular /api/* calls → Express backend at printyx.net (same as website)
  * - Edge Function calls (signup, etc.) → functions.printyx.net via Supabase URL
  */
 
@@ -18,13 +18,13 @@ export const config = {
 
   // API Base URL - Express backend server (same as website)
   // All /api/* routes go here, matching the web app's routing
-  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://app.printyx.net',
+  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://printyx.net',
 
   // Edge Functions URL - for Supabase Edge Functions only (signup, etc.)
   edgeFunctionsUrl: process.env.EXPO_PUBLIC_EDGE_FUNCTIONS_URL || 'https://functions.printyx.net',
 
   // App URL for deep linking
-  appUrl: process.env.EXPO_PUBLIC_APP_URL || 'https://app.printyx.net',
+  appUrl: process.env.EXPO_PUBLIC_APP_URL || 'https://printyx.net',
 
   // App metadata
   appName: 'Printyx',
@@ -40,8 +40,8 @@ export const config = {
  * Keeps the /api/ prefix intact since the Express server expects it.
  *
  * Examples:
- *   /api/business-records → https://app.printyx.net/api/business-records
- *   /api/service-tickets  → https://app.printyx.net/api/service-tickets
+ *   /api/business-records → https://printyx.net/api/business-records
+ *   /api/service-tickets  → https://printyx.net/api/service-tickets
  */
 export function getApiUrl(path: string): string {
   let cleanPath = path.startsWith('/') ? path.slice(1) : path;

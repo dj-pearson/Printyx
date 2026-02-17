@@ -14,7 +14,7 @@ final class APIClient: ObservableObject {
         let supabaseAnonKey: String
 
         static let production = Configuration(
-            baseURL: URL(string: "https://app.printyx.net")!,
+            baseURL: URL(string: "https://printyx.net")!,
             supabaseURL: URL(string: "https://api.printyx.net")!,
             supabaseAnonKey: AppConfig.supabaseAnonKey
         )
