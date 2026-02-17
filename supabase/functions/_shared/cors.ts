@@ -7,6 +7,7 @@ const DEFAULT_ORIGINS = [
   'https://www.printyx.net',
   'http://localhost:5173', // Vite dev server
   'http://localhost:5000', // Local development
+  'http://localhost:3000', // Alternative dev port
 ];
 
 // Parse ALLOWED_ORIGINS from environment variable (comma-separated)
