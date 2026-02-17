@@ -22,6 +22,7 @@ import { storage } from './storage';
 import { insertLeadSchema, insertLeadContactSchema } from '@shared/schema';
 import { BusinessRecordsTransformer } from './data-field-mapping';
 import { cacheControl, etag } from './middleware/cache-middleware';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 
 // Multer for CSV import
 const upload = multer({
@@ -53,7 +54,7 @@ export function registerCrmCoreRoutes(app: Express) {
 
   app.get('/api/customers', cacheControl(180), etag(), async (req: any, res, next) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -70,7 +71,7 @@ export function registerCrmCoreRoutes(app: Express) {
   app.get('/api/customers/:id', cacheControl(300), etag(), async (req: any, res, next) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -98,7 +99,7 @@ export function registerCrmCoreRoutes(app: Express) {
 
   app.get('/api/leads', async (req: any, res, next) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -113,7 +114,7 @@ export function registerCrmCoreRoutes(app: Express) {
   app.get('/api/leads/:id', async (req: any, res, next) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -141,14 +142,14 @@ export function registerCrmCoreRoutes(app: Express) {
 
   app.post('/api/leads', async (req: any, res, next) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
       const validatedData = insertLeadSchema.parse({
         ...req.body,
         tenantId: tenantId,
-        createdBy: 'demo-user',
+        createdBy: getUserId(req) || 'system',
       });
       const lead = await storage.createLead(validatedData);
       res.json(lead);
@@ -160,7 +161,7 @@ export function registerCrmCoreRoutes(app: Express) {
   app.put('/api/leads/:id', async (req: any, res, next) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -177,11 +178,11 @@ export function registerCrmCoreRoutes(app: Express) {
   app.post('/api/leads/:id/convert', async (req: any, res, next) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
-      const customer = await storage.convertLeadToCustomer(id, tenantId, req.user?.id as string);
+      const customer = await storage.convertLeadToCustomer(id, tenantId, getUserId(req) as string);
       res.json(customer);
     } catch (error) {
       next(error);
@@ -193,7 +194,7 @@ export function registerCrmCoreRoutes(app: Express) {
   app.get('/api/leads/:id/activities', async (req: any, res, next) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -207,7 +208,7 @@ export function registerCrmCoreRoutes(app: Express) {
   app.post('/api/leads/:id/activities', async (req: any, res, next) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -215,7 +216,7 @@ export function registerCrmCoreRoutes(app: Express) {
         ...req.body,
         leadId: id,
         tenantId,
-        createdBy: 'demo-user',
+        createdBy: getUserId(req) || 'system',
       };
       const activity = await storage.createLeadActivity(activityData);
       res.json(activity);
@@ -229,7 +230,7 @@ export function registerCrmCoreRoutes(app: Express) {
   app.get('/api/leads/:id/contacts', async (req: any, res, next) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -243,7 +244,7 @@ export function registerCrmCoreRoutes(app: Express) {
   app.post('/api/leads/:id/contacts', async (req: any, res, next) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -264,7 +265,7 @@ export function registerCrmCoreRoutes(app: Express) {
   app.get('/api/leads/:id/related-records', async (req: any, res, next) => {
     try {
       const { id } = req.params;
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
@@ -279,7 +280,7 @@ export function registerCrmCoreRoutes(app: Express) {
 
   app.post('/api/business-records/import', upload.single('file'), async (req: any, res, next) => {
     try {
-      const tenantId = req.user?.tenantId;
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID is required' });
       }
@@ -350,13 +351,13 @@ export function registerCrmCoreRoutes(app: Express) {
             notes: row.notes || '',
             assignedSalesRep:
               row.assignedSalesRep === 'current_user'
-                ? req.user.id
-                : row.assignedSalesRep || req.user.id,
+                ? getUserId(req)
+                : row.assignedSalesRep || getUserId(req),
             ownerId:
               row.assignedSalesRep === 'current_user'
-                ? req.user.id
-                : row.assignedSalesRep || req.user.id,
-            createdBy: req.user.id,
+                ? getUserId(req)
+                : row.assignedSalesRep || getUserId(req),
+            createdBy: getUserId(req),
           };
 
           await storage.createBusinessRecord(businessRecordData);
