@@ -12,12 +12,13 @@ enum AppConfig {
     }
 
     // MARK: - Supabase
+    // Read from Info.plist (injected at build time via Xcode build settings)
     static var supabaseURL: String {
-        ProcessInfo.processInfo.environment["SUPABASE_URL"] ?? "https://api.printyx.net"
+        Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String ?? "https://api.printyx.net"
     }
 
     static var supabaseAnonKey: String {
-        ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"] ?? ""
+        Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String ?? ""
     }
 
     // MARK: - App Info
