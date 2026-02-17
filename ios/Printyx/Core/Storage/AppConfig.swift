@@ -7,8 +7,13 @@ enum AppConfig {
         #if DEBUG
         return ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "http://localhost:5000"
         #else
-        return "https://functions.printyx.net"
+        return "https://app.printyx.net"
         #endif
+    }
+
+    // MARK: - Edge Functions (for Supabase Edge Functions only)
+    static var edgeFunctionsURL: String {
+        "https://functions.printyx.net"
     }
 
     // MARK: - Supabase
@@ -18,7 +23,8 @@ enum AppConfig {
     }
 
     static var supabaseAnonKey: String {
-        Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String ?? ""
+        Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String
+            ?? "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoiYW5vbiJ9.deZlFDdzzNQtSseKfZc2PXZpiYYHHsy6V8NE2cByL7c"
     }
 
     // MARK: - App Info

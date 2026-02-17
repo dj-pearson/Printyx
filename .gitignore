@@ -75,3 +75,6 @@ roles_rows.csv
 companies_rows.csv
 PriceBookList_11-02-2026.csv
 iosbuild_logs.txt
+iOS_Build.txt
+.gitignore
+iOS_Submit.txt

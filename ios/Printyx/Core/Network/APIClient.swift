@@ -14,7 +14,7 @@ final class APIClient: ObservableObject {
         let supabaseAnonKey: String
 
         static let production = Configuration(
-            baseURL: URL(string: "https://functions.printyx.net")!,
+            baseURL: URL(string: "https://app.printyx.net")!,
             supabaseURL: URL(string: "https://api.printyx.net")!,
             supabaseAnonKey: AppConfig.supabaseAnonKey
         )
@@ -175,15 +175,12 @@ final class APIClient: ObservableObject {
     // MARK: - Request Building
 
     private func buildRequest(for endpoint: APIEndpoint) throws -> URLRequest {
-        // Determine base URL: auth endpoints go to Supabase, API endpoints go to Edge Functions
+        // Determine base URL: auth endpoints go to Supabase, API endpoints go to Express backend
         let isAuthEndpoint = endpoint.path.hasPrefix("/auth/")
         let baseURL = isAuthEndpoint ? configuration.supabaseURL : configuration.baseURL
 
-        // For Edge Functions, strip /api/ prefix (e.g., /api/tasks -> /tasks)
-        var path = endpoint.path
-        if !isAuthEndpoint && path.hasPrefix("/api/") {
-            path = String(path.dropFirst(4)) // "/api/tasks" -> "/tasks"
-        }
+        // Keep the full path including /api/ prefix for Express backend routing
+        let path = endpoint.path
 
         guard var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: true) else {
             throw APIError.invalidURL
