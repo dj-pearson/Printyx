@@ -122,13 +122,13 @@ jobs:
             -scheme ${{ env.SCHEME }} \
             -clonedSourcePackagesDirPath .spm
 
-      - name: Build
+      - name: Build for testing
         run: |
           set -o pipefail
-          xcodebuild build \
+          xcodebuild build-for-testing \
             -project Printyx.xcodeproj \
             -scheme ${{ env.SCHEME }} \
-            -destination 'generic/platform=iOS' \
+            -destination 'generic/platform=iOS Simulator' \
             -clonedSourcePackagesDirPath .spm \
             SUPABASE_URL='${{ secrets.SUPABASE_URL }}' \
             SUPABASE_ANON_KEY='${{ secrets.SUPABASE_ANON_KEY }}' \
