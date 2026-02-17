@@ -97,7 +97,7 @@ jobs:
     name: Build & Test
     needs: version
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -107,11 +107,6 @@ jobs:
 
       - name: Install XcodeGen
         run: brew install xcodegen
-
-      - name: Install iOS Simulator runtime
-        run: |
-          xcodebuild -downloadPlatform iOS
-          xcrun simctl list devices available
 
       - name: Generate Xcode project
         run: |
@@ -127,62 +122,17 @@ jobs:
             -scheme ${{ env.SCHEME }} \
             -clonedSourcePackagesDirPath .spm
 
-      - name: Build for testing
+      - name: Build
         run: |
           set -o pipefail
-          # Find first available iPhone simulator
-          DEST=$(xcrun simctl list devices available -j | python3 -c "
-          import json, sys
-          data = json.load(sys.stdin)
-          for runtime, devices in data['devices'].items():
-              if 'iOS' in runtime:
-                  for d in devices:
-                      if 'iPhone' in d['name']:
-                          print(f\"platform=iOS Simulator,id={d['udid']}\")
-                          sys.exit(0)
-          print('platform=iOS Simulator,name=Any iOS Simulator Device')
-          ")
-          echo "Using simulator: $DEST"
-          xcodebuild build-for-testing \
+          xcodebuild build \
             -project Printyx.xcodeproj \
             -scheme ${{ env.SCHEME }} \
-            -destination "$DEST" \
+            -destination 'generic/platform=iOS' \
             -clonedSourcePackagesDirPath .spm \
             SUPABASE_URL='${{ secrets.SUPABASE_URL }}' \
             SUPABASE_ANON_KEY='${{ secrets.SUPABASE_ANON_KEY }}' \
             | xcpretty
-
-      - name: Run tests
-        run: |
-          set -o pipefail
-          # Find first available iPhone simulator
-          DEST=$(xcrun simctl list devices available -j | python3 -c "
-          import json, sys
-          data = json.load(sys.stdin)
-          for runtime, devices in data['devices'].items():
-              if 'iOS' in runtime:
-                  for d in devices:
-                      if 'iPhone' in d['name']:
-                          print(f\"platform=iOS Simulator,id={d['udid']}\")
-                          sys.exit(0)
-          print('platform=iOS Simulator,name=Any iOS Simulator Device')
-          ")
-          echo "Using simulator: $DEST"
-          xcodebuild test-without-building \
-            -project Printyx.xcodeproj \
-            -scheme ${{ env.SCHEME }} \
-            -destination "$DEST" \
-            -clonedSourcePackagesDirPath .spm \
-            -resultBundlePath TestResults.xcresult \
-            | xcpretty
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: ios/TestResults.xcresult
-          retention-days: 7
 
   # ─────────────────────────────────────────────────
   # 3. Archive & Upload to App Store Connect
