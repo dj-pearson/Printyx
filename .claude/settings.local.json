@@ -83,7 +83,12 @@
       "Bash(then echo \"DONE: settings/$file\")",
       "Bash(else echo \"PARTIAL: settings/$file\")",
       "Bash(then echo \"NEEDS_AUDIT: settings/$file\")",
-      "Bash(else echo \"NOT_APPLICABLE: settings/$file\")"
+      "Bash(else echo \"NOT_APPLICABLE: settings/$file\")",
+      "Bash(git ls-tree:*)",
+      "Bash(python3:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

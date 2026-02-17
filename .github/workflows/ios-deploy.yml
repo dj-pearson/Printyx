@@ -338,11 +338,14 @@ jobs:
       - name: Tag release
         if: success()
         run: |
+          TAG_NAME="ios/v${{ needs.version.outputs.marketing_version }}-${{ needs.version.outputs.build_number }}"
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git tag -a "ios/v${{ needs.version.outputs.marketing_version }}-${{ needs.version.outputs.build_number }}" \
-            -m "iOS v${{ needs.version.outputs.marketing_version }} build ${{ needs.version.outputs.build_number }}"
-          git push origin "ios/v${{ needs.version.outputs.marketing_version }}-${{ needs.version.outputs.build_number }}"
+          # Delete existing tag if present (from a previous failed attempt)
+          git tag -d "$TAG_NAME" 2>/dev/null || true
+          git push origin ":refs/tags/$TAG_NAME" 2>/dev/null || true
+          git tag -a "$TAG_NAME" -m "iOS v${{ needs.version.outputs.marketing_version }} build ${{ needs.version.outputs.build_number }}"
+          git push origin "$TAG_NAME"
 
   # ─────────────────────────────────────────────────
   # 4. Notify on completion
