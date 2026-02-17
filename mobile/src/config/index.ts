@@ -3,6 +3,10 @@
  *
  * Environment-specific settings for the Printyx mobile app.
  * Uses EXPO_PUBLIC_ prefixed env vars which are inlined at build time.
+ *
+ * API Routing:
+ * - Regular /api/* calls → Express backend at app.printyx.net (same as website)
+ * - Edge Function calls (signup, etc.) → functions.printyx.net via Supabase URL
  */
 
 export const config = {
@@ -12,8 +16,12 @@ export const config = {
     anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
   },
 
-  // API Base URL - Edge Functions in production
-  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://functions.printyx.net',
+  // API Base URL - Express backend server (same as website)
+  // All /api/* routes go here, matching the web app's routing
+  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://app.printyx.net',
+
+  // Edge Functions URL - for Supabase Edge Functions only (signup, etc.)
+  edgeFunctionsUrl: process.env.EXPO_PUBLIC_EDGE_FUNCTIONS_URL || 'https://functions.printyx.net',
 
   // App URL for deep linking
   appUrl: process.env.EXPO_PUBLIC_APP_URL || 'https://app.printyx.net',
@@ -28,20 +36,34 @@ export const config = {
 } as const;
 
 /**
- * Build a full API URL for an endpoint.
- * Strips /api/ prefix for Edge Function routing (same as web).
+ * Build a full API URL for an Express backend endpoint.
+ * Keeps the /api/ prefix intact since the Express server expects it.
+ *
+ * Examples:
+ *   /api/business-records → https://app.printyx.net/api/business-records
+ *   /api/service-tickets  → https://app.printyx.net/api/service-tickets
  */
 export function getApiUrl(path: string): string {
   let cleanPath = path.startsWith('/') ? path.slice(1) : path;
-
-  // Strip /api/ prefix for Edge Functions
-  if (cleanPath.startsWith('api/')) {
-    cleanPath = cleanPath.slice(4);
-  }
 
   const baseUrl = config.apiBaseUrl.endsWith('/')
     ? config.apiBaseUrl.slice(0, -1)
     : config.apiBaseUrl;
 
   return `${baseUrl}/${cleanPath}`;
+}
+
+/**
+ * Build a URL for a Supabase Edge Function.
+ * Used for specific edge function endpoints like signup.
+ *
+ * Examples:
+ *   getEdgeFunctionUrl('signup') → https://functions.printyx.net/signup
+ */
+export function getEdgeFunctionUrl(functionName: string): string {
+  const baseUrl = config.edgeFunctionsUrl.endsWith('/')
+    ? config.edgeFunctionsUrl.slice(0, -1)
+    : config.edgeFunctionsUrl;
+
+  return `${baseUrl}/${functionName}`;
 }

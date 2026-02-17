@@ -1,14 +1,14 @@
 /**
  * API Client for Printyx Mobile
  *
- * Mirrors the web queryClient patterns:
+ * Routes /api/* calls to the Express backend (same as the website).
  * - Automatic Bearer token injection
  * - Token refresh on 401
  * - Tenant ID header injection
  * - Request ID correlation
  */
 
-import { config, getApiUrl } from '@/config';
+import { config, getApiUrl, getEdgeFunctionUrl } from '@/config';
 import { getAccessToken, refreshSession } from './supabase';
 import * as SecureStore from 'expo-secure-store';
 import * as Crypto from 'expo-crypto';
@@ -124,12 +124,62 @@ export async function apiRequest<T = any>(
 
   const data = await res.json();
 
-  // Auto-unwrap Edge Function paginated responses (same as web)
+  // Auto-unwrap paginated responses that use { data: [...], total, page, limit } structure
+  // Both Express backend and Edge Functions may return this format
   if (data && typeof data === 'object' && 'data' in data && Array.isArray(data.data)) {
     return data.data as T;
   }
 
   return data as T;
+}
+
+/**
+ * Make an authenticated request to a Supabase Edge Function.
+ * Use this for specific Edge Function endpoints (signup, etc.)
+ * instead of apiRequest which routes to the Express backend.
+ */
+export async function edgeFunctionRequest<T = any>(
+  functionName: string,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  const { method = 'POST', body, headers = {}, signal } = options;
+
+  const requestHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Client': 'printyx-mobile',
+    ...headers,
+  };
+
+  // Inject Bearer token
+  const accessToken = await getAccessToken();
+  if (accessToken) {
+    requestHeaders['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  // Inject anon key for Edge Functions
+  if (config.supabase.anonKey) {
+    requestHeaders['apikey'] = config.supabase.anonKey;
+  }
+
+  const requestUrl = getEdgeFunctionUrl(functionName);
+
+  const res = await fetch(requestUrl, {
+    method,
+    headers: requestHeaders,
+    body: body ? JSON.stringify(body) : undefined,
+    signal,
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new ApiError(res.status, text);
+  }
+
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
+  return await res.json();
 }
 
 export class ApiError extends Error {
@@ -147,7 +197,13 @@ export class ApiError extends Error {
  * Constructs URL from queryKey array and calls apiRequest.
  */
 export function createQueryFn<T>(on401: 'returnNull' | 'throw' = 'throw') {
-  return async ({ queryKey, signal }: { queryKey: readonly string[]; signal?: AbortSignal }): Promise<T | null> => {
+  return async ({
+    queryKey,
+    signal,
+  }: {
+    queryKey: readonly string[];
+    signal?: AbortSignal;
+  }): Promise<T | null> => {
     try {
       const url = queryKey.join('/');
       return await apiRequest<T>(url.startsWith('/') ? url : `/${url}`, { signal });
