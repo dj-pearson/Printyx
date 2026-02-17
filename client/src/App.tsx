@@ -142,6 +142,10 @@ const TaskHub = React.lazy(() => import('@/pages/TaskHub'));
 const TaskManagement = React.lazy(() => import('@/pages/TaskManagement'));
 const BasicTaskManagement = React.lazy(() => import('@/pages/BasicTaskManagement'));
 const DealsManagement = React.lazy(() => import('@/pages/DealsManagement'));
+const CrmDealsPage = React.lazy(() => import('@/pages/CrmDealsPage'));
+const CrmLeadsPage = React.lazy(() => import('@/pages/CrmLeadsPage'));
+const CrmContactsPage = React.lazy(() => import('@/pages/CrmContactsPage'));
+const CrmCompaniesPage = React.lazy(() => import('@/pages/CrmCompaniesPage'));
 const ProductHub = React.lazy(() => import('@/pages/ProductHub'));
 const ProductHubUnified = React.lazy(() => import('@/pages/ProductHubUnified'));
 const EquipmentLifecycle = React.lazy(() => import('@/pages/EquipmentLifecycle'));
@@ -523,19 +527,24 @@ function Router() {
           </Route>
           <Route path="/today" component={TodayDashboard} />
           <Route path="/dashboard/today" component={TodayDashboard} />
-          {/* CRM - Dedicated pages for each record type */}
+          {/* CRM - Unified CRM index pages (HubSpot-style) */}
+          <Route path="/crm/deals" component={CrmDealsPage} />
+          <Route path="/crm/leads" component={CrmLeadsPage} />
+          <Route path="/crm/contacts" component={CrmContactsPage} />
+          <Route path="/crm/companies" component={CrmCompaniesPage} />
+          {/* CRM - Legacy dedicated pages */}
           <Route path="/leads" component={LeadsPage} />
           <Route path="/prospects" component={ProspectsPage} />
           <Route path="/customers" component={CustomersPage} />
           <Route path="/customers/:slug" component={CustomerDetail} />
-          {/* Legacy routes - redirect to new pages */}
+          {/* Legacy routes */}
           <Route path="/crm" component={CustomersPage} />
           <Route path="/business-records" component={CustomersPage} />
           <Route path="/leads-management" component={LeadsPage} />
           <Route path="/contacts" component={Contacts} />
-          <Route path="/deals" component={DealsManagement} />
-          <Route path="/opportunities" component={DealsManagement} />
-          <Route path="/deals-management" component={DealsManagement} />
+          <Route path="/deals" component={CrmDealsPage} />
+          <Route path="/opportunities" component={CrmDealsPage} />
+          <Route path="/deals-management" component={CrmDealsPage} />
           {/* Unified Product Hub - consolidates product-hub, product-catalog, and product-management-hub */}
           <Route path="/product-hub" component={ProductHubUnified} />
           {/* Legacy Product Hub (keeping for reference during transition) */}

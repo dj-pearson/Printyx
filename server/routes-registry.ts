@@ -62,6 +62,10 @@ import equipmentLifecycleStateMachineRoutes from './routes-equipment-lifecycle-s
 import equipmentDisposalRoutes from './routes-equipment-disposal';
 import breachDetectionRoutes from './routes-breach-detection';
 import { registerCrmGoalRoutes } from './routes-crm-goals';
+import { registerSavedViewsRoutes } from './routes-saved-views';
+import { registerDealTagRoutes } from './routes-deal-tags';
+import { registerCrmBulkRoutes } from './routes-crm-bulk';
+import { registerRecordLayoutRoutes } from './routes-record-layout';
 import { registerBusinessRecordRoutes } from './routes-business-records';
 import { registerCustomerRoutes } from './routes-customers';
 import { registerDealsRoutes } from './routes-deals';
@@ -234,6 +238,10 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Service & CRM ────────────────────────────────────────────────
   registerServiceAnalysisRoutes(app);
   registerCrmGoalRoutes(app);
+  registerSavedViewsRoutes(app);
+  registerDealTagRoutes(app);
+  registerCrmBulkRoutes(app);
+  registerRecordLayoutRoutes(app);
   registerBusinessRecordRoutes(app);
   registerCsvImportRoutes(app);
   registerCustomReportsRoutes(app);

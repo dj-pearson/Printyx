@@ -210,6 +210,40 @@ export type {
   InsertWorkflowStep,
 } from './enhanced-service-schema';
 
+// Re-export CRM views schemas
+export {
+  savedViews,
+  savedViewPins,
+  boardCardConfigs,
+  dealTags,
+  dealTagAssignments,
+  recordLayoutConfigs,
+  viewVisibilityEnum,
+  crmObjectTypeEnum,
+  insertSavedViewSchema,
+  updateSavedViewSchema,
+  insertSavedViewPinSchema,
+  insertBoardCardConfigSchema,
+  insertDealTagSchema,
+  insertDealTagAssignmentSchema,
+  insertRecordLayoutConfigSchema,
+} from './crm-views-schema';
+
+export type {
+  SavedView,
+  InsertSavedView,
+  SavedViewPin,
+  InsertSavedViewPin,
+  BoardCardConfig,
+  InsertBoardCardConfig,
+  DealTag,
+  InsertDealTag,
+  DealTagAssignment,
+  InsertDealTagAssignment,
+  RecordLayoutConfig,
+  InsertRecordLayoutConfig,
+} from './crm-views-schema';
+
 // Re-export product pricing schemas
 export {
   companyPricingSettings,

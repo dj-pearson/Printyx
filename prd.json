@@ -1086,7 +1086,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "FOUNDATION STORY - This is the data layer for all CRM views. Currently saved filters use localStorage only (client/src/components/ui/saved-filters.tsx). This replaces that with a proper backend. The filterDefinition jsonb stores conditions like: [{field: 'status', operator: 'eq', value: 'active'}, {field: 'amount', operator: 'gte', value: 10000}]. The boardConfig stores card layout preferences per view. Reference: CRM_Layout.md 'Filtering and saved views' section.",
       "category": "crm-hubspot"
     },
@@ -1109,7 +1109,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "This is the main container component - the 'chrome' around the board/table. It consumes the saved_views API from CRM-001. The actual table and board renderers are separate stories. Existing components to leverage: SmartFilterBar (client/src/components/ui/smart-filter-bar.tsx), BusinessRecordsDataTable. HubSpot reference: 'Top-level nav = CRM > Deals. Inside Deals: View-mode toggle, Horizontal strip of view tabs, Pipeline selector near top right of the board view.' The pipeline selector dropdown should load from GET /api/pipeline-config/templates.",
       "category": "crm-hubspot"
     },
@@ -1135,7 +1135,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Existing PipelineBoard.tsx (client/src/components/crm/PipelineBoard.tsx) uses @dnd-kit with 7 hardcoded stages. This story replaces it with a dynamic version. @dnd-kit/core and @dnd-kit/sortable are already installed. Backend endpoints exist: GET /api/pipeline-config/stages/:templateId, PATCH /api/sales-pipeline/opportunities/:id/stage. Column aggregates need a new backend endpoint or can be computed client-side from loaded deals. Reference: CRM_Layout.md 'Deals pipeline board layout' section.",
       "category": "crm-hubspot"
     },
@@ -1159,7 +1159,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Current cards in PipelineBoard.tsx show hardcoded fields (company name, contact, location, industry). This story makes them configurable. The card config follows HubSpot's 3-tier model: Global defaults per pipeline > Per-view overrides > Per-user tweaks. Reference: CRM_Layout.md 'Deal card design and customization' section. @dnd-kit can be reused for the drag-to-reorder field list in the config panel.",
       "category": "crm-hubspot"
     },
@@ -1183,7 +1183,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Existing SmartFilterBar (client/src/components/ui/smart-filter-bar.tsx) has basic filter types but no advanced condition builder. Existing SavedFilters uses localStorage. This story builds the real HubSpot-style filter experience on top of the saved_views API from CRM-001. The condition builder should generate filter objects that the backend can translate to Drizzle ORM where clauses. Reference: CRM_Layout.md 'Filtering and saved views' section. The filter definition format: [{field: 'amount', operator: 'gte', value: 10000, conjunction: 'AND'}].",
       "category": "crm-hubspot"
     },
@@ -1206,7 +1206,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Existing InlineEdit component (client/src/components/ui/inline-edit.tsx) supports text, number, email, textarea, select, currency, dates. Integrate this into the table renderer. For drag-and-drop, the board already has @dnd-kit. Stage transition endpoint exists: POST /api/pipeline-config/deals/:dealId/transition. Reference: CRM_Layout.md 'Inline and bulk editing patterns' section.",
       "category": "crm-hubspot"
     },
@@ -1229,7 +1229,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Existing BulkOperationsToolbar (client/src/components/ui/bulk-operations-toolbar.tsx) has selection management and action framework. BusinessRecordsDataTable already uses it for some operations. This story extends it to deals board view and adds deal-specific bulk actions. Backend has POST /api/business-records/bulk/status but needs a more generic bulk-update endpoint for deals. Reference: CRM_Layout.md 'Inline and bulk editing patterns' section.",
       "category": "crm-hubspot"
     },
@@ -1253,7 +1253,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Current deal/lead detail pages are fixed-layout forms. This story converts them to a configurable layout engine. The activity timeline can leverage existing deal activities API (GET /api/deals-management/deals/:id/activities). Associated records use existing relationship data. Reference: CRM_Layout.md 'Deal record page layout' section: 'Header: name, stage/pipeline, quick actions. Left: editable property groups. Center: timeline with filters and compose inputs. Right: pluggable cards for associated entities.'",
       "category": "crm-hubspot"
     },
@@ -1274,7 +1274,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "This story provides the configuration UIs for CRM-004 (card configs). HubSpot has two levels: global admin setup (Objects > Deals > Pipelines in settings) and in-context configuration (Edit board, Card setup) for power users. This story focuses on the in-context configuration. The global admin setup is handled by the existing PipelineConfiguration.tsx page. Reference: CRM_Layout.md 'Deal card design and customization' and 'Practical build strategy' step 5.",
       "category": "crm-hubspot"
     },
@@ -1296,7 +1296,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "HubSpot's core UX principle: 'Contacts, companies, deals, tickets, and custom objects all share the same basic index + board + record patterns.' This story generalizes the deals-specific work from CRM-002 through CRM-009 into a generic object view system. The object registry pattern lets each type define its behavior. Existing pages to refactor: Contacts.tsx, CustomersPage.tsx, CompanyContacts.tsx, ProspectsPage.tsx. Reference: CRM_Layout.md 'Custom objects and extensible UI' section.",
       "category": "crm-hubspot"
     }
