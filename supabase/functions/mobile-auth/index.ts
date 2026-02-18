@@ -29,7 +29,9 @@ export default async function handler(req: Request) {
 
   const url = new URL(req.url);
   const pathParts = url.pathname.split('/').filter(Boolean);
-  const action = pathParts[1]; // "login" or "refresh"
+  // server.ts strips the function name from the path, so
+  // /mobile-auth/login arrives as /login → pathParts[0] = "login"
+  const action = pathParts[0];
 
   console.log(`[mobile-auth] ${req.method} action=${action}`);
 
