@@ -88,7 +88,8 @@
       "Bash(npx prettier:*)",
       "Bash(git -C \"C:/Users/dpearson/Documents/Printyx\" status --short)",
       "Bash(gh secret:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []
