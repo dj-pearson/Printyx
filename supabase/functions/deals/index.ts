@@ -21,13 +21,28 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
+    // Resolve tenant ID: x-tenant-id header → app_metadata → user_metadata → DB lookup
+    let tenantId =
+      req.headers.get('x-tenant-id') ||
+      (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string) ||
+      (user.user_metadata?.tenantId as string) ||
       (user.user_metadata?.tenant_id as string);
 
     if (!tenantId) {
+      // Fallback: look up tenant from public.users
+      const admin2 = createSupabaseServiceClient();
+      const { data: dbUser } = await admin2
+        .from('users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .limit(1)
+        .maybeSingle();
+      tenantId = dbUser?.tenant_id;
+    }
+
+    if (!tenantId) {
+      console.error('No tenant ID found for user:', user.id);
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
     }
 
@@ -45,16 +60,11 @@ export default async function handler(req: Request) {
       const limit = parseInt(url.searchParams.get('limit') || '50');
       const offset = (page - 1) * limit;
 
+      // Select deals without FK joins to avoid schema cache errors
+      // (business_records table is deprecated, FK may not exist)
       let query = admin
         .from('deals')
-        .select(
-          `
-          *,
-          business_record:business_records!deals_business_record_id_fkey(id, company_name, primary_contact_name),
-          owner:users!deals_owner_id_fkey(id, first_name, last_name)
-        `,
-          { count: 'exact' },
-        )
+        .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('expected_close_date', { ascending: true })
         .range(offset, offset + limit - 1);
@@ -92,15 +102,10 @@ export default async function handler(req: Request) {
 
     // GET /deals/:id - Get single deal
     if (req.method === 'GET' && dealId) {
+      // Select deal without FK joins to avoid schema cache errors
       const { data: deal, error } = await admin
         .from('deals')
-        .select(
-          `
-          *,
-          business_record:business_records!deals_business_record_id_fkey(id, company_name, primary_contact_name, primary_contact_email),
-          owner:users!deals_owner_id_fkey(id, first_name, last_name, email, phone)
-        `,
-        )
+        .select('*')
         .eq('id', dealId)
         .eq('tenant_id', tenantId)
         .single();

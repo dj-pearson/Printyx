@@ -24,33 +24,40 @@ export default function CustomersScreen() {
   const [search, setSearch] = useState('');
 
   const { data: rawData, isLoading, refetch, isRefetching } = useQuery<any>({
-    queryKey: ['/api/companies', `?recordType=Customer&search=${search}&limit=50`],
+    queryKey: [`/api/companies?recordType=Customer&search=${search}&limit=50`],
   });
   // Handle both auto-unwrapped arrays and { records } / { data } response formats
   const customers: any[] = Array.isArray(rawData) ? rawData : (rawData?.records || rawData?.data || []);
 
-  const renderItem = useCallback(({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.customerRow}
-      onPress={() => router.push({ pathname: '/(app)/(crm)/[id]', params: { id: item.id, type: 'customer' } })}
-      activeOpacity={0.7}
-    >
-      <Avatar name={item.companyName || item.name} size={44} />
-      <View style={styles.customerInfo}>
-        <Text style={styles.customerName} numberOfLines={1}>
-          {item.companyName || item.name}
-        </Text>
-        <Text style={styles.customerDetail} numberOfLines={1}>
-          {item.email || item.phone || 'No contact info'}
-        </Text>
-      </View>
-      <Badge
-        label={item.status || 'Active'}
-        variant={item.status === 'active' ? 'success' : 'default'}
-        size="sm"
-      />
-    </TouchableOpacity>
-  ), [router]);
+  const renderItem = useCallback(({ item }: { item: any }) => {
+    // Handle both camelCase and snake_case field names from DB
+    const name = item.companyName || item.business_name || item.name || 'Unnamed';
+    const detail = item.email || item.phone || 'No contact info';
+    const status = item.status || item.activity || 'Active';
+
+    return (
+      <TouchableOpacity
+        style={styles.customerRow}
+        onPress={() => router.push({ pathname: '/(app)/(crm)/[id]', params: { id: item.id, type: 'customer' } })}
+        activeOpacity={0.7}
+      >
+        <Avatar name={name} size={44} />
+        <View style={styles.customerInfo}>
+          <Text style={styles.customerName} numberOfLines={1}>
+            {name}
+          </Text>
+          <Text style={styles.customerDetail} numberOfLines={1}>
+            {detail}
+          </Text>
+        </View>
+        <Badge
+          label={status}
+          variant={status === 'active' ? 'success' : 'default'}
+          size="sm"
+        />
+      </TouchableOpacity>
+    );
+  }, [router]);
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
