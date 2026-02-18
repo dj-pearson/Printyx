@@ -64,46 +64,68 @@ final class AuthManager: ObservableObject {
         error = nil
         isLoading = true
 
-        do {
-            let body = LoginRequest(email: email, password: password)
-            let response: AuthTokenResponse = try await apiClient.request(
-                .login(body: body)
-            )
+        // Retry login up to 3 times for transient server errors (e.g., Kong 503 "no available server")
+        let maxRetries = 3
+        var lastError: Error?
 
-            // Store tokens
-            keychain.setAccessToken(response.accessToken)
-            keychain.setRefreshToken(response.refreshToken)
-            keychain.setUserId(response.user.id)
+        for attempt in 0..<maxRetries {
+            do {
+                let body = LoginRequest(email: email, password: password)
+                let response: AuthTokenResponse = try await apiClient.request(
+                    .login(body: body)
+                )
 
-            if let email = response.user.email {
-                keychain.setUserEmail(email)
+                // Store tokens
+                keychain.setAccessToken(response.accessToken)
+                keychain.setRefreshToken(response.refreshToken)
+                keychain.setUserId(response.user.id)
+
+                if let email = response.user.email {
+                    keychain.setUserEmail(email)
+                }
+
+                // Extract tenant info from JWT or user metadata
+                if let tenantId = response.user.appMetadata?.tenantId {
+                    keychain.setTenantId(tenantId)
+                }
+
+                if let roleLevel = response.user.appMetadata?.roleLevel {
+                    keychain.setRoleLevel(roleLevel)
+                }
+
+                // Build user object
+                self.currentUser = AppUser(
+                    id: response.user.id,
+                    email: response.user.email ?? email,
+                    firstName: response.user.userMetadata?.firstName,
+                    lastName: response.user.userMetadata?.lastName,
+                    tenantId: response.user.appMetadata?.tenantId ?? "",
+                    roleLevel: response.user.appMetadata?.roleLevel ?? 1,
+                    isPlatformAdmin: response.user.appMetadata?.isPlatformUser ?? false
+                )
+                self.isAuthenticated = true
+                self.apiClient.isAuthenticated = true
+                isLoading = false
+                return // Success — exit early
+            } catch let apiError as APIError {
+                lastError = apiError
+                // Only retry on server errors (5xx), not client errors (4xx)
+                if case .serverError = apiError, attempt < maxRetries - 1 {
+                    try? await Task.sleep(nanoseconds: UInt64((attempt + 1) * 2) * 1_000_000_000)
+                    continue
+                }
+                break
+            } catch {
+                lastError = error
+                break
             }
+        }
 
-            // Extract tenant info from JWT or user metadata
-            if let tenantId = response.user.appMetadata?.tenantId {
-                keychain.setTenantId(tenantId)
-            }
-
-            if let roleLevel = response.user.appMetadata?.roleLevel {
-                keychain.setRoleLevel(roleLevel)
-            }
-
-            // Build user object
-            self.currentUser = AppUser(
-                id: response.user.id,
-                email: response.user.email ?? email,
-                firstName: response.user.userMetadata?.firstName,
-                lastName: response.user.userMetadata?.lastName,
-                tenantId: response.user.appMetadata?.tenantId ?? "",
-                roleLevel: response.user.appMetadata?.roleLevel ?? 1,
-                isPlatformAdmin: response.user.appMetadata?.isPlatformUser ?? false
-            )
-            self.isAuthenticated = true
-            self.apiClient.isAuthenticated = true
-        } catch let apiError as APIError {
+        // All retries failed — show the error
+        if let apiError = lastError as? APIError {
             self.error = apiError.errorDescription
-        } catch {
-            self.error = error.localizedDescription
+        } else if let lastError {
+            self.error = lastError.localizedDescription
         }
 
         isLoading = false
