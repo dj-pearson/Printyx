@@ -289,15 +289,13 @@ extension APIEndpoint {
 
 extension APIEndpoint {
     static func login(body: Encodable) -> APIEndpoint {
-        APIEndpoint(path: "/auth/v1/token", method: .post, queryItems: [
-            URLQueryItem(name: "grant_type", value: "password"),
-        ], body: body, requiresAuth: false)
+        // Route through Express backend to bypass Kong/GoTrue 503 errors
+        APIEndpoint(path: "/mobile-auth/login", method: .post, body: body, requiresAuth: false)
     }
 
     static func refreshToken(body: Encodable) -> APIEndpoint {
-        APIEndpoint(path: "/auth/v1/token", method: .post, queryItems: [
-            URLQueryItem(name: "grant_type", value: "refresh_token"),
-        ], body: body, requiresAuth: false)
+        // Route through Express backend to bypass Kong/GoTrue 503 errors
+        APIEndpoint(path: "/mobile-auth/refresh", method: .post, body: body, requiresAuth: false)
     }
 
     static func currentUser() -> APIEndpoint {
