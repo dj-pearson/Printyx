@@ -48,8 +48,10 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const dealId = pathParts[1];
+    const rawParts = url.pathname.split('/').filter(Boolean);
+    // Normalize: strip function name from path if the relay preserved it
+    const pathParts = rawParts[0] === 'deals' ? rawParts.slice(1) : rawParts;
+    const dealId = pathParts[0];
 
     // GET /deals - List deals
     if (req.method === 'GET' && !dealId) {
