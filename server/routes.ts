@@ -72,11 +72,6 @@ const requireAuth = async (req: any, res: any, next: any) => {
 // ═══════════════════════════════════════════════════════════════════════
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // ─── Mobile Auth (mounted before /api middleware) ──────────────────
-  // Bypasses Kong/GoTrue — mints Supabase-compatible JWTs directly
-  const { mobileAuthRoutes } = await import('./routes-mobile-auth');
-  app.use('/mobile-auth', mobileAuthRoutes);
-
   // ─── Rate Limiting ────────────────────────────────────────────────
   // Outer safety net: express-rate-limit for absolute max per IP
   const apiLimiter = rateLimit({
