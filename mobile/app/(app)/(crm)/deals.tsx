@@ -15,9 +15,11 @@ import { colors, spacing, typography, borderRadius, shadows } from '@/theme';
 export default function DealsScreen() {
   const router = useRouter();
 
-  const { data: deals, isLoading, refetch, isRefetching } = useQuery<any[]>({
+  const { data: rawDeals, isLoading, refetch, isRefetching } = useQuery<any>({
     queryKey: ['/api/deals', '?limit=50'],
   });
+  // Handle both auto-unwrapped arrays and { data } / { records } response formats
+  const deals: any[] = Array.isArray(rawDeals) ? rawDeals : (rawDeals?.data || rawDeals?.records || []);
 
   const renderItem = useCallback(({ item }: { item: any }) => (
     <TouchableOpacity

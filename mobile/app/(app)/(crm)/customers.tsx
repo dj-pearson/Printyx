@@ -23,10 +23,11 @@ export default function CustomersScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
 
-  const { data: companiesResp, isLoading, refetch, isRefetching } = useQuery<{ records: any[]; pagination: { total: number } }>({
+  const { data: rawData, isLoading, refetch, isRefetching } = useQuery<any>({
     queryKey: ['/api/companies', `?recordType=Customer&search=${search}&limit=50`],
   });
-  const customers = companiesResp?.records || [];
+  // Handle both auto-unwrapped arrays and { records } / { data } response formats
+  const customers: any[] = Array.isArray(rawData) ? rawData : (rawData?.records || rawData?.data || []);
 
   const renderItem = useCallback(({ item }: { item: any }) => (
     <TouchableOpacity

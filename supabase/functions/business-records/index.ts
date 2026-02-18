@@ -287,15 +287,15 @@ export default async function handler(req: Request) {
 
         const records = (companies || []).map(mapCompanyToBusinessRecord);
 
+        // Return in { data: [...], total, page, limit } format for auto-unwrap
+        // Both web and mobile query clients auto-unwrap this to a plain array
+        const page = Math.floor(offset / limit) + 1;
         return createCorsResponse(
           {
-            records,
-            pagination: {
-              total: count || 0,
-              limit,
-              offset,
-              hasMore: offset + (companies?.length || 0) < (count || 0),
-            },
+            data: records,
+            total: count || 0,
+            page,
+            limit,
           },
           200,
           req,

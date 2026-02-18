@@ -18,14 +18,15 @@ export default function LeadsScreen() {
   const [search, setSearch] = useState('');
 
   const {
-    data: companiesResp,
+    data: rawData,
     isLoading,
     refetch,
     isRefetching,
-  } = useQuery<{ records: any[]; pagination: { total: number } }>({
+  } = useQuery<any>({
     queryKey: ['/api/companies', `?recordType=Lead&search=${search}&limit=50`],
   });
-  const leads = companiesResp?.records || [];
+  // Handle both auto-unwrapped arrays and { records } / { data } response formats
+  const leads: any[] = Array.isArray(rawData) ? rawData : (rawData?.records || rawData?.data || []);
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => (

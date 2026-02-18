@@ -9,25 +9,15 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ListItem, Card, StatCard } from '@/components/ui';
 import { colors, spacing, typography } from '@/theme';
 
 export default function CRMHubScreen() {
   const router = useRouter();
 
-  // Fetch CRM stats from companies endpoint (uses pagination totals for counts)
-  const { data: leadsResp } = useQuery<{ records: any[]; pagination: { total: number } }>({
-    queryKey: ['/api/companies', '?recordType=Lead&limit=1'],
-  });
-  const { data: customersResp } = useQuery<{ records: any[]; pagination: { total: number } }>({
-    queryKey: ['/api/companies', '?recordType=Customer&limit=1'],
-  });
-  const { data: deals } = useQuery<any[]>({
-    queryKey: ['/api/deals', '?limit=50'],
-  });
-  const { data: contacts } = useQuery<any[]>({
-    queryKey: ['/api/contacts', '?limit=50'],
+  // Fetch CRM stats from business-records stats endpoint (returns counts directly)
+  const { data: stats } = useQuery<any>({
+    queryKey: ['/api/business-records/stats'],
   });
 
   return (
@@ -39,13 +29,13 @@ export default function CRMHubScreen() {
         <View style={styles.statsRow}>
           <StatCard
             title="Leads"
-            value={leadsResp?.pagination?.total ?? '--'}
+            value={stats?.leads ?? '--'}
             icon="account-plus"
             iconColor={colors.primary[600]}
           />
           <StatCard
             title="Customers"
-            value={customersResp?.pagination?.total ?? '--'}
+            value={stats?.customers ?? '--'}
             icon="account-check"
             iconColor={colors.success.main}
           />
@@ -53,13 +43,13 @@ export default function CRMHubScreen() {
         <View style={styles.statsRow}>
           <StatCard
             title="Open Deals"
-            value={Array.isArray(deals) ? deals.length : '--'}
+            value={stats?.deals ?? '--'}
             icon="handshake"
             iconColor={colors.warning.main}
           />
           <StatCard
             title="Contacts"
-            value={Array.isArray(contacts) ? contacts.length : '--'}
+            value={stats?.contacts ?? '--'}
             icon="contacts"
             iconColor={colors.info.main}
           />
