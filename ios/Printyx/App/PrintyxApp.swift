@@ -7,7 +7,7 @@ struct PrintyxApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RootView(apiClient: apiClient)
                 .environmentObject(apiClient)
                 .environmentObject(networkMonitor)
         }
