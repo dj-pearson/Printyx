@@ -289,13 +289,14 @@ extension APIEndpoint {
 
 extension APIEndpoint {
     static func login(body: Encodable) -> APIEndpoint {
-        // Route through Express backend to bypass Kong/GoTrue 503 errors
-        APIEndpoint(path: "/mobile-auth/login", method: .post, body: body, requiresAuth: false)
+        // Route through Edge Functions to bypass Kong/GoTrue 503 errors
+        // /api/mobile-auth/login → Edge Functions strips /api/ → /mobile-auth/login
+        APIEndpoint(path: "/api/mobile-auth/login", method: .post, body: body, requiresAuth: false)
     }
 
     static func refreshToken(body: Encodable) -> APIEndpoint {
-        // Route through Express backend to bypass Kong/GoTrue 503 errors
-        APIEndpoint(path: "/mobile-auth/refresh", method: .post, body: body, requiresAuth: false)
+        // Route through Edge Functions to bypass Kong/GoTrue 503 errors
+        APIEndpoint(path: "/api/mobile-auth/refresh", method: .post, body: body, requiresAuth: false)
     }
 
     static func currentUser() -> APIEndpoint {

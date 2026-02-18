@@ -202,22 +202,17 @@ final class APIClient: ObservableObject {
 
     private func buildRequest(for endpoint: APIEndpoint) throws -> URLRequest {
         // Route requests to the correct backend:
-        // 1. Mobile auth endpoints (/mobile-auth/*) → printyx.net (Express backend, bypasses Kong)
-        // 2. Auth endpoints (/auth/*) → api.printyx.net (Kong → GoTrue)
-        // 3. API endpoints (/api/*) → functions.printyx.net (Edge Functions, strip /api/ prefix)
-        // 4. Everything else → printyx.net (Express backend)
-        let isMobileAuthEndpoint = endpoint.path.hasPrefix("/mobile-auth/")
+        // 1. Auth endpoints (/auth/*) → api.printyx.net (Kong → GoTrue)
+        // 2. API endpoints (/api/*) → functions.printyx.net (Edge Functions, strip /api/ prefix)
+        //    This includes /api/mobile-auth/* for login/refresh (bypasses Kong)
+        // 3. Everything else → printyx.net (Express backend)
         let isAuthEndpoint = endpoint.path.hasPrefix("/auth/")
         let isApiEndpoint = endpoint.path.hasPrefix("/api/")
 
         let baseURL: URL
         let path: String
 
-        if isMobileAuthEndpoint {
-            // Mobile auth goes directly to Express backend (bypasses Kong 503 issues)
-            baseURL = configuration.baseURL
-            path = endpoint.path
-        } else if isAuthEndpoint {
+        if isAuthEndpoint {
             baseURL = configuration.supabaseURL
             path = endpoint.path
         } else if isApiEndpoint {
