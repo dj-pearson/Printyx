@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
 import TeamStatsWidget from '@/components/stats/TeamStatsWidget';
 import {
@@ -146,7 +146,8 @@ export default function SalesPipelineWorkflow() {
   const { data: defaultPipeline, isLoading: pipelineLoading } = useQuery({
     queryKey: ['/api/pipeline-config/templates'],
     queryFn: async () => {
-      const templates = await apiRequest('/api/pipeline-config/templates');
+      const rawTemplates = await apiRequest('/api/pipeline-config/templates');
+      const templates = extractRecords(rawTemplates);
       // Get the default sales pipeline
       const defaultTemplate = templates.find((t: any) => t.isDefault && t.pipelineType === 'sales');
       if (defaultTemplate) {
@@ -165,11 +166,12 @@ export default function SalesPipelineWorkflow() {
     PipelineOpportunity[]
   >({
     queryKey: ['/api/sales-pipeline/opportunities', selectedStage, selectedRep],
-    queryFn: () => {
+    queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedStage !== 'all') params.append('stage', selectedStage);
       if (selectedRep !== 'all') params.append('rep', selectedRep);
-      return apiRequest(`/api/sales-pipeline/opportunities?${params.toString()}`);
+      const response = await apiRequest(`/api/sales-pipeline/opportunities?${params.toString()}`);
+      return extractRecords(response);
     },
     refetchInterval: 30000, // Refresh every 30 seconds for real-time updates
   });

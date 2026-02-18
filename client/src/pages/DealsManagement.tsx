@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
@@ -615,7 +615,7 @@ export default function DealsManagement() {
     queryKey: ['/api/deal-stages'],
     queryFn: async () => {
       const response = await apiRequest('/api/deal-stages', 'GET');
-      return (response || []).map((stage: any) => ({
+      return extractRecords(response).map((stage: any) => ({
         ...stage,
         id: stage.id,
         displayOrder: stage.display_order || stage.displayOrder || 0,
@@ -632,10 +632,10 @@ export default function DealsManagement() {
       if (companySearchTerm) params.append('search', companySearchTerm);
 
       const response = await apiRequest('/api/companies?' + params.toString());
-      return (response?.records || response || []).map((c: any) => ({
+      return extractRecords(response).map((c: any) => ({
         ...c,
         id: c.id,
-        companyName: c.businessName || c.companyName || '',
+        companyName: c.business_name || c.businessName || c.companyName || '',
         businessRecordType: c.business_record_type || c.businessRecordType || '',
       }));
     },
@@ -647,13 +647,13 @@ export default function DealsManagement() {
     queryFn: async () => {
       if (!selectedCompanyId) return [];
       const response = await apiRequest(`/api/companies/${selectedCompanyId}/contacts`);
-      return (response || []).map((c: any) => ({
+      return extractRecords(response).map((c: any) => ({
         ...c,
         id: c.id,
-        firstName: c.firstName || c.firstName || '',
-        lastName: c.lastName || c.lastName || '',
-        isPrimaryContact: c.is_primary_contact || c.isPrimaryContact || false,
-        companyId: c.companyId || c.companyId || '',
+        firstName: c.first_name || c.firstName || '',
+        lastName: c.last_name || c.lastName || '',
+        isPrimaryContact: c.is_primary_contact || c.is_primary || c.isPrimaryContact || false,
+        companyId: c.company_id || c.companyId || '',
       }));
     },
     enabled: !!selectedCompanyId,
@@ -671,11 +671,8 @@ export default function DealsManagement() {
       if (selectedStageId && selectedStageId !== 'all') params.append('stageId', selectedStageId);
       if (searchTerm) params.append('search', searchTerm);
 
-      const response = await fetch(`/api/deals?${params}`, {
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to fetch deals');
-      return response.json();
+      const response = await apiRequest(`/api/deals?${params}`);
+      return extractRecords(response);
     },
   });
 

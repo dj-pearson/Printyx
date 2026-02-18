@@ -82,6 +82,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LeadsImport } from '@/components/leads/LeadsImport';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 
 interface Lead {
   id: string;
@@ -1317,7 +1318,7 @@ function LeadForm({
     queryKey: ['/api/companies'],
     queryFn: async () => {
       const response = await apiRequest('/api/companies', 'GET');
-      const companies = response?.records || response || [];
+      const companies = extractRecords(response);
 
       // Transform snake_case to camelCase and filter
       return companies

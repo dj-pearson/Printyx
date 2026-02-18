@@ -47,7 +47,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import type { AccountsReceivable } from '@shared/schema';
 import { format } from 'date-fns';
 
@@ -84,7 +84,7 @@ export default function AccountsReceivable() {
     queryKey: ['/api/accounts-receivable'],
     queryFn: async () => {
       const response = await apiRequest('/api/accounts-receivable', 'GET');
-      return (response || []).map((ar: any) => ({
+      return extractRecords(response).map((ar: any) => ({
         ...ar,
         id: ar.id,
         customerId: ar.customerId || ar.customerId || '',
@@ -102,7 +102,7 @@ export default function AccountsReceivable() {
     queryKey: ['/api/customers'],
     queryFn: async () => {
       const response = await apiRequest('/api/customers', 'GET');
-      return (response || []).map((customer: any) => ({
+      return extractRecords(response).map((customer: any) => ({
         ...customer,
         id: customer.id,
         companyName: customer.companyName || customer.companyName || '',

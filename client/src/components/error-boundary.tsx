@@ -3,6 +3,7 @@ import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { mobileLogger } from '@/lib/mobile-logger';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -50,6 +51,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       this.props.onError(error, errorInfo);
     }
 
+    // Send to mobile-logs edge function for remote debugging
+    mobileLogger.logErrorBoundary(error, errorInfo);
+
     // Log to error reporting service (e.g., Sentry)
     if (typeof window !== 'undefined' && (window as any).Sentry) {
       (window as any).Sentry.captureException(error, {
@@ -90,8 +94,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     };
 
     console.log('Bug Report:', bugReport);
-    // In production, send to bug tracking system
-    // await apiRequest("/api/bug-reports", "POST", bugReport);
+    mobileLogger.error('Bug report submitted', bugReport);
   };
 
   render() {

@@ -23,7 +23,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Zap, RefreshCw, X, Check, AlertCircle } from 'lucide-react';
-import { apiRequest, queryClient } from '@/lib/queryClient';
+import { apiRequest, queryClient, extractRecords } from '@/lib/queryClient';
 
 const integrationConfigSchema = z.object({
   integrationKey: z.string(),
@@ -241,7 +241,7 @@ export function IntegrationsManagement() {
     queryKey: ['/api/integrations'],
     queryFn: async () => {
       const response = await apiRequest('/api/integrations', 'GET');
-      return (response || []).map((integration: any) => ({
+      return extractRecords(response).map((integration: any) => ({
         ...integration,
         id: integration.id,
         integrationName: integration.integration_name || integration.integrationName || '',

@@ -46,7 +46,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import type { AccountsPayable } from '@shared/schema';
 import { format } from 'date-fns';
 
@@ -84,7 +84,7 @@ export default function AccountsPayable() {
     queryKey: ['/api/accounts-payable'],
     queryFn: async () => {
       const response = await apiRequest('/api/accounts-payable', 'GET');
-      return (response || []).map((ap: any) => ({
+      return extractRecords(response).map((ap: any) => ({
         ...ap,
         id: ap.id,
         vendorId: ap.vendor_id || ap.vendorId || '',
@@ -102,7 +102,7 @@ export default function AccountsPayable() {
     queryKey: ['/api/vendors'],
     queryFn: async () => {
       const response = await apiRequest('/api/vendors', 'GET');
-      return (response || []).map((vendor: any) => ({
+      return extractRecords(response).map((vendor: any) => ({
         ...vendor,
         id: vendor.id,
         vendorName: vendor.vendor_name || vendor.vendorName || '',

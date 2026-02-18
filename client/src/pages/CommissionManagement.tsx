@@ -19,7 +19,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import {
   Dialog,
   DialogContent,
@@ -222,7 +222,7 @@ export default function CommissionManagement() {
     queryKey: ['/api/commission/disputes'],
     queryFn: async () => {
       const response = await apiRequest('/api/commission/disputes', 'GET');
-      return (response || []).map((dispute: any) => ({
+      return extractRecords(response).map((dispute: any) => ({
         ...dispute,
         id: dispute.id,
         createdAt: dispute.createdAt || dispute.createdAt || '',
