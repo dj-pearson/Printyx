@@ -21,11 +21,20 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
+    // Resolve tenant ID: x-tenant-id header → app_metadata → user_metadata → DB lookup
+    let tenantId =
+      req.headers.get('x-tenant-id') ||
+      (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string) ||
+      (user.user_metadata?.tenantId as string) ||
       (user.user_metadata?.tenant_id as string);
+
+    if (!tenantId) {
+      // Fallback: look up tenant from public.users
+      const admin2 = createSupabaseServiceClient();
+      const { data: dbUser } = await admin2.from('users').select('tenant_id').eq('id', user.id).limit(1).maybeSingle();
+      tenantId = dbUser?.tenant_id;
+    }
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
@@ -34,7 +43,8 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    const opportunityId = pathParts[1];
+    // server.ts strips function name: /opportunities/123 → /123
+    const opportunityId = pathParts[0];
 
     // GET /opportunities - List opportunities
     if (req.method === 'GET' && !opportunityId) {
@@ -72,6 +82,11 @@ export default async function handler(req: Request) {
       const { data: opportunities, error, count } = await query;
 
       if (error) {
+        // Handle missing table gracefully (opportunities table may not exist yet)
+        if (error.code === '42P01') {
+          console.warn('Opportunities table does not exist, returning empty list');
+          return createCorsResponse({ data: [], total: 0, page, limit }, 200, req);
+        }
         console.error('Error fetching opportunities:', error);
         return createCorsResponse({ error: 'Failed to fetch opportunities' }, 500, req);
       }
