@@ -16,8 +16,18 @@ import { colors, spacing, typography } from '@/theme';
 export default function CRMHubScreen() {
   const router = useRouter();
 
-  const { data: stats } = useQuery({
-    queryKey: ['/api/business-records/stats'],
+  // Fetch CRM stats from companies endpoint (uses pagination totals for counts)
+  const { data: leadsResp } = useQuery<{ records: any[]; pagination: { total: number } }>({
+    queryKey: ['/api/companies', '?recordType=Lead&limit=1'],
+  });
+  const { data: customersResp } = useQuery<{ records: any[]; pagination: { total: number } }>({
+    queryKey: ['/api/companies', '?recordType=Customer&limit=1'],
+  });
+  const { data: deals } = useQuery<any[]>({
+    queryKey: ['/api/deals', '?limit=50'],
+  });
+  const { data: contacts } = useQuery<any[]>({
+    queryKey: ['/api/contacts', '?limit=50'],
   });
 
   return (
@@ -29,13 +39,13 @@ export default function CRMHubScreen() {
         <View style={styles.statsRow}>
           <StatCard
             title="Leads"
-            value={stats?.leads ?? '--'}
+            value={leadsResp?.pagination?.total ?? '--'}
             icon="account-plus"
             iconColor={colors.primary[600]}
           />
           <StatCard
             title="Customers"
-            value={stats?.customers ?? '--'}
+            value={customersResp?.pagination?.total ?? '--'}
             icon="account-check"
             iconColor={colors.success.main}
           />
@@ -43,13 +53,13 @@ export default function CRMHubScreen() {
         <View style={styles.statsRow}>
           <StatCard
             title="Open Deals"
-            value={stats?.deals ?? '--'}
+            value={Array.isArray(deals) ? deals.length : '--'}
             icon="handshake"
             iconColor={colors.warning.main}
           />
           <StatCard
             title="Contacts"
-            value={stats?.contacts ?? '--'}
+            value={Array.isArray(contacts) ? contacts.length : '--'}
             icon="contacts"
             iconColor={colors.info.main}
           />

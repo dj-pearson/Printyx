@@ -23,9 +23,10 @@ export default function CustomersScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
 
-  const { data: customers, isLoading, refetch, isRefetching } = useQuery<any[]>({
-    queryKey: ['/api/customers', `?search=${search}&limit=50`],
+  const { data: companiesResp, isLoading, refetch, isRefetching } = useQuery<{ records: any[]; pagination: { total: number } }>({
+    queryKey: ['/api/companies', `?recordType=Customer&search=${search}&limit=50`],
   });
+  const customers = companiesResp?.records || [];
 
   const renderItem = useCallback(({ item }: { item: any }) => (
     <TouchableOpacity
