@@ -54,11 +54,13 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
+    const rawParts = url.pathname.split('/').filter(Boolean);
+    // Normalize: strip function name from path if the relay preserved it
+    const pathParts = rawParts[0] === 'contacts' ? rawParts.slice(1) : rawParts;
 
     // Support both:
-    // 1. /api/contacts (all contacts)
-    // 2. /api/leads/:id/contacts or /api/companies/:id/contacts (specific entity)
+    // 1. /contacts (all contacts)
+    // 2. /leads/:id/contacts or /companies/:id/contacts (specific entity)
     const entityType = pathParts.length > 1 ? pathParts[0] : null; // 'leads' or 'companies'
     const entityId = pathParts.length > 1 ? pathParts[1] : null;
     const contactId = pathParts.length > 3 ? pathParts[3] : null; // If accessing specific contact

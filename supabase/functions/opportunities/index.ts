@@ -70,8 +70,9 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    // server.ts strips function name: /opportunities/123 → /123
+    const rawParts = url.pathname.split('/').filter(Boolean);
+    // Normalize: strip function name from path if the relay preserved it
+    const pathParts = rawParts[0] === 'opportunities' ? rawParts.slice(1) : rawParts;
     const opportunityId = pathParts[0];
 
     // GET /opportunities - List opportunities (from deals table)

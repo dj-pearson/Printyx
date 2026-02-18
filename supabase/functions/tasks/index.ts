@@ -10,12 +10,13 @@ export default async function handler(req: Request) {
   if (corsResponse) return corsResponse;
 
   const url = new URL(req.url);
-  const pathParts = url.pathname.split('/').filter(Boolean);
-  const taskId =
-    pathParts[pathParts.length - 1] !== 'tasks' ? pathParts[pathParts.length - 1] : null;
+  const rawParts = url.pathname.split('/').filter(Boolean);
+  // Normalize: strip function name from path if the relay preserved it
+  const pathParts = rawParts[0] === 'tasks' ? rawParts.slice(1) : rawParts;
+  const taskId = pathParts[0] || null;
 
   // Check for stats endpoint
-  const isStatsRequest = url.pathname.includes('/stats');
+  const isStatsRequest = taskId === 'stats' || url.pathname.includes('/stats');
 
   try {
     // Extract JWT from Authorization header
@@ -97,7 +98,7 @@ export default async function handler(req: Request) {
           );
         }
 
-        if (taskId && taskId !== 'tasks') {
+        if (taskId && taskId !== 'stats') {
           // Get single task
           const { data: task, error } = await admin
             .from('tasks')
