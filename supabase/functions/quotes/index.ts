@@ -24,12 +24,19 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    // Extract tenant ID from JWT metadata
-    const tenantId =
+    // Resolve tenant ID: x-tenant-id header → app_metadata → user_metadata → DB lookup
+    let tenantId =
+      req.headers.get('x-tenant-id') ||
+      (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string) ||
+      (user.user_metadata?.tenantId as string) ||
       (user.user_metadata?.tenant_id as string);
+
+    if (!tenantId) {
+      const admin2 = createSupabaseServiceClient();
+      const { data: dbUser } = await admin2.from('users').select('tenant_id').eq('id', user.id).limit(1).maybeSingle();
+      tenantId = dbUser?.tenant_id;
+    }
 
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
@@ -41,8 +48,10 @@ export default async function handler(req: Request) {
 
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    const quoteId = pathParts[1];
-    const action = pathParts[2]; // 'send', 'accept', 'reject', etc.
+    // server.ts strips the function name from the URL path, so
+    // /quotes/:id/action arrives as /:id/action → pathParts[0] = id, pathParts[1] = action
+    const quoteId = pathParts[0];
+    const action = pathParts[1]; // 'send', 'accept', 'reject', etc.
 
     // GET /quotes - List all quotes with filters
     if (req.method === 'GET' && !quoteId) {
@@ -59,8 +68,8 @@ export default async function handler(req: Request) {
         .select(
           `
           *,
-          customer:business_records!quotes_customer_id_fkey(id, company_name, primary_contact_name, primary_contact_email),
-          created_by_user:users!quotes_created_by_fkey(id, first_name, last_name, email)
+          customer:business_records!customer_id(id, company_name, primary_contact_name, primary_contact_email),
+          created_by_user:users!created_by(id, first_name, last_name, email)
         `,
           { count: 'exact' },
         )
@@ -110,8 +119,8 @@ export default async function handler(req: Request) {
         .select(
           `
           *,
-          customer:business_records!quotes_customer_id_fkey(id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, city, state, postal_code),
-          created_by_user:users!quotes_created_by_fkey(id, first_name, last_name, email, phone)
+          customer:business_records!customer_id(id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, city, state, postal_code),
+          created_by_user:users!created_by(id, first_name, last_name, email, phone)
         `,
         )
         .eq('id', quoteId)

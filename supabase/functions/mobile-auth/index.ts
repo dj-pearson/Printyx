@@ -13,6 +13,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
 // ── Handler ──────────────────────────────────────────────────────────
@@ -108,6 +109,10 @@ export default async function handler(req: Request) {
 
       console.log(`[mobile-auth] Login successful for: ${email}`);
 
+      // Enrich GoTrue user with tenant/role data from public.users table
+      // GoTrue's app_metadata may be empty if user was created outside GoTrue admin
+      const userResponse = await enrichUserWithDbProfile(data.session.user);
+
       // Return in GoTrue-compatible format (matches iOS AuthTokenResponse)
       return createCorsResponse(
         {
@@ -116,7 +121,7 @@ export default async function handler(req: Request) {
           expires_in: data.session.expires_in,
           expires_at: data.session.expires_at,
           refresh_token: data.session.refresh_token,
-          user: data.session.user,
+          user: userResponse,
         },
         200,
         req,
@@ -199,5 +204,69 @@ export default async function handler(req: Request) {
       500,
       req,
     );
+  }
+}
+
+/**
+ * Enrich GoTrue user object with tenant/role data from the public.users table.
+ * GoTrue's app_metadata may be empty if the user wasn't created through the
+ * admin API with metadata. This ensures the iOS app always gets tenant context.
+ */
+async function enrichUserWithDbProfile(gotrueUser: Record<string, any>): Promise<Record<string, any>> {
+  try {
+    const admin = createSupabaseServiceClient();
+
+    // Look up user in public.users by email (IDs may differ between GoTrue and public.users)
+    const { data: dbUser, error } = await admin
+      .from('users')
+      .select('id, tenant_id, role_id, team_id, first_name, last_name, is_platform_user, access_scope')
+      .ilike('email', gotrueUser.email)
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !dbUser) {
+      console.warn('[mobile-auth] Could not find user in public.users:', error?.message);
+      return gotrueUser;
+    }
+
+    // Get role level if user has a role
+    let roleLevel: number | null = null;
+    if (dbUser.role_id) {
+      const { data: role } = await admin
+        .from('roles')
+        .select('level')
+        .eq('id', dbUser.role_id)
+        .limit(1)
+        .maybeSingle();
+      if (role) {
+        roleLevel = role.level;
+      }
+    }
+
+    console.log(`[mobile-auth] Enriched user: tenant=${dbUser.tenant_id}, role_level=${roleLevel}`);
+
+    // Merge database fields into app_metadata and user_metadata
+    // Use camelCase keys — the iOS decoder uses convertFromSnakeCase, but
+    // GoTrue returns camelCase inside app_metadata, so we match that convention
+    return {
+      ...gotrueUser,
+      app_metadata: {
+        ...gotrueUser.app_metadata,
+        tenantId: dbUser.tenant_id ?? gotrueUser.app_metadata?.tenantId ?? gotrueUser.app_metadata?.tenant_id,
+        roleId: dbUser.role_id ?? gotrueUser.app_metadata?.roleId ?? gotrueUser.app_metadata?.role_id,
+        roleLevel: roleLevel ?? gotrueUser.app_metadata?.roleLevel ?? gotrueUser.app_metadata?.role_level,
+        teamId: dbUser.team_id ?? gotrueUser.app_metadata?.teamId ?? gotrueUser.app_metadata?.team_id,
+        isPlatformUser: dbUser.is_platform_user ?? gotrueUser.app_metadata?.isPlatformUser ?? false,
+        accessScope: dbUser.access_scope ?? gotrueUser.app_metadata?.accessScope ?? 'own',
+      },
+      user_metadata: {
+        ...gotrueUser.user_metadata,
+        firstName: dbUser.first_name ?? gotrueUser.user_metadata?.firstName ?? gotrueUser.user_metadata?.first_name,
+        lastName: dbUser.last_name ?? gotrueUser.user_metadata?.lastName ?? gotrueUser.user_metadata?.last_name,
+      },
+    };
+  } catch (err) {
+    console.error('[mobile-auth] Error enriching user profile:', err);
+    return gotrueUser;
   }
 }
