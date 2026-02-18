@@ -21,11 +21,20 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
+    // Resolve tenant ID: x-tenant-id header → app_metadata → user_metadata → DB lookup
+    let tenantId =
+      req.headers.get('x-tenant-id') ||
+      (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string) ||
+      (user.user_metadata?.tenantId as string) ||
       (user.user_metadata?.tenant_id as string);
+
+    if (!tenantId) {
+      // Fallback: look up tenant from public.users
+      const admin2 = createSupabaseServiceClient();
+      const { data: dbUser } = await admin2.from('users').select('tenant_id').eq('id', user.id).limit(1).maybeSingle();
+      tenantId = dbUser?.tenant_id;
+    }
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
@@ -34,8 +43,9 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    const proposalId = pathParts[1];
-    const subResource = pathParts[2]; // 'line-items', 'sections', 'comments', 'analytics'
+    // server.ts strips function name: /proposals/123/line-items → /123/line-items
+    const proposalId = pathParts[0];
+    const subResource = pathParts[1]; // 'line-items', 'sections', 'comments', 'analytics'
 
     // GET /proposals - List proposals
     if (req.method === 'GET' && !proposalId) {

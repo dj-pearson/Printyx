@@ -16,7 +16,7 @@ import { colors, spacing, typography, touchTargets } from '@/theme';
 export default function CRMDetailScreen() {
   const { id, type } = useLocalSearchParams<{ id: string; type: string }>();
 
-  const endpoint = type === 'deal' ? `/api/deals/${id}` : `/api/business-records/${id}`;
+  const endpoint = type === 'deal' ? `/api/deals/${id}` : `/api/companies/${id}`;
 
   const { data: record, isLoading } = useQuery({
     queryKey: [endpoint],
@@ -35,9 +35,9 @@ export default function CRMDetailScreen() {
     );
   }
 
-  const name = record.companyName || record.name || record.title || 'Unknown';
-  const email = record.email || record.contactEmail;
-  const phone = record.phone || record.contactPhone;
+  const name = record.companyName || record.business_name || record.name || record.title || 'Unknown';
+  const email = record.email || record.primaryContactEmail || record.contactEmail;
+  const phone = record.phone || record.primaryContactPhone || record.contactPhone;
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -96,8 +96,8 @@ export default function CRMDetailScreen() {
           <Text style={styles.sectionTitle}>Details</Text>
           {email && <DetailRow label="Email" value={email} />}
           {phone && <DetailRow label="Phone" value={phone} />}
-          {record.address && <DetailRow label="Address" value={record.address} />}
-          {record.city && <DetailRow label="City" value={`${record.city}${record.state ? `, ${record.state}` : ''}`} />}
+          {(record.address || record.billing_address) && <DetailRow label="Address" value={record.address || record.billing_address} />}
+          {(record.city || record.billing_city) && <DetailRow label="City" value={`${record.city || record.billing_city}${(record.state || record.billing_state) ? `, ${record.state || record.billing_state}` : ''}`} />}
           {record.source && <DetailRow label="Source" value={record.source} />}
           {record.industry && <DetailRow label="Industry" value={record.industry} />}
           {(record.value || record.estimatedValue || record.amount) && (
