@@ -3,6 +3,7 @@ import { toast } from '@/hooks/use-toast';
 import { config, getApiUrl } from '@/lib/config';
 import { getAccessToken, refreshSession } from '@/lib/supabase';
 import { isSessionExpired, markSessionExpired } from '@/components/SessionGuard';
+import { mobileLogger } from '@/lib/mobile-logger';
 
 // Prevent concurrent token refresh attempts
 let _refreshPromise: Promise<string | null> | null = null;
@@ -361,6 +362,36 @@ export async function apiFormRequest(
   return await res.json();
 }
 
+/**
+ * Normalize any API response into a plain array of records.
+ * Handles multiple response formats:
+ *   - Edge Function paginated: { data: [...], total, page, limit }
+ *   - Express paginated:       { records: [...], pagination: {...} }
+ *   - Raw array:               [...]
+ *   - Null/undefined:           []
+ */
+export function extractRecords<T = any>(response: any): T[] {
+  if (!response) return [];
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response.data)) return response.data;
+  if (Array.isArray(response.records)) return response.records;
+  return [];
+}
+
+/**
+ * Extract pagination metadata from any API response format.
+ */
+export function extractPagination(response: any): { total: number; page: number; limit: number; hasMore: boolean } {
+  if (!response || typeof response !== 'object') {
+    return { total: 0, page: 1, limit: 100, hasMore: false };
+  }
+  const total = response.total ?? response.pagination?.total ?? 0;
+  const page = response.page ?? response.pagination?.page ?? 1;
+  const limit = response.limit ?? response.pagination?.limit ?? 100;
+  const hasMore = response.pagination?.hasMore ?? (page * limit < total);
+  return { total, page, limit, hasMore };
+}
+
 type UnauthorizedBehavior = 'returnNull' | 'throw';
 export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
@@ -462,6 +493,7 @@ export const queryClient = new QueryClient({
         if (isSessionExpired() && message.includes('401')) {
           return;
         }
+        mobileLogger.error('Query error', { message, stack: error?.stack?.slice(0, 300) });
         toast({
           title: 'Load error',
           description: message,

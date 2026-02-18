@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/form';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
 import { CreditCard, Download, Plus, Trash2, Edit, CheckCircle, Building2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -72,7 +72,7 @@ export default function Billing() {
     queryKey: ['/api/billing/payment-methods'],
     queryFn: async () => {
       const response = await apiRequest('/api/billing/payment-methods', 'GET');
-      return (response || []).map((method: any) => ({
+      return extractRecords(response).map((method: any) => ({
         ...method,
         id: method.id,
         createdAt: method.createdAt || method.createdAt || '',
@@ -85,7 +85,7 @@ export default function Billing() {
     queryKey: ['/api/billing/invoices'],
     queryFn: async () => {
       const response = await apiRequest('/api/billing/invoices', 'GET');
-      return (response || []).map((invoice: any) => ({
+      return extractRecords(response).map((invoice: any) => ({
         ...invoice,
         id: invoice.id,
         invoiceNumber: invoice.invoiceNumber || invoice.invoiceNumber || '',

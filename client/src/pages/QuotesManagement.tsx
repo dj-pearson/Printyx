@@ -73,7 +73,7 @@ import {
   Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
@@ -150,7 +150,7 @@ export default function QuotesManagement() {
     queryKey: ['/api/proposals'],
     queryFn: async () => {
       const response = await apiRequest('/api/proposals', 'GET');
-      return response.map((proposal: any) => ({
+      return extractRecords(response).map((proposal: any) => ({
         ...proposal,
         id: proposal.id,
         quoteNumber: proposal.quoteNumber || proposal.quoteNumber || '',

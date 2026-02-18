@@ -40,6 +40,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import type { Customer, Contract, ServiceTicket, Invoice, MeterReading } from '@shared/schema';
 
 export default function AdvancedReporting() {
@@ -59,7 +60,7 @@ export default function AdvancedReporting() {
     queryKey: ['/api/customers'],
     queryFn: async () => {
       const response = await apiRequest('/api/customers', 'GET');
-      return (response || []).map((customer: any) => ({
+      return extractRecords(response).map((customer: any) => ({
         ...customer,
         id: customer.id,
         companyName: customer.companyName || customer.companyName || '',
@@ -72,7 +73,7 @@ export default function AdvancedReporting() {
     queryKey: ['/api/contracts'],
     queryFn: async () => {
       const response = await apiRequest('/api/contracts', 'GET');
-      return (response || []).map((contract: any) => ({
+      return extractRecords(response).map((contract: any) => ({
         ...contract,
         id: contract.id,
         contractNumber: contract.contractNumber || contract.contractNumber || '',
@@ -87,7 +88,7 @@ export default function AdvancedReporting() {
     queryKey: ['/api/service-tickets'],
     queryFn: async () => {
       const response = await apiRequest('/api/service-tickets', 'GET');
-      return (response || []).map((ticket: any) => ({
+      return extractRecords(response).map((ticket: any) => ({
         ...ticket,
         id: ticket.id,
         ticketNumber: ticket.ticketNumber || ticket.ticketNumber || '',
@@ -101,7 +102,7 @@ export default function AdvancedReporting() {
     queryKey: ['/api/invoices'],
     queryFn: async () => {
       const response = await apiRequest('/api/invoices', 'GET');
-      return (response || []).map((invoice: any) => ({
+      return extractRecords(response).map((invoice: any) => ({
         ...invoice,
         id: invoice.id,
         invoiceNumber: invoice.invoiceNumber || invoice.invoiceNumber || '',
@@ -115,7 +116,7 @@ export default function AdvancedReporting() {
     queryKey: ['/api/meter-readings'],
     queryFn: async () => {
       const response = await apiRequest('/api/meter-readings', 'GET');
-      return (response || []).map((reading: any) => ({
+      return extractRecords(response).map((reading: any) => ({
         ...reading,
         id: reading.id,
         equipmentId: reading.equipmentId || reading.equipmentId || '',

@@ -5,7 +5,7 @@ import { useLocation } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords, extractPagination } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -273,8 +273,11 @@ export default function Customers() {
 
       const response = await apiRequest(`/api/companies?${params}`, 'GET');
 
+      // Handle both Edge Function format { data: [...] } and Express format { records: [...] }
+      const rawRecords = extractRecords(response);
+
       // Transform snake_case to camelCase
-      const records = (response?.records || []).map((c: any) => ({
+      const records = rawRecords.map((c: any) => ({
         ...c,
         id: c.id,
         companyName: c.businessName || c.companyName || '',
@@ -305,9 +308,10 @@ export default function Customers() {
           : [],
       }));
 
+      const paginationInfo = extractPagination(response);
       return {
         records,
-        pagination: response?.pagination || { total: 0, hasMore: false },
+        pagination: { total: paginationInfo.total, hasMore: paginationInfo.hasMore },
       };
     },
   });
@@ -321,9 +325,9 @@ export default function Customers() {
     enabled: isAuthenticated,
     queryFn: async () => {
       const response = await apiRequest('/api/companies', 'GET');
-      return (response?.records || response || []).map((c: any) => ({
+      return extractRecords(response).map((c: any) => ({
         id: c.id,
-        companyName: c.businessName || c.companyName || '',
+        companyName: c.business_name || c.businessName || c.companyName || '',
         businessRecordType: c.business_record_type || c.businessRecordType || '',
       }));
     },

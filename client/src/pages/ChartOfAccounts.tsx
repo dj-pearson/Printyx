@@ -45,7 +45,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import type { ChartOfAccount } from '@shared/schema';
 
 // Form schema for chart of accounts creation/editing
@@ -79,7 +79,7 @@ export default function ChartOfAccounts() {
     queryKey: ['/api/chart-of-accounts'],
     queryFn: async () => {
       const response = await apiRequest('/api/chart-of-accounts', 'GET');
-      return (response || []).map((account: any) => ({
+      return extractRecords(response).map((account: any) => ({
         ...account,
         id: account.id,
         accountCode: account.account_code || account.accountCode || '',

@@ -66,7 +66,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 
 // Types
 type EquipmentLifecycleStage = {
@@ -343,7 +343,7 @@ export default function EquipmentLifecycleHub() {
     queryKey: ['/api/technicians'],
     queryFn: async () => {
       const response = await apiRequest('/api/technicians', 'GET');
-      return (response || []).map((t: any) => ({
+      return extractRecords(response).map((t: any) => ({
         ...t,
         id: t.id,
         firstName: t.firstName || t.firstName || '',
@@ -356,7 +356,7 @@ export default function EquipmentLifecycleHub() {
     queryKey: ['/api/business-records'],
     queryFn: async () => {
       const response = await apiRequest('/api/business-records', 'GET');
-      return (response?.records || response || []).map((r: any) => ({
+      return extractRecords(response).map((r: any) => ({
         ...r,
         id: r.id,
         companyName: r.companyName || r.companyName || '',
