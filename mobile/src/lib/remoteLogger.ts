@@ -1,9 +1,9 @@
 /**
  * Remote Logger for Printyx Mobile
  *
- * Batches log entries and sends them to the Express backend at
- * POST /api/mobile-logs. Logs are visible in the Express server
- * console, allowing real-time debugging of mobile issues.
+ * Batches log entries and sends them to the mobile-logs edge function at
+ * POST https://functions.printyx.net/mobile-logs. Logs are visible in the
+ * edge function server console, allowing real-time debugging of mobile issues.
  *
  * Usage:
  *   import { remoteLog } from '@/lib/remoteLogger';
@@ -11,7 +11,7 @@
  *   remoteLog.error('Fetch failed', { url, status }, 'apiRequest');
  */
 
-import { config } from '@/config';
+import { config, getEdgeFunctionUrl } from '@/config';
 import { Platform } from 'react-native';
 import * as Application from 'expo-application';
 import * as Crypto from 'expo-crypto';
@@ -38,10 +38,7 @@ const sessionId = Crypto.randomUUID();
 const deviceId = `${Platform.OS}-${Crypto.randomUUID().slice(0, 8)}`;
 
 function getLogUrl(): string {
-  const baseUrl = config.apiBaseUrl.endsWith('/')
-    ? config.apiBaseUrl.slice(0, -1)
-    : config.apiBaseUrl;
-  return `${baseUrl}/api/mobile-logs`;
+  return getEdgeFunctionUrl('mobile-logs');
 }
 
 /**

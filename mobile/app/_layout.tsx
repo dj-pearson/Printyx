@@ -25,7 +25,6 @@ SplashScreen.preventAutoHideAsync();
 
 // Log app startup config so we can verify routing in server logs
 remoteLog.info('App startup', {
-  apiBaseUrl: config.apiBaseUrl,
   edgeFunctionsUrl: config.edgeFunctionsUrl,
   supabaseUrl: config.supabase.url,
   hasAnonKey: !!config.supabase.anonKey,
