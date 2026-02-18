@@ -150,10 +150,14 @@ import {
 
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
+import mobileLogsRoutes from './routes-mobile-logs';
 
 export async function registerAllRouteModules(app: Express, requireAuth: any): Promise<void> {
   // ─── Health Check (pre-auth, called before middleware) ──────────────
   registerHealthRoutes(app);
+
+  // ─── Mobile Remote Logging (no auth required, must be early) ──────
+  app.use('/api/mobile-logs', mobileLogsRoutes);
 
   // ─── Auth & Trial ──────────────────────────────────────────────────
   registerAuthCoreRoutes(app);
