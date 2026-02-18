@@ -5,10 +5,8 @@ struct RootView: View {
     @EnvironmentObject var apiClient: APIClient
     @StateObject private var authManager: AuthManager
 
-    init() {
-        // Initialize with a temporary APIClient; the real one comes from environment
-        let client = APIClient()
-        _authManager = StateObject(wrappedValue: AuthManager(apiClient: client))
+    init(apiClient: APIClient) {
+        _authManager = StateObject(wrappedValue: AuthManager(apiClient: apiClient))
     }
 
     var body: some View {

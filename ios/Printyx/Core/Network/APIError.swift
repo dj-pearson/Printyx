@@ -64,9 +64,24 @@ enum APIError: LocalizedError {
 }
 
 /// Standard error response from the Printyx API.
+/// Supports both Express backend format (message) and Supabase GoTrue format (error/error_description/msg).
 struct APIErrorResponse: Decodable {
-    let message: String
+    let message: String?
     let code: String?
     let details: [String: String]?
     let requestId: String?
+    // Supabase GoTrue error fields
+    let error: String?
+    let errorDescription: String?
+    let msg: String?
+
+    /// Returns the best available error message from any format.
+    var displayMessage: String? {
+        // Prefer explicit message, then GoTrue error_description, then error, then msg
+        if let message, !message.isEmpty { return message }
+        if let errorDescription, !errorDescription.isEmpty { return errorDescription }
+        if let error, !error.isEmpty { return error }
+        if let msg, !msg.isEmpty { return msg }
+        return nil
+    }
 }
