@@ -10,7 +10,7 @@
  * DELETE /api/admin/mobile-logs  - Purge logs older than N days
  */
 
-import { Router, Request, Response } from 'express';
+import express, { Router, Request, Response } from 'express';
 import { requireSupabaseAuth as requireAuth } from './middleware/supabase-auth';
 import { isPlatformAdmin } from './utils/auth-helpers';
 import { db } from './db';
@@ -21,6 +21,9 @@ import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('mobile-remote');
 
 const router = Router();
+
+// Parse text/plain bodies (from sendBeacon) as raw text so we can JSON.parse manually
+router.use(express.text({ type: 'text/plain', limit: '1mb' }));
 
 interface MobileLogEntry {
   level: 'debug' | 'info' | 'warn' | 'error';
@@ -57,9 +60,20 @@ function addLog(entry: MobileLogEntry, deviceId?: string) {
 /**
  * POST /api/mobile-logs - Receive log entries from mobile app
  * No auth required so logging works even when auth is broken.
+ * Accepts both application/json and text/plain (from sendBeacon).
  */
 router.post('/', (req: Request, res: Response) => {
-  const batch = req.body as MobileLogBatch;
+  // Handle text/plain from sendBeacon (body may be unparsed string)
+  let batch: MobileLogBatch;
+  if (typeof req.body === 'string') {
+    try {
+      batch = JSON.parse(req.body);
+    } catch {
+      return res.status(400).json({ error: 'invalid JSON in text/plain body' });
+    }
+  } else {
+    batch = req.body as MobileLogBatch;
+  }
 
   if (!batch?.entries || !Array.isArray(batch.entries)) {
     return res.status(400).json({ error: 'entries array required' });

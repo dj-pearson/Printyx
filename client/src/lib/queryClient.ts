@@ -68,6 +68,31 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+/**
+ * Safely parse JSON from a Response, capturing the raw body on failure
+ * so we can see what the server actually returned (e.g. HTML error page).
+ */
+async function safeJsonParse(res: Response, context: string): Promise<any> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch (parseError: any) {
+    const preview = text.slice(0, 300);
+    const contentType = res.headers.get('content-type') || 'unknown';
+    mobileLogger.error('JSON parse failure', {
+      context,
+      url: res.url,
+      status: res.status,
+      contentType,
+      responsePreview: preview,
+      parseError: parseError.message,
+    });
+    throw new Error(
+      `JSON parse error from ${context}: ${parseError.message} (status=${res.status}, type=${contentType}, body=${preview.slice(0, 100)}...)`,
+    );
+  }
+}
+
 // In-memory CSRF token cache (for legacy auth)
 let __csrfToken: string | undefined;
 
@@ -225,7 +250,7 @@ export async function apiRequest(
       });
 
       if (retryRes.ok) {
-        return await retryRes.json();
+        return await safeJsonParse(retryRes, `apiRequest-retry:${url}`);
       }
 
       // Retry also failed with 401 — session is truly expired
@@ -236,7 +261,7 @@ export async function apiRequest(
       }
 
       await throwIfResNotOk(retryRes);
-      return await retryRes.json();
+      return await safeJsonParse(retryRes, `apiRequest-retry:${url}`);
     }
 
     // Token refresh failed — session is expired
@@ -246,7 +271,7 @@ export async function apiRequest(
   }
 
   await throwIfResNotOk(res);
-  return await res.json();
+  return await safeJsonParse(res, `apiRequest:${url}`);
 }
 
 // Form-data aware request that preserves multipart encoding and still injects auth headers
@@ -340,7 +365,7 @@ export async function apiFormRequest(
       });
 
       if (retryRes.ok) {
-        return await retryRes.json();
+        return await safeJsonParse(retryRes, 'apiFormRequest-retry');
       }
 
       if (retryRes.status === 401) {
@@ -350,7 +375,7 @@ export async function apiFormRequest(
       }
 
       await throwIfResNotOk(retryRes);
-      return await retryRes.json();
+      return await safeJsonParse(retryRes, 'apiFormRequest-retry');
     }
 
     markSessionExpired();
@@ -359,7 +384,7 @@ export async function apiFormRequest(
   }
 
   await throwIfResNotOk(res);
-  return await res.json();
+  return await safeJsonParse(res, 'apiFormRequest');
 }
 
 /**
@@ -381,14 +406,19 @@ export function extractRecords<T = any>(response: any): T[] {
 /**
  * Extract pagination metadata from any API response format.
  */
-export function extractPagination(response: any): { total: number; page: number; limit: number; hasMore: boolean } {
+export function extractPagination(response: any): {
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+} {
   if (!response || typeof response !== 'object') {
     return { total: 0, page: 1, limit: 100, hasMore: false };
   }
   const total = response.total ?? response.pagination?.total ?? 0;
   const page = response.page ?? response.pagination?.page ?? 1;
   const limit = response.limit ?? response.pagination?.limit ?? 100;
-  const hasMore = response.pagination?.hasMore ?? (page * limit < total);
+  const hasMore = response.pagination?.hasMore ?? page * limit < total;
   return { total, page, limit, hasMore };
 }
 
@@ -460,7 +490,7 @@ export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryF
     }
 
     await throwIfResNotOk(res);
-    const responseData = await res.json();
+    const responseData = await safeJsonParse(res, `queryFn:${url}`);
 
     // Auto-unwrap Edge Function responses that have { data: [...], total, page, limit } structure
     // This handles paginated responses from Supabase Edge Functions consistently
