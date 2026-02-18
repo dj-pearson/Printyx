@@ -122,6 +122,19 @@ final class APIClient: ObservableObject {
         case 200...299:
             return data
 
+        case 400:
+            // Bad request — extract error message (e.g., invalid login credentials)
+            let errorMessage: String?
+            if let errorResponse = try? decoder.decode(APIErrorResponse.self, from: data) {
+                errorMessage = errorResponse.displayMessage
+            } else {
+                errorMessage = nil
+            }
+            throw APIError.validationError(
+                message: errorMessage ?? "Invalid request",
+                details: nil
+            )
+
         case 401:
             // Attempt token refresh, then retry
             if endpoint.requiresAuth {
@@ -189,16 +202,22 @@ final class APIClient: ObservableObject {
 
     private func buildRequest(for endpoint: APIEndpoint) throws -> URLRequest {
         // Route requests to the correct backend:
-        // 1. Auth endpoints (/auth/*) → api.printyx.net (Kong → GoTrue)
-        // 2. API endpoints (/api/*) → functions.printyx.net (Edge Functions, strip /api/ prefix)
-        // 3. Everything else → printyx.net (Express backend)
+        // 1. Mobile auth endpoints (/mobile-auth/*) → printyx.net (Express backend, bypasses Kong)
+        // 2. Auth endpoints (/auth/*) → api.printyx.net (Kong → GoTrue)
+        // 3. API endpoints (/api/*) → functions.printyx.net (Edge Functions, strip /api/ prefix)
+        // 4. Everything else → printyx.net (Express backend)
+        let isMobileAuthEndpoint = endpoint.path.hasPrefix("/mobile-auth/")
         let isAuthEndpoint = endpoint.path.hasPrefix("/auth/")
         let isApiEndpoint = endpoint.path.hasPrefix("/api/")
 
         let baseURL: URL
         let path: String
 
-        if isAuthEndpoint {
+        if isMobileAuthEndpoint {
+            // Mobile auth goes directly to Express backend (bypasses Kong 503 issues)
+            baseURL = configuration.baseURL
+            path = endpoint.path
+        } else if isAuthEndpoint {
             baseURL = configuration.supabaseURL
             path = endpoint.path
         } else if isApiEndpoint {
