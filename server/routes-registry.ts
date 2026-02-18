@@ -150,7 +150,7 @@ import {
 
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
-import mobileLogsRoutes from './routes-mobile-logs';
+import mobileLogsRoutes, { registerMobileLogsAdminRoutes } from './routes-mobile-logs';
 
 export async function registerAllRouteModules(app: Express, requireAuth: any): Promise<void> {
   // ─── Health Check (pre-auth, called before middleware) ──────────────
@@ -191,6 +191,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerOperationsExtendedRoutes(app);
   registerWorkflowMobileRoutes(app);
   registerAuditLogRoutes(app);
+  registerMobileLogsAdminRoutes(app);
 
   // ─── Pricing ───────────────────────────────────────────────────────
   app.get('/api/pricing/company-settings', getCompanyPricingSettings);

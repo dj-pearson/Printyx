@@ -180,6 +180,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/database-management*',
       '/admin/platform*',
       '/admin/system*',
+      '/admin/mobile-logs*',
       '/platform-configuration*',
       '/mobile-optimization*',
     ],
@@ -189,6 +190,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Platform Analytics', path: '/admin/platform-analytics', icon: BarChart3 },
       { title: 'System Configuration', path: '/platform-configuration', icon: Settings },
       { title: 'Mobile Optimization', path: '/mobile-optimization', icon: Smartphone },
+      { title: 'Mobile App Logs', path: '/admin/mobile-logs', icon: Smartphone },
     ],
   },
 

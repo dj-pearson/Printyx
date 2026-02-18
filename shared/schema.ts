@@ -8655,3 +8655,27 @@ export {
   type BillingSchedule,
   type InvoiceGenerationLog,
 } from './advanced-billing-schema';
+
+// ============================================================================
+// MOBILE APP LOGS (cross-tenant diagnostic data)
+// ============================================================================
+
+export const mobileAppLogs = pgTable('mobile_app_logs', {
+  id: varchar('id')
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  deviceId: varchar('device_id', { length: 100 }),
+  sessionId: varchar('session_id', { length: 100 }),
+  platform: varchar('platform', { length: 20 }),
+  appVersion: varchar('app_version', { length: 20 }),
+  level: varchar('level', { length: 10 }).notNull(),
+  message: text('message').notNull(),
+  screen: varchar('screen', { length: 100 }),
+  data: jsonb('data'),
+  logTimestamp: timestamp('log_timestamp'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const insertMobileAppLogSchema = createInsertSchema(mobileAppLogs);
+export type MobileAppLog = typeof mobileAppLogs.$inferSelect;
+export type InsertMobileAppLog = typeof mobileAppLogs.$inferInsert;

@@ -1,9 +1,9 @@
 /**
  * Mobile Logs Edge Function
  *
- * Receives batched log entries from the Printyx mobile app and writes
- * them to the Deno server console. This allows real-time debugging of
- * mobile issues by checking the edge function server logs.
+ * Receives batched log entries from the Printyx mobile app, writes them
+ * to the Deno server console AND persists them to the `mobile_app_logs`
+ * table for the admin log viewer.
  *
  * POST /mobile-logs
  * Body: { deviceId, sessionId, platform, appVersion, entries: LogEntry[] }
@@ -12,6 +12,7 @@
  */
 
 import { getCorsHeaders, handleCors } from '/app/functions/_shared/cors.ts';
+import { createSupabaseServiceClient } from '/app/functions/_shared/supabase.ts';
 
 export default async function handler(req: Request): Promise<Response> {
   // Handle CORS preflight
@@ -23,10 +24,10 @@ export default async function handler(req: Request): Promise<Response> {
   const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
 
   if (req.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }),
-      { status: 405, headers: jsonHeaders },
-    );
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: jsonHeaders,
+    });
   }
 
   try {
@@ -34,10 +35,7 @@ export default async function handler(req: Request): Promise<Response> {
     const { deviceId, sessionId, platform, appVersion, entries } = body;
 
     if (!Array.isArray(entries) || entries.length === 0) {
-      return new Response(
-        JSON.stringify({ received: 0 }),
-        { status: 200, headers: jsonHeaders },
-      );
+      return new Response(JSON.stringify({ received: 0 }), { status: 200, headers: jsonHeaders });
     }
 
     // Write each entry to console for server log visibility
@@ -49,17 +47,43 @@ export default async function handler(req: Request): Promise<Response> {
       console.log(`${tag} ${level} ${screen} ${entry.message}${dataStr}`);
     }
 
-    console.log(`${tag} Received ${entries.length} log entries (session: ${sessionId?.slice(0, 8)}, v${appVersion})`);
-
-    return new Response(
-      JSON.stringify({ received: entries.length }),
-      { status: 200, headers: jsonHeaders },
+    console.log(
+      `${tag} Received ${entries.length} log entries (session: ${sessionId?.slice(0, 8)}, v${appVersion})`,
     );
+
+    // Persist to mobile_app_logs table (fire-and-forget, don't break logging if DB fails)
+    try {
+      const supabase = createSupabaseServiceClient();
+      const rows = entries.map((entry: any) => ({
+        device_id: deviceId || null,
+        session_id: sessionId || null,
+        platform: platform || null,
+        app_version: appVersion || null,
+        level: entry.level || 'info',
+        message: String(entry.message || ''),
+        screen: entry.screen || null,
+        data: entry.data || null,
+        log_timestamp: entry.timestamp ? new Date(entry.timestamp).toISOString() : null,
+      }));
+
+      const { error } = await supabase.from('mobile_app_logs').insert(rows);
+
+      if (error) {
+        console.error(`${tag} DB insert error (non-fatal):`, error.message);
+      }
+    } catch (dbErr) {
+      console.error(`${tag} DB persist failed (non-fatal):`, dbErr.message);
+    }
+
+    return new Response(JSON.stringify({ received: entries.length }), {
+      status: 200,
+      headers: jsonHeaders,
+    });
   } catch (err) {
     console.error('[mobile-logs] Parse error:', err.message);
-    return new Response(
-      JSON.stringify({ error: 'Invalid request body' }),
-      { status: 400, headers: jsonHeaders },
-    );
+    return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+      status: 400,
+      headers: jsonHeaders,
+    });
   }
 }
