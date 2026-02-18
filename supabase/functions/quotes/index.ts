@@ -65,14 +65,7 @@ export default async function handler(req: Request) {
 
       let query = admin
         .from('quotes')
-        .select(
-          `
-          *,
-          customer:business_records!customer_id(id, company_name, primary_contact_name, primary_contact_email),
-          created_by_user:users!created_by(id, first_name, last_name, email)
-        `,
-          { count: 'exact' },
-        )
+        .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
@@ -100,9 +93,44 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch quotes' }, 500, req);
       }
 
+      // Enrich quotes with customer info from companies table
+      const enrichedQuotes = await Promise.all(
+        (quotes || []).map(async (quote: any) => {
+          let customer = null;
+          let createdByUser = null;
+
+          if (quote.customer_id) {
+            const { data: company } = await admin
+              .from('companies')
+              .select('id, business_name, phone, email')
+              .eq('id', quote.customer_id)
+              .eq('tenant_id', tenantId)
+              .maybeSingle();
+            if (company) {
+              customer = {
+                id: company.id,
+                company_name: company.business_name,
+                primary_contact_email: company.email,
+              };
+            }
+          }
+
+          if (quote.created_by) {
+            const { data: userRecord } = await admin
+              .from('users')
+              .select('id, first_name, last_name, email')
+              .eq('id', quote.created_by)
+              .maybeSingle();
+            createdByUser = userRecord;
+          }
+
+          return { ...quote, customer, created_by_user: createdByUser };
+        }),
+      );
+
       return createCorsResponse(
         {
-          data: quotes || [],
+          data: enrichedQuotes,
           total: count || 0,
           page,
           limit,
@@ -116,13 +144,7 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && quoteId && !action) {
       const { data: quote, error } = await admin
         .from('quotes')
-        .select(
-          `
-          *,
-          customer:business_records!customer_id(id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, city, state, postal_code),
-          created_by_user:users!created_by(id, first_name, last_name, email, phone)
-        `,
-        )
+        .select('*')
         .eq('id', quoteId)
         .eq('tenant_id', tenantId)
         .single();
@@ -130,6 +152,40 @@ export default async function handler(req: Request) {
       if (error) {
         console.error('Error fetching quote:', error);
         return createCorsResponse({ error: 'Quote not found' }, 404, req);
+      }
+
+      // Fetch customer info from companies table
+      let customer = null;
+      if (quote.customer_id) {
+        const { data: company } = await admin
+          .from('companies')
+          .select('id, business_name, phone, email, billing_address, billing_city, billing_state, billing_zip')
+          .eq('id', quote.customer_id)
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+        if (company) {
+          customer = {
+            id: company.id,
+            company_name: company.business_name,
+            primary_contact_email: company.email,
+            primary_contact_phone: company.phone,
+            address_line1: company.billing_address,
+            city: company.billing_city,
+            state: company.billing_state,
+            postal_code: company.billing_zip,
+          };
+        }
+      }
+
+      // Fetch created_by user info
+      let createdByUser = null;
+      if (quote.created_by) {
+        const { data: userRecord } = await admin
+          .from('users')
+          .select('id, first_name, last_name, email, phone')
+          .eq('id', quote.created_by)
+          .maybeSingle();
+        createdByUser = userRecord;
       }
 
       // Fetch line items
@@ -140,7 +196,7 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: true });
 
-      return createCorsResponse({ ...quote, lineItems: lineItems || [] }, 200, req);
+      return createCorsResponse({ ...quote, customer, created_by_user: createdByUser, lineItems: lineItems || [] }, 200, req);
     }
 
     // POST /quotes - Create new quote
