@@ -9,18 +9,21 @@ final class APIClient: ObservableObject {
     // MARK: - Configuration
 
     struct Configuration {
-        let baseURL: URL
-        let supabaseURL: URL
+        let baseURL: URL              // Express backend (printyx.net)
+        let edgeFunctionsURL: URL     // Supabase Edge Functions (functions.printyx.net)
+        let supabaseURL: URL          // Supabase Auth via Kong (api.printyx.net)
         let supabaseAnonKey: String
 
         static let production = Configuration(
             baseURL: URL(string: "https://printyx.net")!,
-            supabaseURL: URL(string: AppConfig.supabaseURL)!,
+            edgeFunctionsURL: URL(string: "https://functions.printyx.net")!,
+            supabaseURL: URL(string: "https://api.printyx.net")!,
             supabaseAnonKey: AppConfig.supabaseAnonKey
         )
 
         static let development = Configuration(
             baseURL: URL(string: "http://localhost:5000")!,
+            edgeFunctionsURL: URL(string: "http://localhost:8000")!,
             supabaseURL: URL(string: "https://api.printyx.net")!,
             supabaseAnonKey: AppConfig.supabaseAnonKey
         )
@@ -185,12 +188,28 @@ final class APIClient: ObservableObject {
     // MARK: - Request Building
 
     private func buildRequest(for endpoint: APIEndpoint) throws -> URLRequest {
-        // Determine base URL: auth endpoints go to Supabase, API endpoints go to Express backend
+        // Route requests to the correct backend:
+        // 1. Auth endpoints (/auth/*) → api.printyx.net (Kong → GoTrue)
+        // 2. API endpoints (/api/*) → functions.printyx.net (Edge Functions, strip /api/ prefix)
+        // 3. Everything else → printyx.net (Express backend)
         let isAuthEndpoint = endpoint.path.hasPrefix("/auth/")
-        let baseURL = isAuthEndpoint ? configuration.supabaseURL : configuration.baseURL
+        let isApiEndpoint = endpoint.path.hasPrefix("/api/")
 
-        // Keep the full path including /api/ prefix for Express backend routing
-        let path = endpoint.path
+        let baseURL: URL
+        let path: String
+
+        if isAuthEndpoint {
+            baseURL = configuration.supabaseURL
+            path = endpoint.path
+        } else if isApiEndpoint {
+            // Route to Edge Functions, stripping /api/ prefix (matches web app behavior)
+            // e.g., /api/tasks → /tasks, /api/customers/123 → /customers/123
+            baseURL = configuration.edgeFunctionsURL
+            path = String(endpoint.path.dropFirst(4)) // "/api/tasks" → "/tasks"
+        } else {
+            baseURL = configuration.baseURL
+            path = endpoint.path
+        }
 
         guard var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: true) else {
             throw APIError.invalidURL
@@ -221,6 +240,11 @@ final class APIClient: ObservableObject {
             if !endpoint.requiresAuth {
                 request.setValue("Bearer \(configuration.supabaseAnonKey)", forHTTPHeaderField: "Authorization")
             }
+        }
+
+        // For Edge Function calls, add apikey header (Supabase convention)
+        if isApiEndpoint {
+            request.setValue(configuration.supabaseAnonKey, forHTTPHeaderField: "apikey")
         }
 
         // Tenant context
