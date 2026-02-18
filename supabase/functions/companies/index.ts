@@ -72,15 +72,28 @@ export default async function handler(req: Request) {
 
       user = userData.user;
 
-      // Extract tenant ID from user metadata
+      // Extract tenant ID: x-tenant-id header → app_metadata → user_metadata → DB lookup
       tenantId =
+        req.headers.get('x-tenant-id') ||
+        (user.app_metadata?.tenantId as string) ||
         (user.app_metadata?.tenant_id as string) ||
-        (user.app_metadata?.tenant_id as string) ||
-        (user.user_metadata?.tenant_id as string) ||
+        (user.user_metadata?.tenantId as string) ||
         (user.user_metadata?.tenant_id as string);
 
       if (!tenantId) {
-        console.error('No tenant ID in metadata for user:', user.id);
+        // Fallback: look up tenant from public.users
+        const admin2 = createSupabaseServiceClient();
+        const { data: dbUser } = await admin2
+          .from('users')
+          .select('tenant_id')
+          .eq('id', user.id)
+          .limit(1)
+          .maybeSingle();
+        tenantId = dbUser?.tenant_id;
+      }
+
+      if (!tenantId) {
+        console.error('No tenant ID found for user:', user.id);
         return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
       }
     }
@@ -163,15 +176,15 @@ export default async function handler(req: Request) {
         lead_status: company.activity,
       }));
 
+      // Return in { data: [...], total, page, limit } format for auto-unwrap
+      // Both web and mobile query clients auto-unwrap this to a plain array
+      const page = Math.floor(offset / limit) + 1;
       return createCorsResponse(
         {
-          records,
-          pagination: {
-            total: count || 0,
-            limit,
-            offset,
-            hasMore: offset + (companies?.length || 0) < (count || 0),
-          },
+          data: records,
+          total: count || 0,
+          page,
+          limit,
         },
         200,
         req,
