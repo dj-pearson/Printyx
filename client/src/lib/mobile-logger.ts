@@ -37,6 +37,15 @@ class MobileLogger {
     this.platform = this.detectPlatform();
     this.startFlushTimer();
     this.attachGlobalHandlers();
+
+    // Startup diagnostic - confirms logger pipeline is working
+    this.info('MobileLogger initialized', {
+      deviceId: this.deviceId.slice(0, 12),
+      platform: this.platform,
+      appVersion: config.appVersion,
+      apiBaseUrl: config.apiBaseUrl || '(relative)',
+      isProduction: config.isProduction,
+    });
   }
 
   private getOrCreateDeviceId(): string {
@@ -99,10 +108,10 @@ class MobileLogger {
       });
     });
 
-    // Flush on page unload
-    window.addEventListener('beforeunload', () => this.flush());
+    // Flush on page unload (use beacon for reliability during navigation)
+    window.addEventListener('beforeunload', () => this.beaconFlush());
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') this.flush();
+      if (document.visibilityState === 'hidden') this.beaconFlush();
     });
   }
 
@@ -151,17 +160,17 @@ class MobileLogger {
   }
 
   /**
-   * Send buffered entries to the mobile-logs edge function
+   * Send buffered entries to the mobile-logs endpoint.
+   * Tries multiple strategies to maximize delivery reliability:
+   * 1. fetch() to Express backend (same-origin, most reliable)
+   * 2. fetch() to Edge Function (cross-origin, for production)
+   * 3. sendBeacon as last resort (page unload)
    */
   flush() {
     if (this.buffer.length === 0) return;
 
     const entries = [...this.buffer];
     this.buffer = [];
-
-    const url = config.isProduction
-      ? `${config.apiBaseUrl}/mobile-logs`
-      : '/api/mobile-logs';
 
     const payload = {
       deviceId: this.deviceId,
@@ -171,23 +180,53 @@ class MobileLogger {
       entries,
     };
 
-    // Fire-and-forget using sendBeacon for reliability, fallback to fetch
-    try {
-      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-      const sent = navigator.sendBeacon?.(url, blob);
-      if (!sent) {
-        throw new Error('sendBeacon failed');
-      }
-    } catch {
-      // Fallback to fetch
+    const body = JSON.stringify(payload);
+
+    // Always try the Express backend first (same-origin, no CORS issues)
+    const expressUrl = '/api/mobile-logs';
+    // In production, also send to Edge Function for redundancy
+    const edgeUrl = config.isProduction ? `${config.apiBaseUrl}/mobile-logs` : null;
+
+    const doFetch = (url: string) =>
       fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body,
         keepalive: true,
-      }).catch(() => {
-        // Logging should never crash the app
-      });
+      }).catch(() => {});
+
+    // Primary: Express backend (works same-origin in both dev and prod)
+    doFetch(expressUrl);
+
+    // Secondary: Edge Function in production (redundancy)
+    if (edgeUrl) {
+      doFetch(edgeUrl);
+    }
+  }
+
+  /**
+   * Beacon-based flush for page unload (sendBeacon is more reliable during navigation)
+   */
+  private beaconFlush() {
+    if (this.buffer.length === 0) return;
+
+    const entries = [...this.buffer];
+    this.buffer = [];
+
+    const payload = {
+      deviceId: this.deviceId,
+      sessionId: this.sessionId,
+      platform: this.platform,
+      appVersion: config.appVersion,
+      entries,
+    };
+
+    try {
+      // Use text/plain to avoid CORS preflight issues with sendBeacon
+      const blob = new Blob([JSON.stringify(payload)], { type: 'text/plain' });
+      navigator.sendBeacon?.('/api/mobile-logs', blob);
+    } catch {
+      // Best effort
     }
   }
 
