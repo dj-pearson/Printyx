@@ -1,8 +1,13 @@
 /**
  * API Client for Printyx Mobile
  *
- * Routes /api/* calls to the Express backend (same as the website).
- * - Automatic Bearer token injection
+ * Production Architecture (no Express server):
+ * - ALL /api/* calls go to functions.printyx.net (Edge Functions)
+ * - The api/ prefix is stripped by getApiUrl() before calling
+ * - This matches the web app's production routing in client/src/lib/config.ts
+ *
+ * Features:
+ * - Automatic Bearer token + apikey injection
  * - Token refresh on 401
  * - Tenant ID header injection
  * - Request ID correlation
@@ -82,6 +87,11 @@ export async function apiRequest<T = any>(
     requestHeaders['Authorization'] = `Bearer ${accessToken}`;
   }
 
+  // Inject anon key — all requests go to edge functions in production
+  if (config.supabase.anonKey) {
+    requestHeaders['apikey'] = config.supabase.anonKey;
+  }
+
   // Inject tenant ID
   const tenantId = await getTenantId();
   if (tenantId) {
@@ -95,9 +105,6 @@ export async function apiRequest<T = any>(
     hasToken: !!accessToken,
     tenantId: tenantId || 'none',
   }, 'apiRequest');
-
-  // All /api/* calls go to Express. Express proxy handles CRM→edge function forwarding
-  // and adds the apikey header server-side. No need to add it from the mobile client.
 
   let res: Response;
   try {
@@ -179,7 +186,7 @@ export async function apiRequest<T = any>(
   }, 'apiRequest');
 
   // Auto-unwrap paginated responses that use { data: [...], total, page, limit } structure
-  // Both Express backend and Edge Functions may return this format
+  // Edge Functions return this format for list endpoints
   if (data && typeof data === 'object' && 'data' in data && Array.isArray(data.data)) {
     return data.data as T;
   }
@@ -188,9 +195,9 @@ export async function apiRequest<T = any>(
 }
 
 /**
- * Make an authenticated request to a Supabase Edge Function.
- * Use this for specific Edge Function endpoints (signup, etc.)
- * instead of apiRequest which routes to the Express backend.
+ * Make an authenticated request to a Supabase Edge Function by name.
+ * Use this for specific Edge Function endpoints (signup, mobile-auth, etc.)
+ * that are called by function name rather than by /api/* path.
  */
 export async function edgeFunctionRequest<T = any>(
   functionName: string,
