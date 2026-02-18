@@ -18,13 +18,14 @@ export default function LeadsScreen() {
   const [search, setSearch] = useState('');
 
   const {
-    data: leads,
+    data: companiesResp,
     isLoading,
     refetch,
     isRefetching,
-  } = useQuery<any[]>({
-    queryKey: ['/api/business-records', `?recordType=lead&search=${search}&limit=50`],
+  } = useQuery<{ records: any[]; pagination: { total: number } }>({
+    queryKey: ['/api/companies', `?recordType=Lead&search=${search}&limit=50`],
   });
+  const leads = companiesResp?.records || [];
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => (
