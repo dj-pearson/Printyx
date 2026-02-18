@@ -21,9 +21,11 @@ import { colors, spacing, typography, touchTargets } from '@/theme';
 export default function ContactsScreen() {
   const [search, setSearch] = useState('');
 
-  const { data: contacts, isLoading, refetch, isRefetching } = useQuery<any[]>({
+  const { data: rawContacts, isLoading, refetch, isRefetching } = useQuery<any>({
     queryKey: ['/api/contacts', `?search=${search}&limit=50`],
   });
+  // Handle both auto-unwrapped arrays and { data } / { records } response formats
+  const contacts: any[] = Array.isArray(rawContacts) ? rawContacts : (rawContacts?.data || rawContacts?.records || []);
 
   const renderItem = useCallback(({ item }: { item: any }) => (
     <View style={styles.contactRow}>
