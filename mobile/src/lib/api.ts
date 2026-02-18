@@ -8,7 +8,7 @@
  * - Request ID correlation
  */
 
-import { config, getApiUrl, getEdgeFunctionUrl, isEdgeFunctionUrl } from '@/config';
+import { config, getApiUrl, getEdgeFunctionUrl } from '@/config';
 import { getAccessToken, refreshSession } from './supabase';
 import * as SecureStore from 'expo-secure-store';
 import * as Crypto from 'expo-crypto';
@@ -87,10 +87,8 @@ export async function apiRequest<T = any>(
 
   const requestUrl = getApiUrl(url);
 
-  // Inject anon key for edge function calls (required by Supabase API gateway)
-  if (isEdgeFunctionUrl(requestUrl) && config.supabase.anonKey) {
-    requestHeaders['apikey'] = config.supabase.anonKey;
-  }
+  // All /api/* calls go to Express. Express proxy handles CRM→edge function forwarding
+  // and adds the apikey header server-side. No need to add it from the mobile client.
 
   let res = await fetch(requestUrl, {
     method,
