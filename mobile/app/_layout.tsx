@@ -15,10 +15,22 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet } from 'react-native';
 import { AuthProvider, useAuthContext } from '@/providers/AuthProvider';
 import { queryClient } from '@/lib/queryClient';
+import { remoteLog } from '@/lib/remoteLogger';
+import { RemoteErrorBoundary } from '@/components/RemoteErrorBoundary';
+import { config } from '@/config';
 import { colors } from '@/theme';
 
 // Keep splash screen visible until auth state is resolved
 SplashScreen.preventAutoHideAsync();
+
+// Log app startup config so we can verify routing in server logs
+remoteLog.info('App startup', {
+  apiBaseUrl: config.apiBaseUrl,
+  edgeFunctionsUrl: config.edgeFunctionsUrl,
+  supabaseUrl: config.supabase.url,
+  hasAnonKey: !!config.supabase.anonKey,
+  isDev: config.isDevelopment,
+}, 'RootLayout');
 
 function RootLayoutNav() {
   const { isAuthenticated, isLoading } = useAuthContext();
@@ -27,6 +39,11 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (isLoading) return;
+
+    remoteLog.info('Auth state resolved', {
+      isAuthenticated,
+      segments: segments.join('/'),
+    }, 'RootLayout');
 
     const inAuthGroup = segments[0] === '(auth)';
 
@@ -58,15 +75,17 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={styles.root}>
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <RootLayoutNav />
-          </AuthProvider>
-        </QueryClientProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <RemoteErrorBoundary screen="Root">
+      <GestureHandlerRootView style={styles.root}>
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <RootLayoutNav />
+            </AuthProvider>
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </RemoteErrorBoundary>
   );
 }
 
