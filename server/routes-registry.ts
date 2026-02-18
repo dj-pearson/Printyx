@@ -149,6 +149,7 @@ import {
 } from './routes-pricing';
 
 import { storage } from './storage';
+import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
 
 export async function registerAllRouteModules(app: Express, requireAuth: any): Promise<void> {
   // ─── Health Check (pre-auth, called before middleware) ──────────────
@@ -157,6 +158,10 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Auth & Trial ──────────────────────────────────────────────────
   registerAuthCoreRoutes(app);
   app.use('/api/trial', trialRoutes);
+
+  // ─── Edge Function Proxy (must be before CRM routes) ───────────────
+  // Forwards CRM API calls to Supabase Edge Functions for correct data
+  registerEdgeFunctionProxy(app);
 
   // ─── Knowledge Base ────────────────────────────────────────────────
   app.use('/api/knowledge-base', knowledgeBaseRoutes);
