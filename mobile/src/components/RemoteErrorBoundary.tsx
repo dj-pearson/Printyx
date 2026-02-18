@@ -36,11 +36,22 @@ export class RemoteErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo });
 
-    remoteLog.error(`RENDER CRASH: ${error.message}`, {
-      name: error.name,
-      stack: error.stack?.split('\n').slice(0, 10).join('\n'),
-      componentStack: errorInfo.componentStack?.split('\n').slice(0, 10).join('\n'),
-    }, this.props.screen || 'ErrorBoundary');
+    // Always log to native console so crashes are visible in Xcode/logcat
+    console.error(
+      `[RemoteErrorBoundary:${this.props.screen || '?'}] RENDER CRASH:`,
+      error.message,
+      error.stack,
+    );
+
+    remoteLog.error(
+      `RENDER CRASH: ${error.message}`,
+      {
+        name: error.name,
+        stack: error.stack?.split('\n').slice(0, 10).join('\n'),
+        componentStack: errorInfo.componentStack?.split('\n').slice(0, 10).join('\n'),
+      },
+      this.props.screen || 'ErrorBoundary',
+    );
 
     // Flush immediately so crash info is sent before app might close
     remoteLog.flush();
@@ -60,10 +71,18 @@ export class RemoteErrorBoundary extends Component<Props, State> {
             {this.state.error?.message || 'An unexpected error occurred'}
           </Text>
 
-          {__DEV__ && this.state.error?.stack && (
+          {this.state.error?.stack && (
             <ScrollView style={styles.stackContainer}>
-              <Text style={styles.stack}>
+              <Text style={styles.stack} selectable>
                 {this.state.error.stack.split('\n').slice(0, 8).join('\n')}
+              </Text>
+            </ScrollView>
+          )}
+
+          {this.state.errorInfo?.componentStack && (
+            <ScrollView style={[styles.stackContainer, { maxHeight: 100 }]}>
+              <Text style={styles.stack} selectable>
+                {this.state.errorInfo.componentStack.split('\n').slice(0, 6).join('\n')}
               </Text>
             </ScrollView>
           )}
@@ -137,4 +156,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

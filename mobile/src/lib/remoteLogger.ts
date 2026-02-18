@@ -51,9 +51,19 @@ async function flush(): Promise<void> {
   const entries = buffer.splice(0, buffer.length);
 
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Include apikey header — the edge function server requires it for routing.
+    // Without this, requests are rejected/dropped silently.
+    if (config.supabase.anonKey) {
+      headers['apikey'] = config.supabase.anonKey;
+    }
+
     await fetch(getLogUrl(), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         deviceId,
         sessionId,
@@ -62,11 +72,15 @@ async function flush(): Promise<void> {
         entries,
       }),
     });
-  } catch {
-    // Logging endpoint unreachable — silently drop.
-    // Also log locally for Expo/Metro console.
+  } catch (err) {
+    // Logging endpoint unreachable — log locally for debugging.
     if (__DEV__) {
-      console.warn('[remoteLog] Failed to flush', entries.length, 'entries to server');
+      console.warn(
+        '[remoteLog] Failed to flush',
+        entries.length,
+        'entries to server:',
+        (err as Error)?.message,
+      );
     }
   }
 }
@@ -119,14 +133,10 @@ function addEntry(level: LogLevel, message: string, data?: any, screen?: string)
 }
 
 export const remoteLog = {
-  debug: (message: string, data?: any, screen?: string) =>
-    addEntry('debug', message, data, screen),
-  info: (message: string, data?: any, screen?: string) =>
-    addEntry('info', message, data, screen),
-  warn: (message: string, data?: any, screen?: string) =>
-    addEntry('warn', message, data, screen),
-  error: (message: string, data?: any, screen?: string) =>
-    addEntry('error', message, data, screen),
+  debug: (message: string, data?: any, screen?: string) => addEntry('debug', message, data, screen),
+  info: (message: string, data?: any, screen?: string) => addEntry('info', message, data, screen),
+  warn: (message: string, data?: any, screen?: string) => addEntry('warn', message, data, screen),
+  error: (message: string, data?: any, screen?: string) => addEntry('error', message, data, screen),
 
   /** Force-flush any buffered entries (e.g., before app backgrounds) */
   flush,
