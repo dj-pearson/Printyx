@@ -5,12 +5,12 @@ describe('config', () => {
     expect(config.appName).toBe('Printyx');
     expect(config.appScheme).toBe('printyx');
     expect(config.supabase.url).toBeTruthy();
-    expect(config.apiBaseUrl).toBeTruthy();
+    expect(config.edgeFunctionsUrl).toBeTruthy();
   });
 
   it('defaults to printyx.net URLs', () => {
     expect(config.supabase.url).toContain('printyx.net');
-    expect(config.apiBaseUrl).toContain('printyx.net');
+    expect(config.edgeFunctionsUrl).toContain('printyx.net');
   });
 });
 
