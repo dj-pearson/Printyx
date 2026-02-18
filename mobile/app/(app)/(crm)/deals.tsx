@@ -16,39 +16,48 @@ export default function DealsScreen() {
   const router = useRouter();
 
   const { data: rawDeals, isLoading, refetch, isRefetching } = useQuery<any>({
-    queryKey: ['/api/deals', '?limit=50'],
+    queryKey: ['/api/deals?limit=50'],
   });
   // Handle both auto-unwrapped arrays and { data } / { records } response formats
   const deals: any[] = Array.isArray(rawDeals) ? rawDeals : (rawDeals?.data || rawDeals?.records || []);
 
-  const renderItem = useCallback(({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={styles.dealCard}
-      onPress={() => router.push({ pathname: '/(app)/(crm)/[id]', params: { id: item.id, type: 'deal' } })}
-      activeOpacity={0.7}
-    >
-      <View style={styles.dealHeader}>
-        <Text style={styles.dealTitle} numberOfLines={1}>{item.title || item.name}</Text>
-        <Text style={styles.dealValue}>
-          ${Number(item.value || item.amount || 0).toLocaleString()}
-        </Text>
-      </View>
-      <Text style={styles.dealCompany} numberOfLines={1}>{item.companyName || item.customerName || '--'}</Text>
-      <View style={styles.dealFooter}>
-        <Badge
-          label={item.stage || item.status || 'Prospect'}
-          variant={getStageVariant(item.stage || item.status)}
-        />
-        {item.probability != null && (
-          <Text style={styles.dealProbability}>{item.probability}% likely</Text>
-        )}
-      </View>
-      {/* Pipeline progress bar */}
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${item.probability || 25}%` }]} />
-      </View>
-    </TouchableOpacity>
-  ), [router]);
+  const renderItem = useCallback(({ item }: { item: any }) => {
+    // Handle both camelCase and snake_case field names from DB
+    const title = item.title || item.deal_name || item.name || 'Untitled Deal';
+    const value = Number(item.value || item.amount || item.deal_value || 0);
+    const companyName = item.companyName || item.company_name || item.customerName || item.customer_name || '--';
+    const stage = item.stage || item.status || 'Prospect';
+    const probability = item.probability ?? item.win_probability;
+
+    return (
+      <TouchableOpacity
+        style={styles.dealCard}
+        onPress={() => router.push({ pathname: '/(app)/(crm)/[id]', params: { id: item.id, type: 'deal' } })}
+        activeOpacity={0.7}
+      >
+        <View style={styles.dealHeader}>
+          <Text style={styles.dealTitle} numberOfLines={1}>{title}</Text>
+          <Text style={styles.dealValue}>
+            ${value.toLocaleString()}
+          </Text>
+        </View>
+        <Text style={styles.dealCompany} numberOfLines={1}>{companyName}</Text>
+        <View style={styles.dealFooter}>
+          <Badge
+            label={stage}
+            variant={getStageVariant(stage)}
+          />
+          {probability != null && (
+            <Text style={styles.dealProbability}>{probability}% likely</Text>
+          )}
+        </View>
+        {/* Pipeline progress bar */}
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: `${probability || 25}%` }]} />
+        </View>
+      </TouchableOpacity>
+    );
+  }, [router]);
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>

@@ -25,12 +25,25 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    // Extract tenant ID from JWT metadata
-    const tenantId =
+    // Resolve tenant ID: x-tenant-id header → app_metadata → user_metadata → DB lookup
+    let tenantId =
+      req.headers.get('x-tenant-id') ||
+      (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string) ||
+      (user.user_metadata?.tenantId as string) ||
       (user.user_metadata?.tenant_id as string);
+
+    if (!tenantId) {
+      // Fallback: look up tenant from public.users
+      const admin2 = createSupabaseServiceClient();
+      const { data: dbUser } = await admin2
+        .from('users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .limit(1)
+        .maybeSingle();
+      tenantId = dbUser?.tenant_id;
+    }
 
     if (!tenantId) {
       console.error('No tenant ID found for user:', user.id);
@@ -132,9 +145,10 @@ export default async function handler(req: Request) {
         );
       }
 
+      // Return in { data: [...], total, page, limit } format for auto-unwrap
       return createCorsResponse(
         {
-          contacts: contacts || [],
+          data: contacts || [],
           total: count || 0,
           page,
           limit,

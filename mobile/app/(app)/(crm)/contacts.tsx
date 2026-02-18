@@ -22,46 +22,53 @@ export default function ContactsScreen() {
   const [search, setSearch] = useState('');
 
   const { data: rawContacts, isLoading, refetch, isRefetching } = useQuery<any>({
-    queryKey: ['/api/contacts', `?search=${search}&limit=50`],
+    queryKey: [`/api/contacts?search=${search}&limit=50`],
   });
   // Handle both auto-unwrapped arrays and { data } / { records } response formats
   const contacts: any[] = Array.isArray(rawContacts) ? rawContacts : (rawContacts?.data || rawContacts?.records || []);
 
-  const renderItem = useCallback(({ item }: { item: any }) => (
-    <View style={styles.contactRow}>
-      <Avatar
-        name={`${item.firstName || ''} ${item.lastName || ''}`}
-        size={44}
-      />
-      <View style={styles.contactInfo}>
-        <Text style={styles.contactName} numberOfLines={1}>
-          {item.firstName} {item.lastName}
-        </Text>
-        {item.title && <Text style={styles.contactTitle} numberOfLines={1}>{item.title}</Text>}
-        {item.companyName && <Text style={styles.contactCompany} numberOfLines={1}>{item.companyName}</Text>}
+  const renderItem = useCallback(({ item }: { item: any }) => {
+    // Handle both camelCase and snake_case field names from DB
+    const firstName = item.firstName || item.first_name || '';
+    const lastName = item.lastName || item.last_name || '';
+    const title = item.title || item.job_title || '';
+    const companyName = item.companyName || item.company_name || item.companies?.business_name || '';
+    const phone = item.phone;
+    const email = item.email;
+
+    return (
+      <View style={styles.contactRow}>
+        <Avatar name={`${firstName} ${lastName}`} size={44} />
+        <View style={styles.contactInfo}>
+          <Text style={styles.contactName} numberOfLines={1}>
+            {firstName} {lastName}
+          </Text>
+          {title ? <Text style={styles.contactTitle} numberOfLines={1}>{title}</Text> : null}
+          {companyName ? <Text style={styles.contactCompany} numberOfLines={1}>{companyName}</Text> : null}
+        </View>
+        <View style={styles.actions}>
+          {phone ? (
+            <TouchableOpacity
+              onPress={() => Linking.openURL(`tel:${phone}`)}
+              style={styles.actionBtn}
+              accessibilityLabel={`Call ${firstName}`}
+            >
+              <MaterialCommunityIcons name="phone" size={20} color={colors.primary[600]} />
+            </TouchableOpacity>
+          ) : null}
+          {email ? (
+            <TouchableOpacity
+              onPress={() => Linking.openURL(`mailto:${email}`)}
+              style={styles.actionBtn}
+              accessibilityLabel={`Email ${firstName}`}
+            >
+              <MaterialCommunityIcons name="email" size={20} color={colors.primary[600]} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
-      <View style={styles.actions}>
-        {item.phone && (
-          <TouchableOpacity
-            onPress={() => Linking.openURL(`tel:${item.phone}`)}
-            style={styles.actionBtn}
-            accessibilityLabel={`Call ${item.firstName}`}
-          >
-            <MaterialCommunityIcons name="phone" size={20} color={colors.primary[600]} />
-          </TouchableOpacity>
-        )}
-        {item.email && (
-          <TouchableOpacity
-            onPress={() => Linking.openURL(`mailto:${item.email}`)}
-            style={styles.actionBtn}
-            accessibilityLabel={`Email ${item.firstName}`}
-          >
-            <MaterialCommunityIcons name="email" size={20} color={colors.primary[600]} />
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  ), []);
+    );
+  }, []);
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
