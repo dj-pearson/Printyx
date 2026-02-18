@@ -54,7 +54,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 
 // Types
 type FinancialForecast = {
@@ -182,7 +182,7 @@ export default function FinancialForecasting() {
       const params = new URLSearchParams();
       if (selectedForecastType !== 'all') params.append('type', selectedForecastType);
       const response = await apiRequest(`/api/financial/forecasts?${params.toString()}`);
-      return (response || []).map((forecast: any) => ({
+      return extractRecords(response).map((forecast: any) => ({
         ...forecast,
         id: forecast.id,
         forecastType: forecast.forecast_type || forecast.forecastType || '',
@@ -200,7 +200,7 @@ export default function FinancialForecasting() {
     queryKey: ['/api/financial/cash-flow'],
     queryFn: async () => {
       const response = await apiRequest('/api/financial/cash-flow', 'GET');
-      return (response || []).map((projection: any) => ({
+      return extractRecords(response).map((projection: any) => ({
         ...projection,
         id: projection.id,
         projectionDate: projection.projection_date || projection.projectionDate || '',
@@ -218,7 +218,7 @@ export default function FinancialForecasting() {
       const params = new URLSearchParams();
       if (selectedAnalysisType !== 'all') params.append('type', selectedAnalysisType);
       const response = await apiRequest(`/api/financial/profitability?${params.toString()}`);
-      return (response || []).map((analysis: any) => ({
+      return extractRecords(response).map((analysis: any) => ({
         ...analysis,
         id: analysis.id,
         analysisType: analysis.analysis_type || analysis.analysisType || '',
@@ -232,7 +232,7 @@ export default function FinancialForecasting() {
     queryKey: ['/api/financial/kpis'],
     queryFn: async () => {
       const response = await apiRequest('/api/financial/kpis', 'GET');
-      return (response || []).map((kpi: any) => ({
+      return extractRecords(response).map((kpi: any) => ({
         ...kpi,
         id: kpi.id,
         kpiName: kpi.kpi_name || kpi.kpiName || '',

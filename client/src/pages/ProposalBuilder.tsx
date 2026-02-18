@@ -61,6 +61,7 @@ import RichTextEditor from '@/components/proposal-builder/RichTextEditor';
 import DoDValidationBanner from '@/components/dod/DoDValidationBanner';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 
 interface ProposalTemplate {
   id: string;
@@ -277,12 +278,7 @@ export default function ProposalBuilder() {
     queryKey: ['/api/proposals'],
     queryFn: async () => {
       const response = await apiRequest('/api/proposals', 'GET');
-      // Ensure response is an array before mapping
-      if (!Array.isArray(response)) {
-        console.warn('Proposals response is not an array:', response);
-        return [];
-      }
-      return response.map((proposal: any) => ({
+      return extractRecords(response).map((proposal: any) => ({
         ...proposal,
         id: proposal.id,
         quoteNumber: proposal.quoteNumber || proposal.quoteNumber || '',
@@ -298,12 +294,7 @@ export default function ProposalBuilder() {
     queryKey: ['/api/business-records'],
     queryFn: async () => {
       const response = await apiRequest('/api/business-records', 'GET');
-      // Ensure response is an array before mapping
-      if (!Array.isArray(response)) {
-        console.warn('Business records response is not an array:', response);
-        return [];
-      }
-      return response.map((record: any) => ({
+      return extractRecords(response).map((record: any) => ({
         ...record,
         id: record.id,
         businessName: record.businessName || record.businessName || '',

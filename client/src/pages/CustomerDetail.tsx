@@ -101,7 +101,7 @@ import {
   Quote,
   Gauge,
 } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/main-layout';
 
@@ -241,7 +241,7 @@ export default function CustomerDetailHubspot() {
     queryFn: async () => {
       const response = await apiRequest(`/api/companies/${customer?.id}/contacts`, 'GET');
       // Transform snake_case API response to camelCase
-      return (response || []).map((c: any) => ({
+      return extractRecords(response).map((c: any) => ({
         id: c.id,
         firstName: c.firstName || '',
         lastName: c.lastName || '',

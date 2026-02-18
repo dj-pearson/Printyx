@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import type { Invoice, Contract, Customer } from '@shared/schema';
 import { format } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
 
 export default function Invoices() {
@@ -56,7 +56,7 @@ export default function Invoices() {
     queryKey: ['/api/billing/invoices'],
     queryFn: async () => {
       const response = await apiRequest('/api/billing/invoices', 'GET');
-      return (response || []).map((inv: any) => ({
+      return extractRecords(response).map((inv: any) => ({
         ...inv,
         id: inv.id,
         invoiceNumber: inv.invoiceNumber || inv.invoiceNumber || '',
@@ -75,7 +75,7 @@ export default function Invoices() {
     queryKey: ['/api/contracts'],
     queryFn: async () => {
       const response = await apiRequest('/api/contracts', 'GET');
-      return (response || []).map((c: any) => ({
+      return extractRecords(response).map((c: any) => ({
         ...c,
         id: c.id,
         contractNumber: c.contractNumber || c.contractNumber || '',
@@ -92,7 +92,7 @@ export default function Invoices() {
     queryKey: ['/api/customers'],
     queryFn: async () => {
       const response = await apiRequest('/api/customers', 'GET');
-      return (response?.records || response || []).map((cust: any) => ({
+      return extractRecords(response).map((cust: any) => ({
         ...cust,
         id: cust.id,
         companyName: cust.companyName || cust.companyName || '',
