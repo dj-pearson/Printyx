@@ -100,11 +100,15 @@ export async function apiRequest<T = any>(
 
   const requestUrl = getApiUrl(url);
 
-  remoteLog.info(`→ ${method} ${requestUrl}`, {
-    requestId,
-    hasToken: !!accessToken,
-    tenantId: tenantId || 'none',
-  }, 'apiRequest');
+  remoteLog.info(
+    `→ ${method} ${requestUrl}`,
+    {
+      requestId,
+      hasToken: !!accessToken,
+      tenantId: tenantId || 'none',
+    },
+    'apiRequest',
+  );
 
   let res: Response;
   try {
@@ -116,11 +120,15 @@ export async function apiRequest<T = any>(
     });
   } catch (fetchError: any) {
     const elapsed = Date.now() - startTime;
-    remoteLog.error(`✗ NETWORK ERROR ${method} ${requestUrl} (${elapsed}ms)`, {
-      requestId,
-      error: fetchError?.message || String(fetchError),
-      type: fetchError?.name,
-    }, 'apiRequest');
+    remoteLog.error(
+      `✗ NETWORK ERROR ${method} ${requestUrl} (${elapsed}ms)`,
+      {
+        requestId,
+        error: fetchError?.message || String(fetchError),
+        type: fetchError?.name,
+      },
+      'apiRequest',
+    );
     throw fetchError;
   }
 
@@ -128,7 +136,11 @@ export async function apiRequest<T = any>(
 
   // Handle 401 - attempt token refresh
   if (res.status === 401) {
-    remoteLog.warn(`⚠ 401 ${method} ${requestUrl} — refreshing token`, { requestId }, 'apiRequest');
+    remoteLog.warn(
+      `⚠ 401 ${method} ${requestUrl} — refreshing token`,
+      { requestId },
+      'apiRequest',
+    );
     const newToken = await refreshTokenOnce();
     if (newToken) {
       requestHeaders['Authorization'] = `Bearer ${newToken}`;
@@ -139,29 +151,45 @@ export async function apiRequest<T = any>(
           body: body ? JSON.stringify(body) : undefined,
           signal,
         });
-        remoteLog.info(`↻ Retry after refresh: ${res.status} ${method} ${requestUrl}`, { requestId }, 'apiRequest');
+        remoteLog.info(
+          `↻ Retry after refresh: ${res.status} ${method} ${requestUrl}`,
+          { requestId },
+          'apiRequest',
+        );
       } catch (retryError: any) {
-        remoteLog.error(`✗ RETRY NETWORK ERROR ${method} ${requestUrl}`, {
-          requestId,
-          error: retryError?.message || String(retryError),
-        }, 'apiRequest');
+        remoteLog.error(
+          `✗ RETRY NETWORK ERROR ${method} ${requestUrl}`,
+          {
+            requestId,
+            error: retryError?.message || String(retryError),
+          },
+          'apiRequest',
+        );
         throw retryError;
       }
     }
 
     if (res.status === 401) {
-      remoteLog.error(`✗ 401 FINAL ${method} ${requestUrl} — signing out`, { requestId }, 'apiRequest');
+      remoteLog.error(
+        `✗ 401 FINAL ${method} ${requestUrl} — signing out`,
+        { requestId },
+        'apiRequest',
+      );
       throw new ApiError(401, 'Session expired. Please log in again.');
     }
   }
 
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
-    remoteLog.error(`✗ ${res.status} ${method} ${requestUrl} (${elapsed}ms)`, {
-      requestId,
-      status: res.status,
-      body: text.slice(0, 500),
-    }, 'apiRequest');
+    remoteLog.error(
+      `✗ ${res.status} ${method} ${requestUrl} (${elapsed}ms)`,
+      {
+        requestId,
+        status: res.status,
+        body: text.slice(0, 500),
+      },
+      'apiRequest',
+    );
     throw new ApiError(res.status, text);
   }
 
@@ -171,7 +199,40 @@ export async function apiRequest<T = any>(
     return undefined as T;
   }
 
-  const data = await res.json();
+  // Read response as text first, then parse as JSON.
+  // This catches the iOS "Data Error: The data couldn't be read because
+  // it isn't in the correct format" error and logs the actual response body.
+  const responseText = await res.text();
+
+  let data: any;
+  try {
+    data = JSON.parse(responseText);
+  } catch (parseError) {
+    const contentType = res.headers.get('content-type') || 'unknown';
+    const preview = responseText.slice(0, 500);
+    console.error(`[apiRequest] JSON parse failed for ${method} ${requestUrl}`, {
+      status: res.status,
+      contentType,
+      bodyPreview: preview,
+    });
+    remoteLog.error(
+      `✗ JSON PARSE FAILED ${method} ${requestUrl} (${elapsed}ms)`,
+      {
+        requestId,
+        status: res.status,
+        contentType,
+        bodyLength: responseText.length,
+        bodyPreview: preview,
+      },
+      'apiRequest',
+    );
+    // Flush immediately so this diagnostic info is sent
+    remoteLog.flush();
+    throw new ApiError(
+      res.status,
+      `Invalid JSON response from ${requestUrl}: ${preview.slice(0, 100)}`,
+    );
+  }
 
   // Log response shape for debugging
   const responseShape = Array.isArray(data)
@@ -180,10 +241,14 @@ export async function apiRequest<T = any>(
       ? `{${Object.keys(data).join(',')}}`
       : typeof data;
 
-  remoteLog.info(`✓ ${res.status} ${method} ${requestUrl} (${elapsed}ms)`, {
-    requestId,
-    shape: responseShape,
-  }, 'apiRequest');
+  remoteLog.info(
+    `✓ ${res.status} ${method} ${requestUrl} (${elapsed}ms)`,
+    {
+      requestId,
+      shape: responseShape,
+    },
+    'apiRequest',
+  );
 
   // Auto-unwrap paginated responses that use { data: [...], total, page, limit } structure
   // Edge Functions return this format for list endpoints
@@ -235,10 +300,14 @@ export async function edgeFunctionRequest<T = any>(
 
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
-    remoteLog.error(`✗ EF ${res.status} ${method} ${requestUrl}`, {
-      function: functionName,
-      body: text.slice(0, 500),
-    }, 'edgeFunctionRequest');
+    remoteLog.error(
+      `✗ EF ${res.status} ${method} ${requestUrl}`,
+      {
+        function: functionName,
+        body: text.slice(0, 500),
+      },
+      'edgeFunctionRequest',
+    );
     throw new ApiError(res.status, text);
   }
 
