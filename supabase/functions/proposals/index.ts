@@ -42,8 +42,9 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    // server.ts strips function name: /proposals/123/line-items → /123/line-items
+    const rawParts = url.pathname.split('/').filter(Boolean);
+    // Normalize: strip function name from path if the relay preserved it
+    const pathParts = rawParts[0] === 'proposals' ? rawParts.slice(1) : rawParts;
     const proposalId = pathParts[0];
     const subResource = pathParts[1]; // 'line-items', 'sections', 'comments', 'analytics'
 

@@ -8,9 +8,9 @@ export default async function handler(req: Request) {
   if (corsResponse) return corsResponse;
 
   const url = new URL(req.url);
-  const pathParts = url.pathname.split('/').filter(Boolean);
-  // Edge functions receive paths without the function name prefix
-  // e.g., /companies/123/activities becomes /123/activities
+  const rawParts = url.pathname.split('/').filter(Boolean);
+  // Normalize: strip function name from path if the relay preserved it
+  const pathParts = rawParts[0] === 'companies' ? rawParts.slice(1) : rawParts;
   const companyId = pathParts[0]; // The UUID
   const subResource = pathParts[1]; // contacts, leads, customers, activities, etc.
 
