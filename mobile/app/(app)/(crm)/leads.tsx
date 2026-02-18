@@ -23,45 +23,56 @@ export default function LeadsScreen() {
     refetch,
     isRefetching,
   } = useQuery<any>({
-    queryKey: ['/api/companies', `?recordType=Lead&search=${search}&limit=50`],
+    queryKey: [`/api/companies?recordType=Lead&search=${search}&limit=50`],
   });
   // Handle both auto-unwrapped arrays and { records } / { data } response formats
   const leads: any[] = Array.isArray(rawData) ? rawData : (rawData?.records || rawData?.data || []);
 
   const renderItem = useCallback(
-    ({ item }: { item: any }) => (
-      <TouchableOpacity
-        style={styles.leadCard}
-        onPress={() =>
-          router.push({ pathname: '/(app)/(crm)/[id]', params: { id: item.id, type: 'lead' } })
-        }
-        activeOpacity={0.7}
-        accessibilityLabel={`Lead: ${item.companyName || item.name}`}
-      >
-        <View style={styles.leadHeader}>
-          <Text style={styles.leadName} numberOfLines={1}>
-            {item.companyName || item.name || 'Unnamed Lead'}
-          </Text>
-          <Badge label={item.status || 'New'} variant={getStatusVariant(item.status)} />
-        </View>
-        {item.contactName && (
-          <Text style={styles.leadContact} numberOfLines={1}>
-            {item.contactName}
-          </Text>
-        )}
-        {item.email && (
-          <Text style={styles.leadEmail} numberOfLines={1}>
-            {item.email}
-          </Text>
-        )}
-        <View style={styles.leadFooter}>
-          <Text style={styles.leadSource}>{item.source || 'Direct'}</Text>
-          {item.estimatedValue && (
-            <Text style={styles.leadValue}>${Number(item.estimatedValue).toLocaleString()}</Text>
-          )}
-        </View>
-      </TouchableOpacity>
-    ),
+    ({ item }: { item: any }) => {
+      // Handle both camelCase and snake_case field names from DB
+      const name = item.companyName || item.business_name || item.name || 'Unnamed Lead';
+      const status = item.status || item.activity || 'New';
+      const contactName = item.contactName || item.primary_contact_name ||
+        (item.company_contacts?.[0] ? `${item.company_contacts[0].first_name || ''} ${item.company_contacts[0].last_name || ''}`.trim() : '');
+      const email = item.email;
+      const source = item.source || item.lead_source || 'Direct';
+      const estimatedValue = item.estimatedValue || item.estimated_value || item.estimated_amount;
+
+      return (
+        <TouchableOpacity
+          style={styles.leadCard}
+          onPress={() =>
+            router.push({ pathname: '/(app)/(crm)/[id]', params: { id: item.id, type: 'lead' } })
+          }
+          activeOpacity={0.7}
+          accessibilityLabel={`Lead: ${name}`}
+        >
+          <View style={styles.leadHeader}>
+            <Text style={styles.leadName} numberOfLines={1}>
+              {name}
+            </Text>
+            <Badge label={status} variant={getStatusVariant(status)} />
+          </View>
+          {contactName ? (
+            <Text style={styles.leadContact} numberOfLines={1}>
+              {contactName}
+            </Text>
+          ) : null}
+          {email ? (
+            <Text style={styles.leadEmail} numberOfLines={1}>
+              {email}
+            </Text>
+          ) : null}
+          <View style={styles.leadFooter}>
+            <Text style={styles.leadSource}>{source}</Text>
+            {estimatedValue ? (
+              <Text style={styles.leadValue}>${Number(estimatedValue).toLocaleString()}</Text>
+            ) : null}
+          </View>
+        </TouchableOpacity>
+      );
+    },
     [router],
   );
 
