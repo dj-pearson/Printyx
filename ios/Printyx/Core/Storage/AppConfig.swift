@@ -18,13 +18,28 @@ enum AppConfig {
 
     // MARK: - Supabase
     // Read from Info.plist (injected at build time via Xcode build settings)
+    // Falls back to hardcoded defaults if build variables are unresolved
+    private static let defaultSupabaseURL = "https://api.printyx.net"
+    private static let defaultSupabaseAnonKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoiYW5vbiJ9.deZlFDdzzNQtSseKfZc2PXZpiYYHHsy6V8NE2cByL7c"
+
     static var supabaseURL: String {
-        Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String ?? "https://api.printyx.net"
+        guard let value = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
+              !value.isEmpty,
+              !value.hasPrefix("$("),
+              value.hasPrefix("http") else {
+            return defaultSupabaseURL
+        }
+        return value
     }
 
     static var supabaseAnonKey: String {
-        Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String
-            ?? "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoiYW5vbiJ9.deZlFDdzzNQtSseKfZc2PXZpiYYHHsy6V8NE2cByL7c"
+        guard let value = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String,
+              !value.isEmpty,
+              !value.hasPrefix("$("),
+              value.hasPrefix("eyJ") else {
+            return defaultSupabaseAnonKey
+        }
+        return value
     }
 
     // MARK: - App Info

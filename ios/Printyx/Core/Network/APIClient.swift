@@ -15,7 +15,7 @@ final class APIClient: ObservableObject {
 
         static let production = Configuration(
             baseURL: URL(string: "https://printyx.net")!,
-            supabaseURL: URL(string: "https://api.printyx.net")!,
+            supabaseURL: URL(string: AppConfig.supabaseURL)!,
             supabaseAnonKey: AppConfig.supabaseAnonKey
         )
 
@@ -143,7 +143,7 @@ final class APIClient: ObservableObject {
         case 422:
             let errorResponse = try? decoder.decode(APIErrorResponse.self, from: data)
             throw APIError.validationError(
-                message: errorResponse?.message ?? "Validation failed",
+                message: errorResponse?.displayMessage ?? "Validation failed",
                 details: errorResponse?.details
             )
 
@@ -153,10 +153,20 @@ final class APIClient: ObservableObject {
             throw APIError.rateLimited(retryAfter: retryAfter)
 
         case 500...599:
-            let errorResponse = try? decoder.decode(APIErrorResponse.self, from: data)
+            // Try structured JSON error first, then fall back to raw response text
+            let errorMessage: String?
+            if let errorResponse = try? decoder.decode(APIErrorResponse.self, from: data) {
+                errorMessage = errorResponse.displayMessage
+            } else if let rawText = String(data: data, encoding: .utf8), !rawText.isEmpty,
+                      !rawText.hasPrefix("<!") && !rawText.hasPrefix("<html") {
+                // Show raw text if it's not HTML (e.g., plain text error from proxy)
+                errorMessage = rawText.prefix(200).description
+            } else {
+                errorMessage = nil
+            }
             throw APIError.serverError(
                 statusCode: httpResponse.statusCode,
-                message: errorResponse?.message
+                message: errorMessage
             )
 
         default:
