@@ -52,6 +52,12 @@ enum TaskStatus: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        self = TaskStatus(rawValue: rawValue) ?? .todo
+    }
+
     var displayName: String {
         switch self {
         case .todo: "To Do"
@@ -92,6 +98,12 @@ enum TaskPriority: String, Codable, CaseIterable, Identifiable {
     case urgent
 
     var id: String { rawValue }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        self = TaskPriority(rawValue: rawValue) ?? .medium
+    }
 
     var displayName: String { rawValue.capitalized }
 

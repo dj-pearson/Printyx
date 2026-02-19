@@ -43,6 +43,12 @@ enum ProposalStatus: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        self = ProposalStatus(rawValue: rawValue) ?? .draft
+    }
+
     var displayName: String { rawValue.capitalized }
 
     var icon: String {
@@ -98,6 +104,12 @@ enum QuoteStatus: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
     var displayName: String { rawValue.capitalized }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        self = QuoteStatus(rawValue: rawValue) ?? .draft
+    }
 }
 
 // MARK: - Quote Line Item

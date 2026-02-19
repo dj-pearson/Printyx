@@ -38,6 +38,20 @@ enum APIError: LocalizedError {
         case .networkError(let error):
             return "Network error: \(error.localizedDescription)"
         case .decodingError(let error):
+            if let decodingError = error as? DecodingError {
+                switch decodingError {
+                case .keyNotFound(let key, _):
+                    return "Data error: missing field '\(key.stringValue)'"
+                case .typeMismatch(let type, let context):
+                    let path = context.codingPath.map(\.stringValue).joined(separator: ".")
+                    return "Data error: unexpected type for '\(path)' (expected \(type))"
+                case .dataCorrupted(let context):
+                    let path = context.codingPath.map(\.stringValue).joined(separator: ".")
+                    return "Data error: invalid value at '\(path)'"
+                default:
+                    return "Data error: \(error.localizedDescription)"
+                }
+            }
             return "Data error: \(error.localizedDescription)"
         case .tokenRefreshFailed:
             return "Unable to refresh your session. Please sign in again."
