@@ -62,6 +62,10 @@ export default async function handler(req: Request) {
       const { data: notifications, error, count } = await query;
 
       if (error) {
+        // If the notifications table doesn't exist yet, return empty data
+        if (error.code === '42P01') {
+          return createCorsResponse({ data: [], total: 0, unread: 0 }, 200, req);
+        }
         console.error('Error fetching notifications:', error);
         return createCorsResponse({ error: 'Failed to fetch notifications' }, 500, req);
       }
@@ -85,8 +89,8 @@ export default async function handler(req: Request) {
       );
     }
 
-    // POST /notifications/:id/mark-read - Mark notification as read
-    if (req.method === 'POST' && notificationId && action === 'mark-read') {
+    // POST /notifications/:id/mark-read or PATCH /notifications/:id/read
+    if ((req.method === 'POST' || req.method === 'PATCH') && notificationId && (action === 'mark-read' || action === 'read')) {
       const { data: notification, error } = await admin
         .from('notifications')
         .update({
@@ -101,6 +105,7 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
+        if (error.code === '42P01') return createCorsResponse({ success: true }, 200, req);
         console.error('Error marking notification as read:', error);
         return createCorsResponse({ error: 'Failed to mark notification as read' }, 500, req);
       }
@@ -108,8 +113,8 @@ export default async function handler(req: Request) {
       return createCorsResponse(notification, 200, req);
     }
 
-    // POST /notifications/mark-all-read - Mark all notifications as read
-    if (req.method === 'POST' && notificationId === 'mark-all-read') {
+    // POST /notifications/mark-all-read or PATCH /notifications/read-all
+    if ((req.method === 'POST' || req.method === 'PATCH') && (notificationId === 'mark-all-read' || notificationId === 'read-all')) {
       const { error } = await admin
         .from('notifications')
         .update({
@@ -122,6 +127,7 @@ export default async function handler(req: Request) {
         .eq('is_read', false);
 
       if (error) {
+        if (error.code === '42P01') return createCorsResponse({ success: true, message: 'No notifications table yet' }, 200, req);
         console.error('Error marking all notifications as read:', error);
         return createCorsResponse({ error: 'Failed to mark all notifications as read' }, 500, req);
       }
@@ -144,6 +150,7 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
+        if (error.code === '42P01') return createCorsResponse({ error: 'Notification not found' }, 404, req);
         console.error('Error fetching notification:', error);
         return createCorsResponse({ error: 'Notification not found' }, 404, req);
       }
@@ -157,7 +164,7 @@ export default async function handler(req: Request) {
 
       const notificationData = {
         tenant_id: tenantId,
-        user_id: body.user_id || body.user_id || user.id,
+        user_id: body.user_id || user.id,
         type: body.type || 'info',
         title: body.title,
         message: body.message,
@@ -174,6 +181,7 @@ export default async function handler(req: Request) {
         .single();
 
       if (error) {
+        if (error.code === '42P01') return createCorsResponse({ error: 'Notifications table not available' }, 503, req);
         console.error('Error creating notification:', error);
         return createCorsResponse(
           { error: 'Failed to create notification', details: error },
@@ -195,6 +203,7 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId);
 
       if (error) {
+        if (error.code === '42P01') return createCorsResponse({ success: true }, 200, req);
         console.error('Error deleting notification:', error);
         return createCorsResponse({ error: 'Failed to delete notification' }, 500, req);
       }
