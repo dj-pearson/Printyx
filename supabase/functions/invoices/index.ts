@@ -3,6 +3,25 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
+// Helper: Batch-enrich records with customer names from business_records
+async function enrichWithCustomerNames(admin: any, records: any[]) {
+  if (!records || records.length === 0) return records;
+  const customerIds = [...new Set(records.map((r: any) => r.customer_id).filter(Boolean))];
+  if (customerIds.length === 0) return records;
+
+  const { data: customers } = await admin
+    .from('business_records')
+    .select('id, company_name, primary_contact_name')
+    .in('id', customerIds);
+
+  const customerMap = new Map((customers || []).map((c: any) => [c.id, c]));
+  return records.map((r: any) => ({
+    ...r,
+    customer_name: customerMap.get(r.customer_id)?.company_name || null,
+    customer: customerMap.get(r.customer_id) || null,
+  }));
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -49,13 +68,7 @@ export default async function handler(req: Request) {
 
       let query = admin
         .from('invoices')
-        .select(
-          `
-          *,
-          customer:business_records!invoices_customer_id_fkey(id, company_name, primary_contact_name, primary_contact_email)
-        `,
-          { count: 'exact' },
-        )
+        .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('invoice_date', { ascending: false })
         .range(offset, offset + limit - 1);
@@ -83,9 +96,11 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch invoices' }, 500, req);
       }
 
+      // Enrich with customer names
+      const enriched = await enrichWithCustomerNames(admin, invoices || []);
       return createCorsResponse(
         {
-          data: invoices || [],
+          data: enriched,
           total: count || 0,
           page,
           limit,
@@ -97,18 +112,23 @@ export default async function handler(req: Request) {
 
     // GET /invoices/:id - Get single invoice with line items
     if (req.method === 'GET' && invoiceId) {
-      const { data: invoice, error } = await admin
+      const { data: invoiceData, error } = await admin
         .from('invoices')
-        .select(
-          `
-          *,
-          customer:business_records!invoices_customer_id_fkey(id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, address_line2, city, state, postal_code),
-          contract:contracts(id, contract_number, black_rate, color_rate)
-        `,
-        )
+        .select('*')
         .eq('id', invoiceId)
         .eq('tenant_id', tenantId)
         .single();
+
+      // Enrich with customer info
+      let invoice = invoiceData;
+      if (invoiceData?.customer_id) {
+        const { data: customer } = await admin
+          .from('business_records')
+          .select('id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, address_line2, city, state, postal_code')
+          .eq('id', invoiceData.customer_id)
+          .single();
+        invoice = { ...invoiceData, customer: customer || null };
+      }
 
       if (error) {
         console.error('Error fetching invoice:', error);
@@ -199,20 +219,15 @@ export default async function handler(req: Request) {
         await admin.from('invoice_line_items').insert(lineItemsData);
       }
 
-      // Fetch complete invoice
-      const { data: completeInvoice } = await admin
-        .from('invoices')
-        .select(
-          `
-          *,
-          lineItems:invoice_line_items(*)
-        `,
-        )
-        .eq('id', invoice.id)
+      // Fetch line items separately
+      const { data: createdLineItems } = await admin
+        .from('invoice_line_items')
+        .select('*')
+        .eq('invoice_id', invoice.id)
         .eq('tenant_id', tenantId)
-        .single();
+        .order('created_at', { ascending: true });
 
-      return createCorsResponse(completeInvoice || invoice, 201, req);
+      return createCorsResponse({ ...invoice, lineItems: createdLineItems || [] }, 201, req);
     }
 
     // PATCH /invoices/:id - Update invoice
@@ -297,20 +312,15 @@ export default async function handler(req: Request) {
         }
       }
 
-      // Fetch complete invoice
-      const { data: completeInvoice } = await admin
-        .from('invoices')
-        .select(
-          `
-          *,
-          lineItems:invoice_line_items(*)
-        `,
-        )
-        .eq('id', invoiceId)
+      // Fetch updated line items separately
+      const { data: updatedLineItems } = await admin
+        .from('invoice_line_items')
+        .select('*')
+        .eq('invoice_id', invoiceId)
         .eq('tenant_id', tenantId)
-        .single();
+        .order('created_at', { ascending: true });
 
-      return createCorsResponse(completeInvoice || invoice, 200, req);
+      return createCorsResponse({ ...invoice, lineItems: updatedLineItems || [] }, 200, req);
     }
 
     // DELETE /invoices/:id - Delete invoice

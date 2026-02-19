@@ -3,6 +3,25 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
+// Helper: Batch-enrich records with customer names from business_records
+async function enrichWithCustomerNames(admin: any, records: any[]) {
+  if (!records || records.length === 0) return records;
+  const customerIds = [...new Set(records.map((r: any) => r.customer_id).filter(Boolean))];
+  if (customerIds.length === 0) return records;
+
+  const { data: customers } = await admin
+    .from('business_records')
+    .select('id, company_name, primary_contact_name')
+    .in('id', customerIds);
+
+  const customerMap = new Map((customers || []).map((c: any) => [c.id, c]));
+  return records.map((r: any) => ({
+    ...r,
+    customer_name: customerMap.get(r.customer_id)?.company_name || null,
+    customer: customerMap.get(r.customer_id) || null,
+  }));
+}
+
 export default async function handler(req: Request) {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
@@ -57,14 +76,7 @@ export default async function handler(req: Request) {
 
       let query = admin
         .from('service_tickets')
-        .select(
-          `
-          *,
-          customer:business_records!service_tickets_customer_id_fkey(id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone),
-          technician:users!service_tickets_assigned_technician_id_fkey(id, first_name, last_name, email)
-        `,
-          { count: 'exact' },
-        )
+        .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
@@ -98,19 +110,16 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch service tickets' }, 500, req);
       }
 
-      return createCorsResponse({ data: tickets || [], total: count || 0 }, 200, req);
+      // Enrich with customer names
+      const enriched = await enrichWithCustomerNames(admin, tickets || []);
+      return createCorsResponse({ data: enriched, total: count || 0 }, 200, req);
     }
 
     // GET /service-tickets/:id/updates - Get ticket timeline/updates
     if (req.method === 'GET' && ticketId && subResource === 'updates') {
       const { data: updates, error } = await admin
         .from('service_ticket_updates')
-        .select(
-          `
-          *,
-          user:users!service_ticket_updates_updated_by_fkey(id, first_name, last_name, email)
-        `,
-        )
+        .select('*')
         .eq('ticket_id', ticketId)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
@@ -120,6 +129,23 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch ticket updates' }, 500, req);
       }
 
+      // Enrich updates with user info
+      if (updates && updates.length > 0) {
+        const userIds = [...new Set(updates.map((u: any) => u.updated_by).filter(Boolean))];
+        if (userIds.length > 0) {
+          const { data: users } = await admin
+            .from('users')
+            .select('id, first_name, last_name, email')
+            .in('id', userIds);
+          const userMap = new Map((users || []).map((u: any) => [u.id, u]));
+          const enrichedUpdates = updates.map((u: any) => ({
+            ...u,
+            user: userMap.get(u.updated_by) || null,
+          }));
+          return createCorsResponse(enrichedUpdates, 200, req);
+        }
+      }
+
       return createCorsResponse(updates || [], 200, req);
     }
 
@@ -127,15 +153,7 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && ticketId) {
       const { data: ticket, error } = await admin
         .from('service_tickets')
-        .select(
-          `
-          *,
-          customer:business_records!service_tickets_customer_id_fkey(id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, address_line2, city, state, postal_code),
-          equipment:equipment(id, serial_number, model, manufacturer, location),
-          technician:users!service_tickets_assigned_technician_id_fkey(id, first_name, last_name, email, phone),
-          created_by_user:users!service_tickets_created_by_fkey(id, first_name, last_name, email)
-        `,
-        )
+        .select('*')
         .eq('id', ticketId)
         .eq('tenant_id', tenantId)
         .single();
@@ -148,17 +166,23 @@ export default async function handler(req: Request) {
       // Also fetch ticket updates
       const { data: updates } = await admin
         .from('service_ticket_updates')
-        .select(
-          `
-          *,
-          user:users!service_ticket_updates_updated_by_fkey(id, first_name, last_name)
-        `,
-        )
+        .select('*')
         .eq('ticket_id', ticketId)
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
-      return createCorsResponse({ ...ticket, updates: updates || [] }, 200, req);
+      // Enrich with customer name
+      let enrichedTicket = ticket;
+      if (ticket?.customer_id) {
+        const { data: customer } = await admin
+          .from('business_records')
+          .select('id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone')
+          .eq('id', ticket.customer_id)
+          .single();
+        enrichedTicket = { ...ticket, customer: customer || null };
+      }
+
+      return createCorsResponse({ ...enrichedTicket, updates: updates || [] }, 200, req);
     }
 
     // POST /service-tickets - Create new ticket
