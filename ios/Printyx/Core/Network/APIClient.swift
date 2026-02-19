@@ -79,7 +79,10 @@ final class APIClient: ObservableObject {
             formatter.locale = Locale(identifier: "en_US_POSIX")
             formatter.timeZone = TimeZone(secondsFromGMT: 0)
 
-            // Fractional seconds with colon timezone (xxx = +00:00)
+            // DateFormatter fallbacks covering all PostgreSQL output formats:
+            // - With colon timezone (xxx = +00:00): timestamptz columns
+            // - With RFC822 timezone (Z = +0000): some serializations
+            // - Without timezone: timestamp (no tz) columns
             for fmt in [
                 "yyyy-MM-dd'T'HH:mm:ss.SSSSSSxxx",
                 "yyyy-MM-dd'T'HH:mm:ss.SSSxxx",
@@ -87,6 +90,9 @@ final class APIClient: ObservableObject {
                 "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ",
                 "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
                 "yyyy-MM-dd'T'HH:mm:ssZ",
+                "yyyy-MM-dd'T'HH:mm:ss.SSSSSS",
+                "yyyy-MM-dd'T'HH:mm:ss.SSS",
+                "yyyy-MM-dd'T'HH:mm:ss",
                 "yyyy-MM-dd",
             ] {
                 formatter.dateFormat = fmt
