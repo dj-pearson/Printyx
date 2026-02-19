@@ -168,15 +168,26 @@ final class TaskListViewModel: ObservableObject {
         return filtered
     }
 
-    var upcomingTasks: [PrintyxTask] {
+    /// Active tasks (not completed or cancelled) — shown in main list
+    var activeTasks: [PrintyxTask] {
+        filteredTasks.filter { $0.status != .completed && $0.status != .cancelled }
+    }
+
+    /// Completed/cancelled tasks — shown in archive section
+    var completedTasks: [PrintyxTask] {
         filteredTasks
-            .filter { $0.status != .completed && $0.status != .cancelled }
+            .filter { $0.status == .completed || $0.status == .cancelled }
+            .sorted { ($0.completedAt ?? $0.updatedAt ?? .distantPast) > ($1.completedAt ?? $1.updatedAt ?? .distantPast) }
+    }
+
+    var upcomingTasks: [PrintyxTask] {
+        activeTasks
             .filter { $0.dueDate?.isWithinDays(7) ?? false }
             .sorted { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
     }
 
     var overdueTasks: [PrintyxTask] {
-        filteredTasks.filter { $0.isOverdue }
+        activeTasks.filter { $0.isOverdue }
     }
 
     // MARK: - Sorting
