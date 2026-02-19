@@ -287,19 +287,8 @@ export default async function handler(req: Request) {
 
         const records = (companies || []).map(mapCompanyToBusinessRecord);
 
-        // Return in { data: [...], total, page, limit } format for auto-unwrap
-        // Both web and mobile query clients auto-unwrap this to a plain array
-        const page = Math.floor(offset / limit) + 1;
-        return createCorsResponse(
-          {
-            data: records,
-            total: count || 0,
-            page,
-            limit,
-          },
-          200,
-          req,
-        );
+        // Return plain array — iOS JSONDecoder expects [BusinessRecord] directly
+        return createCorsResponse(records, 200, req);
       }
     }
 
