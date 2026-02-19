@@ -1,14 +1,112 @@
 /**
  * Lead Map Routes
- * Provides map data for lead visualization and geocoding trigger
+ * Provides map data for lead visualization, geocoding trigger, and EDA CSV import
  */
 
 import type { Express, Request, Response } from 'express';
+import { Readable } from 'stream';
+import csv from 'csv-parser';
+import multer from 'multer';
 import { requireSupabaseAuth as requireAuth } from './middleware/supabase-auth';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { db } from './db';
 import { businessRecords } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
+import { storage } from './storage';
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only CSV files are allowed'));
+    }
+  },
+});
+
+function parseCSV(buffer: Buffer): Promise<any[]> {
+  return new Promise((resolve, reject) => {
+    const results: any[] = [];
+    const stream = Readable.from(buffer.toString());
+    stream
+      .pipe(csv())
+      .on('data', (data) => results.push(data))
+      .on('end', () => resolve(results))
+      .on('error', (error) => reject(error));
+  });
+}
+
+interface EdaRow {
+  BUYID: string;
+  UCCID: string;
+  EQTUNIT: string;
+  BUYC1FIRST: string;
+  BUYC1LAST: string;
+  BUYC1TITLE: string;
+  BUYCOMP1: string;
+  BUYCITY: string;
+  BUYZIP: string;
+  UCCDATE: string;
+  UCCSTATUS: string;
+  EQTMAN: string;
+  EQTMODEL: string;
+  EQTDESC: string;
+  PRIMARYBRAND: string;
+}
+
+function groupByCompany(rows: EdaRow[]): Map<string, EdaRow[]> {
+  const companies = new Map<string, EdaRow[]>();
+  for (const row of rows) {
+    if (!row.BUYCOMP1?.trim()) continue;
+    const key = row.BUYCOMP1.toUpperCase().trim();
+    if (!companies.has(key)) companies.set(key, []);
+    companies.get(key)!.push(row);
+  }
+  return companies;
+}
+
+function buildEquipmentNotes(companyRows: EdaRow[]): string {
+  const lines = companyRows.map(
+    (r, i) =>
+      `Unit ${i + 1}: ${r.EQTMAN || ''} ${r.EQTMODEL || ''} - ${r.EQTDESC || ''} | Brand: ${r.PRIMARYBRAND || ''} | UCC: ${r.UCCSTATUS || ''} (${r.UCCDATE || ''}) | BuyID: ${r.BUYID || ''} | UCCID: ${r.UCCID || ''}`,
+  );
+  return `EDA Import - ${companyRows.length} equipment unit(s)\n\n${lines.join('\n')}`;
+}
+
+function buildEdaLeadRecord(companyRows: EdaRow[], tenantId: string, userId: string) {
+  const first = companyRows[0];
+  const withTitle = companyRows.find((r) => r.BUYC1TITLE?.trim()) || first;
+  const firstName = (withTitle.BUYC1FIRST || first.BUYC1FIRST || '').trim();
+  const lastName = (withTitle.BUYC1LAST || first.BUYC1LAST || '').trim();
+  const title = (withTitle.BUYC1TITLE || '').trim();
+  const city = (first.BUYCITY || '').trim();
+  const zip = (first.BUYZIP || '').trim();
+  const contactName = [firstName, lastName].filter(Boolean).join(' ');
+
+  return {
+    tenantId,
+    recordType: 'lead' as const,
+    status: 'new',
+    companyName: first.BUYCOMP1.trim(),
+    primaryContactName: contactName || '',
+    primaryContactTitle: title || '',
+    leadSource: 'EDA Import',
+    billingCity: city || '',
+    billingState: 'IA',
+    billingPostalCode: zip || '',
+    city: city || '',
+    state: 'IA',
+    postalCode: zip || '',
+    country: 'US',
+    interestLevel: 'warm',
+    priority: 'medium',
+    notes: buildEquipmentNotes(companyRows),
+    createdBy: userId,
+    ownerId: userId,
+  };
+}
 
 export function registerLeadMapRoutes(app: Express) {
   // GET /api/leads/map-data - Get leads with geolocation for map display
@@ -19,7 +117,7 @@ export function registerLeadMapRoutes(app: Express) {
 
       const { source, city, brand, status: filterStatus, hasCoords } = req.query;
 
-      let query = db
+      const results = await db
         .select({
           id: businessRecords.id,
           companyName: businessRecords.companyName,
@@ -44,8 +142,6 @@ export function registerLeadMapRoutes(app: Express) {
         })
         .from(businessRecords)
         .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'lead')));
-
-      const results = await query;
 
       // Apply post-query filters
       let filtered = results;
@@ -80,7 +176,6 @@ export function registerLeadMapRoutes(app: Express) {
         const brands: string[] = [];
         const equipment: string[] = [];
 
-        // Parse brand info from notes lines like "Brand: XEROX"
         const brandMatches = notes.match(/Brand:\s*([^\s|]+)/g);
         if (brandMatches) {
           for (const match of brandMatches) {
@@ -89,7 +184,6 @@ export function registerLeadMapRoutes(app: Express) {
           }
         }
 
-        // Parse equipment descriptions
         const descMatches = notes.match(/Unit \d+:\s*([^|]+)/g);
         if (descMatches) {
           for (const match of descMatches) {
@@ -97,7 +191,6 @@ export function registerLeadMapRoutes(app: Express) {
           }
         }
 
-        // Parse UCC statuses
         const uccMatches = notes.match(/UCC:\s*(\w+)/g);
         const uccStatuses: string[] = [];
         if (uccMatches) {
@@ -107,7 +200,6 @@ export function registerLeadMapRoutes(app: Express) {
           }
         }
 
-        // Count equipment units
         const unitMatch = notes.match(/(\d+) equipment unit/);
         const unitCount = unitMatch ? parseInt(unitMatch[1]) : equipment.length;
 
@@ -168,7 +260,6 @@ export function registerLeadMapRoutes(app: Express) {
 
       const { ids, limit = 10 } = req.body;
 
-      // Forward to edge function
       const supabaseUrl = process.env.SUPABASE_URL || 'https://api.printyx.net';
       const authHeader = req.headers.authorization;
 
@@ -198,38 +289,89 @@ export function registerLeadMapRoutes(app: Express) {
     }
   });
 
-  // POST /api/leads/import-eda - Import EDA CSV data via edge function
-  app.post('/api/leads/import-eda', requireAuth, async (req: Request, res: Response) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(401).json({ message: 'No tenant context' });
+  // POST /api/leads/import-eda - Bulk import EDA CSV (multipart file upload)
+  app.post(
+    '/api/leads/import-eda',
+    requireAuth,
+    upload.single('file'),
+    async (req: any, res: Response) => {
+      try {
+        const tenantId = getTenantId(req);
+        const userId = getUserId(req);
+        if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
 
-      const supabaseUrl = process.env.SUPABASE_URL || 'https://api.printyx.net';
-      const authHeader = req.headers.authorization;
+        if (!req.file) {
+          return res.status(400).json({ message: 'No file uploaded' });
+        }
 
-      const edgeRes = await fetch(`${supabaseUrl}/functions/v1/import-eda-leads`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authHeader || '',
-          'x-tenant-id': tenantId,
-        },
-        body: JSON.stringify(req.body),
-      });
+        // Parse CSV
+        const rows: EdaRow[] = await parseCSV(req.file.buffer);
+        if (rows.length === 0) {
+          return res.status(400).json({ message: 'CSV file is empty' });
+        }
 
-      if (!edgeRes.ok) {
-        const text = await edgeRes.text();
-        return res.status(edgeRes.status).json({
-          message: 'Import failed',
-          details: text,
+        // Validate EDA format (check for BUYCOMP1 header)
+        if (!rows[0].BUYCOMP1 && !rows[0].BUYCOMP1) {
+          return res.status(400).json({
+            message:
+              'Invalid CSV format. Expected EDA export columns (BUYCOMP1, BUYCITY, BUYZIP, etc.)',
+          });
+        }
+
+        // Group by company
+        const companies = groupByCompany(rows);
+
+        // Check for existing EDA imports to skip duplicates
+        const existingRecords = await db
+          .select({ companyName: businessRecords.companyName })
+          .from(businessRecords)
+          .where(
+            and(
+              eq(businessRecords.tenantId, tenantId),
+              eq(businessRecords.leadSource, 'EDA Import'),
+            ),
+          );
+        const existingNames = new Set(
+          existingRecords.map((r) => (r.companyName || '').toUpperCase().trim()),
+        );
+
+        let imported = 0;
+        let skipped = 0;
+        let duplicates = 0;
+        const errors: string[] = [];
+
+        for (const [key, companyRows] of companies) {
+          const displayName = companyRows[0].BUYCOMP1.trim();
+
+          if (existingNames.has(displayName.toUpperCase())) {
+            duplicates++;
+            continue;
+          }
+
+          try {
+            const record = buildEdaLeadRecord(companyRows, tenantId, userId || 'system');
+            await storage.createBusinessRecord(record);
+            imported++;
+          } catch (error: any) {
+            errors.push(`${displayName}: ${error.message}`);
+            skipped++;
+          }
+        }
+
+        res.json({
+          success: true,
+          imported,
+          skipped,
+          duplicates,
+          errors,
+          totalRows: rows.length,
+          totalCompanies: companies.size,
+          message: `Imported ${imported} leads from ${rows.length} rows (${companies.size} companies). ${duplicates > 0 ? `${duplicates} duplicates skipped.` : ''}`,
         });
+      } catch (err: any) {
+        console.error('EDA import error:', err);
+        res.status(500).json({ message: err.message || 'Failed to import EDA leads' });
       }
-
-      const result = await edgeRes.json();
-      res.json(result);
-    } catch (err) {
-      console.error('EDA import error:', err);
-      res.status(500).json({ message: 'Failed to import EDA leads' });
-    }
-  });
+    },
+  );
 }
