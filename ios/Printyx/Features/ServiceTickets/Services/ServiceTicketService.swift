@@ -19,7 +19,7 @@ final class ServiceTicketService {
         page: Int = 1,
         limit: Int = 25
     ) async throws -> [ServiceTicket] {
-        try await apiClient.request(
+        try await apiClient.requestArray(
             .serviceTickets(status: status, priority: priority, assignedTo: assignedTo, search: search, page: page, limit: limit)
         )
     }
@@ -41,7 +41,7 @@ final class ServiceTicketService {
     // MARK: - Timeline
 
     func fetchUpdates(ticketId: String) async throws -> [TicketUpdate] {
-        try await apiClient.request(.serviceTicketUpdates(ticketId: ticketId))
+        try await apiClient.requestArray(.serviceTicketUpdates(ticketId: ticketId))
     }
 
     func addNote(ticketId: String, content: String) async throws -> TicketUpdate {

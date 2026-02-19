@@ -18,7 +18,7 @@ final class InvoiceService {
         page: Int = 1,
         limit: Int = 25
     ) async throws -> [Invoice] {
-        try await apiClient.request(
+        try await apiClient.requestArray(
             .invoices(status: status, customerId: customerId, search: search, page: page, limit: limit)
         )
     }

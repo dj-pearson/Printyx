@@ -144,6 +144,18 @@ final class APIClient: ObservableObject {
         }
     }
 
+    /// Execute a request where the server wraps the array in `{ "data": [...] }`.
+    /// Tries wrapped format first, falls back to raw array.
+    func requestArray<T: Decodable>(_ endpoint: APIEndpoint) async throws -> [T] {
+        let data = try await executeRequest(endpoint)
+        // Try wrapped { data: [...] } format first
+        if let wrapped = try? decoder.decode(WrappedArrayResponse<T>.self, from: data) {
+            return wrapped.data
+        }
+        // Fall back to raw array
+        return try decoder.decode([T].self, from: data)
+    }
+
     /// Execute an API request that returns no meaningful body (e.g., DELETE).
     @discardableResult
     func requestVoid(_ endpoint: APIEndpoint) async throws -> Data {
@@ -386,4 +398,16 @@ struct AnyEncodable: Encodable {
     func encode(to encoder: Encoder) throws {
         try _encode(encoder)
     }
+}
+
+// MARK: - Wrapped Array Response
+
+/// Many edge functions return `{ "data": [...], "total": N }` instead of a raw array.
+struct WrappedArrayResponse<T: Decodable>: Decodable {
+    let data: [T]
+    let total: Int?
+    let page: Int?
+    let limit: Int?
+    let unread: Int?
+    let hasMore: Bool?
 }

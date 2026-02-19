@@ -17,7 +17,7 @@ final class EquipmentService {
         page: Int = 1,
         limit: Int = 25
     ) async throws -> [Equipment] {
-        try await apiClient.request(
+        try await apiClient.requestArray(
             .equipment(customerId: customerId, search: search, page: page, limit: limit)
         )
     }
@@ -39,6 +39,6 @@ final class EquipmentService {
     // MARK: - Meter Readings
 
     func fetchMeterReadings(equipmentId: String, page: Int = 1) async throws -> [MeterReading] {
-        try await apiClient.request(.meterReadings(equipmentId: equipmentId, page: page))
+        try await apiClient.requestArray(.meterReadings(equipmentId: equipmentId, page: page))
     }
 }

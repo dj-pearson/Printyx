@@ -19,7 +19,7 @@ final class TaskService {
         page: Int = 1,
         limit: Int = 25
     ) async throws -> [PrintyxTask] {
-        try await apiClient.request(
+        try await apiClient.requestArray(
             .tasks(assignedTo: assignedTo, myTasks: myTasks, status: status, priority: priority, page: page, limit: limit)
         )
     }

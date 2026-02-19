@@ -12,7 +12,7 @@ final class QuoteService {
     // MARK: - Proposals
 
     func fetchProposals(status: String? = nil, customerId: String? = nil, page: Int = 1, limit: Int = 25) async throws -> [Proposal] {
-        try await apiClient.request(.proposals(status: status, customerId: customerId, page: page, limit: limit))
+        try await apiClient.requestArray(.proposals(status: status, customerId: customerId, page: page, limit: limit))
     }
 
     func fetchProposal(id: String) async throws -> Proposal {
@@ -40,13 +40,13 @@ final class QuoteService {
     }
 
     func fetchProposalTemplates() async throws -> [ProposalTemplate] {
-        try await apiClient.request(.proposalTemplates())
+        try await apiClient.requestArray(.proposalTemplates())
     }
 
     // MARK: - Quotes
 
     func fetchQuotes(status: String? = nil, page: Int = 1, limit: Int = 25) async throws -> [Quote] {
-        try await apiClient.request(.quotes(status: status, page: page, limit: limit))
+        try await apiClient.requestArray(.quotes(status: status, page: page, limit: limit))
     }
 
     func fetchQuote(id: String) async throws -> Quote {

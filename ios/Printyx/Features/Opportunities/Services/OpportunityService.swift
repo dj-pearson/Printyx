@@ -10,7 +10,7 @@ final class OpportunityService {
     }
 
     func fetchOpportunities(stage: String? = nil, page: Int = 1, limit: Int = 25) async throws -> [Opportunity] {
-        try await apiClient.request(.opportunities(stage: stage, page: page, limit: limit))
+        try await apiClient.requestArray(.opportunities(stage: stage, page: page, limit: limit))
     }
 
     func fetchOpportunity(id: String) async throws -> Opportunity {

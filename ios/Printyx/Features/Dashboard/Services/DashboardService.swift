@@ -18,13 +18,13 @@ final class DashboardService {
     // MARK: - Activity Feed
 
     func fetchActivities(page: Int = 1, limit: Int = 20) async throws -> [ActivityItem] {
-        try await apiClient.request(.activityFeed(page: page, limit: limit))
+        try await apiClient.requestArray(.activityFeed(page: page, limit: limit))
     }
 
     // MARK: - Notifications
 
     func fetchNotifications(page: Int = 1, limit: Int = 25) async throws -> [AppNotification] {
-        try await apiClient.request(.notifications(page: page, limit: limit))
+        try await apiClient.requestArray(.notifications(page: page, limit: limit))
     }
 
     func markNotificationRead(id: String) async throws {
