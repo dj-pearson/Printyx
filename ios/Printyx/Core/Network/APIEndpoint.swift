@@ -285,6 +285,235 @@ extension APIEndpoint {
     }
 }
 
+// MARK: - Dashboard Endpoints
+
+extension APIEndpoint {
+    static func todayDashboard() -> APIEndpoint {
+        APIEndpoint(path: "/api/today-dashboard")
+    }
+
+    static func activityFeed(page: Int = 1, limit: Int = 20) -> APIEndpoint {
+        let items: [URLQueryItem] = [
+            URLQueryItem(name: "page", value: "\(page)"),
+            URLQueryItem(name: "limit", value: "\(limit)"),
+        ]
+        return APIEndpoint(path: "/api/activities", queryItems: items)
+    }
+
+    static func notifications(page: Int = 1, limit: Int = 25) -> APIEndpoint {
+        let items: [URLQueryItem] = [
+            URLQueryItem(name: "page", value: "\(page)"),
+            URLQueryItem(name: "limit", value: "\(limit)"),
+        ]
+        return APIEndpoint(path: "/api/notifications", queryItems: items)
+    }
+
+    static func markNotificationRead(id: String) -> APIEndpoint {
+        APIEndpoint(path: "/api/notifications/\(id)/read", method: .patch)
+    }
+
+    static func markAllNotificationsRead() -> APIEndpoint {
+        APIEndpoint(path: "/api/notifications/read-all", method: .patch)
+    }
+
+    static func globalSearch(query: String) -> APIEndpoint {
+        let items = [URLQueryItem(name: "q", value: query)]
+        return APIEndpoint(path: "/api/search", queryItems: items)
+    }
+}
+
+// MARK: - Service Ticket Endpoints
+
+extension APIEndpoint {
+    static func serviceTickets(
+        status: String? = nil,
+        priority: String? = nil,
+        assignedTo: String? = nil,
+        search: String? = nil,
+        page: Int = 1,
+        limit: Int = 25
+    ) -> APIEndpoint {
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "page", value: "\(page)"),
+            URLQueryItem(name: "limit", value: "\(limit)"),
+        ]
+        if let status { items.append(URLQueryItem(name: "status", value: status)) }
+        if let priority { items.append(URLQueryItem(name: "priority", value: priority)) }
+        if let assignedTo { items.append(URLQueryItem(name: "assignedTo", value: assignedTo)) }
+        if let search { items.append(URLQueryItem(name: "search", value: search)) }
+        return APIEndpoint(path: "/api/service-tickets", queryItems: items)
+    }
+
+    static func serviceTicket(id: String) -> APIEndpoint {
+        APIEndpoint(path: "/api/service-tickets/\(id)")
+    }
+
+    static func createServiceTicket(body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/service-tickets", method: .post, body: body)
+    }
+
+    static func updateServiceTicket(id: String, body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/service-tickets/\(id)", method: .patch, body: body)
+    }
+
+    static func serviceTicketUpdates(ticketId: String) -> APIEndpoint {
+        APIEndpoint(path: "/api/service-tickets/\(ticketId)/updates")
+    }
+
+    static func addServiceTicketNote(ticketId: String, body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/service-tickets/\(ticketId)/updates", method: .post, body: body)
+    }
+}
+
+// MARK: - Equipment Endpoints
+
+extension APIEndpoint {
+    static func equipment(
+        customerId: String? = nil,
+        search: String? = nil,
+        page: Int = 1,
+        limit: Int = 25
+    ) -> APIEndpoint {
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "page", value: "\(page)"),
+            URLQueryItem(name: "limit", value: "\(limit)"),
+        ]
+        if let customerId { items.append(URLQueryItem(name: "customerId", value: customerId)) }
+        if let search { items.append(URLQueryItem(name: "search", value: search)) }
+        return APIEndpoint(path: "/api/equipment", queryItems: items)
+    }
+
+    static func equipmentDetail(id: String) -> APIEndpoint {
+        APIEndpoint(path: "/api/equipment/\(id)")
+    }
+
+    static func createEquipment(body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/equipment", method: .post, body: body)
+    }
+
+    static func updateEquipment(id: String, body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/equipment/\(id)", method: .patch, body: body)
+    }
+
+    static func meterReadings(equipmentId: String, page: Int = 1, limit: Int = 25) -> APIEndpoint {
+        let items: [URLQueryItem] = [
+            URLQueryItem(name: "page", value: "\(page)"),
+            URLQueryItem(name: "limit", value: "\(limit)"),
+        ]
+        return APIEndpoint(path: "/api/meter-readings", queryItems: items + [URLQueryItem(name: "equipmentId", value: equipmentId)])
+    }
+}
+
+// MARK: - Contract Endpoints
+
+extension APIEndpoint {
+    static func contracts(
+        status: String? = nil,
+        customerId: String? = nil,
+        search: String? = nil,
+        page: Int = 1,
+        limit: Int = 25
+    ) -> APIEndpoint {
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "page", value: "\(page)"),
+            URLQueryItem(name: "limit", value: "\(limit)"),
+        ]
+        if let status { items.append(URLQueryItem(name: "status", value: status)) }
+        if let customerId { items.append(URLQueryItem(name: "customerId", value: customerId)) }
+        if let search { items.append(URLQueryItem(name: "search", value: search)) }
+        return APIEndpoint(path: "/api/contracts", queryItems: items)
+    }
+
+    static func contract(id: String) -> APIEndpoint {
+        APIEndpoint(path: "/api/contracts/\(id)")
+    }
+
+    static func createContract(body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/contracts", method: .post, body: body)
+    }
+
+    static func updateContract(id: String, body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/contracts/\(id)", method: .patch, body: body)
+    }
+
+    static func upcomingRenewals(days: Int = 90) -> APIEndpoint {
+        let items = [URLQueryItem(name: "days", value: "\(days)")]
+        return APIEndpoint(path: "/api/contract-renewal/upcoming", queryItems: items)
+    }
+
+    static func renewContract(id: String, body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/contract-renewal/\(id)/renew", method: .post, body: body)
+    }
+}
+
+// MARK: - Invoice Endpoints
+
+extension APIEndpoint {
+    static func invoices(
+        status: String? = nil,
+        customerId: String? = nil,
+        search: String? = nil,
+        page: Int = 1,
+        limit: Int = 25
+    ) -> APIEndpoint {
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "page", value: "\(page)"),
+            URLQueryItem(name: "limit", value: "\(limit)"),
+        ]
+        if let status { items.append(URLQueryItem(name: "status", value: status)) }
+        if let customerId { items.append(URLQueryItem(name: "customerId", value: customerId)) }
+        if let search { items.append(URLQueryItem(name: "search", value: search)) }
+        return APIEndpoint(path: "/api/invoices", queryItems: items)
+    }
+
+    static func invoice(id: String) -> APIEndpoint {
+        APIEndpoint(path: "/api/invoices/\(id)")
+    }
+
+    static func createInvoice(body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/invoices", method: .post, body: body)
+    }
+
+    static func updateInvoice(id: String, body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/invoices/\(id)", method: .patch, body: body)
+    }
+}
+
+// MARK: - Contact Endpoints
+
+extension APIEndpoint {
+    static func contacts(
+        companyId: String? = nil,
+        search: String? = nil,
+        page: Int = 1,
+        limit: Int = 25
+    ) -> APIEndpoint {
+        var items: [URLQueryItem] = [
+            URLQueryItem(name: "page", value: "\(page)"),
+            URLQueryItem(name: "limit", value: "\(limit)"),
+        ]
+        if let companyId { items.append(URLQueryItem(name: "companyId", value: companyId)) }
+        if let search { items.append(URLQueryItem(name: "search", value: search)) }
+        return APIEndpoint(path: "/api/contacts", queryItems: items)
+    }
+
+    static func contact(id: String) -> APIEndpoint {
+        APIEndpoint(path: "/api/contacts/\(id)")
+    }
+
+    static func createContact(body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/contacts", method: .post, body: body)
+    }
+
+    static func updateContact(id: String, body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/contacts/\(id)", method: .patch, body: body)
+    }
+
+    static func deleteContact(id: String) -> APIEndpoint {
+        APIEndpoint(path: "/api/contacts/\(id)", method: .delete)
+    }
+}
+
 // MARK: - Auth Endpoints
 
 extension APIEndpoint {

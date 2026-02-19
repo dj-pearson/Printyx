@@ -1,23 +1,26 @@
 import SwiftUI
 
-/// Main tab bar navigation with Tasks, CRM, Opportunities, Quotes, and Settings.
+/// Main tab bar navigation: Home, CRM, Service, Sales, More.
 struct MainTabView: View {
     let apiClient: APIClient
     @ObservedObject var authManager: AuthManager
     @State private var selectedTab = 0
 
     // Services (lazily initialized)
-    private var taskService: TaskService { TaskService(apiClient: apiClient) }
+    private var dashboardService: DashboardService { DashboardService(apiClient: apiClient) }
     private var crmService: CRMService { CRMService(apiClient: apiClient) }
+    private var ticketService: ServiceTicketService { ServiceTicketService(apiClient: apiClient) }
+    private var equipmentService: EquipmentService { EquipmentService(apiClient: apiClient) }
     private var opportunityService: OpportunityService { OpportunityService(apiClient: apiClient) }
     private var quoteService: QuoteService { QuoteService(apiClient: apiClient) }
+    private var contractService: ContractService { ContractService(apiClient: apiClient) }
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Tasks
-            TaskListView(taskService: taskService)
+            // Home Dashboard
+            HomeView(dashboardService: dashboardService, authManager: authManager)
                 .tabItem {
-                    Label("Tasks", systemImage: "checklist")
+                    Label("Home", systemImage: "house")
                 }
                 .tag(0)
 
@@ -28,24 +31,28 @@ struct MainTabView: View {
                 }
                 .tag(1)
 
-            // Opportunities
-            OpportunityListView(opportunityService: opportunityService)
+            // Service (Tickets + Equipment)
+            ServiceHubView(ticketService: ticketService, equipmentService: equipmentService)
                 .tabItem {
-                    Label("Pipeline", systemImage: "chart.line.uptrend.xyaxis")
+                    Label("Service", systemImage: "wrench.and.screwdriver")
                 }
                 .tag(2)
 
-            // Quotes & Proposals
-            QuoteListView(quoteService: quoteService)
+            // Sales (Pipeline + Quotes + Contracts)
+            SalesHubView(
+                opportunityService: opportunityService,
+                quoteService: quoteService,
+                contractService: contractService
+            )
                 .tabItem {
-                    Label("Quotes", systemImage: "doc.text")
+                    Label("Sales", systemImage: "chart.line.uptrend.xyaxis")
                 }
                 .tag(3)
 
-            // Settings
-            SettingsView(authManager: authManager)
+            // More (Tasks, Invoices, Contacts, Settings)
+            MoreView(apiClient: apiClient, authManager: authManager)
                 .tabItem {
-                    Label("Settings", systemImage: "gearshape")
+                    Label("More", systemImage: "ellipsis")
                 }
                 .tag(4)
         }
