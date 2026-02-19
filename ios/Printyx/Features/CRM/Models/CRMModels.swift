@@ -128,6 +128,12 @@ enum RecordType: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        self = RecordType(rawValue: rawValue) ?? .lead
+    }
+
     var displayName: String {
         switch self {
         case .lead: "Lead"

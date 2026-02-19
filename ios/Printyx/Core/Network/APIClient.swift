@@ -57,22 +57,44 @@ final class APIClient: ObservableObject {
         self.decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
-            if let date = ISO8601DateFormatter().date(from: dateString) {
+
+            // 1. ISO8601 with fractional seconds — handles PostgreSQL timestamps:
+            //    "2024-01-15T10:30:00.123456+00:00", "2024-01-15T10:30:00.123Z", etc.
+            let isoFractional = ISO8601DateFormatter()
+            isoFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = isoFractional.date(from: dateString) {
                 return date
             }
+
+            // 2. ISO8601 without fractional seconds:
+            //    "2024-01-15T10:30:00+00:00", "2024-01-15T10:30:00Z"
+            let isoBasic = ISO8601DateFormatter()
+            isoBasic.formatOptions = [.withInternetDateTime]
+            if let date = isoBasic.date(from: dateString) {
+                return date
+            }
+
+            // 3. DateFormatter fallbacks for edge cases
             let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
-            if let date = formatter.date(from: dateString) {
-                return date
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+
+            // Fractional seconds with colon timezone (xxx = +00:00)
+            for fmt in [
+                "yyyy-MM-dd'T'HH:mm:ss.SSSSSSxxx",
+                "yyyy-MM-dd'T'HH:mm:ss.SSSxxx",
+                "yyyy-MM-dd'T'HH:mm:ssxxx",
+                "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ",
+                "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
+                "yyyy-MM-dd'T'HH:mm:ssZ",
+                "yyyy-MM-dd",
+            ] {
+                formatter.dateFormat = fmt
+                if let date = formatter.date(from: dateString) {
+                    return date
+                }
             }
-            formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
-            if let date = formatter.date(from: dateString) {
-                return date
-            }
-            formatter.dateFormat = "yyyy-MM-dd"
-            if let date = formatter.date(from: dateString) {
-                return date
-            }
+
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date: \(dateString)")
         }
         self.decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -91,6 +113,26 @@ final class APIClient: ObservableObject {
         let data = try await executeRequest(endpoint)
         do {
             return try decoder.decode(T.self, from: data)
+        } catch let decodingError as DecodingError {
+            // Log detailed decode error for debugging
+            let detail: String
+            switch decodingError {
+            case .typeMismatch(let type, let context):
+                detail = "Type mismatch: expected \(type) at \(context.codingPath.map(\.stringValue).joined(separator: ".")) — \(context.debugDescription)"
+            case .valueNotFound(let type, let context):
+                detail = "Value not found: \(type) at \(context.codingPath.map(\.stringValue).joined(separator: ".")) — \(context.debugDescription)"
+            case .keyNotFound(let key, let context):
+                detail = "Key not found: '\(key.stringValue)' at \(context.codingPath.map(\.stringValue).joined(separator: ".")) — \(context.debugDescription)"
+            case .dataCorrupted(let context):
+                detail = "Data corrupted at \(context.codingPath.map(\.stringValue).joined(separator: ".")) — \(context.debugDescription)"
+            @unknown default:
+                detail = decodingError.localizedDescription
+            }
+            print("[APIClient] Decode error for \(T.self) on \(endpoint.path): \(detail)")
+            if let rawJSON = String(data: data.prefix(500), encoding: .utf8) {
+                print("[APIClient] Response preview: \(rawJSON)")
+            }
+            throw APIError.decodingError(decodingError)
         } catch {
             throw APIError.decodingError(error)
         }
