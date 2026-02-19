@@ -234,6 +234,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/crm-goals*',
       '/pipeline-config*',
       '/sales-rep-assignments*',
+      '/lead-map*',
     ],
     children: [
       { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
@@ -255,6 +256,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Sales Performance', path: '/sales-performance-analytics', icon: BarChart3 },
       { title: 'Commission Management', path: '/commission-management', icon: DollarSign },
       { title: 'Rep Assignments', path: '/sales-rep-assignments', icon: MapPin },
+      { title: 'Lead Map', path: '/lead-map', icon: MapPin },
     ],
   },
 

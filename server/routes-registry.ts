@@ -88,6 +88,7 @@ import { registerTodayDashboardRoutes } from './routes-today-dashboard';
 import { registerManufacturerIntegrationRoutes } from './routes-manufacturer-integration';
 import { registerLeadAssignmentRoutes } from './routes-lead-assignment';
 import { registerSalesRepAssignmentRoutes } from './routes-sales-rep-assignments';
+import { registerLeadMapRoutes } from './routes-lead-map';
 import { registerAutoLeadRoutingRoutes } from './routes-auto-lead-routing';
 import { registerPredictiveServiceDispatchRoutes } from './routes-predictive-service-dispatch';
 import { registerWhiteLabelRoutes } from './routes-white-label';
@@ -451,6 +452,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerSoftwareProductsRoutes(app);
   registerLeadAssignmentRoutes(app);
   registerSalesRepAssignmentRoutes(app);
+  registerLeadMapRoutes(app);
   registerAutoLeadRoutingRoutes(app);
   registerPredictiveServiceDispatchRoutes(app);
   registerWhiteLabelRoutes(app);
