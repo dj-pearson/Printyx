@@ -19,6 +19,16 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
+import {
   MapPin,
   Filter,
   Route,
@@ -29,6 +39,10 @@ import {
   ChevronUp,
   Zap,
   BarChart3,
+  Upload,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 
 // Brand color map
@@ -200,6 +214,43 @@ export default function LeadMapViewer() {
     },
   });
 
+  // EDA import state
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importResult, setImportResult] = useState<any>(null);
+
+  const importMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/leads/import-eda', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Import failed');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setImportResult(data);
+      toast({
+        title: 'Import Complete',
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/leads/map-data'] });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: 'Import Failed',
+        description: err.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Filter leads
   const filteredLeads = useMemo(() => {
     let result = leads;
@@ -309,6 +360,10 @@ export default function LeadMapViewer() {
         )}
 
         <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
+            <Upload className="h-3.5 w-3.5 mr-1" />
+            Import EDA Data
+          </Button>
           <Button
             variant={routeMode ? 'default' : 'outline'}
             size="sm"
@@ -664,7 +719,7 @@ export default function LeadMapViewer() {
                   <p className="text-sm text-muted-foreground mb-4">
                     {stats.total > 0
                       ? `${stats.total} leads found but none have coordinates yet. Click "Enrich Addresses" to geocode them.`
-                      : 'No leads found. Import leads first using the EDA import script.'}
+                      : 'No leads found. Click "Import EDA Data" above to upload your EDA CSV export.'}
                   </p>
                   {stats.total > 0 && (
                     <Button
@@ -685,6 +740,141 @@ export default function LeadMapViewer() {
           )}
         </div>
       </div>
+
+      {/* EDA Import Dialog */}
+      <Dialog
+        open={importDialogOpen}
+        onOpenChange={(open) => {
+          setImportDialogOpen(open);
+          if (!open) {
+            setImportFile(null);
+            setImportResult(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Import EDA Data</DialogTitle>
+            <DialogDescription>
+              Upload an EDA export CSV file. Leads will be grouped by company and deduplicated
+              against existing imports.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!importResult ? (
+            <div className="space-y-4">
+              <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                <input
+                  type="file"
+                  accept=".csv"
+                  id="eda-file-input"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setImportFile(file);
+                  }}
+                />
+                {importFile ? (
+                  <div className="space-y-2">
+                    <FileText className="h-8 w-8 mx-auto text-blue-500" />
+                    <p className="text-sm font-medium">{importFile.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(importFile.size / 1024).toFixed(1)} KB
+                    </p>
+                    <Button variant="ghost" size="sm" onClick={() => setImportFile(null)}>
+                      <X className="h-3 w-3 mr-1" /> Remove
+                    </Button>
+                  </div>
+                ) : (
+                  <label htmlFor="eda-file-input" className="cursor-pointer space-y-2 block">
+                    <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Click to select EDA CSV file</p>
+                    <p className="text-xs text-muted-foreground">
+                      Expected columns: BUYCOMP1, BUYCITY, BUYZIP, EQTMAN, PRIMARYBRAND, etc.
+                    </p>
+                  </label>
+                )}
+              </div>
+
+              {importMutation.isPending && (
+                <div className="space-y-2">
+                  <Progress value={undefined} className="w-full" />
+                  <p className="text-xs text-center text-muted-foreground">Importing leads...</p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setImportDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (importFile) importMutation.mutate(importFile);
+                  }}
+                  disabled={!importFile || importMutation.isPending}
+                >
+                  {importMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4 mr-2" />
+                  )}
+                  Import
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Alert variant={importResult.imported > 0 ? 'default' : 'destructive'}>
+                {importResult.imported > 0 ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
+                <AlertDescription>{importResult.message}</AlertDescription>
+              </Alert>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-green-50 rounded p-2 text-center">
+                  <p className="font-semibold text-green-700">{importResult.imported}</p>
+                  <p className="text-xs text-green-600">Imported</p>
+                </div>
+                <div className="bg-yellow-50 rounded p-2 text-center">
+                  <p className="font-semibold text-yellow-700">{importResult.duplicates}</p>
+                  <p className="text-xs text-yellow-600">Duplicates Skipped</p>
+                </div>
+                <div className="bg-blue-50 rounded p-2 text-center">
+                  <p className="font-semibold text-blue-700">{importResult.totalRows}</p>
+                  <p className="text-xs text-blue-600">CSV Rows</p>
+                </div>
+                <div className="bg-purple-50 rounded p-2 text-center">
+                  <p className="font-semibold text-purple-700">{importResult.totalCompanies}</p>
+                  <p className="text-xs text-purple-600">Companies</p>
+                </div>
+              </div>
+
+              {importResult.errors?.length > 0 && (
+                <div className="text-xs text-red-600 max-h-24 overflow-y-auto">
+                  {importResult.errors.map((err: string, i: number) => (
+                    <p key={i}>{err}</p>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={() => {
+                    setImportDialogOpen(false);
+                    setImportFile(null);
+                    setImportResult(null);
+                  }}
+                >
+                  Done
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
