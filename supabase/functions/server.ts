@@ -6,6 +6,30 @@ import { getCorsHeaders } from '/app/functions/_shared/cors.ts';
 
 const port = parseInt(Deno.env.get('PORT') || '3001');
 
+// PostgreSQL timestamps have microsecond precision and colon timezone offsets
+// (e.g. "2024-01-15T10:30:00.123456+00:00") which many iOS date decoders can't parse.
+// This regex matches ISO8601 timestamps with fractional seconds and timezone offsets.
+const PG_TIMESTAMP_RE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+// Recursively normalize date strings in JSON to JavaScript's toISOString() format
+// which always produces "YYYY-MM-DDTHH:mm:ss.sssZ" (3ms digits, Z timezone).
+function normalizeDates(value: unknown): unknown {
+  if (typeof value === 'string' && PG_TIMESTAMP_RE.test(value)) {
+    const d = new Date(value);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+  if (Array.isArray(value)) return value.map(normalizeDates);
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = normalizeDates(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 // Load all function handlers
 const functions: Record<string, any> = {};
 
@@ -86,6 +110,26 @@ await serve(
         Object.entries(corsHeaders).forEach(([key, value]) => {
           newHeaders.set(key, value);
         });
+      }
+
+      // Normalize date strings in JSON responses so iOS decoders can parse them.
+      // PostgreSQL returns "2024-01-15T10:30:00.123456+00:00" (6-digit microseconds,
+      // colon timezone) which many mobile date parsers can't handle.
+      // toISOString() produces "2024-01-15T10:30:00.123Z" (3ms digits, Z timezone).
+      const contentType = newHeaders.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try {
+          const body = await response.json();
+          const normalized = normalizeDates(body);
+          newHeaders.set('content-type', 'application/json; charset=utf-8');
+          return new Response(JSON.stringify(normalized), {
+            status: response.status,
+            statusText: response.statusText,
+            headers: newHeaders,
+          });
+        } catch {
+          // If JSON parsing fails, pass through the original response
+        }
       }
 
       return new Response(response.body, {
