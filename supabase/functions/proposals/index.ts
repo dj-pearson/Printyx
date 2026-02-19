@@ -78,16 +78,8 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch proposals' }, 500, req);
       }
 
-      return createCorsResponse(
-        {
-          data: proposals || [],
-          total: count || 0,
-          page,
-          limit,
-        },
-        200,
-        req,
-      );
+      // Return plain array — iOS JSONDecoder expects [Proposal] directly
+      return createCorsResponse(proposals || [], 200, req);
     }
 
     // GET /proposals/:id - Get single proposal

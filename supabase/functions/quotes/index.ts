@@ -128,16 +128,8 @@ export default async function handler(req: Request) {
         }),
       );
 
-      return createCorsResponse(
-        {
-          data: enrichedQuotes,
-          total: count || 0,
-          page,
-          limit,
-        },
-        200,
-        req,
-      );
+      // Return plain array — iOS JSONDecoder expects [Quote] directly
+      return createCorsResponse(enrichedQuotes, 200, req);
     }
 
     // GET /quotes/:id - Get single quote with line items
