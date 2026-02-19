@@ -1268,6 +1268,10 @@ export const businessRecords = pgTable(
     billingState: varchar('billing_state'), // E-Automate BillingState / Salesforce BillingState
     billingPostalCode: varchar('billing_zip_code'), // E-Automate BillingZip / Salesforce BillingPostalCode
 
+    // Geolocation (populated by Google Places geocoding)
+    latitude: decimal('latitude', { precision: 10, scale: 8 }),
+    longitude: decimal('longitude', { precision: 11, scale: 8 }),
+
     // Communication Details (E-Automate + Salesforce compatible)
     phone: varchar('phone'), // E-Automate Phone / Salesforce Phone
     fax: varchar('fax'), // E-Automate Fax / Salesforce Fax

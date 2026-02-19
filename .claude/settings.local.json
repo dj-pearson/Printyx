@@ -89,7 +89,8 @@
       "Bash(git -C \"C:/Users/dpearson/Documents/Printyx\" status --short)",
       "Bash(gh secret:*)",
       "Bash(git push:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(npm run db:generate:*)"
     ],
     "deny": [],
     "ask": []

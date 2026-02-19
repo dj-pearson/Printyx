@@ -22,6 +22,13 @@
       "when": 1770400286505,
       "tag": "0002_nebulous_ender_wiggin",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1771520769745,
+      "tag": "0003_noisy_mephistopheles",
+      "breakpoints": true
     }
   ]
 }
