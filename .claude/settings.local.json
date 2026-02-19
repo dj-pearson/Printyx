@@ -90,7 +90,8 @@
       "Bash(gh secret:*)",
       "Bash(git push:*)",
       "Bash(echo:*)",
-      "Bash(npm run db:generate:*)"
+      "Bash(npm run db:generate:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
