@@ -175,7 +175,7 @@ struct ContractRow: View {
                 if let endDate = contract.endDate {
                     Text(endDate.shortFormatted)
                         .font(.system(size: 10))
-                        .foregroundStyle(endDate.isPast ? .red : .tertiary)
+                        .foregroundStyle(endDate.isPast ? Color.red : Color.secondary)
                 }
             }
         }

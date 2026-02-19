@@ -192,7 +192,7 @@ struct InvoiceRow: View {
                 if let dueDate = invoice.dueDate {
                     Text(dueDate.isPast ? "Overdue" : "Due \(dueDate.shortFormatted)")
                         .font(.system(size: 10))
-                        .foregroundStyle(dueDate.isPast ? .red : .tertiary)
+                        .foregroundStyle(dueDate.isPast ? Color.red : Color.secondary)
                 }
             }
         }
