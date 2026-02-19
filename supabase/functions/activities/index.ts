@@ -51,7 +51,7 @@ export default async function handler(req: Request) {
         .from('business_record_activities')
         .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
-        .order('activity_date', { ascending: false })
+        .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (businessRecordId) {
@@ -112,7 +112,12 @@ export default async function handler(req: Request) {
         activity_type: body.activityType || body.activity_type,
         subject: body.subject,
         notes: body.notes || null,
-        activity_date: body.activityDate || body.activity_date || new Date().toISOString(),
+        scheduled_date:
+          body.activityDate ||
+          body.activity_date ||
+          body.scheduledDate ||
+          body.scheduled_date ||
+          new Date().toISOString(),
         duration_minutes: body.durationMinutes || body.duration_minutes || null,
         direction: body.direction || null,
         email_to: body.emailTo || body.email_to || null,
@@ -154,7 +159,8 @@ export default async function handler(req: Request) {
         activityType: 'activity_type',
         subject: 'subject',
         notes: 'notes',
-        activityDate: 'activity_date',
+        activityDate: 'scheduled_date',
+        scheduledDate: 'scheduled_date',
         durationMinutes: 'duration_minutes',
         direction: 'direction',
         emailTo: 'email_to',
