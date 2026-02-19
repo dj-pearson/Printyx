@@ -7,17 +7,20 @@ import { getCorsHeaders } from '/app/functions/_shared/cors.ts';
 const port = parseInt(Deno.env.get('PORT') || '3001');
 
 // PostgreSQL timestamps have microsecond precision and colon timezone offsets
-// (e.g. "2024-01-15T10:30:00.123456+00:00") which many iOS date decoders can't parse.
-// This regex matches ISO8601 timestamps with fractional seconds and timezone offsets.
+// (e.g. "2024-01-15T10:30:00.123456+00:00") which iOS ISO8601DateFormatter
+// (default options) cannot parse. We strip fractional seconds and normalize to
+// "YYYY-MM-DDTHH:mm:ssZ" which ISO8601DateFormatter handles natively.
 const PG_TIMESTAMP_RE =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
-// Recursively normalize date strings in JSON to JavaScript's toISOString() format
-// which always produces "YYYY-MM-DDTHH:mm:ss.sssZ" (3ms digits, Z timezone).
+// Recursively normalize date strings in JSON responses.
+// Converts "2024-01-15T10:30:00.123456+00:00" → "2024-01-15T10:30:00Z"
 function normalizeDates(value: unknown): unknown {
   if (typeof value === 'string' && PG_TIMESTAMP_RE.test(value)) {
     const d = new Date(value);
-    if (!isNaN(d.getTime())) return d.toISOString();
+    // Strip fractional seconds: "2024-01-15T10:30:00Z" — this format is
+    // parsed by iOS ISO8601DateFormatter with default .withInternetDateTime
+    if (!isNaN(d.getTime())) return d.toISOString().replace(/\.\d{3}Z$/, 'Z');
   }
   if (Array.isArray(value)) return value.map(normalizeDates);
   if (value !== null && typeof value === 'object') {
