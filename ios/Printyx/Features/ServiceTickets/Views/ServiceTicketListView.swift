@@ -200,7 +200,7 @@ struct ServiceTicketRow: View {
                 if let date = ticket.scheduledDate {
                     Text(date.shortFormatted)
                         .font(.system(size: 10))
-                        .foregroundStyle(date.isPast ? .red : .tertiary)
+                        .foregroundStyle(date.isPast ? Color.red : Color.secondary)
                 }
             }
         }
