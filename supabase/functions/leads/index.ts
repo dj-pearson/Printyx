@@ -21,12 +21,24 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
+    // Resolve tenant ID: x-tenant-id header → app_metadata → user_metadata → DB lookup
+    let tenantId =
+      req.headers.get('x-tenant-id') ||
       (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
       (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+      (user.user_metadata?.tenant_id as string);
+
+    if (!tenantId) {
+      const admin2 = createSupabaseServiceClient();
+      const { data: dbUser } = await admin2.from('users').select('tenant_id').eq('id', user.id).limit(1).maybeSingle();
+      if (dbUser?.tenant_id) {
+        tenantId = dbUser.tenant_id;
+      } else if (user.email) {
+        const { data: emailUser } = await admin2.from('users').select('tenant_id').ilike('email', user.email).limit(1).maybeSingle();
+        tenantId = emailUser?.tenant_id;
+      }
+    }
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
@@ -34,9 +46,11 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const leadId = pathParts[1];
-    const subResource = pathParts[2];
+    const rawParts = url.pathname.split('/').filter(Boolean);
+    // Normalize: strip function name from path if the relay preserved it
+    const pathParts = rawParts[0] === 'leads' ? rawParts.slice(1) : rawParts;
+    const leadId = pathParts[0];
+    const subResource = pathParts[1];
 
     // GET /leads - List leads
     if (req.method === 'GET' && !leadId) {
@@ -66,19 +80,8 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch leads' }, 500, req);
       }
 
-      return createCorsResponse(
-        {
-          leads: leads || [],
-          pagination: {
-            page,
-            limit,
-            total: count || 0,
-            totalPages: Math.ceil((count || 0) / limit),
-          },
-        },
-        200,
-        req,
-      );
+      // Return plain array — iOS JSONDecoder expects [BusinessRecord] directly
+      return createCorsResponse(leads || [], 200, req);
     }
 
     // GET /leads/:id - Get single lead

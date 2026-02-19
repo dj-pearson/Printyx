@@ -39,24 +39,41 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Unauthorized', details: userError?.message }, 401, req);
     }
 
-    // Get tenant ID from user metadata or query from database
-    let tenantId = (user.app_metadata as any)?.tenant_id;
+    // Resolve tenant ID: x-tenant-id header → app_metadata (camelCase + snake_case) → user_metadata → DB lookup
+    let tenantId =
+      req.headers.get('x-tenant-id') ||
+      (user.app_metadata as any)?.tenantId ||
+      (user.app_metadata as any)?.tenant_id ||
+      (user.user_metadata as any)?.tenantId ||
+      (user.user_metadata as any)?.tenant_id;
 
     if (!tenantId) {
-      // Fallback: query tenant_id from users table
-      const admin = createSupabaseServiceClient();
-      const { data: userData, error: userQueryError } = await admin
+      // Fallback: query tenant_id from users table (try by ID first, then by email)
+      const adminLookup = createSupabaseServiceClient();
+      const { data: userData } = await adminLookup
         .from('users')
         .select('tenant_id')
         .eq('id', user.id)
-        .single();
+        .limit(1)
+        .maybeSingle();
 
-      if (userQueryError || !userData?.tenant_id) {
+      if (userData?.tenant_id) {
+        tenantId = userData.tenant_id;
+      } else if (user.email) {
+        // IDs may differ between GoTrue and public.users — fall back to email lookup
+        const { data: emailUser } = await adminLookup
+          .from('users')
+          .select('tenant_id')
+          .ilike('email', user.email)
+          .limit(1)
+          .maybeSingle();
+        tenantId = emailUser?.tenant_id;
+      }
+
+      if (!tenantId) {
         console.error('No tenant ID in app_metadata or database for user:', user.id);
         return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
       }
-
-      tenantId = userData.tenant_id;
     }
 
     const admin = createSupabaseServiceClient();
@@ -65,7 +82,7 @@ export default async function handler(req: Request) {
     switch (req.method) {
       case 'GET': {
         if (isStatsRequest) {
-          // Return task statistics
+          // Return task statistics — field names match iOS TaskStats model
           const myOnly = url.searchParams.get('my') === 'true';
 
           let query = admin.from('tasks').select('*', { count: 'exact' }).eq('tenant_id', tenantId);
@@ -73,25 +90,28 @@ export default async function handler(req: Request) {
             query = query.eq('assigned_to', user.id);
           }
 
-          const { data: allTasks, count: totalTasks } = await query;
+          const { data: allTasks, count: totalCount } = await query;
 
-          const completedTasks = allTasks?.filter((t) => t.status === 'completed').length || 0;
-          const inProgressTasks = allTasks?.filter((t) => t.status === 'in_progress').length || 0;
           const now = new Date();
-          const overdueTasks =
+          const todoCount = allTasks?.filter((t) => t.status === 'todo').length || 0;
+          const inProgressCount = allTasks?.filter((t) => t.status === 'in_progress').length || 0;
+          const reviewCount = allTasks?.filter((t) => t.status === 'review').length || 0;
+          const completedCount = allTasks?.filter((t) => t.status === 'completed').length || 0;
+          const cancelledCount = allTasks?.filter((t) => t.status === 'cancelled').length || 0;
+          const overdueCount =
             allTasks?.filter(
-              (t) => t.due_date && new Date(t.due_date) < now && t.status !== 'completed',
+              (t) => t.due_date && new Date(t.due_date) < now && t.status !== 'completed' && t.status !== 'cancelled',
             ).length || 0;
 
           return createCorsResponse(
             {
-              totalTasks: totalTasks || 0,
-              completedTasks,
-              inProgressTasks,
-              overdueTasks,
-              myTasks: myOnly
-                ? totalTasks
-                : allTasks?.filter((t) => t.assigned_to === user.id).length || 0,
+              total: totalCount || 0,
+              todo: todoCount,
+              in_progress: inProgressCount,
+              review: reviewCount,
+              completed: completedCount,
+              cancelled: cancelledCount,
+              overdue: overdueCount,
             },
             200,
             req,
@@ -99,7 +119,7 @@ export default async function handler(req: Request) {
         }
 
         if (taskId && taskId !== 'stats') {
-          // Get single task
+          // Get single task — return raw DB record (iOS decoder handles snake_case → camelCase)
           const { data: task, error } = await admin
             .from('tasks')
             .select('*')
@@ -113,7 +133,8 @@ export default async function handler(req: Request) {
           return createCorsResponse(task, 200, req);
         }
 
-        // List all tasks (without joins to avoid FK errors)
+        // List all tasks — return plain array of raw DB records
+        // The iOS decoder uses convertFromSnakeCase to map keys automatically
         const { data: tasks, error } = await admin
           .from('tasks')
           .select('*')
@@ -125,25 +146,7 @@ export default async function handler(req: Request) {
           return createCorsResponse({ error: 'Failed to fetch tasks' }, 500, req);
         }
 
-        // Transform to match frontend expectations
-        const transformedTasks = (tasks || []).map((task: any) => ({
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          status: task.status,
-          priority: task.priority,
-          assignedTo: task.assigned_to,
-          assignedToName: null, // Will be populated by frontend if needed
-          projectId: task.project_id,
-          projectName: null, // Will be populated by frontend if needed
-          dueDate: task.due_date,
-          completionPercentage: task.completion_percentage || 0,
-          tags: task.tags || [],
-          createdAt: task.created_at,
-          createdBy: task.created_by,
-        }));
-
-        return createCorsResponse(transformedTasks, 200, req);
+        return createCorsResponse(tasks || [], 200, req);
       }
 
       case 'POST': {
@@ -160,10 +163,10 @@ export default async function handler(req: Request) {
           description: body.description || null,
           status: body.status || 'todo',
           priority: body.priority || 'medium',
-          assigned_to: body.assignedTo || null,
-          project_id: body.projectId || null,
-          due_date: body.dueDate || null,
-          completion_percentage: body.completionPercentage || 0,
+          assigned_to: body.assignedTo || body.assigned_to || null,
+          project_id: body.projectId || body.project_id || null,
+          due_date: body.dueDate || body.due_date || null,
+          completion_percentage: body.completionPercentage || body.completion_percentage || 0,
           tags: body.tags || [],
           created_by: user.id,
         };
@@ -200,12 +203,19 @@ export default async function handler(req: Request) {
         if (body.status !== undefined) updateData.status = body.status;
         if (body.priority !== undefined) updateData.priority = body.priority;
         if (body.assignedTo !== undefined) updateData.assigned_to = body.assignedTo;
+        if (body.assigned_to !== undefined) updateData.assigned_to = body.assigned_to;
         if (body.projectId !== undefined) updateData.project_id = body.projectId;
+        if (body.project_id !== undefined) updateData.project_id = body.project_id;
         if (body.dueDate !== undefined) updateData.due_date = body.dueDate;
+        if (body.due_date !== undefined) updateData.due_date = body.due_date;
         if (body.estimatedHours !== undefined) updateData.estimated_hours = body.estimatedHours;
+        if (body.estimated_hours !== undefined) updateData.estimated_hours = body.estimated_hours;
         if (body.actualHours !== undefined) updateData.actual_hours = body.actualHours;
+        if (body.actual_hours !== undefined) updateData.actual_hours = body.actual_hours;
         if (body.completionPercentage !== undefined)
           updateData.completion_percentage = body.completionPercentage;
+        if (body.completion_percentage !== undefined)
+          updateData.completion_percentage = body.completion_percentage;
         if (body.tags !== undefined) updateData.tags = body.tags;
 
         // Set completedAt if status is being set to completed
