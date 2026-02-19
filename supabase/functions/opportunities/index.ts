@@ -4,28 +4,30 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
 // Map a deal record to the opportunity response format
+// Field names use snake_case — iOS decoder uses convertFromSnakeCase to map to camelCase Swift properties
 function mapDealToOpportunity(deal: any): any {
   return {
     id: deal.id,
     tenant_id: deal.tenant_id,
-    opportunity_name: deal.title,
-    account_id: deal.customer_id,
-    account_name: deal.company_name,
-    stage_name: deal.deal_stage?.name || deal.status || 'Prospecting',
-    amount: deal.amount,
+    // iOS Opportunity model fields (snake_case for automatic conversion)
+    company_name: deal.company_name || deal.title,
+    primary_contact_name: deal.primary_contact_name,
+    primary_contact_email: deal.email,
+    primary_contact_phone: deal.phone,
+    record_type: deal.deal_type || 'deal',
+    status: deal.status,
+    sales_stage: deal.deal_stage?.name || deal.status || 'new',
+    estimated_amount: deal.amount,
     probability: deal.probability,
     close_date: deal.expected_close_date,
-    is_won: deal.status === 'won',
-    is_closed: deal.status === 'won' || deal.status === 'lost',
-    owner_id: deal.owner_id,
-    description: deal.description,
     source: deal.source,
-    deal_type: deal.deal_type,
+    interest_level: null,
     priority: deal.priority,
-    status: deal.status,
-    primary_contact_name: deal.primary_contact_name,
-    email: deal.email,
-    phone: deal.phone,
+    owner_id: deal.owner_id,
+    assigned_sales_rep: deal.owner_id,
+    territory: null,
+    notes: deal.description,
+    customer_rating: null,
     created_at: deal.created_at,
     updated_at: deal.updated_at,
   };
@@ -128,16 +130,8 @@ export default async function handler(req: Request) {
 
       const opportunities = (deals || []).map(mapDealToOpportunity);
 
-      return createCorsResponse(
-        {
-          data: opportunities,
-          total: count || 0,
-          page,
-          limit,
-        },
-        200,
-        req,
-      );
+      // Return plain array — iOS JSONDecoder expects [Opportunity] directly
+      return createCorsResponse(opportunities, 200, req);
     }
 
     // GET /opportunities/:id - Get single opportunity (from deals table)
