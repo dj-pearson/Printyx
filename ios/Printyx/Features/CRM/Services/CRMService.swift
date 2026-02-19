@@ -18,7 +18,7 @@ final class CRMService {
         page: Int = 1,
         limit: Int = 25
     ) async throws -> [BusinessRecord] {
-        try await apiClient.request(
+        try await apiClient.requestArray(
             .businessRecords(search: search, recordType: recordType, status: status, page: page, limit: limit)
         )
     }
@@ -26,7 +26,7 @@ final class CRMService {
     // MARK: - Customers
 
     func fetchCustomers(search: String? = nil, status: String? = nil, page: Int = 1, limit: Int = 25) async throws -> [BusinessRecord] {
-        try await apiClient.request(.customers(search: search, status: status, page: page, limit: limit))
+        try await apiClient.requestArray(.customers(search: search, status: status, page: page, limit: limit))
     }
 
     func fetchCustomer(id: String) async throws -> BusinessRecord {
@@ -48,7 +48,7 @@ final class CRMService {
     // MARK: - Leads
 
     func fetchLeads(search: String? = nil, status: String? = nil, page: Int = 1, limit: Int = 25) async throws -> [BusinessRecord] {
-        try await apiClient.request(.leads(search: search, status: status, page: page, limit: limit))
+        try await apiClient.requestArray(.leads(search: search, status: status, page: page, limit: limit))
     }
 
     func fetchLead(id: String) async throws -> BusinessRecord {
@@ -70,7 +70,7 @@ final class CRMService {
     // MARK: - Lead Activities
 
     func fetchLeadActivities(leadId: String) async throws -> [LeadActivity] {
-        try await apiClient.request(.leadActivities(leadId: leadId))
+        try await apiClient.requestArray(.leadActivities(leadId: leadId))
     }
 
     func createLeadActivity(leadId: String, _ request: CreateActivityRequest) async throws -> LeadActivity {

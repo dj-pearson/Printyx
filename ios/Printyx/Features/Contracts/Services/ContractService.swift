@@ -18,7 +18,7 @@ final class ContractService {
         page: Int = 1,
         limit: Int = 25
     ) async throws -> [Contract] {
-        try await apiClient.request(
+        try await apiClient.requestArray(
             .contracts(status: status, customerId: customerId, search: search, page: page, limit: limit)
         )
     }
@@ -40,7 +40,7 @@ final class ContractService {
     // MARK: - Renewals
 
     func fetchUpcomingRenewals(days: Int = 90) async throws -> [ContractRenewal] {
-        try await apiClient.request(.upcomingRenewals(days: days))
+        try await apiClient.requestArray(.upcomingRenewals(days: days))
     }
 
     func renewContract(id: String, body: Encodable) async throws {
