@@ -5,6 +5,7 @@ struct TaskListView: View {
     @StateObject private var viewModel: TaskListViewModel
     @State private var showingCreateTask = false
     @State private var showingFilters = false
+    @State private var showingArchive = false
     @State private var selectedTask: PrintyxTask?
 
     init(taskService: TaskService) {
@@ -40,7 +41,7 @@ struct TaskListView: View {
                     LoadingView(message: "Loading tasks...")
                 } else if let error = viewModel.error, viewModel.tasks.isEmpty {
                     ErrorView(message: error, retryAction: { await viewModel.refresh() })
-                } else if viewModel.filteredTasks.isEmpty {
+                } else if viewModel.activeTasks.isEmpty && viewModel.completedTasks.isEmpty {
                     EmptyStateView(
                         icon: "checklist",
                         title: "No Tasks",
@@ -83,7 +84,12 @@ struct TaskListView: View {
                 await viewModel.refresh()
             }
             .sheet(isPresented: $showingCreateTask) {
-                TaskFormView(taskService: viewModel.tasks.isEmpty ? nil : nil)
+                TaskFormView(
+                    taskService: TaskService(apiClient: APIClient()),
+                    onCreated: { _ in
+                        Task { await viewModel.refresh() }
+                    }
+                )
             }
             .sheet(isPresented: $showingFilters) {
                 TaskFilterSheet(viewModel: viewModel)
@@ -148,17 +154,17 @@ struct TaskListView: View {
                 }
             }
 
-            // All tasks
-            Section {
-                ForEach(viewModel.filteredTasks) { task in
-                    TaskRowView(task: task)
-                        .contentShape(Rectangle())
-                        .onTapGesture { selectedTask = task }
-                        .swipeActions(edge: .trailing) {
-                            swipeActions(for: task)
-                        }
-                        .swipeActions(edge: .leading) {
-                            if task.status != .completed {
+            // Active tasks (sorted by due date)
+            if !viewModel.activeTasks.isEmpty {
+                Section {
+                    ForEach(viewModel.activeTasks) { task in
+                        TaskRowView(task: task)
+                            .contentShape(Rectangle())
+                            .onTapGesture { selectedTask = task }
+                            .swipeActions(edge: .trailing) {
+                                swipeActions(for: task)
+                            }
+                            .swipeActions(edge: .leading) {
                                 Button {
                                     Task { await viewModel.completeTask(task) }
                                 } label: {
@@ -166,22 +172,63 @@ struct TaskListView: View {
                                 }
                                 .tint(.green)
                             }
-                        }
-                }
+                    }
 
-                // Pagination
-                if viewModel.isLoadingMore {
-                    InlineLoadingView()
-                } else if viewModel.filteredTasks.count >= viewModel.filteredTasks.count {
-                    Color.clear
-                        .frame(height: 1)
-                        .onAppear {
-                            Task { await viewModel.loadMore() }
-                        }
+                    // Pagination
+                    if viewModel.isLoadingMore {
+                        InlineLoadingView()
+                    } else {
+                        Color.clear
+                            .frame(height: 1)
+                            .onAppear {
+                                Task { await viewModel.loadMore() }
+                            }
+                    }
+                } header: {
+                    Text("Active Tasks (\(viewModel.activeTasks.count))")
+                        .font(.printyxCaption)
                 }
-            } header: {
-                Text("All Tasks (\(viewModel.filteredTasks.count))")
-                    .font(.printyxCaption)
+            }
+
+            // Completed / Archive section
+            if !viewModel.completedTasks.isEmpty && !showingArchive {
+                Section {
+                    Button {
+                        withAnimation { showingArchive = true }
+                    } label: {
+                        HStack {
+                            Image(systemName: "archivebox")
+                                .foregroundStyle(.secondary)
+                            Text("Completed (\(viewModel.completedTasks.count))")
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+            }
+
+            if showingArchive && !viewModel.completedTasks.isEmpty {
+                Section {
+                    ForEach(viewModel.completedTasks) { task in
+                        TaskRowView(task: task)
+                            .contentShape(Rectangle())
+                            .onTapGesture { selectedTask = task }
+                            .opacity(0.7)
+                    }
+                } header: {
+                    HStack {
+                        Label("Archive (\(viewModel.completedTasks.count))", systemImage: "archivebox")
+                            .font(.printyxCaption)
+                        Spacer()
+                        Button("Hide") {
+                            withAnimation { showingArchive = false }
+                        }
+                        .font(.printyxCaption)
+                    }
+                }
             }
         }
         .listStyle(.insetGrouped)
