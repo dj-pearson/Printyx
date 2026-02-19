@@ -3,6 +3,25 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
+// Helper: Batch-enrich records with customer names from business_records
+async function enrichWithCustomerNames(admin: any, records: any[]) {
+  if (!records || records.length === 0) return records;
+  const customerIds = [...new Set(records.map((r: any) => r.customer_id).filter(Boolean))];
+  if (customerIds.length === 0) return records;
+
+  const { data: customers } = await admin
+    .from('business_records')
+    .select('id, company_name, primary_contact_name')
+    .in('id', customerIds);
+
+  const customerMap = new Map((customers || []).map((c: any) => [c.id, c]));
+  return records.map((r: any) => ({
+    ...r,
+    customer_name: customerMap.get(r.customer_id)?.company_name || null,
+    customer: customerMap.get(r.customer_id) || null,
+  }));
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -47,13 +66,7 @@ export default async function handler(req: Request) {
 
       let query = admin
         .from('equipment')
-        .select(
-          `
-          *,
-          customer:business_records!equipment_customer_id_fkey(id, company_name, primary_contact_name)
-        `,
-          { count: 'exact' },
-        )
+        .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('install_date', { ascending: false })
         .range(offset, offset + limit - 1);
@@ -79,9 +92,11 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch equipment' }, 500, req);
       }
 
+      // Enrich with customer names
+      const enriched = await enrichWithCustomerNames(admin, equipment || []);
       return createCorsResponse(
         {
-          data: equipment || [],
+          data: enriched,
           total: count || 0,
           page,
           limit,
@@ -93,14 +108,9 @@ export default async function handler(req: Request) {
 
     // GET /equipment/:id - Get single equipment
     if (req.method === 'GET' && equipmentId) {
-      const { data: equipment, error } = await admin
+      const { data: equipmentData, error } = await admin
         .from('equipment')
-        .select(
-          `
-          *,
-          customer:business_records!equipment_customer_id_fkey(id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, city, state)
-        `,
-        )
+        .select('*')
         .eq('id', equipmentId)
         .eq('tenant_id', tenantId)
         .single();
@@ -108,6 +118,17 @@ export default async function handler(req: Request) {
       if (error) {
         console.error('Error fetching equipment:', error);
         return createCorsResponse({ error: 'Equipment not found' }, 404, req);
+      }
+
+      // Enrich with customer info
+      let equipment = equipmentData;
+      if (equipmentData?.customer_id) {
+        const { data: customer } = await admin
+          .from('business_records')
+          .select('id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, city, state')
+          .eq('id', equipmentData.customer_id)
+          .single();
+        equipment = { ...equipmentData, customer: customer || null };
       }
 
       // Get service history
