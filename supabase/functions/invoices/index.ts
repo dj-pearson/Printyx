@@ -70,7 +70,7 @@ export default async function handler(req: Request) {
         .from('invoices')
         .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
-        .order('invoice_date', { ascending: false })
+        .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (customerId) {
@@ -124,7 +124,9 @@ export default async function handler(req: Request) {
       if (invoiceData?.customer_id) {
         const { data: customer } = await admin
           .from('business_records')
-          .select('id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, address_line2, city, state, postal_code')
+          .select(
+            'id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, address_line2, city, state, postal_code',
+          )
           .eq('id', invoiceData.customer_id)
           .single();
         invoice = { ...invoiceData, customer: customer || null };
@@ -166,7 +168,6 @@ export default async function handler(req: Request) {
         customer_id: body.customerId || body.customer_id,
         contract_id: body.contractId || body.contract_id || null,
         invoice_number: invoiceNumber,
-        invoice_date: body.invoiceDate || body.invoice_date || new Date().toISOString(),
         due_date:
           body.dueDate ||
           body.due_date ||
@@ -238,8 +239,6 @@ export default async function handler(req: Request) {
         updated_at: new Date().toISOString(),
       };
 
-      if (body.invoiceDate || body.invoice_date)
-        updateData.invoice_date = body.invoiceDate || body.invoice_date;
       if (body.dueDate || body.due_date) updateData.due_date = body.dueDate || body.due_date;
       if (body.poNumber !== undefined || body.po_number !== undefined)
         updateData.po_number = body.poNumber || body.po_number;
