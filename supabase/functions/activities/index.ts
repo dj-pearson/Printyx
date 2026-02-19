@@ -49,14 +49,7 @@ export default async function handler(req: Request) {
 
       let query = admin
         .from('business_record_activities')
-        .select(
-          `
-          *,
-          business_record:business_records!business_record_activities_business_record_id_fkey(id, company_name, record_type),
-          created_by_user:users!business_record_activities_created_by_fkey(id, first_name, last_name, email)
-        `,
-          { count: 'exact' },
-        )
+        .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('activity_date', { ascending: false })
         .range(offset, offset + limit - 1);
@@ -96,13 +89,7 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && activityId) {
       const { data: activity, error } = await admin
         .from('business_record_activities')
-        .select(
-          `
-          *,
-          business_record:business_records!business_record_activities_business_record_id_fkey(id, company_name, record_type, primary_contact_name),
-          created_by_user:users!business_record_activities_created_by_fkey(id, first_name, last_name, email, phone)
-        `,
-        )
+        .select('*')
         .eq('id', activityId)
         .eq('tenant_id', tenantId)
         .single();

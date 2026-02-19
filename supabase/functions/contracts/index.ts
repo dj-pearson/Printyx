@@ -3,6 +3,25 @@
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
+// Helper: Batch-enrich records with customer names from business_records
+async function enrichWithCustomerNames(admin: any, records: any[]) {
+  if (!records || records.length === 0) return records;
+  const customerIds = [...new Set(records.map((r: any) => r.customer_id).filter(Boolean))];
+  if (customerIds.length === 0) return records;
+
+  const { data: customers } = await admin
+    .from('business_records')
+    .select('id, company_name, primary_contact_name')
+    .in('id', customerIds);
+
+  const customerMap = new Map((customers || []).map((c: any) => [c.id, c]));
+  return records.map((r: any) => ({
+    ...r,
+    customer_name: customerMap.get(r.customer_id)?.company_name || null,
+    customer: customerMap.get(r.customer_id) || null,
+  }));
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -47,13 +66,7 @@ export default async function handler(req: Request) {
 
       let query = admin
         .from('contracts')
-        .select(
-          `
-          *,
-          customer:business_records!contracts_customer_id_fkey(id, company_name, primary_contact_name)
-        `,
-          { count: 'exact' },
-        )
+        .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
@@ -73,9 +86,11 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch contracts' }, 500, req);
       }
 
+      // Enrich with customer names
+      const enriched = await enrichWithCustomerNames(admin, contracts || []);
       return createCorsResponse(
         {
-          data: contracts || [],
+          data: enriched,
           total: count || 0,
           page,
           limit,
@@ -104,17 +119,23 @@ export default async function handler(req: Request) {
 
     // GET /contracts/:id - Get single contract
     if (req.method === 'GET' && contractId) {
-      const { data: contract, error } = await admin
+      const { data: contractData, error } = await admin
         .from('contracts')
-        .select(
-          `
-          *,
-          customer:business_records!contracts_customer_id_fkey(id, company_name, primary_contact_name, primary_contact_email, address_line1, city, state)
-        `,
-        )
+        .select('*')
         .eq('id', contractId)
         .eq('tenant_id', tenantId)
         .single();
+
+      // Enrich with customer info
+      let contract = contractData;
+      if (contractData?.customer_id) {
+        const { data: customer } = await admin
+          .from('business_records')
+          .select('id, company_name, primary_contact_name, primary_contact_email, address_line1, city, state')
+          .eq('id', contractData.customer_id)
+          .single();
+        contract = { ...contractData, customer: customer || null };
+      }
 
       if (error) {
         console.error('Error fetching contract:', error);
@@ -180,20 +201,15 @@ export default async function handler(req: Request) {
         await admin.from('contract_tiered_rates').insert(ratesData);
       }
 
-      // Fetch complete contract with rates
-      const { data: completeContract } = await admin
-        .from('contracts')
-        .select(
-          `
-          *,
-          tieredRates:contract_tiered_rates(*)
-        `,
-        )
-        .eq('id', contract.id)
+      // Fetch tiered rates separately
+      const { data: rates } = await admin
+        .from('contract_tiered_rates')
+        .select('*')
+        .eq('contract_id', contract.id)
         .eq('tenant_id', tenantId)
-        .single();
+        .order('minimum_volume', { ascending: true });
 
-      return createCorsResponse(completeContract || contract, 201, req);
+      return createCorsResponse({ ...contract, tieredRates: rates || [] }, 201, req);
     }
 
     // PATCH /contracts/:id - Update contract
@@ -255,20 +271,15 @@ export default async function handler(req: Request) {
         }
       }
 
-      // Fetch complete contract
-      const { data: completeContract } = await admin
-        .from('contracts')
-        .select(
-          `
-          *,
-          tieredRates:contract_tiered_rates(*)
-        `,
-        )
-        .eq('id', contractId)
+      // Fetch tiered rates separately
+      const { data: updatedRates } = await admin
+        .from('contract_tiered_rates')
+        .select('*')
+        .eq('contract_id', contractId)
         .eq('tenant_id', tenantId)
-        .single();
+        .order('minimum_volume', { ascending: true });
 
-      return createCorsResponse(completeContract || contract, 200, req);
+      return createCorsResponse({ ...contract, tieredRates: updatedRates || [] }, 200, req);
     }
 
     // DELETE /contracts/:id - Delete contract
