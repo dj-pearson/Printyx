@@ -44,6 +44,7 @@ import {
   Loader2,
   AlertTriangle,
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface UserSettings {
   id: string;
@@ -84,6 +85,7 @@ export default function Settings() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { setLanguage: setI18nLanguage, supportedLanguages } = useTranslation();
   const [activeTab, setActiveTab] = useState('profile');
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -766,7 +768,10 @@ export default function Settings() {
                       <Label htmlFor="language">Language</Label>
                       <Select
                         value={preferencesForm.language}
-                        onValueChange={(value) => updatePreference('language', value)}
+                        onValueChange={(value) => {
+                          updatePreference('language', value);
+                          setI18nLanguage(value);
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue />

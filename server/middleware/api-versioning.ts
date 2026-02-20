@@ -53,10 +53,16 @@ export function extractVersion(req: Request): ApiVersion {
     return urlMatch[1] as ApiVersion;
   }
 
-  // Check header
+  // Check X-API-Version header
   const headerVersion = req.headers[VERSION_HEADERS.REQUEST_VERSION.toLowerCase()] as string;
   if (headerVersion && Object.values(API_VERSIONS).includes(headerVersion as ApiVersion)) {
     return headerVersion as ApiVersion;
+  }
+
+  // Check Accept-Version header (standard alternative)
+  const acceptVersion = req.headers['accept-version'] as string;
+  if (acceptVersion && Object.values(API_VERSIONS).includes(acceptVersion as ApiVersion)) {
+    return acceptVersion as ApiVersion;
   }
 
   // Check query parameter (for debugging)
@@ -123,6 +129,12 @@ export function apiVersioning(options?: {
         message: `API version '${version}' is not supported`,
         supportedVersions: Object.values(API_VERSIONS).filter((v) => v.startsWith('v')),
       });
+    }
+
+    // Rewrite /api/v1/... URLs to /api/... so existing route handlers match
+    if (req.path.match(/^\/api\/v\d+\//)) {
+      (req as any).originalPath = req.path;
+      req.url = req.url.replace(/^\/api\/v\d+\//, '/api/');
     }
 
     // Set response headers

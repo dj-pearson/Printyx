@@ -48,6 +48,7 @@ import { ReportViewer } from '@/components/reports/ReportViewer';
 import { DashboardCharts } from '@/components/charts/InteractiveCharts';
 import { getThemeForCategory, THEME_CONFIG } from '@/lib/brandTheme';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // Types for the new reporting architecture
 interface ReportDefinition {
@@ -526,17 +527,16 @@ export default function EnhancedReportsHub() {
 
           {/* Empty State */}
           {!reportsLoading && filteredReports.length === 0 && (
-            <Card className="p-8">
-              <div className="text-center">
-                <BarChart3 className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No reports found</h3>
-                <p className="text-gray-500">
-                  {dashboardState.searchQuery
-                    ? 'Try adjusting your search terms or filters'
-                    : 'No reports are available for the selected category'}
-                </p>
-              </div>
-            </Card>
+            <EmptyState
+              icon={BarChart3}
+              title="No reports found"
+              description={
+                dashboardState.searchQuery
+                  ? 'Try adjusting your search terms or filters.'
+                  : 'No reports are available for the selected category.'
+              }
+              type={dashboardState.searchQuery ? 'search' : 'default'}
+            />
           )}
         </div>
       </div>

@@ -29,6 +29,7 @@ import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthInd
 import { sanitizeEmail, sanitizeInput, PasswordSchema, EmailSchema } from '@/lib/validations';
 import { formatAuthError } from '@/lib/auth-utils';
 import { Printer, ArrowRight, ArrowLeft, CheckCircle, Eye, EyeOff, Mail } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Link } from 'wouter';
 
 const signupSchema = z
@@ -94,6 +95,7 @@ const TIMEZONES = [
 ];
 
 export default function Signup() {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { signup } = useAuthContext();
   const [currentStep, setCurrentStep] = useState(1);
@@ -308,7 +310,11 @@ export default function Signup() {
 
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
+                aria-label="Create account"
+              >
                 {/* Step 1: Company Information */}
                 {currentStep === 1 && (
                   <div className="space-y-4">
@@ -473,6 +479,7 @@ export default function Signup() {
                               <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                               >
                                 {showPassword ? (

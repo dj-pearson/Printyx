@@ -237,6 +237,28 @@ const data = await db.query.customers.findMany();
 
 ## API Development
 
+### API Versioning
+
+All API endpoints support versioning via URL prefix or request header:
+
+```
+# URL prefix (recommended)
+GET /api/v1/leads          → routes to /api/leads handler
+POST /api/v1/customers     → routes to /api/customers handler
+
+# Header-based
+GET /api/leads
+X-API-Version: v1          # or Accept-Version: v1
+
+# Version info
+GET /api/versions          → returns supported versions and deprecation info
+```
+
+**Current version**: v1 (default)
+**Version resolution priority**: URL path > X-API-Version header > Accept-Version header > default (v1)
+**Response header**: All responses include `X-API-Version` header
+**Deprecation policy**: Deprecated versions include `Deprecation` and `Sunset` headers
+
 ### RESTful Conventions
 
 ```

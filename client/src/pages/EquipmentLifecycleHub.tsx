@@ -67,6 +67,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
+import { EmptyState } from '@/components/ui/empty-state';
+import { TableSkeleton, ListSkeleton, LoadingSpinner } from '@/components/ui/skeletons';
 
 // Types
 type EquipmentLifecycleStage = {
@@ -1249,12 +1251,16 @@ export default function EquipmentLifecycleHub() {
                   </CardHeader>
                   <CardContent>
                     {stagesLoading ? (
-                      <p className="text-center py-4 text-muted-foreground">Loading activity...</p>
-                    ) : recentActivity.length === 0 ? (
-                      <div className="text-center py-8">
-                        <Activity className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
-                        <p className="text-muted-foreground">No recent activity</p>
+                      <div className="py-4">
+                        <ListSkeleton count={3} />
                       </div>
+                    ) : recentActivity.length === 0 ? (
+                      <EmptyState
+                        icon={Activity}
+                        title="No recent activity"
+                        description="Activity will appear here as equipment progresses through lifecycle stages."
+                        className="py-8"
+                      />
                     ) : (
                       <div className="space-y-3">
                         {recentActivity.map((activity) => (
@@ -1411,19 +1417,20 @@ export default function EquipmentLifecycleHub() {
               </CardHeader>
               <CardContent>
                 {stagesLoading ? (
-                  <p className="text-center py-8 text-muted-foreground">Loading...</p>
-                ) : lifecycleStages.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Package className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No equipment found</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Create a purchase order to start tracking equipment
-                    </p>
-                    <Button onClick={() => setIsPODialogOpen(true)}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Purchase Order
-                    </Button>
+                  <div className="py-4">
+                    <ListSkeleton count={4} />
                   </div>
+                ) : lifecycleStages.length === 0 ? (
+                  <EmptyState
+                    icon={Package}
+                    title="No equipment found"
+                    description="Create a purchase order to start tracking equipment."
+                    action={{
+                      label: 'Create Purchase Order',
+                      onClick: () => setIsPODialogOpen(true),
+                      icon: Plus,
+                    }}
+                  />
                 ) : (
                   <div className="space-y-3">
                     {lifecycleStages.map((stage) => (
@@ -1522,17 +1529,20 @@ export default function EquipmentLifecycleHub() {
               </CardHeader>
               <CardContent>
                 {poLoading ? (
-                  <p className="text-center py-8 text-muted-foreground">Loading orders...</p>
-                ) : purchaseOrders.length === 0 ? (
-                  <div className="text-center py-12">
-                    <ShoppingCart className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No purchase orders</h3>
-                    <p className="text-muted-foreground mb-4">Create your first purchase order</p>
-                    <Button onClick={() => setIsPODialogOpen(true)}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Purchase Order
-                    </Button>
+                  <div className="py-4">
+                    <ListSkeleton count={3} />
                   </div>
+                ) : purchaseOrders.length === 0 ? (
+                  <EmptyState
+                    icon={ShoppingCart}
+                    title="No purchase orders"
+                    description="Create your first purchase order to start tracking."
+                    action={{
+                      label: 'Create Purchase Order',
+                      onClick: () => setIsPODialogOpen(true),
+                      icon: Plus,
+                    }}
+                  />
                 ) : (
                   <div className="space-y-3">
                     {purchaseOrders.map((po) => (
@@ -1587,17 +1597,20 @@ export default function EquipmentLifecycleHub() {
               </CardHeader>
               <CardContent>
                 {deliveryLoading ? (
-                  <p className="text-center py-8 text-muted-foreground">Loading deliveries...</p>
-                ) : deliverySchedules.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Truck className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No deliveries scheduled</h3>
-                    <p className="text-muted-foreground mb-4">Schedule your first delivery</p>
-                    <Button onClick={() => setIsDeliveryDialogOpen(true)}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Schedule Delivery
-                    </Button>
+                  <div className="py-4">
+                    <ListSkeleton count={3} />
                   </div>
+                ) : deliverySchedules.length === 0 ? (
+                  <EmptyState
+                    icon={Truck}
+                    title="No deliveries scheduled"
+                    description="Schedule your first delivery to track shipments."
+                    action={{
+                      label: 'Schedule Delivery',
+                      onClick: () => setIsDeliveryDialogOpen(true),
+                      icon: Plus,
+                    }}
+                  />
                 ) : (
                   <div className="space-y-3">
                     {deliverySchedules.map((delivery) => (
@@ -1657,17 +1670,20 @@ export default function EquipmentLifecycleHub() {
               </CardHeader>
               <CardContent>
                 {installationsLoading ? (
-                  <p className="text-center py-8 text-muted-foreground">Loading installations...</p>
-                ) : installations.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Wrench className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No installations scheduled</h3>
-                    <p className="text-muted-foreground mb-4">Schedule your first installation</p>
-                    <Button onClick={() => setIsInstallationDialogOpen(true)}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Schedule Installation
-                    </Button>
+                  <div className="py-4">
+                    <ListSkeleton count={3} />
                   </div>
+                ) : installations.length === 0 ? (
+                  <EmptyState
+                    icon={Wrench}
+                    title="No installations scheduled"
+                    description="Schedule your first installation."
+                    action={{
+                      label: 'Schedule Installation',
+                      onClick: () => setIsInstallationDialogOpen(true),
+                      icon: Plus,
+                    }}
+                  />
                 ) : (
                   <div className="space-y-3">
                     {installations.map((installation) => (
@@ -1736,15 +1752,15 @@ export default function EquipmentLifecycleHub() {
               </CardHeader>
               <CardContent>
                 {assetsLoading ? (
-                  <p className="text-center py-8 text-muted-foreground">Loading assets...</p>
-                ) : assets.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Target className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No assets tracked</h3>
-                    <p className="text-muted-foreground">
-                      Assets will appear here once equipment is installed
-                    </p>
+                  <div className="py-4">
+                    <ListSkeleton count={3} />
                   </div>
+                ) : assets.length === 0 ? (
+                  <EmptyState
+                    icon={Target}
+                    title="No assets tracked"
+                    description="Assets will appear here once equipment is installed."
+                  />
                 ) : (
                   <div className="space-y-3">
                     {assets.map((asset) => (

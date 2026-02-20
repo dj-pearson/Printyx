@@ -79,11 +79,11 @@ spec:
           # Resource limits and requests
           resources:
             requests:
-              cpu: '100m'
+              cpu: '250m'
               memory: '256Mi'
             limits:
-              cpu: '1000m'
-              memory: '1Gi'
+              cpu: '500m'
+              memory: '512Mi'
 
           # Liveness probe - is the container alive?
           livenessProbe:

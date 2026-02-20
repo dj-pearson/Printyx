@@ -126,6 +126,7 @@ import printCostCalculatorRoutes from './routes-print-cost-calculator';
 import contentMarketingRoutes from './routes-content-marketing';
 import seoRoutes from './routes-seo';
 import { registerHealthRoutes } from './routes/health-routes';
+import apiKeyRoutes from './routes/api-key-routes';
 import integrationRoutes from './integrations/routes';
 import integrationHubRoutes from './routes-integration-hub';
 import { createModuleLogger } from './lib/logger';
@@ -159,6 +160,20 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── Mobile Remote Logging (no auth required, must be early) ──────
   app.use('/api/mobile-logs', mobileLogsRoutes);
+
+  // ─── Client Error Logging (accepts errors from PageErrorBoundary / SectionErrorBoundary) ──
+  app.post('/api/client-errors', (req, res) => {
+    const { message, stack, componentStack, page, section, url, timestamp } = req.body || {};
+    console.error('[Client Error]', {
+      message,
+      page: page || section,
+      url,
+      timestamp,
+      stack: stack?.substring(0, 500),
+      componentStack: componentStack?.substring(0, 300),
+    });
+    res.status(204).end();
+  });
 
   // ─── Auth & Trial ──────────────────────────────────────────────────
   registerAuthCoreRoutes(app);
@@ -232,6 +247,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.post('/api/user/avatar', avatarUpload.single('avatar'), uploadAvatar);
   app.get('/api/user/export', exportUserData);
   app.delete('/api/user/delete', deleteUserAccount);
+
+  // ─── API Key Management ──────────────────────────────────────────
+  app.use('/api/api-keys', requireAuth, apiKeyRoutes);
 
   // ─── Integrations ─────────────────────────────────────────────────
   registerIntegrationRoutes(app);
