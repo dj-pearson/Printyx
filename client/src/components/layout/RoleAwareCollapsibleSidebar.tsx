@@ -28,6 +28,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   LayoutDashboard,
   Target,
@@ -566,11 +567,43 @@ export function RoleAwareCollapsibleSidebar({
 }: RoleAwareCollapsibleSidebarProps) {
   const { user, isAuthenticated } = useAuth();
   const { permissions, level, isPlatformUser } = usePermissions();
+  const { t } = useTranslation();
   const [location] = useLocation();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [userExpandedSections, setUserExpandedSections] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [compactMode, setCompactMode] = useState(false);
+
+  // i18n key map for top-level navigation sections
+  const NAV_I18N: Record<string, string> = {
+    dashboard: 'nav.dashboard',
+    'platform-admin-hub': 'nav.platformAdminHub',
+    'tenant-org-management': 'nav.tenantOrganization',
+    'user-access-management': 'nav.userAccess',
+    'system-operations': 'nav.systemOperations',
+    'platform-features': 'nav.platformFeatures',
+    crm: 'nav.salesHub',
+    service: 'nav.serviceHub',
+    products: 'nav.productHub',
+    equipment: 'nav.equipmentLifecycle',
+    billing: 'nav.billingHub',
+    reports: 'nav.reports',
+    tasks: 'nav.taskManagement',
+    'ai-hub': 'nav.aiHub',
+    'knowledge-base': 'nav.knowledgeBase',
+    'integrations-hub': 'nav.integrations',
+    'system-admin': 'nav.systemAdministration',
+    customers: 'nav.customersCRM',
+    settings: 'nav.settings',
+  };
+
+  // Translate navigation title using i18n key map, falling back to hardcoded title
+  const navTitle = (id: string, fallback: string) => {
+    const key = NAV_I18N[id];
+    if (!key) return fallback;
+    const translated = t(key);
+    return translated !== key ? translated : fallback;
+  };
 
   // Use role from user object for display
   const userRole = user?.role;
@@ -727,7 +760,7 @@ export function RoleAwareCollapsibleSidebar({
             >
               <div className="flex items-center gap-3">
                 <section.icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
-                <span className="font-medium">{section.title}</span>
+                <span className="font-medium">{navTitle(section.id, section.title)}</span>
               </div>
               {isExpanded(section.id) ? (
                 <ChevronDown className="h-4 w-4" />
@@ -765,7 +798,7 @@ export function RoleAwareCollapsibleSidebar({
         >
           <div className="flex items-center gap-3">
             <section.icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
-            <span className="font-medium">{section.title}</span>
+            <span className="font-medium">{navTitle(section.id, section.title)}</span>
           </div>
         </Button>
       </Link>
@@ -874,7 +907,9 @@ export function RoleAwareCollapsibleSidebar({
                                   shouldShowAsActive ? 'text-white' : 'text-slate-600',
                                 )}
                               />
-                              <span className="font-semibold">{section.title}</span>
+                              <span className="font-semibold">
+                                {navTitle(section.id, section.title)}
+                              </span>
                             </div>
                             {isExpanded(section.id) ? (
                               <ChevronDown
@@ -954,7 +989,7 @@ export function RoleAwareCollapsibleSidebar({
                             shouldShowAsActive ? 'text-white' : 'text-slate-800',
                           )}
                         />
-                        <span className="font-semibold">{section.title}</span>
+                        <span className="font-semibold">{navTitle(section.id, section.title)}</span>
                         {shouldShowAsActive && (
                           <Badge className="ml-auto bg-blue-600 text-white text-xs">Active</Badge>
                         )}

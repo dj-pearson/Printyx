@@ -67,6 +67,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { WidgetRenderer } from './widget-components';
+import { SectionErrorBoundary } from '@/components/SectionErrorBoundary';
 import {
   WIDGET_DEFINITIONS,
   getDefaultLayout,
@@ -232,7 +233,9 @@ function SortableWidget({
 
       {/* Widget Content */}
       <div className={cn(isEditMode && 'mt-4 pointer-events-none')}>
-        <WidgetRenderer definition={definition} roleCode={roleCode} />
+        <SectionErrorBoundary name={definition.name}>
+          <WidgetRenderer definition={definition} roleCode={roleCode} />
+        </SectionErrorBoundary>
       </div>
     </div>
   );

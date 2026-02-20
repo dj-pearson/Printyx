@@ -44,6 +44,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/lib/supabase';
 import MainLayout from '@/components/layout/main-layout';
+import { EmptyState } from '@/components/ui/empty-state';
+import { TableSkeleton } from '@/components/ui/skeletons';
 import { useLocation } from 'wouter';
 import { useAuthContext } from '@/providers/AuthProvider';
 import {
@@ -974,9 +976,41 @@ export default function LeadsManagement() {
 
         {/* Leads Data */}
         {isLoading ? (
-          <div className="flex items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-          </div>
+          <Card>
+            <CardContent className="p-6">
+              <TableSkeleton rows={6} columns={5} />
+            </CardContent>
+          </Card>
+        ) : filteredLeads.length === 0 ? (
+          <EmptyState
+            icon={Target}
+            title="No leads found"
+            description={
+              searchTerm || statusFilter !== 'all' || sourceFilter !== 'all'
+                ? 'No leads match your current filters. Try adjusting your search or filters.'
+                : 'Create your first lead to start building your pipeline.'
+            }
+            type={
+              searchTerm || statusFilter !== 'all' || sourceFilter !== 'all' ? 'search' : 'default'
+            }
+            action={{
+              label:
+                searchTerm || statusFilter !== 'all' || sourceFilter !== 'all'
+                  ? 'Clear filters'
+                  : 'Add Lead',
+              onClick: () => {
+                if (searchTerm || statusFilter !== 'all' || sourceFilter !== 'all') {
+                  setSearchTerm('');
+                  setStatusFilter('all');
+                  setSourceFilter('all');
+                } else {
+                  setIsCreateOpen(true);
+                }
+              },
+              icon:
+                searchTerm || statusFilter !== 'all' || sourceFilter !== 'all' ? undefined : Plus,
+            }}
+          />
         ) : viewMode === 'table' ? (
           <Card className="hidden lg:block">
             <CardContent className="p-0">

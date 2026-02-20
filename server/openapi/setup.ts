@@ -25,6 +25,22 @@ function getOpenApiSpec(): OpenAPIV3.Document {
  * @param app Express application
  */
 export function setupOpenApi(app: Express): void {
+  // ── Alias routes for AC compliance ──────────────────────────────
+
+  // /api-docs → Swagger UI (alias)
+  app.get('/api-docs', (req: Request, res: Response) => {
+    res.redirect(301, '/api/docs');
+  });
+
+  // /api-docs/spec.json → OpenAPI JSON spec (alias)
+  app.get('/api-docs/spec.json', (req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.json(getOpenApiSpec());
+  });
+
+  // ── Primary routes ────────────────────────────────────────────────
+
   // Serve OpenAPI JSON spec
   app.get('/api/docs/openapi.json', (req: Request, res: Response) => {
     res.setHeader('Content-Type', 'application/json');

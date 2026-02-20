@@ -8683,3 +8683,44 @@ export const mobileAppLogs = pgTable('mobile_app_logs', {
 export const insertMobileAppLogSchema = createInsertSchema(mobileAppLogs);
 export type MobileAppLog = typeof mobileAppLogs.$inferSelect;
 export type InsertMobileAppLog = typeof mobileAppLogs.$inferInsert;
+
+// ============================================================================
+// IN-APP USER NOTIFICATIONS
+// ============================================================================
+
+export const userNotificationPriorityEnum = pgEnum('user_notification_priority', [
+  'critical',
+  'high',
+  'medium',
+  'low',
+]);
+
+export const userNotificationCategoryEnum = pgEnum('user_notification_category', [
+  'service',
+  'billing',
+  'inventory',
+  'system',
+  'customer',
+]);
+
+export const userNotifications = pgTable('user_notifications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  type: varchar('type', { length: 50 }).notNull(),
+  priority: userNotificationPriorityEnum('priority').notNull().default('medium'),
+  category: userNotificationCategoryEnum('category').notNull().default('system'),
+  title: varchar('title', { length: 255 }).notNull(),
+  message: text('message').notNull(),
+  read: boolean('read').notNull().default(false),
+  readAt: timestamp('read_at'),
+  actionUrl: varchar('action_url', { length: 500 }),
+  actionLabel: varchar('action_label', { length: 100 }),
+  metadata: jsonb('metadata'),
+  expiresAt: timestamp('expires_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const insertUserNotificationSchema = createInsertSchema(userNotifications);
+export type UserNotification = typeof userNotifications.$inferSelect;
+export type InsertUserNotification = typeof userNotifications.$inferInsert;

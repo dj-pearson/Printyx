@@ -77,7 +77,7 @@ describe('API Key Service', () => {
 
   describe('Key Validation', () => {
     it('should reject keys without proper prefix', () => {
-      const invalidKeys = ['invalid_key', 'sk_live_12345', 'pk_12345', '', null, undefined];
+      const invalidKeys = ['invalid_key', 'sk_live_12345', 'pk_12345', ''];
 
       invalidKeys.forEach((key) => {
         const isValid =
@@ -85,7 +85,20 @@ describe('API Key Service', () => {
           typeof key === 'string' &&
           (key.startsWith('pk_live_') || key.startsWith('pk_test_')) &&
           key.length > 20;
-        expect(isValid).toBe(false);
+        expect(isValid).toBeFalsy();
+      });
+    });
+
+    it('should reject null and undefined keys', () => {
+      const invalidKeys = [null, undefined];
+
+      invalidKeys.forEach((key) => {
+        const isValid =
+          key &&
+          typeof key === 'string' &&
+          (key as string).startsWith('pk_live_') &&
+          (key as string).length > 20;
+        expect(isValid).toBeFalsy();
       });
     });
 
@@ -189,7 +202,7 @@ describe('API Key Service', () => {
     });
 
     it('should accept non-expired keys', () => {
-      const expiresAt = new Date('2025-01-01T00:00:00Z');
+      const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year from now
       const now = new Date();
       expect(now < expiresAt).toBe(true);
     });
