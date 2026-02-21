@@ -922,4 +922,55 @@ export function registerOnboardingRoutes(app: Express): void {
   app.get('/api/quotes', searchQuotes);
   app.get('/api/quotes/:quoteId/line-items', getQuoteLineItems);
   app.get('/api/companies/:businessRecordId/contacts', getCompanyContacts);
+
+  // ─── Setup Wizard State ──────────────────────────────────────────
+  // In-memory store for wizard state (keyed by tenantId:userId)
+  const wizardStateStore = new Map<string, any>();
+
+  app.get('/api/onboarding/wizard-state', async (req: Request, res: Response) => {
+    try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId || !tenantId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const key = `${tenantId}:${userId}`;
+      const state = wizardStateStore.get(key) || {
+        currentStep: 0,
+        completedSteps: [],
+        completed: false,
+      };
+
+      res.json(state);
+    } catch (error) {
+      log.error('Error fetching wizard state:', error);
+      res.status(500).json({ message: 'Failed to fetch wizard state' });
+    }
+  });
+
+  app.post('/api/onboarding/wizard-state', async (req: Request, res: Response) => {
+    try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId || !tenantId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+
+      const { currentStep, completedSteps, completed } = req.body;
+      const key = `${tenantId}:${userId}`;
+
+      wizardStateStore.set(key, {
+        currentStep: currentStep ?? 0,
+        completedSteps: completedSteps ?? [],
+        completed: completed ?? false,
+        updatedAt: new Date().toISOString(),
+      });
+
+      res.json({ message: 'Wizard state saved' });
+    } catch (error) {
+      log.error('Error saving wizard state:', error);
+      res.status(500).json({ message: 'Failed to save wizard state' });
+    }
+  });
 }

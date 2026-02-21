@@ -13,6 +13,7 @@
 import pino from 'pino';
 import type { Logger, LoggerOptions, DestinationStream, LogFn } from 'pino';
 import { AsyncLocalStorage } from 'async_hooks';
+import { config } from '../config';
 
 // Types for log context
 export interface LogContext {
@@ -31,8 +32,8 @@ export const logContext = new AsyncLocalStorage<LogContext>();
 // Log levels mapped to Pino levels
 export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal' | 'silent';
 
-// Configuration from environment
-const LOG_LEVEL = (process.env.LOG_LEVEL as LogLevel) || 'info';
+// Configuration from environment (with centralized config fallback)
+const LOG_LEVEL = (process.env.LOG_LEVEL as LogLevel) || config.logging.level;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const APP_NAME = process.env.APP_NAME || 'printyx';
 const APP_VERSION = process.env.APP_VERSION || '1.0.0';

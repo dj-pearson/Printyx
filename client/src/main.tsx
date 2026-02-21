@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import { Component, ErrorInfo, ReactNode } from 'react';
+import * as Sentry from '@sentry/react';
 import App from './App';
 import './index.css';
 import './i18n/config'; // Initialize i18n before rendering
@@ -9,7 +10,43 @@ import { queryClient } from '@/lib/queryClient';
 import { initializePWA } from '@/lib/pwa';
 import { getApiUrl } from '@/lib/config';
 
-// Error Boundary to catch React rendering errors
+// Initialize Sentry for frontend error tracking
+const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
+if (SENTRY_DSN) {
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    environment: import.meta.env.MODE || 'development',
+    release: import.meta.env.VITE_APP_VERSION || '1.0.0',
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false }),
+    ],
+    tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+    beforeSend(event) {
+      // Strip sensitive data from breadcrumbs
+      if (event.breadcrumbs) {
+        event.breadcrumbs = event.breadcrumbs.map((bc) => {
+          if (bc.data?.url && typeof bc.data.url === 'string') {
+            try {
+              const url = new URL(bc.data.url, window.location.origin);
+              url.searchParams.delete('token');
+              url.searchParams.delete('key');
+              bc.data.url = url.toString();
+            } catch {
+              // keep original
+            }
+          }
+          return bc;
+        });
+      }
+      return event;
+    },
+  });
+}
+
+// Error Boundary to catch React rendering errors (with Sentry capture)
 class ErrorBoundary extends Component<
   { children: ReactNode },
   { hasError: boolean; error?: Error }
@@ -20,19 +57,20 @@ class ErrorBoundary extends Component<
   }
 
   static getDerivedStateFromError(error: Error) {
-    console.error('❌ React Error Boundary caught error:', error);
+    console.error('React Error Boundary caught error:', error);
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('❌ React Error Details:', error, errorInfo);
+    console.error('React Error Details:', error, errorInfo);
+    Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
   }
 
   render() {
     if (this.state.hasError) {
       return (
         <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-          <h1>⚠️ Application Error</h1>
+          <h1>Application Error</h1>
           <p>Something went wrong. Please refresh the page.</p>
           <pre style={{ background: '#f5f5f5', padding: '10px', overflow: 'auto' }}>
             {this.state.error?.message}

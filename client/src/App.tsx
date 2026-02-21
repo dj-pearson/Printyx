@@ -275,10 +275,13 @@ const CustomerAccessManagement = React.lazy(() => import('@/pages/CustomerAccess
 const ServiceHub = React.lazy(() => import('@/pages/ServiceHub'));
 const ApolloLeadEnrichment = React.lazy(() => import('@/pages/ApolloLeadEnrichment'));
 const OnboardingDashboard = React.lazy(() => import('@/pages/OnboardingDashboard'));
+const SetupWizard = React.lazy(() => import('@/pages/SetupWizard'));
 const OnboardingDetails = React.lazy(() => import('@/pages/OnboardingDetails'));
 const EnhancedOnboardingForm = React.lazy(() => import('@/pages/EnhancedOnboardingForm'));
 const ComprehensiveOnboardingForm = React.lazy(() => import('@/pages/ComprehensiveOnboardingForm'));
 const RoleManagement = React.lazy(() => import('@/pages/RoleManagement'));
+const AuditLogViewer = React.lazy(() => import('@/pages/AuditLogViewer'));
+const ApiKeyManagement = React.lazy(() => import('@/pages/ApiKeyManagement'));
 const GPT5Dashboard = React.lazy(() => import('@/pages/GPT5Dashboard'));
 const DocumentBuilder = React.lazy(() => import('@/pages/DocumentBuilder'));
 const TechnicianManagement = React.lazy(() => import('@/pages/TechnicianManagement'));
@@ -766,6 +769,7 @@ function Router() {
               <Route path="/pricing-management" component={PricingManagement} />
               <Route path="/tenant-setup" component={TenantSetup} />
               <Route path="/settings" component={Settings} />
+              <Route path="/settings/api-keys" component={ApiKeyManagement} />
               <Route path="/monitoring-clients" component={MonitoringClients} />
               <Route path="/device-monitoring" component={DeviceMonitoring} />
               <Route path="/oid-management" component={OidManagement} />
@@ -947,6 +951,9 @@ function Router() {
               <Route path="/admin/mobile-logs">
                 {() => <ProtectedRoute component={MobileLogsViewer} platformOnly />}
               </Route>
+              <Route path="/admin/audit-logs">
+                {() => <ProtectedRoute component={AuditLogViewer} platformOnly />}
+              </Route>
               <Route path="/erp-integration" component={ERPIntegration} />
               <Route path="/customer-access-management" component={CustomerAccessManagement} />
               <Route path="/manufacturer-integration" component={ManufacturerIntegration} />
@@ -978,6 +985,7 @@ function Router() {
               <Route path="/privacy" component={PrivacyPolicy} />
               <Route path="/terms" component={TermsAndConditions} />
               <Route path="/accessibility" component={AccessibilityStatement} />
+              <Route path="/setup-wizard" component={SetupWizard} />
               <Route path="/onboarding" component={OnboardingDashboard} />
               <Route path="/onboarding/new" component={EnhancedOnboardingForm} />
               <Route path="/onboarding/enhanced" component={EnhancedOnboardingForm} />

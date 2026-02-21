@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import { db } from './db';
-import { businessRecords, deals, businessRecordActivities, quotes } from '@shared/schema';
+import {
+  businessRecords,
+  deals,
+  businessRecordActivities,
+  quotes,
+  invoices,
+  equipment,
+} from '@shared/schema';
 import { ilike, or, and, eq, sql } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import { createModuleLogger } from './lib/logger';
@@ -14,7 +21,7 @@ interface TenantRequest extends Request {
 
 interface SearchResult {
   id: string;
-  type: 'customer' | 'lead' | 'deal' | 'activity' | 'quote';
+  type: 'customer' | 'lead' | 'deal' | 'activity' | 'quote' | 'invoice' | 'equipment';
   title: string;
   subtitle?: string;
   path?: string;
@@ -261,6 +268,118 @@ router.get('/api/universal-search', async (req: TenantRequest, res: Response) =>
     } catch (error) {
       // Quotes table might not exist in all setups, continue without it
       log.warn('Could not search quotes:', error);
+    }
+
+    // Search invoices
+    try {
+      const invoiceResults = await db
+        .select({
+          id: invoices.id,
+          invoiceNumber: invoices.invoiceNumber,
+          invoiceDate: invoices.invoiceDate,
+          totalAmount: invoices.totalAmount,
+          balanceDue: invoices.balanceDue,
+          invoiceType: invoices.invoiceType,
+          companyName: businessRecords.companyName,
+        })
+        .from(invoices)
+        .leftJoin(businessRecords, eq(invoices.customerId, businessRecords.id))
+        .where(
+          and(
+            eq(invoices.tenantId, tenantId),
+            or(
+              ilike(invoices.invoiceNumber, searchTerm),
+              ilike(businessRecords.companyName, searchTerm),
+              ilike(invoices.poNumber, searchTerm),
+            ),
+          ),
+        )
+        .limit(limit);
+
+      for (const invoice of invoiceResults) {
+        const title = `Invoice ${invoice.invoiceNumber || invoice.id}`;
+        const subtitle = [
+          invoice.companyName,
+          invoice.invoiceDate
+            ? `Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' • ');
+
+        results.push({
+          id: `invoice-${invoice.id}`,
+          type: 'invoice',
+          title,
+          subtitle,
+          path: `/invoices?id=${invoice.id}`,
+          metadata: {
+            value: invoice.totalAmount
+              ? `$${Number(invoice.totalAmount).toLocaleString()}`
+              : undefined,
+            status: invoice.invoiceType || undefined,
+          },
+          relevance: 7,
+        });
+      }
+    } catch (error) {
+      log.warn('Could not search invoices:', error);
+    }
+
+    // Search equipment
+    try {
+      const equipmentResults = await db
+        .select({
+          id: equipment.id,
+          serialNumber: equipment.serialNumber,
+          modelNumber: equipment.modelNumber,
+          manufacturer: equipment.manufacturer,
+          description: equipment.description,
+          equipmentStatus: equipment.equipmentStatus,
+          companyName: businessRecords.companyName,
+        })
+        .from(equipment)
+        .leftJoin(businessRecords, eq(equipment.customerId, businessRecords.id))
+        .where(
+          and(
+            eq(equipment.tenantId, tenantId),
+            or(
+              ilike(equipment.serialNumber, searchTerm),
+              ilike(equipment.modelNumber, searchTerm),
+              ilike(equipment.manufacturer, searchTerm),
+              ilike(equipment.description, searchTerm),
+              ilike(businessRecords.companyName, searchTerm),
+            ),
+          ),
+        )
+        .limit(limit);
+
+      for (const equip of equipmentResults) {
+        const title =
+          [equip.manufacturer, equip.modelNumber].filter(Boolean).join(' ') ||
+          equip.serialNumber ||
+          'Unknown Equipment';
+        const subtitle = [
+          equip.companyName,
+          equip.serialNumber ? `S/N: ${equip.serialNumber}` : null,
+        ]
+          .filter(Boolean)
+          .join(' • ');
+
+        results.push({
+          id: `equipment-${equip.id}`,
+          type: 'equipment',
+          title,
+          subtitle,
+          path: `/equipment?id=${equip.id}`,
+          metadata: {
+            status: equip.equipmentStatus || undefined,
+          },
+          relevance: 6,
+        });
+      }
+    } catch (error) {
+      log.warn('Could not search equipment:', error);
     }
 
     // Sort by relevance and limit

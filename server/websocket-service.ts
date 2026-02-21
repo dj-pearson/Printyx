@@ -4,11 +4,80 @@
 // =====================================================================
 
 import { WebSocketServer, WebSocket } from 'ws';
+import type { IncomingMessage } from 'http';
 import { Server } from 'http';
 import { v4 as uuidv4 } from 'uuid';
 import { reportingCache } from './cache-service';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('websocket-service');
+
+/** JWT verification for WebSocket upgrade requests */
+async function verifyWsToken(
+  token: string,
+): Promise<{ userId: string; tenantId: string; permissions: Record<string, boolean> } | null> {
+  try {
+    // Attempt Supabase JWT verification
+    const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+    if (!jwtSecret) {
+      // Fallback: decode JWT payload without verification (dev mode only)
+      if (process.env.NODE_ENV === 'production') {
+        log.error('SUPABASE_JWT_SECRET not set - cannot verify WebSocket JWT in production');
+        return null;
+      }
+      // Dev fallback: decode base64 payload
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+      return {
+        userId: payload.sub || payload.user_id || null,
+        tenantId: payload.app_metadata?.tenantId || payload.tenant_id || null,
+        permissions: {
+          canViewReports: true,
+          canViewKPIs: true,
+          canViewSalesReports: true,
+          canViewServiceReports: true,
+        },
+      };
+    }
+
+    // Verify JWT with secret using dynamic import
+    const { createHmac } = await import('crypto');
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    const [header, payload, signature] = parts;
+    const expectedSig = createHmac('sha256', jwtSecret)
+      .update(`${header}.${payload}`)
+      .digest('base64url');
+
+    if (signature !== expectedSig) {
+      log.warn('WebSocket JWT signature verification failed');
+      return null;
+    }
+
+    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString());
+
+    // Check expiration
+    if (decoded.exp && decoded.exp * 1000 < Date.now()) {
+      log.warn('WebSocket JWT expired');
+      return null;
+    }
+
+    return {
+      userId: decoded.sub || decoded.user_id || null,
+      tenantId: decoded.app_metadata?.tenantId || decoded.tenant_id || null,
+      permissions: {
+        canViewReports: true,
+        canViewKPIs: true,
+        canViewSalesReports: true,
+        canViewServiceReports: true,
+      },
+    };
+  } catch (error) {
+    log.error('WebSocket JWT verification error:', error);
+    return null;
+  }
+}
 
 interface WebSocketClient {
   id: string;
@@ -31,7 +100,14 @@ interface ClientMessage {
 }
 
 interface ServerMessage {
-  type: 'data_update' | 'kpi_update' | 'heartbeat' | 'pong' | 'error' | 'connected';
+  type:
+    | 'data_update'
+    | 'kpi_update'
+    | 'notification'
+    | 'heartbeat'
+    | 'pong'
+    | 'error'
+    | 'connected';
   channel?: string;
   data?: any;
   timestamp?: number;
@@ -56,34 +132,89 @@ export class WebSocketService {
     return WebSocketService.instance;
   }
 
-  // Initialize WebSocket server
+  // Initialize WebSocket server with JWT authentication on upgrade
   public initialize(server: Server): void {
-    log.info('🚀 Initializing WebSocket service for real-time updates...');
+    log.info('Initializing WebSocket service for real-time updates...');
 
     this.wss = new WebSocketServer({
-      server,
-      path: '/ws/reporting',
+      noServer: true, // Handle upgrade manually for auth
       clientTracking: true,
     });
 
-    this.wss.on('connection', (socket, request) => {
+    // Intercept HTTP upgrade requests for JWT validation
+    server.on('upgrade', async (request: IncomingMessage, socket, head) => {
+      const url = new URL(request.url || '', `http://${request.headers.host || 'localhost'}`);
+      if (url.pathname !== '/ws/reporting') {
+        return; // Not our path, let other handlers deal with it
+      }
+
+      // Extract JWT from Authorization header or query param
+      const authHeader = request.headers['authorization'];
+      const queryToken = url.searchParams.get('token');
+      const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : queryToken;
+
+      // Also allow legacy userId/tenantId query params for backwards compatibility
+      const legacyUserId = url.searchParams.get('userId');
+      const legacyTenantId = url.searchParams.get('tenantId');
+
+      let authResult: {
+        userId: string;
+        tenantId: string;
+        permissions: Record<string, boolean>;
+      } | null = null;
+
+      if (token) {
+        authResult = await verifyWsToken(token);
+      } else if (legacyUserId && legacyTenantId && process.env.NODE_ENV !== 'production') {
+        // Allow legacy query-param auth in development only
+        authResult = {
+          userId: legacyUserId,
+          tenantId: legacyTenantId,
+          permissions: {
+            canViewReports: true,
+            canViewKPIs: true,
+            canViewSalesReports: true,
+            canViewServiceReports: true,
+          },
+        };
+      }
+
+      if (!authResult || !authResult.userId || !authResult.tenantId) {
+        log.warn('WebSocket upgrade rejected: unauthenticated');
+        socket.write(
+          'HTTP/1.1 401 Unauthorized\r\nContent-Type: text/plain\r\n\r\nAuthentication required',
+        );
+        socket.destroy();
+        return;
+      }
+
+      // Store auth result on the request for handleNewConnection
+      (request as any).__wsAuth = authResult;
+
+      this.wss!.handleUpgrade(request, socket, head, (ws) => {
+        this.wss!.emit('connection', ws, request);
+      });
+    });
+
+    this.wss.on('connection', (socket: WebSocket, request: IncomingMessage) => {
       this.handleNewConnection(socket, request);
     });
 
     this.startHeartbeat();
     this.startDataUpdateLoop();
 
-    log.info('✅ WebSocket service initialized on /ws/reporting');
+    log.info('WebSocket service initialized on /ws/reporting with JWT authentication');
   }
 
-  // Handle new WebSocket connection
+  // Handle new WebSocket connection (auth already verified in upgrade handler)
   private handleNewConnection(socket: WebSocket, request: any): void {
     const clientId = uuidv4();
 
-    // Extract user info from request (you'd implement proper authentication here)
-    const userId = this.extractUserIdFromRequest(request);
-    const tenantId = this.extractTenantIdFromRequest(request);
-    const permissions = this.extractPermissionsFromRequest(request);
+    // Auth was verified during upgrade - extract from request
+    const authData = (request as any).__wsAuth;
+    const userId = authData?.userId || this.extractUserIdFromRequest(request);
+    const tenantId = authData?.tenantId || this.extractTenantIdFromRequest(request);
+    const permissions = authData?.permissions || this.extractPermissionsFromRequest(request);
 
     if (!userId || !tenantId) {
       socket.close(1008, 'Authentication required');
@@ -112,13 +243,18 @@ export class WebSocketService {
       data: {
         clientId,
         serverTime: Date.now(),
-        supportedChannels: ['reports', 'kpis', 'dashboard'],
+        supportedChannels: ['reports', 'kpis', 'dashboard', 'notifications'],
       },
     });
 
     // Set up event handlers
     socket.on('message', (message) => {
       this.handleClientMessage(client, message);
+    });
+
+    // Update heartbeat when client responds to server ping
+    socket.on('pong', () => {
+      client.lastHeartbeat = Date.now();
     });
 
     socket.on('close', () => {
@@ -313,20 +449,31 @@ export class WebSocketService {
     }
   }
 
-  // Start heartbeat to detect disconnected clients
+  // Start heartbeat: server sends ping every 30s, stale connections cleaned up after 90s
   private startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {
       const now = Date.now();
-      const timeout = 60000; // 60 seconds
+      const staleTimeout = 90000; // 90 seconds - clean up stale connections
 
       this.clients.forEach((client, clientId) => {
-        if (now - client.lastHeartbeat > timeout) {
-          log.info(`💀 Client ${clientId} timed out`);
-          client.socket.close();
+        if (now - client.lastHeartbeat > staleTimeout) {
+          log.info(`Client ${clientId} timed out after 90s`);
+          client.socket.close(1001, 'Connection timed out');
           this.clients.delete(clientId);
+          return;
+        }
+
+        // Send server-initiated ping every 30s
+        if (client.socket.readyState === WebSocket.OPEN) {
+          try {
+            client.socket.ping();
+            this.sendToClient(client, { type: 'heartbeat', timestamp: now });
+          } catch {
+            // Client may be disconnecting
+          }
         }
       });
-    }, 30000); // Check every 30 seconds
+    }, 30000); // Every 30 seconds
   }
 
   // Start data update loop for real-time channels
@@ -512,6 +659,52 @@ export class WebSocketService {
     });
 
     return subscriptions;
+  }
+
+  // Broadcast a notification to a specific user via WebSocket
+  public broadcastNotification(userId: string, tenantId: string, notification: any): void {
+    const message: ServerMessage = {
+      type: 'notification',
+      channel: 'notifications',
+      data: notification,
+      timestamp: Date.now(),
+    };
+
+    let delivered = 0;
+    this.clients.forEach((client) => {
+      if (client.userId === userId && client.tenantId === tenantId) {
+        this.sendToClient(client, message);
+        delivered++;
+      }
+    });
+
+    if (delivered > 0) {
+      log.info(`📬 Notification delivered to ${delivered} connection(s) for user ${userId}`);
+    }
+  }
+
+  // Broadcast a notification to all users in a tenant
+  public broadcastTenantNotification(tenantId: string, notification: any): void {
+    const message: ServerMessage = {
+      type: 'notification',
+      channel: 'notifications',
+      data: notification,
+      timestamp: Date.now(),
+    };
+
+    let delivered = 0;
+    this.clients.forEach((client) => {
+      if (client.tenantId === tenantId) {
+        this.sendToClient(client, message);
+        delivered++;
+      }
+    });
+
+    if (delivered > 0) {
+      log.info(
+        `📬 Tenant notification delivered to ${delivered} connection(s) for tenant ${tenantId}`,
+      );
+    }
   }
 
   // Cleanup

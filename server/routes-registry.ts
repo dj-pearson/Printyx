@@ -58,6 +58,7 @@ import { registerServiceAnalysisRoutes } from './routes-service-analysis';
 import { registerContactsRoutes } from './routes-contacts';
 import { registerCompaniesRoutes } from './routes-companies';
 import { registerActivitiesRoutes } from './routes-activities';
+import { registerNotificationRoutes } from './routes-notifications';
 import { registerAutomationRoutes } from './routes-automation';
 import equipmentLifecycleStateMachineRoutes from './routes-equipment-lifecycle-state-machine';
 import equipmentDisposalRoutes from './routes-equipment-disposal';
@@ -66,6 +67,7 @@ import { registerCrmGoalRoutes } from './routes-crm-goals';
 import { registerSavedViewsRoutes } from './routes-saved-views';
 import { registerDealTagRoutes } from './routes-deal-tags';
 import { registerCrmBulkRoutes } from './routes-crm-bulk';
+import { registerBulkOperationsRoutes } from './routes-bulk-operations';
 import { registerRecordLayoutRoutes } from './routes-record-layout';
 import { registerBusinessRecordRoutes } from './routes-business-records';
 import { registerCustomerRoutes } from './routes-customers';
@@ -76,6 +78,7 @@ import { registerAnalyticsRoutes } from './routes-analytics';
 import { registerFinancialRoutes } from './routes-financial';
 import { registerCsvImportRoutes } from './routes-csv-import';
 import { registerCustomReportsRoutes } from './routes-custom-reports';
+import { registerScheduledReportsRoutes } from './routes-scheduled-reports';
 import { registerDashboardLayoutsRoutes } from './routes-dashboard-layouts';
 import { registerSalesforceRoutes } from './routes-salesforce-integration';
 import { registerSalesforceTestRoutes } from './test-salesforce-integration';
@@ -129,6 +132,7 @@ import { registerHealthRoutes } from './routes/health-routes';
 import apiKeyRoutes from './routes/api-key-routes';
 import integrationRoutes from './integrations/routes';
 import integrationHubRoutes from './routes-integration-hub';
+import { registerFeatureFlagRoutes } from './routes-feature-flags';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-registry');
 
@@ -271,10 +275,12 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerSavedViewsRoutes(app);
   registerDealTagRoutes(app);
   registerCrmBulkRoutes(app);
+  registerBulkOperationsRoutes(app);
   registerRecordLayoutRoutes(app);
   registerBusinessRecordRoutes(app);
   registerCsvImportRoutes(app);
   registerCustomReportsRoutes(app);
+  registerScheduledReportsRoutes(app);
   registerDashboardLayoutsRoutes(app);
 
   // ─── Salesforce & Data Enrichment ─────────────────────────────────
@@ -328,6 +334,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   const companyIdRoutes = await import('./routes-company-ids');
   app.use('/api/company-ids', companyIdRoutes.default);
+
+  // ─── Feature Flags ──────────────────────────────────────────────────
+  registerFeatureFlagRoutes(app);
 
   // ─── RBAC & AI ────────────────────────────────────────────────────
   app.use('/api/rbac', enhancedRBACRoutes);
@@ -388,6 +397,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.get('/api/onboarding/export/:id/pdf', exportChecklistPDF);
   app.get('/api/onboarding/export/:id/excel', exportChecklistExcel);
   app.get('/api/onboarding/export/:id/csv', exportChecklistCSV);
+
+  // ─── Notifications ──────────────────────────────────────────────────
+  registerNotificationRoutes(app);
 
   // ─── Monitoring & Service ─────────────────────────────────────────
   registerManufacturerIntegrationRoutes(app);

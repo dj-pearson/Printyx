@@ -3,14 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { VirtualizedDataTable } from '@/components/ui/virtualized-data-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -635,184 +628,183 @@ export default function QuotesManagement() {
                 }
               />
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">
-                        <Checkbox
-                          checked={bulkSelection.isAllSelected}
-                          onCheckedChange={bulkSelection.toggleAll}
-                          aria-label="Select all quotes"
-                        />
-                      </TableHead>
-                      <TableHead>Quote #</TableHead>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Valid Until</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Assigned To</TableHead>
-                      <TableHead className="w-20">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredQuotes.map((quote) => (
-                      <TableRow key={quote.id} className="hover:bg-muted/50">
-                        <TableCell>
-                          <Checkbox
-                            checked={bulkSelection.isSelected(quote.id)}
-                            onCheckedChange={() => bulkSelection.toggleSelection(quote.id)}
-                            aria-label={`Select quote ${quote.proposalNumber}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium text-primary">{quote.proposalNumber}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">{quote.title}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <div className="font-medium">
-                                {quote.customerName || 'Unknown Customer'}
-                              </div>
-                              {quote.contactName && (
-                                <div className="text-xs text-muted-foreground">
-                                  {quote.contactName}
-                                </div>
-                              )}
-                            </div>
+              <VirtualizedDataTable
+                data={filteredQuotes}
+                columns={[
+                  {
+                    id: 'quoteNum',
+                    header: 'Quote #',
+                    cell: (quote: any) => (
+                      <div className="font-medium text-primary">{quote.proposalNumber}</div>
+                    ),
+                  },
+                  {
+                    id: 'title',
+                    header: 'Title',
+                    cell: (quote: any) => <div className="font-medium">{quote.title}</div>,
+                  },
+                  {
+                    id: 'customer',
+                    header: 'Customer',
+                    cell: (quote: any) => (
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">
+                            {quote.customerName || 'Unknown Customer'}
                           </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(quote.status)}</TableCell>
-                        <TableCell>
-                          <div className="font-medium">{formatCurrency(quote.totalAmount)}</div>
-                        </TableCell>
-                        <TableCell>
-                          {quote.validUntil ? (
-                            <div>
-                              <div className="text-sm">{formatDate(quote.validUntil)}</div>
-                              {(() => {
-                                const exp = expiryDisplay(quote.validUntil);
-                                return exp.urgent ? (
-                                  <span className="text-xs text-red-600 font-medium">
-                                    {exp.text}
-                                  </span>
-                                ) : null;
-                              })()}
-                            </div>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">Not set</span>
+                          {quote.contactName && (
+                            <div className="text-xs text-muted-foreground">{quote.contactName}</div>
                           )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm text-muted-foreground">
-                            {relativeDate(quote.createdAt)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-sm">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            {quote.assignedToName || quote.createdByName || 'Unassigned'}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => handleViewQuote(quote.id)}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Quote
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleEditQuote(quote.id)}>
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit Quote
-                              </DropdownMenuItem>
-                              <div className="px-2 py-1">
-                                <DoDEnforcementButton
-                                  recordId={quote.id}
-                                  validationType="quote-to-proposal"
-                                  onValidClick={() => handleCreateProposal(quote.id)}
-                                  variant="ghost"
-                                  size="sm"
-                                  className="w-full justify-start h-8 px-2"
-                                >
-                                  <Wand2 className="h-4 w-4 mr-2" />
-                                  Create Proposal
-                                </DoDEnforcementButton>
-                              </div>
-                              <DropdownMenuSeparator />
-
-                              {quote.status === 'draft' && (
-                                <DropdownMenuItem
-                                  onClick={() => handleStatusChange(quote.id, 'sent')}
-                                >
-                                  <Send className="h-4 w-4 mr-2" />
-                                  Send Quote
-                                </DropdownMenuItem>
-                              )}
-
-                              {quote.status === 'sent' && (
-                                <>
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatusChange(quote.id, 'accepted')}
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Mark Accepted
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => handleStatusChange(quote.id, 'closed_lost')}
-                                  >
-                                    <XCircle className="h-4 w-4 mr-2" />
-                                    Mark Closed Lost
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-
-                              <DropdownMenuSeparator />
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete Quote
-                                  </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Quote</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure you want to delete this quote? This action cannot
-                                      be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => handleDeleteQuote(quote.id)}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    id: 'status',
+                    header: 'Status',
+                    cell: (quote: any) => getStatusBadge(quote.status),
+                  },
+                  {
+                    id: 'total',
+                    header: 'Total',
+                    cell: (quote: any) => (
+                      <div className="font-medium">{formatCurrency(quote.totalAmount)}</div>
+                    ),
+                  },
+                  {
+                    id: 'validUntil',
+                    header: 'Valid Until',
+                    cell: (quote: any) =>
+                      quote.validUntil ? (
+                        <div>
+                          <div className="text-sm">{formatDate(quote.validUntil)}</div>
+                          {(() => {
+                            const exp = expiryDisplay(quote.validUntil);
+                            return exp.urgent ? (
+                              <span className="text-xs text-red-600 font-medium">{exp.text}</span>
+                            ) : null;
+                          })()}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Not set</span>
+                      ),
+                  },
+                  {
+                    id: 'created',
+                    header: 'Created',
+                    cell: (quote: any) => (
+                      <div className="text-sm text-muted-foreground">
+                        {relativeDate(quote.createdAt)}
+                      </div>
+                    ),
+                  },
+                  {
+                    id: 'assignedTo',
+                    header: 'Assigned To',
+                    cell: (quote: any) => (
+                      <div className="flex items-center gap-1 text-sm">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        {quote.assignedToName || quote.createdByName || 'Unassigned'}
+                      </div>
+                    ),
+                  },
+                ]}
+                selectedIds={bulkSelection.selectedIdsSet}
+                onSelectionChange={(ids) => {
+                  const current = bulkSelection.selectedIdsSet;
+                  ids.forEach((id) => {
+                    if (!current.has(id)) bulkSelection.toggleSelection(id as string);
+                  });
+                  current.forEach((id) => {
+                    if (!ids.has(id)) bulkSelection.toggleSelection(id as string);
+                  });
+                }}
+                actions={(quote: any) => (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => handleViewQuote(quote.id)}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Quote
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEditQuote(quote.id)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit Quote
+                      </DropdownMenuItem>
+                      <div className="px-2 py-1">
+                        <DoDEnforcementButton
+                          recordId={quote.id}
+                          validationType="quote-to-proposal"
+                          onValidClick={() => handleCreateProposal(quote.id)}
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start h-8 px-2"
+                        >
+                          <Wand2 className="h-4 w-4 mr-2" />
+                          Create Proposal
+                        </DoDEnforcementButton>
+                      </div>
+                      <DropdownMenuSeparator />
+                      {quote.status === 'draft' && (
+                        <DropdownMenuItem onClick={() => handleStatusChange(quote.id, 'sent')}>
+                          <Send className="h-4 w-4 mr-2" />
+                          Send Quote
+                        </DropdownMenuItem>
+                      )}
+                      {quote.status === 'sent' && (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => handleStatusChange(quote.id, 'accepted')}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Mark Accepted
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleStatusChange(quote.id, 'closed_lost')}
+                          >
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Mark Closed Lost
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      <DropdownMenuSeparator />
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Quote
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Quote</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this quote? This action cannot be
+                              undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteQuote(quote.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                maxHeight={700}
+              />
             )}
           </CardContent>
         </Card>

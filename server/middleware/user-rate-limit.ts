@@ -15,6 +15,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { getUserId, isAuthenticated } from '../utils/auth-helpers';
 import { createModuleLogger } from '../lib/logger';
+import { config } from '../config';
 const log = createModuleLogger('user-rate-limit');
 
 // Rate limit configuration by category
@@ -28,65 +29,66 @@ interface RateLimitConfig {
 }
 
 // Default configurations for different endpoint types
+// Values sourced from centralized config with message strings added here
 export const RATE_LIMIT_CONFIGS = {
   /** Authentication endpoints (login, signup, password reset, MFA) */
   auth: {
-    limit: 5,
-    windowMs: 60 * 1000, // 1 minute
+    limit: config.rateLimits.auth.limit,
+    windowMs: config.rateLimits.auth.windowMs,
     message: 'Too many authentication attempts, please try again later',
   },
   /** Billing and subscription endpoints */
   billing: {
-    limit: 20,
-    windowMs: 60 * 1000, // 1 minute
+    limit: config.rateLimits.billing.limit,
+    windowMs: config.rateLimits.billing.windowMs,
     message: 'Too many billing requests, please try again later',
   },
   /** Mutation endpoints (POST/PUT/PATCH/DELETE) */
   mutation: {
-    limit: 100,
-    windowMs: 60 * 1000, // 1 minute
+    limit: config.rateLimits.mutation.limit,
+    windowMs: config.rateLimits.mutation.windowMs,
     message: 'Too many write requests, please try again later',
   },
   /** Read endpoints (GET) */
   read: {
-    limit: 200,
-    windowMs: 60 * 1000, // 1 minute
+    limit: config.rateLimits.read.limit,
+    windowMs: config.rateLimits.read.windowMs,
     message: 'Too many read requests, please try again later',
   },
   /** General API endpoints */
   general: {
-    limit: 500,
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: config.rateLimits.general.limit,
+    windowMs: config.rateLimits.general.windowMs,
     message: 'Too many requests, please try again later',
   },
   /** Search and autocomplete endpoints */
   search: {
-    limit: 300,
-    windowMs: 15 * 60 * 1000, // 15 minutes
+    limit: config.rateLimits.search.limit,
+    windowMs: config.rateLimits.search.windowMs,
     message: 'Too many search requests, please try again later',
   },
   /** Export/download operations */
   export: {
-    limit: 20,
-    windowMs: 60 * 60 * 1000, // 1 hour
+    limit: config.rateLimits.export.limit,
+    windowMs: config.rateLimits.export.windowMs,
     message: 'Too many export requests, please try again later',
   },
   /** AI/expensive operations */
   ai: {
-    limit: 50,
-    windowMs: 60 * 60 * 1000, // 1 hour
+    limit: config.rateLimits.ai.limit,
+    windowMs: config.rateLimits.ai.windowMs,
     message: 'AI request limit reached, please try again later',
   },
   /** Bulk operations */
   bulk: {
-    limit: 10,
-    windowMs: 60 * 60 * 1000, // 1 hour
+    limit: config.rateLimits.bulk.limit,
+    windowMs: config.rateLimits.bulk.windowMs,
     message: 'Bulk operation limit reached, please try again later',
   },
   /** Reports/analytics */
   reports: {
-    limit: 100,
-    windowMs: 60 * 60 * 1000, // 1 hour
+    limit: config.rateLimits.reports.limit,
+    windowMs: config.rateLimits.reports.windowMs,
     message: 'Report request limit reached, please try again later',
   },
 } as const;

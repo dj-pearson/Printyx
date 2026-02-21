@@ -1,0 +1,191 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: printyx-db-backup
+  namespace: printyx
+  labels:
+    app.kubernetes.io/name: printyx
+    app.kubernetes.io/component: backup
+spec:
+  # Run daily at 2:00 AM UTC
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 600
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: printyx
+            app.kubernetes.io/component: backup
+        spec:
+          serviceAccountName: printyx-backup-sa
+          restartPolicy: OnFailure
+          containers:
+            - name: db-backup
+              image: google/cloud-sdk:slim
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+
+                  echo "=== Printyx Database Backup ==="
+                  echo "Started: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+
+                  # Install PostgreSQL client
+                  apt-get update -qq && apt-get install -y -qq postgresql-client > /dev/null 2>&1
+
+                  TIMESTAMP=$(date -u +"%Y-%m-%d-%H%M%S")
+                  BACKUP_FILE="printyx-backup-${TIMESTAMP}.sql.gz"
+                  GCS_PATH="gs://${BACKUP_GCS_BUCKET}/printyx-backup/${BACKUP_FILE}"
+
+                  # Run pg_dump and compress
+                  echo "Backing up main database..."
+                  export PGPASSWORD="${DB_PASSWORD}"
+                  pg_dump \
+                    --host="${DB_HOST}" \
+                    --port="${DB_PORT}" \
+                    --username="${DB_USER}" \
+                    --dbname="${DB_NAME}" \
+                    --format=plain \
+                    --no-owner \
+                    --no-privileges \
+                    | gzip -9 > "/tmp/${BACKUP_FILE}"
+
+                  FILE_SIZE=$(du -h "/tmp/${BACKUP_FILE}" | cut -f1)
+                  echo "Backup size: ${FILE_SIZE}"
+
+                  # Upload to GCS
+                  echo "Uploading to GCS: ${GCS_PATH}"
+                  gsutil cp "/tmp/${BACKUP_FILE}" "${GCS_PATH}"
+                  gsutil stat "${GCS_PATH}" > /dev/null
+
+                  # Forecasting database backup
+                  FORECAST_FILE="printyx-forecast-backup-${TIMESTAMP}.sql.gz"
+                  FORECAST_GCS="gs://${BACKUP_GCS_BUCKET}/printyx-forecast-backup/${FORECAST_FILE}"
+
+                  echo "Backing up forecasting database..."
+                  pg_dump \
+                    --host="${DB_HOST}" \
+                    --port="${DB_PORT}" \
+                    --username="${DB_USER}" \
+                    --dbname="${DB_NAME}" \
+                    --schema=forecasting \
+                    --format=plain \
+                    --no-owner \
+                    --no-privileges \
+                    | gzip -9 > "/tmp/${FORECAST_FILE}" || echo "Forecasting schema backup skipped (may not exist)"
+
+                  if [ -f "/tmp/${FORECAST_FILE}" ] && [ -s "/tmp/${FORECAST_FILE}" ]; then
+                    gsutil cp "/tmp/${FORECAST_FILE}" "${FORECAST_GCS}"
+                    echo "Forecasting backup uploaded"
+                  fi
+
+                  # Tag weekly backups (Sunday = day 0)
+                  DAY_OF_WEEK=$(date -u +"%u")
+                  DAY_OF_MONTH=$(date -u +"%d")
+
+                  if [ "$DAY_OF_WEEK" = "7" ]; then
+                    echo "Tagging as weekly backup..."
+                    gsutil cp "${GCS_PATH}" "gs://${BACKUP_GCS_BUCKET}/printyx-backup/weekly/${BACKUP_FILE}"
+                  fi
+
+                  if [ "$DAY_OF_MONTH" = "01" ]; then
+                    echo "Tagging as monthly backup..."
+                    gsutil cp "${GCS_PATH}" "gs://${BACKUP_GCS_BUCKET}/printyx-backup/monthly/${BACKUP_FILE}"
+                  fi
+
+                  # Retention cleanup
+                  echo "Running retention cleanup..."
+
+                  # Daily: keep 7 days
+                  CUTOFF_DAILY=$(date -u -d "7 days ago" +"%Y-%m-%d")
+                  gsutil ls "gs://${BACKUP_GCS_BUCKET}/printyx-backup/printyx-backup-*.sql.gz" 2>/dev/null | while read -r f; do
+                    FILE_DATE=$(basename "$f" | grep -oP '\d{4}-\d{2}-\d{2}' | head -1)
+                    if [ -n "$FILE_DATE" ] && [[ "$FILE_DATE" < "$CUTOFF_DAILY" ]]; then
+                      gsutil rm "$f" && echo "Removed old daily: $(basename "$f")" || true
+                    fi
+                  done
+
+                  # Weekly: keep 4 weeks
+                  CUTOFF_WEEKLY=$(date -u -d "28 days ago" +"%Y-%m-%d")
+                  gsutil ls "gs://${BACKUP_GCS_BUCKET}/printyx-backup/weekly/*.sql.gz" 2>/dev/null | while read -r f; do
+                    FILE_DATE=$(basename "$f" | grep -oP '\d{4}-\d{2}-\d{2}' | head -1)
+                    if [ -n "$FILE_DATE" ] && [[ "$FILE_DATE" < "$CUTOFF_WEEKLY" ]]; then
+                      gsutil rm "$f" && echo "Removed old weekly: $(basename "$f")" || true
+                    fi
+                  done
+
+                  # Monthly: keep 12 months
+                  CUTOFF_MONTHLY=$(date -u -d "365 days ago" +"%Y-%m-%d")
+                  gsutil ls "gs://${BACKUP_GCS_BUCKET}/printyx-backup/monthly/*.sql.gz" 2>/dev/null | while read -r f; do
+                    FILE_DATE=$(basename "$f" | grep -oP '\d{4}-\d{2}-\d{2}' | head -1)
+                    if [ -n "$FILE_DATE" ] && [[ "$FILE_DATE" < "$CUTOFF_MONTHLY" ]]; then
+                      gsutil rm "$f" && echo "Removed old monthly: $(basename "$f")" || true
+                    fi
+                  done
+
+                  # Cleanup
+                  rm -f /tmp/*.sql.gz
+                  unset PGPASSWORD
+
+                  echo "=== Backup Complete ==="
+                  echo "Finished: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+              env:
+                - name: DB_HOST
+                  valueFrom:
+                    configMapKeyRef:
+                      name: printyx-config
+                      key: DB_HOST
+                      optional: true
+                - name: DB_PORT
+                  value: "5433"
+                - name: DB_USER
+                  value: "postgres"
+                - name: DB_NAME
+                  value: "postgres"
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: printyx-secrets
+                      key: DB_PASSWORD
+                - name: BACKUP_GCS_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: printyx-config
+                      key: BACKUP_GCS_BUCKET
+                      optional: true
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              volumeMounts:
+                - name: gcs-credentials
+                  mountPath: /var/secrets/google
+                  readOnly: true
+          volumes:
+            - name: gcs-credentials
+              secret:
+                secretName: gcs-backup-credentials
+                optional: true
+---
+# Service account for backup jobs
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: printyx-backup-sa
+  namespace: printyx
+  labels:
+    app.kubernetes.io/name: printyx
+    app.kubernetes.io/component: backup
+  annotations:
+    # For GKE Workload Identity (if using GKE)
+    # iam.gke.io/gcp-service-account: printyx-backup@PROJECT_ID.iam.gserviceaccount.com

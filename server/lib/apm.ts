@@ -12,6 +12,7 @@
 
 import type { Request, Response, NextFunction, Express, ErrorRequestHandler } from 'express';
 import { createModuleLogger } from './logger';
+import { config } from '../config';
 
 const log = createModuleLogger('apm');
 
@@ -73,8 +74,12 @@ function buildConfig(): APMConfig {
     environment: process.env.NODE_ENV || 'development',
     release: process.env.APP_VERSION || process.env.npm_package_version,
     debug: process.env.APM_DEBUG === 'true',
-    tracesSampleRate: parseFloat(process.env.APM_TRACES_SAMPLE_RATE || '0.1'),
-    profilesSampleRate: parseFloat(process.env.APM_PROFILES_SAMPLE_RATE || '0.1'),
+    tracesSampleRate: parseFloat(
+      process.env.APM_TRACES_SAMPLE_RATE || String(config.apm.tracesSampleRate),
+    ),
+    profilesSampleRate: parseFloat(
+      process.env.APM_PROFILES_SAMPLE_RATE || String(config.apm.profilesSampleRate),
+    ),
     enableTracing: process.env.APM_ENABLE_TRACING !== 'false',
   };
 }

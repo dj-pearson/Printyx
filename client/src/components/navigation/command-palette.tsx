@@ -28,6 +28,8 @@ import {
   Briefcase,
   UserPlus,
   CheckSquare,
+  Receipt,
+  Printer,
   type LucideIcon,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -35,7 +37,16 @@ import { Badge } from '@/components/ui/badge';
 
 interface SearchResult {
   id: string;
-  type: 'customer' | 'lead' | 'deal' | 'activity' | 'quote' | 'page' | 'action';
+  type:
+    | 'customer'
+    | 'lead'
+    | 'deal'
+    | 'activity'
+    | 'quote'
+    | 'invoice'
+    | 'equipment'
+    | 'page'
+    | 'action';
   title: string;
   subtitle?: string;
   path?: string;
@@ -272,6 +283,10 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         return CheckSquare;
       case 'quote':
         return FileText;
+      case 'invoice':
+        return Receipt;
+      case 'equipment':
+        return Printer;
       case 'page':
         return BarChart3;
       case 'action':
@@ -312,46 +327,62 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       <CommandList>
         <CommandEmpty>{isLoading ? 'Searching...' : 'No results found.'}</CommandEmpty>
 
-        {/* Search Results from API */}
+        {/* Search Results from API - grouped by entity type */}
         {searchResults && searchResults.length > 0 && (
           <>
-            <CommandGroup heading="Results">
-              {searchResults.map((result) => {
-                const Icon = getIcon(result);
-                return (
-                  <CommandItem
-                    key={result.id}
-                    value={result.title}
-                    onSelect={() => handleSelect(result)}
-                  >
-                    <Icon className="mr-2 h-4 w-4" />
-                    <div className="flex-1">
-                      <div className="font-medium">{result.title}</div>
-                      {result.subtitle && (
-                        <div className="text-xs text-muted-foreground">{result.subtitle}</div>
-                      )}
-                    </div>
-                    {result.metadata && (
-                      <div className="ml-2 flex items-center gap-2">
-                        {result.metadata.value && (
-                          <Badge variant="secondary" className="text-xs">
-                            {result.metadata.value}
-                          </Badge>
+            {(
+              [
+                { type: 'customer', label: 'Customers' },
+                { type: 'lead', label: 'Leads' },
+                { type: 'deal', label: 'Deals' },
+                { type: 'quote', label: 'Quotes' },
+                { type: 'invoice', label: 'Invoices' },
+                { type: 'equipment', label: 'Equipment' },
+                { type: 'activity', label: 'Activities' },
+              ] as const
+            ).map((group) => {
+              const groupResults = searchResults.filter((r) => r.type === group.type);
+              if (groupResults.length === 0) return null;
+              return (
+                <CommandGroup key={group.type} heading={group.label}>
+                  {groupResults.map((result) => {
+                    const Icon = getIcon(result);
+                    return (
+                      <CommandItem
+                        key={result.id}
+                        value={result.title}
+                        onSelect={() => handleSelect(result)}
+                      >
+                        <Icon className="mr-2 h-4 w-4" />
+                        <div className="flex-1">
+                          <div className="font-medium">{result.title}</div>
+                          {result.subtitle && (
+                            <div className="text-xs text-muted-foreground">{result.subtitle}</div>
+                          )}
+                        </div>
+                        {result.metadata && (
+                          <div className="ml-2 flex items-center gap-2">
+                            {result.metadata.value && (
+                              <Badge variant="secondary" className="text-xs">
+                                {result.metadata.value}
+                              </Badge>
+                            )}
+                            {result.metadata.status && (
+                              <Badge
+                                variant="secondary"
+                                className={getStatusColor(result.metadata.status)}
+                              >
+                                {result.metadata.status}
+                              </Badge>
+                            )}
+                          </div>
                         )}
-                        {result.metadata.status && (
-                          <Badge
-                            variant="secondary"
-                            className={getStatusColor(result.metadata.status)}
-                          >
-                            {result.metadata.status}
-                          </Badge>
-                        )}
-                      </div>
-                    )}
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              );
+            })}
             <CommandSeparator />
           </>
         )}

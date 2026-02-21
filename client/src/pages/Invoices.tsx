@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -32,11 +33,21 @@ import {
   Search,
   Filter,
   X,
+  Trash2,
+  FileText,
+  UserPlus,
 } from 'lucide-react';
 import type { Invoice, Contract, Customer } from '@shared/schema';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
+import {
+  BulkOperationsToolbar,
+  useBulkSelection,
+  type BulkAction,
+} from '@/components/ui/bulk-operations-toolbar';
+import { BulkProgressTracker, useBulkProgress } from '@/components/ui/bulk-progress-tracker';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Invoices() {
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
@@ -51,6 +62,8 @@ export default function Invoices() {
   const [paymentDate, setPaymentDate] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { progress: bulkProgress, dismiss: dismissProgress, executeBulk } = useBulkProgress();
 
   const { data: invoices, isLoading: isLoadingInvoices } = useQuery<Invoice[]>({
     queryKey: ['/api/billing/invoices'],
@@ -220,6 +233,123 @@ export default function Invoices() {
     return matchesSearch && matchesStatus;
   });
 
+  // Bulk selection
+  const bulkSelection = useBulkSelection(filteredInvoices || []);
+
+  // Bulk status update mutation
+  const bulkStatusMutation = useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[]; status: string }) =>
+      apiRequest('/api/invoices/bulk-update', 'POST', { ids, updates: { status } }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/invoices'] });
+      bulkSelection.clearSelection();
+      toast({
+        title: 'Success',
+        description: `${variables.ids.length} invoice(s) updated to ${variables.status}`,
+      });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to update invoices', variant: 'destructive' });
+    },
+  });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => apiRequest('/api/invoices/bulk-delete', 'POST', { ids }),
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/billing/invoices'] });
+      bulkSelection.clearSelection();
+      toast({ title: 'Success', description: `${ids.length} invoice(s) deleted successfully` });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to delete invoices', variant: 'destructive' });
+    },
+  });
+
+  // Bulk export
+  const handleBulkExport = (format: 'csv' | 'json') => {
+    const selected = (filteredInvoices || []).filter((inv) =>
+      bulkSelection.selectedIds.includes(inv.id),
+    );
+    if (selected.length === 0) return;
+
+    if (format === 'json') {
+      const blob = new Blob([JSON.stringify(selected, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoices-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const headers = ['Invoice #', 'Customer', 'Status', 'Total Amount', 'Due Date', 'Created'];
+      const rows = selected.map((inv) => [
+        inv.invoiceNumber,
+        getCustomerName(inv.customerId),
+        inv.status,
+        inv.totalAmount,
+        inv.dueDate ? format(new Date(inv.dueDate), 'yyyy-MM-dd') : '',
+        inv.createdAt ? format(new Date(inv.createdAt), 'yyyy-MM-dd') : '',
+      ]);
+      const csvContent = [headers, ...rows]
+        .map((row) => row.map((cell) => `"${cell}"`).join(','))
+        .join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoices-export-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    toast({ title: 'Export Complete', description: `${selected.length} invoice(s) exported` });
+  };
+
+  // Bulk actions definition
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'change-status-sent',
+      label: 'Mark as Sent',
+      icon: Send,
+      onClick: (ids) => bulkStatusMutation.mutate({ ids, status: 'sent' }),
+    },
+    {
+      id: 'change-status-paid',
+      label: 'Mark as Paid',
+      icon: DollarSign,
+      onClick: (ids) => bulkStatusMutation.mutate({ ids, status: 'paid' }),
+    },
+    {
+      id: 'export-csv',
+      label: 'Export CSV',
+      icon: Download,
+      onClick: () => handleBulkExport('csv'),
+    },
+    {
+      id: 'export-json',
+      label: 'Export JSON',
+      icon: FileText,
+      onClick: () => handleBulkExport('json'),
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: Trash2,
+      onClick: (ids) => {
+        executeBulk('delete-invoices', ids, async (batch) => {
+          await apiRequest('/api/invoices/bulk-delete', 'POST', { ids: batch });
+          return { succeeded: batch.length, failed: 0 };
+        });
+        queryClient.invalidateQueries({ queryKey: ['/api/billing/invoices'] });
+        bulkSelection.clearSelection();
+      },
+      variant: 'destructive',
+      requiresConfirmation: true,
+      confirmationTitle: 'Delete Invoices',
+      confirmationDescription: `Are you sure you want to delete ${bulkSelection.selectedCount} invoice(s)? This action cannot be undone.`,
+    },
+  ];
+
   if (isLoadingInvoices) {
     return (
       <MainLayout title="Invoices" description="Manage billing and invoice generation">
@@ -384,24 +514,61 @@ export default function Invoices() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Select All Checkbox */}
+          {(filteredInvoices?.length ?? 0) > 0 && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={bulkSelection.isAllSelected}
+                onCheckedChange={() => bulkSelection.toggleAll()}
+                className="touch-manipulation"
+              />
+              <span className="text-sm text-muted-foreground">
+                Select all ({filteredInvoices?.length ?? 0})
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* Bulk Operations Toolbar */}
+        <BulkOperationsToolbar
+          selectedCount={bulkSelection.selectedCount}
+          totalCount={filteredInvoices?.length || 0}
+          onClearSelection={bulkSelection.clearSelection}
+          onSelectAll={bulkSelection.selectAll}
+          actions={bulkActions}
+          selectedIds={bulkSelection.selectedIds}
+        />
+
+        {/* Bulk Progress Tracker */}
+        <BulkProgressTracker progress={bulkProgress} onDismiss={dismissProgress} />
 
         {/* Invoice Cards - Mobile-First Design */}
         <div className="grid gap-3 sm:gap-4">
           {filteredInvoices?.map((invoice) => (
-            <Card key={invoice.id} className="touch-manipulation">
+            <Card
+              key={invoice.id}
+              className={`touch-manipulation ${bulkSelection.isSelected(invoice.id) ? 'ring-2 ring-primary' : ''}`}
+            >
               <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg sm:text-xl">
-                      Invoice #{invoice.invoiceNumber}
-                    </CardTitle>
-                    <CardDescription className="text-sm">
-                      {getCustomerName(invoice.customerId)}
-                    </CardDescription>
-                    <CardDescription className="text-xs">
-                      Contract: {getContractNumber(invoice.contractId)}
-                    </CardDescription>
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={bulkSelection.isSelected(invoice.id)}
+                      onCheckedChange={() => bulkSelection.toggleSelection(invoice.id)}
+                      className="mt-1 touch-manipulation"
+                    />
+                    <div className="space-y-1">
+                      <CardTitle className="text-lg sm:text-xl">
+                        Invoice #{invoice.invoiceNumber}
+                      </CardTitle>
+                      <CardDescription className="text-sm">
+                        {getCustomerName(invoice.customerId)}
+                      </CardDescription>
+                      <CardDescription className="text-xs">
+                        Contract: {getContractNumber(invoice.contractId)}
+                      </CardDescription>
+                    </div>
                   </div>
                   {getStatusBadge(invoice.status)}
                 </div>

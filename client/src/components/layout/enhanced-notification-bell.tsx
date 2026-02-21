@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 import {
   Bell,
   AlertTriangle,
@@ -145,6 +146,7 @@ export function EnhancedNotificationBell() {
   const [open, setOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<'all' | 'unread'>('unread');
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   // Fetch notifications
   const { data: notifications = [] } = useQuery<Notification[]>({
@@ -221,6 +223,56 @@ export function EnhancedNotificationBell() {
       });
     }
   }, [notifications]);
+
+  // WebSocket listener for real-time notification delivery
+  useEffect(() => {
+    const userId = user?.id;
+    const tenantId = (user as any)?.tenantId;
+    if (!userId || !tenantId) return;
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/ws/reporting?userId=${userId}&tenantId=${tenantId}`;
+
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function connect() {
+      try {
+        ws = new WebSocket(wsUrl);
+
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'notification' && msg.data) {
+              // Invalidate the notifications query to refetch from server
+              queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        };
+
+        ws.onclose = () => {
+          // Reconnect after 10 seconds
+          reconnectTimer = setTimeout(connect, 10_000);
+        };
+
+        ws.onerror = () => {
+          ws?.close();
+        };
+      } catch {
+        // Silently fail - polling fallback is always active
+      }
+    }
+
+    connect();
+
+    return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      ws?.close();
+    };
+  }, [user, queryClient]);
 
   const unreadNotifications = notifications.filter((n) => !n.read);
   const displayNotifications = selectedTab === 'unread' ? unreadNotifications : notifications;

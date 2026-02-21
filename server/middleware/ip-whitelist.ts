@@ -8,6 +8,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { createModuleLogger } from '../lib/logger';
+import { config } from '../config';
 const log = createModuleLogger('ip-whitelist');
 
 import {
@@ -41,7 +42,7 @@ export const DEFAULT_IP_CONFIG: IpWhitelistConfig = {
 
 // In-memory cache for tenant IP configurations
 const configCache = new Map<string, { config: IpWhitelistConfig; expiry: number }>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = config.cache.ipWhitelistCacheTtlMs;
 
 /**
  * Parse IP address from request
