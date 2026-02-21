@@ -5,6 +5,7 @@
 
 import crypto from 'crypto';
 import { createModuleLogger } from './lib/logger';
+import { config } from './config';
 const log = createModuleLogger('cache-service');
 
 // Interface for cache service to support multiple backends
@@ -43,7 +44,7 @@ class MemoryCacheService implements CacheService {
     return entry.value;
   }
 
-  async set(key: string, value: any, ttlSeconds: number = 300): Promise<void> {
+  async set(key: string, value: any, ttlSeconds: number = config.cache.defaultTtl): Promise<void> {
     const expiry = Date.now() + ttlSeconds * 1000;
     this.cache.set(key, { value, expiry });
   }
@@ -103,7 +104,7 @@ class RedisCacheService implements CacheService {
     }
   }
 
-  async set(key: string, value: any, ttlSeconds: number = 300): Promise<void> {
+  async set(key: string, value: any, ttlSeconds: number = config.cache.defaultTtl): Promise<void> {
     try {
       await this.redis.setex(key, ttlSeconds, JSON.stringify(value));
     } catch (error) {

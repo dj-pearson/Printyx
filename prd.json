@@ -546,7 +546,7 @@
         "Document backup/restore procedures in CLAUDE.md"
       ],
       "priority": 31,
-      "passes": false,
+      "passes": true,
       "notes": "Database: PostgreSQL at 209.145.59.219:5433. @google-cloud/storage is already installed as a dependency. Forecasting database also needs backup (drizzle.forecasting.config.ts)."
     },
     {
@@ -564,7 +564,7 @@
         "Build passes: npm run build"
       ],
       "priority": 32,
-      "passes": false,
+      "passes": true,
       "notes": "Check client/src/App.tsx for existing React.lazy usage. vite.config.ts handles the build. 213 pages means code splitting is critical for initial load performance."
     },
     {
@@ -581,7 +581,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 33,
-      "passes": false,
+      "passes": true,
       "notes": "server/lib/env-validation.ts exists for startup validation. Many configs are inline constants (rate limit values, cache TTLs, pool sizes). .env.example may already exist - update it."
     },
     {
@@ -598,7 +598,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 34,
-      "passes": false,
+      "passes": true,
       "notes": "Client hook: client/src/hooks/useWebSocket. Redis at server/lib/redis-client.ts can be used for pub/sub to support multi-instance WebSocket broadcasting. Check ENABLE_WEBSOCKET feature flag from ROUTES-003."
     },
     {
@@ -617,8 +617,8 @@
         "Tests pass: npm run test"
       ],
       "priority": 35,
-      "passes": false,
-      "notes": "No feature flag system exists. ROUTES-003 created env-var based feature toggles (ENABLE_DATABASE_UPDATER, etc.) but a proper feature flag system supports per-tenant overrides and percentage rollouts."
+      "passes": true,
+      "notes": "Implemented: shared/feature-flags-schema.ts (dedicated table), server/services/feature-flags-service.ts (isEnabled with tenant override > rollout > global), server/middleware/feature-flag.ts (requireFeatureFlag), server/routes-feature-flags.ts (CRUD endpoints), client/src/hooks/useFeatureFlag.ts (5-min cache), client/src/components/FeatureGate.tsx, server/seeds/seed-feature-flags.ts (5 default flags). Build passes."
     },
     {
       "id": "US-036",
@@ -635,8 +635,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 36,
-      "passes": false,
-      "notes": "server/lib/monitoring.ts provides custom monitoring but Sentry is the industry standard. Can coexist with existing APM at server/lib/apm.ts. Sentry traces sample rate should be 0.1 in production to control costs."
+      "passes": true,
+      "notes": "Server-side Sentry was already fully implemented in server/lib/apm.ts. Added @sentry/react for frontend: Sentry.init() in main.tsx with browserTracing, replay, 0.1 trace sample rate in prod. ErrorBoundary now calls Sentry.captureException. CI source map upload step added. VITE_SENTRY_DSN and VITE_APP_VERSION added to .env.example. Build passes."
     },
     {
       "id": "US-037",
@@ -652,8 +652,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 37,
-      "passes": false,
-      "notes": "@tanstack/react-query already used. @tanstack/react-virtual integrates well. Check client/src/components/ui/ for existing DataTable implementation to extend."
+      "passes": true,
+      "notes": "Installed @tanstack/react-virtual. Created client/src/components/ui/virtualized-data-table.tsx with 5-row overscan, row selection, actions column, column alignment, empty state. Replaced Table with VirtualizedDataTable in LeadsManagement, customers, QuotesManagement, inventory (4 pages use Table; Invoices page uses cards, not tables). Build passes."
     },
     {
       "id": "US-038",
@@ -950,8 +950,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "WebSocket hook exists but no notification system built on it",
+      "passes": true,
+      "notes": "Notification bell with unread badge in header (EnhancedNotificationBell replaces SystemAlertBell). Dropdown with unread/all tabs, grouped by priority. Mark individual/all as read. Backend /api/notifications CRUD routes with DB persistence (user_notifications table in schema.ts). WebSocket broadcastNotification method for real-time delivery. Client-side WebSocket listener invalidates query cache on notification events.",
       "category": "core"
     },
     {
@@ -966,8 +966,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "OnboardingDashboard page exists but is a management view, not a first-run wizard",
+      "passes": true,
+      "notes": "SetupWizard page with 4 steps: Company Profile, Team Invitation, Integration Setup, Product Catalog Import. Progress indicator with step badges. Skip option per step + skip all. Wizard state persisted via /api/onboarding/wizard-state endpoints. Route at /setup-wizard. Lazy-loaded in App.tsx.",
       "category": "integration"
     },
     {
@@ -982,8 +982,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "CommandPalette exists at client/src/components/navigation/command-palette.tsx but needs real search backend",
+      "passes": true,
+      "notes": "Enhanced universal search: backend queries business_records, deals, quotes, invoices, equipment, activities. Frontend CommandPalette groups results by entity type with distinct icons (Building, UserPlus, DollarSign, FileText, Receipt, Printer, CheckSquare). Recent searches in localStorage. Keyboard navigation via shadcn CommandDialog. Cmd+K shortcut.",
       "category": "core"
     },
     {
@@ -998,8 +998,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "Backend audit-log-service.ts and routes-audit-logs.ts exist but no dedicated admin viewer UI",
+      "passes": true,
+      "notes": "AuditLogViewer page at /admin/audit-logs (platform admin only). Filterable table with date range, user ID, action type, category. CSV and JSON export. Server-side pagination via existing /api/audit-logs endpoint. Severity badges with color coding.",
       "category": "core"
     },
     {
@@ -1014,8 +1014,8 @@
         "Typecheck passes"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": "Backend api-key-service.ts and api-key-routes.ts exist but no frontend UI",
+      "passes": true,
+      "notes": "ApiKeyManagement page at /settings/api-keys. Create key with name, description, expiration (30/90/180/365 days or never), 11 permission scopes. List keys with prefix, status, scopes, last-used timestamp. Revoke with confirmation dialog. Rotate with 24-hour grace period. New key shown once with copy-to-clipboard. Backend uses existing api-key-routes.ts endpoints.",
       "category": "core"
     },
     {
@@ -1030,8 +1030,8 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": "CustomDashboard page exists but is separate from the main dashboard",
+      "passes": true,
+      "notes": "Already implemented: DashboardBuilder with @dnd-kit drag-and-drop, DashboardWidgetRegistry with 40+ widgets across 7 categories, role-based default layouts for 11 roles, layout persistence via /api/dashboard/user-layout PUT endpoint, dashboardLayouts DB table. Responsive grid in DashboardBuilder. Main dashboard uses RoleBasedDashboard which loads saved layout or role defaults.",
       "category": "polish"
     },
     {
@@ -1046,8 +1046,8 @@
         "Typecheck passes"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "BulkProgressTracker component + useBulkProgress hook created. Bulk ops added to Invoices page and DealsManagement table view. Server endpoints for invoices, equipment, activities bulk update/delete. Existing CRM bulk routes already handled business records and deals.",
       "category": "core"
     },
     {
@@ -1062,8 +1062,8 @@
         "Typecheck passes"
       ],
       "priority": 11,
-      "passes": false,
-      "notes": "ScheduledReportsDashboard page exists as a feature demo but needs real backend",
+      "passes": true,
+      "notes": "Full backend CRUD at /api/scheduled-reports with cron expression builder. Frontend connected to backend with TanStack Query. Supports daily/weekly/monthly/quarterly/custom cron. Format options: CSV, Excel (xlsx), PDF. Email delivery via existing email-service.ts. Manage from /scheduled-reports page.",
       "category": "integration"
     },
     {

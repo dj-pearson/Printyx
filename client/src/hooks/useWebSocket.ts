@@ -6,7 +6,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface WebSocketMessage {
-  type: 'data_update' | 'kpi_update' | 'heartbeat' | 'pong' | 'error' | 'connected';
+  type:
+    | 'data_update'
+    | 'kpi_update'
+    | 'notification'
+    | 'heartbeat'
+    | 'pong'
+    | 'error'
+    | 'connected';
   channel?: string;
   data?: any;
   timestamp?: number;
@@ -16,8 +23,15 @@ interface WebSocketMessage {
 interface WebSocketHookOptions {
   autoConnect?: boolean;
   reconnectAttempts?: number;
+  /** @deprecated Use exponential backoff instead. Initial backoff delay in ms (default: 1000) */
   reconnectInterval?: number;
   heartbeatInterval?: number;
+  /** JWT token for authenticated WebSocket connections */
+  token?: string;
+  /** Initial backoff delay in ms for reconnection (default: 1000) */
+  initialBackoffMs?: number;
+  /** Maximum backoff delay in ms (default: 30000) */
+  maxBackoffMs?: number;
 }
 
 interface WebSocketHookReturn {
@@ -39,9 +53,11 @@ export function useWebSocket(
 ): WebSocketHookReturn {
   const {
     autoConnect = true,
-    reconnectAttempts = 5,
-    reconnectInterval = 3000,
+    reconnectAttempts = 10,
     heartbeatInterval = 30000,
+    token,
+    initialBackoffMs = 1000,
+    maxBackoffMs = 30000,
   } = options;
 
   const [isConnected, setIsConnected] = useState(false);
@@ -53,16 +69,34 @@ export function useWebSocket(
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptsRef = useRef(0);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const heartbeatTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heartbeatTimeoutRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const subscriptionsRef = useRef<Map<string, (data: any) => void>>(new Map());
 
-  // Generate WebSocket URL
+  /**
+   * Calculate exponential backoff delay: 1s, 2s, 4s, 8s, 16s, max 30s
+   */
+  const getBackoffDelay = useCallback(
+    (attempt: number): number => {
+      const delay = initialBackoffMs * Math.pow(2, attempt);
+      return Math.min(delay, maxBackoffMs);
+    },
+    [initialBackoffMs, maxBackoffMs],
+  );
+
+  // Generate WebSocket URL with JWT token support
   const getWebSocketUrl = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    return `${protocol}//${host}/ws/reporting?userId=${userId}&tenantId=${tenantId}`;
-  }, [userId, tenantId]);
+    const params = new URLSearchParams();
+    if (token) {
+      params.set('token', token);
+    }
+    // Include userId/tenantId as fallback for backwards compatibility
+    if (userId) params.set('userId', userId);
+    if (tenantId) params.set('tenantId', tenantId);
+    return `${protocol}//${host}/ws/reporting?${params.toString()}`;
+  }, [userId, tenantId, token]);
 
   // Send message to WebSocket
   const send = useCallback((message: any) => {
@@ -232,34 +266,37 @@ export function useWebSocket(
       wsRef.current.onmessage = handleMessage;
 
       wsRef.current.onclose = (event) => {
-        console.log('🔌 WebSocket connection closed:', event.code, event.reason);
+        console.log('WebSocket connection closed:', event.code, event.reason);
         setIsConnected(false);
         setConnectionState('disconnected');
         stopHeartbeat();
 
-        // Attempt reconnection if not manually closed
-        if (event.code !== 1000 && reconnectAttemptsRef.current < reconnectAttempts) {
+        // Don't reconnect on auth failure (401 manifests as code 1006 with no reason)
+        // or manual close (1000)
+        if (event.code === 1000) return;
+
+        // Attempt reconnection with exponential backoff: 1s, 2s, 4s, 8s, 16s, max 30s
+        if (reconnectAttemptsRef.current < reconnectAttempts) {
+          const delay = getBackoffDelay(reconnectAttemptsRef.current);
           reconnectAttemptsRef.current++;
           console.log(
-            `🔄 Attempting reconnection ${reconnectAttemptsRef.current}/${reconnectAttempts}...`,
+            `Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current}/${reconnectAttempts})...`,
           );
 
           reconnectTimeoutRef.current = setTimeout(() => {
             connect();
-          }, reconnectInterval);
-        } else if (reconnectAttemptsRef.current >= reconnectAttempts) {
+          }, delay);
+        } else {
           setConnectionState('error');
           setError('Maximum reconnection attempts exceeded');
         }
       };
 
-      wsRef.current.onerror = (error) => {
-        console.error('🔌 WebSocket error:', error);
+      wsRef.current.onerror = () => {
         setConnectionState('error');
         setError('WebSocket connection error');
       };
-    } catch (error) {
-      console.error('Error creating WebSocket connection:', error);
+    } catch {
       setConnectionState('error');
       setError('Failed to create WebSocket connection');
     }
@@ -270,7 +307,7 @@ export function useWebSocket(
     handleMessage,
     stopHeartbeat,
     reconnectAttempts,
-    reconnectInterval,
+    getBackoffDelay,
   ]);
 
   // Disconnect from WebSocket

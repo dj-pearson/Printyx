@@ -13,16 +13,38 @@ import { z } from 'zod';
 import { createModuleLogger } from './logger';
 const log = createModuleLogger('env-validation');
 
-// Environment variable schema
+// Environment variable schema - validates ALL required and optional variables
 const envSchema = z.object({
   // Database (required)
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required for database connectivity'),
+  DB_HOST: z.string().optional(), // Fallback if DATABASE_URL not set
+  DB_PORT: z.string().optional(),
+  DB_USER: z.string().optional(),
+  DB_PASSWORD: z.string().optional(),
+  DB_NAME: z.string().optional(),
+  DB_SSL: z.string().optional(),
+  DB_SSL_REJECT_UNAUTHORIZED: z.string().optional(),
+
+  // Database pool tuning
+  DB_POOL_MIN: z.string().optional(), // Min connections (default: 2)
+  DB_POOL_MAX: z.string().optional(), // Max connections (default: 20)
+  DB_CONNECTION_TIMEOUT_MS: z.string().optional(), // Connection timeout (default: 10000)
+  DB_IDLE_TIMEOUT_MS: z.string().optional(), // Idle timeout (default: 30000)
+  DB_MAX_RETRIES: z.string().optional(), // Max retries (default: 5)
+  DB_RETRY_BASE_DELAY_MS: z.string().optional(), // Retry base delay (default: 1000)
+  DB_RETRY_MAX_DELAY_MS: z.string().optional(), // Retry max delay (default: 30000)
+  DB_RETRY_JITTER_FACTOR: z.string().optional(), // Jitter factor (default: 0.3)
+  DB_CIRCUIT_FAILURE_THRESHOLD: z.string().optional(), // Circuit breaker threshold (default: 5)
+  DB_CIRCUIT_RECOVERY_TIMEOUT_MS: z.string().optional(), // Recovery timeout (default: 30000)
+  DB_SLOW_QUERY_THRESHOLD_MS: z.string().optional(), // Slow query alert (default: 1000)
+  DB_LOG_QUERIES: z.string().optional(), // Log all queries (default: false)
+  DB_LOG_PARAMS: z.string().optional(), // Log query params (default: false)
 
   // Session (required in production)
   SESSION_SECRET: z.string().optional(),
 
   // Server
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z.enum(['development', 'production', 'test', 'staging']).default('development'),
   PORT: z.string().default('5000'),
 
   // Supabase (required for auth)
@@ -46,6 +68,38 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   SMTP_FROM: z.string().optional(),
+
+  // Logging and monitoring
+  LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent']).optional(),
+  LOG_TRANSPORT: z.string().optional(), // console, cloudwatch, elasticsearch, splunk, file, http
+  APP_NAME: z.string().optional(),
+  APP_VERSION: z.string().optional(),
+  APM_PROVIDER: z.string().optional(), // sentry, datadog, newrelic, none
+  APM_TRACES_SAMPLE_RATE: z.string().optional(), // 0.0-1.0
+  APM_PROFILES_SAMPLE_RATE: z.string().optional(), // 0.0-1.0
+  SENTRY_DSN: z.string().optional(),
+
+  // Redis (optional)
+  REDIS_URL: z.string().optional(),
+  REDIS_ENABLED: z.string().optional(),
+
+  // Rate limiting
+  API_KEY_DEFAULT_RATE_LIMIT_MINUTE: z.string().optional(), // Default: 1000
+  API_KEY_DEFAULT_RATE_LIMIT_HOUR: z.string().optional(), // Default: 10000
+  API_KEY_DEFAULT_RATE_LIMIT_DAY: z.string().optional(), // Default: 100000
+
+  // Cache
+  CACHE_DEFAULT_TTL: z.string().optional(), // Default TTL in seconds (default: 300)
+
+  // CORS
+  CORS_ADDITIONAL_ORIGINS: z.string().optional(), // Comma-separated additional origins
+
+  // Backup
+  BACKUP_GCS_BUCKET: z.string().optional(), // GCS bucket for backups (default: printyx-backups)
+  GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(), // GCS auth key path
+
+  // Feature flags
+  DISABLE_SUBSCRIPTION_JOBS: z.string().optional(), // Disable subscription cron jobs
 
   // Test Mode (only valid in dev/test)
   TEST_MODE: z.string().optional(),
@@ -131,6 +185,66 @@ export function validateEnvironment(): ValidationResult {
   // Common recommendations
   if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
     warnings.push('ANTHROPIC_API_KEY/OPENAI_API_KEY: At least one is recommended for AI features');
+  }
+
+  // Validate numeric env vars are actually numbers
+  const numericVars = [
+    'DB_POOL_MIN',
+    'DB_POOL_MAX',
+    'DB_CONNECTION_TIMEOUT_MS',
+    'DB_IDLE_TIMEOUT_MS',
+    'DB_MAX_RETRIES',
+    'DB_RETRY_BASE_DELAY_MS',
+    'DB_RETRY_MAX_DELAY_MS',
+    'DB_CIRCUIT_FAILURE_THRESHOLD',
+    'DB_CIRCUIT_RECOVERY_TIMEOUT_MS',
+    'DB_SLOW_QUERY_THRESHOLD_MS',
+    'CACHE_DEFAULT_TTL',
+    'API_KEY_DEFAULT_RATE_LIMIT_MINUTE',
+    'API_KEY_DEFAULT_RATE_LIMIT_HOUR',
+    'API_KEY_DEFAULT_RATE_LIMIT_DAY',
+  ];
+  for (const varName of numericVars) {
+    const val = process.env[varName];
+    if (val !== undefined && isNaN(Number(val))) {
+      errors.push(`${varName}: Must be a valid number, got "${val}"`);
+    }
+  }
+
+  // Validate float vars
+  const floatVars = [
+    'DB_RETRY_JITTER_FACTOR',
+    'APM_TRACES_SAMPLE_RATE',
+    'APM_PROFILES_SAMPLE_RATE',
+  ];
+  for (const varName of floatVars) {
+    const val = process.env[varName];
+    if (val !== undefined) {
+      const num = parseFloat(val);
+      if (isNaN(num) || num < 0 || num > 1) {
+        errors.push(`${varName}: Must be a number between 0 and 1, got "${val}"`);
+      }
+    }
+  }
+
+  // Validate LOG_LEVEL if set
+  if (process.env.LOG_LEVEL) {
+    const validLevels = ['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent'];
+    if (!validLevels.includes(process.env.LOG_LEVEL)) {
+      warnings.push(
+        `LOG_LEVEL: Invalid value "${process.env.LOG_LEVEL}". Valid: ${validLevels.join(', ')}`,
+      );
+    }
+  }
+
+  // Redis recommendation
+  if (isProduction && !process.env.REDIS_URL && process.env.REDIS_ENABLED !== 'true') {
+    warnings.push('REDIS_URL: Redis is recommended in production for caching and rate limiting');
+  }
+
+  // Backup configuration check
+  if (isProduction && !process.env.BACKUP_GCS_BUCKET) {
+    warnings.push('BACKUP_GCS_BUCKET: Configure for automated database backups');
   }
 
   return {

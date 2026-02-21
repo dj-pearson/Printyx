@@ -71,6 +71,36 @@ jobs:
       - run: npm run test
       - run: npm run test:integration
 
+  # ─── Sentry Source Map Upload ────────────────────────────
+  sentry-release:
+    name: Upload Source Maps to Sentry
+    needs: [quality]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build with source maps
+        run: npm run build -- --sourcemap
+        env:
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_APP_VERSION: ${{ github.sha }}
+      - name: Upload source maps to Sentry
+        uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+        with:
+          environment: production
+          version: ${{ github.sha }}
+          sourcemaps: ./dist/assets
+          url_prefix: ~/assets
+
   # ─── Docker Build & Push ─────────────────────────────────
   build-image:
     name: Build Docker Image

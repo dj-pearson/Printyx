@@ -56,7 +56,17 @@ import {
   GripVertical,
   MoreHorizontal,
   X,
+  Download,
+  Trash2,
+  FileText,
+  UserPlus,
 } from 'lucide-react';
+import {
+  BulkOperationsToolbar,
+  useBulkSelection,
+  type BulkAction,
+} from '@/components/ui/bulk-operations-toolbar';
+import { BulkProgressTracker, useBulkProgress } from '@/components/ui/bulk-progress-tracker';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import {
@@ -550,7 +560,7 @@ export default function DealsManagement() {
     closeDateFrom: '',
     closeDateTo: '',
   });
-  const [selectedDeals, setSelectedDeals] = useState<string[]>([]);
+  const { progress: bulkProgress, dismiss: dismissProgress, executeBulk } = useBulkProgress();
   const [editingCloseDate, setEditingCloseDate] = useState<string | null>(null);
   const [collapsedStages, setCollapsedStages] = useState<Record<string, boolean>>({});
   const boardRef = useRef<HTMLDivElement | null>(null);
@@ -956,6 +966,116 @@ export default function DealsManagement() {
       return false;
     return true;
   });
+
+  // Bulk selection for table view
+  const bulkSelection = useBulkSelection(filteredDeals);
+
+  // Bulk update mutation
+  const bulkDealUpdateMutation = useMutation({
+    mutationFn: async ({ ids, updates }: { ids: string[]; updates: Record<string, any> }) =>
+      apiRequest('/api/deals-management/deals/bulk-update', 'POST', { dealIds: ids, updates }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
+      bulkSelection.clearSelection();
+      toast({ title: 'Success', description: `${variables.ids.length} deal(s) updated` });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to update deals', variant: 'destructive' });
+    },
+  });
+
+  // Bulk delete mutation
+  const bulkDealDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) =>
+      apiRequest('/api/deals-management/deals/bulk-delete', 'POST', { dealIds: ids }),
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
+      bulkSelection.clearSelection();
+      toast({ title: 'Success', description: `${ids.length} deal(s) deleted` });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to delete deals', variant: 'destructive' });
+    },
+  });
+
+  // Bulk export for deals
+  const handleDealBulkExport = (fmt: 'csv' | 'json') => {
+    const selected = filteredDeals.filter((d) => bulkSelection.selectedIds.includes(d.id));
+    if (selected.length === 0) return;
+    if (fmt === 'json') {
+      const blob = new Blob([JSON.stringify(selected, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `deals-export-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      const headers = [
+        'Title',
+        'Stage',
+        'Amount',
+        'Probability',
+        'Owner',
+        'Expected Close',
+        'Priority',
+        'Source',
+      ];
+      const rows = selected.map((d) => [
+        d.title || '',
+        d.stageName || '',
+        String(d.amount || 0),
+        String(d.probability || 0),
+        d.ownerName || '',
+        d.expectedCloseDate ? format(new Date(d.expectedCloseDate), 'yyyy-MM-dd') : '',
+        d.priority || '',
+        d.source || '',
+      ]);
+      const csvContent = [headers, ...rows]
+        .map((row) => row.map((cell) => `"${cell}"`).join(','))
+        .join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `deals-export-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    toast({ title: 'Export Complete', description: `${selected.length} deal(s) exported` });
+  };
+
+  // Bulk actions for deals
+  const dealBulkActions: BulkAction[] = [
+    {
+      id: 'change-status-won',
+      label: 'Mark Won',
+      icon: DollarSign,
+      onClick: (ids) => bulkDealUpdateMutation.mutate({ ids, updates: { status: 'won' } }),
+    },
+    {
+      id: 'export-csv',
+      label: 'Export CSV',
+      icon: Download,
+      onClick: () => handleDealBulkExport('csv'),
+    },
+    {
+      id: 'export-json',
+      label: 'Export JSON',
+      icon: FileText,
+      onClick: () => handleDealBulkExport('json'),
+    },
+    {
+      id: 'delete',
+      label: 'Delete',
+      icon: Trash2,
+      onClick: (ids) => bulkDealDeleteMutation.mutate(ids),
+      variant: 'destructive',
+      requiresConfirmation: true,
+      confirmationTitle: 'Delete Deals',
+      confirmationDescription: `Are you sure you want to delete ${bulkSelection.selectedCount} deal(s)? This action cannot be undone.`,
+    },
+  ];
 
   // Group deals by stage for kanban view
   const dealsByStage = stages.reduce(
@@ -2275,11 +2395,28 @@ export default function DealsManagement() {
             /* Table View */
             <Card className="h-full">
               <CardContent className="p-0">
+                {/* Bulk Operations Toolbar */}
+                <BulkOperationsToolbar
+                  selectedCount={bulkSelection.selectedCount}
+                  totalCount={filteredDeals.length}
+                  onClearSelection={bulkSelection.clearSelection}
+                  onSelectAll={bulkSelection.selectAll}
+                  actions={dealBulkActions}
+                  selectedIds={bulkSelection.selectedIds}
+                />
+                {/* Bulk Progress Tracker */}
+                <BulkProgressTracker progress={bulkProgress} onDismiss={dismissProgress} />
                 {/* Desktop Table View */}
                 <div className="hidden lg:block overflow-auto h-full">
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={bulkSelection.isAllSelected}
+                            onCheckedChange={() => bulkSelection.toggleAll()}
+                          />
+                        </TableHead>
                         {visibleColumns.includes('name') && (
                           <TableHead className="sticky left-0 bg-white z-10">Deal Name</TableHead>
                         )}
@@ -2301,7 +2438,16 @@ export default function DealsManagement() {
                     </TableHeader>
                     <TableBody>
                       {filteredDeals.map((deal) => (
-                        <TableRow key={deal.id}>
+                        <TableRow
+                          key={deal.id}
+                          className={bulkSelection.isSelected(deal.id) ? 'bg-primary/5' : ''}
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={bulkSelection.isSelected(deal.id)}
+                              onCheckedChange={() => bulkSelection.toggleSelection(deal.id)}
+                            />
+                          </TableCell>
                           {visibleColumns.includes('name') && (
                             <TableCell className="font-medium sticky left-0 bg-white z-10">
                               {deal.title}

@@ -31,6 +31,11 @@ npm run db:migrate       # Apply pending migrations (with lock)
 npm run db:migrate:status # Show migration status and lock info
 npm run db:push          # Push schema changes directly (dev only, NOT for production)
 npm run db:push:forecast # Push to forecasting database
+npm run db:backup        # Backup both databases + run retention cleanup
+npm run db:backup:main   # Backup main database only
+npm run db:backup:forecast # Backup forecasting database only
+npm run db:restore       # Restore from backup (interactive)
+npm run db:backup:list   # List available backups (GCS + local)
 ```
 
 ### Testing
@@ -222,6 +227,40 @@ Drizzle migrations live in `drizzle/migrations/`. Schema changes produce version
 3. From now on, schema changes follow the normal generate + migrate workflow
 
 **Migration lock**: `db:migrate` acquires a `__migration_lock` table lock in PostgreSQL. If a migration crashes, the lock auto-expires after 5 minutes. Check status with `npm run db:migrate:status`.
+
+### Backup & Restore
+
+Automated backups use `pg_dump` + `gzip` → Google Cloud Storage. Both the main database and forecasting schema are backed up.
+
+**Backup naming**: `printyx-backup-YYYY-MM-DD-HHmmss.sql.gz`
+
+**Retention policy**:
+- Daily backups: kept for 7 days
+- Weekly backups (Sunday): kept for 4 weeks
+- Monthly backups (1st of month): kept for 12 months
+
+**Running backups**:
+```bash
+npm run db:backup           # Backup both DBs + retention cleanup
+npm run db:backup:main      # Backup main database only
+npm run db:backup:forecast  # Backup forecasting database only
+npm run db:backup:list      # List available backups
+```
+
+**Restoring from backup**:
+```bash
+npm run db:restore -- --list                                    # List available backups
+npm run db:restore -- --latest                                  # Restore most recent
+npm run db:restore -- printyx-backup-2026-02-19-020000.sql.gz   # Restore specific backup
+```
+
+Restore requires interactive confirmation (double confirmation for production). Set `RESTORE_TARGET_DB` to restore to a different database.
+
+**Environment variables**:
+- `BACKUP_GCS_BUCKET` - GCS bucket name (default: `printyx-backups`)
+- `GOOGLE_APPLICATION_CREDENTIALS` - Path to GCS service account key
+
+**Automated backups**: K8s CronJob at `k8s/base/cronjob-backup.yaml` runs daily at 2:00 AM UTC with automatic retention cleanup.
 
 ### Critical: Always Include Tenant Filtering
 

@@ -36,14 +36,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { CsvImportWizard } from '@/components/import';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { VirtualizedDataTable } from '@/components/ui/virtualized-data-table';
 import { type InventoryItem } from '@shared/schema';
 import WarehouseTeamStatsWidget from '@/components/stats/WarehouseTeamStatsWidget';
 
@@ -407,63 +400,61 @@ export default function Inventory() {
             </div>
           ) : (
             /* Table View */
-            <div className="bg-background rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={bulkSelection.isAllSelected}
-                        onCheckedChange={bulkSelection.toggleAll}
-                        aria-label="Select all items"
-                      />
-                    </TableHead>
-                    <TableHead>Item Name</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Stock Status</TableHead>
-                    <TableHead className="text-right">Current Stock</TableHead>
-                    <TableHead className="text-right">Reorder Point</TableHead>
-                    <TableHead className="text-right">Unit Cost</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead className="w-24">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredInventory.map((item: InventoryItem) => {
-                    const itemStockStatus = getStockStatus(item.currentStock, item.reorderPoint);
-                    const stockBadge = getStockBadge(itemStockStatus);
-
-                    return (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={bulkSelection.isSelected(item.id)}
-                            onCheckedChange={() => bulkSelection.toggleSelection(item.id)}
-                            aria-label={`Select ${item.name}`}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell>{item.sku}</TableCell>
-                        <TableCell>
-                          <Badge variant={stockBadge.variant}>{stockBadge.label}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">{item.currentStock}</TableCell>
-                        <TableCell className="text-right">{item.reorderPoint}</TableCell>
-                        <TableCell className="text-right">
-                          ${Number(item.unitCost || 0).toFixed(2)}
-                        </TableCell>
-                        <TableCell>{item.location || '—'}</TableCell>
-                        <TableCell>
-                          <Button variant="outline" size="sm" className="h-8">
-                            View
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+            <VirtualizedDataTable<InventoryItem>
+              data={filteredInventory}
+              columns={[
+                {
+                  id: 'name',
+                  header: 'Item Name',
+                  cell: (item) => <span className="font-medium">{item.name}</span>,
+                },
+                { id: 'sku', header: 'SKU', cell: (item) => item.sku },
+                {
+                  id: 'stockStatus',
+                  header: 'Stock Status',
+                  cell: (item) => {
+                    const s = getStockStatus(item.currentStock, item.reorderPoint);
+                    const b = getStockBadge(s);
+                    return <Badge variant={b.variant}>{b.label}</Badge>;
+                  },
+                },
+                {
+                  id: 'currentStock',
+                  header: 'Current Stock',
+                  cell: (item) => item.currentStock,
+                  align: 'right',
+                },
+                {
+                  id: 'reorderPoint',
+                  header: 'Reorder Point',
+                  cell: (item) => item.reorderPoint,
+                  align: 'right',
+                },
+                {
+                  id: 'unitCost',
+                  header: 'Unit Cost',
+                  cell: (item) => `$${Number(item.unitCost || 0).toFixed(2)}`,
+                  align: 'right',
+                },
+                { id: 'location', header: 'Location', cell: (item) => item.location || '—' },
+              ]}
+              selectedIds={bulkSelection.selectedIdsSet}
+              onSelectionChange={(ids) => {
+                const current = bulkSelection.selectedIdsSet;
+                ids.forEach((id) => {
+                  if (!current.has(id)) bulkSelection.toggleSelection(id as string);
+                });
+                current.forEach((id) => {
+                  if (!ids.has(id)) bulkSelection.toggleSelection(id as string);
+                });
+              }}
+              actions={(item) => (
+                <Button variant="outline" size="sm" className="h-8">
+                  View
+                </Button>
+              )}
+              maxHeight={700}
+            />
           )
         ) : (
           <Card>

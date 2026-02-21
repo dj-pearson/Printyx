@@ -1,3 +1,4 @@
+import { config } from './config';
 import { db } from './db';
 import { sql, and, or, gte, lte, eq, inArray, desc } from 'drizzle-orm';
 import {
@@ -43,7 +44,7 @@ interface PermissionQuery {
 
 export class EnhancedRBACService {
   private cacheManager: Map<string, any> = new Map();
-  private readonly CACHE_TTL_SECONDS = 1800; // 30 minutes
+  private readonly CACHE_TTL_SECONDS = config.cache.rbacServiceCacheTtlSeconds;
 
   /**
    * Check if a user has a specific permission in a given organizational context

@@ -6,6 +6,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { createModuleLogger } from '../lib/logger';
+import { config } from '../config';
 const log = createModuleLogger('enhanced-rbac-middleware');
 
 import {
@@ -82,7 +83,7 @@ interface PermissionCheckOptions {
 // =====================================================================
 
 class PermissionCacheService {
-  private static CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+  private static CACHE_TTL = config.cache.rbacCacheTtlMs;
   private static memoryCache = new Map<string, { permissions: Set<string>; expires: number }>();
 
   /**

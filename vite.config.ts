@@ -11,6 +11,17 @@ export default defineConfig({
     ...(process.env.NODE_ENV !== 'production' && process.env.REPL_ID !== undefined
       ? [await import('@replit/vite-plugin-cartographer').then((m) => m.cartographer())]
       : []),
+    ...(process.env.ANALYZE === 'true'
+      ? [
+          (await import('rollup-plugin-visualizer')).visualizer({
+            open: true,
+            filename: 'dist/bundle-report.html',
+            gzipSize: true,
+            brotliSize: true,
+            template: 'treemap',
+          }),
+        ]
+      : []),
   ],
   resolve: {
     alias: {

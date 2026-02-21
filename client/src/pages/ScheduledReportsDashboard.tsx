@@ -1,18 +1,13 @@
 /**
  * Scheduled Reports Dashboard
  * Automate report delivery via email - competitive advantage vs E-Automate
+ * Connected to /api/scheduled-reports backend
  */
 
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import MainLayout from '@/components/layout/main-layout';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -34,25 +29,29 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
 import {
   Calendar,
   Clock,
   Mail,
   FileText,
-  Download,
-  Edit,
   Trash2,
   Play,
   Pause,
-  Copy,
-  Eye,
   Users,
   Settings,
   Plus,
   CheckCircle2,
-  Circle,
   TrendingUp,
   BarChart3,
   FileSpreadsheet,
@@ -60,117 +59,37 @@ import {
   Send,
   Zap,
   Target,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
-interface ScheduledReport {
+interface ScheduleFromAPI {
   id: string;
+  tenantId: string;
+  reportDefinitionId: string;
   name: string;
-  description: string;
-  reportType: string;
-  schedule: {
-    frequency: 'daily' | 'weekly' | 'monthly' | 'quarterly';
-    time: string;
-    dayOfWeek?: number;
-    dayOfMonth?: number;
-    timezone: string;
-  };
-  recipients: string[];
-  format: 'pdf' | 'excel' | 'csv';
+  description: string | null;
+  cronExpression: string;
+  timezone: string | null;
+  parameters: any;
   filters: any;
-  status: 'active' | 'paused' | 'failed';
-  lastRun?: Date;
-  nextRun: Date;
-  runCount: number;
+  recipients: string[];
+  deliveryMethod: string | null;
+  exportFormat: string | null;
+  emailSubject: string | null;
+  emailBody: string | null;
+  isActive: boolean | null;
+  lastRun: string | null;
+  nextRun: string | null;
+  runCount: number | null;
+  lastStatus: string | null;
+  lastError: string | null;
   createdBy: string;
-  createdAt: Date;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
-
-const mockScheduledReports: ScheduledReport[] = [
-  {
-    id: '1',
-    name: 'Weekly Sales Performance',
-    description:
-      'Comprehensive sales metrics and pipeline analysis sent to sales team every Monday',
-    reportType: 'sales-dashboard',
-    schedule: {
-      frequency: 'weekly',
-      time: '08:00',
-      dayOfWeek: 1,
-      timezone: 'America/New_York',
-    },
-    recipients: ['sales@company.com', 'manager@company.com'],
-    format: 'pdf',
-    filters: { dateRange: 'last-7-days' },
-    status: 'active',
-    lastRun: new Date('2025-11-18T08:00:00'),
-    nextRun: new Date('2025-11-25T08:00:00'),
-    runCount: 47,
-    createdBy: 'John Doe',
-    createdAt: new Date('2025-01-15'),
-  },
-  {
-    id: '2',
-    name: 'Monthly Financial Summary',
-    description: 'Revenue, expenses, and profitability report for executive team',
-    reportType: 'financial-summary',
-    schedule: {
-      frequency: 'monthly',
-      time: '09:00',
-      dayOfMonth: 1,
-      timezone: 'America/New_York',
-    },
-    recipients: ['cfo@company.com', 'ceo@company.com'],
-    format: 'excel',
-    filters: { dateRange: 'last-month' },
-    status: 'active',
-    lastRun: new Date('2025-11-01T09:00:00'),
-    nextRun: new Date('2025-12-01T09:00:00'),
-    runCount: 10,
-    createdBy: 'Jane Smith',
-    createdAt: new Date('2025-02-01'),
-  },
-  {
-    id: '3',
-    name: 'Daily Service Metrics',
-    description: 'Service call volume, response times, and technician performance',
-    reportType: 'service-metrics',
-    schedule: {
-      frequency: 'daily',
-      time: '17:00',
-      timezone: 'America/New_York',
-    },
-    recipients: ['service@company.com'],
-    format: 'csv',
-    filters: { dateRange: 'today' },
-    status: 'active',
-    lastRun: new Date('2025-11-22T17:00:00'),
-    nextRun: new Date('2025-11-23T17:00:00'),
-    runCount: 234,
-    createdBy: 'Mike Johnson',
-    createdAt: new Date('2025-03-10'),
-  },
-  {
-    id: '4',
-    name: 'Customer Health Scores',
-    description: 'Weekly customer health analysis with churn risk alerts',
-    reportType: 'customer-health',
-    schedule: {
-      frequency: 'weekly',
-      time: '10:00',
-      dayOfWeek: 5,
-      timezone: 'America/New_York',
-    },
-    recipients: ['csm@company.com', 'sales@company.com'],
-    format: 'pdf',
-    filters: { healthScore: 'below-70' },
-    status: 'paused',
-    lastRun: new Date('2025-11-15T10:00:00'),
-    nextRun: new Date('2025-11-29T10:00:00'),
-    runCount: 12,
-    createdBy: 'Sarah Lee',
-    createdAt: new Date('2025-09-01'),
-  },
-];
 
 const reportTypes = [
   { value: 'sales-dashboard', label: 'Sales Dashboard', icon: TrendingUp },
@@ -181,31 +100,79 @@ const reportTypes = [
   { value: 'equipment-status', label: 'Equipment Status', icon: Target },
 ];
 
+function parseCronFrequency(cron: string): string {
+  const parts = cron.split(' ');
+  if (parts.length !== 5) return cron;
+  const [, , dayOfMonth, month, dayOfWeek] = parts;
+  if (month !== '*' && month.includes(',')) return 'Quarterly';
+  if (dayOfMonth !== '*' && dayOfWeek === '*') return 'Monthly';
+  if (dayOfWeek !== '*') return 'Weekly';
+  return 'Daily';
+}
+
+function parseCronTime(cron: string): string {
+  const parts = cron.split(' ');
+  if (parts.length !== 5) return '';
+  const minute = parts[0].padStart(2, '0');
+  const hour = parts[1].padStart(2, '0');
+  return `${hour}:${minute}`;
+}
+
 export default function ScheduledReportsDashboard() {
-  const [reports, setReports] = useState(mockScheduledReports);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedReport, setSelectedReport] = useState<ScheduledReport | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: reports = [], isLoading } = useQuery<ScheduleFromAPI[]>({
+    queryKey: ['/api/scheduled-reports'],
+    queryFn: () => apiRequest('/api/scheduled-reports'),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/scheduled-reports/${id}/toggle`, 'PATCH'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/scheduled-reports'] });
+      toast({ title: 'Schedule updated' });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to toggle schedule', variant: 'destructive' });
+    },
+  });
+
+  const runNowMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/scheduled-reports/${id}/run`, 'POST'),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/scheduled-reports'] });
+      toast({ title: 'Report executed', description: data.message || 'Report sent to recipients' });
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to run report', variant: 'destructive' });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiRequest(`/api/scheduled-reports/${id}`, 'DELETE'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/scheduled-reports'] });
+      toast({ title: 'Schedule deleted' });
+      setDeleteConfirmId(null);
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to delete schedule', variant: 'destructive' });
+    },
+  });
 
   const stats = {
     total: reports.length,
-    active: reports.filter((r) => r.status === 'active').length,
-    paused: reports.filter((r) => r.status === 'paused').length,
-    totalDeliveries: reports.reduce((sum, r) => sum + r.runCount, 0),
+    active: reports.filter((r) => r.isActive).length,
+    paused: reports.filter((r) => !r.isActive).length,
+    totalDeliveries: reports.reduce((sum, r) => sum + (r.runCount || 0), 0),
   };
 
-  const toggleReportStatus = (reportId: string) => {
-    setReports(
-      reports.map((r) =>
-        r.id === reportId
-          ? { ...r, status: r.status === 'active' ? 'paused' : ('active' as any) }
-          : r,
-      ),
-    );
-  };
-
-  const runReportNow = (reportId: string) => {
-    console.log('Running report:', reportId);
-    // Trigger immediate report generation and delivery
+  const formatRecipients = (recipients: any): number => {
+    if (Array.isArray(recipients)) return recipients.length;
+    return 0;
   };
 
   return (
@@ -229,7 +196,13 @@ export default function ScheduledReportsDashboard() {
                 Schedule New Report
               </Button>
             </DialogTrigger>
-            <CreateReportDialog onClose={() => setIsCreateDialogOpen(false)} />
+            <CreateReportDialog
+              onClose={() => setIsCreateDialogOpen(false)}
+              onSuccess={() => {
+                setIsCreateDialogOpen(false);
+                queryClient.invalidateQueries({ queryKey: ['/api/scheduled-reports'] });
+              }}
+            />
           </Dialog>
         </div>
 
@@ -281,96 +254,131 @@ export default function ScheduledReportsDashboard() {
           </Card>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
         {/* Scheduled Reports List */}
-        <div className="grid gap-4">
-          {reports.map((report) => (
-            <Card key={report.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <CardTitle>{report.name}</CardTitle>
-                      <Badge variant={report.status === 'active' ? 'default' : 'secondary'}>
-                        {report.status === 'active' ? (
-                          <>
-                            <CheckCircle2 className="h-3 w-3 mr-1" /> Active
-                          </>
-                        ) : (
-                          <>
-                            <Pause className="h-3 w-3 mr-1" /> Paused
-                          </>
+        {!isLoading && (
+          <div className="grid gap-4">
+            {reports.map((report) => (
+              <Card key={report.id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <CardTitle>{report.name}</CardTitle>
+                        <Badge variant={report.isActive ? 'default' : 'secondary'}>
+                          {report.isActive ? (
+                            <>
+                              <CheckCircle2 className="h-3 w-3 mr-1" /> Active
+                            </>
+                          ) : (
+                            <>
+                              <Pause className="h-3 w-3 mr-1" /> Paused
+                            </>
+                          )}
+                        </Badge>
+                        <Badge variant="outline">
+                          {(report.exportFormat || 'pdf').toUpperCase()}
+                        </Badge>
+                        {report.lastStatus === 'failed' && (
+                          <Badge variant="destructive">
+                            <AlertCircle className="h-3 w-3 mr-1" /> Failed
+                          </Badge>
                         )}
-                      </Badge>
-                      <Badge variant="outline">{report.format.toUpperCase()}</Badge>
+                      </div>
+                      <CardDescription>{report.description}</CardDescription>
                     </div>
-                    <CardDescription>{report.description}</CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => runReportNow(report.id)}>
-                      <Play className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setSelectedReport(report)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => toggleReportStatus(report.id)}
-                    >
-                      {report.status === 'active' ? (
-                        <Pause className="h-4 w-4" />
-                      ) : (
-                        <Play className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground mb-1">Schedule</p>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <span className="font-medium">
-                        {report.schedule.frequency.charAt(0).toUpperCase() +
-                          report.schedule.frequency.slice(1)}{' '}
-                        at {report.schedule.time}
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Recipients</p>
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4" />
-                      <span className="font-medium">
-                        {report.recipients.length} recipient
-                        {report.recipients.length !== 1 ? 's' : ''}
-                      </span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => runNowMutation.mutate(report.id)}
+                        disabled={runNowMutation.isPending}
+                        title="Run now"
+                      >
+                        {runNowMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => toggleMutation.mutate(report.id)}
+                        title={report.isActive ? 'Pause' : 'Resume'}
+                      >
+                        {report.isActive ? (
+                          <Pause className="h-4 w-4" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleteConfirmId(report.id)}
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
                     </div>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Next Run</p>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      <span className="font-medium">{report.nextRun.toLocaleDateString()}</span>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground mb-1">Schedule</p>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <span className="font-medium">
+                          {parseCronFrequency(report.cronExpression)} at{' '}
+                          {parseCronTime(report.cronExpression)}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Recipients</p>
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4" />
+                        <span className="font-medium">
+                          {formatRecipients(report.recipients)} recipient
+                          {formatRecipients(report.recipients) !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Next Run</p>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span className="font-medium">
+                          {report.nextRun
+                            ? new Date(report.nextRun).toLocaleDateString()
+                            : 'Not scheduled'}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground mb-1">Deliveries</p>
+                      <div className="flex items-center gap-2">
+                        <Send className="h-4 w-4" />
+                        <span className="font-medium">{report.runCount || 0} sent</span>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Deliveries</p>
-                    <div className="flex items-center gap-2">
-                      <Send className="h-4 w-4" />
-                      <span className="font-medium">{report.runCount} sent</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Empty State */}
-        {reports.length === 0 && (
+        {!isLoading && reports.length === 0 && (
           <Card className="p-12 text-center">
             <Calendar className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">No Scheduled Reports</h3>
@@ -429,12 +437,41 @@ export default function ScheduledReportsDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Scheduled Report</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this scheduled report? This action cannot be undone
+              and all future deliveries will be stopped.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteConfirmId && deleteMutation.mutate(deleteConfirmId)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
 
-function CreateReportDialog({ onClose }: { onClose: () => void }) {
+function CreateReportDialog({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
   const [step, setStep] = useState(1);
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -442,13 +479,54 @@ function CreateReportDialog({ onClose }: { onClose: () => void }) {
     frequency: 'weekly',
     time: '09:00',
     dayOfWeek: '1',
+    dayOfMonth: '1',
+    cronExpression: '',
     recipients: '',
     format: 'pdf',
   });
 
+  const createMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('/api/scheduled-reports', 'POST', data),
+    onSuccess: () => {
+      toast({ title: 'Success', description: 'Scheduled report created' });
+      onSuccess();
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to create scheduled report',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const handleCreate = () => {
-    console.log('Creating scheduled report:', formData);
-    onClose();
+    const recipientList = formData.recipients
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean);
+
+    if (!formData.name || !formData.reportType || recipientList.length === 0) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in name, report type, and at least one recipient',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    createMutation.mutate({
+      name: formData.name,
+      description: formData.description,
+      reportType: formData.reportType,
+      frequency: formData.frequency,
+      time: formData.time,
+      dayOfWeek: formData.frequency === 'weekly' ? formData.dayOfWeek : undefined,
+      dayOfMonth: formData.frequency === 'monthly' ? formData.dayOfMonth : undefined,
+      cronExpression: formData.frequency === 'custom' ? formData.cronExpression : undefined,
+      recipients: recipientList,
+      format: formData.format,
+    });
   };
 
   return (
@@ -525,9 +603,24 @@ function CreateReportDialog({ onClose }: { onClose: () => void }) {
                 <SelectItem value="weekly">Weekly</SelectItem>
                 <SelectItem value="monthly">Monthly</SelectItem>
                 <SelectItem value="quarterly">Quarterly</SelectItem>
+                <SelectItem value="custom">Custom Cron Expression</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {formData.frequency === 'custom' && (
+            <div>
+              <Label htmlFor="cronExpression">Cron Expression</Label>
+              <Input
+                id="cronExpression"
+                placeholder="e.g., 0 9 * * 1-5 (weekdays at 9am)"
+                value={formData.cronExpression}
+                onChange={(e) => setFormData({ ...formData, cronExpression: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Format: minute hour day-of-month month day-of-week
+              </p>
+            </div>
+          )}
           {formData.frequency === 'weekly' && (
             <div>
               <Label htmlFor="dayOfWeek">Day of Week</Label>
@@ -550,15 +643,37 @@ function CreateReportDialog({ onClose }: { onClose: () => void }) {
               </Select>
             </div>
           )}
-          <div>
-            <Label htmlFor="time">Time</Label>
-            <Input
-              id="time"
-              type="time"
-              value={formData.time}
-              onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-            />
-          </div>
+          {formData.frequency === 'monthly' && (
+            <div>
+              <Label htmlFor="dayOfMonth">Day of Month</Label>
+              <Select
+                value={formData.dayOfMonth}
+                onValueChange={(v) => setFormData({ ...formData, dayOfMonth: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
+                    <SelectItem key={day} value={String(day)}>
+                      {day}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {formData.frequency !== 'custom' && (
+            <div>
+              <Label htmlFor="time">Time</Label>
+              <Input
+                id="time"
+                type="time"
+                value={formData.time}
+                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+              />
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="step-3" className="space-y-4">
@@ -587,7 +702,7 @@ function CreateReportDialog({ onClose }: { onClose: () => void }) {
                     PDF - Best for viewing
                   </div>
                 </SelectItem>
-                <SelectItem value="excel">
+                <SelectItem value="xlsx">
                   <div className="flex items-center gap-2">
                     <FileSpreadsheet className="h-4 w-4" />
                     Excel - Best for analysis
@@ -618,8 +733,12 @@ function CreateReportDialog({ onClose }: { onClose: () => void }) {
           {step < 3 ? (
             <Button onClick={() => setStep(step + 1)}>Next</Button>
           ) : (
-            <Button onClick={handleCreate}>
-              <Calendar className="h-4 w-4 mr-2" />
+            <Button onClick={handleCreate} disabled={createMutation.isPending}>
+              {createMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Calendar className="h-4 w-4 mr-2" />
+              )}
               Schedule Report
             </Button>
           )}

@@ -14,14 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { VirtualizedDataTable, type VirtualColumn } from '@/components/ui/virtualized-data-table';
 import {
   Dialog,
   DialogContent,
@@ -1014,91 +1007,77 @@ export default function LeadsManagement() {
         ) : viewMode === 'table' ? (
           <Card className="hidden lg:block">
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent border-b-2">
-                      <TableHead className="w-12 pl-6">
-                        <Checkbox
-                          checked={
-                            selectedLeads.length === filteredLeads.length &&
-                            filteredLeads.length > 0
-                          }
-                          onCheckedChange={toggleSelectAll}
-                        />
-                      </TableHead>
-                      {visibleColumnsConfig.map((column) => {
-                        const Icon = column.icon;
-                        return (
-                          <TableHead
-                            key={column.id}
-                            className={`${column.width} font-medium text-gray-700`}
-                          >
-                            <div className="flex items-center space-x-2">
-                              <Icon className="h-4 w-4" />
-                              <span>{column.label}</span>
-                            </div>
-                          </TableHead>
-                        );
-                      })}
-                      <TableHead className="w-20">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredLeads.map((lead: Lead) => (
-                      <TableRow key={lead.id} className="hover:bg-gray-50 transition-colors">
-                        <TableCell className="pl-6">
-                          <Checkbox
-                            checked={selectedLeads.includes(lead.id)}
-                            onCheckedChange={() => toggleLeadSelection(lead.id)}
-                          />
-                        </TableCell>
-                        {visibleColumnsConfig.map((column) => (
-                          <TableCell key={column.id} className="py-4">
-                            {renderTableCell(lead, column)}
-                          </TableCell>
-                        ))}
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-200">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => handleLeadClick(lead)}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setEditingLead(lead)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => setLocation(`/quotes/new?leadId=${lead.id}`)}
-                              >
-                                <DollarSign className="mr-2 h-4 w-4" />
-                                Create Quote
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem>
-                                <Phone className="mr-2 h-4 w-4" />
-                                Call
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Mail className="mr-2 h-4 w-4" />
-                                Send Email
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <VirtualizedDataTable<Lead>
+                data={filteredLeads}
+                columns={visibleColumnsConfig.map((column) => {
+                  const Icon = column.icon;
+                  return {
+                    id: column.id,
+                    header: (
+                      <div className="flex items-center space-x-2">
+                        <Icon className="h-4 w-4" />
+                        <span>{column.label}</span>
+                      </div>
+                    ),
+                    cell: (lead: Lead) => renderTableCell(lead, column),
+                    className: column.width,
+                  } as VirtualColumn<Lead>;
+                })}
+                selectedIds={new Set(selectedLeads)}
+                onSelectionChange={(ids) => {
+                  const arr = Array.from(ids) as string[];
+                  // Sync back to selectedLeads array
+                  if (arr.length === filteredLeads.length) {
+                    toggleSelectAll();
+                  } else {
+                    // Replace selection
+                    arr.forEach((id) => {
+                      if (!selectedLeads.includes(id)) toggleLeadSelection(id);
+                    });
+                    selectedLeads.forEach((id) => {
+                      if (!arr.includes(id)) toggleLeadSelection(id);
+                    });
+                  }
+                }}
+                onRowClick={(lead) => handleLeadClick(lead)}
+                actions={(lead) => (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-gray-200">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => handleLeadClick(lead)}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setEditingLead(lead)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setLocation(`/quotes/new?leadId=${lead.id}`)}
+                      >
+                        <DollarSign className="mr-2 h-4 w-4" />
+                        Create Quote
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <Phone className="mr-2 h-4 w-4" />
+                        Call
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Mail className="mr-2 h-4 w-4" />
+                        Send Email
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                maxHeight={700}
+              />
             </CardContent>
           </Card>
         ) : (

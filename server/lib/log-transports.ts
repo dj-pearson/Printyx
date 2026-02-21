@@ -15,6 +15,7 @@ import { Transform, type TransformCallback } from 'stream';
 import * as fs from 'fs';
 import * as path from 'path';
 import { createModuleLogger } from './logger';
+import { config } from '../config';
 
 const log = createModuleLogger('log-transport');
 
@@ -114,14 +115,20 @@ export interface LogEntry {
 
 // Build configuration from environment
 function buildConfig(): TransportConfig {
-  const provider = (process.env.LOG_TRANSPORT as LogTransportProvider) || 'console';
+  const provider = (process.env.LOG_TRANSPORT as LogTransportProvider) || config.logging.transport;
 
   const baseConfig: LogTransportConfig = {
     provider,
-    batchSize: parseInt(process.env.LOG_BATCH_SIZE || '100', 10),
-    flushIntervalMs: parseInt(process.env.LOG_FLUSH_INTERVAL_MS || '5000', 10),
-    maxRetries: parseInt(process.env.LOG_MAX_RETRIES || '3', 10),
-    retryDelayMs: parseInt(process.env.LOG_RETRY_DELAY_MS || '1000', 10),
+    batchSize: parseInt(process.env.LOG_BATCH_SIZE || String(config.logging.batchSize), 10),
+    flushIntervalMs: parseInt(
+      process.env.LOG_FLUSH_INTERVAL_MS || String(config.logging.flushIntervalMs),
+      10,
+    ),
+    maxRetries: parseInt(process.env.LOG_MAX_RETRIES || String(config.logging.maxRetries), 10),
+    retryDelayMs: parseInt(
+      process.env.LOG_RETRY_DELAY_MS || String(config.logging.retryDelayMs),
+      10,
+    ),
   };
 
   switch (provider) {

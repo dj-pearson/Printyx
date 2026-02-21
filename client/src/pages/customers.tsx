@@ -22,14 +22,7 @@ import {
 } from '@/components/ui/bulk-operations-toolbar';
 import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
 import { SavedFilters, useFilterState } from '@/components/ui/saved-filters';
-import {
-  Table as UITable,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { VirtualizedDataTable, type VirtualColumn } from '@/components/ui/virtualized-data-table';
 import {
   Search,
   Plus,
@@ -873,82 +866,75 @@ export default function Customers() {
                   })}
                 </div>
               ) : (
-                <div className="bg-background rounded-md border">
-                  <UITable>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">
-                          <Checkbox
-                            checked={bulkSelection.isAllSelected}
-                            onCheckedChange={bulkSelection.toggleAll}
-                            aria-label="Select all customers"
-                          />
-                        </TableHead>
-                        <TableHead>Company</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Website</TableHead>
-                        <TableHead className="w-24" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filtered.map((row: any) => (
-                        <TableRow
-                          key={row.id}
-                          className="cursor-pointer"
-                          onClick={() =>
-                            navigate(`/customers/${row.urlSlug || row.url_slug || row.id}`)
+                <VirtualizedDataTable
+                  data={filtered}
+                  columns={[
+                    {
+                      id: 'company',
+                      header: 'Company',
+                      cell: (row: any) => <span className="font-medium">{row.companyName}</span>,
+                    },
+                    {
+                      id: 'status',
+                      header: 'Status',
+                      cell: (row: any) => (
+                        <Badge
+                          variant={
+                            row.status === 'active'
+                              ? 'default'
+                              : row.status === 'inactive'
+                                ? 'secondary'
+                                : row.status === 'qualified'
+                                  ? 'success'
+                                  : 'outline'
                           }
                         >
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <Checkbox
-                              checked={bulkSelection.isSelected(row.id)}
-                              onCheckedChange={() => bulkSelection.toggleSelection(row.id)}
-                              aria-label={`Select ${row.companyName}`}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">{row.companyName}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                row.status === 'active'
-                                  ? 'default'
-                                  : row.status === 'inactive'
-                                    ? 'secondary'
-                                    : row.status === 'qualified'
-                                      ? 'success'
-                                      : 'outline'
-                              }
-                            >
-                              {row.status || 'lead'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {[row.city, row.state].filter(Boolean).join(', ') || '—'}
-                          </TableCell>
-                          <TableCell>{row.phone || '—'}</TableCell>
-                          <TableCell className="truncate max-w-[260px]">
-                            {row.website || '—'}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/customers/${row.urlSlug || row.url_slug || row.id}`);
-                              }}
-                            >
-                              View
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </UITable>
-                </div>
+                          {row.status || 'lead'}
+                        </Badge>
+                      ),
+                    },
+                    {
+                      id: 'location',
+                      header: 'Location',
+                      cell: (row: any) => [row.city, row.state].filter(Boolean).join(', ') || '—',
+                    },
+                    { id: 'phone', header: 'Phone', cell: (row: any) => row.phone || '—' },
+                    {
+                      id: 'website',
+                      header: 'Website',
+                      cell: (row: any) => (
+                        <span className="truncate max-w-[260px] block">{row.website || '—'}</span>
+                      ),
+                    },
+                  ]}
+                  selectedIds={bulkSelection.selectedIdsSet}
+                  onSelectionChange={(ids) => {
+                    const current = bulkSelection.selectedIdsSet;
+                    ids.forEach((id) => {
+                      if (!current.has(id)) bulkSelection.toggleSelection(id as string);
+                    });
+                    current.forEach((id) => {
+                      if (!ids.has(id)) bulkSelection.toggleSelection(id as string);
+                    });
+                  }}
+                  onRowClick={(row: any) =>
+                    navigate(`/customers/${row.urlSlug || row.url_slug || row.id}`)
+                  }
+                  actions={(row: any) => (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/customers/${row.urlSlug || row.url_slug || row.id}`);
+                      }}
+                    >
+                      View
+                    </Button>
+                  )}
+                  maxHeight={700}
+                />
               )
             ) : (
               <Card>

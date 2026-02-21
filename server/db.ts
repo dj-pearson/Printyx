@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import pg from 'pg';
 import { createModuleLogger, getRequestContext } from './lib/logger';
+import { config } from './config';
 const log = createModuleLogger('db');
 
 const { Pool } = pg;
@@ -55,13 +56,19 @@ interface DatabaseConfig {
 // Build pool configuration with resilience settings
 const poolConfig: DatabaseConfig = {
   connectionString: databaseUrl,
-  // Connection timeout (default: 10 seconds)
-  connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT_MS || '10000', 10),
-  // Idle timeout (default: 30 seconds)
-  idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT_MS || '30000', 10),
+  // Connection timeout
+  connectionTimeoutMillis: parseInt(
+    process.env.DB_CONNECTION_TIMEOUT_MS || String(config.database.connectionTimeoutMs),
+    10,
+  ),
+  // Idle timeout
+  idleTimeoutMillis: parseInt(
+    process.env.DB_IDLE_TIMEOUT_MS || String(config.database.idleTimeoutMs),
+    10,
+  ),
   // Connection pool limits
-  max: parseInt(process.env.DB_POOL_MAX || '20', 10),
-  min: parseInt(process.env.DB_POOL_MIN || '2', 10),
+  max: parseInt(process.env.DB_POOL_MAX || String(config.database.poolMax), 10),
+  min: parseInt(process.env.DB_POOL_MIN || String(config.database.poolMin), 10),
 };
 
 // SSL configuration for self-hosted Supabase
@@ -75,19 +82,43 @@ if (process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production') {
 
 // Circuit breaker for database connections
 const dbCircuitBreaker = getCircuitBreaker('database', {
-  failureThreshold: parseInt(process.env.DB_CIRCUIT_FAILURE_THRESHOLD || '5', 10),
-  recoveryTimeout: parseInt(process.env.DB_CIRCUIT_RECOVERY_TIMEOUT_MS || '30000', 10),
-  halfOpenRequests: parseInt(process.env.DB_CIRCUIT_HALF_OPEN_REQUESTS || '3', 10),
-  monitoringWindow: parseInt(process.env.DB_CIRCUIT_MONITORING_WINDOW_MS || '60000', 10),
+  failureThreshold: parseInt(
+    process.env.DB_CIRCUIT_FAILURE_THRESHOLD ||
+      String(config.database.circuitBreakerFailureThreshold),
+    10,
+  ),
+  recoveryTimeout: parseInt(
+    process.env.DB_CIRCUIT_RECOVERY_TIMEOUT_MS ||
+      String(config.database.circuitBreakerRecoveryTimeoutMs),
+    10,
+  ),
+  halfOpenRequests: parseInt(
+    process.env.DB_CIRCUIT_HALF_OPEN_REQUESTS ||
+      String(config.database.circuitBreakerHalfOpenRequests),
+    10,
+  ),
+  monitoringWindow: parseInt(
+    process.env.DB_CIRCUIT_MONITORING_WINDOW_MS ||
+      String(config.database.circuitBreakerMonitoringWindowMs),
+    10,
+  ),
 });
 
 // Retry configuration for database operations
 const dbRetryConfig = {
   ...DEFAULT_RETRY_CONFIG,
-  maxRetries: parseInt(process.env.DB_MAX_RETRIES || '5', 10),
-  baseDelayMs: parseInt(process.env.DB_RETRY_BASE_DELAY_MS || '1000', 10),
-  maxDelayMs: parseInt(process.env.DB_RETRY_MAX_DELAY_MS || '30000', 10),
-  jitterFactor: parseFloat(process.env.DB_RETRY_JITTER_FACTOR || '0.3'),
+  maxRetries: parseInt(process.env.DB_MAX_RETRIES || String(config.database.maxRetries), 10),
+  baseDelayMs: parseInt(
+    process.env.DB_RETRY_BASE_DELAY_MS || String(config.database.retryBaseDelayMs),
+    10,
+  ),
+  maxDelayMs: parseInt(
+    process.env.DB_RETRY_MAX_DELAY_MS || String(config.database.retryMaxDelayMs),
+    10,
+  ),
+  jitterFactor: parseFloat(
+    process.env.DB_RETRY_JITTER_FACTOR || String(config.database.retryJitterFactor),
+  ),
 };
 
 // Create the retry handler
