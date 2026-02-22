@@ -231,25 +231,28 @@ const Homepage = () => {
 
   const testimonials = [
     {
-      name: 'Sarah Johnson',
-      role: 'Owner, TechCopy Solutions',
+      name: 'Regional Copier Dealer',
+      role: '50+ technicians, Southeast US',
       content:
-        'Printyx has completely transformed how we manage our business. What used to take hours now takes minutes.',
+        'We cut emergency service calls by 35% in the first quarter using predictive maintenance. The AI caught equipment failures we would have completely missed.',
       rating: 5,
+      metric: '35% fewer emergencies',
     },
     {
-      name: 'Mike Chen',
-      role: 'Operations Manager, Copy Pro',
+      name: 'Multi-Location Dealer Group',
+      role: '8 locations, Midwest',
       content:
-        'The unified dashboard gives us real-time visibility into every aspect of our operation. Game-changing.',
+        'The unified dashboard replaced 4 different tools we were juggling. Our operations team saves over 10 hours per week on reporting alone.',
       rating: 5,
+      metric: '10+ hrs/week saved',
     },
     {
-      name: 'Lisa Rodriguez',
-      role: 'Service Director, Office Solutions Inc',
+      name: 'Growing Dealer Partner',
+      role: 'Startup to 30 techs in 2 years',
       content:
-        'Our technicians love the mobile app, and our customers love the faster service. Win-win.',
+        'The mobile-first field service app works everywhere - even in basements with no signal. Our techs actually want to use it, which is a first.',
       rating: 5,
+      metric: '40% less travel time',
     },
   ];
 
@@ -272,14 +275,11 @@ const Homepage = () => {
               <a href="#benefits" className="text-gray-700 hover:text-blue-600 transition-colors">
                 Benefits
               </a>
+              <a href="/roi-calculator" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+                ROI Calculator
+              </a>
               <a href="/blog" className="text-gray-700 hover:text-blue-600 transition-colors">
                 Blog
-              </a>
-              <a
-                href="#testimonials"
-                className="text-gray-700 hover:text-blue-600 transition-colors"
-              >
-                Testimonials
               </a>
               <Button
                 variant="outline"
@@ -321,18 +321,18 @@ const Homepage = () => {
                       Benefits
                     </a>
                     <a
+                      href="/roi-calculator"
+                      className="text-blue-600 font-medium hover:text-blue-700 transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      ROI Calculator
+                    </a>
+                    <a
                       href="/blog"
                       className="text-gray-700 hover:text-blue-600 transition-colors"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       Blog
-                    </a>
-                    <a
-                      href="#testimonials"
-                      className="text-gray-700 hover:text-blue-600 transition-colors"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Testimonials
                     </a>
                     <Button
                       variant="outline"
@@ -383,18 +383,16 @@ const Homepage = () => {
             {features.map((feature, index) => (
               <Card
                 key={index}
-                className={`transform transition - all duration - 700 delay - ${
-                  index * 100
-                } hover: scale - 105 hover: shadow - xl border - 2 hover: border - blue - 300 ${
+                className={`transform transition-all duration-700 hover:scale-105 hover:shadow-xl border-2 hover:border-blue-300 ${
                   isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-                } `}
+                }`}
               >
                 <CardHeader>
                   <Badge className="mb-3 bg-blue-50 text-blue-700 border-blue-200 w-fit">
                     {feature.badge}
                   </Badge>
                   <div
-                    className={`inline - flex items - center justify - center w - 14 h - 14 ${feature.color} rounded - xl mb - 4 shadow - lg`}
+                    className={`inline-flex items-center justify-center w-14 h-14 ${feature.color} rounded-xl mb-4 shadow-lg`}
                   >
                     <feature.icon className="h-7 w-7 text-white" />
                   </div>
@@ -439,11 +437,9 @@ const Homepage = () => {
             {benefits.map((benefit, index) => (
               <Card
                 key={index}
-                className={`transform transition - all duration - 700 delay - ${
-                  index * 150
-                } hover: shadow - 2xl border - 2 hover: border - purple - 300 ${
+                className={`transform transition-all duration-700 hover:shadow-2xl border-2 hover:border-purple-300 ${
                   isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-                } `}
+                }`}
               >
                 <CardContent className="p-8">
                   <div className="flex items-start space-x-4">
@@ -673,19 +669,24 @@ const Homepage = () => {
             {testimonials.map((testimonial, index) => (
               <Card
                 key={index}
-                className={`transform transition - all duration - 700 delay - ${
-                  index * 150
-                } hover: shadow - lg border - 2 hover: border - blue - 300 ${
+                className={`transform transition-all duration-700 hover:shadow-lg border-2 hover:border-blue-300 ${
                   isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'
-                } `}
+                }`}
               >
                 <CardContent className="p-6">
-                  <div className="flex mb-4">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <span key={i} className="text-yellow-400 text-xl">
-                        ★
-                      </span>
-                    ))}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex">
+                      {[...Array(testimonial.rating)].map((_, i) => (
+                        <span key={i} className="text-yellow-400 text-xl">
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                    {testimonial.metric && (
+                      <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
+                        {testimonial.metric}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-gray-700 mb-4 italic text-lg">"{testimonial.content}"</p>
                   <div>
@@ -706,7 +707,7 @@ const Homepage = () => {
           <div
             className="absolute inset-0"
             style={{
-              backgroundImage: `radial - gradient(circle at 2px 2px, white 1px, transparent 0)`,
+              backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
               backgroundSize: '40px 40px',
             }}
           />
@@ -887,20 +888,40 @@ const Homepage = () => {
           <div className="border-t border-gray-800 pt-8">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <div className="text-center md:text-left mb-4 md:mb-0">
-                <p className="text-gray-400 text-sm">© 2025 Printyx. All rights reserved.</p>
+                <p className="text-gray-400 text-sm">© 2026 Printyx. All rights reserved.</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  AI-Powered Dealer Management • Predictive vs. Reactive • Modern Cloud Architecture
+                  AI-Powered Dealer Management &bull; Predictive vs. Reactive &bull; Modern Cloud Architecture
                 </p>
               </div>
               <div className="flex space-x-6 text-sm">
-                <span className="text-gray-400">Privacy Policy</span>
-                <span className="text-gray-400">Terms of Service</span>
-                <span className="text-gray-400">Security</span>
+                <a href="/privacy" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a>
+                <a href="/terms" className="text-gray-400 hover:text-white transition-colors">Terms of Service</a>
+                <a href="/eula" className="text-gray-400 hover:text-white transition-colors">EULA</a>
               </div>
             </div>
           </div>
         </div>
       </footer>
+
+      {/* Sticky Mobile CTA - visible on mobile/tablet only */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 backdrop-blur-sm border-t border-gray-200 p-3 safe-area-bottom">
+        <div className="flex gap-2">
+          <Button
+            className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-sm font-semibold"
+            onClick={() => (window.location.href = '/signup')}
+          >
+            Start Free Trial
+            <ArrowRight className="ml-1 h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            className="border-blue-600 text-blue-600 text-sm"
+            onClick={() => (window.location.href = '/roi-calculator')}
+          >
+            See ROI
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
