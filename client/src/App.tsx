@@ -1,15 +1,13 @@
 import { Switch, Route } from 'wouter';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useLocation } from 'wouter';
 import { SEOProvider } from '@/lib/seo/SEOProvider';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { SubscriptionBanner } from '@/components/SubscriptionBanner';
 import { AuthProvider, useAuthContext } from '@/providers/AuthProvider';
-import { CommandPalette } from '@/components/navigation/command-palette';
-import { useCommandPalette } from '@/hooks/useCommandPalette';
 import { PWAProvider } from '@/components/pwa/PWAProvider';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { PageErrorBoundary } from '@/components/PageErrorBoundary';
@@ -17,6 +15,7 @@ import { SessionGuard } from '@/components/SessionGuard';
 import { AccessibilityProvider } from '@/hooks/useAccessibility';
 import { LiveRegionProvider } from '@/components/accessibility/LiveRegion';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { AdminRouteGuard } from '@/components/auth/RouteGuard';
 import { useRouteAnnouncer } from '@/hooks/useRouteAnnouncer';
 import { AccessibilityWidget } from '@/components/accessibility/AccessibilityWidget';
 import { SkipNavigation } from '@/components/accessibility/SkipNavigation';
@@ -101,9 +100,7 @@ const LeadMapViewer = React.lazy(() => import('@/pages/LeadMapViewer'));
 // Core app pages - lazy load everything for optimal bundle splitting
 const Dashboard = React.lazy(() => import('@/pages/dashboard'));
 const ExecutiveDashboard = React.lazy(() => import('@/pages/ExecutiveDashboard'));
-const Customers = React.lazy(() => import('@/pages/customers'));
 const LeadDetail = React.lazy(() => import('@/pages/LeadDetail'));
-// Removed placeholder report imports - using Reports page instead
 const Contracts = React.lazy(() => import('@/pages/contracts'));
 const ContractRenewalDashboard = React.lazy(() => import('@/pages/ContractRenewalDashboard'));
 const ProactiveServiceDashboard = React.lazy(() => import('@/pages/ProactiveServiceDashboard'));
@@ -119,7 +116,6 @@ const UniversalProductImport = React.lazy(() => import('@/pages/UniversalProduct
 const MeterReadings = React.lazy(() => import('@/pages/MeterReadings'));
 const ProductModels = React.lazy(() => import('@/pages/ProductModels'));
 const EnhancedProductModels = React.lazy(() => import('@/pages/EnhancedProductModels'));
-const ProductAccessories = React.lazy(() => import('@/pages/ProductAccessories'));
 const EnhancedProductAccessories = React.lazy(() => import('@/pages/EnhancedProductAccessories'));
 const ProfessionalServices = React.lazy(() => import('@/pages/ProfessionalServices'));
 const ServiceProducts = React.lazy(() => import('@/pages/ServiceProducts'));
@@ -139,26 +135,18 @@ const MobileOptimization = React.lazy(() => import('@/pages/MobileOptimization')
 const PerformanceMonitoring = React.lazy(() => import('@/pages/PerformanceMonitoring'));
 const SystemIntegrations = React.lazy(() => import('@/pages/SystemIntegrations'));
 const DeploymentReadiness = React.lazy(() => import('@/pages/DeploymentReadiness'));
-// Unified Task Hub - consolidates all task management functionality
 const TaskHub = React.lazy(() => import('@/pages/TaskHub'));
-// Deprecated - kept for backward compatibility, redirect to TaskHub
-const TaskManagement = React.lazy(() => import('@/pages/TaskManagement'));
-const BasicTaskManagement = React.lazy(() => import('@/pages/BasicTaskManagement'));
-const DealsManagement = React.lazy(() => import('@/pages/DealsManagement'));
 const CrmDealsPage = React.lazy(() => import('@/pages/CrmDealsPage'));
 const CrmLeadsPage = React.lazy(() => import('@/pages/CrmLeadsPage'));
 const CrmContactsPage = React.lazy(() => import('@/pages/CrmContactsPage'));
 const CrmCompaniesPage = React.lazy(() => import('@/pages/CrmCompaniesPage'));
-const ProductHub = React.lazy(() => import('@/pages/ProductHub'));
 const ProductHubUnified = React.lazy(() => import('@/pages/ProductHubUnified'));
-const EquipmentLifecycle = React.lazy(() => import('@/pages/EquipmentLifecycle'));
 const EquipmentLifecycleHub = React.lazy(() => import('@/pages/EquipmentLifecycleHub'));
 const PurchaseOrders = React.lazy(() => import('@/pages/PurchaseOrders'));
 const WarehouseOperations = React.lazy(() => import('@/pages/WarehouseOperations'));
 const CrmGoalsDashboard = React.lazy(() => import('@/pages/CrmGoalsDashboard'));
 const TodayDashboard = React.lazy(() => import('@/pages/TodayDashboard'));
 const MobileFieldService = React.lazy(() => import('@/pages/MobileFieldService'));
-const ProductManagementHub = React.lazy(() => import('@/pages/ProductManagementHub'));
 const PricingManagement = React.lazy(() => import('@/pages/PricingManagement'));
 const PricingSettings = React.lazy(() => import('@/pages/PricingSettings'));
 const MarginAnalysisReport = React.lazy(() => import('@/pages/MarginAnalysisReport'));
@@ -172,7 +160,6 @@ const DeviceMonitoring = React.lazy(() => import('@/pages/DeviceMonitoring'));
 const OidManagement = React.lazy(() => import('@/pages/OidManagement'));
 const Pricing = React.lazy(() => import('@/pages/Pricing'));
 const SubscriptionSettings = React.lazy(() => import('@/pages/SubscriptionSettings'));
-const BillingPage = React.lazy(() => import('@/pages/Billing'));
 const DataEnrichment = React.lazy(() => import('@/pages/DataEnrichment'));
 const QuickBooksIntegration = React.lazy(() => import('@/pages/QuickBooksIntegration'));
 const ManufacturerIntegration = React.lazy(() => import('@/pages/ManufacturerIntegration'));
@@ -182,7 +169,6 @@ const ManufacturerIntegrationDevices = React.lazy(
 const ManufacturerIntegrationAudit = React.lazy(
   () => import('@/pages/ManufacturerIntegrationAudit'),
 );
-const LeadsManagement = React.lazy(() => import('@/pages/LeadsManagement'));
 const LeadsPage = React.lazy(() => import('@/pages/LeadsPage'));
 const ProspectsPage = React.lazy(() => import('@/pages/ProspectsPage'));
 const CustomersPage = React.lazy(() => import('@/pages/CustomersPage'));
@@ -204,15 +190,11 @@ const CustomerSelfServicePortal = React.lazy(() => import('@/pages/CustomerSelfS
 const AdvancedBillingEngine = React.lazy(() => import('@/pages/AdvancedBillingEngine'));
 const BillingRules = React.lazy(() => import('@/pages/BillingRules'));
 const BillingAnalytics = React.lazy(() => import('@/pages/BillingAnalytics'));
-const ProductCatalog = React.lazy(() => import('@/pages/ProductCatalog'));
 const VendorManagement = React.lazy(() => import('@/pages/VendorManagement'));
 const CustomerNumberSettings = React.lazy(() => import('@/pages/CustomerNumberSettings'));
 const FinancialForecasting = React.lazy(() => import('@/pages/FinancialForecasting'));
 const FinancialIntelligenceDashboard = React.lazy(
   () => import('@/pages/FinancialIntelligenceDashboard'),
-);
-const EquipmentLifecycleManagement = React.lazy(
-  () => import('@/pages/EquipmentLifecycleManagement'),
 );
 const CommissionManagement = React.lazy(() => import('@/pages/CommissionManagement'));
 const SalesPerformanceAnalytics = React.lazy(() => import('@/pages/SalesPerformanceAnalytics'));
@@ -222,9 +204,7 @@ const RemoteMonitoring = React.lazy(() => import('@/pages/RemoteMonitoring'));
 const FleetMonitoringDashboard = React.lazy(() => import('@/pages/FleetMonitoringDashboard'));
 const DemoScheduling = React.lazy(() => import('@/pages/DemoScheduling'));
 const SocialMediaGenerator = React.lazy(() => import('@/pages/SocialMediaGenerator'));
-const SecurityManagement = React.lazy(() => import('@/pages/SecurityComplianceManagement'));
 const SystemMonitoring = React.lazy(() => import('@/pages/SystemMonitoring'));
-// const AccessControl = React.lazy(() => import("@/pages/AccessControl")); // File doesn't exist - using CustomerAccessManagement instead
 const AdminHub = React.lazy(() => import('@/pages/AdminHub'));
 const AdminCommandCenter = React.lazy(() => import('@/pages/AdminCommandCenter'));
 const RootAdminDashboard = React.lazy(() => import('@/pages/RootAdminDashboard'));
@@ -261,7 +241,6 @@ const DocumentManagement = React.lazy(() => import('@/pages/DocumentManagement')
 const MobileServiceApp = React.lazy(() => import('@/pages/MobileServiceApp'));
 const AdvancedAnalyticsDashboard = React.lazy(() => import('@/pages/AdvancedAnalyticsDashboard'));
 const BusinessProcessOptimization = React.lazy(() => import('@/pages/BusinessProcessOptimization'));
-// const SecurityCompliance = React.lazy(() => import("@/pages/SecurityCompliance")); // File doesn't exist - using SecurityComplianceManagement instead
 const SecurityComplianceManagement = React.lazy(
   () => import('@/pages/SecurityComplianceManagement'),
 );
@@ -293,7 +272,6 @@ const AIHub = React.lazy(() => import('@/pages/AIHub'));
 const AIEmployeeDashboard = React.lazy(() => import('@/pages/AIEmployeeDashboard'));
 const CalendarPage = React.lazy(() => import('@/pages/CalendarPage'));
 const MeetingTranscription = React.lazy(() => import('@/pages/MeetingTranscription'));
-const AITaskScheduling = React.lazy(() => import('@/pages/AITaskScheduling'));
 const AISearchKnowledgeDashboard = React.lazy(() => import('@/pages/AISearchKnowledgeDashboard'));
 const ConversationalAIDashboard = React.lazy(() => import('@/pages/ConversationalAIDashboard'));
 
@@ -321,8 +299,6 @@ const LAST_ROUTE_KEY = 'printyx_last_route';
 function Router() {
   const { isAuthenticated, isLoading } = useAuthContext();
   const [pathname, setLocation] = useLocation();
-  const { open, setOpen } = useCommandPalette();
-
   // Announce route changes to screen readers (WCAG 2.4.2, 4.1.3)
   useRouteAnnouncer();
 
@@ -394,10 +370,6 @@ function Router() {
     }
   }, [isAuthenticated]);
 
-  // Removed eager prefetching for better performance
-  // Data will be fetched when components mount, which is more efficient
-  // and prevents unnecessary data fetching for pages the user might not visit
-
   if (isLoading) {
     return (
       <div
@@ -464,14 +436,13 @@ function Router() {
           <Route path="/case-studies" component={CaseStudies} />
           <Route path="/battle-card" component={CompetitiveBattleCard} />
 
-          {/* Other marketing pages */}
+          {/* Marketing pages */}
           <Route path="/p/copier-dealer-crm" component={CopierDealerCRM} />
           <Route path="/p/print-service-dispatch-mobile" component={PrintServiceDispatchMobile} />
           <Route
             path="/p/master-product-catalog-canon-imagerunner"
             component={CanonMasterProductCatalog}
           />
-          <Route path="/export-logos" component={LogoExport} />
           <Route component={Homepage} />
         </Switch>
 
@@ -493,7 +464,6 @@ function Router() {
   return (
     <>
       <SubscriptionBanner />
-      <CommandPalette open={open} onOpenChange={setOpen} />
       <React.Suspense
         fallback={
           <div
@@ -536,17 +506,15 @@ function Router() {
               </Route>
               <Route path="/today" component={TodayDashboard} />
               <Route path="/dashboard/today" component={TodayDashboard} />
-              {/* CRM - Unified CRM index pages (HubSpot-style) */}
+              {/* CRM */}
               <Route path="/crm/deals" component={CrmDealsPage} />
               <Route path="/crm/leads" component={CrmLeadsPage} />
               <Route path="/crm/contacts" component={CrmContactsPage} />
               <Route path="/crm/companies" component={CrmCompaniesPage} />
-              {/* CRM - Legacy dedicated pages */}
               <Route path="/leads" component={LeadsPage} />
               <Route path="/prospects" component={ProspectsPage} />
               <Route path="/customers" component={CustomersPage} />
               <Route path="/customers/:slug" component={CustomerDetail} />
-              {/* Legacy routes */}
               <Route path="/crm" component={CustomersPage} />
               <Route path="/business-records" component={CustomersPage} />
               <Route path="/leads-management" component={LeadsPage} />
@@ -554,14 +522,10 @@ function Router() {
               <Route path="/deals" component={CrmDealsPage} />
               <Route path="/opportunities" component={CrmDealsPage} />
               <Route path="/deals-management" component={CrmDealsPage} />
-              {/* Unified Product Hub - consolidates product-hub, product-catalog, and product-management-hub */}
+              {/* Product Hub */}
               <Route path="/product-hub" component={ProductHubUnified} />
-              {/* Legacy Product Hub (keeping for reference during transition) */}
-              <Route path="/product-hub-legacy" component={ProductHub} />
-              {/* Unified Equipment Lifecycle Hub - consolidates EquipmentLifecycle and EquipmentLifecycleManagement */}
+              {/* Equipment Lifecycle */}
               <Route path="/equipment-lifecycle" component={EquipmentLifecycleHub} />
-              {/* Legacy Equipment Lifecycle pages (keeping for reference during transition) */}
-              <Route path="/equipment-lifecycle-legacy" component={EquipmentLifecycle} />
               <Route path="/purchase-orders" component={PurchaseOrders} />
               <Route path="/warehouse-operations" component={WarehouseOperations} />
               <Route path="/crm-goals" component={CrmGoalsDashboard} />
@@ -625,19 +589,12 @@ function Router() {
                   />
                 )}
               </Route>
-              {/* Equipment Lifecycle Management - now redirects to unified hub */}
               <Route path="/equipment-lifecycle-management" component={EquipmentLifecycleHub} />
-              {/* Legacy Equipment Lifecycle Management (keeping for reference during transition) */}
-              <Route
-                path="/equipment-lifecycle-management-legacy"
-                component={EquipmentLifecycleManagement}
-              />
               <Route path="/commission-management" component={CommissionManagement} />
               <Route path="/sales-command-center" component={SalesCommandCenter} />
               <Route path="/sales-performance-analytics" component={SalesPerformanceAnalytics} />
               <Route path="/remote-monitoring" component={RemoteMonitoring} />
               <Route path="/fleet-monitoring" component={FleetMonitoringDashboard} />
-              {/* Removed duplicate route - use /mobile-service-app as primary */}
               <Route path="/service-analytics" component={ServiceAnalytics} />
               <Route path="/workflow-automation" component={WorkflowAutomation} />
 
@@ -663,11 +620,9 @@ function Router() {
               <Route path="/meeting-to-proposal" component={MeetingToProposalDashboard} />
 
               <Route path="/mobile-field-operations" component={MobileFieldOperations} />
-              <Route path="/mobile-field-operations" component={MobileFieldOperations} />
               <Route path="/leads/:slug" component={LeadDetail} />
               <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
               <Route path="/company-contacts" component={CompanyContacts} />
-              {/* Removed placeholder report pages - redirect to /reports (EnhancedReportsHub) */}
               <Route path="/sales-reports" component={Reports} />
               <Route path="/service-reports" component={Reports} />
               <Route path="/revenue-reports" component={Reports} />
@@ -690,12 +645,8 @@ function Router() {
               <Route path="/vehicle-management" component={VehicleManagement} />
               <Route path="/asset-management" component={AssetManagement} />
               <Route path="/mobile-field-service" component={MobileFieldService} />
-              {/* Product Catalog and Management Hub now redirect to unified hub */}
               <Route path="/product-catalog" component={ProductHubUnified} />
               <Route path="/product-management-hub" component={ProductHubUnified} />
-              {/* Legacy routes for backward compatibility */}
-              <Route path="/product-catalog-legacy" component={ProductCatalog} />
-              <Route path="/product-management-hub-legacy" component={ProductManagementHub} />
               <Route path="/inventory" component={Inventory} />
               <Route path="/product-models" component={ProductModels} />
               <Route path="/product-models-v2" component={EnhancedProductModels} />
@@ -703,9 +654,6 @@ function Router() {
               <Route path="/pricing/margin-report" component={MarginAnalysisReport} />
               <Route path="/pricing/approvals" component={PriceApprovals} />
               <Route path="/product-accessories" component={EnhancedProductAccessories} />
-              {/* Legacy routes for backward compatibility */}
-              <Route path="/enhanced-product-accessories" component={EnhancedProductAccessories} />
-              <Route path="/product-accessories-legacy" component={ProductAccessories} />
               <Route path="/professional-services" component={ProfessionalServices} />
               <Route path="/service-products" component={ServiceProducts} />
               <Route path="/software-products" component={SoftwareProducts} />
@@ -745,7 +693,6 @@ function Router() {
               <Route path="/import/products" component={UniversalProductImport} />
               <Route path="/advanced-reporting" component={AdvancedReporting} />
               <Route path="/advanced-analytics" component={AdvancedAnalytics} />
-              <Route path="/workflow-automation" component={WorkflowAutomation} />
               <Route path="/mobile-optimization" component={MobileOptimization} />
               <Route path="/performance-monitoring" component={PerformanceMonitoring} />
               <Route path="/system-integrations" component={SystemIntegrations} />
@@ -758,10 +705,9 @@ function Router() {
                   />
                 )}
               </Route>
-              {/* Unified Task Hub - consolidates all task management */}
+              {/* Task Hub */}
               <Route path="/task-hub" component={TaskHub} />
               <Route path="/tasks" component={TaskHub} />
-              {/* Legacy routes - redirect to Task Hub for backward compatibility */}
               <Route path="/task-management" component={TaskHub} />
               <Route path="/basic-tasks" component={TaskHub} />
               <Route path="/my-tasks" component={TaskHub} />
@@ -775,7 +721,7 @@ function Router() {
               <Route path="/oid-management" component={OidManagement} />
               <Route path="/pricing" component={Pricing} />
               <Route path="/settings/subscription" component={SubscriptionSettings} />
-              <Route path="/settings/billing" component={BillingPage} />
+              <Route path="/settings/billing" component={Billing} />
               <Route path="/company-ids-test" component={CompanyIdsTest} />
               <Route path="/customer-number-settings" component={CustomerNumberSettings} />
               <Route path="/demo-scheduling" component={DemoScheduling} />
@@ -790,18 +736,14 @@ function Router() {
                 path="/preventive-maintenance-automation"
                 component={PreventiveMaintenanceAutomation}
               />
-              <Route path="/commission-management" component={CommissionManagement} />
               <Route path="/customer-success" component={CustomerSuccessManagement} />
-              <Route path="/remote-monitoring" component={RemoteMonitoring} />
               <Route path="/document-management" component={DocumentManagement} />
               <Route path="/mobile-service-app" component={MobileServiceApp} />
-              {/* Removed duplicate /advanced-analytics route - kept at line 450 pointing to AdvancedAnalytics */}
               <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
               <Route
                 path="/business-process-optimization"
                 component={BusinessProcessOptimization}
               />
-              {/* Consolidated into /security-compliance-management */}
               <Route path="/security-compliance" component={SecurityComplianceManagement} />
               <Route path="/security-compliance-management">
                 {() => (
@@ -812,10 +754,8 @@ function Router() {
                   />
                 )}
               </Route>
-              <Route path="/customer-portal" component={CustomerSelfServicePortal} />
               <Route path="/customer-self-service-portal" component={CustomerSelfServicePortal} />
               <Route path="/incident-response" component={IncidentResponseSystem} />
-              {/* Removed duplicate /ai-analytics route - using /ai-analytics-dashboard as primary */}
               <Route path="/ai-analytics-dashboard" component={AIAnalyticsDashboard} />
               <Route path="/predictive-analytics">
                 {() => (
@@ -833,12 +773,9 @@ function Router() {
               <Route path="/ai-service-intelligence" component={AIServiceIntelligence} />
               <Route path="/integration-hub" component={IntegrationHub} />
               <Route path="/integrations" component={IntegrationHub} />
-              <Route path="/workflow-automation" component={WorkflowAutomation} />
               <Route path="/social-media-generator" component={SocialMediaGenerator} />
-              {/* Consolidated into /security-compliance-management */}
               <Route path="/security-management" component={SecurityComplianceManagement} />
               <Route path="/system-monitoring" component={SystemMonitoring} />
-              {/* Consolidated into /role-management - AccessControl had mock data duplicating UserManagement + RoleManagement */}
               <Route path="/access-control" component={RoleManagement} />
               <Route path="/role-management">
                 {() => (
@@ -971,7 +908,6 @@ function Router() {
               <Route path="/ai-employees" component={AIEmployeeDashboard} />
               <Route path="/calendar" component={CalendarPage} />
               <Route path="/meeting-transcription" component={MeetingTranscription} />
-              {/* AI Task Scheduling now part of unified Task Hub */}
               <Route path="/ai-task-scheduling" component={TaskHub} />
               <Route path="/ai-search" component={AISearchKnowledgeDashboard} />
               <Route path="/conversational-ai-dashboard" component={ConversationalAIDashboard} />
