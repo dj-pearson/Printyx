@@ -209,7 +209,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     ],
   },
 
-  // Sales Hub
+  // Sales Hub - core CRM and sales operations
   {
     id: 'crm',
     title: 'Sales Hub',
@@ -236,32 +236,28 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/pipeline-config*',
       '/sales-rep-assignments*',
       '/lead-map*',
+      '/customers*',
+      '/prospects*',
+      '/crm*',
+      '/business-records*',
     ],
     children: [
-      { title: 'Leads Management', path: '/leads-management', icon: UserPlus },
-      { title: 'Lead Enrichment', path: '/data-enrichment', icon: Search },
+      { title: 'Leads', path: '/leads-management', icon: UserPlus },
+      { title: 'Prospects', path: '/prospects', icon: Users },
+      { title: 'Customers', path: '/customers', icon: UserCheck },
       { title: 'Contacts', path: '/contacts', icon: Users },
       { title: 'Opportunities', path: '/opportunities', icon: Target },
       { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
-      { title: 'Pipeline Forecasting', path: '/sales-pipeline-forecasting', icon: TrendingUp },
-      { title: 'CRM Goals Dashboard', path: '/crm-goals-dashboard', icon: TrendingUp },
-      { title: 'Demo Scheduling', path: '/demo-scheduling', icon: Calendar },
       { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
-      { title: 'Proposal Builder', path: '/proposal-builder', icon: FileText },
-      { title: 'Deal Desk', path: '/deal-desk', icon: CheckCircle2 },
-      { title: 'Pipeline Configuration', path: '/pipeline-config', icon: Settings },
       { title: 'Contracts', path: '/contracts', icon: FileSignature },
-      { title: 'Document Builder', path: '/document-builder', icon: FileText },
-      { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck },
+      { title: 'Deal Desk', path: '/deal-desk', icon: CheckCircle2 },
       { title: 'Sales Command Center', path: '/sales-command-center', icon: Monitor },
-      { title: 'Sales Performance', path: '/sales-performance-analytics', icon: BarChart3 },
+      { title: 'Customer Success', path: '/customer-success-management', icon: UserCheck },
       { title: 'Commission Management', path: '/commission-management', icon: DollarSign },
-      { title: 'Rep Assignments', path: '/sales-rep-assignments', icon: MapPin },
-      { title: 'Lead Map', path: '/lead-map', icon: MapPin },
     ],
   },
 
-  // Service Hub
+  // Service Hub - field service, technicians, and maintenance
   {
     id: 'service',
     title: 'Service Hub',
@@ -284,23 +280,15 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     ],
     children: [
       { title: 'Service Hub', path: '/service-hub', icon: Wrench },
-      { title: 'Onboarding Checklists', path: '/onboarding', icon: CheckSquare },
       { title: 'Service Dispatch', path: '/service-dispatch', icon: Activity },
-      { title: 'Technician Management', path: '/technician-management', icon: Users },
-      { title: 'Vehicle Management', path: '/vehicle-management', icon: Truck },
-      { title: 'Asset Management', path: '/asset-management', icon: Package },
-      { title: 'Remote Monitoring', path: '/remote-monitoring', icon: Monitor },
-      { title: 'Fleet Monitoring', path: '/fleet-monitoring', icon: Activity },
+      { title: 'Technicians', path: '/technician-management', icon: Users },
       { title: 'Meter Readings', path: '/meter-readings', icon: Monitor },
       { title: 'Preventive Maintenance', path: '/preventive-maintenance', icon: Calendar },
-      { title: 'Maintenance Automation', path: '/preventive-maintenance-automation', icon: Zap },
+      { title: 'Remote Monitoring', path: '/remote-monitoring', icon: Monitor },
+      { title: 'Fleet Monitoring', path: '/fleet-monitoring', icon: Activity },
       { title: 'Mobile Field Service', path: '/mobile-field-service', icon: MapPin },
-      { title: 'Mobile Field Operations', path: '/mobile-field-operations', icon: Activity },
-      { title: 'Mobile Service App', path: '/mobile-service-app', icon: Smartphone },
       { title: 'Service Analytics', path: '/service-analytics', icon: BarChart3 },
-      { title: 'Service Forecasting', path: '/service-forecasting-analytics', icon: TrendingUp },
       { title: 'Incident Response', path: '/incident-response-system', icon: AlertTriangle },
-      { title: 'Manufacturer Integration', path: '/manufacturer-integration', icon: Plug },
     ],
   },
 
@@ -504,20 +492,6 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     ],
   },
 
-  // Customers & CRM - Always visible core section
-  {
-    id: 'customers',
-    title: 'Customers & CRM',
-    icon: Building2,
-    path: '/customers',
-    matchPatterns: ['/customers*', '/leads*', '/prospects*', '/crm*', '/business-records*'],
-    children: [
-      { title: 'Leads', path: '/leads', icon: UserPlus },
-      { title: 'Prospects', path: '/prospects', icon: Users },
-      { title: 'Customers', path: '/customers', icon: UserCheck },
-    ],
-  },
-
   // Settings - Always visible
   {
     id: 'settings',
@@ -593,7 +567,6 @@ export function RoleAwareCollapsibleSidebar({
     'knowledge-base': 'nav.knowledgeBase',
     'integrations-hub': 'nav.integrations',
     'system-admin': 'nav.systemAdministration',
-    customers: 'nav.customersCRM',
     settings: 'nav.settings',
   };
 
@@ -738,72 +711,6 @@ export function RoleAwareCollapsibleSidebar({
       </div>
     );
   }
-
-  const renderNavigationItem = (section: NavigationSection) => {
-    const hasChildren = section.children && section.children.length > 0;
-    const isCurrentlyActive = isActive(section.path);
-    const isParentActive = section.children?.some((child) => isActive(child.path));
-    const shouldShowAsActive = isCurrentlyActive || isParentActive;
-
-    if (hasChildren) {
-      return (
-        <Collapsible
-          key={section.id}
-          open={isExpanded(section.id)}
-          onOpenChange={() => toggleSection(section.id)}
-        >
-          <CollapsibleTrigger asChild>
-            <Button
-              variant={shouldShowAsActive ? 'secondary' : 'ghost'}
-              className="w-full justify-between h-auto py-3 px-4 mb-1"
-              data-testid={`nav-${section.id}`}
-            >
-              <div className="flex items-center gap-3">
-                <section.icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
-                <span className="font-medium">{navTitle(section.id, section.title)}</span>
-              </div>
-              {isExpanded(section.id) ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-            </Button>
-          </CollapsibleTrigger>
-
-          <CollapsibleContent className="space-y-1 ml-4 mr-2 border-l border-gray-200 pl-4">
-            {section.children?.map((child) => (
-              <Link key={child.path} href={child.path}>
-                <Button
-                  variant={isActive(child.path) ? 'secondary' : 'ghost'}
-                  className="w-full justify-start h-auto py-2 px-3 text-sm"
-                  data-testid={`nav-${child.path.replace(/[^a-zA-Z0-9]/g, '-')}`}
-                >
-                  <child.icon className="h-4 w-4 mr-2 transition-transform duration-200 group-hover:scale-110" />
-                  {child.title}
-                </Button>
-              </Link>
-            ))}
-          </CollapsibleContent>
-        </Collapsible>
-      );
-    }
-
-    // Single item without children
-    return (
-      <Link key={section.id} href={section.path}>
-        <Button
-          variant={shouldShowAsActive ? 'secondary' : 'ghost'}
-          className="w-full justify-start h-auto py-3 px-4 mb-1"
-          data-testid={`nav-${section.id}`}
-        >
-          <div className="flex items-center gap-3">
-            <section.icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
-            <span className="font-medium">{navTitle(section.id, section.title)}</span>
-          </div>
-        </Button>
-      </Link>
-    );
-  };
 
   const { open, openMobile, isMobile } = useSidebar();
   const sidebarOpen = isMobile ? openMobile : open;

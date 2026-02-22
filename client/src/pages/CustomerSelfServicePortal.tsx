@@ -171,12 +171,6 @@ export default function CustomerSelfServicePortal() {
   const queryClient = useQueryClient();
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
 
-  // Redirect to login if not authenticated
-  if (!authLoading && !isAuthenticated) {
-    window.location.href = '/login';
-    return null;
-  }
-
   // Show loading while authentication is being checked
   if (authLoading || !user) {
     return (

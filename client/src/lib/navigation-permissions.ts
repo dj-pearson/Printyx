@@ -31,7 +31,6 @@ export interface NavigationPermissionRule {
 export const SECTION_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   // Always visible to all users
   dashboard: { alwaysVisible: true },
-  customers: { alwaysVisible: true },
   tasks: { alwaysVisible: true },
   'ai-hub': { alwaysVisible: true },
   'knowledge-base': { alwaysVisible: true },
@@ -44,19 +43,8 @@ export const SECTION_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   'system-operations': { platformOnly: true },
   'platform-features': { platformOnly: true },
 
-  // Module sections - require at least one permission in the module
-  crm: {
-    requiredPermissions: [
-      'sales.lead.view_own',
-      'sales.lead.view_team',
-      'sales.lead.view_location',
-      'sales.lead.view_regional',
-      'sales.lead.view_company',
-      'sales.opportunity.view_own',
-      'sales.customer.view_own',
-      'sales.quote.create',
-    ],
-  },
+  // Sales Hub - always visible (core CRM functionality)
+  crm: { alwaysVisible: true },
   service: {
     requiredPermissions: [
       'service.ticket.view_own',
@@ -483,6 +471,7 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   // CUSTOMER & CRM ITEMS (always visible section, but children can be filtered)
   // =====================================================================
   '/customers': { alwaysVisible: true },
+  '/prospects': { alwaysVisible: true },
   '/customers?tab=leads': {
     requiredPermissions: ['sales.lead.view_own', 'sales.lead.view_team'],
   },
