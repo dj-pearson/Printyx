@@ -2,8 +2,8 @@ import * as React from 'react';
 
 import type { ToastActionElement, ToastProps } from '@/components/ui/toast';
 
-const TOAST_LIMIT = 1;
-const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_LIMIT = 5;
+const TOAST_REMOVE_DELAY = 500;
 
 type ToasterToast = ToastProps & {
   id: string;
@@ -134,7 +134,10 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, 'id'>;
 
-function toast({ ...props }: Toast) {
+const AUTO_DISMISS_DEFAULT = 5000;
+const AUTO_DISMISS_ERROR = 8000;
+
+function toast({ duration: customDuration, ...props }: Toast & { duration?: number }) {
   const id = genId();
 
   const update = (props: ToasterToast) =>
@@ -150,11 +153,21 @@ function toast({ ...props }: Toast) {
       ...props,
       id,
       open: true,
+      duration: Infinity, // Disable Radix's built-in auto-dismiss; we handle it ourselves
       onOpenChange: (open) => {
         if (!open) dismiss();
       },
     },
   });
+
+  // Auto-dismiss after a duration based on variant
+  const dismissAfter =
+    customDuration ?? (props.variant === 'destructive' ? AUTO_DISMISS_ERROR : AUTO_DISMISS_DEFAULT);
+  if (dismissAfter > 0) {
+    setTimeout(() => {
+      dismiss();
+    }, dismissAfter);
+  }
 
   return {
     id: id,
