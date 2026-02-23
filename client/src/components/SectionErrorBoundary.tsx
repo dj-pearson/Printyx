@@ -12,6 +12,7 @@ import React, { Component, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { getApiUrl } from '@/lib/config';
 
 interface SectionErrorBoundaryProps {
   children: ReactNode;
@@ -48,7 +49,7 @@ export class SectionErrorBoundary extends Component<
 
     // Send to server
     try {
-      fetch('/api/client-errors', {
+      fetch(getApiUrl('/api/client-errors'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

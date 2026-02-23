@@ -1,6 +1,6 @@
 import { QueryClient, QueryFunction } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
-import { config, getApiUrl } from '@/lib/config';
+import { getApiUrl } from '@/lib/config';
 import { getAccessToken, refreshSession } from '@/lib/supabase';
 import { isSessionExpired, markSessionExpired } from '@/components/SessionGuard';
 import { mobileLogger } from '@/lib/mobile-logger';
@@ -93,28 +93,8 @@ async function safeJsonParse(res: Response, context: string): Promise<any> {
   }
 }
 
-// In-memory CSRF token cache (for legacy auth)
-let __csrfToken: string | undefined;
-
-// CSRF token: fetch on first use and cache in-memory (legacy auth only)
-async function getCsrfToken(): Promise<string | undefined> {
-  if (__csrfToken) return __csrfToken;
-  try {
-    const res = await fetch(getApiUrl('api/csrf-token'), { credentials: 'include' });
-    if (!res.ok) return undefined;
-    const data = await res.json();
-    __csrfToken = data?.csrfToken || data?.token || data?.csrf;
-    return __csrfToken;
-  } catch {
-    return undefined;
-  }
-}
-
-// Determine the base URL for API requests
-// Note: All API requests go to the Express server, Edge Functions are called directly when needed
+// Determine the base URL for API requests (Edge Functions in prod, Vite proxy in dev)
 function getRequestUrl(url: string): string {
-  // Always use the configured API URL for /api/* routes
-  // Edge Functions (signup, etc.) are called directly via fetch, not through this function
   return getApiUrl(url);
 }
 
@@ -123,6 +103,35 @@ interface ApiRequestOptions {
   method?: string;
   body?: string | any;
   headers?: Record<string, string>;
+}
+
+/**
+ * Build common request headers: Bearer token, tenant ID, demo flag, request ID.
+ */
+async function buildAuthHeaders(requestId: string): Promise<HeadersInit> {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    'X-Request-ID': requestId,
+  };
+
+  // Supabase Bearer token
+  const accessToken = await getAccessToken();
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  // Demo auth
+  if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
+    headers['X-Demo-Auth'] = 'true';
+  }
+
+  // Tenant ID
+  if (typeof window !== 'undefined') {
+    const tenantId = getTenantIdForHeaders();
+    if (tenantId) headers['x-tenant-id'] = tenantId;
+  }
+
+  return headers;
 }
 
 export async function apiRequest(
@@ -139,12 +148,10 @@ export async function apiRequest(
   let finalHeaders: Record<string, string> | undefined;
 
   if (typeof methodOrOptions === 'object') {
-    // Options object format
     finalMethod = methodOrOptions.method || 'GET';
     finalBody = methodOrOptions.body;
     finalHeaders = methodOrOptions.headers;
   } else {
-    // Positional params format
     finalMethod = methodOrOptions;
     finalBody = body;
     finalHeaders = headers;
@@ -154,42 +161,11 @@ export async function apiRequest(
   __lastRequestId = requestId;
 
   const requestHeaders: HeadersInit = {
-    'Content-Type': 'application/json',
-    'X-Request-ID': requestId,
+    ...(await buildAuthHeaders(requestId)),
     ...finalHeaders,
   };
 
-  const authMode = config.authMode;
-  const isSupabaseMode = authMode === 'supabase' || authMode === 'hybrid';
-
-  // Add Bearer token for Supabase auth modes
-  if (isSupabaseMode) {
-    const accessToken = await getAccessToken();
-    if (accessToken) {
-      requestHeaders['Authorization'] = `Bearer ${accessToken}`;
-    }
-  }
-
-  // Add demo auth header if localStorage flag is set
-  if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
-    requestHeaders['X-Demo-Auth'] = 'true';
-  }
-
-  // Add tenant ID header - use localStorage if available, fallback to session
-  if (typeof window !== 'undefined') {
-    const tenantId = getTenantIdForHeaders();
-    if (tenantId) requestHeaders['x-tenant-id'] = tenantId;
-  }
-
-  // CSRF token only needed for legacy auth (session-based)
   const safeMethod = finalMethod || 'GET';
-  const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(safeMethod.toUpperCase());
-
-  if (authMode === 'legacy' && isMutating && !('x-csrf-token' in requestHeaders)) {
-    const token = await getCsrfToken();
-    if (token) (requestHeaders as any)['x-csrf-token'] = token;
-  }
-
   const requestUrl = getRequestUrl(url);
 
   // Handle body - if it's already a string, use it as-is, otherwise stringify
@@ -203,44 +179,17 @@ export async function apiRequest(
     method: safeMethod,
     headers: requestHeaders,
     body: getBodyString(finalBody),
-    // Only include credentials for legacy auth (cookies)
-    credentials: authMode === 'legacy' ? 'include' : 'omit',
+    credentials: 'omit',
   });
 
-  // If forbidden in legacy mode, try refreshing CSRF token once and retry
-  if (res.status === 403 && isMutating && authMode === 'legacy') {
-    __csrfToken = undefined;
-    const token = await getCsrfToken();
-    if (token) {
-      (requestHeaders as any)['x-csrf-token'] = token;
-      res = await fetch(requestUrl, {
-        method: safeMethod,
-        headers: requestHeaders,
-        body: getBodyString(finalBody),
-        credentials: 'include',
-      });
-    }
-  }
-
-  if (res.status === 403 && isMutating) {
-    toast({
-      title: 'Action blocked',
-      description: 'Your session protection failed. Please refresh and try again.',
-      variant: 'destructive',
-    });
-  }
-
-  // Handle 401 for Supabase mode - attempt token refresh before failing
-  if (res.status === 401 && isSupabaseMode) {
-    // If the session was already marked expired, skip refresh to avoid loops
+  // Handle 401 — attempt token refresh before failing
+  if (res.status === 401) {
     if (isSessionExpired()) {
       throw new Error('401: Session expired. Please log in again.');
     }
 
-    // Attempt to refresh the token
     const newToken = await refreshTokenOnce();
     if (newToken) {
-      // Retry the original request with the refreshed token
       requestHeaders['Authorization'] = `Bearer ${newToken}`;
       const retryRes = await fetch(requestUrl, {
         method: safeMethod,
@@ -253,7 +202,6 @@ export async function apiRequest(
         return await safeJsonParse(retryRes, `apiRequest-retry:${url}`);
       }
 
-      // Retry also failed with 401 — session is truly expired
       if (retryRes.status === 401) {
         markSessionExpired();
         emitAuthError();
@@ -264,7 +212,6 @@ export async function apiRequest(
       return await safeJsonParse(retryRes, `apiRequest-retry:${url}`);
     }
 
-    // Token refresh failed — session is expired
     markSessionExpired();
     emitAuthError();
     throw new Error('401: Session expired. Please log in again.');
@@ -284,38 +231,14 @@ export async function apiFormRequest(
   const formRequestId = generateRequestId();
   __lastRequestId = formRequestId;
 
+  const baseHeaders = await buildAuthHeaders(formRequestId);
+  // Remove Content-Type so the browser sets multipart/form-data with boundary
+  delete (baseHeaders as Record<string, string>)['Content-Type'];
+
   const requestHeaders: HeadersInit = {
-    'X-Request-ID': formRequestId,
+    ...baseHeaders,
     ...extraHeaders,
   };
-
-  const authMode = config.authMode;
-  const isSupabaseMode = authMode === 'supabase' || authMode === 'hybrid';
-
-  // Add Bearer token for Supabase auth modes
-  if (isSupabaseMode) {
-    const accessToken = await getAccessToken();
-    if (accessToken) {
-      requestHeaders['Authorization'] = `Bearer ${accessToken}`;
-    }
-  }
-
-  // Demo auth
-  if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
-    requestHeaders['X-Demo-Auth'] = 'true';
-  }
-
-  // Tenant header
-  if (typeof window !== 'undefined') {
-    const tenantId = getTenantIdForHeaders();
-    if (tenantId) requestHeaders['x-tenant-id'] = tenantId;
-  }
-
-  // CSRF token only for legacy auth
-  if (authMode === 'legacy') {
-    const token = await getCsrfToken();
-    if (token) (requestHeaders as any)['x-csrf-token'] = token;
-  }
 
   const requestUrl = getRequestUrl(url);
 
@@ -323,33 +246,11 @@ export async function apiFormRequest(
     method,
     headers: requestHeaders,
     body: formData,
-    credentials: authMode === 'legacy' ? 'include' : 'omit',
+    credentials: 'omit',
   });
 
-  if (res.status === 403 && authMode === 'legacy') {
-    __csrfToken = undefined;
-    const newToken = await getCsrfToken();
-    if (newToken) {
-      (requestHeaders as any)['x-csrf-token'] = newToken;
-      res = await fetch(requestUrl, {
-        method,
-        headers: requestHeaders,
-        body: formData,
-        credentials: 'include',
-      });
-    }
-  }
-
-  if (res.status === 403) {
-    toast({
-      title: 'Upload blocked',
-      description: 'Your session protection failed. Please refresh and try again.',
-      variant: 'destructive',
-    });
-  }
-
-  // Handle 401 for Supabase mode - attempt token refresh before failing
-  if (res.status === 401 && isSupabaseMode) {
+  // Handle 401 — attempt token refresh before failing
+  if (res.status === 401) {
     if (isSessionExpired()) {
       throw new Error('401: Session expired. Please log in again.');
     }
@@ -391,7 +292,6 @@ export async function apiFormRequest(
  * Normalize any API response into a plain array of records.
  * Handles multiple response formats:
  *   - Edge Function paginated: { data: [...], total, page, limit }
- *   - Express paginated:       { records: [...], pagination: {...} }
  *   - Raw array:               [...]
  *   - Null/undefined:           []
  */
@@ -433,23 +333,18 @@ export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryF
       'X-Request-ID': queryRequestId,
     };
 
-    const authMode = config.authMode;
-    const isSupabaseMode = authMode === 'supabase' || authMode === 'hybrid';
-
-    // Add Bearer token for Supabase auth modes
-    if (isSupabaseMode) {
-      const accessToken = await getAccessToken();
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-      }
+    // Supabase Bearer token
+    const accessToken = await getAccessToken();
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
     }
 
-    // Add demo auth header if localStorage flag is set
+    // Demo auth
     if (typeof window !== 'undefined' && localStorage.getItem('demo-authenticated') === 'true') {
       headers['X-Demo-Auth'] = 'true';
     }
 
-    // Add tenant ID header - use localStorage if available, fallback to session
+    // Tenant ID
     if (typeof window !== 'undefined') {
       const tenantId = getTenantIdForHeaders();
       if (tenantId) headers['x-tenant-id'] = tenantId;
@@ -460,11 +355,11 @@ export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryF
 
     let res = await fetch(requestUrl, {
       headers,
-      credentials: authMode === 'legacy' ? 'include' : 'omit',
+      credentials: 'omit',
     });
 
-    // Handle 401 with token refresh for Supabase mode
-    if (res.status === 401 && isSupabaseMode && !isSessionExpired()) {
+    // Handle 401 with token refresh
+    if (res.status === 401 && !isSessionExpired()) {
       const newToken = await refreshTokenOnce();
       if (newToken) {
         headers['Authorization'] = `Bearer ${newToken}`;
@@ -493,7 +388,6 @@ export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryF
     const responseData = await safeJsonParse(res, `queryFn:${url}`);
 
     // Auto-unwrap Edge Function responses that have { data: [...], total, page, limit } structure
-    // This handles paginated responses from Supabase Edge Functions consistently
     if (
       responseData &&
       typeof responseData === 'object' &&
@@ -512,13 +406,12 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: 'throw' }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes instead of Infinity
+      staleTime: 5 * 60 * 1000, // 5 minutes
       cacheTime: 10 * 60 * 1000, // 10 minutes cache
       refetchOnMount: true,
       refetchOnReconnect: true,
       onError: (error: any) => {
         // Suppress cascading error toasts when session is already expired
-        // The SessionGuard modal handles this case
         const message = typeof error === 'string' ? error : error?.message || 'Failed to load data';
         if (isSessionExpired() && message.includes('401')) {
           return;
@@ -535,7 +428,7 @@ export const queryClient = new QueryClient({
         if (error?.status === 401 || error?.status === 403 || error?.status === 404) {
           return false;
         }
-        return failureCount < 2; // Limit retries
+        return failureCount < 2;
       },
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     },
@@ -543,7 +436,6 @@ export const queryClient = new QueryClient({
       retry: false,
       onError: (error: any) => {
         const message = typeof error === 'string' ? error : error?.message || 'Action failed';
-        // Suppress cascading error toasts when session is already expired
         if (isSessionExpired() && message.includes('401')) {
           return;
         }
