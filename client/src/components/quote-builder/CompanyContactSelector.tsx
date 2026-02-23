@@ -110,7 +110,7 @@ export default function CompanyContactSelector({
         params.set('search', debouncedSearch);
       }
       const response = await apiRequest(`/api/companies?${params.toString()}`, 'GET');
-      const data = response?.records || (Array.isArray(response) ? response : []);
+      const data = response?.data || response?.records || (Array.isArray(response) ? response : []);
       return Array.isArray(data) ? data : [];
     },
     // Only fetch when popover is open
