@@ -52,7 +52,7 @@ export class SectionErrorBoundary extends Component<
       fetch(getApiUrl('/api/client-errors'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        credentials: 'omit',
         body: JSON.stringify({
           message: error.message,
           stack: error.stack,
