@@ -61,48 +61,12 @@ export async function rbacApiRequest(
     filteredBody = applyRBACFilters(url, body, globalRBACService);
   }
 
-  // CSRF token handling
-  let __csrfToken: string | undefined;
-  async function getCsrfToken(): Promise<string | undefined> {
-    if (__csrfToken) return __csrfToken;
-    try {
-      const res = await fetch('/api/csrf-token', { credentials: 'include' });
-      if (!res.ok) return undefined;
-      const data = await res.json();
-      __csrfToken = data?.csrfToken || data?.token || data?.csrf;
-      return __csrfToken;
-    } catch {
-      return undefined;
-    }
-  }
-
-  const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase());
-  if (isMutating && !('x-csrf-token' in requestHeaders)) {
-    const token = await getCsrfToken();
-    if (token) (requestHeaders as any)['x-csrf-token'] = token;
-  }
-
-  let res = await fetch(url, {
+  const res = await fetch(url, {
     method,
     headers: requestHeaders,
     body: filteredBody ? JSON.stringify(filteredBody) : undefined,
-    credentials: 'include',
+    credentials: 'omit',
   });
-
-  // CSRF retry logic
-  if (res.status === 403 && isMutating) {
-    __csrfToken = undefined;
-    const token = await getCsrfToken();
-    if (token) {
-      (requestHeaders as any)['x-csrf-token'] = token;
-      res = await fetch(url, {
-        method,
-        headers: requestHeaders,
-        body: filteredBody ? JSON.stringify(filteredBody) : undefined,
-        credentials: 'include',
-      });
-    }
-  }
 
   if (res.status === 403) {
     toast({

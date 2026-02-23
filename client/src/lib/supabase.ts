@@ -28,7 +28,6 @@ const customFetch = async (url: RequestInfo | URL, options?: RequestInit) => {
       status: res.status,
       contentType,
       configuredSupabaseUrl: config.supabase.url,
-      useProxy: config.useSupabaseProxy,
     });
     throw new Error(hint);
   }
