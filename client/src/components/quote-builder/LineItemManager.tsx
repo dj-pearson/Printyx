@@ -325,7 +325,7 @@ export default function LineItemManager({
                 Add Item
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] w-[95vw] sm:w-full overflow-hidden flex flex-col">
+            <DialogContent className="max-w-5xl max-h-[90vh] w-[95vw] sm:w-full overflow-hidden flex flex-col">
               <DialogHeader>
                 <DialogTitle>
                   {parentProductForAccessory ? 'Add Accessory' : 'Add Product'}

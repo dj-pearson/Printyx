@@ -32,7 +32,12 @@ export default async function handler(req: Request) {
     if (!tenantId) {
       // Fallback: look up tenant from public.users
       const admin2 = createSupabaseServiceClient();
-      const { data: dbUser } = await admin2.from('users').select('tenant_id').eq('id', user.id).limit(1).maybeSingle();
+      const { data: dbUser } = await admin2
+        .from('users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .limit(1)
+        .maybeSingle();
       tenantId = dbUser?.tenant_id;
     }
 
@@ -183,16 +188,18 @@ export default async function handler(req: Request) {
         proposal_number: proposalNumber,
         title: body.title,
         status: body.status || 'draft',
-        opportunity_id: body.opportunityId || body.opportunity_id || null,
-        account_id: body.accountId || body.account_id || null,
+        proposal_type: body.proposalType || body.proposal_type || 'quote',
+        business_record_id: body.businessRecordId || body.business_record_id || null,
         contact_id: body.contactId || body.contact_id || null,
         template_id: body.templateId || body.template_id || null,
         subtotal: body.subtotal || 0,
+        discount_amount: body.discountAmount || body.discount_amount || 0,
+        discount_percentage: body.discountPercentage || body.discount_percentage || 0,
         tax_amount: body.taxAmount || body.tax_amount || 0,
         total_amount: body.totalAmount || body.total_amount || 0,
         valid_until: body.validUntil || body.valid_until || null,
-        terms: body.terms || null,
-        notes: body.notes || null,
+        payment_terms: body.paymentTerms || body.payment_terms || null,
+        internal_notes: body.notes || body.internalNotes || body.internal_notes || null,
         created_by: user.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -288,12 +295,18 @@ export default async function handler(req: Request) {
       const fieldMap: Record<string, string> = {
         title: 'title',
         status: 'status',
+        proposalType: 'proposal_type',
+        businessRecordId: 'business_record_id',
+        contactId: 'contact_id',
         subtotal: 'subtotal',
+        discountAmount: 'discount_amount',
+        discountPercentage: 'discount_percentage',
         taxAmount: 'tax_amount',
         totalAmount: 'total_amount',
         validUntil: 'valid_until',
-        terms: 'terms',
-        notes: 'notes',
+        paymentTerms: 'payment_terms',
+        internalNotes: 'internal_notes',
+        notes: 'internal_notes',
       };
 
       for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {
