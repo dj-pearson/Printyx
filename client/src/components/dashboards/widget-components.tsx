@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { apiRequest } from '@/lib/queryClient';
 import { formatDistanceToNow } from 'date-fns';
 import {
   DollarSign,
@@ -85,10 +86,19 @@ function getIcon(name: string) {
 function useWidgetData(endpoint: string, enabled = true) {
   return useQuery({
     queryKey: [endpoint],
+    queryFn: async () => {
+      try {
+        return await apiRequest(endpoint);
+      } catch {
+        // Widget endpoints may not exist as Edge Functions yet — return null
+        // so widgets render their empty/fallback state instead of erroring.
+        return null;
+      }
+    },
     enabled: enabled && !!endpoint,
-    refetchInterval: 60000,
-    staleTime: 30000,
-    retry: 1,
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
   });
 }
 

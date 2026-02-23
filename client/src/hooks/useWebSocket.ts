@@ -4,6 +4,7 @@
 // =====================================================================
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { config } from '@/lib/config';
 
 interface WebSocketMessage {
   type:
@@ -241,6 +242,12 @@ export function useWebSocket(
 
   // Connect to WebSocket
   const connect = useCallback(() => {
+    // Cloudflare Pages (production) doesn't support WebSocket upgrades.
+    // Skip connection entirely to avoid console errors and reconnect loops.
+    if (config.isProduction) {
+      return;
+    }
+
     if (!userId || !tenantId) {
       console.warn('Cannot connect WebSocket: missing userId or tenantId');
       return;
