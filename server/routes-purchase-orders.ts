@@ -1,4 +1,5 @@
 import type { Express } from 'express';
+import { z } from 'zod';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-purchase-orders');
 
@@ -16,6 +17,74 @@ import {
   PERMISSIONS,
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
+
+// Validation schemas for update operations
+const purchaseOrderStatusSchema = z.object({
+  status: z.enum([
+    'draft',
+    'pending',
+    'approved',
+    'ordered',
+    'received',
+    'cancelled',
+    'partially_received',
+  ]),
+});
+
+const updatePurchaseOrderSchema = z
+  .object({
+    poNumber: z.string().min(1).optional(),
+    vendorId: z.string().min(1).optional(),
+    requestedBy: z.string().min(1).optional(),
+    orderDate: z.string().or(z.date()).optional(),
+    expectedDate: z.string().or(z.date()).nullable().optional(),
+    description: z.string().nullable().optional(),
+    subtotal: z.string().or(z.number()).optional(),
+    taxAmount: z.string().or(z.number()).nullable().optional(),
+    shippingAmount: z.string().or(z.number()).nullable().optional(),
+    totalAmount: z.string().or(z.number()).optional(),
+    status: z
+      .enum([
+        'draft',
+        'pending',
+        'approved',
+        'ordered',
+        'received',
+        'cancelled',
+        'partially_received',
+      ])
+      .optional(),
+    deliveryAddress: z.string().nullable().optional(),
+    specialInstructions: z.string().nullable().optional(),
+    approvedBy: z.string().nullable().optional(),
+    approvedDate: z.string().or(z.date()).nullable().optional(),
+  })
+  .strict();
+
+const updatePurchaseOrderItemSchema = z
+  .object({
+    itemDescription: z.string().min(1).optional(),
+    itemCode: z.string().nullable().optional(),
+    quantity: z.number().int().positive().optional(),
+    unitPrice: z.string().or(z.number()).optional(),
+    totalPrice: z.string().or(z.number()).optional(),
+    receivedQuantity: z.number().int().min(0).optional(),
+  })
+  .strict();
+
+const updateVendorSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    contactName: z.string().nullable().optional(),
+    email: z.string().email().nullable().optional(),
+    phone: z.string().nullable().optional(),
+    address: z.string().nullable().optional(),
+    website: z.string().url().nullable().optional(),
+    paymentTerms: z.string().nullable().optional(),
+    notes: z.string().nullable().optional(),
+    status: z.string().optional(),
+  })
+  .strict();
 
 export function registerPurchaseOrderRoutes(app: Express) {
   // Apply authentication and RBAC context to all purchase order routes
@@ -120,15 +189,25 @@ export function registerPurchaseOrderRoutes(app: Express) {
         const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
         const { id } = req.params;
 
-        const purchaseOrder = await storage.updatePurchaseOrder(id, req.body, tenantId);
+        const validatedData = updatePurchaseOrderSchema.parse(req.body);
+
+        const purchaseOrder = await storage.updatePurchaseOrder(
+          id,
+          { ...validatedData, updatedAt: new Date() },
+          tenantId,
+        );
         if (!purchaseOrder) {
           return res.status(404).json({ error: 'Purchase order not found' });
         }
 
         res.json(purchaseOrder);
-      } catch (error) {
+      } catch (error: any) {
         log.error('Error updating purchase order:', error);
-        res.status(500).json({ error: 'Failed to update purchase order' });
+        if (error.name === 'ZodError') {
+          res.status(400).json({ error: 'Invalid data', details: error.errors });
+        } else {
+          res.status(500).json({ error: 'Failed to update purchase order' });
+        }
       }
     },
   );
@@ -164,7 +243,8 @@ export function registerPurchaseOrderRoutes(app: Express) {
       try {
         const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
         const { id } = req.params;
-        const { status } = req.body;
+
+        const { status } = purchaseOrderStatusSchema.parse(req.body);
 
         const purchaseOrder = await storage.updatePurchaseOrder(
           id,
@@ -184,7 +264,11 @@ export function registerPurchaseOrderRoutes(app: Express) {
         }
 
         res.json(purchaseOrder);
-      } catch (error) {
+      } catch (error: any) {
+        if (error.name === 'ZodError') {
+          log.warn('Invalid purchase order status update:', error.errors);
+          return res.status(400).json({ error: 'Invalid status value', details: error.errors });
+        }
         log.error('Error updating purchase order status:', error);
         res.status(500).json({ error: 'Failed to update purchase order status' });
       }
@@ -247,15 +331,21 @@ export function registerPurchaseOrderRoutes(app: Express) {
         const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
         const { id } = req.params;
 
-        const item = await storage.updatePurchaseOrderItem(id, req.body, tenantId);
+        const validatedData = updatePurchaseOrderItemSchema.parse(req.body);
+
+        const item = await storage.updatePurchaseOrderItem(id, validatedData, tenantId);
         if (!item) {
           return res.status(404).json({ error: 'Purchase order item not found' });
         }
 
         res.json(item);
-      } catch (error) {
+      } catch (error: any) {
         log.error('Error updating purchase order item:', error);
-        res.status(500).json({ error: 'Failed to update purchase order item' });
+        if (error.name === 'ZodError') {
+          res.status(400).json({ error: 'Invalid data', details: error.errors });
+        } else {
+          res.status(500).json({ error: 'Failed to update purchase order item' });
+        }
       }
     },
   );
@@ -356,15 +446,21 @@ export function registerPurchaseOrderRoutes(app: Express) {
         const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
         const { id } = req.params;
 
-        const vendor = await storage.updateVendor(id, req.body, tenantId);
+        const validatedData = updateVendorSchema.parse(req.body);
+
+        const vendor = await storage.updateVendor(id, validatedData, tenantId);
         if (!vendor) {
           return res.status(404).json({ error: 'Vendor not found' });
         }
 
         res.json(vendor);
-      } catch (error) {
+      } catch (error: any) {
         log.error('Error updating vendor:', error);
-        res.status(500).json({ error: 'Failed to update vendor' });
+        if (error.name === 'ZodError') {
+          res.status(400).json({ error: 'Invalid data', details: error.errors });
+        } else {
+          res.status(500).json({ error: 'Failed to update vendor' });
+        }
       }
     },
   );
@@ -387,39 +483,6 @@ export function registerPurchaseOrderRoutes(app: Express) {
       } catch (error) {
         log.error('Error deleting vendor:', error);
         res.status(500).json({ error: 'Failed to delete vendor' });
-      }
-    },
-  );
-
-  // Purchase Order status updates - requires edit permission
-  app.patch(
-    '/api/purchase-orders/:id/status',
-    isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
-    async (req: AuthenticatedRequest, res) => {
-      try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
-        const userId = req.user?.id || req.user?.claims?.sub;
-        const { id } = req.params;
-        const { status } = req.body;
-
-        const updateData: any = { status };
-
-        // Auto-approve if status is being set to "approved"
-        if (status === 'approved') {
-          updateData.approvedBy = userId;
-          updateData.approvedDate = new Date();
-        }
-
-        const purchaseOrder = await storage.updatePurchaseOrder(id, updateData, tenantId);
-        if (!purchaseOrder) {
-          return res.status(404).json({ error: 'Purchase order not found' });
-        }
-
-        res.json(purchaseOrder);
-      } catch (error) {
-        log.error('Error updating purchase order status:', error);
-        res.status(500).json({ error: 'Failed to update purchase order status' });
       }
     },
   );

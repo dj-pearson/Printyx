@@ -17,25 +17,36 @@ import {
   type InsertLeadAssignmentHistory,
   type InsertLeadAssignmentQueue,
 } from '@shared/schema';
-import { eq, and, desc, gte, lte, sql } from 'drizzle-orm';
+import { eq, and, desc, gte, lte, sql, inArray } from 'drizzle-orm';
 
-// Helper to get user full name
-async function getUserFullName(userId: string): Promise<string> {
+// Batch helper: fetch full names for multiple user IDs in a single query
+async function batchGetUserFullNames(userIds: string[]): Promise<Map<string, string>> {
+  const nameMap = new Map<string, string>();
+  if (userIds.length === 0) return nameMap;
+
   try {
-    const user = await db
-      .select({ firstName: users.firstName, lastName: users.lastName })
+    const uniqueIds = [...new Set(userIds)];
+    const rows = await db
+      .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
       .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+      .where(inArray(users.id, uniqueIds));
 
-    if (user.length > 0) {
-      const { firstName, lastName } = user[0];
-      return [firstName, lastName].filter(Boolean).join(' ') || userId;
+    for (const row of rows) {
+      const fullName = [row.firstName, row.lastName].filter(Boolean).join(' ') || row.id;
+      nameMap.set(row.id, fullName);
     }
   } catch (error) {
-    log.error('Error fetching user name:', error);
+    log.error('Error batch-fetching user names:', error);
   }
-  return userId;
+
+  // Fallback: use userId as name for any missing entries
+  for (const id of userIds) {
+    if (!nameMap.has(id)) {
+      nameMap.set(id, id);
+    }
+  }
+
+  return nameMap;
 }
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -338,7 +349,28 @@ Format as JSON:
       throw new Error('No available sales reps');
     }
 
-    // Score each rep
+    // Batch-fetch all user names and territories upfront to avoid N+1 queries
+    const repUserIds = reps.map((r) => r.userId);
+    const userNameMap = await batchGetUserFullNames(repUserIds);
+
+    // Batch-fetch all active territories for all reps in one query
+    const allTerritories = await db.query.salesTerritories.findMany({
+      where: and(
+        eq(salesTerritories.tenantId, tenantId),
+        inArray(salesTerritories.ownerId, repUserIds),
+        eq(salesTerritories.isActive, true),
+      ),
+    });
+
+    // Group territories by ownerId
+    const territoriesByOwner = new Map<string, typeof allTerritories>();
+    for (const territory of allTerritories) {
+      const existing = territoriesByOwner.get(territory.ownerId) || [];
+      existing.push(territory);
+      territoriesByOwner.set(territory.ownerId, existing);
+    }
+
+    // Score each rep (no more individual DB queries inside the loop)
     const repScores: RepScoringResult[] = [];
 
     for (const rep of reps) {
@@ -377,16 +409,10 @@ Format as JSON:
         reasons.push('Relevant skills');
       }
 
-      // Geographic match
-      const territories = await db.query.salesTerritories.findMany({
-        where: and(
-          eq(salesTerritories.tenantId, tenantId),
-          eq(salesTerritories.ownerId, rep.userId),
-          eq(salesTerritories.isActive, true),
-        ),
-      });
+      // Geographic match (from pre-fetched territories)
+      const repTerritories = territoriesByOwner.get(rep.userId) || [];
 
-      for (const territory of territories) {
+      for (const territory of repTerritories) {
         if (this.leadMatchesTerritory(lead, territory)) {
           score += 25;
           reasons.push(`Territory match: ${territory.territoryName}`);
@@ -404,8 +430,8 @@ Format as JSON:
         reasons.push('Top performer for hot lead');
       }
 
-      // Get rep name from users table
-      const userName = await getUserFullName(rep.userId);
+      // Look up rep name from pre-fetched map
+      const userName = userNameMap.get(rep.userId) || rep.userId;
 
       repScores.push({
         userId: rep.userId,

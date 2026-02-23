@@ -4,7 +4,8 @@
 // =====================================================================
 
 import { db } from '../db';
-import { sql, and, eq, gte, lte, desc } from 'drizzle-orm';
+import { sql, and, eq, gte, lte, desc, inArray } from 'drizzle-orm';
+import { users } from '@shared/schema';
 import type { EnhancedUserContext } from '../middleware/enhanced-rbac-middleware';
 import { HierarchicalQueryBuilder } from '../middleware/hierarchical-query-builder';
 import { warehouseKittingOperations, fpyMetrics } from '@shared/warehouse-fpy-schema';
@@ -169,27 +170,31 @@ export class WarehouseReportingService {
         .map((op) => op.assignedTechnician),
     );
 
+    // Batch-fetch all technician names in a single query instead of N individual lookups
+    const techIds = Array.from(uniqueTechnicians).filter(Boolean) as string[];
+    const techUsers =
+      techIds.length > 0
+        ? await db
+            .select({ id: users.id, name: users.name })
+            .from(users)
+            .where(inArray(users.id, techIds))
+        : [];
+    const techNameMap = new Map(techUsers.map((u) => [u.id, u.name || 'Unknown']));
+
     // Find top technician (highest FPY rate)
-    const technicianStats = await Promise.all(
-      Array.from(uniqueTechnicians).map(async (techId) => {
-        const techOps = operations.filter((op) => op.assignedTechnician === techId);
-        const techCompleted = techOps.filter((op) => op.operationStatus === 'completed').length;
-        const techFPY = techOps.filter((op) => op.firstPassYield).length;
-        const techFPYRate = techCompleted > 0 ? (techFPY / techCompleted) * 100 : 0;
+    const technicianStats = techIds.map((techId) => {
+      const techOps = operations.filter((op) => op.assignedTechnician === techId);
+      const techCompleted = techOps.filter((op) => op.operationStatus === 'completed').length;
+      const techFPY = techOps.filter((op) => op.firstPassYield).length;
+      const techFPYRate = techCompleted > 0 ? (techFPY / techCompleted) * 100 : 0;
 
-        // Fetch user name from database
-        const userQuery = await db.query.users.findFirst({
-          where: (users, { eq }) => eq(users.id, techId),
-        });
-
-        return {
-          technicianId: techId,
-          technicianName: userQuery?.name || 'Unknown',
-          fpyRate: techFPYRate,
-          completedKits: techCompleted,
-        };
-      }),
-    );
+      return {
+        technicianId: techId,
+        technicianName: techNameMap.get(techId) || 'Unknown',
+        fpyRate: techFPYRate,
+        completedKits: techCompleted,
+      };
+    });
 
     // Sort by FPY rate and get top technician
     technicianStats.sort((a, b) => b.fpyRate - a.fpyRate);

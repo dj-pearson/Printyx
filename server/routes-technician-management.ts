@@ -1,4 +1,5 @@
 import type { Express } from 'express';
+import { z } from 'zod';
 import { eq, and, desc, sql, count, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
@@ -21,6 +22,31 @@ import {
   ROLE_LEVELS,
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
+
+// Validation schemas for update and query operations
+const updateTechnicianSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    email: z.string().email().optional(),
+    phone: z.string().nullable().optional(),
+    specialties: z.any().nullable().optional(),
+    certifications: z.any().nullable().optional(),
+    status: z.enum(['active', 'inactive', 'on_leave']).optional(),
+    location: z.string().nullable().optional(),
+    availability: z.enum(['available', 'busy', 'off_duty']).optional(),
+    skillLevel: z.enum(['junior', 'mid', 'senior', 'lead']).optional(),
+    hourlyRate: z.string().or(z.number()).nullable().optional(),
+    emergencyContact: z.string().nullable().optional(),
+    employeeId: z.string().nullable().optional(),
+    hireDate: z.string().or(z.date()).nullable().optional(),
+    lastTrainingDate: z.string().or(z.date()).nullable().optional(),
+    performanceRating: z.number().min(0).max(5).nullable().optional(),
+  })
+  .strict();
+
+const performanceQuerySchema = z.object({
+  period: z.string().regex(/^\d+$/, 'Period must be a numeric string').optional().default('30'),
+});
 
 export function registerTechnicianManagementRoutes(app: Express) {
   // Apply authentication and RBAC context to all technician management routes
@@ -179,9 +205,13 @@ export function registerTechnicianManagementRoutes(app: Express) {
         const [newTechnician] = await db.insert(technicians).values(technicianData).returning();
 
         res.status(201).json(newTechnician);
-      } catch (error) {
+      } catch (error: any) {
         log.error('Error creating technician:', error);
-        res.status(500).json({ error: 'Failed to create technician' });
+        if (error.name === 'ZodError') {
+          res.status(400).json({ error: 'Invalid data', details: error.errors });
+        } else {
+          res.status(500).json({ error: 'Failed to create technician' });
+        }
       }
     },
   );
@@ -196,10 +226,12 @@ export function registerTechnicianManagementRoutes(app: Express) {
         const tenantId = req.user.tenantId;
         const technicianId = req.params.id;
 
+        const validatedData = updateTechnicianSchema.parse(req.body);
+
         const [updatedTechnician] = await db
           .update(technicians)
           .set({
-            ...req.body,
+            ...validatedData,
             updatedAt: new Date(),
           })
           .where(and(eq(technicians.id, technicianId), eq(technicians.tenantId, tenantId)))
@@ -210,9 +242,13 @@ export function registerTechnicianManagementRoutes(app: Express) {
         }
 
         res.json(updatedTechnician);
-      } catch (error) {
+      } catch (error: any) {
         log.error('Error updating technician:', error);
-        res.status(500).json({ error: 'Failed to update technician' });
+        if (error.name === 'ZodError') {
+          res.status(400).json({ error: 'Invalid data', details: error.errors });
+        } else {
+          res.status(500).json({ error: 'Failed to update technician' });
+        }
       }
     },
   );
@@ -327,10 +363,12 @@ export function registerTechnicianManagementRoutes(app: Express) {
     async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user.tenantId;
-        const { period = '30' } = req.query;
+
+        const queryParams = performanceQuerySchema.parse(req.query);
+        const periodDays = parseInt(queryParams.period, 10);
 
         const daysAgo = new Date();
-        daysAgo.setDate(daysAgo.getDate() - parseInt(period as string));
+        daysAgo.setDate(daysAgo.getDate() - periodDays);
 
         const performanceData = await db
           .select({
@@ -353,7 +391,11 @@ export function registerTechnicianManagementRoutes(app: Express) {
         }));
 
         res.json(performanceMetrics);
-      } catch (error) {
+      } catch (error: any) {
+        if (error.name === 'ZodError') {
+          log.warn('Invalid performance query parameters:', error.errors);
+          return res.status(400).json({ error: 'Invalid query parameters', details: error.errors });
+        }
         log.error('Error fetching technician performance:', error);
         res.status(500).json({ error: 'Failed to fetch technician performance' });
       }
