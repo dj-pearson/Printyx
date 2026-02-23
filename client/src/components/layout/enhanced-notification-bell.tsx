@@ -154,9 +154,21 @@ export function EnhancedNotificationBell() {
     queryFn: async () => {
       // Fallback to alerts endpoint if notifications endpoint doesn't exist
       try {
-        return await apiRequest('/api/notifications');
+        const response = await apiRequest('/api/notifications');
+        // Edge Function returns { data: [...], total, unread } — unwrap to array
+        const items = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.data)
+            ? response.data
+            : [];
+        return items;
       } catch (err) {
-        const alerts = await apiRequest('/api/performance/alerts');
+        const alertsResponse = await apiRequest('/api/performance/alerts');
+        const alerts = Array.isArray(alertsResponse)
+          ? alertsResponse
+          : Array.isArray(alertsResponse?.data)
+            ? alertsResponse.data
+            : [];
         // Transform alerts to notifications format
         return alerts.map((alert: any) => ({
           id: alert.id,
