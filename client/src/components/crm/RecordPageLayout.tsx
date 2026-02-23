@@ -127,25 +127,29 @@ function ActivityTimeline({
     queryKey: [apiPath],
     queryFn: async () => {
       const result = await apiRequest(apiPath);
-      return Array.isArray(result) ? result : result?.activities ?? [];
+      return Array.isArray(result) ? result : (result?.activities ?? []);
     },
     enabled: isAuthenticated && !!recordId,
     staleTime: 30_000,
   });
 
   const filteredActivities =
-    activeTab === 'all'
-      ? activities
-      : activities.filter((a) => a.type === activeTab);
+    activeTab === 'all' ? activities : activities.filter((a) => a.type === activeTab);
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'note': return <MessageSquare className="h-3.5 w-3.5" />;
-      case 'email': return <Mail className="h-3.5 w-3.5" />;
-      case 'call': return <Phone className="h-3.5 w-3.5" />;
-      case 'task': return <CheckSquare className="h-3.5 w-3.5" />;
-      case 'stage_change': return <Activity className="h-3.5 w-3.5" />;
-      default: return <Clock className="h-3.5 w-3.5" />;
+      case 'note':
+        return <MessageSquare className="h-3.5 w-3.5" />;
+      case 'email':
+        return <Mail className="h-3.5 w-3.5" />;
+      case 'call':
+        return <Phone className="h-3.5 w-3.5" />;
+      case 'task':
+        return <CheckSquare className="h-3.5 w-3.5" />;
+      case 'stage_change':
+        return <Activity className="h-3.5 w-3.5" />;
+      default:
+        return <Clock className="h-3.5 w-3.5" />;
     }
   };
 
@@ -156,10 +160,22 @@ function ActivityTimeline({
         <CardContent className="p-3">
           <Tabs defaultValue="note" className="space-y-2">
             <TabsList className="h-7">
-              <TabsTrigger value="note" className="text-xs h-6 px-2"><MessageSquare className="h-3 w-3 mr-1" />Note</TabsTrigger>
-              <TabsTrigger value="email" className="text-xs h-6 px-2"><Mail className="h-3 w-3 mr-1" />Email</TabsTrigger>
-              <TabsTrigger value="call" className="text-xs h-6 px-2"><Phone className="h-3 w-3 mr-1" />Call</TabsTrigger>
-              <TabsTrigger value="task" className="text-xs h-6 px-2"><CheckSquare className="h-3 w-3 mr-1" />Task</TabsTrigger>
+              <TabsTrigger value="note" className="text-xs h-6 px-2">
+                <MessageSquare className="h-3 w-3 mr-1" />
+                Note
+              </TabsTrigger>
+              <TabsTrigger value="email" className="text-xs h-6 px-2">
+                <Mail className="h-3 w-3 mr-1" />
+                Email
+              </TabsTrigger>
+              <TabsTrigger value="call" className="text-xs h-6 px-2">
+                <Phone className="h-3 w-3 mr-1" />
+                Call
+              </TabsTrigger>
+              <TabsTrigger value="task" className="text-xs h-6 px-2">
+                <CheckSquare className="h-3 w-3 mr-1" />
+                Task
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="note" className="space-y-2">
               <Textarea
@@ -194,15 +210,11 @@ function ActivityTimeline({
       {/* Timeline entries */}
       <div className="space-y-2">
         {filteredActivities.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground text-xs">
-            No activities yet
-          </div>
+          <div className="text-center py-8 text-muted-foreground text-xs">No activities yet</div>
         ) : (
           filteredActivities.map((activity) => (
             <div key={activity.id} className="flex gap-3 py-2 border-b last:border-0">
-              <div className="mt-0.5 text-muted-foreground">
-                {getActivityIcon(activity.type)}
-              </div>
+              <div className="mt-0.5 text-muted-foreground">{getActivityIcon(activity.type)}</div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm">{activity.description}</p>
                 <div className="flex items-center gap-2 mt-1">
@@ -243,18 +255,20 @@ export function RecordPageLayout({
   });
 
   // Default sections if no config
-  const sections: LayoutSection[] = layoutConfig?.layoutSections ?? getDefaultSections(objectType);
-  const leftSections = sections.filter((s) => s.position === 'left').sort((a, b) => a.order - b.order);
-  const rightSections = sections.filter((s) => s.position === 'right').sort((a, b) => a.order - b.order);
+  const sections: LayoutSection[] = Array.isArray(layoutConfig?.layoutSections)
+    ? layoutConfig.layoutSections
+    : getDefaultSections(objectType);
+  const leftSections = sections
+    .filter((s) => s.position === 'left')
+    .sort((a, b) => a.order - b.order);
+  const rightSections = sections
+    .filter((s) => s.position === 'right')
+    .sort((a, b) => a.order - b.order);
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      {headerContent && (
-        <div className="px-4 py-3 border-b bg-background">
-          {headerContent}
-        </div>
-      )}
+      {headerContent && <div className="px-4 py-3 border-b bg-background">{headerContent}</div>}
 
       {/* 3-column layout */}
       <div className="flex-1 overflow-auto">
@@ -279,11 +293,7 @@ export function RecordPageLayout({
           {/* Right panel - Associated Records + Custom Cards */}
           <div className="lg:col-span-3 space-y-3">
             {rightSections.map((section) => (
-              <PropertyGroupCard
-                key={section.sectionId}
-                section={section}
-                record={record}
-              />
+              <PropertyGroupCard key={section.sectionId} section={section} record={record} />
             ))}
             {sidebarCards}
           </div>

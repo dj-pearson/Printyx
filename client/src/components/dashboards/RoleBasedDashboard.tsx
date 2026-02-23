@@ -57,9 +57,17 @@ export function RoleBasedDashboard() {
   // Load user's saved layout from backend
   const { data: savedLayout, isLoading: layoutLoading } = useQuery({
     queryKey: ['/api/dashboard/user-layout'],
+    queryFn: async () => {
+      try {
+        return await apiRequest('/api/dashboard/user-layout');
+      } catch {
+        // Endpoint may not exist in production (Edge Function not deployed)
+        return null;
+      }
+    },
     enabled: !!user,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 1,
+    retry: false,
   });
 
   // Save layout mutation

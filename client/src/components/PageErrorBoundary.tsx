@@ -13,6 +13,7 @@ import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { getApiUrl } from '@/lib/config';
 
 interface PageErrorBoundaryProps {
   children: ReactNode;
@@ -40,7 +41,7 @@ function sendErrorToServer(error: Error, errorInfo: React.ErrorInfo, pageName?: 
       timestamp: new Date().toISOString(),
     };
     // Fire-and-forget; don't block the UI
-    fetch('/api/client-errors', {
+    fetch(getApiUrl('/api/client-errors'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

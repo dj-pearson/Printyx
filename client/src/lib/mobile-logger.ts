@@ -182,26 +182,15 @@ class MobileLogger {
 
     const body = JSON.stringify(payload);
 
-    // Always try the Express backend first (same-origin, no CORS issues)
-    const expressUrl = '/api/mobile-logs';
-    // In production, also send to Edge Function for redundancy
-    const edgeUrl = config.isProduction ? `${config.apiBaseUrl}/mobile-logs` : null;
+    // In production, use Edge Function URL; in dev, use same-origin Express backend
+    const logUrl = config.isProduction ? `${config.apiBaseUrl}/mobile-logs` : '/api/mobile-logs';
 
-    const doFetch = (url: string) =>
-      fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        keepalive: true,
-      }).catch(() => {});
-
-    // Primary: Express backend (works same-origin in both dev and prod)
-    doFetch(expressUrl);
-
-    // Secondary: Edge Function in production (redundancy)
-    if (edgeUrl) {
-      doFetch(edgeUrl);
-    }
+    fetch(logUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+    }).catch(() => {});
   }
 
   /**
@@ -224,7 +213,10 @@ class MobileLogger {
     try {
       // Use text/plain to avoid CORS preflight issues with sendBeacon
       const blob = new Blob([JSON.stringify(payload)], { type: 'text/plain' });
-      navigator.sendBeacon?.('/api/mobile-logs', blob);
+      const beaconUrl = config.isProduction
+        ? `${config.apiBaseUrl}/mobile-logs`
+        : '/api/mobile-logs';
+      navigator.sendBeacon?.(beaconUrl, blob);
     } catch {
       // Best effort
     }
