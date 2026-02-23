@@ -44,7 +44,7 @@ function sendErrorToServer(error: Error, errorInfo: React.ErrorInfo, pageName?: 
     fetch(getApiUrl('/api/client-errors'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      credentials: 'omit',
       body: JSON.stringify(payload),
     }).catch(() => {
       // Silently swallow network errors – logging should never break the app
