@@ -2,31 +2,14 @@
  * Application Configuration
  * Handles environment-specific settings for API endpoints
  *
- * In production, Supabase requests are proxied through Cloudflare Pages Functions
- * to handle CORS properly. Set VITE_USE_SUPABASE_PROXY=true to enable.
+ * Architecture:
+ *   - Frontend: Cloudflare Pages (printyx.net)
+ *   - Auth/DB: Self-hosted Supabase (api.printyx.net)
+ *   - API: Supabase Edge Functions in Docker (functions.printyx.net)
  */
 
-export type AuthMode = 'legacy' | 'hybrid' | 'supabase';
-
-// Determine if we should use the proxy (same-origin requests through Cloudflare Pages Functions)
-// Default to false for self-hosted Supabase. Set VITE_USE_SUPABASE_PROXY=true to enable proxy.
-const useProxy = import.meta.env.VITE_USE_SUPABASE_PROXY === 'true';
-
-// Get the base URL for the current origin (for proxied requests)
-const getOriginUrl = () => {
-  if (typeof window !== 'undefined') {
-    return window.location.origin;
-  }
-  return '';
-};
-
-// Determine auth mode (normalize casing) - default to supabase
-const rawAuthMode = String(import.meta.env.VITE_AUTH_MODE || '').toLowerCase();
-const resolvedAuthMode: AuthMode =
-  rawAuthMode === 'legacy' ? 'legacy' : rawAuthMode === 'hybrid' ? 'hybrid' : 'supabase';
-
-// Determine API base URL for Express-style /api/* routes
-// In production, these go to Supabase Edge Functions at functions.printyx.net
+// Determine API base URL for Edge Function routes
+// In production, /api/tasks -> functions.printyx.net/tasks
 const getApiBaseUrl = (): string => {
   // Explicit override always wins
   if (import.meta.env.VITE_API_BASE_URL) {
@@ -41,27 +24,15 @@ const getApiBaseUrl = (): string => {
 };
 
 export const config = {
-  // API Base URL - defaults to relative for dev, api.printyx.net for production
+  // API Base URL — Edge Functions in production, Vite proxy in dev
   apiBaseUrl: getApiBaseUrl(),
 
-  // Supabase Configuration
-  // In production, use same-origin proxy to avoid CORS issues
-  // Self-hosted Supabase at api.printyx.net
+  // Supabase Configuration (self-hosted)
   supabase: {
-    // Use proxy in production: /api/* routes to Supabase API
-    url: useProxy ? getOriginUrl() : import.meta.env.VITE_SUPABASE_URL || 'https://api.printyx.net',
+    url: import.meta.env.VITE_SUPABASE_URL || 'https://api.printyx.net',
     anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-    // Use proxy in production: /functions/* routes to Supabase Edge Functions
-    functionsUrl: useProxy
-      ? `${getOriginUrl()}/functions`
-      : import.meta.env.VITE_FUNCTIONS_URL || 'https://functions.printyx.net',
+    functionsUrl: import.meta.env.VITE_FUNCTIONS_URL || 'https://functions.printyx.net',
   },
-
-  // Whether Supabase requests are proxied through Cloudflare Pages Functions
-  useSupabaseProxy: useProxy,
-
-  // Auth Mode: 'legacy' (Express sessions), 'hybrid' (both), 'supabase' (GoTrue only)
-  authMode: resolvedAuthMode,
 
   // Feature Flags
   isDevelopment: import.meta.env.DEV,
@@ -72,20 +43,8 @@ export const config = {
   appVersion: import.meta.env.VITE_APP_VERSION || '1.0.0',
 } as const;
 
-// Debug logging for auth configuration (remove after debugging)
-if (typeof window !== 'undefined') {
-  console.log('🔐 Auth Config:', {
-    authMode: config.authMode,
-    useProxy: config.useSupabaseProxy,
-    supabaseUrl: config.supabase.url,
-    apiBaseUrl: config.apiBaseUrl,
-    isProduction: config.isProduction,
-    envAuthMode: import.meta.env.VITE_AUTH_MODE,
-  });
-}
-
 // Helper to construct full API URLs
-// In production, transforms /api/tasks -> /tasks for Edge Functions
+// In production, transforms /api/tasks -> functions.printyx.net/tasks
 export function getApiUrl(path: string): string {
   // Remove leading slash if present
   let cleanPath = path.startsWith('/') ? path.slice(1) : path;
