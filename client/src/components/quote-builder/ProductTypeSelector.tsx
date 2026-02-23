@@ -159,8 +159,9 @@ export default function ProductTypeSelector({
 
       const response = await apiRequest(url, 'GET');
       console.log('API Response for', url, ':', response);
-      // Ensure response is always an array
-      return Array.isArray(response) ? response : [];
+      // Ensure response is always an array - handle { data: [...] }, { records: [...] }, or direct array
+      const data = response?.data || response?.records || (Array.isArray(response) ? response : []);
+      return Array.isArray(data) ? data : [];
     },
     enabled: !!selectedTypeOption,
   });
