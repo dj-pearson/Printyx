@@ -1,4 +1,5 @@
 import type { Express } from 'express';
+import { z } from 'zod';
 import { eq, and, desc, sql, count, like } from 'drizzle-orm';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
@@ -18,6 +19,37 @@ import {
   PERMISSIONS,
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
+
+// Validation schemas for update operations
+const updateProductModelSchema = z
+  .object({
+    productCode: z.string().min(1).optional(),
+    productName: z.string().min(1).optional(),
+    category: z.string().nullable().optional(),
+    manufacturer: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    specifications: z.any().nullable().optional(),
+    price: z.string().or(z.number()).nullable().optional(),
+    costPrice: z.string().or(z.number()).nullable().optional(),
+    status: z.string().optional(),
+    stockQuantity: z.number().int().min(0).optional(),
+    reorderLevel: z.number().int().min(0).optional(),
+    weight: z.string().or(z.number()).nullable().optional(),
+    dimensions: z.string().nullable().optional(),
+    warrantyPeriod: z.string().nullable().optional(),
+  })
+  .strict();
+
+const bulkStockUpdateSchema = z.object({
+  updates: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        stockQuantity: z.number().int().min(0),
+      }),
+    )
+    .min(1, 'At least one update is required'),
+});
 
 export function registerProductModelsRoutes(app: Express) {
   // Apply authentication and RBAC context to all product model routes
@@ -130,9 +162,13 @@ export function registerProductModelsRoutes(app: Express) {
         const [newModel] = await db.insert(productModels).values(modelData).returning();
 
         res.status(201).json(newModel);
-      } catch (error) {
+      } catch (error: any) {
         log.error('Error creating product model:', error);
-        res.status(500).json({ error: 'Failed to create product model' });
+        if (error.name === 'ZodError') {
+          res.status(400).json({ error: 'Invalid data', details: error.errors });
+        } else {
+          res.status(500).json({ error: 'Failed to create product model' });
+        }
       }
     },
   );
@@ -147,10 +183,12 @@ export function registerProductModelsRoutes(app: Express) {
         const tenantId = req.user.tenantId;
         const modelId = req.params.id;
 
+        const validatedData = updateProductModelSchema.parse(req.body);
+
         const [updatedModel] = await db
           .update(productModels)
           .set({
-            ...req.body,
+            ...validatedData,
             updatedAt: new Date(),
           })
           .where(and(eq(productModels.id, modelId), eq(productModels.tenantId, tenantId)))
@@ -161,9 +199,13 @@ export function registerProductModelsRoutes(app: Express) {
         }
 
         res.json(updatedModel);
-      } catch (error) {
+      } catch (error: any) {
         log.error('Error updating product model:', error);
-        res.status(500).json({ error: 'Failed to update product model' });
+        if (error.name === 'ZodError') {
+          res.status(400).json({ error: 'Invalid data', details: error.errors });
+        } else {
+          res.status(500).json({ error: 'Failed to update product model' });
+        }
       }
     },
   );
@@ -337,14 +379,11 @@ export function registerProductModelsRoutes(app: Express) {
     async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user.tenantId;
-        const { updates } = req.body; // Array of { id, stockQuantity }
 
-        if (!Array.isArray(updates)) {
-          return res.status(400).json({ error: 'Updates must be an array' });
-        }
+        const { updates } = bulkStockUpdateSchema.parse(req.body);
 
         const results = await Promise.all(
-          updates.map(async (update: { id: string; stockQuantity: number }) => {
+          updates.map(async (update) => {
             const [updatedModel] = await db
               .update(productModels)
               .set({
@@ -362,9 +401,13 @@ export function registerProductModelsRoutes(app: Express) {
           message: `Updated ${results.filter((r) => r).length} product models`,
           updated: results.filter((r) => r),
         });
-      } catch (error) {
+      } catch (error: any) {
         log.error('Error bulk updating stock:', error);
-        res.status(500).json({ error: 'Failed to bulk update stock' });
+        if (error.name === 'ZodError') {
+          res.status(400).json({ error: 'Invalid data', details: error.errors });
+        } else {
+          res.status(500).json({ error: 'Failed to bulk update stock' });
+        }
       }
     },
   );

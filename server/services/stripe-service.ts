@@ -3,6 +3,7 @@ import { db } from '../db';
 import { tenants, tenantSubscriptions, users } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { createModuleLogger } from '../lib/logger';
+import { sendEmail } from './email-service';
 const log = createModuleLogger('stripe-service');
 
 /**
@@ -1011,7 +1012,93 @@ export class StripeService {
 
     log.info(`⚠️  Trial will end for tenant ${tenantId}`);
 
-    // TODO: Send trial ending notification email
+    // Resolve tenant admin email from subscription customer or database
+    let recipientEmail: string | undefined;
+    let tenantName = 'your organization';
+    try {
+      const customerId = subscription.customer as string;
+      if (stripe && customerId) {
+        const customer = await stripe.customers.retrieve(customerId);
+        if (!customer.deleted && (customer as Stripe.Customer).email) {
+          recipientEmail = (customer as Stripe.Customer).email!;
+        }
+      }
+      const tenant = await db.query.tenants.findFirst({
+        where: eq(tenants.id, tenantId),
+      });
+      if (tenant?.name) {
+        tenantName = tenant.name;
+      }
+      if (!recipientEmail) {
+        const adminUser = await db.query.users.findFirst({
+          where: eq(users.tenantId, tenantId),
+        });
+        if (adminUser?.email) {
+          recipientEmail = adminUser.email;
+        }
+      }
+    } catch (err) {
+      log.error('Failed to resolve tenant admin email for trial ending notification', err);
+    }
+
+    if (recipientEmail) {
+      const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000) : null;
+      const trialEndDate = trialEnd
+        ? trialEnd.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : 'in 3 days';
+      const planName =
+        subscription.items.data[0]?.price?.product &&
+        typeof subscription.items.data[0].price.product === 'object' &&
+        'name' in subscription.items.data[0].price.product
+          ? (subscription.items.data[0].price.product as Stripe.Product).name
+          : 'Printyx';
+      const upgradeUrl = `${process.env.PUBLIC_URL || 'http://localhost:5000'}/settings/subscription`;
+
+      try {
+        await sendEmail({
+          to: recipientEmail,
+          subject: 'Your Printyx trial ends in 3 days',
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f3f4f6;">
+              <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+                  <h1 style="margin: 0; font-size: 24px;">Trial Ending Soon</h1>
+                </div>
+                <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+                  <p>Hello,</p>
+                  <p>Your <strong>${planName}</strong> trial for <strong>${tenantName}</strong> is ending <strong>${trialEndDate}</strong>.</p>
+                  <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0; border-radius: 4px;">
+                    <strong style="color: #92400e;">Don't lose access!</strong>
+                    <p style="margin: 8px 0 0 0; color: #78350f;">Add a payment method now to continue using Printyx without any interruption. All your data, settings, and configurations will be preserved.</p>
+                  </div>
+                  <p style="text-align: center;">
+                    <a href="${upgradeUrl}" style="display: inline-block; padding: 14px 28px; background: #2563eb; color: white !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">Upgrade Now</a>
+                  </p>
+                  <p style="color: #6b7280; font-size: 14px;">If you have any questions about our plans or pricing, just reply to this email. We're here to help.</p>
+                </div>
+                <div style="background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
+                  <p style="margin: 0;">&copy; ${new Date().getFullYear()} Printyx. All rights reserved.</p>
+                </div>
+              </div>
+            </body>
+            </html>
+          `,
+          text: `Your Printyx trial ends ${trialEndDate}. Upgrade now to keep access to your ${planName} plan: ${upgradeUrl}`,
+        });
+        log.info(
+          `Trial ending notification email sent to ${recipientEmail} for tenant ${tenantId}`,
+        );
+      } catch (emailErr) {
+        log.error(`Failed to send trial ending notification email to ${recipientEmail}`, emailErr);
+      }
+    } else {
+      log.warn(`No email address found for tenant ${tenantId} - trial ending notification skipped`);
+    }
 
     return { success: true, message: 'Trial ending notification processed' };
   }
@@ -1025,7 +1112,131 @@ export class StripeService {
     const customerId = invoice.customer as string;
     log.info(`📬 Upcoming invoice for customer ${customerId}`);
 
-    // TODO: Send upcoming invoice notification
+    // Resolve recipient email and tenant info
+    let recipientEmail: string | undefined;
+    let tenantName = 'your organization';
+    try {
+      if (stripe && customerId) {
+        const customer = await stripe.customers.retrieve(customerId);
+        if (!customer.deleted && (customer as Stripe.Customer).email) {
+          recipientEmail = (customer as Stripe.Customer).email!;
+        }
+        // Try to get tenant name from customer metadata
+        if (!customer.deleted && (customer as Stripe.Customer).metadata?.tenantId) {
+          const tenant = await db.query.tenants.findFirst({
+            where: eq(tenants.id, (customer as Stripe.Customer).metadata.tenantId),
+          });
+          if (tenant?.name) {
+            tenantName = tenant.name;
+          }
+        }
+      }
+      // Fallback: use invoice customer_email
+      if (!recipientEmail && invoice.customer_email) {
+        recipientEmail = invoice.customer_email;
+      }
+    } catch (err) {
+      log.error('Failed to resolve recipient email for upcoming invoice notification', err);
+    }
+
+    if (recipientEmail) {
+      const amountDue =
+        invoice.amount_due != null ? `$${(invoice.amount_due / 100).toFixed(2)}` : 'N/A';
+      const currency = (invoice.currency || 'usd').toUpperCase();
+      const dueDate = invoice.due_date
+        ? new Date(invoice.due_date * 1000).toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+          })
+        : invoice.period_end
+          ? new Date(invoice.period_end * 1000).toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+            })
+          : 'upcoming';
+
+      // Build line items summary
+      const lineItems = (invoice.lines?.data || [])
+        .slice(0, 10)
+        .map((item) => {
+          const description = item.description || item.price?.nickname || 'Line item';
+          const itemAmount = item.amount != null ? `$${(item.amount / 100).toFixed(2)}` : '';
+          return `<tr><td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6;">${description}</td><td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: 600;">${itemAmount}</td></tr>`;
+        })
+        .join('');
+
+      const billingUrl = `${process.env.PUBLIC_URL || 'http://localhost:5000'}/settings/subscription`;
+
+      try {
+        await sendEmail({
+          to: recipientEmail,
+          subject: `Upcoming Invoice - ${amountDue} ${currency}`,
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f3f4f6;">
+              <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+                  <h1 style="margin: 0; font-size: 24px;">Upcoming Invoice</h1>
+                </div>
+                <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+                  <p>Hello,</p>
+                  <p>You have an upcoming invoice for <strong>${tenantName}</strong>. Here are the details:</p>
+                  <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="padding: 8px 0; color: #6b7280;">Amount Due</td>
+                        <td style="padding: 8px 0; text-align: right; font-size: 20px; font-weight: 700; color: #111827;">${amountDue} ${currency}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #6b7280;">Due Date</td>
+                        <td style="padding: 8px 0; text-align: right; font-weight: 600;">${dueDate}</td>
+                      </tr>
+                    </table>
+                  </div>
+                  ${
+                    lineItems
+                      ? `
+                  <h3 style="margin-bottom: 8px;">Line Items</h3>
+                  <table style="width: 100%; border-collapse: collapse;">
+                    ${lineItems}
+                  </table>
+                  `
+                      : ''
+                  }
+                  <p style="text-align: center; margin-top: 24px;">
+                    <a href="${billingUrl}" style="display: inline-block; padding: 14px 28px; background: #2563eb; color: white !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">View Billing Details</a>
+                  </p>
+                  <p style="color: #6b7280; font-size: 14px;">This invoice will be charged to your default payment method on file. If you need to update your payment method, visit your billing settings.</p>
+                </div>
+                <div style="background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
+                  <p style="margin: 0;">&copy; ${new Date().getFullYear()} Printyx. All rights reserved.</p>
+                </div>
+              </div>
+            </body>
+            </html>
+          `,
+          text: `Upcoming Invoice for ${tenantName}: ${amountDue} ${currency} due ${dueDate}. View billing details: ${billingUrl}`,
+        });
+        log.info(
+          `Upcoming invoice notification email sent to ${recipientEmail} for customer ${customerId}, amount: ${amountDue}`,
+        );
+      } catch (emailErr) {
+        log.error(
+          `Failed to send upcoming invoice notification email to ${recipientEmail}`,
+          emailErr,
+        );
+      }
+    } else {
+      log.warn(
+        `No email address found for customer ${customerId} - upcoming invoice notification skipped`,
+      );
+    }
 
     return { success: true, message: 'Upcoming invoice notification processed' };
   }
@@ -1041,9 +1252,117 @@ export class StripeService {
 
     log.info(`✅ Payment succeeded for tenant ${tenantId || 'unknown'}: ${paymentIntent.id}`);
 
-    if (purchaseType === 'one_time_purchase') {
-      // Handle add-on purchase activation
-      // TODO: Activate the purchased add-on for the tenant
+    if (purchaseType === 'one_time_purchase' && tenantId) {
+      // Activate the purchased add-on for the tenant
+      const addOnName =
+        paymentIntent.metadata?.addOnName || paymentIntent.metadata?.productName || 'Add-on';
+      const addOnId = paymentIntent.metadata?.addOnId || paymentIntent.metadata?.priceId || '';
+
+      try {
+        // Store add-on activation in tenant metadata
+        const tenant = await db.query.tenants.findFirst({
+          where: eq(tenants.id, tenantId),
+        });
+
+        if (tenant) {
+          const tenantMeta = (tenant.metadata as any) || {};
+          const activeAddOns = tenantMeta.activeAddOns || [];
+          activeAddOns.push({
+            id: addOnId,
+            name: addOnName,
+            activatedAt: new Date().toISOString(),
+            paymentIntentId: paymentIntent.id,
+          });
+
+          await db
+            .update(tenants)
+            .set({
+              metadata: {
+                ...tenantMeta,
+                activeAddOns,
+              },
+              updatedAt: new Date(),
+            })
+            .where(eq(tenants.id, tenantId));
+
+          log.info(
+            `Add-on "${addOnName}" activated for tenant ${tenantId} (paymentIntent: ${paymentIntent.id})`,
+          );
+        }
+      } catch (activationErr) {
+        log.error(`Failed to activate add-on for tenant ${tenantId}`, activationErr);
+      }
+
+      // Send confirmation email
+      let recipientEmail: string | undefined;
+      try {
+        const customerId = paymentIntent.customer as string | undefined;
+        if (stripe && customerId) {
+          const customer = await stripe.customers.retrieve(customerId);
+          if (!customer.deleted && (customer as Stripe.Customer).email) {
+            recipientEmail = (customer as Stripe.Customer).email!;
+          }
+        }
+        if (!recipientEmail) {
+          const adminUser = await db.query.users.findFirst({
+            where: eq(users.tenantId, tenantId),
+          });
+          if (adminUser?.email) {
+            recipientEmail = adminUser.email;
+          }
+        }
+      } catch (err) {
+        log.error('Failed to resolve email for add-on confirmation', err);
+      }
+
+      if (recipientEmail) {
+        const amountPaid =
+          paymentIntent.amount != null ? `$${(paymentIntent.amount / 100).toFixed(2)}` : '';
+        const dashboardUrl = `${process.env.PUBLIC_URL || 'http://localhost:5000'}/settings/subscription`;
+
+        try {
+          await sendEmail({
+            to: recipientEmail,
+            subject: `Add-on Activated: ${addOnName}`,
+            html: `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <meta charset="utf-8">
+              </head>
+              <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f3f4f6;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <div style="background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+                    <h1 style="margin: 0; font-size: 24px;">Add-on Activated</h1>
+                  </div>
+                  <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+                    <p>Hello,</p>
+                    <p>Great news! Your add-on has been successfully activated.</p>
+                    <div style="background: #ecfdf5; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+                      <h2 style="margin: 0 0 8px 0; color: #065f46;">${addOnName}</h2>
+                      ${amountPaid ? `<p style="margin: 0; color: #047857; font-size: 18px; font-weight: 600;">${amountPaid} paid</p>` : ''}
+                    </div>
+                    <p>This feature is now available in your account and ready to use immediately.</p>
+                    <p style="text-align: center; margin-top: 24px;">
+                      <a href="${dashboardUrl}" style="display: inline-block; padding: 14px 28px; background: #2563eb; color: white !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">View Your Subscription</a>
+                    </p>
+                  </div>
+                  <div style="background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
+                    <p style="margin: 0;">&copy; ${new Date().getFullYear()} Printyx. All rights reserved.</p>
+                  </div>
+                </div>
+              </body>
+              </html>
+            `,
+            text: `Add-on Activated: ${addOnName}${amountPaid ? ` (${amountPaid} paid)` : ''}. This feature is now available in your account. View your subscription: ${dashboardUrl}`,
+          });
+          log.info(
+            `Add-on activation confirmation email sent to ${recipientEmail} for tenant ${tenantId}`,
+          );
+        } catch (emailErr) {
+          log.error(`Failed to send add-on activation email to ${recipientEmail}`, emailErr);
+        }
+      }
     }
 
     return {
@@ -1063,7 +1382,112 @@ export class StripeService {
 
     log.info(`❌ Payment failed for tenant ${tenantId || 'unknown'}: ${paymentIntent.id}`);
 
-    // TODO: Send payment failed notification
+    // Resolve recipient email
+    let recipientEmail: string | undefined;
+    let tenantName = 'your organization';
+    try {
+      const customerId = paymentIntent.customer as string | undefined;
+      if (stripe && customerId) {
+        const customer = await stripe.customers.retrieve(customerId);
+        if (!customer.deleted && (customer as Stripe.Customer).email) {
+          recipientEmail = (customer as Stripe.Customer).email!;
+        }
+        if (!customer.deleted && (customer as Stripe.Customer).metadata?.tenantId) {
+          const tenant = await db.query.tenants.findFirst({
+            where: eq(tenants.id, (customer as Stripe.Customer).metadata.tenantId),
+          });
+          if (tenant?.name) {
+            tenantName = tenant.name;
+          }
+        }
+      }
+      if (!recipientEmail && tenantId) {
+        const adminUser = await db.query.users.findFirst({
+          where: eq(users.tenantId, tenantId),
+        });
+        if (adminUser?.email) {
+          recipientEmail = adminUser.email;
+        }
+      }
+    } catch (err) {
+      log.error('Failed to resolve email for payment failed notification', err);
+    }
+
+    if (recipientEmail) {
+      const failedAmount =
+        paymentIntent.amount != null ? `$${(paymentIntent.amount / 100).toFixed(2)}` : 'N/A';
+      const currency = (paymentIntent.currency || 'usd').toUpperCase();
+      const failureMessage =
+        paymentIntent.last_payment_error?.message || 'Your payment could not be processed.';
+      const failureCode = paymentIntent.last_payment_error?.code || 'unknown';
+      const billingUrl = `${process.env.PUBLIC_URL || 'http://localhost:5000'}/settings/subscription`;
+
+      try {
+        await sendEmail({
+          to: recipientEmail,
+          subject: `Payment Failed - ${failedAmount} ${currency}`,
+          html: `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="utf-8">
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f3f4f6;">
+              <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+                  <h1 style="margin: 0; font-size: 24px;">Payment Failed</h1>
+                </div>
+                <div style="background: white; padding: 30px; border: 1px solid #e5e7eb; border-top: none;">
+                  <p>Hello,</p>
+                  <p>We were unable to process a payment for <strong>${tenantName}</strong>.</p>
+                  <div style="background: #fef2f2; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                      <tr>
+                        <td style="padding: 8px 0; color: #6b7280;">Amount</td>
+                        <td style="padding: 8px 0; text-align: right; font-size: 20px; font-weight: 700; color: #dc2626;">${failedAmount} ${currency}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #6b7280;">Reason</td>
+                        <td style="padding: 8px 0; text-align: right; color: #991b1b;">${failureMessage}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #6b7280;">Error Code</td>
+                        <td style="padding: 8px 0; text-align: right; font-family: monospace; color: #6b7280;">${failureCode}</td>
+                      </tr>
+                    </table>
+                  </div>
+                  <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0; border-radius: 4px;">
+                    <strong style="color: #92400e;">What happens next?</strong>
+                    <p style="margin: 8px 0 0 0; color: #78350f;">We will automatically retry the payment in a few days. To avoid any service interruption, please update your payment method as soon as possible.</p>
+                  </div>
+                  <p style="text-align: center; margin-top: 24px;">
+                    <a href="${billingUrl}" style="display: inline-block; padding: 14px 28px; background: #dc2626; color: white !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">Update Payment Method</a>
+                  </p>
+                  <p style="color: #6b7280; font-size: 14px;">If you believe this is an error or need assistance, please reply to this email or contact our support team.</p>
+                </div>
+                <div style="background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none;">
+                  <p style="margin: 0;">&copy; ${new Date().getFullYear()} Printyx. All rights reserved.</p>
+                </div>
+              </div>
+            </body>
+            </html>
+          `,
+          text: `Payment Failed for ${tenantName}: ${failedAmount} ${currency}. Reason: ${failureMessage}. We will retry automatically, but please update your payment method to avoid service interruption: ${billingUrl}`,
+        });
+        log.info(
+          `Payment failed notification email sent to ${recipientEmail} for tenant ${tenantId || 'unknown'}, amount: ${failedAmount}, reason: ${failureCode}`,
+        );
+      } catch (emailErr) {
+        log.error(
+          `Failed to send payment failed notification email to ${recipientEmail}`,
+          emailErr,
+        );
+      }
+    } else {
+      log.warn(
+        `No email address found for payment intent ${paymentIntent.id} - payment failed notification skipped`,
+      );
+    }
 
     return { success: true, message: 'Payment failure handled' };
   }

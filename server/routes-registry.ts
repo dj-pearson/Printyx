@@ -63,6 +63,7 @@ import { registerAutomationRoutes } from './routes-automation';
 import equipmentLifecycleStateMachineRoutes from './routes-equipment-lifecycle-state-machine';
 import equipmentDisposalRoutes from './routes-equipment-disposal';
 import breachDetectionRoutes from './routes-breach-detection';
+import { registerGdprRoutes } from './routes-gdpr';
 import { registerCrmGoalRoutes } from './routes-crm-goals';
 import { registerSavedViewsRoutes } from './routes-saved-views';
 import { registerDealTagRoutes } from './routes-deal-tags';
@@ -133,6 +134,7 @@ import apiKeyRoutes from './routes/api-key-routes';
 import integrationRoutes from './integrations/routes';
 import integrationHubRoutes from './routes-integration-hub';
 import { registerFeatureFlagRoutes } from './routes-feature-flags';
+import { registerSessionManagementRoutes } from './routes-session-management';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-registry');
 
@@ -338,6 +340,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Feature Flags ──────────────────────────────────────────────────
   registerFeatureFlagRoutes(app);
 
+  // ─── Session Management ────────────────────────────────────────────
+  registerSessionManagementRoutes(app);
+
   // ─── RBAC & AI ────────────────────────────────────────────────────
   app.use('/api/rbac', enhancedRBACRoutes);
   app.use('/api/ai/gpt5', gpt5Routes);
@@ -499,7 +504,8 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Sales Forecasting ────────────────────────────────────────────
   app.use(salesForecastingRoutes);
 
-  // ─── Breach Detection & Validation ────────────────────────────────
+  // ─── GDPR & Breach Detection ────────────────────────────────────
+  registerGdprRoutes(app);
   app.use('/api', breachDetectionRoutes);
   const validateRoutes = await import('./routes-validate');
   app.use('/api', validateRoutes.default);

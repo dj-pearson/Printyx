@@ -6,6 +6,13 @@
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import type { EnhancedUserContext } from '../middleware/enhanced-rbac-middleware';
+import {
+  getCachedQuery,
+  setCachedQuery,
+  invalidateQueryCache,
+  buildReportCacheKey,
+  REPORT_CACHE_TTL,
+} from '../lib/query-cache';
 
 // =====================================================================
 // TYPE DEFINITIONS
@@ -136,8 +143,11 @@ export class ExecutiveReportingService {
     userContext: EnhancedUserContext,
     dateRange?: Partial<DateRange>,
   ): Promise<ExecutiveDashboard> {
-    const cacheKey = `executive-dashboard:${userContext.tenantId}:${JSON.stringify(dateRange)}`;
-    const cached = ReportCache.get<ExecutiveDashboard>(cacheKey);
+    const cacheKey = buildReportCacheKey(userContext.tenantId, 'executive-dashboard', {
+      dateFrom: dateRange?.dateFrom?.toISOString(),
+      dateTo: dateRange?.dateTo?.toISOString(),
+    });
+    const cached = await getCachedQuery<ExecutiveDashboard>(cacheKey);
     if (cached) return cached;
 
     const dateFilter =
@@ -219,7 +229,7 @@ export class ExecutiveReportingService {
       ],
     };
 
-    ReportCache.set(cacheKey, response);
+    await setCachedQuery(cacheKey, response, REPORT_CACHE_TTL.DAILY_REPORT);
     return response;
   }
 
@@ -227,8 +237,8 @@ export class ExecutiveReportingService {
    * Platform Admin Dashboard (Level 8 - Printyx staff only)
    */
   static async getPlatformAdminDashboard(): Promise<PlatformAdminDashboard> {
-    const cacheKey = `platform-admin-dashboard`;
-    const cached = ReportCache.get<PlatformAdminDashboard>(cacheKey);
+    const cacheKey = buildReportCacheKey('platform', 'platform-admin-dashboard');
+    const cached = await getCachedQuery<PlatformAdminDashboard>(cacheKey);
     if (cached) return cached;
 
     // Get platform-wide metrics across all tenants
@@ -297,15 +307,15 @@ export class ExecutiveReportingService {
       },
     };
 
-    ReportCache.set(cacheKey, response);
+    await setCachedQuery(cacheKey, response, REPORT_CACHE_TTL.DAILY_REPORT);
     return response;
   }
 
   /**
    * Clear cache for executive reports
    */
-  static clearCache(): void {
-    ReportCache.clear('executive');
-    ReportCache.clear('platform');
+  static async clearCache(): Promise<void> {
+    await invalidateQueryCache('*executive-dashboard*');
+    await invalidateQueryCache('*platform-admin-dashboard*');
   }
 }

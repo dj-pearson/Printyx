@@ -10,6 +10,63 @@ import * as jose from 'jose';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('supabase-auth');
 
+// ─── User Role Cache (in-memory LRU) ────────────────────────────────────────
+// Caches DB-fetched user role data to avoid 2 DB queries per authenticated request.
+// TTL: 5 minutes. Max entries: 1000 (oldest evicted when full).
+
+const USER_ROLE_CACHE_TTL = 300_000; // 5 minutes in ms
+const USER_ROLE_CACHE_MAX = 1000;
+
+interface UserRoleCacheEntry {
+  data: {
+    tenantId?: string | null;
+    roleId?: string | null;
+    teamId?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    isPlatformUser?: boolean;
+    roleLevel?: number;
+    roleString?: string | null;
+  };
+  expiresAt: number;
+}
+
+const userRoleCache = new Map<string, UserRoleCacheEntry>();
+
+/**
+ * Evict the oldest entry from the cache when it exceeds max size.
+ * Map iteration order is insertion order, so the first key is the oldest.
+ */
+function evictOldestCacheEntry(): void {
+  if (userRoleCache.size >= USER_ROLE_CACHE_MAX) {
+    const oldestKey = userRoleCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      userRoleCache.delete(oldestKey);
+    }
+  }
+}
+
+/**
+ * Invalidate cached role data for a specific user.
+ * Call this when a user's role or permissions are updated.
+ */
+export function invalidateUserRoleCache(userId: string): void {
+  const deleted = userRoleCache.delete(userId);
+  if (deleted) {
+    log.debug(`[Auth Cache] Invalidated cache for user ${userId}`);
+  }
+}
+
+/**
+ * Clear the entire user role cache.
+ * Useful for testing or bulk role changes.
+ */
+export function clearUserRoleCache(): void {
+  const size = userRoleCache.size;
+  userRoleCache.clear();
+  log.debug(`[Auth Cache] Cleared entire cache (${size} entries)`);
+}
+
 // Extend Express Request to include Supabase user data
 declare global {
   namespace Express {
@@ -194,73 +251,130 @@ export const authenticateSupabaseJWT: RequestHandler = async (
     const payload = await verifySupabaseJWT(token);
     const supabaseUser = transformPayloadToUser(payload);
 
-    // Fetch user from database to get role information
-    // This ensures we have the most up-to-date role data
-    try {
-      const { db } = await import('../db');
-      const { users, roles } = await import('../../shared/schema');
-      const { eq } = await import('drizzle-orm');
+    // Fetch user role data — check in-memory cache first to avoid DB lookups
+    const now = Date.now();
+    const cached = userRoleCache.get(supabaseUser.id);
 
-      const [userRecord] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, supabaseUser.id))
-        .limit(1);
+    if (cached && cached.expiresAt > now) {
+      // Cache hit — apply cached role data to supabaseUser
+      log.debug(`[Auth Cache] HIT for user ${supabaseUser.id}`);
+      const c = cached.data;
+      supabaseUser.tenantId = c.tenantId || supabaseUser.tenantId;
+      supabaseUser.roleId = c.roleId || supabaseUser.roleId;
+      supabaseUser.teamId = c.teamId || supabaseUser.teamId;
+      supabaseUser.firstName = c.firstName || supabaseUser.firstName;
+      supabaseUser.lastName = c.lastName || supabaseUser.lastName;
+      if (c.isPlatformUser !== undefined) {
+        supabaseUser.isPlatformUser = c.isPlatformUser;
+      }
+      if (c.roleLevel !== undefined) {
+        supabaseUser.roleLevel = c.roleLevel;
+      }
+      if (c.roleString) {
+        log.info(
+          `[Auth] User ${supabaseUser.email} has role '${c.roleString}', isPlatformUser: ${supabaseUser.isPlatformUser} (cached)`,
+        );
+      }
+    } else {
+      // Cache miss or expired — perform DB lookups
+      if (cached) {
+        // Expired entry — clean it up
+        userRoleCache.delete(supabaseUser.id);
+      }
+      log.debug(`[Auth Cache] MISS for user ${supabaseUser.id}`);
 
-      if (userRecord) {
-        // Check for string role column (legacy)
-        const roleString = (userRecord as any).role;
+      try {
+        const { db } = await import('../db');
+        const { users, roles } = await import('../../shared/schema');
+        const { eq } = await import('drizzle-orm');
 
-        if (roleString) {
-          const roleLowerCase = roleString.toLowerCase();
+        const [userRecord] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, supabaseUser.id))
+          .limit(1);
 
-          // Detect if user is platform admin based on role string
-          const isPlatformAdmin =
-            roleLowerCase === 'admin' ||
-            roleLowerCase === 'root_admin' ||
-            roleLowerCase === 'platform_admin' ||
-            roleLowerCase === 'company_admin' ||
-            roleLowerCase === 'system_admin';
+        if (userRecord) {
+          // Build the cache entry as we process
+          const cacheData: UserRoleCacheEntry['data'] = {
+            tenantId: userRecord.tenantId,
+            roleId: userRecord.roleId,
+            teamId: userRecord.teamId,
+            firstName: userRecord.firstName,
+            lastName: userRecord.lastName,
+            isPlatformUser: undefined,
+            roleLevel: undefined,
+            roleString: null,
+          };
 
-          // Override isPlatformUser based on role
-          supabaseUser.isPlatformUser = isPlatformAdmin || userRecord.isPlatformUser || false;
+          // Check for string role column (legacy)
+          const roleString = (userRecord as any).role;
 
-          log.info(
-            `[Auth] User ${supabaseUser.email} has role '${roleString}', isPlatformUser: ${supabaseUser.isPlatformUser}`,
+          if (roleString) {
+            const roleLowerCase = roleString.toLowerCase();
+
+            // Detect if user is platform admin based on role string
+            const isPlatformAdmin =
+              roleLowerCase === 'admin' ||
+              roleLowerCase === 'root_admin' ||
+              roleLowerCase === 'platform_admin' ||
+              roleLowerCase === 'company_admin' ||
+              roleLowerCase === 'system_admin';
+
+            // Override isPlatformUser based on role
+            supabaseUser.isPlatformUser = isPlatformAdmin || userRecord.isPlatformUser || false;
+            cacheData.isPlatformUser = supabaseUser.isPlatformUser;
+            cacheData.roleString = roleString;
+
+            log.info(
+              `[Auth] User ${supabaseUser.email} has role '${roleString}', isPlatformUser: ${supabaseUser.isPlatformUser}`,
+            );
+          }
+
+          // Update other fields from database
+          supabaseUser.tenantId = userRecord.tenantId || supabaseUser.tenantId;
+          supabaseUser.roleId = userRecord.roleId || supabaseUser.roleId;
+          supabaseUser.teamId = userRecord.teamId || supabaseUser.teamId;
+          supabaseUser.firstName = userRecord.firstName || supabaseUser.firstName;
+          supabaseUser.lastName = userRecord.lastName || supabaseUser.lastName;
+
+          // Fetch role level if user has a roleId
+          if (userRecord.roleId) {
+            try {
+              const [roleRecord] = await db
+                .select({ level: roles.level })
+                .from(roles)
+                .where(eq(roles.id, userRecord.roleId))
+                .limit(1);
+
+              if (roleRecord) {
+                supabaseUser.roleLevel = roleRecord.level;
+                cacheData.roleLevel = roleRecord.level;
+                // Also update isPlatformUser based on role level (8 = platform admin)
+                if (roleRecord.level >= 8) {
+                  supabaseUser.isPlatformUser = true;
+                  cacheData.isPlatformUser = true;
+                }
+              }
+            } catch (roleError) {
+              log.warn('[Auth] Could not fetch role level:', roleError);
+            }
+          }
+
+          // Store in cache (evict oldest if at capacity)
+          evictOldestCacheEntry();
+          userRoleCache.set(supabaseUser.id, {
+            data: cacheData,
+            expiresAt: now + USER_ROLE_CACHE_TTL,
+          });
+          log.debug(
+            `[Auth Cache] Stored cache for user ${supabaseUser.id} (cache size: ${userRoleCache.size})`,
           );
         }
-
-        // Update other fields from database
-        supabaseUser.tenantId = userRecord.tenantId || supabaseUser.tenantId;
-        supabaseUser.roleId = userRecord.roleId || supabaseUser.roleId;
-        supabaseUser.teamId = userRecord.teamId || supabaseUser.teamId;
-        supabaseUser.firstName = userRecord.firstName || supabaseUser.firstName;
-        supabaseUser.lastName = userRecord.lastName || supabaseUser.lastName;
-
-        // Fetch role level if user has a roleId
-        if (userRecord.roleId) {
-          try {
-            const [roleRecord] = await db
-              .select({ level: roles.level })
-              .from(roles)
-              .where(eq(roles.id, userRecord.roleId))
-              .limit(1);
-
-            if (roleRecord) {
-              supabaseUser.roleLevel = roleRecord.level;
-              // Also update isPlatformUser based on role level (8 = platform admin)
-              if (roleRecord.level >= 8) {
-                supabaseUser.isPlatformUser = true;
-              }
-            }
-          } catch (roleError) {
-            log.warn('[Auth] Could not fetch role level:', roleError);
-          }
-        }
+      } catch (dbError) {
+        log.warn('[Auth] Could not fetch user from database:', dbError);
+        // Continue with JWT data only
       }
-    } catch (dbError) {
-      log.warn('[Auth] Could not fetch user from database:', dbError);
-      // Continue with JWT data only
     }
 
     req.supabaseUser = supabaseUser;

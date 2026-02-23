@@ -213,8 +213,9 @@ app.use(
 app.use(compression());
 
 // SECURITY FIX: Add request size limits to prevent DoS
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+// 1MB limit for normal JSON/form payloads; file uploads use multer with separate limits
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
 // Input sanitization - strip XSS, null bytes, control chars, reject path traversal
 import { inputSanitization } from './middleware/input-sanitization';

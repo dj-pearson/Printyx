@@ -7,6 +7,13 @@ import { db } from '../db';
 import { sql, eq, and, inArray, gte, lte, desc, asc } from 'drizzle-orm';
 import { HierarchicalQueryBuilder } from '../middleware/hierarchical-query-builder';
 import type { EnhancedUserContext } from '../middleware/enhanced-rbac-middleware';
+import {
+  getCachedQuery,
+  setCachedQuery,
+  invalidateQueryCache,
+  buildReportCacheKey,
+  REPORT_CACHE_TTL,
+} from '../lib/query-cache';
 
 // =====================================================================
 // TYPE DEFINITIONS
@@ -403,8 +410,8 @@ export class SalesReportingService {
     metric: 'revenue' | 'deals' | 'pipeline' | 'activities' = 'revenue',
     scope: 'team' | 'location' | 'company' = 'location',
   ): Promise<LeaderboardEntry[]> {
-    const cacheKey = `leaderboard:${metric}:${scope}:${userContext.tenantId}`;
-    const cached = ReportCache.get<LeaderboardEntry[]>(cacheKey);
+    const cacheKey = buildReportCacheKey(userContext.tenantId, 'leaderboard', { metric, scope });
+    const cached = await getCachedQuery<LeaderboardEntry[]>(cacheKey);
     if (cached) return cached;
 
     const queryBuilder = new HierarchicalQueryBuilder(userContext);
@@ -479,7 +486,7 @@ export class SalesReportingService {
       trend: 'flat' as const,
     }));
 
-    ReportCache.set(cacheKey, leaderboard, 2 * 60 * 1000); // 2 minute cache
+    await setCachedQuery(cacheKey, leaderboard, REPORT_CACHE_TTL.REALTIME_DASHBOARD); // 30 second cache for near-realtime leaderboard
     return leaderboard;
   }
 
@@ -488,8 +495,10 @@ export class SalesReportingService {
    * Shows performance comparison across team members
    */
   static async getTeamComparison(userContext: EnhancedUserContext): Promise<TeamComparison[]> {
-    const cacheKey = `team-comparison:${userContext.id}`;
-    const cached = ReportCache.get<TeamComparison[]>(cacheKey);
+    const cacheKey = buildReportCacheKey(userContext.tenantId, 'team-comparison', {
+      userId: userContext.id,
+    });
+    const cached = await getCachedQuery<TeamComparison[]>(cacheKey);
     if (cached) return cached;
 
     // Get team members (direct reports)
@@ -554,7 +563,7 @@ export class SalesReportingService {
       quotaAttainment: parseFloat(row.quota_attainment || 0),
     }));
 
-    ReportCache.set(cacheKey, comparison, 3 * 60 * 1000); // 3 minute cache
+    await setCachedQuery(cacheKey, comparison, REPORT_CACHE_TTL.DAILY_REPORT); // 5 minute cache
     return comparison;
   }
 
@@ -580,8 +589,12 @@ export class SalesReportingService {
       topPerformer: { userId: string; userName: string; value: number } | null;
     };
   }> {
-    const cacheKey = `team-pipeline:${userContext.id}:${JSON.stringify(dateRange)}`;
-    const cached = ReportCache.get<any>(cacheKey);
+    const cacheKey = buildReportCacheKey(userContext.tenantId, 'team-pipeline-summary', {
+      userId: userContext.id,
+      dateFrom: dateRange?.dateFrom?.toISOString(),
+      dateTo: dateRange?.dateTo?.toISOString(),
+    });
+    const cached = await getCachedQuery<any>(cacheKey);
     if (cached) return cached;
 
     const queryBuilder = new HierarchicalQueryBuilder(userContext);
@@ -726,22 +739,24 @@ export class SalesReportingService {
       },
     };
 
-    ReportCache.set(cacheKey, result, 3 * 60 * 1000); // 3 minute cache
+    await setCachedQuery(cacheKey, result, REPORT_CACHE_TTL.DAILY_REPORT); // 5 minute cache
     return result;
   }
 
   /**
    * Invalidate all caches for a user
    */
-  static invalidateUserCache(userId: string): void {
-    ReportCache.invalidate(userId);
+  static async invalidateUserCache(userId: string): Promise<void> {
+    await invalidateQueryCache(`*${userId}*`);
   }
 
   /**
    * Clear all caches
    */
-  static clearAllCaches(): void {
-    ReportCache.clear();
+  static async clearAllCaches(): Promise<void> {
+    await invalidateQueryCache(`*leaderboard*`);
+    await invalidateQueryCache(`*team-comparison*`);
+    await invalidateQueryCache(`*team-pipeline-summary*`);
   }
 }
 
