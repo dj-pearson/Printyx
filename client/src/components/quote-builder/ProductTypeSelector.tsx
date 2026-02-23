@@ -330,6 +330,11 @@ export default function ProductTypeSelector({
         </div>
 
         {/* Product List */}
+        {!isLoading && filteredProducts.length > 0 && (
+          <div className="text-xs text-muted-foreground">
+            Showing {filteredProducts.length} of {productsArray.length} products
+          </div>
+        )}
         <div className="border rounded-lg flex-1 min-h-0 flex flex-col">
           {isLoading ? (
             <div className="p-8 text-center">
@@ -401,53 +406,71 @@ export default function ProductTypeSelector({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Code</TableHead>
+                      <TableHead className="w-[40%]">Product</TableHead>
+                      <TableHead className="w-[12%]">Code</TableHead>
                       {selectedType === 'product_models' && (
                         <>
-                          <TableHead>Category</TableHead>
-                          <TableHead>Manufacturer</TableHead>
+                          <TableHead className="w-[12%]">Category</TableHead>
+                          <TableHead className="w-[12%]">Manufacturer</TableHead>
                         </>
                       )}
-                      <TableHead>MSRP</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Action</TableHead>
+                      <TableHead className="w-[10%] text-right">MSRP</TableHead>
+                      <TableHead className="w-[10%] text-right">Price</TableHead>
+                      <TableHead className="w-[6%]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredProducts.map((product) => (
-                      <TableRow key={product.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{product.productName}</div>
+                      <TableRow key={product.id} className="group">
+                        <TableCell className="py-2">
+                          <div className="max-w-[300px]">
+                            <div
+                              className="font-medium text-sm truncate"
+                              title={product.productName}
+                            >
+                              {product.productName}
+                            </div>
                             {product.description && (
-                              <div className="text-xs text-muted-foreground line-clamp-2">
+                              <div
+                                className="text-xs text-muted-foreground truncate"
+                                title={product.description}
+                              >
                                 {product.description}
                               </div>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{product.productCode}</Badge>
+                        <TableCell className="py-2">
+                          <span className="text-xs font-mono text-muted-foreground">
+                            {product.productCode}
+                          </span>
                         </TableCell>
                         {selectedType === 'product_models' && (
                           <>
-                            <TableCell>{product.category || 'N/A'}</TableCell>
-                            <TableCell>{product.manufacturer || 'N/A'}</TableCell>
+                            <TableCell className="py-2 text-sm">
+                              {product.category || '-'}
+                            </TableCell>
+                            <TableCell className="py-2 text-sm">
+                              {product.manufacturer || '-'}
+                            </TableCell>
                           </>
                         )}
-                        <TableCell>{formatPrice(product.msrp)}</TableCell>
-                        <TableCell>
-                          <span className="font-medium">{formatPrice(getPrice(product))}</span>
+                        <TableCell className="py-2 text-right text-sm text-muted-foreground">
+                          {formatPrice(product.msrp)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2 text-right">
+                          <span className="font-medium text-sm">
+                            {formatPrice(getPrice(product))}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-2">
                           <Button
                             size="sm"
+                            variant="ghost"
                             onClick={() => handleProductSelect(product)}
-                            className="min-h-[44px] active:scale-[0.98] transition-transform"
+                            className="h-8 w-8 p-0 opacity-60 group-hover:opacity-100 transition-opacity"
                           >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Add
+                            <Plus className="h-4 w-4" />
                           </Button>
                         </TableCell>
                       </TableRow>

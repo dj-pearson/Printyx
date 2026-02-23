@@ -144,15 +144,23 @@ export default function QuotesManagement() {
     queryFn: async () => {
       const response = await apiRequest('/api/proposals', 'GET');
       return extractRecords(response).map((proposal: any) => ({
-        ...proposal,
         id: proposal.id,
-        quoteNumber: proposal.quoteNumber || proposal.quoteNumber || '',
-        customerId: proposal.customerId || proposal.customerId || '',
+        proposalNumber: proposal.proposal_number || proposal.proposalNumber || '',
+        title: proposal.title || '',
+        businessRecordId: proposal.business_record_id || proposal.businessRecordId || '',
+        customerName: proposal.customer_name || proposal.customerName || '',
+        contactId: proposal.contact_id || proposal.contactId || '',
+        contactName: proposal.contact_name || proposal.contactName || '',
+        subtotal: parseFloat(proposal.subtotal || '0') || 0,
+        totalAmount: parseFloat(proposal.total_amount || proposal.totalAmount || '0') || 0,
         validUntil: proposal.valid_until || proposal.validUntil || null,
-        createdAt: proposal.createdAt || proposal.createdAt || '',
-        updatedAt: proposal.updatedAt || proposal.updatedAt || '',
-        createdBy: proposal.createdBy || proposal.createdBy || null,
-        // Map proposal fields to quote fields for consistency
+        createdAt: proposal.created_at || proposal.createdAt || '',
+        updatedAt: proposal.updated_at || proposal.updatedAt || '',
+        createdBy: proposal.created_by || proposal.createdBy || '',
+        createdByName: proposal.created_by_name || proposal.createdByName || '',
+        assignedTo: proposal.assigned_to || proposal.assignedTo || '',
+        assignedToName: proposal.assigned_to_name || proposal.assignedToName || '',
+        lineItemsCount: proposal.line_items_count || proposal.lineItemsCount || 0,
         status:
           proposal.status === 'draft'
             ? 'draft'
@@ -209,10 +217,11 @@ export default function QuotesManagement() {
 
   // Filter quotes
   const filteredQuotes = quotes.filter((quote) => {
+    const search = searchTerm.toLowerCase();
     const matchesSearch =
-      quote.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      quote.proposalNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (quote.customerName && quote.customerName.toLowerCase().includes(searchTerm.toLowerCase()));
+      (quote.title && quote.title.toLowerCase().includes(search)) ||
+      (quote.proposalNumber && quote.proposalNumber.toLowerCase().includes(search)) ||
+      (quote.customerName && quote.customerName.toLowerCase().includes(search));
 
     const matchesStatus = statusFilter === 'all' || quote.status === statusFilter;
 
