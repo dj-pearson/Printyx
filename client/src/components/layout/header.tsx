@@ -1,4 +1,4 @@
-import { Search, Settings, User, ChevronDown, Bell, Menu } from 'lucide-react';
+import { Search, Settings, User, ChevronDown, Bell, Menu, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { EnhancedNotificationBell } from '@/components/layout/enhanced-notification-bell';
 import { queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
+import { usePWA } from '@/hooks/usePWA';
 
 interface HeaderProps {
   title?: string;
@@ -25,6 +26,7 @@ interface HeaderProps {
 
 export default function Header({ title, description, onSearchClick }: HeaderProps) {
   const { user, logout } = useAuth();
+  const { isOffline } = usePWA();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-sm shadow-sm">
@@ -67,6 +69,18 @@ export default function Header({ title, description, onSearchClick }: HeaderProp
         </div>
 
         <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Online/Offline Status Indicator */}
+          {isOffline && (
+            <div
+              className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-red-100 text-red-700 text-xs font-medium"
+              role="status"
+              aria-live="polite"
+            >
+              <WifiOff className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Offline</span>
+            </div>
+          )}
+
           {/* Notifications */}
           <EnhancedNotificationBell />
 

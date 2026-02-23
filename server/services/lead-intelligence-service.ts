@@ -793,28 +793,47 @@ class LeadIntelligenceService {
       .orderBy(leadScoreCalculations.leadId, desc(leadScoreCalculations.calculatedAt))
       .limit(limit);
 
-    // Enrich with lead details
-    const enrichedLeads = await Promise.all(
-      hotLeads.map(async (score) => {
-        const lead = await storage.getBusinessRecord(score.leadId);
-        return {
-          ...score,
-          lead: lead
-            ? {
-                id: lead.id,
-                companyName: lead.companyName,
-                firstName: lead.firstName,
-                lastName: lead.lastName,
-                email: lead.email,
-                phone: lead.phone,
-                status: lead.status,
-                ownerId: lead.ownerId,
-                lastActivityDate: (lead as any).lastActivityDate,
-              }
-            : null,
-        };
-      }),
-    );
+    // Batch-fetch all lead records in a single query instead of N individual lookups
+    const leadIds = hotLeads.map((score) => score.leadId);
+    const leads =
+      leadIds.length > 0
+        ? await db
+            .select({
+              id: businessRecords.id,
+              companyName: businessRecords.companyName,
+              firstName: businessRecords.firstName,
+              lastName: businessRecords.lastName,
+              email: businessRecords.email,
+              phone: businessRecords.phone,
+              status: businessRecords.status,
+              ownerId: businessRecords.ownerId,
+            })
+            .from(businessRecords)
+            .where(inArray(businessRecords.id, leadIds))
+        : [];
+
+    // Build a map for O(1) lookup
+    const leadMap = new Map(leads.map((l) => [l.id, l]));
+
+    const enrichedLeads = hotLeads.map((score) => {
+      const lead = leadMap.get(score.leadId);
+      return {
+        ...score,
+        lead: lead
+          ? {
+              id: lead.id,
+              companyName: lead.companyName,
+              firstName: lead.firstName,
+              lastName: lead.lastName,
+              email: lead.email,
+              phone: lead.phone,
+              status: lead.status,
+              ownerId: lead.ownerId,
+              lastActivityDate: null,
+            }
+          : null,
+      };
+    });
 
     return enrichedLeads.filter((l) => l.lead !== null);
   }
