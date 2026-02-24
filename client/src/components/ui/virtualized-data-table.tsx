@@ -171,7 +171,10 @@ export function VirtualizedDataTable<T extends { id: string | number }>({
         </TableHeader>
       </Table>
 
-      <div ref={parentRef} style={{ maxHeight, overflow: 'auto' }}>
+      <div
+        ref={parentRef}
+        style={{ maxHeight, overflow: 'auto', minHeight: data.length > 0 ? rowHeight : undefined }}
+      >
         <Table>
           <TableBody>
             {data.length === 0 ? (
@@ -185,6 +188,13 @@ export function VirtualizedDataTable<T extends { id: string | number }>({
               </TableRow>
             ) : (
               <>
+                {/* Bootstrap spacer: when virtualizer hasn't measured yet, render
+                    full virtual height so the container gets a non-zero size and
+                    the virtualizer can calculate visible items on the next frame. */}
+                {virtualItems.length === 0 && data.length > 0 && (
+                  <tr style={{ height: virtualizer.getTotalSize() }} />
+                )}
+
                 {/* Spacer for virtual items above */}
                 {virtualItems.length > 0 && virtualItems[0].start > 0 && (
                   <tr style={{ height: virtualItems[0].start }} />
