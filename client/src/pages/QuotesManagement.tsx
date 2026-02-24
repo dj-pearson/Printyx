@@ -639,6 +639,7 @@ export default function QuotesManagement() {
             ) : (
               <VirtualizedDataTable
                 data={filteredQuotes}
+                onRowClick={(quote: any) => handleEditQuote(quote.id)}
                 columns={[
                   {
                     id: 'quoteNum',
