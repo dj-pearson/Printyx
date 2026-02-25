@@ -28,15 +28,6 @@ const getUserId = (req: Request): string | undefined => {
   return (req as any).user?.id || (req as any).user?.claims?.sub || (req as any).session?.userId;
 };
 
-// Middleware to require authentication
-const requireAuth = (req: Request, res: Response, next: Function) => {
-  const userId = getUserId(req);
-  if (!userId) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-  next();
-};
-
 // Middleware to require admin role
 const requireAdmin = (req: Request, res: Response, next: Function) => {
   const userId = getUserId(req);

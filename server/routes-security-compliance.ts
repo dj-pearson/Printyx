@@ -33,6 +33,7 @@ import { requireRole } from './rbac-middleware';
 // Enhanced RBAC Integration
 import { enhanceUserContext, requireLevel, ROLE_LEVELS } from './middleware/rbac-route-helper';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = Router();
 
 // Apply security middleware to all routes

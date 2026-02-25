@@ -11,6 +11,7 @@ import {
   type SoftwareProduct,
 } from '@shared/schema';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 export function registerSoftwareProductsRoutes(app: Express) {
   // Get all software products
   app.get('/api/software-products', isAuthenticated, async (req: any, res) => {

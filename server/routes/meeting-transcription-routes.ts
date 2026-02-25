@@ -7,6 +7,7 @@ import express from 'express';
 import multer from 'multer';
 import MeetingTranscriptionService from '../services/meeting-transcription-service';
 import { createModuleLogger } from '../lib/logger';
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const log = createModuleLogger('meeting-transcription-routes');
 
 const router = express.Router();
@@ -26,12 +27,6 @@ const upload = multer({
     }
   },
 });
-
-// Mock authentication middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  req.user = { id: 'mock-user-id', tenantId: 'mock-tenant-id' };
-  next();
-};
 
 /**
  * POST /api/meetings/:meetingId/recordings/upload

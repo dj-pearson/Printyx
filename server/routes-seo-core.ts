@@ -27,7 +27,9 @@ const log = createModuleLogger('routes-seo-core');
 
 import { seoSettings, insertSeoSettingsSchema } from '@shared/schema';
 import { requireRootAdmin } from './routes-root-admin';
+import { isPlatformAdmin } from './utils/auth-helpers';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 // NOTE: seoPages and insertSeoPageSchema were temporarily disabled from
 // the main @shared/schema import in routes.ts. These references are kept
 // as-is for consistency with the original monolith code. If the SEO pages
@@ -50,7 +52,7 @@ export function registerSeoCoreRoutes(app: Express) {
   // Root Admin: upsert global SEO settings
   app.post('/api/seo/settings', async (req: any, res) => {
     try {
-      const isPlatformUser = req.user?.isPlatformUser || req.user?.role === 'platform_admin';
+      const isPlatformUser = isPlatformAdmin(req);
       if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
       const payload = insertSeoSettingsSchema.parse(req.body);
       const [existing] = await db.select().from(seoSettings).limit(1);
@@ -79,7 +81,7 @@ export function registerSeoCoreRoutes(app: Express) {
   // Root Admin: upsert SEO page record
   app.post('/api/seo/pages', async (req: any, res) => {
     try {
-      const isPlatformUser = req.user?.isPlatformUser || req.user?.role === 'platform_admin';
+      const isPlatformUser = isPlatformAdmin(req);
       if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
       const payload = insertSeoPageSchema.parse(req.body);
       // Upsert by path (global)
@@ -426,7 +428,7 @@ Printyx serves the copier/printer dealer and managed print services industry, in
   // Admin: regenerate sitemap endpoint
   app.post('/api/seo/regenerate-sitemap', requireRootAdmin, async (req: any, res) => {
     try {
-      const isPlatformUser = req.user?.isPlatformUser || req.user?.role === 'platform_admin';
+      const isPlatformUser = isPlatformAdmin(req);
       if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
 
       // This endpoint doesn't generate a new sitemap, just returns success
@@ -443,7 +445,7 @@ Printyx serves the copier/printer dealer and managed print services industry, in
   // Admin: regenerate robots.txt endpoint
   app.post('/api/seo/regenerate-robots', requireRootAdmin, async (req: any, res) => {
     try {
-      const isPlatformUser = req.user?.isPlatformUser || req.user?.role === 'platform_admin';
+      const isPlatformUser = isPlatformAdmin(req);
       if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
 
       // This endpoint doesn't generate a new robots.txt, just returns success
@@ -460,7 +462,7 @@ Printyx serves the copier/printer dealer and managed print services industry, in
   // Admin: regenerate llms.txt endpoint
   app.post('/api/seo/regenerate-llms', requireRootAdmin, async (req: any, res) => {
     try {
-      const isPlatformUser = req.user?.isPlatformUser || req.user?.role === 'platform_admin';
+      const isPlatformUser = isPlatformAdmin(req);
       if (!isPlatformUser) return res.status(403).json({ message: 'Platform admin required' });
 
       // This endpoint doesn't generate a new llms.txt, just returns success
@@ -609,7 +611,10 @@ Printyx serves the copier/printer dealer and managed print services industry, in
           changefreq: 'weekly',
           priority: '0.9',
           schemaType: 'SoftwareApplication',
-          schemaData: { name: 'Printyx Predictive Intelligence', applicationCategory: 'BusinessApplication' },
+          schemaData: {
+            name: 'Printyx Predictive Intelligence',
+            applicationCategory: 'BusinessApplication',
+          },
         },
         {
           path: '/modern-architecture',

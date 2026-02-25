@@ -4,6 +4,7 @@ import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { TenantRequest } from './middleware/tenancy';
 import { db } from './db';
 import { createModuleLogger } from './lib/logger';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const log = createModuleLogger('routes-sales-pipeline');
 
 // Sales Pipeline Schema

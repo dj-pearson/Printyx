@@ -10,9 +10,10 @@ export function setCustomerSuccessStorage(storageInstance: IStorage) {
   storage = storageInstance;
 }
 
-// Helper function to check if user is admin or manager
+// Helper function to check if user is admin or manager (uses role level hierarchy)
 function isAdminOrManager(user: any): boolean {
-  return user.role === 'admin' || user.role === 'manager' || user.role === 'executive';
+  const roleLevel = user?.roleLevel || user?.role_level || 1;
+  return roleLevel >= 4; // Manager level (4) and above
 }
 
 // ==================== Customer Health Scores ====================

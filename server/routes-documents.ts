@@ -9,15 +9,6 @@ const log = createModuleLogger('routes-documents');
 
 const router = express.Router();
 
-// Middleware for authentication and tenant
-const requireAuth = (req: any, res: any, next: any) => {
-  const userId = getUserId(req);
-  if (!userId) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-  next();
-};
-
 const requireTenant = (req: any, res: any, next: any) => {
   const tenantId = getTenantId(req);
   if (!tenantId) {

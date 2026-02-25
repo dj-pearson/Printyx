@@ -35,6 +35,7 @@ import {
 import { eq, and, or, like, gte, lte, inArray, desc, asc, sql, SQL } from 'drizzle-orm';
 import { requireRootAdmin } from './routes-root-admin';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = Router();
 
 // ============================================================================

@@ -17,6 +17,7 @@ import {
   TERRITORY_TYPES,
 } from './services/territory-management-service';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = Router();
 
 // Apply security middleware to all routes

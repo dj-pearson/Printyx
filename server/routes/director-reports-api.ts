@@ -14,6 +14,7 @@ import {
   requireLevel,
 } from '../middleware/enhanced-rbac-middleware';
 
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const router = Router();
 
 // Apply RBAC middleware to all routes

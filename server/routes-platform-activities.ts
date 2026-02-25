@@ -27,6 +27,7 @@ import {
 import { eq, and, or, inArray, gte, lte, desc, asc, sql, SQL } from 'drizzle-orm';
 import { requireRootAdmin } from './routes-root-admin';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = Router();
 
 // All routes require root admin access

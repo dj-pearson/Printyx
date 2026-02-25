@@ -22,6 +22,7 @@ import {
   forecastRules,
 } from './sales-forecasting-schema';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = express.Router();
 
 // Sales Pipeline Forecasting API Routes

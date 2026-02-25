@@ -25,6 +25,7 @@ import {
   companyQuerySchema,
 } from './lib/crm-validation';
 import { createModuleLogger } from './lib/logger';
+import { enhanceUserContext, requirePermission } from './middleware/rbac-route-helper';
 const log = createModuleLogger('routes-contacts');
 
 export function registerContactsRoutes(app: Express) {
@@ -96,6 +97,8 @@ export function registerContactsRoutes(app: Express) {
   app.post(
     '/api/company-contacts',
     resolveTenant,
+    enhanceUserContext,
+    requirePermission(['sales.customer.create']),
     validate({ body: contactCreateSchema }),
     async (req: any, res) => {
       try {
@@ -133,6 +136,8 @@ export function registerContactsRoutes(app: Express) {
   app.put(
     '/api/company-contacts/:id',
     resolveTenant,
+    enhanceUserContext,
+    requirePermission(['sales.customer.update']),
     validate({ params: idParamSchema, body: contactUpdateSchema }),
     async (req: any, res) => {
       try {
@@ -160,6 +165,8 @@ export function registerContactsRoutes(app: Express) {
   app.delete(
     '/api/company-contacts/:id',
     resolveTenant,
+    enhanceUserContext,
+    requirePermission(['sales.customer.delete']),
     validate({ params: idParamSchema }),
     async (req: any, res) => {
       try {
@@ -242,9 +249,10 @@ export function registerContactsRoutes(app: Express) {
         // Build filters based on role and view
         let filters: any = { tenantId };
 
-        // Role-based access control
-        if (user.role === 'salesperson') {
-          filters.ownerId = user.id; // Salespeople only see their own contacts
+        // Role-based access control - scope to own records for individual contributors
+        const roleLevel = user.roleLevel || user.role_level || 1;
+        if (roleLevel <= 1) {
+          filters.ownerId = user.id; // Individual contributors only see their own contacts
         }
 
         // Apply view filter
@@ -384,6 +392,8 @@ export function registerContactsRoutes(app: Express) {
   app.post(
     '/api/contacts',
     resolveTenant,
+    enhanceUserContext,
+    requirePermission(['sales.customer.create']),
     validate({ body: contactCreateSchema }),
     async (req, res) => {
       try {
@@ -437,7 +447,8 @@ export function registerContactsRoutes(app: Express) {
         }
 
         // Role-based access control
-        if (user.role === 'salesperson' && contact.ownerId !== user.id) {
+        const roleLevel = user.roleLevel || user.role_level || 1;
+        if (roleLevel <= 1 && contact.ownerId !== user.id) {
           return res.status(403).json({
             error: 'Access denied - you can only view your own contacts',
           });
@@ -455,6 +466,8 @@ export function registerContactsRoutes(app: Express) {
   app.put(
     '/api/contacts/:id',
     resolveTenant,
+    enhanceUserContext,
+    requirePermission(['sales.customer.update']),
     validate({ params: idParamSchema, body: contactUpdateSchema }),
     async (req, res) => {
       try {
@@ -478,7 +491,8 @@ export function registerContactsRoutes(app: Express) {
         }
 
         // Role-based access control
-        if (user.role === 'salesperson' && contact.ownerId !== user.id) {
+        const roleLevel = user.roleLevel || user.role_level || 1;
+        if (roleLevel <= 1 && contact.ownerId !== user.id) {
           return res.status(403).json({
             error: 'Access denied - you can only edit your own contacts',
           });
@@ -497,6 +511,8 @@ export function registerContactsRoutes(app: Express) {
   app.delete(
     '/api/contacts/:id',
     resolveTenant,
+    enhanceUserContext,
+    requirePermission(['sales.customer.delete']),
     validate({ params: idParamSchema }),
     async (req, res) => {
       try {
@@ -520,7 +536,8 @@ export function registerContactsRoutes(app: Express) {
         }
 
         // Role-based access control
-        if (user.role === 'salesperson' && contact.ownerId !== user.id) {
+        const roleLevel = user.roleLevel || user.role_level || 1;
+        if (roleLevel <= 1 && contact.ownerId !== user.id) {
           return res.status(403).json({
             error: 'Access denied - you can only delete your own contacts',
           });

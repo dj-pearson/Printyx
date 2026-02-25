@@ -2,15 +2,8 @@ import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
 import { createModuleLogger } from './lib/logger';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const log = createModuleLogger('routes-workflow-automation');
-
-// Using inline auth middleware since requireAuth is not available
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-  next();
-};
 
 const router = express.Router();
 

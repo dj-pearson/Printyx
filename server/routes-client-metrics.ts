@@ -23,12 +23,9 @@ import {
   PERMISSIONS,
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-  next();
-};
 import crypto from 'crypto';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = express.Router();
 
 // Apply RBAC context to all client metrics routes

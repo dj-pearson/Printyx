@@ -14,6 +14,7 @@ import {
 } from '../middleware/enhanced-rbac-middleware';
 import { SalesReportingService } from '../services/sales-reporting-service';
 
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const router = Router();
 
 // Apply user context to all routes

@@ -19,6 +19,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = Router();
 
 // NOTE: Do NOT apply enhanceUserContext globally here because this router is registered

@@ -39,14 +39,6 @@ const requireSystemAdmin = requireRole(5);
 // Middleware: Require Manager (Level 3+) for read-only operations
 const requireManager = requireRole(3);
 
-// Authentication middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!checkAuthenticated(req)) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-  next();
-};
-
 /**
  * GET /api/admin/knowledge-base/dashboard
  * Get admin dashboard statistics

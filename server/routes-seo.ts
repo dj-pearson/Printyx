@@ -38,14 +38,7 @@ import {
 } from '@shared/schema';
 import { seoService } from './services/seo-service';
 
-// Auth middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-  next();
-};
-
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = express.Router();
 
 // ============= SETTINGS =============
@@ -1419,9 +1412,8 @@ router.get('/image-sitemap.xml', async (req: any, res) => {
     const baseUrl = process.env.BASE_URL || 'https://printyx.com';
 
     // Import schemas for images
-    const { blogPosts, guides, caseStudies, landingPages, knowledgeArticles } = await import(
-      '@shared/schema'
-    );
+    const { blogPosts, guides, caseStudies, landingPages, knowledgeArticles } =
+      await import('@shared/schema');
 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n';

@@ -13,14 +13,6 @@ const log = createModuleLogger('reading-history-routes');
 
 const router = Router();
 
-// Middleware to require authentication
-const requireAuth = (req: Request, res: Response, next: Function) => {
-  if (!req.session || !req.session.userId) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-  next();
-};
-
 // Helper to get tenant ID
 const getTenantId = (req: Request): string => {
   return (

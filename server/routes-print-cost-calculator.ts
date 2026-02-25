@@ -25,6 +25,7 @@ import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { sendCalculatorReportEmail } from './services/calculator-email-service';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = express.Router();
 
 // ==================== PUBLIC ROUTES (No Auth Required) ====================
@@ -430,14 +431,6 @@ router.get('/api/public/calculator/benchmarks/:industry', async (req, res) => {
 });
 
 // ==================== AUTHENTICATED ROUTES (Admin/Internal Use) ====================
-
-// Auth middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-  next();
-};
 
 // Get all calculator leads (admin)
 router.get('/api/calculator/leads', async (req: any, res) => {

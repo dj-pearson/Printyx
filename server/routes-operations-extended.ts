@@ -13,53 +13,7 @@ const log = createModuleLogger('routes-operations-extended');
 import { businessRecords, inventoryItems, serviceTickets, invoices } from '@shared/schema';
 import { serviceContracts } from '@shared/schema';
 import { getUserId, getTenantId } from './utils/auth-helpers';
-
-// Basic authentication middleware - matches the one defined in routes.ts
-const requireAuth = async (req: any, res: any, next: any) => {
-  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
-
-  if (!isAuthenticated) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-
-  const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
-
-  if (userId && (!req.user || !req.user.tenantId)) {
-    try {
-      const fullUser = await storage.getUser(userId);
-      if (fullUser) {
-        req.user = {
-          ...req.user,
-          id: fullUser.id,
-          tenantId: fullUser.tenantId,
-          isPlatformUser: fullUser.isPlatformUser,
-          email: fullUser.email,
-          firstName: fullUser.firstName,
-          lastName: fullUser.lastName,
-        };
-      }
-    } catch (error) {
-      log.error('Error fetching user details:', error);
-    }
-  }
-
-  const helperUserId = getUserId(req);
-  const helperTenantId = getTenantId(req);
-
-  if (!req.user) {
-    req.user = {
-      id: helperUserId,
-      tenantId: helperTenantId,
-    };
-  } else if (!req.user.tenantId && !req.user.id) {
-    req.user = {
-      id: helperUserId,
-      tenantId: helperTenantId,
-    };
-  }
-
-  next();
-};
+import { requireAuth } from './replitAuth';
 
 export function registerOperationsExtendedRoutes(app: Express) {
   // ============= REMOTE MONITORING & IoT INTEGRATION ROUTES =============

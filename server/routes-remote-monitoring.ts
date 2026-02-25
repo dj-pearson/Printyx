@@ -1,9 +1,10 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte, count } from 'drizzle-orm';
 import { db } from './db';
-import { requireAuth } from './auth-setup';
+import { requireAuth } from './replitAuth';
 import { deviceRegistrations, deviceMetrics } from '../shared/manufacturer-integration-schema';
 import { createModuleLogger } from './lib/logger';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const log = createModuleLogger('routes-remote-monitoring');
 
 const router = express.Router();
