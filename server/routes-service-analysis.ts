@@ -19,16 +19,6 @@ import { z } from 'zod';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
 
-function requireAuth(req: any, res: any, next: any) {
-  const tenantId = getTenantId(req);
-  if (!tenantId) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-  // Store tenantId on request for easy access
-  req.tenantId = tenantId;
-  next();
-}
-
 export function registerServiceAnalysisRoutes(app: Express) {
   // Get service call analysis for a ticket
   app.get('/api/service-tickets/:ticketId/analysis', async (req: any, res) => {

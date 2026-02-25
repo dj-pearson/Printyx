@@ -6,6 +6,7 @@ import { eq, and, desc, sql, isNull, or, inArray } from 'drizzle-orm';
 import { isAuthenticated } from './replitAuth.js';
 import { z } from 'zod';
 import { createModuleLogger } from './lib/logger';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const log = createModuleLogger('routes-clickup-tasks');
 
 // Enhanced task routes for advanced task management functionality

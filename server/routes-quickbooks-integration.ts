@@ -11,6 +11,7 @@ import {
 } from './quickbooks-mapping';
 import crypto from 'crypto';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 // Extend session interface to include QuickBooks data
 declare module 'express-session' {
   interface SessionData {

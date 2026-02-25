@@ -13,14 +13,8 @@ import {
 import { eq, and, sql, desc, gte, lt } from 'drizzle-orm';
 import { predictiveServiceDispatchService } from './services/predictive-service-dispatch-service';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = Router();
-
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-  next();
-};
 
 /**
  * UNIFIED PREDICTIVE MAINTENANCE HUB

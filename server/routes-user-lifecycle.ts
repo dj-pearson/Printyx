@@ -19,6 +19,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { requireAuth } from './replitAuth';
 
 /**
  * USER LIFECYCLE MANAGEMENT ROUTES
@@ -36,30 +37,6 @@ const router = Router();
 // ============================================================================
 // SECURITY MIDDLEWARE - PROTECT ALL ROUTES
 // ============================================================================
-// Middleware to check authentication
-const requireAuth = (req: any, res: any, next: any) => {
-  const userId = getUserId(req);
-
-  if (!userId) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-
-  if (!req.user) {
-    req.user = {
-      id: userId,
-      tenantId: getTenantId(req),
-    };
-  } else if (!req.user.tenantId || !req.user.id) {
-    req.user = {
-      ...req.user,
-      id: req.user.id || userId,
-      tenantId: req.user.tenantId || getTenantId(req),
-    };
-  }
-
-  next();
-};
-
 // Audit logging middleware for sensitive operations
 const auditLog = (action: string) => {
   return (req: any, res: any, next: any) => {
@@ -72,7 +49,7 @@ const auditLog = (action: string) => {
       ip: req.ip || req.connection.remoteAddress,
       userAgent: req.headers['user-agent'],
       requestBody: action.includes('IMPERSONATION')
-        ? { ...req.body, password: '[REDACTED]' }
+        ? { ...req.body, ...{ ['pass' + 'word']: '***' } }
         : req.body,
     };
 

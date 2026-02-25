@@ -3,14 +3,8 @@ import { db } from './db';
 import { equipment, businessRecords, serviceTickets } from '../shared/schema';
 import { eq, and, sql, desc, count } from 'drizzle-orm';
 import { createModuleLogger } from './lib/logger';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const log = createModuleLogger('routes-proactive-maintenance');
-
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-  next();
-};
 
 const router = Router();
 

@@ -21,6 +21,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 // Request validation schemas
 const salesforceImportSchema = z.object({
   objectType: z.enum(['Account', 'Contact', 'Lead', 'Opportunity', 'Product2']),

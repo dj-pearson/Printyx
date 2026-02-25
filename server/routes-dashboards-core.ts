@@ -24,6 +24,7 @@ import {
   inventoryItems,
 } from '@shared/schema';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 export function registerDashboardsCoreRoutes(app: Express) {
   // ─── Dashboard Metrics ─────────────────────────────────────────────
 

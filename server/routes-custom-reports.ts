@@ -32,6 +32,7 @@ import {
 } from '@shared/reporting-schema';
 import { businessRecords, opportunities, equipment, contracts, invoices } from '@shared/schema';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 // Table mappings for data sources
 const DATA_SOURCE_TABLES: Record<string, any> = {
   business_records: businessRecords,

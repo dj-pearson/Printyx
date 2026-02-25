@@ -497,6 +497,449 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   // =====================================================================
   '/task-management': { alwaysVisible: true },
   '/basic-tasks': { alwaysVisible: true },
+  '/my-tasks': { alwaysVisible: true },
+  '/tasks': { alwaysVisible: true },
+  '/task-hub': { alwaysVisible: true },
+
+  // =====================================================================
+  // DASHBOARD ITEMS (always visible or role-gated)
+  // =====================================================================
+  '/today': { alwaysVisible: true },
+  '/dashboard/today': { alwaysVisible: true },
+  '/custom-dashboard': { alwaysVisible: true },
+
+  // =====================================================================
+  // CRM DETAIL & ALIAS ROUTES
+  // =====================================================================
+  '/crm/deals': {
+    requiredPermissions: [
+      'sales.opportunity.view_own',
+      'sales.opportunity.view_team',
+      'sales.opportunity.view_location',
+    ],
+  },
+  '/crm/leads': {
+    requiredPermissions: ['sales.lead.view_own', 'sales.lead.view_team'],
+  },
+  '/crm/contacts': {
+    requiredPermissions: ['sales.customer.view_own', 'sales.customer.view_location'],
+  },
+  '/crm/companies': {
+    requiredPermissions: ['sales.customer.view_own', 'sales.customer.view_location'],
+  },
+  '/deals': {
+    requiredPermissions: [
+      'sales.opportunity.view_own',
+      'sales.opportunity.view_team',
+      'sales.opportunity.view_location',
+    ],
+  },
+  '/deals-management': {
+    requiredPermissions: [
+      'sales.opportunity.view_own',
+      'sales.opportunity.view_team',
+      'sales.opportunity.view_location',
+    ],
+  },
+  '/crm': { alwaysVisible: true },
+  '/business-records': { alwaysVisible: true },
+  '/leads/:slug': {
+    requiredPermissions: ['sales.lead.view_own', 'sales.lead.view_team'],
+  },
+  '/customers/:slug': {
+    requiredPermissions: ['sales.customer.view_own'],
+  },
+  '/companies/:companyId/contacts': {
+    requiredPermissions: ['sales.customer.view_own', 'sales.customer.view_location'],
+  },
+  '/company-contacts': {
+    requiredPermissions: ['sales.customer.view_own', 'sales.customer.view_location'],
+  },
+  '/crm-goals': {
+    requiredPermissions: ['reporting.sales.view'],
+    minLevel: 3,
+  },
+
+  // =====================================================================
+  // QUOTES & PROPOSALS
+  // =====================================================================
+  '/quotes': {
+    requiredPermissions: ['sales.quote.create', 'sales.quote.edit_own'],
+  },
+  '/quotes/new': {
+    requiredPermissions: ['sales.quote.create'],
+  },
+  '/quotes/:quoteId': {
+    requiredPermissions: ['sales.quote.create', 'sales.quote.edit_own'],
+  },
+  '/quotes/:quoteId/view': {
+    requiredPermissions: ['sales.quote.create', 'sales.quote.edit_own'],
+  },
+  '/deal-desk/requests/:id': {
+    requiredPermissions: [
+      'sales.quote.approve_standard',
+      'sales.quote.approve_high_value',
+      'sales.quote.approve_enterprise',
+    ],
+    minLevel: 3,
+  },
+  '/deal-desk/rules': {
+    requiredPermissions: ['sales.quote.approve_high_value'],
+    minLevel: 5,
+  },
+
+  // =====================================================================
+  // COMPETITIVE DIFFERENTIATION / AUTOPILOT ROUTES
+  // =====================================================================
+  '/autopilot': {
+    requiredPermissions: ['sales.lead.view_own', 'sales.opportunity.view_own'],
+  },
+  '/auto-lead-routing': {
+    requiredPermissions: ['sales.lead.assign', 'sales.territory.manage_assignments'],
+    minLevel: 3,
+  },
+  '/lead-map': {
+    requiredPermissions: ['sales.lead.view_own', 'sales.lead.view_team'],
+  },
+  '/predictive-service-dispatch': {
+    requiredPermissions: ['service.ticket.assign', 'service.schedule.manage'],
+    minLevel: 3,
+  },
+  '/connect': {
+    requiredPermissions: ['admin.settings.integrations'],
+    minLevel: 3,
+  },
+  '/white-label': {
+    requiredPermissions: ['admin.settings.update'],
+    minLevel: 6,
+  },
+  '/auto-supply-replenishment': {
+    requiredPermissions: ['operations.inventory.view', 'service.parts.view'],
+  },
+  '/contract-renewal-autopilot': {
+    requiredPermissions: ['sales.customer.view_own', 'sales.quote.create'],
+  },
+  '/compare-eautomate': { alwaysVisible: true },
+  '/integration-marketplace': {
+    requiredPermissions: ['admin.settings.integrations'],
+    minLevel: 3,
+  },
+  '/scheduled-reports': {
+    requiredPermissions: ['reporting.report.schedule'],
+    minLevel: 3,
+  },
+  '/meeting-to-proposal': {
+    requiredPermissions: ['sales.quote.create'],
+  },
+
+  // =====================================================================
+  // REPORTS ALIASES
+  // =====================================================================
+  '/sales-reports': {
+    requiredPermissions: ['reporting.sales.view'],
+  },
+  '/service-reports': {
+    requiredPermissions: ['reporting.service.view'],
+  },
+  '/revenue-reports': {
+    requiredPermissions: ['reporting.finance.view'],
+    minLevel: 4,
+  },
+  '/contract-renewals': {
+    requiredPermissions: ['sales.customer.view_own', 'sales.quote.create'],
+  },
+  '/reports/custom/new': {
+    requiredPermissions: ['reporting.report.create'],
+    minLevel: 4,
+  },
+
+  // =====================================================================
+  // SERVICE ADDITIONAL ROUTES
+  // =====================================================================
+  '/proactive-service': {
+    requiredPermissions: ['service.ticket.view_team', 'service.equipment.view'],
+    minLevel: 3,
+  },
+  '/predictive-maintenance-hub': {
+    requiredPermissions: ['service.equipment.view', 'service.workorder.view_own'],
+    minLevel: 3,
+  },
+  '/incident-response': {
+    requiredPermissions: ['service.ticket.view_location', 'service.ticket.assign'],
+    minLevel: 3,
+  },
+
+  // =====================================================================
+  // BILLING ADDITIONAL ROUTES
+  // =====================================================================
+  '/advanced-billing-engine': {
+    requiredPermissions: ['finance.invoice.create', 'finance.ar.view'],
+    minLevel: 3,
+  },
+  '/billing-rules': {
+    requiredPermissions: ['finance.invoice.create'],
+    minLevel: 3,
+  },
+  '/billing-analytics': {
+    requiredPermissions: ['finance.reports.view'],
+    minLevel: 4,
+  },
+  '/vendor-management': {
+    requiredPermissions: ['finance.ap.view', 'operations.po.view'],
+    minLevel: 2,
+  },
+
+  // =====================================================================
+  // PRODUCT ADDITIONAL ROUTES
+  // =====================================================================
+  '/product-management-hub': {
+    requiredPermissions: ['operations.inventory.view', 'sales.customer.view_own'],
+  },
+  '/product-models-v2': {
+    requiredPermissions: ['operations.inventory.view'],
+    minLevel: 2,
+  },
+
+  // =====================================================================
+  // PRICING ROUTES
+  // =====================================================================
+  '/pricing-management': {
+    requiredPermissions: ['operations.inventory.manage'],
+    minLevel: 3,
+  },
+  '/pricing/settings': {
+    requiredPermissions: ['operations.inventory.manage'],
+    minLevel: 4,
+  },
+  '/pricing/margin-report': {
+    requiredPermissions: ['finance.reports.view'],
+    minLevel: 4,
+  },
+  '/pricing/approvals': {
+    requiredPermissions: ['sales.quote.approve_standard'],
+    minLevel: 3,
+  },
+  '/pricing': { alwaysVisible: true },
+
+  // =====================================================================
+  // IMPORT ROUTES
+  // =====================================================================
+  '/import': {
+    requiredPermissions: ['sales.lead.import', 'operations.inventory.manage'],
+    minLevel: 3,
+  },
+  '/import/products': {
+    requiredPermissions: ['operations.inventory.manage'],
+    minLevel: 3,
+  },
+
+  // =====================================================================
+  // SETTINGS & UTILITY ROUTES
+  // =====================================================================
+  '/settings': { alwaysVisible: true },
+  '/settings/api-keys': {
+    requiredPermissions: ['admin.settings.update'],
+    minLevel: 4,
+  },
+  '/settings/subscription': { alwaysVisible: true },
+  '/settings/billing': {
+    requiredPermissions: ['finance.ar.view'],
+  },
+  '/tenant-setup': {
+    requiredPermissions: ['admin.settings.update'],
+    minLevel: 4,
+  },
+  '/customer-portal': { alwaysVisible: true },
+  '/customer-self-service-portal': { alwaysVisible: true },
+
+  // =====================================================================
+  // MONITORING ROUTES
+  // =====================================================================
+  '/monitoring-clients': {
+    requiredPermissions: ['service.equipment.view', 'service.equipment.configure'],
+    minLevel: 3,
+  },
+  '/device-monitoring': {
+    requiredPermissions: ['service.equipment.view', 'service.equipment.configure'],
+    minLevel: 3,
+  },
+  '/oid-management': {
+    requiredPermissions: ['service.equipment.configure'],
+    minLevel: 4,
+  },
+  '/system-monitoring': {
+    requiredPermissions: ['admin.settings.view'],
+    minLevel: 5,
+  },
+  '/mobile-optimization': { alwaysVisible: true },
+
+  // =====================================================================
+  // AI & ANALYTICS ADDITIONAL ROUTES
+  // =====================================================================
+  '/ai-hub': { alwaysVisible: true },
+  '/gpt5-dashboard': { alwaysVisible: true },
+  '/social-media-generator': { alwaysVisible: true },
+  '/predictive-contract-profitability': {
+    requiredPermissions: ['finance.reports.view', 'reporting.finance.view'],
+    minLevel: 4,
+  },
+  '/ai-service-intelligence': {
+    requiredPermissions: ['service.ticket.view_team', 'reporting.service.view'],
+    minLevel: 3,
+  },
+  '/advanced-analytics-dashboard': {
+    requiredPermissions: ['reporting.report.create'],
+    minLevel: 4,
+  },
+
+  // =====================================================================
+  // ADMIN ROUTE ALIASES (non-/admin prefix)
+  // =====================================================================
+  '/access-control': {
+    requiredPermissions: ['admin.role.view', 'admin.role.create'],
+    minLevel: 4,
+  },
+  '/security-compliance': {
+    requiredPermissions: ['audit.logs.view_location', 'compliance.reports.view'],
+    minLevel: 5,
+  },
+  '/security-management': {
+    requiredPermissions: ['audit.logs.view_location', 'compliance.reports.view'],
+    minLevel: 5,
+  },
+  '/customer-access-management': {
+    requiredPermissions: ['admin.user.view'],
+    minLevel: 4,
+  },
+  '/seo': {
+    requiredPermissions: ['admin.settings.update'],
+    minLevel: 4,
+  },
+
+  // =====================================================================
+  // INTEGRATION ADDITIONAL ROUTES
+  // =====================================================================
+  '/integrations': {
+    requiredPermissions: ['admin.settings.integrations'],
+    minLevel: 3,
+  },
+  '/manufacturer-integration/devices': {
+    requiredPermissions: ['service.equipment.view', 'admin.settings.integrations'],
+    minLevel: 4,
+  },
+  '/manufacturer-integration/audit': {
+    requiredPermissions: ['admin.settings.integrations', 'audit.logs.view_location'],
+    minLevel: 4,
+  },
+  '/apollo-leads': {
+    requiredPermissions: ['sales.lead.view_own', 'sales.lead.create'],
+    minLevel: 2,
+  },
+
+  // =====================================================================
+  // LEASE ADDITIONAL ROUTES
+  // =====================================================================
+  '/leases/new': {
+    requiredPermissions: ['finance.ar.view'],
+    minLevel: 2,
+  },
+  '/leases/:id/edit': {
+    requiredPermissions: ['finance.ar.view'],
+    minLevel: 2,
+  },
+  '/leases/:id': {
+    requiredPermissions: ['finance.ar.view'],
+    minLevel: 2,
+  },
+
+  // =====================================================================
+  // KNOWLEDGE BASE ROUTES
+  // =====================================================================
+  '/knowledge-base': { alwaysVisible: true },
+  '/knowledge-base/article/:slug': { alwaysVisible: true },
+  '/knowledge-base/category/:slug': { alwaysVisible: true },
+
+  // =====================================================================
+  // ONBOARDING ROUTES
+  // =====================================================================
+  '/onboarding/new': {
+    requiredPermissions: ['service.ticket.create'],
+    minLevel: 2,
+  },
+  '/onboarding/enhanced': {
+    requiredPermissions: ['service.ticket.create'],
+    minLevel: 2,
+  },
+  '/onboarding/original': {
+    requiredPermissions: ['service.ticket.create'],
+    minLevel: 2,
+  },
+  '/onboarding/:id': {
+    requiredPermissions: ['service.ticket.create', 'service.ticket.view_own'],
+  },
+  '/setup-wizard': { alwaysVisible: true },
+
+  // =====================================================================
+  // SALES ADDITIONAL ROUTES
+  // =====================================================================
+  '/sales/command-center': {
+    requiredPermissions: [
+      'sales.lead.view_location',
+      'sales.opportunity.view_location',
+      'reporting.sales.view',
+    ],
+    minLevel: 4,
+  },
+  '/customer-success': {
+    requiredPermissions: ['sales.customer.view_location'],
+    minLevel: 3,
+  },
+
+  // =====================================================================
+  // PLATFORM ADMIN ROUTES (all require platformOnly or high minLevel)
+  // =====================================================================
+  '/admin-hub': { platformOnly: true },
+  '/admin-command-center': { minLevel: 7 },
+  '/root-admin-dashboard': { platformOnly: true },
+  '/root-admin-signups-crm': { minLevel: 7 },
+  '/root-admin/seo': { minLevel: 7 },
+  '/platform-crm': { minLevel: 7 },
+  '/platform-crm/dashboard': { minLevel: 7 },
+  '/platform-crm/business-records': { minLevel: 7 },
+  '/platform-crm/business-records/:id': { minLevel: 7 },
+  '/platform-crm/deals/:id': { minLevel: 7 },
+  '/platform-crm/pipeline': { minLevel: 7 },
+  '/platform-crm/territories': { minLevel: 7 },
+  '/platform-crm/lead-scoring': { minLevel: 7 },
+  '/platform-crm/assignment-rules': { minLevel: 7 },
+  '/platform-crm/customer-success': { minLevel: 7 },
+  '/platform-crm/analytics': { minLevel: 7 },
+  '/platform-crm/cohort-analysis': { minLevel: 7 },
+  '/admin/root-admin-security': { platformOnly: true },
+  '/admin/system-security': { minLevel: 7 },
+  '/admin/database-updater': { minLevel: 7 },
+  '/admin/tenant-management': { platformOnly: true },
+  '/admin/user-management': {
+    requiredPermissions: ['admin.user.view'],
+    minLevel: 4,
+  },
+  '/admin/system-settings': { minLevel: 7 },
+  '/admin/platform-analytics': { minLevel: 7 },
+  '/admin/knowledge-base': { minLevel: 7 },
+  '/admin/knowledge-base/new': { minLevel: 7 },
+  '/admin/knowledge-base/edit/:id': { minLevel: 7 },
+  '/platform-configuration': { platformOnly: true },
+  '/database-management': { platformOnly: true },
+  '/admin/mobile-logs': { platformOnly: true },
+  '/admin/audit-logs': { platformOnly: true },
+
+  // =====================================================================
+  // DEV/TEST ROUTES
+  // =====================================================================
+  '/company-ids-test': {
+    requiredPermissions: ['admin.settings.view'],
+    minLevel: 4,
+  },
 };
 
 /**
@@ -748,7 +1191,8 @@ export function expandLegacyPermissions(
 /**
  * Maps a route path to the permissions needed to access that page.
  * Used for page-level route guards (ProtectedRoute component).
- * Falls back to ITEM_PERMISSIONS, then SECTION_PERMISSIONS.
+ * Handles dynamic path segments like :slug, :id, :quoteId by trying
+ * pattern matches against ITEM_PERMISSIONS entries.
  */
 export function getRoutePermissions(path: string): NavigationPermissionRule | undefined {
   // Direct match
@@ -758,9 +1202,21 @@ export function getRoutePermissions(path: string): NavigationPermissionRule | un
   const basePath = path.split('?')[0];
   if (ITEM_PERMISSIONS[basePath]) return ITEM_PERMISSIONS[basePath];
 
-  // Try matching against section paths
-  for (const [, rule] of Object.entries(SECTION_PERMISSIONS)) {
-    // Section-level rules are less specific, return them as fallback
+  // Try matching dynamic path patterns (e.g. /customers/foo → /customers/:slug)
+  const segments = basePath.split('/');
+  for (const [pattern, rule] of Object.entries(ITEM_PERMISSIONS)) {
+    const patternSegments = pattern.split('/');
+    if (patternSegments.length !== segments.length) continue;
+
+    let matches = true;
+    for (let i = 0; i < patternSegments.length; i++) {
+      if (patternSegments[i].startsWith(':')) continue; // wildcard segment
+      if (patternSegments[i] !== segments[i]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return rule;
   }
 
   return undefined;

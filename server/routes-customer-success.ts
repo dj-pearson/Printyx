@@ -1,7 +1,7 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
-import { requireAuth } from './auth-setup';
+import { requireAuth } from './replitAuth';
 import { businessRecords, users, contracts, serviceTickets } from '../shared/schema';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-customer-success');
@@ -14,6 +14,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = express.Router();
 
 // Apply RBAC context to all customer success routes

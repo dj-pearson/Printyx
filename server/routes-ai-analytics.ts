@@ -12,14 +12,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-// Using inline auth middleware since requireAuth is not available
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-  next();
-};
-
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = express.Router();
 
 // Apply RBAC context to all AI analytics routes

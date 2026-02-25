@@ -16,6 +16,7 @@ import { AccessibilityProvider } from '@/hooks/useAccessibility';
 import { LiveRegionProvider } from '@/components/accessibility/LiveRegion';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AdminRouteGuard } from '@/components/auth/RouteGuard';
+import { RoutePermissionGate } from '@/components/auth/RoutePermissionGate';
 import { useRouteAnnouncer } from '@/hooks/useRouteAnnouncer';
 import { AccessibilityWidget } from '@/components/accessibility/AccessibilityWidget';
 import { SkipNavigation } from '@/components/accessibility/SkipNavigation';
@@ -34,6 +35,7 @@ import TermsAndConditions from '@/pages/legal/TermsAndConditions';
 
 // Accessibility Statement - lazy load
 const AccessibilityStatement = React.lazy(() => import('@/pages/legal/AccessibilityStatement'));
+const Unauthorized = React.lazy(() => import('@/pages/Unauthorized'));
 
 // Marketing pages - lazy load
 const Homepage = React.lazy(() => import('@/pages/marketing/Homepage'));
@@ -488,448 +490,457 @@ function Router() {
       >
         <main id="main-content" tabIndex={-1} className="outline-none">
           <PageErrorBoundary name="Router">
-            <Switch>
-              {/* Redirect auth pages to dashboard for authenticated users */}
-              <Route path="/login" component={RedirectToDashboard} />
-              <Route path="/signup" component={RedirectToDashboard} />
-              <Route path="/forgot-password" component={RedirectToDashboard} />
-              <Route path="/auth/callback" component={AuthCallback} />
-              <Route path="/" component={Dashboard} />
-              <Route path="/executive-dashboard">
-                {() => (
-                  <ProtectedRoute
-                    component={ExecutiveDashboard}
-                    permissions={['reporting.executive.view']}
-                    minLevel={6}
-                  />
-                )}
-              </Route>
-              <Route path="/today" component={TodayDashboard} />
-              <Route path="/dashboard/today" component={TodayDashboard} />
-              {/* CRM */}
-              <Route path="/crm/deals" component={CrmDealsPage} />
-              <Route path="/crm/leads" component={CrmLeadsPage} />
-              <Route path="/crm/contacts" component={CrmContactsPage} />
-              <Route path="/crm/companies" component={CrmCompaniesPage} />
-              <Route path="/leads" component={LeadsPage} />
-              <Route path="/prospects" component={ProspectsPage} />
-              <Route path="/customers" component={CustomersPage} />
-              <Route path="/customers/:slug" component={CustomerDetail} />
-              <Route path="/crm" component={CustomersPage} />
-              <Route path="/business-records" component={CustomersPage} />
-              <Route path="/leads-management" component={LeadsPage} />
-              <Route path="/contacts" component={Contacts} />
-              <Route path="/deals" component={CrmDealsPage} />
-              <Route path="/opportunities" component={CrmDealsPage} />
-              <Route path="/deals-management" component={CrmDealsPage} />
-              {/* Product Hub */}
-              <Route path="/product-hub" component={ProductHubUnified} />
-              {/* Equipment Lifecycle */}
-              <Route path="/equipment-lifecycle" component={EquipmentLifecycleHub} />
-              <Route path="/purchase-orders" component={PurchaseOrders} />
-              <Route path="/warehouse-operations" component={WarehouseOperations} />
-              <Route path="/crm-goals" component={CrmGoalsDashboard} />
-              <Route path="/crm-goals-dashboard" component={CrmGoalsDashboard} />
-              <Route path="/data-enrichment" component={DataEnrichment} />
-              <Route path="/quickbooks-integration" component={QuickBooksIntegration} />
-              <Route path="/quote-proposal-generation" component={QuoteProposalGeneration} />
-              <Route path="/quotes" component={QuotesManagement} />
-              <Route path="/quotes/new" component={QuoteBuilderPage} />
-              <Route path="/quotes/:quoteId" component={QuoteBuilderPage} />
-              <Route path="/quotes/:quoteId/view" component={QuoteView} />
-              <Route path="/proposal-builder" component={ProposalBuilder} />
-              {/* Deal Desk & Approval Workflows */}
-              <Route path="/deal-desk">
-                {() => (
-                  <ProtectedRoute
-                    component={DealDeskDashboard}
-                    permissions={[
-                      'sales.quote.approve_standard',
-                      'sales.quote.approve_high_value',
-                      'sales.quote.approve_enterprise',
-                    ]}
-                    minLevel={3}
-                  />
-                )}
-              </Route>
-              <Route path="/deal-desk/requests/:id" component={ApprovalRequestDetail} />
-              <Route path="/deal-desk/rules" component={ApprovalRulesConfiguration} />
-              {/* Pipeline Configuration */}
-              <Route path="/pipeline-config">
-                {() => (
-                  <ProtectedRoute
-                    component={PipelineConfiguration}
-                    permissions={['sales.territory.manage_assignments']}
-                    minLevel={4}
-                  />
-                )}
-              </Route>
-              {/* Use /preventive-maintenance as primary route */}
-              <Route path="/preventive-maintenance" component={PreventiveMaintenanceScheduling} />
-              {/* Unified Predictive Maintenance Hub - consolidates proactive + AI predictions */}
-              <Route path="/predictive-maintenance-hub" component={PredictiveMaintenanceHub} />
-              <Route path="/incident-response-system" component={IncidentResponseSystem} />
-              <Route path="/customer-portal" component={CustomerSelfServicePortal} />
-              <Route path="/advanced-billing" component={AdvancedBillingEngine} />
-              <Route path="/financial-forecasting">
-                {() => (
-                  <ProtectedRoute
-                    component={FinancialForecasting}
-                    permissions={['finance.reports.view', 'finance.reports.view_sensitive']}
-                    minLevel={5}
-                  />
-                )}
-              </Route>
-              <Route path="/financial-intelligence-dashboard">
-                {() => (
-                  <ProtectedRoute
-                    component={FinancialIntelligenceDashboard}
-                    permissions={['reporting.finance.view', 'finance.reports.view_sensitive']}
-                    minLevel={5}
-                  />
-                )}
-              </Route>
-              <Route path="/equipment-lifecycle-management" component={EquipmentLifecycleHub} />
-              <Route path="/commission-management" component={CommissionManagement} />
-              <Route path="/sales-command-center" component={SalesCommandCenter} />
-              <Route path="/sales-performance-analytics" component={SalesPerformanceAnalytics} />
-              <Route path="/remote-monitoring" component={RemoteMonitoring} />
-              <Route path="/fleet-monitoring" component={FleetMonitoringDashboard} />
-              <Route path="/service-analytics" component={ServiceAnalytics} />
-              <Route path="/workflow-automation" component={WorkflowAutomation} />
+            <RoutePermissionGate>
+              <Switch>
+                {/* Redirect auth pages to dashboard for authenticated users */}
+                <Route path="/login" component={RedirectToDashboard} />
+                <Route path="/signup" component={RedirectToDashboard} />
+                <Route path="/forgot-password" component={RedirectToDashboard} />
+                <Route path="/auth/callback" component={AuthCallback} />
+                <Route path="/unauthorized" component={Unauthorized} />
+                <Route path="/" component={Dashboard} />
+                <Route path="/executive-dashboard">
+                  {() => (
+                    <ProtectedRoute
+                      component={ExecutiveDashboard}
+                      permissions={['reporting.executive.view']}
+                      minLevel={6}
+                    />
+                  )}
+                </Route>
+                <Route path="/today" component={TodayDashboard} />
+                <Route path="/dashboard/today" component={TodayDashboard} />
+                {/* CRM */}
+                <Route path="/crm/deals" component={CrmDealsPage} />
+                <Route path="/crm/leads" component={CrmLeadsPage} />
+                <Route path="/crm/contacts" component={CrmContactsPage} />
+                <Route path="/crm/companies" component={CrmCompaniesPage} />
+                <Route path="/leads" component={LeadsPage} />
+                <Route path="/prospects" component={ProspectsPage} />
+                <Route path="/customers" component={CustomersPage} />
+                <Route path="/customers/:slug" component={CustomerDetail} />
+                <Route path="/crm" component={CustomersPage} />
+                <Route path="/business-records" component={CustomersPage} />
+                <Route path="/leads-management" component={LeadsPage} />
+                <Route path="/contacts" component={Contacts} />
+                <Route path="/deals" component={CrmDealsPage} />
+                <Route path="/opportunities" component={CrmDealsPage} />
+                <Route path="/deals-management" component={CrmDealsPage} />
+                {/* Product Hub */}
+                <Route path="/product-hub" component={ProductHubUnified} />
+                {/* Equipment Lifecycle */}
+                <Route path="/equipment-lifecycle" component={EquipmentLifecycleHub} />
+                <Route path="/purchase-orders" component={PurchaseOrders} />
+                <Route path="/warehouse-operations" component={WarehouseOperations} />
+                <Route path="/crm-goals" component={CrmGoalsDashboard} />
+                <Route path="/crm-goals-dashboard" component={CrmGoalsDashboard} />
+                <Route path="/data-enrichment" component={DataEnrichment} />
+                <Route path="/quickbooks-integration" component={QuickBooksIntegration} />
+                <Route path="/quote-proposal-generation" component={QuoteProposalGeneration} />
+                <Route path="/quotes" component={QuotesManagement} />
+                <Route path="/quotes/new" component={QuoteBuilderPage} />
+                <Route path="/quotes/:quoteId" component={QuoteBuilderPage} />
+                <Route path="/quotes/:quoteId/view" component={QuoteView} />
+                <Route path="/proposal-builder" component={ProposalBuilder} />
+                {/* Deal Desk & Approval Workflows */}
+                <Route path="/deal-desk">
+                  {() => (
+                    <ProtectedRoute
+                      component={DealDeskDashboard}
+                      permissions={[
+                        'sales.quote.approve_standard',
+                        'sales.quote.approve_high_value',
+                        'sales.quote.approve_enterprise',
+                      ]}
+                      minLevel={3}
+                    />
+                  )}
+                </Route>
+                <Route path="/deal-desk/requests/:id" component={ApprovalRequestDetail} />
+                <Route path="/deal-desk/rules" component={ApprovalRulesConfiguration} />
+                {/* Pipeline Configuration */}
+                <Route path="/pipeline-config">
+                  {() => (
+                    <ProtectedRoute
+                      component={PipelineConfiguration}
+                      permissions={['sales.territory.manage_assignments']}
+                      minLevel={4}
+                    />
+                  )}
+                </Route>
+                {/* Use /preventive-maintenance as primary route */}
+                <Route path="/preventive-maintenance" component={PreventiveMaintenanceScheduling} />
+                {/* Unified Predictive Maintenance Hub - consolidates proactive + AI predictions */}
+                <Route path="/predictive-maintenance-hub" component={PredictiveMaintenanceHub} />
+                <Route path="/incident-response-system" component={IncidentResponseSystem} />
+                <Route path="/customer-portal" component={CustomerSelfServicePortal} />
+                <Route path="/advanced-billing" component={AdvancedBillingEngine} />
+                <Route path="/financial-forecasting">
+                  {() => (
+                    <ProtectedRoute
+                      component={FinancialForecasting}
+                      permissions={['finance.reports.view', 'finance.reports.view_sensitive']}
+                      minLevel={5}
+                    />
+                  )}
+                </Route>
+                <Route path="/financial-intelligence-dashboard">
+                  {() => (
+                    <ProtectedRoute
+                      component={FinancialIntelligenceDashboard}
+                      permissions={['reporting.finance.view', 'finance.reports.view_sensitive']}
+                      minLevel={5}
+                    />
+                  )}
+                </Route>
+                <Route path="/equipment-lifecycle-management" component={EquipmentLifecycleHub} />
+                <Route path="/commission-management" component={CommissionManagement} />
+                <Route path="/sales-command-center" component={SalesCommandCenter} />
+                <Route path="/sales-performance-analytics" component={SalesPerformanceAnalytics} />
+                <Route path="/remote-monitoring" component={RemoteMonitoring} />
+                <Route path="/fleet-monitoring" component={FleetMonitoringDashboard} />
+                <Route path="/service-analytics" component={ServiceAnalytics} />
+                <Route path="/workflow-automation" component={WorkflowAutomation} />
 
-              {/* Competitive Differentiation Routes */}
-              <Route path="/autopilot" component={AutopilotDashboard} />
-              <Route path="/auto-lead-routing" component={AutoLeadRoutingDashboard} />
-              <Route path="/sales-rep-assignments" component={SalesRepAssignments} />
-              <Route path="/lead-map" component={LeadMapViewer} />
-              <Route
-                path="/predictive-service-dispatch"
-                component={PredictiveServiceDispatchDashboard}
-              />
-              <Route path="/connect" component={ConnectDashboard} />
-              <Route path="/white-label" component={WhiteLabelDashboard} />
-              <Route
-                path="/auto-supply-replenishment"
-                component={AutoSupplyReplenishmentDashboard}
-              />
-              <Route path="/contract-renewal-autopilot" component={ContractRenewalDashboard} />
-              <Route path="/compare-eautomate" component={CompareEAutomate} />
-              <Route path="/integration-marketplace" component={IntegrationMarketplaceDashboard} />
-              <Route path="/scheduled-reports" component={ScheduledReportsDashboard} />
-              <Route path="/meeting-to-proposal" component={MeetingToProposalDashboard} />
+                {/* Competitive Differentiation Routes */}
+                <Route path="/autopilot" component={AutopilotDashboard} />
+                <Route path="/auto-lead-routing" component={AutoLeadRoutingDashboard} />
+                <Route path="/sales-rep-assignments" component={SalesRepAssignments} />
+                <Route path="/lead-map" component={LeadMapViewer} />
+                <Route
+                  path="/predictive-service-dispatch"
+                  component={PredictiveServiceDispatchDashboard}
+                />
+                <Route path="/connect" component={ConnectDashboard} />
+                <Route path="/white-label" component={WhiteLabelDashboard} />
+                <Route
+                  path="/auto-supply-replenishment"
+                  component={AutoSupplyReplenishmentDashboard}
+                />
+                <Route path="/contract-renewal-autopilot" component={ContractRenewalDashboard} />
+                <Route path="/compare-eautomate" component={CompareEAutomate} />
+                <Route
+                  path="/integration-marketplace"
+                  component={IntegrationMarketplaceDashboard}
+                />
+                <Route path="/scheduled-reports" component={ScheduledReportsDashboard} />
+                <Route path="/meeting-to-proposal" component={MeetingToProposalDashboard} />
 
-              <Route path="/mobile-field-operations" component={MobileFieldOperations} />
-              <Route path="/leads/:slug" component={LeadDetail} />
-              <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
-              <Route path="/company-contacts" component={CompanyContacts} />
-              <Route path="/sales-reports" component={Reports} />
-              <Route path="/service-reports" component={Reports} />
-              <Route path="/revenue-reports" component={Reports} />
-              <Route path="/contracts" component={Contracts} />
-              <Route path="/contract-renewals" component={ContractRenewalDashboard} />
-              <Route path="/leases" component={Leases} />
-              <Route path="/leases/new" component={LeaseForm} />
-              <Route path="/leases/:id/edit" component={LeaseForm} />
-              <Route path="/leases/:id" component={LeaseDetail} />
-              <Route path="/document-builder" component={DocumentBuilder} />
-              <Route path="/meter-readings" component={MeterReadings} />
-              <Route path="/invoices" component={Invoices} />
-              <Route path="/service-dispatch" component={ServiceDispatchOptimization} />
-              <Route path="/proactive-service" component={ProactiveServiceDashboard} />
-              <Route
-                path="/service-forecasting-analytics"
-                component={ServiceForecastingAnalytics}
-              />
-              <Route path="/technician-management" component={TechnicianManagement} />
-              <Route path="/vehicle-management" component={VehicleManagement} />
-              <Route path="/asset-management" component={AssetManagement} />
-              <Route path="/mobile-field-service" component={MobileFieldService} />
-              <Route path="/product-catalog" component={ProductHubUnified} />
-              <Route path="/product-management-hub" component={ProductHubUnified} />
-              <Route path="/inventory" component={Inventory} />
-              <Route path="/product-models" component={ProductModels} />
-              <Route path="/product-models-v2" component={EnhancedProductModels} />
-              <Route path="/pricing/settings" component={PricingSettings} />
-              <Route path="/pricing/margin-report" component={MarginAnalysisReport} />
-              <Route path="/pricing/approvals" component={PriceApprovals} />
-              <Route path="/product-accessories" component={EnhancedProductAccessories} />
-              <Route path="/professional-services" component={ProfessionalServices} />
-              <Route path="/service-products" component={ServiceProducts} />
-              <Route path="/software-products" component={SoftwareProducts} />
-              <Route path="/supplies" component={Supplies} />
-              <Route path="/managed-services" component={ManagedServices} />
-              <Route path="/billing" component={MeterBilling} />
-              <Route path="/meter-billing" component={MeterBilling} />
-              <Route path="/advanced-billing-engine" component={AdvancedBillingEngine} />
-              <Route path="/billing-rules" component={BillingRules} />
-              <Route path="/billing-analytics" component={BillingAnalytics} />
-              <Route path="/vendor-management" component={VendorManagement} />
-              <Route path="/vendors" component={Vendors} />
-              <Route path="/accounts-payable" component={AccountsPayable} />
-              <Route path="/accounts-receivable" component={AccountsReceivable} />
-              <Route path="/chart-of-accounts">
-                {() => (
-                  <ProtectedRoute
-                    component={ChartOfAccounts}
-                    permissions={['finance.gl.view']}
-                    minLevel={4}
-                  />
-                )}
-              </Route>
-              <Route path="/journal-entries">
-                {() => (
-                  <ProtectedRoute
-                    component={JournalEntries}
-                    permissions={['finance.gl.view', 'finance.gl.post']}
-                    minLevel={4}
-                  />
-                )}
-              </Route>
-              <Route path="/reports" component={Reports} />
-              <Route path="/reports/custom/new" component={CustomReportBuilder} />
-              <Route path="/custom-dashboard" component={CustomDashboard} />
-              <Route path="/import" component={CSVImportWizard} />
-              <Route path="/import/products" component={UniversalProductImport} />
-              <Route path="/advanced-reporting" component={AdvancedReporting} />
-              <Route path="/advanced-analytics" component={AdvancedAnalytics} />
-              <Route path="/mobile-optimization" component={MobileOptimization} />
-              <Route path="/performance-monitoring" component={PerformanceMonitoring} />
-              <Route path="/system-integrations" component={SystemIntegrations} />
-              <Route path="/deployment-readiness">
-                {() => (
-                  <ProtectedRoute
-                    component={DeploymentReadiness}
-                    permissions={['admin.settings.update']}
-                    minLevel={6}
-                  />
-                )}
-              </Route>
-              {/* Task Hub */}
-              <Route path="/task-hub" component={TaskHub} />
-              <Route path="/tasks" component={TaskHub} />
-              <Route path="/task-management" component={TaskHub} />
-              <Route path="/basic-tasks" component={TaskHub} />
-              <Route path="/my-tasks" component={TaskHub} />
-              <Route path="/customer-success-management" component={CustomerSuccessManagement} />
-              <Route path="/pricing-management" component={PricingManagement} />
-              <Route path="/tenant-setup" component={TenantSetup} />
-              <Route path="/settings" component={Settings} />
-              <Route path="/settings/api-keys" component={ApiKeyManagement} />
-              <Route path="/monitoring-clients" component={MonitoringClients} />
-              <Route path="/device-monitoring" component={DeviceMonitoring} />
-              <Route path="/oid-management" component={OidManagement} />
-              <Route path="/pricing" component={Pricing} />
-              <Route path="/settings/subscription" component={SubscriptionSettings} />
-              <Route path="/settings/billing" component={Billing} />
-              <Route path="/company-ids-test" component={CompanyIdsTest} />
-              <Route path="/customer-number-settings" component={CustomerNumberSettings} />
-              <Route path="/demo-scheduling" component={DemoScheduling} />
-              <Route path="/sales-pipeline-forecasting" component={SalesPipelineForecasting} />
+                <Route path="/mobile-field-operations" component={MobileFieldOperations} />
+                <Route path="/leads/:slug" component={LeadDetail} />
+                <Route path="/companies/:companyId/contacts" component={CompanyContacts} />
+                <Route path="/company-contacts" component={CompanyContacts} />
+                <Route path="/sales-reports" component={Reports} />
+                <Route path="/service-reports" component={Reports} />
+                <Route path="/revenue-reports" component={Reports} />
+                <Route path="/contracts" component={Contracts} />
+                <Route path="/contract-renewals" component={ContractRenewalDashboard} />
+                <Route path="/leases" component={Leases} />
+                <Route path="/leases/new" component={LeaseForm} />
+                <Route path="/leases/:id/edit" component={LeaseForm} />
+                <Route path="/leases/:id" component={LeaseDetail} />
+                <Route path="/document-builder" component={DocumentBuilder} />
+                <Route path="/meter-readings" component={MeterReadings} />
+                <Route path="/invoices" component={Invoices} />
+                <Route path="/service-dispatch" component={ServiceDispatchOptimization} />
+                <Route path="/proactive-service" component={ProactiveServiceDashboard} />
+                <Route
+                  path="/service-forecasting-analytics"
+                  component={ServiceForecastingAnalytics}
+                />
+                <Route path="/technician-management" component={TechnicianManagement} />
+                <Route path="/vehicle-management" component={VehicleManagement} />
+                <Route path="/asset-management" component={AssetManagement} />
+                <Route path="/mobile-field-service" component={MobileFieldService} />
+                <Route path="/product-catalog" component={ProductHubUnified} />
+                <Route path="/product-management-hub" component={ProductHubUnified} />
+                <Route path="/inventory" component={Inventory} />
+                <Route path="/product-models" component={ProductModels} />
+                <Route path="/product-models-v2" component={EnhancedProductModels} />
+                <Route path="/pricing/settings" component={PricingSettings} />
+                <Route path="/pricing/margin-report" component={MarginAnalysisReport} />
+                <Route path="/pricing/approvals" component={PriceApprovals} />
+                <Route path="/product-accessories" component={EnhancedProductAccessories} />
+                <Route path="/professional-services" component={ProfessionalServices} />
+                <Route path="/service-products" component={ServiceProducts} />
+                <Route path="/software-products" component={SoftwareProducts} />
+                <Route path="/supplies" component={Supplies} />
+                <Route path="/managed-services" component={ManagedServices} />
+                <Route path="/billing" component={MeterBilling} />
+                <Route path="/meter-billing" component={MeterBilling} />
+                <Route path="/advanced-billing-engine" component={AdvancedBillingEngine} />
+                <Route path="/billing-rules" component={BillingRules} />
+                <Route path="/billing-analytics" component={BillingAnalytics} />
+                <Route path="/vendor-management" component={VendorManagement} />
+                <Route path="/vendors" component={Vendors} />
+                <Route path="/accounts-payable" component={AccountsPayable} />
+                <Route path="/accounts-receivable" component={AccountsReceivable} />
+                <Route path="/chart-of-accounts">
+                  {() => (
+                    <ProtectedRoute
+                      component={ChartOfAccounts}
+                      permissions={['finance.gl.view']}
+                      minLevel={4}
+                    />
+                  )}
+                </Route>
+                <Route path="/journal-entries">
+                  {() => (
+                    <ProtectedRoute
+                      component={JournalEntries}
+                      permissions={['finance.gl.view', 'finance.gl.post']}
+                      minLevel={4}
+                    />
+                  )}
+                </Route>
+                <Route path="/reports" component={Reports} />
+                <Route path="/reports/custom/new" component={CustomReportBuilder} />
+                <Route path="/custom-dashboard" component={CustomDashboard} />
+                <Route path="/import" component={CSVImportWizard} />
+                <Route path="/import/products" component={UniversalProductImport} />
+                <Route path="/advanced-reporting" component={AdvancedReporting} />
+                <Route path="/advanced-analytics" component={AdvancedAnalytics} />
+                <Route path="/mobile-optimization" component={MobileOptimization} />
+                <Route path="/performance-monitoring" component={PerformanceMonitoring} />
+                <Route path="/system-integrations" component={SystemIntegrations} />
+                <Route path="/deployment-readiness">
+                  {() => (
+                    <ProtectedRoute
+                      component={DeploymentReadiness}
+                      permissions={['admin.settings.update']}
+                      minLevel={6}
+                    />
+                  )}
+                </Route>
+                {/* Task Hub */}
+                <Route path="/task-hub" component={TaskHub} />
+                <Route path="/tasks" component={TaskHub} />
+                <Route path="/task-management" component={TaskHub} />
+                <Route path="/basic-tasks" component={TaskHub} />
+                <Route path="/my-tasks" component={TaskHub} />
+                <Route path="/customer-success-management" component={CustomerSuccessManagement} />
+                <Route path="/pricing-management" component={PricingManagement} />
+                <Route path="/tenant-setup" component={TenantSetup} />
+                <Route path="/settings" component={Settings} />
+                <Route path="/settings/api-keys" component={ApiKeyManagement} />
+                <Route path="/monitoring-clients" component={MonitoringClients} />
+                <Route path="/device-monitoring" component={DeviceMonitoring} />
+                <Route path="/oid-management" component={OidManagement} />
+                <Route path="/pricing" component={Pricing} />
+                <Route path="/settings/subscription" component={SubscriptionSettings} />
+                <Route path="/settings/billing" component={Billing} />
+                <Route path="/company-ids-test" component={CompanyIdsTest} />
+                <Route path="/customer-number-settings" component={CustomerNumberSettings} />
+                <Route path="/demo-scheduling" component={DemoScheduling} />
+                <Route path="/sales-pipeline-forecasting" component={SalesPipelineForecasting} />
 
-              <Route path="/sales-pipeline-workflow" component={SalesPipelineWorkflow} />
-              <Route path="/sales-pipeline" component={SalesPipelineWorkflow} />
-              <Route path="/esignature-integration" component={ESignatureIntegration} />
-              <Route path="/service-hub" component={ServiceHub} />
-              <Route path="/apollo-leads" component={ApolloLeadEnrichment} />
-              <Route
-                path="/preventive-maintenance-automation"
-                component={PreventiveMaintenanceAutomation}
-              />
-              <Route path="/customer-success" component={CustomerSuccessManagement} />
-              <Route path="/document-management" component={DocumentManagement} />
-              <Route path="/mobile-service-app" component={MobileServiceApp} />
-              <Route path="/advanced-analytics-dashboard" component={AdvancedAnalyticsDashboard} />
-              <Route
-                path="/business-process-optimization"
-                component={BusinessProcessOptimization}
-              />
-              <Route path="/security-compliance" component={SecurityComplianceManagement} />
-              <Route path="/security-compliance-management">
-                {() => (
-                  <ProtectedRoute
-                    component={SecurityComplianceManagement}
-                    permissions={['audit.logs.view_location', 'compliance.reports.view']}
-                    minLevel={5}
-                  />
-                )}
-              </Route>
-              <Route path="/customer-self-service-portal" component={CustomerSelfServicePortal} />
-              <Route path="/incident-response" component={IncidentResponseSystem} />
-              <Route path="/ai-analytics-dashboard" component={AIAnalyticsDashboard} />
-              <Route path="/predictive-analytics">
-                {() => (
-                  <ProtectedRoute
-                    component={PredictiveAnalytics}
-                    permissions={['reporting.executive.view']}
-                    minLevel={5}
-                  />
-                )}
-              </Route>
-              <Route
-                path="/predictive-contract-profitability"
-                component={PredictiveContractProfitability}
-              />
-              <Route path="/ai-service-intelligence" component={AIServiceIntelligence} />
-              <Route path="/integration-hub" component={IntegrationHub} />
-              <Route path="/integrations" component={IntegrationHub} />
-              <Route path="/social-media-generator" component={SocialMediaGenerator} />
-              <Route path="/security-management" component={SecurityComplianceManagement} />
-              <Route path="/system-monitoring" component={SystemMonitoring} />
-              <Route path="/access-control" component={RoleManagement} />
-              <Route path="/role-management">
-                {() => (
-                  <ProtectedRoute
-                    component={RoleManagement}
-                    permissions={['admin.role.view', 'admin.role.create']}
-                    minLevel={4}
-                  />
-                )}
-              </Route>
-              <Route path="/gpt5-dashboard" component={GPT5Dashboard} />
-              <Route path="/admin-hub">
-                {() => <ProtectedRoute component={AdminHub} platformOnly />}
-              </Route>
-              <Route path="/admin-command-center">
-                {() => <AdminRouteGuard component={AdminCommandCenter} />}
-              </Route>
-              <Route path="/root-admin-dashboard">
-                {() => <ProtectedRoute component={RootAdminDashboard} platformOnly />}
-              </Route>
-              <Route path="/root-admin-signups-crm">
-                {() => <AdminRouteGuard component={RootAdminSignupsCRM} />}
-              </Route>
-              <Route path="/root-admin/seo">
-                {() => <AdminRouteGuard component={RootAdminSEO} />}
-              </Route>
-              <Route path="/seo" component={SEODashboard} />
+                <Route path="/sales-pipeline-workflow" component={SalesPipelineWorkflow} />
+                <Route path="/sales-pipeline" component={SalesPipelineWorkflow} />
+                <Route path="/esignature-integration" component={ESignatureIntegration} />
+                <Route path="/service-hub" component={ServiceHub} />
+                <Route path="/apollo-leads" component={ApolloLeadEnrichment} />
+                <Route
+                  path="/preventive-maintenance-automation"
+                  component={PreventiveMaintenanceAutomation}
+                />
+                <Route path="/customer-success" component={CustomerSuccessManagement} />
+                <Route path="/document-management" component={DocumentManagement} />
+                <Route path="/mobile-service-app" component={MobileServiceApp} />
+                <Route
+                  path="/advanced-analytics-dashboard"
+                  component={AdvancedAnalyticsDashboard}
+                />
+                <Route
+                  path="/business-process-optimization"
+                  component={BusinessProcessOptimization}
+                />
+                <Route path="/security-compliance" component={SecurityComplianceManagement} />
+                <Route path="/security-compliance-management">
+                  {() => (
+                    <ProtectedRoute
+                      component={SecurityComplianceManagement}
+                      permissions={['audit.logs.view_location', 'compliance.reports.view']}
+                      minLevel={5}
+                    />
+                  )}
+                </Route>
+                <Route path="/customer-self-service-portal" component={CustomerSelfServicePortal} />
+                <Route path="/incident-response" component={IncidentResponseSystem} />
+                <Route path="/ai-analytics-dashboard" component={AIAnalyticsDashboard} />
+                <Route path="/predictive-analytics">
+                  {() => (
+                    <ProtectedRoute
+                      component={PredictiveAnalytics}
+                      permissions={['reporting.executive.view']}
+                      minLevel={5}
+                    />
+                  )}
+                </Route>
+                <Route
+                  path="/predictive-contract-profitability"
+                  component={PredictiveContractProfitability}
+                />
+                <Route path="/ai-service-intelligence" component={AIServiceIntelligence} />
+                <Route path="/integration-hub" component={IntegrationHub} />
+                <Route path="/integrations" component={IntegrationHub} />
+                <Route path="/social-media-generator" component={SocialMediaGenerator} />
+                <Route path="/security-management" component={SecurityComplianceManagement} />
+                <Route path="/system-monitoring" component={SystemMonitoring} />
+                <Route path="/access-control" component={RoleManagement} />
+                <Route path="/role-management">
+                  {() => (
+                    <ProtectedRoute
+                      component={RoleManagement}
+                      permissions={['admin.role.view', 'admin.role.create']}
+                      minLevel={4}
+                    />
+                  )}
+                </Route>
+                <Route path="/gpt5-dashboard" component={GPT5Dashboard} />
+                <Route path="/admin-hub">
+                  {() => <ProtectedRoute component={AdminHub} platformOnly />}
+                </Route>
+                <Route path="/admin-command-center">
+                  {() => <AdminRouteGuard component={AdminCommandCenter} />}
+                </Route>
+                <Route path="/root-admin-dashboard">
+                  {() => <ProtectedRoute component={RootAdminDashboard} platformOnly />}
+                </Route>
+                <Route path="/root-admin-signups-crm">
+                  {() => <AdminRouteGuard component={RootAdminSignupsCRM} />}
+                </Route>
+                <Route path="/root-admin/seo">
+                  {() => <AdminRouteGuard component={RootAdminSEO} />}
+                </Route>
+                <Route path="/seo" component={SEODashboard} />
 
-              {/* Platform CRM Routes - Full tenant lifecycle management (admin-guarded) */}
-              <Route path="/platform-crm">
-                {() => <AdminRouteGuard component={PlatformCRMDashboard} />}
-              </Route>
-              <Route path="/platform-crm/dashboard">
-                {() => <AdminRouteGuard component={PlatformCRMDashboard} />}
-              </Route>
-              <Route path="/platform-crm/business-records/:id">
-                {() => <AdminRouteGuard component={PlatformBusinessRecordDetail} />}
-              </Route>
-              <Route path="/platform-crm/business-records">
-                {() => <AdminRouteGuard component={PlatformBusinessRecords} />}
-              </Route>
-              <Route path="/platform-crm/deals/:id">
-                {() => <AdminRouteGuard component={PlatformDealDetail} />}
-              </Route>
-              <Route path="/platform-crm/pipeline">
-                {() => <AdminRouteGuard component={PlatformDealsPipeline} />}
-              </Route>
-              <Route path="/platform-crm/territories">
-                {() => <AdminRouteGuard component={PlatformTerritories} />}
-              </Route>
-              <Route path="/platform-crm/lead-scoring">
-                {() => <AdminRouteGuard component={PlatformLeadScoring} />}
-              </Route>
-              <Route path="/platform-crm/assignment-rules">
-                {() => <AdminRouteGuard component={PlatformAssignmentRules} />}
-              </Route>
-              <Route path="/platform-crm/customer-success">
-                {() => <AdminRouteGuard component={PlatformCustomerSuccess} />}
-              </Route>
-              <Route path="/platform-crm/analytics">
-                {() => <AdminRouteGuard component={PlatformAnalytics} />}
-              </Route>
-              <Route path="/platform-crm/cohort-analysis">
-                {() => <AdminRouteGuard component={PlatformCohortAnalysis} />}
-              </Route>
+                {/* Platform CRM Routes - Full tenant lifecycle management (admin-guarded) */}
+                <Route path="/platform-crm">
+                  {() => <AdminRouteGuard component={PlatformCRMDashboard} />}
+                </Route>
+                <Route path="/platform-crm/dashboard">
+                  {() => <AdminRouteGuard component={PlatformCRMDashboard} />}
+                </Route>
+                <Route path="/platform-crm/business-records/:id">
+                  {() => <AdminRouteGuard component={PlatformBusinessRecordDetail} />}
+                </Route>
+                <Route path="/platform-crm/business-records">
+                  {() => <AdminRouteGuard component={PlatformBusinessRecords} />}
+                </Route>
+                <Route path="/platform-crm/deals/:id">
+                  {() => <AdminRouteGuard component={PlatformDealDetail} />}
+                </Route>
+                <Route path="/platform-crm/pipeline">
+                  {() => <AdminRouteGuard component={PlatformDealsPipeline} />}
+                </Route>
+                <Route path="/platform-crm/territories">
+                  {() => <AdminRouteGuard component={PlatformTerritories} />}
+                </Route>
+                <Route path="/platform-crm/lead-scoring">
+                  {() => <AdminRouteGuard component={PlatformLeadScoring} />}
+                </Route>
+                <Route path="/platform-crm/assignment-rules">
+                  {() => <AdminRouteGuard component={PlatformAssignmentRules} />}
+                </Route>
+                <Route path="/platform-crm/customer-success">
+                  {() => <AdminRouteGuard component={PlatformCustomerSuccess} />}
+                </Route>
+                <Route path="/platform-crm/analytics">
+                  {() => <AdminRouteGuard component={PlatformAnalytics} />}
+                </Route>
+                <Route path="/platform-crm/cohort-analysis">
+                  {() => <AdminRouteGuard component={PlatformCohortAnalysis} />}
+                </Route>
 
-              {/* Platform Admin Routes - RBAC-protected, no /admin prefix needed */}
-              <Route path="/admin/root-admin-security">
-                {() => <ProtectedRoute component={RootAdminSecurity} platformOnly />}
-              </Route>
-              <Route path="/admin/system-security">
-                {() => <AdminRouteGuard component={SystemSecurity} />}
-              </Route>
-              <Route path="/admin/database-updater">
-                {() => <AdminRouteGuard component={DatabaseUpdaterPage} />}
-              </Route>
-              <Route path="/admin/tenant-management">
-                {() => <ProtectedRoute component={TenantManagement} platformOnly />}
-              </Route>
-              <Route path="/admin/user-management">
-                {() => (
-                  <ProtectedRoute
-                    component={UserManagement}
-                    permissions={['admin.user.view']}
-                    minLevel={4}
-                  />
-                )}
-              </Route>
-              <Route path="/admin/system-settings">
-                {() => <AdminRouteGuard component={Settings} />}
-              </Route>
-              <Route path="/admin/platform-analytics">
-                {() => <AdminRouteGuard component={AdvancedAnalyticsDashboard} />}
-              </Route>
-              <Route path="/admin/knowledge-base">
-                {() => <AdminRouteGuard component={KnowledgeBaseAdmin} />}
-              </Route>
-              <Route path="/admin/knowledge-base/new">
-                {() => <AdminRouteGuard component={ArticleEditor} />}
-              </Route>
-              <Route path="/admin/knowledge-base/edit/:id">
-                {() => <AdminRouteGuard component={ArticleEditor} />}
-              </Route>
-              <Route path="/platform-configuration">
-                {() => <ProtectedRoute component={PlatformConfiguration} platformOnly />}
-              </Route>
-              <Route path="/database-management">
-                {() => <ProtectedRoute component={DatabaseManagement} platformOnly />}
-              </Route>
-              <Route path="/admin/mobile-logs">
-                {() => <ProtectedRoute component={MobileLogsViewer} platformOnly />}
-              </Route>
-              <Route path="/admin/audit-logs">
-                {() => <ProtectedRoute component={AuditLogViewer} platformOnly />}
-              </Route>
-              <Route path="/erp-integration" component={ERPIntegration} />
-              <Route path="/customer-access-management" component={CustomerAccessManagement} />
-              <Route path="/manufacturer-integration" component={ManufacturerIntegration} />
-              <Route
-                path="/manufacturer-integration/devices"
-                component={ManufacturerIntegrationDevices}
-              />
-              <Route
-                path="/manufacturer-integration/audit"
-                component={ManufacturerIntegrationAudit}
-              />
+                {/* Platform Admin Routes - RBAC-protected, no /admin prefix needed */}
+                <Route path="/admin/root-admin-security">
+                  {() => <ProtectedRoute component={RootAdminSecurity} platformOnly />}
+                </Route>
+                <Route path="/admin/system-security">
+                  {() => <AdminRouteGuard component={SystemSecurity} />}
+                </Route>
+                <Route path="/admin/database-updater">
+                  {() => <AdminRouteGuard component={DatabaseUpdaterPage} />}
+                </Route>
+                <Route path="/admin/tenant-management">
+                  {() => <ProtectedRoute component={TenantManagement} platformOnly />}
+                </Route>
+                <Route path="/admin/user-management">
+                  {() => (
+                    <ProtectedRoute
+                      component={UserManagement}
+                      permissions={['admin.user.view']}
+                      minLevel={4}
+                    />
+                  )}
+                </Route>
+                <Route path="/admin/system-settings">
+                  {() => <AdminRouteGuard component={Settings} />}
+                </Route>
+                <Route path="/admin/platform-analytics">
+                  {() => <AdminRouteGuard component={AdvancedAnalyticsDashboard} />}
+                </Route>
+                <Route path="/admin/knowledge-base">
+                  {() => <AdminRouteGuard component={KnowledgeBaseAdmin} />}
+                </Route>
+                <Route path="/admin/knowledge-base/new">
+                  {() => <AdminRouteGuard component={ArticleEditor} />}
+                </Route>
+                <Route path="/admin/knowledge-base/edit/:id">
+                  {() => <AdminRouteGuard component={ArticleEditor} />}
+                </Route>
+                <Route path="/platform-configuration">
+                  {() => <ProtectedRoute component={PlatformConfiguration} platformOnly />}
+                </Route>
+                <Route path="/database-management">
+                  {() => <ProtectedRoute component={DatabaseManagement} platformOnly />}
+                </Route>
+                <Route path="/admin/mobile-logs">
+                  {() => <ProtectedRoute component={MobileLogsViewer} platformOnly />}
+                </Route>
+                <Route path="/admin/audit-logs">
+                  {() => <ProtectedRoute component={AuditLogViewer} platformOnly />}
+                </Route>
+                <Route path="/erp-integration" component={ERPIntegration} />
+                <Route path="/customer-access-management" component={CustomerAccessManagement} />
+                <Route path="/manufacturer-integration" component={ManufacturerIntegration} />
+                <Route
+                  path="/manufacturer-integration/devices"
+                  component={ManufacturerIntegrationDevices}
+                />
+                <Route
+                  path="/manufacturer-integration/audit"
+                  component={ManufacturerIntegrationAudit}
+                />
 
-              {/* AI Hub Routes */}
-              <Route path="/ai-hub" component={AIHub} />
-              <Route path="/ai-employees" component={AIEmployeeDashboard} />
-              <Route path="/calendar" component={CalendarPage} />
-              <Route path="/meeting-transcription" component={MeetingTranscription} />
-              <Route path="/ai-task-scheduling" component={TaskHub} />
-              <Route path="/ai-search" component={AISearchKnowledgeDashboard} />
-              <Route path="/conversational-ai-dashboard" component={ConversationalAIDashboard} />
+                {/* AI Hub Routes */}
+                <Route path="/ai-hub" component={AIHub} />
+                <Route path="/ai-employees" component={AIEmployeeDashboard} />
+                <Route path="/calendar" component={CalendarPage} />
+                <Route path="/meeting-transcription" component={MeetingTranscription} />
+                <Route path="/ai-task-scheduling" component={TaskHub} />
+                <Route path="/ai-search" component={AISearchKnowledgeDashboard} />
+                <Route path="/conversational-ai-dashboard" component={ConversationalAIDashboard} />
 
-              {/* Knowledge Base Routes */}
-              <Route path="/knowledge-base" component={KnowledgeBase} />
-              <Route path="/knowledge-base/article/:slug" component={KnowledgeArticle} />
-              <Route path="/knowledge-base/category/:slug" component={KnowledgeBase} />
+                {/* Knowledge Base Routes */}
+                <Route path="/knowledge-base" component={KnowledgeBase} />
+                <Route path="/knowledge-base/article/:slug" component={KnowledgeArticle} />
+                <Route path="/knowledge-base/category/:slug" component={KnowledgeBase} />
 
-              <Route path="/eula" component={EndUserLicenseAgreement} />
-              <Route path="/privacy" component={PrivacyPolicy} />
-              <Route path="/terms" component={TermsAndConditions} />
-              <Route path="/accessibility" component={AccessibilityStatement} />
-              <Route path="/setup-wizard" component={SetupWizard} />
-              <Route path="/onboarding" component={OnboardingDashboard} />
-              <Route path="/onboarding/new" component={EnhancedOnboardingForm} />
-              <Route path="/onboarding/enhanced" component={EnhancedOnboardingForm} />
-              <Route path="/onboarding/original" component={ComprehensiveOnboardingForm} />
-              <Route path="/onboarding/:id" component={OnboardingDetails} />
-              <Route path="/sales/command-center" component={SalesCommandCenter} />
-              <Route component={NotFound} />
-            </Switch>
+                <Route path="/eula" component={EndUserLicenseAgreement} />
+                <Route path="/privacy" component={PrivacyPolicy} />
+                <Route path="/terms" component={TermsAndConditions} />
+                <Route path="/accessibility" component={AccessibilityStatement} />
+                <Route path="/setup-wizard" component={SetupWizard} />
+                <Route path="/onboarding" component={OnboardingDashboard} />
+                <Route path="/onboarding/new" component={EnhancedOnboardingForm} />
+                <Route path="/onboarding/enhanced" component={EnhancedOnboardingForm} />
+                <Route path="/onboarding/original" component={ComprehensiveOnboardingForm} />
+                <Route path="/onboarding/:id" component={OnboardingDetails} />
+                <Route path="/sales/command-center" component={SalesCommandCenter} />
+                <Route component={NotFound} />
+              </Switch>
+            </RoutePermissionGate>
           </PageErrorBoundary>
         </main>
       </React.Suspense>

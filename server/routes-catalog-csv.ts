@@ -27,7 +27,9 @@ const log = createModuleLogger('routes-catalog-csv');
 
 import { insertCpcRateSchema, productAccessories, masterProductModels } from '@shared/schema';
 import { isAuthenticated } from './replitAuth';
+import { isPlatformAdmin } from './utils/auth-helpers';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 // Configure multer for CSV file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -991,14 +993,7 @@ export function registerCatalogCsvRoutes(app: Express) {
     upload.single('file'),
     async (req: any, res) => {
       try {
-        const isPlatformUser =
-          req.user?.isPlatformUser ||
-          req.user?.is_platform_user ||
-          req.user?.role === 'platform_admin' ||
-          req.user?.role === 'root_admin' ||
-          req.user?.role === 'Platform Admin' ||
-          req.user?.role === 'Root Admin' ||
-          req.user?.role === 'admin';
+        const isPlatformUser = isPlatformAdmin(req);
 
         if (!isPlatformUser) {
           return res.status(403).json({
@@ -1010,11 +1005,8 @@ export function registerCatalogCsvRoutes(app: Express) {
               checkResult: isPlatformUser,
               conditions: {
                 isPlatformUser: req.user?.isPlatformUser,
-                platform_admin: req.user?.role === 'platform_admin',
-                root_admin: req.user?.role === 'root_admin',
-                Platform_Admin: req.user?.role === 'Platform Admin',
-                Root_Admin: req.user?.role === 'Root Admin',
-                admin: req.user?.role === 'admin',
+                is_platform_user: req.user?.is_platform_user,
+                roleLevel: req.user?.roleLevel,
               },
             },
           });
@@ -1238,14 +1230,7 @@ export function registerCatalogCsvRoutes(app: Express) {
     upload.single('file'),
     async (req: any, res) => {
       try {
-        const isPlatformUser =
-          req.user?.isPlatformUser ||
-          req.user?.is_platform_user ||
-          req.user?.role === 'platform_admin' ||
-          req.user?.role === 'root_admin' ||
-          req.user?.role === 'Platform Admin' ||
-          req.user?.role === 'Root Admin' ||
-          req.user?.role === 'admin';
+        const isPlatformUser = isPlatformAdmin(req);
 
         if (!isPlatformUser) {
           return res.status(403).json({

@@ -27,6 +27,7 @@ import {
   insertDuplicateDetectionRuleSchema,
 } from '../shared/gdpr-core-schema';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = Router();
 
 // Apply security middleware to all routes

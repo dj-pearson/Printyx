@@ -15,13 +15,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-  next();
-};
-
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = express.Router();
 
 // NOTE: Do NOT apply enhanceUserContext globally here because this router is registered
