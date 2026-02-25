@@ -1740,6 +1740,227 @@
       "passes": false,
       "notes": "CRM-008 covers activity timeline for the CRM layout engine, but this is a standalone reusable component that can be adopted incrementally across all detail pages, not just CRM objects. Activity data exists via /api/deals-management/deals/:id/activities and similar endpoints. This is one of the most impactful UX improvements for daily users.",
       "category": "function-improvement"
+    },
+    {
+      "id": "RBAC-006",
+      "title": "Enforce role-based route protection for all unguarded CRM, admin, and finance pages",
+      "description": "As a platform owner, I need every page in the application to enforce minimum role permissions so that sales reps cannot access admin functions, company admins cannot reach root/platform admin pages, and finance pages are restricted to finance roles, preventing unauthorized access through direct URL navigation.",
+      "acceptanceCriteria": [
+        "Audit all routes in client/src/App.tsx and identify every Route that renders a component directly without ProtectedRoute wrapping",
+        "Apply ProtectedRoute to all CRM routes (/crm/deals, /crm/leads, /crm/contacts, /crm/companies, /leads, /customers, /deals, /opportunities) with permissions: ['sales.lead.view_own', 'sales.lead.view_team', 'sales.customer.view_own']",
+        "Apply ProtectedRoute to sales management routes (/quotes, /quotes/new, /quotes/:id, /proposal-builder, /quote-proposal-generation) with permissions: ['sales.quote.view_own', 'sales.quote.view_team']",
+        "Apply ProtectedRoute to finance routes (/advanced-billing, /commission-management) with permissions: ['finance.billing.view', 'finance.reports.view'] and minLevel: 3",
+        "Apply ProtectedRoute to operations routes (/purchase-orders, /warehouse-operations, /equipment-lifecycle, /product-hub) with permissions: ['operations.inventory.view', 'service.equipment.view']",
+        "Apply ProtectedRoute to analytics/reporting routes (/sales-performance-analytics, /sales-command-center, /service-analytics) with permissions: ['reporting.sales.view'] and minLevel: 3",
+        "Routes using AdminRouteGuard (minLevel 7) must remain on: /admin-command-center, /root-admin-signups-crm, /root-admin/seo and all /admin/* paths",
+        "Routes using platformOnly must remain on: /admin-hub, /root-admin-dashboard, /admin/tenant-management, /admin/platform-analytics, /admin/database-management, /admin/mobile-logs, /admin/audit-logs",
+        "All routes that previously had no guard must now show the AccessDenied component for users without the required permissions — NOT a blank page or 404",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "CRITICAL security story. Current App.tsx audit shows most routes at /crm/*, /quotes/*, /customers, /leads, /purchase-orders, /warehouse-operations, /commission-management, and /sales-command-center render components directly with no ProtectedRoute wrapper. A sales rep can navigate directly to /advanced-billing or /commission-management via URL. The RouteGuard and ProtectedRoute components already exist in client/src/components/auth/ — this story is purely applying them consistently. Reference: client/src/components/auth/ProtectedRoute.tsx and client/src/lib/navigation-permissions.ts for the permission map.",
+      "category": "rbac-security"
+    },
+    {
+      "id": "RBAC-007",
+      "title": "Build role-aware sidebar navigation that hides sections users cannot access",
+      "description": "As a sales rep, I should only see navigation items I have permission to use so the interface is not cluttered with links to pages I cannot access, and admin users should see their additional sections without sales users being aware those sections exist.",
+      "acceptanceCriteria": [
+        "Read client/src/lib/navigation-permissions.ts — every SECTION_PERMISSIONS and ITEM_PERMISSIONS entry must be enforced in the sidebar render logic",
+        "Modify the sidebar component (client/src/components/layout/sidebar.tsx or equivalent) to call usePermissions() and filter sections before rendering",
+        "Platform-only sections (platform-admin-hub, tenant-org-management, user-access-management, system-operations, platform-features) must be completely invisible (not just disabled) to non-platform users",
+        "Sections with requiredPermissions (service, products, reporting, finance) are hidden if the user has none of the listed permissions",
+        "Sections with minLevel are hidden if the user's role level is below the minimum",
+        "alwaysVisible sections (dashboard, tasks, ai-hub, knowledge-base, settings, crm) remain visible to all authenticated users",
+        "When a section is hidden, its children items are also hidden — no orphaned links",
+        "Add a hook useVisibleNavItems() in client/src/hooks/ that returns the filtered navigation tree using navigation-permissions.ts rules",
+        "Navigation rendering must not show loading flicker — permissions should be read synchronously from the usePermissions() hook cache",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "navigation-permissions.ts already maps all sections and items to permissions. The sidebar currently renders all items regardless of role. This story wires the existing permission map to the sidebar render. usePermissions() hook exists at client/src/hooks/usePermissions.ts and returns isPlatformUser, level, hasAnyPermission, hasAllPermissions synchronously from cached data. The sidebar component is at client/src/components/layout/ — identify the correct file and apply the filter there.",
+      "category": "rbac-security"
+    },
+    {
+      "id": "RBAC-008",
+      "title": "Implement role-scoped API data filtering so reps only see their own records",
+      "description": "As a sales manager, I need records to be automatically scoped to what each user is authorized to see at the API level — reps see only their own leads and quotes, managers see their team's, directors see their region's — so data isolation is enforced on the server, not just the UI.",
+      "acceptanceCriteria": [
+        "Review server/middleware/hierarchical-query-builder.ts — ensure buildScopedQuery() is applied to all GET list endpoints for: /api/leads, /api/customers, /api/proposals, /api/deals-management/deals, /api/contacts",
+        "Scope tiers must map to role levels: roleLevel 1-2 (own records: userId match), roleLevel 3-4 (team records: teamId match), roleLevel 5-6 (regional records: regionId match), roleLevel 7+ (company-wide: tenantId only)",
+        "Platform admins (roleLevel 8, isPlatformAdmin=true) bypass all scoping and see all tenants",
+        "Each scoped endpoint must read the user's roleLevel, teamId, regionId from the JWT/session via getUserId() and getTenantId() helpers",
+        "Create a server/middleware/scope-middleware.ts helper: applyScopeFilter(req, baseQuery, table) that injects the correct WHERE clause based on role",
+        "Scoped endpoints return only records the user is authorized to see — a rep calling GET /api/leads must not receive another rep's leads",
+        "Add integration test in server/tests/integration/ verifying scope isolation: rep A cannot see rep B's leads, manager sees both, director sees all in region",
+        "Existing admin-level endpoints that intentionally return all records (platform admin routes) must document this explicitly with a comment",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "hierarchical-query-builder.ts exists at server/middleware/hierarchical-query-builder.ts but is not applied consistently across all list endpoints. Currently most endpoints only filter by tenantId which means any authenticated user in the tenant sees all records. This is correct for admins but wrong for reps. The enhanced-rbac-middleware.ts provides EnhancedUserContext with roleLevel, teamId, regionId, territoryScope — use these for scoping. This is a data security story, not just UI.",
+      "category": "rbac-security"
+    },
+    {
+      "id": "RBAC-009",
+      "title": "Add role-specific dashboard views that surface relevant KPIs and actions per role",
+      "description": "As a sales rep, when I log in I should see a dashboard focused on my leads, my quotes, and my tasks — not company-wide revenue charts. As a manager, I should see my team's pipeline. As an executive, I see company-wide KPIs. The dashboard should present the right information for each role automatically.",
+      "acceptanceCriteria": [
+        "Modify the main Dashboard page (client/src/pages/Dashboard.tsx or equivalent) to detect the user's roleLevel from usePermissions() and render the appropriate view",
+        "roleLevel 1-2 (Individual Contributor / Team Lead): Show 'My Pipeline' widgets — My Open Leads count, My Active Quotes with total value, My Upcoming Tasks (next 7 days), My Recent Activity feed",
+        "roleLevel 3-4 (Supervisor / Manager): Show team widgets — Team Pipeline Summary by stage, Team Quota Attainment %, Top Performing Reps (ranked by deals closed this month), Team Activity Feed",
+        "roleLevel 5-6 (Regional / Company Director): Show regional widgets — Regional Revenue vs Target, Pipeline by Stage (all teams in region), Deals at Risk (no activity > 14 days), Conversion Rate trend",
+        "roleLevel 7-8 (Executive / Platform Admin): Show company-wide KPIs — Total Revenue MTD/YTD, MRR, NRR, Customer Count, ARR Forecast, Churn Rate",
+        "Each dashboard tier must use the existing KpiSummaryBar component with role-appropriate metrics",
+        "Quick action buttons on each tier: Rep → 'New Lead', 'New Quote'; Manager → 'Review Pipeline', 'Team Assignments'; Director → 'Reports', 'Forecast'; Admin → 'Admin Hub', 'System Settings'",
+        "Dashboard does not redirect or change URL — same route / but renders different components based on role",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Currently the Dashboard at / renders a single view for all roles. KpiSummaryBar component exists at client/src/components/dashboard/KpiSummaryBar.tsx and accepts configurable metrics. This is a high-impact UX improvement — reps currently see company-wide charts that aren't actionable for them. usePermissions() returns level and role tier. The API scoping from RBAC-003 means the data returned is already role-scoped, so the dashboard widgets can use the same endpoints and get role-appropriate data.",
+      "category": "rbac-security"
+    },
+    {
+      "id": "UX-009",
+      "title": "Implement contextual 'Quick Actions' button strip on all entity detail pages",
+      "description": "As a sales rep, when I'm on a customer, lead, or deal detail page I should see a clearly visible strip of the most common actions for that record's current state — not buried in dropdown menus — so I can act immediately without hunting through nested menus.",
+      "acceptanceCriteria": [
+        "Create a reusable QuickActionsBar component in client/src/components/ui/quick-actions-bar.tsx that accepts: entityType, entityId, currentStatus, and an actions array",
+        "Actions are state-aware: the available actions change based on the record's current status field",
+        "Lead quick actions by status: New → ['Qualify', 'Schedule Call', 'Create Quote', 'Disqualify']; Contacted → ['Log Call', 'Create Quote', 'Schedule Follow-up']; Qualified → ['Create Quote', 'Convert to Customer']; Won → ['Create Quote', 'View Customer']; Lost → ['Reopen', 'Archive']",
+        "Customer quick actions: ['New Quote', 'Log Activity', 'Schedule Service', 'Create Invoice', 'Add Contact']",
+        "Deal quick actions by stage: Early stages → ['Update Stage', 'Create Quote']; Late stages → ['Generate Contract', 'Mark Won', 'Mark Lost']",
+        "Each action button shows an icon + label, uses appropriate variant (primary for main CTA, outline for secondary)",
+        "Actions that navigate away use wouter's useLocation to navigate with pre-populated query params (e.g., 'New Quote' navigates to /quotes/new?businessRecordId=xxx&companyName=xxx&contactId=xxx)",
+        "Actions that open dialogs (Log Activity, Schedule Follow-up) use sheet/dialog from shadcn/ui — no full page navigation required",
+        "Integrate QuickActionsBar into CustomerDetail.tsx at the top of the page, below the header",
+        "Integrate QuickActionsBar into the lead and deal detail pages",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Currently all actions on detail pages are in dropdown kebab menus or tab-buried buttons. HubSpot puts primary actions (Email, Call, Create Note, Schedule Meeting) directly in the header. This story solves the 'buried actions' problem. The navigation with query params is the precursor to QP-001 (auto-populating quotes from customer context). Each action button should respect RBAC — if the user lacks sales.quote.create_own permission, hide the 'New Quote' button rather than show an error after clicking.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-010",
+      "title": "Build a streamlined inline edit mode for record detail fields to reduce edit-page navigation",
+      "description": "As a sales rep, I should be able to click any field on a customer or lead detail page to edit it inline and save without navigating to a separate edit form, matching how modern CRMs allow fast field updates during a call or meeting.",
+      "acceptanceCriteria": [
+        "Create an InlineEditField component in client/src/components/ui/inline-edit-field.tsx supporting field types: text, textarea, select, date, phone, email, currency, number",
+        "Clicking a field value on a detail page replaces it with an input in edit mode; pressing Enter or clicking outside saves; pressing Escape cancels",
+        "On save, fire a PATCH /api/:entityType/:id request with only the changed field (partial update)",
+        "Show a brief success indicator (checkmark for 1.5s) on save; show an error toast if the request fails, and revert the field to its previous value",
+        "Apply InlineEditField to CustomerDetail.tsx for fields: companyName, phone, email, website, address, industry, accountStatus, assignedUserId",
+        "Apply InlineEditField to lead detail pages for fields: firstName, lastName, email, phone, company, status, source, assignedUserId",
+        "Respect RBAC: if the user lacks the write permission for the entity (e.g., sales.customer.edit_own), fields render as read-only text — no click-to-edit affordance shown",
+        "assignedUserId field uses a searchable user select dropdown populated from GET /api/users?tenantId=xxx",
+        "Changes made via inline edit must invalidate the relevant TanStack Query cache key so other components on the page reflect the update",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Currently CustomerDetail.tsx and lead detail pages require navigating to a separate edit form or opening a modal to change any field. This is a 3-click workflow that inline editing reduces to 1 click. PATCH endpoints already exist for customers and leads (server/routes-*.ts). The InlineEditField component pattern is common in CRMs — refer to HubSpot's click-to-edit behavior. TanStack Query invalidation: use queryClient.invalidateQueries({ queryKey: ['/api/customers', id] }) after a successful PATCH.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-011",
+      "title": "Add global keyboard shortcuts and command palette for power-user navigation",
+      "description": "As a power user, I need keyboard shortcuts and a command palette (Cmd+K) to quickly navigate to any page, create a new record, or perform common actions without using the mouse, so I can work faster during high-volume sales periods.",
+      "acceptanceCriteria": [
+        "Implement a CommandPalette component in client/src/components/ui/command-palette.tsx using shadcn/ui Command (cmdk) component",
+        "Open with Cmd+K (Mac) / Ctrl+K (Windows/Linux) from anywhere in the app; close with Escape",
+        "Command palette sections: Navigate (links to all main pages), Create New (New Lead, New Quote, New Customer, New Contact, New Deal), Recent (last 5 visited records from localStorage), Actions (current page actions if applicable)",
+        "Navigation commands: 'Go to Dashboard', 'Go to Leads', 'Go to Quotes', 'Go to Customers', 'Go to Deals', 'Go to Reports', etc.",
+        "Fuzzy search filters all commands in real time as the user types",
+        "Create New commands navigate to the appropriate creation page or open a quick-create sheet",
+        "Keyboard shortcuts outside the palette: N+L = New Lead, N+Q = New Quote, N+C = New Customer (sequential key combos, not simultaneous)",
+        "Add a small keyboard shortcut hint badge in the sidebar nav items and action buttons where shortcuts exist",
+        "Command palette respects RBAC — only shows commands for pages/actions the user has permission to access (use usePermissions() to filter)",
+        "Register the command palette at the App root level (App.tsx) so it works on all pages",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "cmdk is already available via shadcn/ui Command component. This is a high-delight feature for sales reps who work at volume. The command palette should be lazy-loaded and not impact initial page load. Sequential key combos (N then L) are simpler to implement than chords and avoid conflicts with browser shortcuts. The RBAC filter is important — showing 'Go to Admin Hub' to a rep who cannot access it creates confusion.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "QP-001",
+      "title": "Enable quote creation pre-seeded with customer and contact data from the record context",
+      "description": "As a sales rep, when I click 'New Quote' from a customer or lead detail page, the quote builder should automatically fill in the company name, primary contact, billing address, and any existing equipment so I don't have to re-enter information I'm already looking at.",
+      "acceptanceCriteria": [
+        "Modify the 'New Quote' navigation action on CustomerDetail.tsx to navigate to /quotes/new?businessRecordId={id}&companyName={encodeURIComponent(name)}&contactId={primaryContactId}&contactName={encodeURIComponent(contactName)}",
+        "Modify QuoteBuilderPage.tsx to read URL search params (businessRecordId, companyName, contactId, contactName) on mount using useSearch() from wouter",
+        "If businessRecordId param is present, pre-populate the quote's customer/company fields and skip the customer search step in the quote wizard",
+        "If contactId param is present, pre-populate the primary contact field on the quote",
+        "If businessRecordId is present, automatically fetch GET /api/customers/{businessRecordId}/equipment to pre-populate an 'Existing Equipment' section in the quote as reference line items (not billed — informational context)",
+        "After auto-population, the sales rep lands directly on the product/line items step of the quote builder, not the customer selection step",
+        "Show a contextual banner in the quote builder: 'Creating quote for [Company Name] — customer details pre-filled. Edit if needed.'",
+        "The 'New Quote' button on CustomerDetail.tsx must only be visible to users with sales.quote.create_own or sales.quote.create_team permission",
+        "The same pre-seeding must work from the lead detail page: navigate with businessRecordId of the lead record",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Currently /quotes/new opens a blank QuoteBuilderPage. The customer, contact, and company fields must be filled manually even when navigating from a customer record. URL search params are the correct mechanism — no new API needed. QuoteBuilderPage uses wouter for routing; useSearch() returns the query string. businessRecordId is already a field on the quotes/proposals schema (business_record_id in shared/schema.ts). The UX-001 story's QuickActionsBar 'New Quote' action should use these same params. This eliminates 4-6 manual form fields in the quote creation flow.",
+      "category": "quote-process"
+    },
+    {
+      "id": "QP-002",
+      "title": "Build a multi-step quote wizard with progress indicator to reduce quote creation errors",
+      "description": "As a sales rep, I need the quote creation flow to guide me through clearly labeled steps (Customer, Products, Pricing, Review & Send) with a visible progress indicator so I know what's required at each step and don't accidentally skip required fields before sending.",
+      "acceptanceCriteria": [
+        "Refactor QuoteBuilderPage.tsx into a multi-step wizard with 4 steps: Step 1 'Customer & Contact' (skip if pre-seeded from QP-001), Step 2 'Products & Line Items', Step 3 'Pricing & Terms', Step 4 'Review & Send'",
+        "Add a horizontal step progress indicator at the top of the wizard showing all 4 steps with the current step highlighted and completed steps marked with a checkmark",
+        "Step 1 (Customer & Contact): company name (required), primary contact (required), billing address, quote expiry date (default: 30 days from today)",
+        "Step 2 (Products & Line Items): product catalog search, quantity, unit price, line item notes, subtotal running total visible in sidebar",
+        "Step 3 (Pricing & Terms): discount (%, flat, or tiered), tax rate, payment terms (Net 15/30/45/60, Due on Receipt), internal notes, customer-facing notes",
+        "Step 4 (Review & Send): full read-only preview of the quote as it will appear to the customer, with a 'Edit' button per section to jump back, and primary CTA buttons: 'Save as Draft', 'Send to Customer', 'Download PDF'",
+        "Each step validates required fields before allowing 'Next' — show inline validation errors, not a global alert",
+        "Step navigation: 'Back' and 'Next' buttons on each step, plus clicking a completed step in the progress bar jumps to it",
+        "Wizard state is preserved in component state (not URL) — navigating Back does not lose entered data",
+        "If pre-seeded from QP-001, Step 1 is auto-completed and the wizard opens on Step 2 with a 'Customer pre-filled' notice in the step indicator",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Current QuoteBuilderPage is a single-form page. Converting to a wizard reduces cognitive load and prevents incomplete quotes from being sent. The product catalog search for Step 2 uses GET /api/products/search?q=. Pricing logic from Step 3 mirrors existing quote schema fields: discount, taxRate, paymentTerms, notes. The Review step in Step 4 can reuse the existing QuoteView component in read-only mode. Pre-seeding from QP-001 means Step 1 is skipped — implement by tracking a completedSteps Set and marking step 1 complete if businessRecordId param was present.",
+      "category": "quote-process"
+    },
+    {
+      "id": "QP-003",
+      "title": "Add quote templates with one-click application and product bundle presets",
+      "description": "As a sales rep, I need to start new quotes from pre-built templates (e.g., 'Standard Copier Lease', 'MPS Agreement', 'Equipment + Service Bundle') that pre-fill the line items, pricing structure, and terms so I can generate a complete quote in under 2 minutes for common deal types.",
+      "acceptanceCriteria": [
+        "Create a quote_templates table in shared/schema.ts: id, tenantId, name, description, category (lease/service/equipment/bundle), lineItems (jsonb array), defaultTerms (text), defaultPaymentTerms, defaultExpiryDays, isActive, createdBy, createdAt",
+        "Create GET /api/quote-templates endpoint returning active templates for the tenant, grouped by category",
+        "Create POST /api/quote-templates endpoint for admins/managers to create new templates (minLevel: 4 required)",
+        "Create PUT /api/quote-templates/:id and DELETE /api/quote-templates/:id for template management",
+        "On the QuoteBuilderPage Step 2 (Products), add a 'Start from Template' button that opens a template picker sheet",
+        "Template picker shows templates grouped by category with name, description, line item count, and an estimated total based on standard pricing",
+        "Applying a template appends all template line items to the current quote (does not replace existing items) and applies the template's default terms",
+        "Seed 5 starter templates for the Printyx copier dealer context: 'Standard Copier Lease', 'Color MFP Purchase', 'MPS Service Agreement', 'Equipment + 1yr Service Bundle', 'Trade-in + New Device'",
+        "Template management UI at /admin/quote-templates accessible to users with minLevel: 4",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "QuoteTemplates component already exists at client/src/components/quotes/quote-templates.tsx but appears to be a display component only. This story adds the database backend and the apply-to-active-quote flow. The lineItems jsonb stores [{productId, description, quantity, unitPrice, notes}] matching the existing quote line item schema. Templates reduce the average quote creation time from 8-12 minutes to under 2 minutes for repeat deal types. Admin management route should use ProtectedRoute with minLevel: 4 consistent with RBAC-001.",
+      "category": "quote-process"
     }
   ]
 }
