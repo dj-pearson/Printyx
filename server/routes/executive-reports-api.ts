@@ -7,6 +7,7 @@ import { Router, type Request, type Response } from 'express';
 import { ExecutiveReportingService } from '../services/executive-reporting-service';
 import { enhanceUserContext, requireLevel } from '../middleware/enhanced-rbac-middleware';
 import { createModuleLogger } from '../lib/logger';
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const log = createModuleLogger('executive-reports-api');
 
 const router = Router();

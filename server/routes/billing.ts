@@ -38,6 +38,7 @@ import { pdfGenerationService } from '../services/pdf-generation-service';
 import { emailService } from '../services/email-service';
 import { billingAnalytics } from '../services/billing-analytics-service';
 
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const router = Router();
 
 // =============================================================================

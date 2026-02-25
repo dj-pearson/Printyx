@@ -8,6 +8,7 @@ import { createApolloClientForTenant } from '../apollo-client';
 import { apolloStorage } from '../apollo-storage';
 import crypto from 'crypto';
 import { createModuleLogger } from '../lib/logger';
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const log = createModuleLogger('chrome-extension-routes');
 
 const router = express.Router();

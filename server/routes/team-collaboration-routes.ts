@@ -6,15 +6,10 @@
 import express from 'express';
 import TeamCollaborationService from '../services/team-collaboration-service';
 import { createModuleLogger } from '../lib/logger';
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const log = createModuleLogger('team-collaboration-routes');
 
 const router = express.Router();
-
-// Mock authentication middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  req.user = { id: 'mock-user-id', tenantId: 'mock-tenant-id' };
-  next();
-};
 
 /**
  * POST /api/teams

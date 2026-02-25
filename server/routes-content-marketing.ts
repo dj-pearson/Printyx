@@ -29,6 +29,8 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
+import { requireAuth } from './replitAuth';
 const router = express.Router();
 
 // NOTE: Do NOT apply enhanceUserContext globally here because this router is registered
@@ -39,13 +41,6 @@ const router = express.Router();
 // Auth middleware - make content public for unauthenticated users, but track tenantId for authenticated
 const optionalAuth = (req: any, res: any, next: any) => {
   // Continue regardless of auth status
-  next();
-};
-
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
   next();
 };
 

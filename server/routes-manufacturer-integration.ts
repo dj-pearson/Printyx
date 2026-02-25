@@ -16,6 +16,7 @@ import {
 } from '@shared/schema';
 import { manufacturerIntegrationService } from './manufacturer-integration-service';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 export function registerManufacturerIntegrationRoutes(app: Express) {
   // Get all integrations for a tenant
   app.get('/api/manufacturer-integrations', async (req: any, res) => {

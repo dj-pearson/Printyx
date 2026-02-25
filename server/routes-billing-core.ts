@@ -23,6 +23,7 @@ import { and, eq, sql, desc, inArray } from 'drizzle-orm';
 import { contracts, invoices, contractTieredRates } from '@shared/schema';
 import { storage } from './storage';
 import { createModuleLogger } from './lib/logger';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const log = createModuleLogger('routes-billing-core');
 
 // Helper function to calculate tiered billing amounts

@@ -14,6 +14,7 @@ import {
 } from '../middleware/enhanced-rbac-middleware';
 import { SalesSupervisorReportingService } from '../services/sales-supervisor-reporting-service';
 
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const router = Router();
 
 // Apply RBAC to all routes

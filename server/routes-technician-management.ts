@@ -23,6 +23,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 // Validation schemas for update and query operations
 const updateTechnicianSchema = z
   .object({

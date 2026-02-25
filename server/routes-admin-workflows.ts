@@ -21,30 +21,6 @@ const router = Router();
 // Apply RBAC context to all admin workflow routes
 router.use(enhanceUserContext);
 
-// Middleware to check authentication
-const requireAuth = (req: any, res: any, next: any) => {
-  const userId = getUserId(req);
-
-  if (!userId) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-
-  if (!req.user) {
-    req.user = {
-      id: userId,
-      tenantId: getTenantId(req),
-    };
-  } else if (!req.user.tenantId || !req.user.id) {
-    req.user = {
-      ...req.user,
-      id: req.user.id || userId,
-      tenantId: req.user.tenantId || getTenantId(req),
-    };
-  }
-
-  next();
-};
-
 /**
  * GET /api/admin/pending-tasks
  * Get pending administrative tasks requiring attention

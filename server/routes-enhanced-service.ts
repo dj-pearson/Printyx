@@ -29,6 +29,7 @@ import { CustomerPortalService } from './services/customer-portal-service';
 import { billingEngine } from './services/billing-engine-service';
 import { updateServiceRequestStatusSchema } from '@shared/customer-portal-schema';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = express.Router();
 const customerPortalService = new CustomerPortalService();
 

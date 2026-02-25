@@ -16,30 +16,6 @@ import { getUserId, getTenantId } from './utils/auth-helpers';
 
 const router = Router();
 
-// Simple auth middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  const userId = getUserId(req);
-
-  if (!userId) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-
-  if (!req.user) {
-    req.user = {
-      id: userId,
-      tenantId: getTenantId(req),
-    };
-  } else if (!req.user.id || !req.user.tenantId) {
-    req.user = {
-      ...req.user,
-      id: req.user.id || userId,
-      tenantId: req.user.tenantId || getTenantId(req),
-    };
-  }
-
-  next();
-};
-
 // Generate display ID and URL slug for a specific business record
 router.post('/generate/:recordId', async (req: any, res) => {
   try {

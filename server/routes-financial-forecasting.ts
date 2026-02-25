@@ -21,6 +21,7 @@ const log = createModuleLogger('routes-financial-forecasting');
 
 import { businessRecords, serviceTickets, invoices } from '@shared/schema';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 export function registerFinancialForecastingRoutes(app: Express) {
   // ============= FINANCIAL FORECASTING ROUTES =============
 

@@ -36,6 +36,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 // Middleware to authenticate monitoring clients via API key
 async function authenticateClient(req: any, res: any, next: any) {
   try {

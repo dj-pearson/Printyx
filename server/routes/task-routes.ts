@@ -7,15 +7,10 @@ import express from 'express';
 import TaskSchedulingService from '../services/task-scheduling-service';
 import ClaudeAIService from '../services/claude-ai-service';
 import { createModuleLogger } from '../lib/logger';
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const log = createModuleLogger('task-routes');
 
 const router = express.Router();
-
-// Mock authentication middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  req.user = { id: 'mock-user-id', tenantId: 'mock-tenant-id' };
-  next();
-};
 
 /**
  * GET /api/tasks

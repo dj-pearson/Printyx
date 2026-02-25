@@ -6,6 +6,7 @@ import { businessRecords } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { isAuthenticated } from '../replitAuth';
 import { createModuleLogger } from '../lib/logger';
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const log = createModuleLogger('apollo-routes');
 
 const router = express.Router();

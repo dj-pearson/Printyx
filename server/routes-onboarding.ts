@@ -30,46 +30,6 @@ import { ObjectStorageService } from './objectStorage';
 import { eq, and, or, ilike, sql, desc } from 'drizzle-orm';
 import { db } from './db';
 import puppeteer from 'puppeteer';
-// Authentication middleware
-const requireAuth = async (req: any, res: any, next: any) => {
-  try {
-    const userId = getUserId(req);
-
-    if (!userId) {
-      return res.status(401).json({ message: 'Authentication required' });
-    }
-
-    // If we have userId but no req.user, get user details from storage
-    if (userId && !req.user) {
-      const user = await storage.getUser(userId);
-      if (user) {
-        req.user = {
-          id: user.id,
-          tenantId: user.tenantId,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-        };
-      }
-    }
-
-    // Ensure tenantId is available
-    const tenantId = getTenantId(req);
-    if (!req.user?.tenantId && tenantId) {
-      req.user = { ...req.user, tenantId };
-    }
-
-    if (!req.user?.tenantId) {
-      return res.status(400).json({ error: 'Tenant ID is required' });
-    }
-
-    next();
-  } catch (error) {
-    log.error('Authentication error:', error);
-    return res.status(500).json({ message: 'Authentication error' });
-  }
-};
-
 // PDF Generation Service
 class OnboardingPDFService {
   private async generateChecklistHTML(

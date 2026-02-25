@@ -1318,7 +1318,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Currently only ~80 of 261 pages have permission rules in navigation-permissions.ts. Pages like /gpt5-dashboard, /social-media-generator, /autopilot-*, many admin pages lack guards. Users can bypass sidebar role filtering by navigating directly to URLs. The sidebar hides items but doesn't prevent access. Key files: client/src/App.tsx (261 routes), client/src/lib/navigation-permissions.ts (~80 entries), client/src/components/layout/RoleAwareCollapsibleSidebar.tsx.",
       "category": "rbac"
     },
@@ -1338,7 +1338,7 @@
         "Tests pass: npm run test"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Found ~8-10 different auth middleware patterns across route files. Some define requireAuth inline, some import from replitAuth, some from supabase-auth. This inconsistency makes security auditing difficult. CLAUDE.md documents the correct patterns but they aren't consistently followed.",
       "category": "rbac"
     },
@@ -1359,7 +1359,7 @@
         "Tests pass: npm run test"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Many endpoints currently only check requireAuth (is the user logged in?) but not requirePermission (does the user have the right role/permission?). Bulk operations and DELETE routes are the highest risk. The enhanced-rbac-middleware.ts has full support for granular permissions but adoption is incomplete.",
       "category": "rbac"
     },
@@ -1378,7 +1378,7 @@
         "Tests pass: npm run test"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Two role systems exist: 'roles' table (frontend via PostgREST) and 'enhanced_roles' (backend RBAC). Legacy string checks create duplicate logic paths that are hard to audit. The enhanced RBAC system is complete and should be the single source of truth.",
       "category": "rbac"
     },
@@ -1399,7 +1399,7 @@
         "Build passes: npm run build"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Currently the sidebar hides navigation items by role, but within pages all action buttons render regardless of permission. Users see 'Delete' and 'Approve' buttons that return 403 when clicked. This creates a frustrating UX. The backend already enforces permissions - the frontend just needs to match.",
       "category": "rbac"
     },
@@ -1421,7 +1421,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Backend endpoint GET /api/universal-search already exists. Frontend has no global search UI - users must navigate to specific modules to search. A command palette (Cmd+K) pattern is standard in modern SaaS apps. Use shadcn/ui Dialog + Command components.",
       "category": "ux-flow"
     },
@@ -1441,7 +1441,7 @@
         "Build passes: npm run build"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Detail pages like LeadDetail, CustomerDetail, QuoteView are dead-ends - no visible back navigation. Users who land on a detail page via URL have no context of where they are in the app hierarchy. Breadcrumbs are the standard solution.",
       "category": "ux-flow"
     },
@@ -1463,7 +1463,7 @@
         "Build passes: npm run build"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Current dashboard exists but doesn't provide role-appropriate guidance. A good landing page reduces time-to-first-action. Dashboard widget customization (US-059) exists as a story but this focuses on sensible defaults per role. Leverage existing KPI endpoints and analytics services.",
       "category": "ux-flow"
     },
@@ -1485,7 +1485,7 @@
         "Build passes: npm run build"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Currently forms vary widely: some use Dialog, some inline, validation display is inconsistent, submit button states differ. React Hook Form + Zod are already used but the outer chrome (dialog, error display, button states) needs standardization. This is about UX consistency, not rewriting form logic.",
       "category": "ux-flow"
     },
@@ -1506,7 +1506,7 @@
         "Build passes: npm run build"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "US-025 covers standardizing loading/empty states but focuses on top pages. This extends coverage comprehensively. Some pages show blank white space during loading or when empty. TableSkeleton component exists but isn't used everywhere. Error states are especially important for mobile users on flaky connections.",
       "category": "ux-flow"
     },
@@ -1526,7 +1526,7 @@
         "Build passes: npm run build"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Every page currently does manual field mapping like: invoiceNumber: item.invoiceNumber || item.invoice_number || ''. This creates 50+ lines of duplicate transformation per page, is error-prone, and makes it hard to add new fields. A centralized mapper eliminates this entirely.",
       "category": "ux-flow"
     },
@@ -1548,7 +1548,7 @@
         "Build passes: npm run build"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Currently pages use queryClient.invalidateQueries() which does a full refetch after every mutation. This causes visible loading flicker and feels slow, especially on mobile. useOptimisticMutations hook already exists in the codebase but isn't widely adopted. This story expands adoption.",
       "category": "ux-flow"
     },
@@ -1567,7 +1567,7 @@
         "Build passes: npm run build"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "US-055 covers guided onboarding wizard for new tenants. This story focuses on persistent contextual help throughout the app, not just initial setup. Knowledge base system exists (npm run kb commands). Help tooltips reduce support burden and improve feature discovery.",
       "category": "ux-flow"
     },
@@ -1589,7 +1589,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Quotes page has status workflow but no expiration warnings (validUntil field exists but isn't visually flagged). No versioning visible - important for audit trails and negotiations. No send workflow - status changes to 'sent' manually but no email is triggered. These are core sales workflow gaps.",
       "category": "function-improvement"
     },
@@ -1610,7 +1610,7 @@
         "Build passes: npm run build"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Invoice page has generation and payment recording but lacks aging analysis - a critical billing function. No automated reminders. Generate dialog requires manual date range with no presets. Partial payment tracking unclear. These are core billing workflow gaps for any print shop.",
       "category": "function-improvement"
     },
@@ -1631,7 +1631,7 @@
         "Build passes: npm run build"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Schema has ownerId, assignedSalesRep, territory fields on businessRecords. leadAssignmentHistory, salesTerritories, repCapacity tables exist in lead-assignment-schema.ts. Lead scoring service may exist but isn't surfaced in the UI. Activity data available via deals activities API.",
       "category": "function-improvement"
     },
@@ -1652,7 +1652,7 @@
         "Build passes: npm run build"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Customer page has 6 filter dimensions but lacks business intelligence. No health scoring, no contract context, no hierarchy view. For a print shop management platform, seeing equipment deployed and contract status per customer is essential for account management.",
       "category": "function-improvement"
     },
@@ -1673,7 +1673,7 @@
         "Build passes: npm run build"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Orders are a core workflow for a print shop. The page likely exists but needs fulfillment-specific UX. Print shops need to track production stages, delivery logistics, and customer communication. This turns the orders page from a simple list into a fulfillment management tool.",
       "category": "function-improvement"
     },
@@ -1694,7 +1694,7 @@
         "Build passes: npm run build"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Service Hub has Dispatch, Technicians, Meter Readings pages. Leaflet is installed (with --legacy-peer-deps). For a print/copier shop, service dispatch is a core revenue function. Technicians service equipment on-site and SLA tracking is contractually important.",
       "category": "function-improvement"
     },
@@ -1715,7 +1715,7 @@
         "Build passes: npm run build"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "WebSocket infrastructure exists (useWebSocket hook, US-035 covers WebSocket auth). Multiple users editing the same quote, lead, or order can cause silent data overwrites. Presence indicators are a basic collaboration feature for multi-user platforms.",
       "category": "function-improvement"
     },
@@ -1737,7 +1737,7 @@
         "Build passes: npm run build"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "CRM-008 covers activity timeline for the CRM layout engine, but this is a standalone reusable component that can be adopted incrementally across all detail pages, not just CRM objects. Activity data exists via /api/deals-management/deals/:id/activities and similar endpoints. This is one of the most impactful UX improvements for daily users.",
       "category": "function-improvement"
     },
@@ -1759,7 +1759,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "CRITICAL security story. Current App.tsx audit shows most routes at /crm/*, /quotes/*, /customers, /leads, /purchase-orders, /warehouse-operations, /commission-management, and /sales-command-center render components directly with no ProtectedRoute wrapper. A sales rep can navigate directly to /advanced-billing or /commission-management via URL. The RouteGuard and ProtectedRoute components already exist in client/src/components/auth/ — this story is purely applying them consistently. Reference: client/src/components/auth/ProtectedRoute.tsx and client/src/lib/navigation-permissions.ts for the permission map.",
       "category": "rbac-security"
     },
@@ -1781,7 +1781,7 @@
         "Build passes: npm run build"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "navigation-permissions.ts already maps all sections and items to permissions. The sidebar currently renders all items regardless of role. This story wires the existing permission map to the sidebar render. usePermissions() hook exists at client/src/hooks/usePermissions.ts and returns isPlatformUser, level, hasAnyPermission, hasAllPermissions synchronously from cached data. The sidebar component is at client/src/components/layout/ — identify the correct file and apply the filter there.",
       "category": "rbac-security"
     },
@@ -1802,7 +1802,7 @@
         "Build passes: npm run build"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "hierarchical-query-builder.ts exists at server/middleware/hierarchical-query-builder.ts but is not applied consistently across all list endpoints. Currently most endpoints only filter by tenantId which means any authenticated user in the tenant sees all records. This is correct for admins but wrong for reps. The enhanced-rbac-middleware.ts provides EnhancedUserContext with roleLevel, teamId, regionId, territoryScope — use these for scoping. This is a data security story, not just UI.",
       "category": "rbac-security"
     },
@@ -1823,7 +1823,7 @@
         "Build passes: npm run build"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Currently the Dashboard at / renders a single view for all roles. KpiSummaryBar component exists at client/src/components/dashboard/KpiSummaryBar.tsx and accepts configurable metrics. This is a high-impact UX improvement — reps currently see company-wide charts that aren't actionable for them. usePermissions() returns level and role tier. The API scoping from RBAC-003 means the data returned is already role-scoped, so the dashboard widgets can use the same endpoints and get role-appropriate data.",
       "category": "rbac-security"
     },
@@ -1846,7 +1846,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Currently all actions on detail pages are in dropdown kebab menus or tab-buried buttons. HubSpot puts primary actions (Email, Call, Create Note, Schedule Meeting) directly in the header. This story solves the 'buried actions' problem. The navigation with query params is the precursor to QP-001 (auto-populating quotes from customer context). Each action button should respect RBAC — if the user lacks sales.quote.create_own permission, hide the 'New Quote' button rather than show an error after clicking.",
       "category": "ux-flow"
     },
@@ -1868,7 +1868,7 @@
         "Build passes: npm run build"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Currently CustomerDetail.tsx and lead detail pages require navigating to a separate edit form or opening a modal to change any field. This is a 3-click workflow that inline editing reduces to 1 click. PATCH endpoints already exist for customers and leads (server/routes-*.ts). The InlineEditField component pattern is common in CRMs — refer to HubSpot's click-to-edit behavior. TanStack Query invalidation: use queryClient.invalidateQueries({ queryKey: ['/api/customers', id] }) after a successful PATCH.",
       "category": "ux-flow"
     },
@@ -1891,7 +1891,7 @@
         "Build passes: npm run build"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "cmdk is already available via shadcn/ui Command component. This is a high-delight feature for sales reps who work at volume. The command palette should be lazy-loaded and not impact initial page load. Sequential key combos (N then L) are simpler to implement than chords and avoid conflicts with browser shortcuts. The RBAC filter is important — showing 'Go to Admin Hub' to a rep who cannot access it creates confusion.",
       "category": "ux-flow"
     },
@@ -1913,7 +1913,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Currently /quotes/new opens a blank QuoteBuilderPage. The customer, contact, and company fields must be filled manually even when navigating from a customer record. URL search params are the correct mechanism — no new API needed. QuoteBuilderPage uses wouter for routing; useSearch() returns the query string. businessRecordId is already a field on the quotes/proposals schema (business_record_id in shared/schema.ts). The UX-001 story's QuickActionsBar 'New Quote' action should use these same params. This eliminates 4-6 manual form fields in the quote creation flow.",
       "category": "quote-process"
     },
@@ -1936,7 +1936,7 @@
         "Build passes: npm run build"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Current QuoteBuilderPage is a single-form page. Converting to a wizard reduces cognitive load and prevents incomplete quotes from being sent. The product catalog search for Step 2 uses GET /api/products/search?q=. Pricing logic from Step 3 mirrors existing quote schema fields: discount, taxRate, paymentTerms, notes. The Review step in Step 4 can reuse the existing QuoteView component in read-only mode. Pre-seeding from QP-001 means Step 1 is skipped — implement by tracking a completedSteps Set and marking step 1 complete if businessRecordId param was present.",
       "category": "quote-process"
     },
@@ -1958,7 +1958,7 @@
         "Build passes: npm run build"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "QuoteTemplates component already exists at client/src/components/quotes/quote-templates.tsx but appears to be a display component only. This story adds the database backend and the apply-to-active-quote flow. The lineItems jsonb stores [{productId, description, quantity, unitPrice, notes}] matching the existing quote line item schema. Templates reduce the average quote creation time from 8-12 minutes to under 2 minutes for repeat deal types. Admin management route should use ProtectedRoute with minLevel: 4 consistent with RBAC-001.",
       "category": "quote-process"
     }

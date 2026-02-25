@@ -11,14 +11,6 @@ const log = createModuleLogger('content-gap-analysis-routes');
 
 const router = Router();
 
-// Middleware to require authentication
-const requireAuth = (req: Request, res: Response, next: Function) => {
-  if (!req.session || !req.session.userId) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-  next();
-};
-
 // Middleware to require admin role
 const requireAdmin = (req: Request, res: Response, next: Function) => {
   if (!req.session || !req.session.userId) {

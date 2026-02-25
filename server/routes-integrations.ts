@@ -4,6 +4,7 @@ import { isAuthenticated } from './replitAuth';
 import { insertSystemIntegrationSchema } from '@shared/schema';
 import { NotFoundError } from './lib/api-errors';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 // System integrations routes using real database data
 export function registerIntegrationRoutes(app: Express) {
   // Get all integrations
