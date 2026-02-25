@@ -1299,6 +1299,447 @@
       "passes": true,
       "notes": "HubSpot's core UX principle: 'Contacts, companies, deals, tickets, and custom objects all share the same basic index + board + record patterns.' This story generalizes the deals-specific work from CRM-002 through CRM-009 into a generic object view system. The object registry pattern lets each type define its behavior. Existing pages to refactor: Contacts.tsx, CustomersPage.tsx, CompanyContacts.tsx, ProspectsPage.tsx. Reference: CRM_Layout.md 'Custom objects and extensible UI' section.",
       "category": "crm-hubspot"
+    },
+    {
+      "id": "RBAC-001",
+      "title": "Complete frontend route permission guards for all 261 pages",
+      "description": "As a security auditor, I need every frontend route to enforce permission checks so users cannot access pages by typing URLs directly, closing the ~180-page gap in navigation-permissions.ts coverage.",
+      "acceptanceCriteria": [
+        "Audit all 261 routes in client/src/App.tsx against client/src/lib/navigation-permissions.ts",
+        "Add permission entries for every page missing from navigationPermissions map",
+        "Group missing pages by module: dashboards, equipment, billing, reports, admin, settings, integrations",
+        "Create a ProtectedRoute wrapper component that checks navigationPermissions before rendering",
+        "Wrap all lazy-loaded routes in App.tsx with ProtectedRoute",
+        "Unauthenticated users redirected to /login; authenticated users without permission see a 403 page with 'Request Access' link",
+        "Create a simple /unauthorized page component explaining the user lacks permission",
+        "Verify platform admin (level 8) can access all pages",
+        "Verify location-level user (level 1) is blocked from admin pages",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Currently only ~80 of 261 pages have permission rules in navigation-permissions.ts. Pages like /gpt5-dashboard, /social-media-generator, /autopilot-*, many admin pages lack guards. Users can bypass sidebar role filtering by navigating directly to URLs. The sidebar hides items but doesn't prevent access. Key files: client/src/App.tsx (261 routes), client/src/lib/navigation-permissions.ts (~80 entries), client/src/components/layout/RoleAwareCollapsibleSidebar.tsx.",
+      "category": "rbac"
+    },
+    {
+      "id": "RBAC-002",
+      "title": "Standardize auth middleware imports across all 156 route files",
+      "description": "As a developer, I need a single consistent auth middleware pattern across all route files so security behavior is uniform and auditable.",
+      "acceptanceCriteria": [
+        "Audit all server/routes-*.ts and server/routes/*.ts files for auth middleware usage",
+        "Replace all inline requireAuth definitions with centralized imports",
+        "Standardize on: import { requireSupabaseAuth as requireAuth } from './middleware/supabase-auth' for JWT auth",
+        "Ensure every route file uses getUserId(req) and getTenantId(req) from utils/auth-helpers instead of direct req.user access",
+        "Remove any duplicate middleware definitions found in individual route files",
+        "Create a lint rule or code comment convention documenting the standard pattern",
+        "Verify no route files define their own auth middleware inline",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Found ~8-10 different auth middleware patterns across route files. Some define requireAuth inline, some import from replitAuth, some from supabase-auth. This inconsistency makes security auditing difficult. CLAUDE.md documents the correct patterns but they aren't consistently followed.",
+      "category": "rbac"
+    },
+    {
+      "id": "RBAC-003",
+      "title": "Add granular RBAC permission checks to all CRUD and sensitive endpoints",
+      "description": "As a security engineer, I need every API endpoint that modifies data to enforce granular RBAC permissions (not just authentication) so users can only perform actions their role allows.",
+      "acceptanceCriteria": [
+        "Audit all POST, PUT, PATCH, DELETE endpoints across route files for requirePermission usage",
+        "Add requirePermission middleware to all data-modifying endpoints that currently only use requireAuth",
+        "DELETE endpoints require appropriate .delete permission (e.g., sales.lead.delete_own, admin.record.delete_all)",
+        "Bulk operation endpoints (/api/*/bulk-update, /api/*/bulk-delete) require elevated permissions (scope: _all or _team)",
+        "Settings/configuration endpoints require admin-level permissions",
+        "Export endpoints require appropriate .export permission",
+        "Document the complete permission matrix: endpoint → required permissions in a permissions-matrix.ts file",
+        "Add tests verifying permission denial returns 403 with descriptive message",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Many endpoints currently only check requireAuth (is the user logged in?) but not requirePermission (does the user have the right role/permission?). Bulk operations and DELETE routes are the highest risk. The enhanced-rbac-middleware.ts has full support for granular permissions but adoption is incomplete.",
+      "category": "rbac"
+    },
+    {
+      "id": "RBAC-004",
+      "title": "Eliminate legacy string-role checks and unify on enhanced RBAC system",
+      "description": "As a developer, I need the codebase to use a single RBAC system instead of mixing legacy string role checks ('admin', 'root_admin') with the enhanced RBAC permission system.",
+      "acceptanceCriteria": [
+        "Find all instances of legacy role string comparisons (role === 'admin', role === 'root_admin', role === 'manager', etc.) in server/ directory",
+        "Replace each with equivalent enhanced RBAC permission checks using requirePermission or hasPermission",
+        "Map legacy roles to their enhanced RBAC equivalents and document the mapping",
+        "Remove or deprecate the legacy role-to-permission mapping functions that bridge old and new systems",
+        "Update the roles seeder (npm run seed:rbac) to ensure all enhanced roles have complete permission sets",
+        "Verify platform admin bypass still works correctly through enhanced RBAC (level 8 auto-grants)",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Two role systems exist: 'roles' table (frontend via PostgREST) and 'enhanced_roles' (backend RBAC). Legacy string checks create duplicate logic paths that are hard to audit. The enhanced RBAC system is complete and should be the single source of truth.",
+      "category": "rbac"
+    },
+    {
+      "id": "RBAC-005",
+      "title": "Add role-based UI element visibility throughout frontend",
+      "description": "As a sales rep, I should only see buttons, menu items, and form fields that my role permits so the UI isn't cluttered with actions I can't perform.",
+      "acceptanceCriteria": [
+        "Create a usePermission(permissionKey) hook that checks the current user's permissions client-side",
+        "Create a <PermissionGate permission='sales.quote.approve_standard'> wrapper component that conditionally renders children",
+        "Hide 'Delete' buttons for users without delete permissions on each entity",
+        "Hide 'Approve' buttons on quotes/orders for users below approval threshold",
+        "Hide 'Export' buttons for users without export permissions",
+        "Hide admin-only actions (user management, role assignment, tenant settings) for non-admin roles",
+        "Disable (don't hide) edit fields on records the user can view but not modify (e.g., view_own without edit_own)",
+        "Apply PermissionGate to at least: LeadsManagement, QuotesManagement, Invoices, Customers, Orders, and all Admin pages",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Currently the sidebar hides navigation items by role, but within pages all action buttons render regardless of permission. Users see 'Delete' and 'Approve' buttons that return 403 when clicked. This creates a frustrating UX. The backend already enforces permissions - the frontend just needs to match.",
+      "category": "rbac"
+    },
+    {
+      "id": "UX-001",
+      "title": "Add global search with Cmd/Ctrl+K shortcut and universal results",
+      "description": "As any user, I need a global search bar accessible from anywhere in the app so I can quickly find leads, customers, quotes, orders, invoices, and contacts without navigating through menus.",
+      "acceptanceCriteria": [
+        "Add a search icon/bar to the top header area, always visible on all pages",
+        "Cmd/Ctrl+K keyboard shortcut opens a search dialog overlay (command palette style)",
+        "Search queries hit GET /api/universal-search with debounced input (300ms)",
+        "Results grouped by entity type: Leads, Customers, Contacts, Quotes, Orders, Invoices, Equipment",
+        "Each result shows: entity icon, name/number, key detail (e.g., company for contact, amount for quote), and entity type badge",
+        "Clicking a result navigates to the detail page for that entity",
+        "Recent searches stored in localStorage (last 10)",
+        "Empty state shows quick-access shortcuts: 'New Lead', 'New Quote', 'New Customer'",
+        "Search works on mobile with full-width overlay",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Backend endpoint GET /api/universal-search already exists. Frontend has no global search UI - users must navigate to specific modules to search. A command palette (Cmd+K) pattern is standard in modern SaaS apps. Use shadcn/ui Dialog + Command components.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-002",
+      "title": "Add breadcrumb navigation to all detail and nested pages",
+      "description": "As a user navigating deep into the app, I need breadcrumbs showing my current location so I can understand context and navigate back without using the browser back button.",
+      "acceptanceCriteria": [
+        "Create a reusable Breadcrumb component in client/src/components/ui/breadcrumb.tsx",
+        "Breadcrumb renders: Home > Section > Subsection > Current Page with clickable links except the last item",
+        "Add breadcrumbs to all detail pages: LeadDetail, CustomerDetail, QuoteView, OrderDetail, InvoiceDetail, EquipmentDetail, ContractDetail",
+        "Add breadcrumbs to all nested pages that are 2+ levels deep from the sidebar",
+        "Breadcrumb data derived from route path and page title (not hardcoded per page)",
+        "Create a useBreadcrumbs() hook that auto-generates breadcrumbs from the current Wouter route",
+        "Mobile: breadcrumbs truncate with ellipsis for middle items, always showing first and last",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Detail pages like LeadDetail, CustomerDetail, QuoteView are dead-ends - no visible back navigation. Users who land on a detail page via URL have no context of where they are in the app hierarchy. Breadcrumbs are the standard solution.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-003",
+      "title": "Redesign dashboard landing page with role-appropriate widgets and quick actions",
+      "description": "As a user logging in, I need my dashboard to immediately show me the most important information for my role with actionable widgets so I can start working without navigating elsewhere.",
+      "acceptanceCriteria": [
+        "Dashboard renders different widget sets based on user role level",
+        "Sales reps (levels 1-3): My Open Leads count, My Pipeline Value, Quotes Expiring This Week, Tasks Due Today, Recent Activity feed",
+        "Managers (levels 4-6): Team Pipeline Summary, Revenue This Month vs Target, Top Deals to Close, Team Activity, Overdue Tasks",
+        "Executives (levels 7-8): Company Revenue Dashboard, Pipeline Health, Win/Loss Ratio, Customer Acquisition, MRR/ARR metrics",
+        "Each widget is clickable and navigates to the relevant full page",
+        "Quick action buttons at top: 'New Lead', 'New Quote', 'Log Activity' (role-appropriate)",
+        "Recent items section showing last 5 records the user viewed/edited",
+        "Dashboard loads in under 2 seconds with skeleton placeholders during data fetch",
+        "Widgets use TanStack Query with stale-while-revalidate for fast subsequent loads",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Current dashboard exists but doesn't provide role-appropriate guidance. A good landing page reduces time-to-first-action. Dashboard widget customization (US-059) exists as a story but this focuses on sensible defaults per role. Leverage existing KPI endpoints and analytics services.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-004",
+      "title": "Standardize form patterns with consistent validation, errors, and submit states",
+      "description": "As a user filling out forms, I need consistent behavior across all create/edit dialogs so I can predict how forms work regardless of which entity I'm creating.",
+      "acceptanceCriteria": [
+        "Create a StandardFormDialog component wrapping shadcn Dialog + React Hook Form + Zod validation",
+        "All form dialogs show: title, scrollable form body, Cancel + Submit buttons in footer",
+        "Submit button shows loading spinner and disables during submission",
+        "Field-level validation errors appear below the field in red text immediately on blur",
+        "Form-level errors (API errors) appear as a banner at the top of the form",
+        "Required fields marked with red asterisk",
+        "Tab order follows visual layout (top-to-bottom, left-to-right)",
+        "Escape key closes dialog with unsaved changes confirmation if form is dirty",
+        "Apply StandardFormDialog pattern to at least: Create Lead, Create Quote, Create Customer, Create Invoice, Create Contact",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Currently forms vary widely: some use Dialog, some inline, validation display is inconsistent, submit button states differ. React Hook Form + Zod are already used but the outer chrome (dialog, error display, button states) needs standardization. This is about UX consistency, not rewriting form logic.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-005",
+      "title": "Add consistent empty states, loading skeletons, and error states to all list pages",
+      "description": "As a user, I need clear visual feedback when pages are loading, when there's no data, and when something goes wrong so I always know the system's status.",
+      "acceptanceCriteria": [
+        "Create reusable EmptyState component with: icon, title, description, and optional CTA button",
+        "Create reusable ErrorState component with: error icon, message, retry button, and support link",
+        "All list pages (leads, customers, quotes, invoices, orders, contacts, equipment) use TableSkeleton during initial load",
+        "Empty state shows entity-specific messaging: 'No leads yet. Create your first lead to get started.' with 'Create Lead' button",
+        "Error state shows: 'Failed to load leads. Please try again.' with Retry button that re-fetches",
+        "Distinguish between empty search results ('No leads match your filters') and empty table ('No leads yet')",
+        "Loading skeletons match the approximate shape of the real content (table rows, card grids)",
+        "Apply to at least 10 major list pages across Sales, Service, Billing, and Equipment hubs",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "US-025 covers standardizing loading/empty states but focuses on top pages. This extends coverage comprehensively. Some pages show blank white space during loading or when empty. TableSkeleton component exists but isn't used everywhere. Error states are especially important for mobile users on flaky connections.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-006",
+      "title": "Unify snake_case to camelCase data transformation with centralized entity mappers",
+      "description": "As a developer, I need a single transformation layer between API responses (snake_case) and frontend state (camelCase) so every page doesn't duplicate 50+ lines of field mapping.",
+      "acceptanceCriteria": [
+        "Create client/src/lib/entity-mappers.ts with typed mapper functions for each entity: mapLead, mapCustomer, mapQuote, mapInvoice, mapOrder, mapContact, mapEquipment",
+        "Each mapper converts snake_case API fields to camelCase TypeScript interfaces with correct types",
+        "Each mapper provides sensible defaults for nullable fields (empty string for text, 0 for numbers, null for optional relations)",
+        "Create a generic mapResponse<T>(response, mapper) utility that handles both single and array responses",
+        "Integrate mappers into apiRequest or create entity-specific query hooks that auto-transform",
+        "Refactor at least 8 major pages (Leads, Customers, Quotes, Invoices, Orders, Contacts, Contracts, Equipment) to use centralized mappers",
+        "Remove duplicate inline transformation code from refactored pages",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Every page currently does manual field mapping like: invoiceNumber: item.invoiceNumber || item.invoice_number || ''. This creates 50+ lines of duplicate transformation per page, is error-prone, and makes it hard to add new fields. A centralized mapper eliminates this entirely.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-007",
+      "title": "Implement optimistic mutations for inline edits and status changes",
+      "description": "As a user editing records, I need the UI to update immediately when I make changes rather than waiting for the server round-trip so the app feels fast and responsive.",
+      "acceptanceCriteria": [
+        "Create a useOptimisticMutation hook that wraps TanStack Query's useMutation with optimistic cache updates",
+        "On mutation: immediately update the query cache with the expected new value",
+        "On success: merge the server response into the cache (server is source of truth for computed fields)",
+        "On error: roll back the optimistic update, show error toast, restore previous state",
+        "Apply to inline cell edits in table views (status changes, field updates)",
+        "Apply to drag-and-drop stage changes on pipeline boards",
+        "Apply to toggle operations (active/inactive, pin/unpin, archive/unarchive)",
+        "Show a subtle 'Saving...' indicator near the edited field during the API call",
+        "Batch rapid edits: if user edits multiple fields within 500ms, debounce into a single PATCH request",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Currently pages use queryClient.invalidateQueries() which does a full refetch after every mutation. This causes visible loading flicker and feels slow, especially on mobile. useOptimisticMutations hook already exists in the codebase but isn't widely adopted. This story expands adoption.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-008",
+      "title": "Add contextual help tooltips and onboarding hints for key workflows",
+      "description": "As a new user, I need contextual help throughout the app explaining what features do and how to use them so I can be productive without external training.",
+      "acceptanceCriteria": [
+        "Create a HelpTooltip component that shows an info icon with hover/click tooltip explaining the feature",
+        "Add HelpTooltips to: pipeline stages (what each stage means), quote statuses, invoice generation, lead scoring, RBAC roles, report builder",
+        "Create a first-time-user checklist that appears on the dashboard: 'Getting Started' card with steps like 'Create your first lead', 'Set up your pipeline', 'Invite a team member'",
+        "Checklist progress persists in user preferences (mark steps complete)",
+        "Add 'What's this?' links on complex pages (Reports Builder, Pipeline Configuration, RBAC Settings) linking to relevant knowledge base articles",
+        "Tooltips are dismissible and users can toggle 'Show help tips' in user preferences",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "US-055 covers guided onboarding wizard for new tenants. This story focuses on persistent contextual help throughout the app, not just initial setup. Knowledge base system exists (npm run kb commands). Help tooltips reduce support burden and improve feature discovery.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "FN-001",
+      "title": "Enhance Quotes page with expiration warnings, version history, and send workflow",
+      "description": "As a sales rep, I need to see which quotes are about to expire, view previous versions of a quote, and send quotes directly to customers via email so I can manage the proposal process end-to-end.",
+      "acceptanceCriteria": [
+        "Add 'Expiring Soon' badge (orange) on quotes where validUntil is within 7 days",
+        "Add 'Expired' badge (red) on quotes past validUntil date",
+        "Add a sortable 'Days Until Expiry' column to the quotes table",
+        "Create a quote version history panel: show previous versions with date, author, and change summary",
+        "Store quote versions in a quote_versions table: id, quoteId, versionNumber, snapshotData (jsonb), createdBy, createdAt, changeNotes",
+        "Auto-create a version snapshot when a quote is updated (on PUT /api/proposals/:id)",
+        "Add 'Send Quote' button that opens a dialog with: recipient email (pre-filled from contact), subject line, message body, PDF attachment toggle",
+        "Sending a quote changes status from 'draft' to 'sent' and logs an activity",
+        "Email uses existing email-service.ts with a professional quote email template",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Quotes page has status workflow but no expiration warnings (validUntil field exists but isn't visually flagged). No versioning visible - important for audit trails and negotiations. No send workflow - status changes to 'sent' manually but no email is triggered. These are core sales workflow gaps.",
+      "category": "function-improvement"
+    },
+    {
+      "id": "FN-002",
+      "title": "Enhance Invoices page with aging analysis, payment reminders, and AR dashboard",
+      "description": "As a billing manager, I need to see invoice aging buckets (current, 30/60/90+ days), send automated payment reminders, and view accounts receivable metrics so I can manage cash flow effectively.",
+      "acceptanceCriteria": [
+        "Add aging summary cards at top of invoices page: Current, 1-30 Days, 31-60 Days, 61-90 Days, 90+ Days with total amounts",
+        "Color-code overdue invoices in the table: yellow (1-30 days), orange (31-60), red (61+)",
+        "Add 'Send Reminder' button on overdue invoices that sends a payment reminder email with invoice details and payment link",
+        "Create GET /api/invoices/aging-summary endpoint returning bucket totals filtered by tenantId",
+        "Add AR metrics dashboard section: total outstanding, average days to payment, collection rate this month",
+        "Add date preset filters: 'Overdue', 'Due This Week', 'Due This Month' as quick filter chips",
+        "Generate dialog adds presets: 'Current Month', 'Previous Month', 'Current Quarter' for date range",
+        "Payment recording shows remaining balance and supports partial payments with running balance",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Invoice page has generation and payment recording but lacks aging analysis - a critical billing function. No automated reminders. Generate dialog requires manual date range with no presets. Partial payment tracking unclear. These are core billing workflow gaps for any print shop.",
+      "category": "function-improvement"
+    },
+    {
+      "id": "FN-003",
+      "title": "Enhance Leads page with lead scoring display, territory visualization, and activity timeline",
+      "description": "As a sales manager, I need to see lead scores, territory assignments, and recent interaction history directly on the leads list so I can prioritize outreach and manage my team's pipeline.",
+      "acceptanceCriteria": [
+        "Add 'Lead Score' column to leads table showing numerical score with color indicator (green: hot, yellow: warm, red: cold)",
+        "Lead score calculated from: recency of last activity, number of interactions, deal value, engagement metrics",
+        "Create GET /api/leads/:id/score endpoint or compute client-side from existing lead data",
+        "Add territory assignment badge on each lead showing the assigned territory name",
+        "Add 'Assigned Rep' column showing the sales rep avatar + name with click to reassign (for managers)",
+        "Quick-view panel: clicking a lead row expands an inline detail panel showing last 5 activities without leaving the list",
+        "Add 'Last Contacted' column with relative time ('3 days ago', 'Never')",
+        "Add quick filter: 'Uncontacted Leads' (no activities), 'Hot Leads' (score > threshold)",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Schema has ownerId, assignedSalesRep, territory fields on businessRecords. leadAssignmentHistory, salesTerritories, repCapacity tables exist in lead-assignment-schema.ts. Lead scoring service may exist but isn't surfaced in the UI. Activity data available via deals activities API.",
+      "category": "function-improvement"
+    },
+    {
+      "id": "FN-004",
+      "title": "Enhance Customers page with health score, contract summary, and hierarchy view",
+      "description": "As an account manager, I need to see customer health scores, active contract summaries, and parent-child company relationships so I can manage accounts proactively.",
+      "acceptanceCriteria": [
+        "Add 'Health Score' column: computed from recent activity, open support tickets, contract renewal proximity, payment history",
+        "Health score shown as colored dot: green (healthy), yellow (at risk), red (churning)",
+        "Add 'Active Contracts' count column linking to the customer's contracts list",
+        "Add 'Annual Contract Value' (ACV) column summing active contract values",
+        "Add 'Contract Renewal' column showing nearest renewal date with warning for renewals within 30 days",
+        "Add company hierarchy view toggle: tree visualization showing parent company → child locations/divisions",
+        "Customer detail page shows: contract timeline, equipment deployed, open quotes, recent invoices in organized tabs",
+        "Add 'At Risk' quick filter showing customers with declining health scores or upcoming renewals",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Customer page has 6 filter dimensions but lacks business intelligence. No health scoring, no contract context, no hierarchy view. For a print shop management platform, seeing equipment deployed and contract status per customer is essential for account management.",
+      "category": "function-improvement"
+    },
+    {
+      "id": "FN-005",
+      "title": "Enhance Orders page with fulfillment tracking, status timeline, and delivery management",
+      "description": "As an operations manager, I need to track order fulfillment stages, see status change history, and manage delivery scheduling so orders move smoothly from confirmed to delivered.",
+      "acceptanceCriteria": [
+        "Add visual fulfillment pipeline at top of orders page: Confirmed → In Production → Quality Check → Ready to Ship → Shipped → Delivered with counts per stage",
+        "Clicking a pipeline stage filters the table to that stage",
+        "Add status timeline on order detail: vertical timeline showing every status change with timestamp, user, and notes",
+        "Add 'Estimated Delivery' column with color coding: on time (green), at risk (yellow), late (red)",
+        "Add delivery scheduling: assign delivery date, driver/courier, and tracking number",
+        "Add 'Flag for Review' action that marks an order for manager attention with a reason",
+        "Bulk action: 'Mark as Shipped' for selected orders with tracking number input",
+        "Add notification to customer when order status changes to 'Shipped' or 'Delivered'",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Orders are a core workflow for a print shop. The page likely exists but needs fulfillment-specific UX. Print shops need to track production stages, delivery logistics, and customer communication. This turns the orders page from a simple list into a fulfillment management tool.",
+      "category": "function-improvement"
+    },
+    {
+      "id": "FN-006",
+      "title": "Enhance Service/Dispatch page with technician availability, map view, and SLA tracking",
+      "description": "As a service dispatcher, I need to see technician availability, view service calls on a map, and track SLA compliance so I can efficiently schedule and monitor field service work.",
+      "acceptanceCriteria": [
+        "Add technician availability panel: list of technicians with today's schedule, current status (available, en route, on site, off duty)",
+        "Add map view toggle showing service call locations as pins with status colors (open: blue, in progress: yellow, overdue: red)",
+        "Map uses existing Leaflet integration with cluster markers for dense areas",
+        "Add SLA timer on each service ticket: shows time remaining before SLA breach with visual countdown",
+        "SLA breached tickets highlighted in red with 'SLA Breached' badge",
+        "Drag-and-drop assignment: drag a service call to a technician's schedule slot to assign",
+        "Add 'Optimize Route' button that suggests efficient ordering of a technician's daily calls",
+        "Service metrics cards at top: Open Tickets, Average Response Time, SLA Compliance %, Technicians Active",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Service Hub has Dispatch, Technicians, Meter Readings pages. Leaflet is installed (with --legacy-peer-deps). For a print/copier shop, service dispatch is a core revenue function. Technicians service equipment on-site and SLA tracking is contractually important.",
+      "category": "function-improvement"
+    },
+    {
+      "id": "FN-007",
+      "title": "Add real-time collaboration indicators and conflict prevention",
+      "description": "As a team member, I need to see when others are viewing or editing the same record so we don't overwrite each other's changes.",
+      "acceptanceCriteria": [
+        "Show presence indicators on record detail pages: avatars of other users currently viewing the same record",
+        "Use existing WebSocket infrastructure (useWebSocket hook) to broadcast presence events",
+        "When user A starts editing a field that user B is also editing, show a warning: 'User B is also editing this field'",
+        "Implement last-write-wins with conflict notification: if save conflicts, show dialog with both versions and let user choose",
+        "Add 'Currently editing' indicator as a subtle banner: 'Jane is editing this record'",
+        "Presence events: join_record, leave_record, start_editing, stop_editing with userId and field context",
+        "Auto-leave after 5 minutes of inactivity on a record",
+        "Graceful degradation: if WebSocket disconnects, editing still works without presence features",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "WebSocket infrastructure exists (useWebSocket hook, US-035 covers WebSocket auth). Multiple users editing the same quote, lead, or order can cause silent data overwrites. Presence indicators are a basic collaboration feature for multi-user platforms.",
+      "category": "function-improvement"
+    },
+    {
+      "id": "FN-008",
+      "title": "Add unified activity timeline component for all entity detail pages",
+      "description": "As a user viewing any record, I need a chronological activity timeline showing all interactions, changes, and related events so I have full context without clicking through multiple tabs.",
+      "acceptanceCriteria": [
+        "Create a reusable ActivityTimeline component in client/src/components/ui/activity-timeline.tsx",
+        "Timeline shows: notes, emails, calls, status changes, field changes, related record events (quote created for lead, invoice generated for order)",
+        "Each entry shows: icon by type, user avatar, description, relative timestamp, and expandable detail",
+        "Filter tabs at top of timeline: All, Notes, Emails, Calls, Changes, System",
+        "'Add Note' quick action at top of timeline with rich text input",
+        "Field change entries show: 'Status changed from Draft to Sent by Jane 2 hours ago' with old → new values",
+        "Timeline supports infinite scroll with 'Load older' trigger",
+        "Integrate into LeadDetail, CustomerDetail, QuoteView, OrderDetail, InvoiceDetail, ContractDetail, EquipmentDetail pages",
+        "Create GET /api/:entityType/:id/timeline endpoint aggregating activities from multiple sources",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "CRM-008 covers activity timeline for the CRM layout engine, but this is a standalone reusable component that can be adopted incrementally across all detail pages, not just CRM objects. Activity data exists via /api/deals-management/deals/:id/activities and similar endpoints. This is one of the most impactful UX improvements for daily users.",
+      "category": "function-improvement"
     }
   ]
 }
