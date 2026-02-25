@@ -20,6 +20,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 export function registerAutoLeadRoutingRoutes(app: Express) {
   // Apply authentication and RBAC context to all auto-lead-routing routes
   // isAuthenticated MUST come first - it populates req.user which enhanceUserContext requires

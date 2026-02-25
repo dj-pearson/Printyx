@@ -9,52 +9,6 @@ const log = createModuleLogger('routes-tasks');
 
 // Task management routes using real database data
 export function registerTaskRoutes(app: Express) {
-  // Use the same authentication pattern as other working routes in main routes.ts
-  const requireAuth = async (req: any, res: any, next: any) => {
-    // Check for authentication using unified helper
-    const userId = getUserId(req);
-
-    if (!userId) {
-      return res.status(401).json({ message: 'Authentication required' });
-    }
-
-    if (userId && (!req.user || !req.user.tenantId)) {
-      // Fetch full user details from database if missing
-      try {
-        const fullUser = await storage.getUser(userId);
-        if (fullUser) {
-          req.user = {
-            ...req.user,
-            id: fullUser.id,
-            tenantId: fullUser.tenantId,
-            isPlatformUser: fullUser.isPlatformUser,
-            email: fullUser.email,
-            firstName: fullUser.firstName,
-            lastName: fullUser.lastName,
-          };
-        }
-      } catch (error) {
-        log.error('Error fetching user details:', error);
-      }
-    }
-
-    // Add user context for backwards compatibility
-    if (!req.user) {
-      req.user = {
-        id: userId,
-        tenantId: getTenantId(req),
-      };
-    } else if (!req.user.tenantId || !req.user.id) {
-      // Ensure user object has id and tenantId
-      req.user = {
-        ...req.user,
-        id: req.user.id || userId,
-        tenantId: req.user.tenantId || getTenantId(req),
-      };
-    }
-
-    next();
-  };
   // Get tasks - filter by assigned user if requested
   app.get('/api/tasks', async (req: any, res) => {
     try {

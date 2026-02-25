@@ -29,6 +29,7 @@ import {
 import { reportingCache, reportCacheMiddleware } from './cache-service';
 import { exportService } from './export-service';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = express.Router();
 
 // Apply enhanced user context middleware to all reporting routes

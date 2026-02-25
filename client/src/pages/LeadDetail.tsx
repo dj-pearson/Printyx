@@ -84,6 +84,8 @@ import {
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
 
 // Lead Contact Form Component
 function LeadContactForm({
@@ -389,6 +391,11 @@ export default function LeadDetailHubspot() {
     }
   }, [lead]);
 
+  // Breadcrumb navigation
+  const breadcrumbItems = useBreadcrumbs({
+    currentLabel: lead?.companyName || 'Lead Detail',
+  });
+
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -457,6 +464,9 @@ export default function LeadDetailHubspot() {
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto">
+        {/* Breadcrumb Navigation */}
+        <Breadcrumbs items={breadcrumbItems} />
+
         {/* Mobile-Optimized Header */}
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-sm border mb-6">
           {/* Top Row: Back Button and Edit Button */}

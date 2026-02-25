@@ -16,6 +16,7 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { requireRootAdmin } from './routes-root-admin';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { requireAuth } from './replitAuth';
 
 /**
  * TENANT ONBOARDING ROUTES
@@ -33,30 +34,6 @@ const router = Router();
 // ============================================================================
 // SECURITY MIDDLEWARE - PROTECT ALL ROUTES
 // ============================================================================
-// Middleware to check authentication
-const requireAuth = (req: any, res: any, next: any) => {
-  const userId = getUserId(req);
-
-  if (!userId) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-
-  if (!req.user) {
-    req.user = {
-      id: userId,
-      tenantId: getTenantId(req),
-    };
-  } else if (!req.user.tenantId || !req.user.id) {
-    req.user = {
-      ...req.user,
-      id: req.user.id || userId,
-      tenantId: req.user.tenantId || getTenantId(req),
-    };
-  }
-
-  next();
-};
-
 // Apply authentication and root admin authorization to ALL routes
 router.use(requireAuth);
 router.use(requireRootAdmin);

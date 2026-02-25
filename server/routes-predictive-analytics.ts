@@ -2,31 +2,8 @@ import { Router } from 'express';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
+import { requireAuth } from './replitAuth';
 const log = createModuleLogger('routes-predictive-analytics');
-
-// Basic authentication middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  const userId = getUserId(req);
-
-  if (!userId) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-
-  if (!req.user) {
-    req.user = {
-      id: userId,
-      tenantId: getTenantId(req),
-    };
-  } else if (!req.user.id || !req.user.tenantId) {
-    req.user = {
-      ...req.user,
-      id: req.user.id || userId,
-      tenantId: req.user.tenantId || getTenantId(req),
-    };
-  }
-
-  next();
-};
 
 const router = Router();
 

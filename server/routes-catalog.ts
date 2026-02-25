@@ -7,25 +7,12 @@ import { eq } from 'drizzle-orm';
 import { insertMasterProductModelSchema } from '../shared/schema';
 import multer from 'multer';
 import { createModuleLogger } from './lib/logger';
+import { enhanceUserContext, requirePermission } from './middleware/rbac-route-helper';
+import { isPlatformAdmin } from './utils/auth-helpers';
 const log = createModuleLogger('routes-catalog');
 
 const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();
-
-/**
- * Helper: Check if user is platform admin
- */
-function isPlatformAdmin(req: any): boolean {
-  return (
-    req.user?.isPlatformUser ||
-    req.user?.is_platform_user ||
-    req.user?.role === 'platform_admin' ||
-    req.user?.role === 'root_admin' ||
-    req.user?.role === 'Platform Admin' ||
-    req.user?.role === 'Root Admin' ||
-    req.user?.role === 'admin'
-  );
-}
 
 /**
  * Helper: Normalize money string to number

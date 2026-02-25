@@ -1,11 +1,12 @@
 import express from 'express';
 import { desc, eq, and, sql, asc } from 'drizzle-orm';
 import { db } from './db';
-import { requireAuth } from './auth-setup';
+import { requireAuth } from './replitAuth';
 import { resolveTenant, requireTenant, TenantRequest } from './middleware/tenancy';
 import { businessRecords } from '../shared/schema';
 import { demoSchedules, demoEquipmentRequirements, demoOutcomes } from './demo-scheduling-schema';
 import { createModuleLogger } from './lib/logger';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const log = createModuleLogger('routes-demo-scheduling');
 
 const router = express.Router();

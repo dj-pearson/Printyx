@@ -86,6 +86,20 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   // Quick actions
   const quickActions: SearchResult[] = [
     {
+      id: 'new-lead',
+      type: 'action',
+      title: 'Create New Lead',
+      url: '/leads?action=new',
+      icon: <Plus className="h-4 w-4" />,
+    },
+    {
+      id: 'new-quote',
+      type: 'action',
+      title: 'Create New Quote',
+      url: '/quotes/new',
+      icon: <FileText className="h-4 w-4" />,
+    },
+    {
       id: 'new-customer',
       type: 'action',
       title: 'Create New Customer',

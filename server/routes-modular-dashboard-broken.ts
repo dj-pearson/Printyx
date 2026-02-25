@@ -15,6 +15,7 @@ import {
   type User,
 } from '@shared/schema';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 // Role-based dashboard modules
 export const dashboardModules = {
   // Sales Role Modules

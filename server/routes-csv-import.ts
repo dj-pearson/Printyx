@@ -32,6 +32,7 @@ import {
   duplicateResolutionRequestSchema,
 } from '@shared/csv-import-schema';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 // Configure multer for CSV file uploads
 const upload = multer({
   storage: multer.memoryStorage(),

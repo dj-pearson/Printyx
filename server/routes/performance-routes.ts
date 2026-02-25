@@ -6,15 +6,10 @@
 import express from 'express';
 import PerformanceMonitor from '../services/performance-monitor';
 import { createModuleLogger } from '../lib/logger';
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const log = createModuleLogger('performance-routes');
 
 const router = express.Router();
-
-// Mock authentication middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  req.user = { id: 'mock-user-id', tenantId: 'mock-tenant-id', role: 'admin' };
-  next();
-};
 
 /**
  * GET /api/performance/health

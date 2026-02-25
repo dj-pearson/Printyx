@@ -50,32 +50,6 @@ router.use(enhanceUserContext);
 
 // ============= PROPOSAL TEMPLATES =============
 
-// Basic auth middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  const userId = getUserId(req);
-  if (!userId) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-  if (!req.user) {
-    req.user = {
-      id: userId,
-      tenantId:
-        getTenantId(req) || process.env.DEMO_TENANT_ID || '550e8400-e29b-41d4-a716-446655440000',
-    };
-  } else if (!req.user.tenantId || !req.user.id) {
-    req.user = {
-      ...req.user,
-      id: req.user.id || userId,
-      tenantId:
-        req.user.tenantId ||
-        getTenantId(req) ||
-        process.env.DEMO_TENANT_ID ||
-        '550e8400-e29b-41d4-a716-446655440000',
-    };
-  }
-  next();
-};
-
 // Get all proposal templates - requires quote view permission
 router.get(
   '/proposal-templates',

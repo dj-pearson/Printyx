@@ -11,6 +11,7 @@ import { eq, and } from 'drizzle-orm';
 import { isAuthenticated } from './replitAuth.js';
 import { z } from 'zod';
 import { createModuleLogger } from './lib/logger';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const log = createModuleLogger('routes-templates');
 
 export function registerTemplateRoutes(app: Express) {

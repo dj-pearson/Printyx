@@ -12,12 +12,6 @@ const log = createModuleLogger('advanced-scheduling-routes');
 
 const router = express.Router();
 
-// Mock authentication middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  req.user = { id: 'mock-user-id', tenantId: 'mock-tenant-id' };
-  next();
-};
-
 /**
  * POST /api/advanced-scheduling/optimize
  * Advanced constraint-based task scheduling

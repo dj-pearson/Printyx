@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import multer from 'multer';
 import path from 'path';
 import { createModuleLogger } from './lib/logger';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const log = createModuleLogger('routes-settings');
 
 // Configure multer for avatar uploads

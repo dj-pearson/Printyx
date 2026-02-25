@@ -10,6 +10,7 @@ import { db } from '../db';
 import { integrationMetrics, integrationApiLogs } from '../../shared/schema';
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { createModuleLogger } from '../lib/logger';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const log = createModuleLogger('routes');
 
 // Using inline auth middleware since requireAuth is not available

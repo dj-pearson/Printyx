@@ -6,15 +6,10 @@
 import express from 'express';
 import CalendarService from '../services/calendar-service';
 import { createModuleLogger } from '../lib/logger';
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const log = createModuleLogger('calendar-routes');
 
 const router = express.Router();
-
-// Mock authentication middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  req.user = { id: 'mock-user-id', tenantId: 'mock-tenant-id' };
-  next();
-};
 
 /**
  * GET /api/calendar/connections

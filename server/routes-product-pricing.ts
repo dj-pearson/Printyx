@@ -32,6 +32,7 @@ import {
   canSeeDealerCost,
 } from './services/pricing-service';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 /**
  * Product Pricing Routes - Three-Tier Pricing Management
  *

@@ -104,6 +104,8 @@ import {
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/main-layout';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
+import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
 
 export default function CustomerDetailHubspot() {
   const { slug } = useParams<{ slug: string }>();
@@ -233,6 +235,11 @@ export default function CustomerDetailHubspot() {
     customer?.customerType === 'lead';
   const backButtonText = isLead ? 'Back to Leads' : 'Back to Customers';
   const backButtonPath = isLead ? '/leads-management' : '/customers';
+
+  // Breadcrumb navigation
+  const breadcrumbItems = useBreadcrumbs({
+    currentLabel: customer?.companyName || customer?.businessName || 'Customer Detail',
+  });
 
   // Fetch company contacts to surface the designated primary contact on the main page
   const { data: companyContacts = [] } = useQuery({
@@ -454,6 +461,9 @@ export default function CustomerDetailHubspot() {
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto">
+        {/* Breadcrumb Navigation */}
+        <Breadcrumbs items={breadcrumbItems} />
+
         {/* Responsive Header */}
         <div className="flex flex-col gap-3 sm:gap-4 md:flex-row md:items-center md:justify-between mb-6 bg-white p-4 sm:p-6 rounded-lg shadow-sm border">
           <div className="flex items-center gap-4">

@@ -11,6 +11,7 @@ import {
 } from '@shared/schema';
 import { z } from 'zod';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 // Company Pricing Settings Routes
 export async function getCompanyPricingSettings(req: Request, res: Response) {
   try {

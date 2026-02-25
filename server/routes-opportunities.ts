@@ -16,6 +16,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 export function registerOpportunitiesRoutes(app: Express) {
   // Apply authentication and RBAC context to all opportunities routes
   // isAuthenticated MUST come first - it populates req.user which enhanceUserContext requires

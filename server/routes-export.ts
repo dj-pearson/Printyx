@@ -3,6 +3,7 @@ import { db } from './db';
 import { onboardingChecklists, onboardingEquipment } from '../shared/schema';
 import { eq } from 'drizzle-orm';
 import { createModuleLogger } from './lib/logger';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const log = createModuleLogger('routes-export');
 
 export async function exportChecklistPDF(req: Request, res: Response) {

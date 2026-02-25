@@ -1,8 +1,9 @@
 import express from 'express';
 import { desc, eq, and, sql, asc, gte, lte } from 'drizzle-orm';
 import { db } from './db';
-import { requireAuth } from './auth-setup';
+import { requireAuth } from './replitAuth';
 import { createModuleLogger } from './lib/logger';
+import { getUserId, getTenantId } from './utils/auth-helpers';
 const log = createModuleLogger('routes-preventive-maintenance');
 
 const router = express.Router();

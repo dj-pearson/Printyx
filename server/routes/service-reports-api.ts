@@ -15,6 +15,7 @@ import {
 import { ServiceReportingService } from '../services/service-reporting-service';
 import { ServiceSupervisorReportingService } from '../services/service-supervisor-reporting-service';
 
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 const router = Router();
 
 // Apply RBAC to all routes

@@ -14,6 +14,7 @@ import {
   type AuthenticatedRequest,
 } from './middleware/rbac-route-helper';
 
+import { getUserId, getTenantId } from './utils/auth-helpers';
 // Warehouse operation schemas for validation
 const warehouseOperationSchema = z.object({
   equipmentId: z.string(),

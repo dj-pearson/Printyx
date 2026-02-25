@@ -18,15 +18,6 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId } from './utils/auth-helpers';
 
-// Basic auth middleware since we don't need the complex RBAC for Phase 1
-const requireAuth = async (req: any, res: any, next: any) => {
-  const userId = getUserId(req);
-  if (!userId) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-  next();
-};
-
 const router = express.Router();
 
 // =====================================================================
