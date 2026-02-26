@@ -158,7 +158,7 @@ export function TeamStatsWidget({
                 getQuotaAttainmentColor(stats?.performance.quotaAttainment || 0),
               )}
             >
-              {stats?.performance.quotaAttainment.toFixed(0)}%
+              {(stats?.performance.quotaAttainment ?? 0).toFixed(0)}%
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">

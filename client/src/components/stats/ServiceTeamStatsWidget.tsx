@@ -300,13 +300,13 @@ export default function ServiceTeamStatsWidget({
             <span
               className={cn('font-bold', getFTFColor(stats?.performance.firstTimeFixRate || 0))}
             >
-              {stats?.performance.firstTimeFixRate.toFixed(0)}%
+              {(stats?.performance.firstTimeFixRate ?? 0).toFixed(0)}%
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">SLA</span>
             <span className={cn('font-bold', getSLAColor(stats?.performance.slaCompliance || 0))}>
-              {stats?.performance.slaCompliance.toFixed(0)}%
+              {(stats?.performance.slaCompliance ?? 0).toFixed(0)}%
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
@@ -314,14 +314,14 @@ export default function ServiceTeamStatsWidget({
             <div className="flex items-center gap-1">
               <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
               <span className="font-medium">
-                {stats?.performance.customerSatisfaction.toFixed(1)}
+                {(stats?.performance.customerSatisfaction ?? 0).toFixed(1)}
               </span>
             </div>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Technicians</span>
             <span className="font-medium">
-              {stats?.team.activeTechnicians}/{stats?.team.totalTechnicians}
+              {stats?.team.activeTechnicians ?? 0}/{stats?.team.totalTechnicians ?? 0}
             </span>
           </div>
         </CardContent>

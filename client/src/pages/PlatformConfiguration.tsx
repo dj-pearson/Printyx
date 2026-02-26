@@ -447,7 +447,7 @@ export default function PlatformConfiguration() {
           {configSections.map((section, sectionIndex) => (
             <TabsContent
               key={sectionIndex}
-              value={section.name.toLowerCase().replace(' ', '')}
+              value={['general', 'database', 'email', 'security'][sectionIndex]}
               className="space-y-6"
             >
               <Card>

@@ -211,11 +211,13 @@ export default function Billing() {
                   <div>
                     <p className="text-sm font-medium text-blue-900">Trial ends on:</p>
                     <p className="text-sm text-blue-700">
-                      {new Date(trialStatus.trialEndDate).toLocaleDateString('en-US', {
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
+                      {trialStatus.trialEnd
+                        ? new Date(trialStatus.trialEnd).toLocaleDateString('en-US', {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })
+                        : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -457,8 +459,15 @@ export default function Billing() {
                   {invoices.map((invoice: any) => (
                     <TableRow key={invoice.id}>
                       <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                      <TableCell>{format(new Date(invoice.invoiceDate), 'MMM d, yyyy')}</TableCell>
-                      <TableCell>${parseFloat(invoice.total).toFixed(2)}</TableCell>
+                      <TableCell>
+                        {invoice.invoiceDate || invoice.createdAt
+                          ? format(
+                              new Date(invoice.invoiceDate || invoice.createdAt),
+                              'MMM d, yyyy',
+                            )
+                          : 'N/A'}
+                      </TableCell>
+                      <TableCell>${parseFloat(invoice.total || '0').toFixed(2)}</TableCell>
                       <TableCell>
                         {invoice.status === 'paid' ? (
                           <Badge className="bg-green-100 text-green-800">

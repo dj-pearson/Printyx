@@ -18,6 +18,47 @@ import { eq, and, sql, gte, lte, desc, asc, inArray } from 'drizzle-orm';
 const router = Router();
 
 /**
+ * Helper: Convert a timeframe string ('7d', '30d', '90d', '12m', 'ytd', 'all')
+ * into a { startDate, endDate } pair of Date objects.
+ */
+function getDateRangeFromTimeframe(timeframe: string): {
+  startDate: Date | null;
+  endDate: Date | null;
+} {
+  const now = new Date();
+  let startDate: Date | null = null;
+  const endDate: Date | null = now;
+
+  switch (timeframe) {
+    case '7d':
+    case 'week':
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case '30d':
+    case 'month':
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      break;
+    case '90d':
+    case 'quarter':
+      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      break;
+    case '12m':
+    case 'year':
+      startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      break;
+    case 'ytd':
+      startDate = new Date(now.getFullYear(), 0, 1); // Jan 1 of current year
+      break;
+    case 'all':
+    default:
+      // No date filtering
+      return { startDate: null, endDate: null };
+  }
+
+  return { startDate, endDate };
+}
+
+/**
  * PLATFORM ANALYTICS API
  *
  * Provides advanced analytics and reporting for platform administrators
@@ -27,6 +68,10 @@ const router = Router();
  * - GET /api/platform-analytics/cohort-analysis - Cohort retention analysis
  * - GET /api/platform-analytics/revenue-metrics - LTV, CAC, NRR, ARR metrics
  * - GET /api/platform-analytics/conversion-funnel - Pipeline conversion rates
+ * - GET /api/platform-analytics/conversion-metrics - Lead conversion rates and funnel data
+ * - GET /api/platform-analytics/pipeline-metrics - Pipeline value, distribution, win rate
+ * - GET /api/platform-analytics/performance-metrics - Lead source and rep performance
+ * - GET /api/platform-analytics/growth-trends - Monthly MRR/ARR growth trends
  * - GET /api/platform-analytics/sales-performance - Sales team performance
  * - GET /api/platform-analytics/pipeline-forecast - Revenue forecasting
  * - GET /api/platform-analytics/churn-analysis - Churn trends and analysis
@@ -883,6 +928,527 @@ router.get('/goals-tracking', async (req, res) => {
   } catch (error) {
     log.error('Error tracking goals:', error);
     res.status(500).json({ message: 'Failed to track goals' });
+  }
+});
+
+/**
+ * GET /api/platform-analytics/conversion-metrics
+ * Get conversion metrics including lead conversion rate and funnel data
+ *
+ * Query params:
+ * - timeframe: '7d' | '30d' | '90d' | '12m' | 'ytd' | 'all'
+ */
+router.get('/conversion-metrics', async (req, res) => {
+  try {
+    const { timeframe = '30d' } = req.query;
+
+    const { startDate, endDate } = getDateRangeFromTimeframe(timeframe as string);
+
+    const whereConditions = [];
+    if (startDate) {
+      whereConditions.push(gte(platformBusinessRecords.createdAt, startDate));
+    }
+    if (endDate) {
+      whereConditions.push(lte(platformBusinessRecords.createdAt, endDate));
+    }
+
+    // Count by status for funnel
+    const allRecords = await db.query.platformBusinessRecords.findMany({
+      where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
+    });
+
+    const statusCounts = {
+      new: 0,
+      contacted: 0,
+      qualified: 0,
+      proposal_sent: 0,
+      negotiation: 0,
+      trial_active: 0,
+      trial_converted: 0,
+      active_customer: 0,
+      churned: 0,
+      lost: 0,
+    };
+
+    allRecords.forEach((record) => {
+      const status = record.status;
+      if (status && status in statusCounts) {
+        statusCounts[status as keyof typeof statusCounts]++;
+      }
+    });
+
+    const totalProspects = allRecords.filter((r) => r.recordType === 'prospect').length;
+    const totalTenants = allRecords.filter((r) => r.recordType === 'tenant').length;
+    const totalConverted = statusCounts.active_customer + statusCounts.trial_converted;
+
+    // Build funnel data matching frontend shape: { stage, count, percentage }
+    const totalStart = Math.max(
+      statusCounts.new +
+        statusCounts.contacted +
+        statusCounts.qualified +
+        statusCounts.proposal_sent +
+        statusCounts.negotiation +
+        totalConverted,
+      1,
+    );
+
+    const funnelStages = [
+      { stage: 'Prospects', count: totalStart },
+      {
+        stage: 'Contacted',
+        count:
+          statusCounts.contacted +
+          statusCounts.qualified +
+          statusCounts.proposal_sent +
+          statusCounts.negotiation +
+          totalConverted,
+      },
+      {
+        stage: 'Qualified',
+        count:
+          statusCounts.qualified +
+          statusCounts.proposal_sent +
+          statusCounts.negotiation +
+          totalConverted,
+      },
+      {
+        stage: 'Proposal Sent',
+        count: statusCounts.proposal_sent + statusCounts.negotiation + totalConverted,
+      },
+      { stage: 'Negotiation', count: statusCounts.negotiation + totalConverted },
+      { stage: 'Won', count: totalConverted },
+    ];
+
+    const funnelData = funnelStages.map((s) => ({
+      stage: s.stage,
+      count: s.count,
+      percentage: totalStart > 0 ? parseFloat(((s.count / totalStart) * 100).toFixed(1)) : 0,
+    }));
+
+    // Overall lead conversion rate
+    const leadConversionRate =
+      totalProspects > 0 ? parseFloat(((totalConverted / totalProspects) * 100).toFixed(2)) : 0;
+
+    // Get deal-level conversion metrics
+    const dealWhereConditions = [];
+    if (startDate) {
+      dealWhereConditions.push(gte(platformDeals.createdAt, startDate));
+    }
+    if (endDate) {
+      dealWhereConditions.push(lte(platformDeals.createdAt, endDate));
+    }
+
+    const deals = await db.query.platformDeals.findMany({
+      where: dealWhereConditions.length > 0 ? and(...dealWhereConditions) : undefined,
+    });
+
+    const closedWon = deals.filter((d) => d.stage === 'closed_won').length;
+    const closedLost = deals.filter((d) => d.stage === 'closed_lost').length;
+    const totalClosed = closedWon + closedLost;
+    const winRate = totalClosed > 0 ? parseFloat(((closedWon / totalClosed) * 100).toFixed(2)) : 0;
+
+    // Stage-to-stage conversion rates
+    const stageConversions = [];
+    for (let i = 1; i < funnelData.length; i++) {
+      const prev = funnelData[i - 1];
+      const curr = funnelData[i];
+      stageConversions.push({
+        from: prev.stage,
+        to: curr.stage,
+        rate: prev.count > 0 ? parseFloat(((curr.count / prev.count) * 100).toFixed(1)) : 0,
+      });
+    }
+
+    res.json({
+      leadConversionRate,
+      funnelData,
+      stageConversions,
+      winRate,
+      summary: {
+        totalProspects,
+        totalTenants,
+        totalConverted,
+        closedWon,
+        closedLost,
+        totalDeals: deals.length,
+      },
+      timeframe,
+    });
+  } catch (error) {
+    log.error('Error calculating conversion metrics:', error);
+    res.status(500).json({ message: 'Failed to calculate conversion metrics' });
+  }
+});
+
+/**
+ * GET /api/platform-analytics/pipeline-metrics
+ * Get pipeline metrics including value, weighted value, coverage, win rate, and distribution
+ *
+ * Query params:
+ * - timeframe: '7d' | '30d' | '90d' | '12m' | 'ytd' | 'all'
+ */
+router.get('/pipeline-metrics', async (req, res) => {
+  try {
+    const { timeframe = '30d' } = req.query;
+
+    const { startDate, endDate } = getDateRangeFromTimeframe(timeframe as string);
+
+    const whereConditions = [];
+    if (startDate) {
+      whereConditions.push(gte(platformDeals.createdAt, startDate));
+    }
+    if (endDate) {
+      whereConditions.push(lte(platformDeals.createdAt, endDate));
+    }
+
+    // Get all deals
+    const allDeals = await db.query.platformDeals.findMany({
+      where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
+    });
+
+    // Open deals (active pipeline)
+    const openStages = ['prospecting', 'qualification', 'proposal', 'negotiation', 'closing'];
+    const openDeals = allDeals.filter((d) => openStages.includes(d.stage || ''));
+
+    // Calculate total and weighted pipeline value
+    const totalValue = openDeals.reduce((sum, d) => sum + parseFloat(d.dealValue || '0'), 0);
+    const weightedValue = openDeals.reduce((sum, d) => {
+      const value = parseFloat(d.dealValue || '0');
+      const prob = d.probability || 0;
+      return sum + (value * prob) / 100;
+    }, 0);
+
+    // Win rate
+    const closedWon = allDeals.filter((d) => d.stage === 'closed_won');
+    const closedLost = allDeals.filter((d) => d.stage === 'closed_lost');
+    const totalClosed = closedWon.length + closedLost.length;
+    const winRate =
+      totalClosed > 0 ? parseFloat(((closedWon.length / totalClosed) * 100).toFixed(1)) : 0;
+
+    // Average sales cycle (days from creation to close for won deals)
+    let avgSalesCycle = 0;
+    if (closedWon.length > 0) {
+      const totalDays = closedWon.reduce((sum, deal) => {
+        const created = new Date(deal.createdAt);
+        const closed = deal.closedAt ? new Date(deal.closedAt) : new Date();
+        const diffMs = closed.getTime() - created.getTime();
+        return sum + Math.max(diffMs / (1000 * 60 * 60 * 24), 1);
+      }, 0);
+      avgSalesCycle = Math.round(totalDays / closedWon.length);
+    }
+
+    // Pipeline coverage (pipeline value / quota estimate)
+    // Use closed-won revenue as a proxy for quota
+    const wonRevenue = closedWon.reduce((sum, d) => sum + parseFloat(d.dealValue || '0'), 0);
+    const coverage = wonRevenue > 0 ? parseFloat((totalValue / wonRevenue).toFixed(1)) : 0;
+
+    // Distribution by stage with colors
+    const stageColors: Record<string, string> = {
+      prospecting: '#3b82f6',
+      qualification: '#8b5cf6',
+      proposal: '#ec4899',
+      negotiation: '#f59e0b',
+      closing: '#10b981',
+    };
+
+    const stageLabels: Record<string, string> = {
+      prospecting: 'Prospecting',
+      qualification: 'Qualification',
+      proposal: 'Proposal',
+      negotiation: 'Negotiation',
+      closing: 'Closing',
+    };
+
+    const distributionData = openStages
+      .map((stage) => {
+        const stageDeals = openDeals.filter((d) => d.stage === stage);
+        return {
+          name: stageLabels[stage] || stage,
+          value: stageDeals.length,
+          color: stageColors[stage] || '#6b7280',
+          totalValue: stageDeals.reduce((sum, d) => sum + parseFloat(d.dealValue || '0'), 0),
+        };
+      })
+      .filter((s) => s.value > 0);
+
+    res.json({
+      totalValue: parseFloat(totalValue.toFixed(2)),
+      weightedValue: parseFloat(weightedValue.toFixed(2)),
+      coverage,
+      winRate,
+      avgSalesCycle,
+      distributionData,
+      summary: {
+        totalDeals: allDeals.length,
+        openDeals: openDeals.length,
+        closedWon: closedWon.length,
+        closedLost: closedLost.length,
+      },
+      timeframe,
+    });
+  } catch (error) {
+    log.error('Error calculating pipeline metrics:', error);
+    res.status(500).json({ message: 'Failed to calculate pipeline metrics' });
+  }
+});
+
+/**
+ * GET /api/platform-analytics/performance-metrics
+ * Get performance metrics including lead source data and rep performance
+ *
+ * Query params:
+ * - timeframe: '7d' | '30d' | '90d' | '12m' | 'ytd' | 'all'
+ */
+router.get('/performance-metrics', async (req, res) => {
+  try {
+    const { timeframe = '30d' } = req.query;
+
+    const { startDate, endDate } = getDateRangeFromTimeframe(timeframe as string);
+
+    const whereConditions = [];
+    if (startDate) {
+      whereConditions.push(gte(platformBusinessRecords.createdAt, startDate));
+    }
+    if (endDate) {
+      whereConditions.push(lte(platformBusinessRecords.createdAt, endDate));
+    }
+
+    // Get all business records grouped by lead source
+    const allRecords = await db.query.platformBusinessRecords.findMany({
+      where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
+    });
+
+    // Build lead source performance data: { source, leads, conversions, rate }
+    const sourceMap: Record<string, { leads: number; conversions: number }> = {};
+    allRecords.forEach((record) => {
+      const source = record.leadSource || 'Other';
+      if (!sourceMap[source]) {
+        sourceMap[source] = { leads: 0, conversions: 0 };
+      }
+      sourceMap[source].leads += 1;
+      if (record.status === 'active_customer' || record.status === 'trial_converted') {
+        sourceMap[source].conversions += 1;
+      }
+    });
+
+    const sourceData = Object.entries(sourceMap)
+      .map(([source, data]) => ({
+        source,
+        leads: data.leads,
+        conversions: data.conversions,
+        rate: data.leads > 0 ? parseFloat(((data.conversions / data.leads) * 100).toFixed(1)) : 0,
+      }))
+      .sort((a, b) => b.leads - a.leads);
+
+    // Get activity reports for rep performance
+    const reportConditions = [];
+    if (startDate) {
+      reportConditions.push(gte(platformActivityReports.periodStart, startDate));
+    }
+    if (endDate) {
+      reportConditions.push(lte(platformActivityReports.periodStart, endDate));
+    }
+
+    const reports = await db.query.platformActivityReports.findMany({
+      where: reportConditions.length > 0 ? and(...reportConditions) : undefined,
+      orderBy: [desc(platformActivityReports.periodStart)],
+    });
+
+    // Aggregate rep performance by userId
+    const repMap: Record<string, any> = {};
+    reports.forEach((report) => {
+      const rep = report.userId || 'unassigned';
+      if (!repMap[rep]) {
+        repMap[rep] = {
+          repId: rep,
+          repName: rep, // userId as fallback name
+          totalCalls: 0,
+          totalEmails: 0,
+          totalMeetings: 0,
+          totalDemos: 0,
+          totalProposals: 0,
+          dealsWon: 0,
+          revenueGenerated: 0,
+        };
+      }
+      repMap[rep].totalCalls += report.totalCalls || 0;
+      repMap[rep].totalEmails += report.totalEmails || 0;
+      repMap[rep].totalMeetings += report.meetingsHeld || 0;
+      repMap[rep].totalDemos += report.demosCompleted || 0;
+      repMap[rep].dealsWon += report.dealsWon || 0;
+      repMap[rep].revenueGenerated += parseFloat(report.totalARRBooked || '0');
+    });
+
+    const topPerformers = Object.values(repMap)
+      .sort((a: any, b: any) => b.revenueGenerated - a.revenueGenerated)
+      .slice(0, 10);
+
+    // Activity totals
+    const activityTotals = {
+      calls: reports.reduce((sum, r) => sum + (r.totalCalls || 0), 0),
+      emails: reports.reduce((sum, r) => sum + (r.totalEmails || 0), 0),
+      meetings: reports.reduce((sum, r) => sum + (r.meetingsHeld || 0), 0),
+      demos: reports.reduce((sum, r) => sum + (r.demosCompleted || 0), 0),
+      proposals: reports.reduce((sum, r) => sum + (r.newDeals || 0), 0),
+    };
+
+    // Calculate avg per day
+    const daysDiff =
+      startDate && endDate
+        ? Math.max(Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)), 1)
+        : 30;
+
+    const activityAvgPerDay = {
+      calls: Math.round(activityTotals.calls / daysDiff),
+      emails: Math.round(activityTotals.emails / daysDiff),
+      meetings: Math.round(activityTotals.meetings / daysDiff),
+      demos: Math.round(activityTotals.demos / daysDiff),
+      proposals: Math.round(activityTotals.proposals / daysDiff),
+    };
+
+    res.json({
+      sourceData,
+      topPerformers,
+      activityTotals,
+      activityAvgPerDay,
+      summary: {
+        totalRecords: allRecords.length,
+        totalReports: reports.length,
+        uniqueReps: Object.keys(repMap).length,
+      },
+      timeframe,
+    });
+  } catch (error) {
+    log.error('Error calculating performance metrics:', error);
+    res.status(500).json({ message: 'Failed to calculate performance metrics' });
+  }
+});
+
+/**
+ * GET /api/platform-analytics/growth-trends
+ * Get growth trend data including monthly MRR/ARR, new/expansion/churn revenue
+ *
+ * Query params:
+ * - timeframe: '7d' | '30d' | '90d' | '12m' | 'ytd' | 'all'
+ */
+router.get('/growth-trends', async (req, res) => {
+  try {
+    const { timeframe = '30d' } = req.query;
+
+    const { startDate } = getDateRangeFromTimeframe(timeframe as string);
+
+    const whereConditions = [];
+    if (startDate) {
+      whereConditions.push(gte(platformBusinessRecords.createdAt, startDate));
+    }
+
+    // Get all tenant records
+    const allTenants = await db.query.platformBusinessRecords.findMany({
+      where: and(eq(platformBusinessRecords.recordType, 'tenant'), ...whereConditions),
+      orderBy: [asc(platformBusinessRecords.createdAt)],
+    });
+
+    // Group tenants by month to build revenue trend
+    const monthMap: Record<
+      string,
+      {
+        newMRR: number;
+        expansionMRR: number;
+        churnMRR: number;
+        activeTenants: number;
+      }
+    > = {};
+
+    allTenants.forEach((tenant) => {
+      const created = new Date(tenant.createdAt);
+      const monthKey = `${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, '0')}`;
+
+      if (!monthMap[monthKey]) {
+        monthMap[monthKey] = { newMRR: 0, expansionMRR: 0, churnMRR: 0, activeTenants: 0 };
+      }
+
+      const mrr = parseFloat(tenant.currentMRR || '0');
+
+      if (tenant.status === 'active_customer' || tenant.status === 'trial_active') {
+        monthMap[monthKey].activeTenants += 1;
+        // Classify MRR contribution
+        const mrrChange = parseFloat(tenant.lastMRRChange || '0');
+        if (mrrChange > 0) {
+          monthMap[monthKey].expansionMRR += mrrChange;
+          monthMap[monthKey].newMRR += Math.max(mrr - mrrChange, 0);
+        } else {
+          monthMap[monthKey].newMRR += mrr;
+        }
+      } else if (tenant.status === 'churned' || tenant.status === 'trial_churned') {
+        monthMap[monthKey].churnMRR += mrr;
+      }
+    });
+
+    // Build sorted month array with running MRR/ARR totals
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    const sortedMonths = Object.entries(monthMap).sort(([a], [b]) => a.localeCompare(b));
+
+    let runningMRR = 0;
+    const revenueData = sortedMonths.map(([key, data]) => {
+      const monthIndex = parseInt(key.split('-')[1]) - 1;
+      const year = key.split('-')[0];
+      const label = `${monthNames[monthIndex]} ${year.slice(2)}`;
+
+      // Accumulate running MRR
+      runningMRR = runningMRR + data.newMRR + data.expansionMRR - data.churnMRR;
+      runningMRR = Math.max(runningMRR, 0);
+
+      return {
+        month: label,
+        monthKey: key,
+        mrr: parseFloat(runningMRR.toFixed(2)),
+        arr: parseFloat((runningMRR * 12).toFixed(2)),
+        new: parseFloat(data.newMRR.toFixed(2)),
+        expansion: parseFloat(data.expansionMRR.toFixed(2)),
+        churn: parseFloat(data.churnMRR.toFixed(2)),
+        activeTenants: data.activeTenants,
+      };
+    });
+
+    // Growth rates (compare last two months if available)
+    let mrrGrowth = 0;
+    let arrGrowth = 0;
+    if (revenueData.length >= 2) {
+      const current = revenueData[revenueData.length - 1];
+      const previous = revenueData[revenueData.length - 2];
+      if (previous.mrr > 0) {
+        mrrGrowth = parseFloat((((current.mrr - previous.mrr) / previous.mrr) * 100).toFixed(1));
+        arrGrowth = parseFloat((((current.arr - previous.arr) / previous.arr) * 100).toFixed(1));
+      }
+    }
+
+    res.json({
+      revenueData,
+      summary: {
+        latestMRR: revenueData.length > 0 ? revenueData[revenueData.length - 1].mrr : 0,
+        latestARR: revenueData.length > 0 ? revenueData[revenueData.length - 1].arr : 0,
+        mrrGrowth,
+        arrGrowth,
+        totalMonths: revenueData.length,
+      },
+      timeframe,
+    });
+  } catch (error) {
+    log.error('Error calculating growth trends:', error);
+    res.status(500).json({ message: 'Failed to calculate growth trends' });
   }
 });
 

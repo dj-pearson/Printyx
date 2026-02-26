@@ -135,6 +135,8 @@ import integrationRoutes from './integrations/routes';
 import integrationHubRoutes from './routes-integration-hub';
 import { registerFeatureFlagRoutes } from './routes-feature-flags';
 import { registerSessionManagementRoutes } from './routes-session-management';
+import { registerAdminStatsRoutes } from './routes-admin-stats';
+import incidentResponseRoutes from './routes-incident-response';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-registry');
 
@@ -330,6 +332,12 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   const adminSeedRoutes = await import('./routes/admin-seed-routes');
   app.use('/api/admin/seed', adminSeedRoutes.default);
   app.use('/api/root-admin/crm', signupCrmRoutes);
+
+  // ─── Admin Stats ──────────────────────────────────────────────────
+  registerAdminStatsRoutes(app);
+
+  // ─── Incident Response ──────────────────────────────────────────
+  app.use(incidentResponseRoutes);
 
   const customerNumberRoutes = await import('./routes-customer-numbers');
   app.use('/api/customer-numbers', customerNumberRoutes.customerNumberRoutes);

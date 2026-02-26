@@ -323,7 +323,7 @@ export default function WarehouseTeamStatsWidget({
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">FPY Rate</span>
             <span className={cn('font-bold', getFPYColor(stats?.performance.firstPassYield || 0))}>
-              {stats?.performance.firstPassYield.toFixed(0)}%
+              {(stats?.performance.firstPassYield ?? 0).toFixed(0)}%
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
@@ -331,20 +331,22 @@ export default function WarehouseTeamStatsWidget({
             <span
               className={cn('font-bold', getAccuracyColor(stats?.performance.accuracyRate || 0))}
             >
-              {stats?.performance.accuracyRate.toFixed(0)}%
+              {(stats?.performance.accuracyRate ?? 0).toFixed(0)}%
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Quality</span>
             <div className="flex items-center gap-1">
               <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-              <span className="font-medium">{stats?.performance.qualityScore.toFixed(1)}</span>
+              <span className="font-medium">
+                {(stats?.performance.qualityScore ?? 0).toFixed(1)}
+              </span>
             </div>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Technicians</span>
             <span className="font-medium">
-              {stats?.team.activeTechnicians}/{stats?.team.totalTechnicians}
+              {stats?.team.activeTechnicians ?? 0}/{stats?.team.totalTechnicians ?? 0}
             </span>
           </div>
         </CardContent>
@@ -520,7 +522,7 @@ export default function WarehouseTeamStatsWidget({
                   getProductivityColor(stats?.performance.productivity || 0),
                 )}
               >
-                {stats?.performance.productivity.toFixed(1)}
+                {(stats?.performance.productivity ?? 0).toFixed(1)}
               </div>
               <span className="text-sm text-muted-foreground">kits/hr</span>
               <TrendIcon trend={stats?.trends.productivityTrend || 'stable'} />

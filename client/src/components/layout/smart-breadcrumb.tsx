@@ -57,7 +57,7 @@ export function SmartBreadcrumb({ customSegments, quickActions }: SmartBreadcrum
     if (customSegments) return customSegments;
 
     const pathParts = location.split('/').filter(Boolean);
-    const breadcrumbs: BreadcrumbSegment[] = [{ label: 'Home', href: '/dashboard' }];
+    const breadcrumbs: BreadcrumbSegment[] = [{ label: 'Home', href: '/' }];
 
     let currentPath = '';
     pathParts.forEach((part, index) => {

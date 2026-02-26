@@ -31,28 +31,28 @@ export function TaskHubStats({ stats, isLoading }: TaskHubStatsProps) {
   const statCards = [
     {
       label: 'Total Tasks',
-      value: stats?.total || 0,
+      value: stats?.totalTasks ?? stats?.total ?? 0,
       icon: Target,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
     },
     {
       label: 'In Progress',
-      value: stats?.in_progress || 0,
+      value: stats?.inProgressTasks ?? stats?.in_progress ?? 0,
       icon: Clock,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
     },
     {
       label: 'Completed',
-      value: stats?.completed || 0,
+      value: stats?.completedTasks ?? stats?.completed ?? 0,
       icon: CheckCircle2,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
     },
     {
       label: 'Overdue',
-      value: stats?.overdue || 0,
+      value: stats?.overdueTasks ?? stats?.overdue ?? 0,
       icon: AlertCircle,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
