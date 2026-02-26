@@ -82,53 +82,77 @@ export function ExternalIntegrationsDashboard() {
       </div>
 
       {/* Integration Status Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {integrations.integrationStatuses.data?.map((integration) => (
-          <Card key={integration.name}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  {integration.name === 'E-Automate' && <Database className="h-5 w-5" />}
-                  {integration.name === 'Salesforce' && <Users className="h-5 w-5" />}
-                  {integration.name === 'QuickBooks' && <DollarSign className="h-5 w-5" />}
-                  <h3 className="font-semibold">{integration.name}</h3>
-                </div>
-                {getHealthIcon(integration.health)}
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Status</span>
-                  <Badge variant={integration.connected ? 'default' : 'destructive'}>
-                    {integration.connected ? 'Connected' : 'Disconnected'}
-                  </Badge>
-                </div>
-
-                <div className="flex justify-between text-sm">
-                  <span>Records</span>
-                  <span className="font-medium">{integration.recordCount.toLocaleString()}</span>
-                </div>
-
-                <div className="flex justify-between text-sm">
-                  <span>Last Sync</span>
-                  <span className="text-muted-foreground">
-                    {integration.lastSync
-                      ? new Date(integration.lastSync).toLocaleDateString()
-                      : 'Never'}
-                  </span>
-                </div>
-
-                {integration.errorCount > 0 && (
-                  <div className="flex justify-between text-sm text-red-600">
-                    <span>Errors</span>
-                    <span>{integration.errorCount}</span>
+      {integrations.integrationStatuses.isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">Loading integration statuses...</p>
+          </div>
+        </div>
+      ) : !integrations.integrationStatuses.data ||
+        integrations.integrationStatuses.data.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <Settings className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Integrations Configured</h3>
+            <p className="text-gray-600 mb-4">
+              Connect your external systems to start syncing data across platforms.
+            </p>
+            <Button onClick={handleBulkSync} disabled={integrations.bulkSync.isPending}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry Connection
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {integrations.integrationStatuses.data?.map((integration) => (
+            <Card key={integration.name}>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    {integration.name === 'E-Automate' && <Database className="h-5 w-5" />}
+                    {integration.name === 'Salesforce' && <Users className="h-5 w-5" />}
+                    {integration.name === 'QuickBooks' && <DollarSign className="h-5 w-5" />}
+                    <h3 className="font-semibold">{integration.name}</h3>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  {getHealthIcon(integration.health)}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Status</span>
+                    <Badge variant={integration.connected ? 'default' : 'destructive'}>
+                      {integration.connected ? 'Connected' : 'Disconnected'}
+                    </Badge>
+                  </div>
+
+                  <div className="flex justify-between text-sm">
+                    <span>Records</span>
+                    <span className="font-medium">{integration.recordCount.toLocaleString()}</span>
+                  </div>
+
+                  <div className="flex justify-between text-sm">
+                    <span>Last Sync</span>
+                    <span className="text-muted-foreground">
+                      {integration.lastSync
+                        ? new Date(integration.lastSync).toLocaleDateString()
+                        : 'Never'}
+                    </span>
+                  </div>
+
+                  {integration.errorCount > 0 && (
+                    <div className="flex justify-between text-sm text-red-600">
+                      <span>Errors</span>
+                      <span>{integration.errorCount}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">

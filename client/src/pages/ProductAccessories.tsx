@@ -196,9 +196,10 @@ export default function ProductAccessories() {
 
   // Filter accessories by search and manufacturer
   const filteredAccessories = accessories.filter((accessory) => {
+    const search = searchTerm.toLowerCase();
     const matchesSearch =
-      accessory.accessoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      accessory.accessoryCode.toLowerCase().includes(searchTerm.toLowerCase());
+      (accessory.accessoryName?.toLowerCase() || '').includes(search) ||
+      (accessory.accessoryCode?.toLowerCase() || '').includes(search);
 
     if (selectedManufacturer === 'all') return matchesSearch;
 
@@ -227,7 +228,7 @@ export default function ProductAccessories() {
             <div className="space-y-1">
               <CardTitle className="text-lg">{accessory.accessoryName}</CardTitle>
               <CardDescription>
-                <span className="font-medium">{accessory.accessoryCode}</span>
+                <span className="font-medium">{accessory.accessoryCode || 'N/A'}</span>
                 {relatedModel && (
                   <span className="ml-2 text-muted-foreground">• {relatedModel.productName}</span>
                 )}
@@ -258,13 +259,20 @@ export default function ProductAccessories() {
             <p className="text-sm text-muted-foreground line-clamp-2">{accessory.description}</p>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">MSRP</span>
               </div>
               <p className="text-lg font-bold">{formatCurrency(accessory.msrp)}</p>
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Standard Cost</span>
+              <p className="text-lg font-bold text-blue-600">
+                {formatCurrency((accessory as any).standardCost)}
+              </p>
             </div>
 
             <div className="space-y-2">

@@ -665,4 +665,88 @@ router.patch('/interventions/:id', async (req: Request, res: Response) => {
   }
 });
 
+// ============================================================================
+// METRICS
+// ============================================================================
+
+/**
+ * GET /api/platform-cs/metrics
+ * Return aggregate customer-success metrics
+ */
+router.get('/metrics', async (_req: Request, res: Response) => {
+  try {
+    const [totalResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(platformHealthScores);
+    const total = totalResult?.count ?? 0;
+
+    const [healthyResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(platformHealthScores)
+      .where(eq(platformHealthScores.healthStatus, 'healthy'));
+    const healthy = healthyResult?.count ?? 0;
+
+    const [atRiskResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(platformHealthScores)
+      .where(eq(platformHealthScores.healthStatus, 'at_risk'));
+    const atRisk = atRiskResult?.count ?? 0;
+
+    const [criticalResult] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(platformHealthScores)
+      .where(eq(platformHealthScores.healthStatus, 'critical'));
+    const critical = criticalResult?.count ?? 0;
+
+    const [avgResult] = await db
+      .select({ avg: sql<number>`coalesce(avg(${platformHealthScores.overallScore}), 0)::float` })
+      .from(platformHealthScores);
+
+    res.json({
+      totalCustomers: total,
+      healthyCount: healthy,
+      atRiskCount: atRisk,
+      criticalCount: critical,
+      averageHealthScore: Math.round((avgResult?.avg ?? 0) * 10) / 10,
+      retentionRate: total > 0 ? Math.round(((total - critical) / total) * 1000) / 10 : 100,
+    });
+  } catch (error) {
+    log.error('Error fetching metrics:', error);
+    res.json({
+      totalCustomers: 0,
+      healthyCount: 0,
+      atRiskCount: 0,
+      criticalCount: 0,
+      averageHealthScore: 0,
+      retentionRate: 100,
+    });
+  }
+});
+
+// ============================================================================
+// CSMS (Customer Success Managers)
+// ============================================================================
+
+/**
+ * GET /api/platform-cs/csms
+ * Return list of users who serve as CSMs
+ */
+router.get('/csms', async (_req: Request, res: Response) => {
+  try {
+    // Get distinct assigned CSMs from health scores
+    const csms = await db
+      .selectDistinct({
+        id: platformHealthScores.assignedCsm,
+        name: platformHealthScores.assignedCsm,
+      })
+      .from(platformHealthScores)
+      .where(sql`${platformHealthScores.assignedCsm} IS NOT NULL`);
+
+    res.json(csms.filter((c) => c.id));
+  } catch (error) {
+    log.error('Error fetching CSMs:', error);
+    res.json([]);
+  }
+});
+
 export default router;

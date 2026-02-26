@@ -39,7 +39,10 @@ export default function KpiSummaryBar({ className = '' }: { className?: string }
     },
     {
       label: 'Uptime',
-      value: metrics.uptime != null ? `${(metrics.uptime * 100).toFixed(2)}%` : '-',
+      value:
+        metrics.uptime != null
+          ? `${(metrics.uptime > 1 ? metrics.uptime : metrics.uptime * 100).toFixed(2)}%`
+          : '-',
       Icon: TrendingUp,
     },
   ];

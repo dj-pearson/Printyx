@@ -118,17 +118,17 @@ export default function PlatformCustomerSuccess() {
 
   // Fetch tenant health data
   const { data: tenants = [], isLoading } = useQuery<TenantHealth[]>({
-    queryKey: ['/api/platform-crm/customer-success/health', selectedFilter, selectedCSM],
+    queryKey: ['/api/platform-cs/health-scores', selectedFilter, selectedCSM],
   });
 
   // Fetch overall metrics
   const { data: metrics } = useQuery<HealthMetrics>({
-    queryKey: ['/api/platform-crm/customer-success/metrics'],
+    queryKey: ['/api/platform-cs/metrics'],
   });
 
   // Fetch available CSMs
   const { data: csms = [] } = useQuery<{ id: string; name: string }[]>({
-    queryKey: ['/api/platform-crm/customer-success/csms'],
+    queryKey: ['/api/platform-cs/csms'],
   });
 
   // Filter tenants

@@ -340,7 +340,10 @@ export default function RemoteMonitoring() {
               <div className="text-2xl font-bold text-green-600">{onlineEquipment}</div>
               <p className="text-xs text-muted-foreground">{offlineEquipment} offline</p>
               <div className="text-xs text-gray-600 mt-1">
-                {((onlineEquipment / equipmentStatus.length) * 100).toFixed(1)}% connectivity
+                {equipmentStatus.length > 0
+                  ? ((onlineEquipment / equipmentStatus.length) * 100).toFixed(1)
+                  : '0.0'}
+                % connectivity
               </div>
             </CardContent>
           </Card>
@@ -370,7 +373,7 @@ export default function RemoteMonitoring() {
               {fleetOverview && (
                 <>
                   <div className="text-2xl font-bold">
-                    {fleetOverview.summary.averageUptime.toFixed(1)}%
+                    {(fleetOverview.summary.averageUptime ?? 0).toFixed(1)}%
                   </div>
                   <p className="text-xs text-muted-foreground">Average across all equipment</p>
                   <Progress value={fleetOverview.summary.averageUptime} className="mt-2" />
@@ -388,7 +391,7 @@ export default function RemoteMonitoring() {
               {fleetOverview && (
                 <>
                   <div className="text-2xl font-bold">
-                    {fleetOverview.summary.fleetUtilization.toFixed(1)}%
+                    {(fleetOverview.summary.fleetUtilization ?? 0).toFixed(1)}%
                   </div>
                   <p className="text-xs text-muted-foreground">Equipment usage efficiency</p>
                   <div className="text-xs text-gray-600 mt-1">

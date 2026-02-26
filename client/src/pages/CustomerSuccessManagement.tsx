@@ -301,7 +301,10 @@ export default function CustomerSuccessManagement() {
               <div className="text-2xl font-bold text-orange-600">{atRiskCustomers}</div>
               <p className="text-xs text-muted-foreground">Require immediate attention</p>
               <div className="text-xs text-gray-600 mt-1">
-                {((atRiskCustomers / healthScores.length) * 100).toFixed(1)}% of total customers
+                {healthScores.length > 0
+                  ? ((atRiskCustomers / healthScores.length) * 100).toFixed(1)
+                  : '0.0'}
+                % of total customers
               </div>
             </CardContent>
           </Card>

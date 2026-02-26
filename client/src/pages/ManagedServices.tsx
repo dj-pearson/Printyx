@@ -327,12 +327,6 @@ export default function ManagedServices() {
     <MainLayout title="IT & Managed Services" description="Manage IT and managed service offerings">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">IT & Managed Services</h1>
-            <p className="text-muted-foreground">
-              Manage IT services, managed solutions, and technology support offerings
-            </p>
-          </div>
           <ManagementToolbar
             title="IT & Managed Services"
             description="Manage IT services, managed solutions, and technology support offerings"

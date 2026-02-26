@@ -298,10 +298,12 @@ export default function DatabaseManagement() {
 
   // Create database stats from system resources
   const dbStats: DatabaseStats = {
-    totalSize:
-      systemResources?.find((r: any) => r.name === 'Database Size')?.current +
-        ' ' +
-        systemResources?.find((r: any) => r.name === 'Database Size')?.unit || 'Unknown',
+    totalSize: (() => {
+      const sizeRes = systemResources?.find((r: any) => r.name === 'Database Size');
+      return sizeRes?.current != null && sizeRes?.unit
+        ? `${sizeRes.current} ${sizeRes.unit}`
+        : 'Unknown';
+    })(),
     tableCount: systemResources?.find((r: any) => r.name === 'Tables Count')?.current || 0,
     connectionCount:
       systemResources?.find((r: any) => r.name === 'Active Connections')?.current || 0,

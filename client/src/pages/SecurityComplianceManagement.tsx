@@ -368,7 +368,20 @@ export default function SecurityComplianceManagement() {
           </div>
         </div>
 
-        {securityData && (
+        {!securityData ? (
+          <div className="text-center py-16">
+            <Shield className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Security Data Available</h3>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              Security and compliance data could not be loaded. This may be due to a connection
+              issue or the security monitoring service being unavailable.
+            </p>
+            <Button onClick={() => refetch()} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        ) : (
           <>
             {/* Security Overview KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">

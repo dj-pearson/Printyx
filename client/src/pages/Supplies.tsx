@@ -153,10 +153,11 @@ export default function Supplies() {
 
   // Filter supplies by search and category
   const filteredSupplies = supplies.filter((supply) => {
+    const search = searchTerm.toLowerCase();
     const matchesSearch =
-      supply.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      supply.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (supply.summary && supply.summary.toLowerCase().includes(searchTerm.toLowerCase()));
+      (supply.productName?.toLowerCase() || '').includes(search) ||
+      (supply.productCode?.toLowerCase() || '').includes(search) ||
+      (supply.summary?.toLowerCase() || '').includes(search);
 
     if (selectedCategory === 'all') return matchesSearch;
 

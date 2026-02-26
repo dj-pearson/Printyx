@@ -47,14 +47,47 @@ export function registerCompaniesRoutes(app: Express) {
         }
 
         const search = String((req.query as any)?.search || '');
+        const recordType = (req.query as any)?.recordType as string | undefined;
+        const status = (req.query as any)?.status as string | undefined;
+        const limitParam = (req.query as any)?.limit;
+        const offsetParam = (req.query as any)?.offset;
 
         const allCompanies = await storage.getCompanies(tenantId);
-        const companies = search
-          ? allCompanies.filter((c: any) =>
-              (c.businessName || '').toLowerCase().includes(search.toLowerCase()),
-            )
-          : allCompanies;
-        res.json(companies);
+
+        // Apply filters
+        let filtered = allCompanies;
+
+        if (search) {
+          filtered = filtered.filter((c: any) =>
+            (c.businessName || '').toLowerCase().includes(search.toLowerCase()),
+          );
+        }
+
+        if (recordType) {
+          filtered = filtered.filter((c: any) => c.recordType === recordType);
+        }
+
+        if (status) {
+          filtered = filtered.filter((c: any) => c.status === status);
+        }
+
+        // Compute total before pagination
+        const total = filtered.length;
+
+        // Apply limit/offset pagination
+        const limit = limitParam !== undefined ? parseInt(String(limitParam), 10) : undefined;
+        const offset = offsetParam !== undefined ? parseInt(String(offsetParam), 10) : 0;
+
+        if (limit !== undefined) {
+          filtered = filtered.slice(offset, offset + limit);
+        } else if (offset > 0) {
+          filtered = filtered.slice(offset);
+        }
+
+        res.json({
+          data: filtered,
+          pagination: { total, limit: limit ?? filtered.length, offset },
+        });
       } catch (error) {
         log.error('Error fetching companies:', error);
         res.status(500).json({ message: 'Failed to fetch companies' });

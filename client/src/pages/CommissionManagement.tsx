@@ -586,94 +586,113 @@ export default function CommissionManagement() {
           </TabsContent>
 
           <TabsContent value="plans" className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {plans.map((plan) => (
-                <Card key={plan.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
+            {plans.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Commission Plans</h3>
+                  <p className="text-gray-600 mb-4">
+                    Create your first commission plan to start tracking sales performance and
+                    payouts.
+                  </p>
+                  <Button onClick={() => setIsCreatePlanOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Commission Plan
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {plans.map((plan) => (
+                  <Card key={plan.id}>
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-lg">{plan.planName}</CardTitle>
+                          <CardDescription>{plan.description}</CardDescription>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Badge className={getPlanTypeColor(plan.planType)}>
+                            {plan.planType.replace('_', ' ')}
+                          </Badge>
+                          <Badge variant={plan.isActive ? 'default' : 'secondary'}>
+                            {plan.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="space-y-4">
                       <div>
-                        <CardTitle className="text-lg">{plan.planName}</CardTitle>
-                        <CardDescription>{plan.description}</CardDescription>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <Badge className={getPlanTypeColor(plan.planType)}>
-                          {plan.planType.replace('_', ' ')}
-                        </Badge>
-                        <Badge variant={plan.isActive ? 'default' : 'secondary'}>
-                          {plan.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    <div>
-                      <div className="text-sm font-medium mb-2">Commission Tiers</div>
-                      <div className="space-y-2">
-                        {plan.tiers.map((tier) => (
-                          <div key={tier.tierLevel} className="text-xs bg-gray-50 rounded p-2">
-                            <div className="font-medium">{tier.tierName}</div>
-                            <div>
-                              Sales: ${tier.minimumSales.toLocaleString()} -{' '}
-                              {tier.maximumSales
-                                ? `$${tier.maximumSales.toLocaleString()}`
-                                : 'Unlimited'}
-                            </div>
-                            <div>Rate: {tier.commissionRate}%</div>
-                            {tier.bonusThreshold && (
+                        <div className="text-sm font-medium mb-2">Commission Tiers</div>
+                        <div className="space-y-2">
+                          {plan.tiers.map((tier) => (
+                            <div key={tier.tierLevel} className="text-xs bg-gray-50 rounded p-2">
+                              <div className="font-medium">{tier.tierName}</div>
                               <div>
-                                Bonus: ${tier.bonusAmount?.toLocaleString()} at $
-                                {tier.bonusThreshold.toLocaleString()}
+                                Sales: ${tier.minimumSales.toLocaleString()} -{' '}
+                                {tier.maximumSales
+                                  ? `$${tier.maximumSales.toLocaleString()}`
+                                  : 'Unlimited'}
                               </div>
-                            )}
-                          </div>
-                        ))}
+                              <div>Rate: {tier.commissionRate}%</div>
+                              {tier.bonusThreshold && (
+                                <div>
+                                  Bonus: ${tier.bonusAmount?.toLocaleString()} at $
+                                  {tier.bonusThreshold.toLocaleString()}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
 
-                    <div>
-                      <div className="text-sm font-medium mb-2">Payment Rules</div>
-                      <div className="text-xs text-gray-600 space-y-1">
-                        <div>Frequency: {plan.rules.paymentFrequency}</div>
-                        <div>Delay: {plan.rules.paymentDelay} days</div>
-                        <div>Minimum: ${plan.rules.minimumCommissionPayment}</div>
-                        <div>Split allowed: {plan.rules.splitCommissionAllowed ? 'Yes' : 'No'}</div>
-                        {plan.rules.chargebackEnabled && (
-                          <div>Chargeback period: {plan.rules.chargebackPeriod} days</div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-medium mb-2">Product Rates</div>
-                      <div className="space-y-1">
-                        {plan.productRates.slice(0, 3).map((rate, idx) => (
-                          <div key={idx} className="flex justify-between text-xs">
-                            <span>{rate.category.replace('_', ' ')}</span>
-                            <span>{rate.rate}%</span>
+                      <div>
+                        <div className="text-sm font-medium mb-2">Payment Rules</div>
+                        <div className="text-xs text-gray-600 space-y-1">
+                          <div>Frequency: {plan.rules.paymentFrequency}</div>
+                          <div>Delay: {plan.rules.paymentDelay} days</div>
+                          <div>Minimum: ${plan.rules.minimumCommissionPayment}</div>
+                          <div>
+                            Split allowed: {plan.rules.splitCommissionAllowed ? 'Yes' : 'No'}
                           </div>
-                        ))}
-                        {plan.productRates.length > 3 && (
-                          <div className="text-xs text-gray-500">
-                            + {plan.productRates.length - 3} more
-                          </div>
-                        )}
+                          {plan.rules.chargebackEnabled && (
+                            <div>Chargeback period: {plan.rules.chargebackPeriod} days</div>
+                          )}
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="flex-1">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Edit
-                      </Button>
-                      <Button size="sm" className="flex-1">
-                        View Users
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      <div>
+                        <div className="text-sm font-medium mb-2">Product Rates</div>
+                        <div className="space-y-1">
+                          {plan.productRates.slice(0, 3).map((rate, idx) => (
+                            <div key={idx} className="flex justify-between text-xs">
+                              <span>{rate.category.replace('_', ' ')}</span>
+                              <span>{rate.rate}%</span>
+                            </div>
+                          ))}
+                          {plan.productRates.length > 3 && (
+                            <div className="text-xs text-gray-500">
+                              + {plan.productRates.length - 3} more
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" className="flex-1">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button size="sm" className="flex-1">
+                          View Users
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="disputes" className="space-y-6">
@@ -796,7 +815,19 @@ export default function CommissionManagement() {
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
-            {analytics && (
+            {!analytics ? (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No Analytics Data Available
+                  </h3>
+                  <p className="text-gray-600">
+                    Analytics will appear here once commission calculations have been processed.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
               <>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <Card>

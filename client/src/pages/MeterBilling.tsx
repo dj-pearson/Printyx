@@ -564,7 +564,9 @@ export default function MeterBilling() {
                         </div>
                         <p className="text-sm text-gray-600">
                           Contract: {getContractNumber(reading.contractId)} | Date:{' '}
-                          {format(new Date(reading.readingDate), 'MMM dd, yyyy')}
+                          {reading.readingDate
+                            ? format(new Date(reading.readingDate), 'MMM dd, yyyy')
+                            : 'N/A'}
                         </p>
                       </div>
                       <div className="text-right">
@@ -601,8 +603,13 @@ export default function MeterBilling() {
                         <div>
                           <h3 className="font-medium">{contract.contractNumber}</h3>
                           <p className="text-sm text-gray-600">
-                            {format(new Date(contract.startDate), 'MMM dd, yyyy')} -
-                            {format(new Date(contract.endDate), 'MMM dd, yyyy')}
+                            {contract.startDate
+                              ? format(new Date(contract.startDate), 'MMM dd, yyyy')
+                              : 'N/A'}{' '}
+                            -{' '}
+                            {contract.endDate
+                              ? format(new Date(contract.endDate), 'MMM dd, yyyy')
+                              : 'N/A'}
                           </p>
                         </div>
                         <Badge variant={contract.status === 'active' ? 'default' : 'secondary'}>
