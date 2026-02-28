@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +36,10 @@ import {
   Trash2,
   FileText,
   UserPlus,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  TrendingUp,
 } from 'lucide-react';
 import type { Invoice, Contract, Customer } from '@shared/schema';
 import { format } from 'date-fns';
@@ -222,6 +226,41 @@ export default function Invoices() {
     setIsPaymentDialogOpen(true);
   };
 
+  // KPI summary metrics
+  const kpiMetrics = useMemo(() => {
+    if (!invoices || invoices.length === 0) {
+      return { totalOutstanding: 0, overdueCount: 0, paidThisMonth: 0, totalCount: 0 };
+    }
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    let totalOutstanding = 0;
+    let overdueCount = 0;
+    let paidThisMonth = 0;
+
+    for (const inv of invoices) {
+      const amount = parseFloat(String(inv.totalAmount)) || 0;
+      if (inv.status !== 'paid') {
+        totalOutstanding += amount;
+      }
+      if (inv.status === 'overdue') {
+        overdueCount++;
+      } else if (inv.status !== 'paid' && inv.dueDate) {
+        const dueDate = new Date(inv.dueDate);
+        if (dueDate < now) {
+          overdueCount++;
+        }
+      }
+      if (inv.status === 'paid' && inv.updatedAt) {
+        const paidDate = new Date(inv.updatedAt);
+        if (paidDate >= monthStart) {
+          paidThisMonth += amount;
+        }
+      }
+    }
+    return { totalOutstanding, overdueCount, paidThisMonth, totalCount: invoices.length };
+  }, [invoices]);
+
   // Filter invoices
   const filteredInvoices = invoices?.filter((invoice) => {
     const matchesSearch =
@@ -360,6 +399,16 @@ export default function Invoices() {
               <div className="h-4 w-64 bg-gray-200 rounded animate-pulse" />
             </div>
           </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-4">
+                  <div className="h-3 bg-gray-200 rounded w-1/2 mb-3" />
+                  <div className="h-6 bg-gray-200 rounded w-3/4" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
           <div className="grid gap-3 sm:gap-4">
             {[1, 2, 3].map((i) => (
               <Card key={i} className="animate-pulse">
@@ -469,6 +518,61 @@ export default function Invoices() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+          </div>
+
+          {/* KPI Summary Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <DollarSign className="h-4 w-4 text-amber-500" />
+                  <p className="text-xs font-medium text-muted-foreground">Outstanding</p>
+                </div>
+                <p className="text-xl font-bold text-foreground">
+                  $
+                  {kpiMetrics.totalOutstanding.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  <p className="text-xs font-medium text-muted-foreground">Overdue</p>
+                </div>
+                <p className="text-xl font-bold text-foreground">
+                  {kpiMetrics.overdueCount}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">invoices</span>
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <p className="text-xs font-medium text-muted-foreground">Paid This Month</p>
+                </div>
+                <p className="text-xl font-bold text-foreground">
+                  $
+                  {kpiMetrics.paidThisMonth.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                  <p className="text-xs font-medium text-muted-foreground">Total Invoices</p>
+                </div>
+                <p className="text-xl font-bold text-foreground">{kpiMetrics.totalCount}</p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Search and Filter - Mobile Optimized */}
