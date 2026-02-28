@@ -51,7 +51,11 @@ import {
   Plus,
   Phone,
   Mail,
+  ShieldCheck,
+  AlertTriangle,
+  ShieldAlert,
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CsvImportWizard } from '@/components/import';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -147,6 +151,54 @@ const customerColumns: ColumnDef[] = [
     sortable: true,
   },
   {
+    key: 'activity',
+    label: 'Health',
+    sortable: true,
+    render: (_value, record) => {
+      const activity = record.activity || record.status;
+      let healthLabel: string;
+      let healthDescription: string;
+      let HealthIcon: typeof ShieldCheck;
+      let colorClass: string;
+
+      if (activity === 'inactive' || activity === 'churned') {
+        healthLabel = 'At Risk';
+        healthDescription =
+          'This customer is inactive or has churned and may need immediate outreach.';
+        HealthIcon = ShieldAlert;
+        colorClass = 'text-red-600 bg-red-50 border-red-200';
+      } else if (activity === 'on_hold') {
+        healthLabel = 'Needs Attention';
+        healthDescription = 'This customer is on hold and may require follow-up to re-engage.';
+        HealthIcon = AlertTriangle;
+        colorClass = 'text-amber-600 bg-amber-50 border-amber-200';
+      } else {
+        healthLabel = 'Healthy';
+        healthDescription = 'This customer is active and in good standing.';
+        HealthIcon = ShieldCheck;
+        colorClass = 'text-green-600 bg-green-50 border-green-200';
+      }
+
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${colorClass}`}
+              >
+                <HealthIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                {healthLabel}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[220px]">
+              <p className="text-xs">{healthDescription}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    },
+  },
+  {
     key: 'industry',
     label: 'Industry',
     sortable: true,
@@ -234,11 +286,12 @@ export default function CustomersPage() {
     queryKey: ['/api/companies/stats', 'customer'],
     enabled: isAuthenticated,
     queryFn: async () => {
-      const [totalResp, activeResp, inactiveResp, onHoldResp] = await Promise.all([
+      const [totalResp, activeResp, inactiveResp, onHoldResp, churnedResp] = await Promise.all([
         apiRequest('/api/companies?recordType=Customer&limit=1&offset=0', 'GET'),
         apiRequest('/api/companies?recordType=Customer&status=active&limit=1&offset=0', 'GET'),
         apiRequest('/api/companies?recordType=Customer&status=inactive&limit=1&offset=0', 'GET'),
         apiRequest('/api/companies?recordType=Customer&status=on_hold&limit=1&offset=0', 'GET'),
+        apiRequest('/api/companies?recordType=Customer&status=churned&limit=1&offset=0', 'GET'),
       ]);
 
       return {
@@ -246,6 +299,8 @@ export default function CustomersPage() {
         activeCount: activeResp?.pagination?.total || 0,
         inactiveCount: inactiveResp?.pagination?.total || 0,
         onHoldCount: onHoldResp?.pagination?.total || 0,
+        churnedCount: churnedResp?.pagination?.total || 0,
+        atRiskCount: (inactiveResp?.pagination?.total || 0) + (churnedResp?.pagination?.total || 0),
       };
     },
     staleTime: 60_000,
@@ -416,7 +471,7 @@ export default function CustomersPage() {
     <MainLayout title="Customers" description="Manage your active customer relationships">
       <div className="space-y-4 sm:space-y-6">
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
@@ -451,6 +506,19 @@ export default function CustomersPage() {
                 {stats?.onHoldCount?.toLocaleString() || '0'}
               </div>
               <p className="text-xs text-muted-foreground">Needs attention</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">At Risk</CardTitle>
+              <ShieldAlert className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {stats?.atRiskCount?.toLocaleString() || '0'}
+              </div>
+              <p className="text-xs text-muted-foreground">Inactive or churned</p>
             </CardContent>
           </Card>
 

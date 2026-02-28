@@ -26,8 +26,9 @@ export default function NotFound() {
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-950 p-4">
       <div className="w-full max-w-lg text-center">
         <div className="mb-8">
+          <p className="text-sm font-bold tracking-widest text-primary uppercase mb-4">Printyx</p>
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-6">
-            <FileQuestion className="h-10 w-10 text-primary" />
+            <FileQuestion className="h-10 w-10 text-primary" aria-hidden="true" />
           </div>
           <h1 className="text-4xl font-bold tracking-tight text-foreground mb-2">Page not found</h1>
           <p className="text-muted-foreground text-lg">

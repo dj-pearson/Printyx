@@ -28,6 +28,7 @@ import {
   generateSoftwareApplicationSchema,
   generateFAQSchema,
 } from '@/lib/schemaMarkup';
+import { GEOFaqSection } from '@/lib/seo/GEOFaqSection';
 
 const Homepage = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -275,7 +276,10 @@ const Homepage = () => {
               <a href="#benefits" className="text-gray-700 hover:text-blue-600 transition-colors">
                 Benefits
               </a>
-              <a href="/roi-calculator" className="text-gray-700 hover:text-blue-600 transition-colors font-medium">
+              <a
+                href="/roi-calculator"
+                className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
+              >
                 ROI Calculator
               </a>
               <a href="/blog" className="text-gray-700 hover:text-blue-600 transition-colors">
@@ -768,6 +772,43 @@ const Homepage = () => {
         </div>
       </section>
 
+      {/* GEO-Optimized FAQ Section */}
+      <section className="py-24 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <GEOFaqSection
+            title="Frequently Asked Questions About Printyx"
+            faqs={[
+              {
+                question: 'What is Printyx and how does it help copier dealers?',
+                answer:
+                  'Printyx is an AI-powered dealer management platform built specifically for copier dealers. It replaces legacy systems with predictive intelligence that forecasts equipment failures, optimizes contract pricing, and automates service dispatch to increase dealer profitability by 15-25%.',
+              },
+              {
+                question: 'How does Printyx compare to E-Automate for copier dealer management?',
+                answer:
+                  'Printyx offers a modern cloud-native architecture with AI-powered predictive maintenance, dynamic pricing, and offline-first mobile apps. Unlike E-Automate and other legacy platforms, Printyx predicts equipment failures 30 days ahead and provides real-time contract profitability analysis.',
+              },
+              {
+                question:
+                  'Can Printyx predict copier and printer equipment failures before they happen?',
+                answer:
+                  'Yes. Printyx uses machine learning to analyze service history, usage patterns, and equipment data to predict failures up to 30 days in advance with 80%+ accuracy. This prevents 30-40% of emergency service calls through proactive maintenance scheduling and automated parts pre-ordering.',
+              },
+              {
+                question: 'Does Printyx offer a mobile app for field service technicians?',
+                answer:
+                  'Printyx includes an offline-first mobile app that works for up to 72 hours without connectivity. Technicians can view work orders, update service calls, capture signatures, and log parts. All data syncs automatically when reconnected, making it ideal for basements and rural areas.',
+              },
+              {
+                question: 'How long does it take to migrate from a legacy system to Printyx?',
+                answer:
+                  'Most copier dealers complete their migration to Printyx in 2-4 weeks with white-glove support. The platform imports data from E-Automate, QuickBooks, Salesforce, and CSV files. Dedicated migration specialists map your workflows and train your team throughout the process.',
+              },
+            ]}
+          />
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -890,13 +931,20 @@ const Homepage = () => {
               <div className="text-center md:text-left mb-4 md:mb-0">
                 <p className="text-gray-400 text-sm">© 2026 Printyx. All rights reserved.</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  AI-Powered Dealer Management &bull; Predictive vs. Reactive &bull; Modern Cloud Architecture
+                  AI-Powered Dealer Management &bull; Predictive vs. Reactive &bull; Modern Cloud
+                  Architecture
                 </p>
               </div>
               <div className="flex space-x-6 text-sm">
-                <a href="/privacy" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a>
-                <a href="/terms" className="text-gray-400 hover:text-white transition-colors">Terms of Service</a>
-                <a href="/eula" className="text-gray-400 hover:text-white transition-colors">EULA</a>
+                <a href="/privacy" className="text-gray-400 hover:text-white transition-colors">
+                  Privacy Policy
+                </a>
+                <a href="/terms" className="text-gray-400 hover:text-white transition-colors">
+                  Terms of Service
+                </a>
+                <a href="/eula" className="text-gray-400 hover:text-white transition-colors">
+                  EULA
+                </a>
               </div>
             </div>
           </div>
