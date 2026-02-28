@@ -380,7 +380,7 @@ export default function PricingCalculator({
         </div>
 
         {/* Mobile Sticky Total (visible only on mobile) */}
-        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg p-4 z-10">
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg p-4 pb-safe-bottom z-10">
           <div className="flex justify-between items-center">
             <span className="text-base font-bold">Quote Total:</span>
             <span className="text-xl font-bold text-primary">{formatCurrency(finalTotal)}</span>

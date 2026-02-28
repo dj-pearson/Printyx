@@ -5,6 +5,9 @@ import { fileURLToPath, URL } from 'node:url';
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
+  },
   plugins: [
     react(),
     runtimeErrorOverlay(),

@@ -74,7 +74,7 @@ import {
 import useCollapsibleNavigation, { type NavigationSection } from '@/hooks/useCollapsibleNavigation';
 
 /**
- * Complete navigation structure for the mobile drawer.
+ * Consolidated navigation structure for the mobile drawer (11 top-level sections).
  * Mirrors ALL_NAVIGATION_SECTIONS from RoleAwareCollapsibleSidebar.
  * Filtering by role/permissions happens separately via the permission map.
  */
@@ -87,64 +87,41 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     matchPatterns: ['/dashboard*'],
   },
   {
-    id: 'platform-admin-hub',
-    title: 'Platform Admin Hub',
+    id: 'platform-management',
+    title: 'Platform Management',
     icon: Crown,
     path: '/admin-hub',
-    matchPatterns: ['/admin-hub*'],
-  },
-  {
-    id: 'tenant-org-management',
-    title: 'Tenant & Organization',
-    icon: Building2,
-    path: '/admin/tenant-management',
-    matchPatterns: ['/admin/tenant*', '/root-admin-signups*', '/customer-self-service-portal*'],
+    matchPatterns: [
+      '/admin-hub*',
+      '/admin/tenant*',
+      '/root-admin-signups*',
+      '/customer-self-service-portal*',
+      '/admin/user*',
+      '/admin/root-admin-security*',
+      '/role-management*',
+      '/root-admin-dashboard*',
+      '/database-management*',
+      '/platform-configuration*',
+      '/root-admin/seo*',
+      '/social-media*',
+      '/gpt5*',
+      '/tenant-setup*',
+    ],
     children: [
+      { title: 'Admin Hub', path: '/admin-hub', icon: Crown },
       { title: 'Tenant Management', path: '/admin/tenant-management', icon: Building2 },
       { title: 'Tenant Onboarding', path: '/tenant-setup', icon: Rocket },
       { title: 'Signups & Trials CRM', path: '/root-admin-signups-crm', icon: TrendingUp },
       { title: 'Customer Portal', path: '/customer-self-service-portal', icon: UserCheck },
-    ],
-  },
-  {
-    id: 'user-access-management',
-    title: 'User & Access',
-    icon: UserCheck,
-    path: '/admin/user-management',
-    matchPatterns: [
-      '/admin/user*',
-      '/admin/root-admin-security*',
-      '/role-management*',
-      '/security-compliance-management*',
-    ],
-    children: [
       { title: 'User Management', path: '/admin/user-management', icon: Users },
       { title: 'Role Management', path: '/role-management', icon: Shield },
       { title: 'Security & Permissions', path: '/admin/root-admin-security', icon: Shield },
       { title: 'Audit & Compliance', path: '/security-compliance-management', icon: FileText },
-    ],
-  },
-  {
-    id: 'system-operations',
-    title: 'System Operations',
-    icon: Monitor,
-    path: '/root-admin-dashboard',
-    matchPatterns: ['/root-admin-dashboard*', '/database-management*', '/platform-configuration*'],
-    children: [
       { title: 'System Dashboard', path: '/root-admin-dashboard', icon: Activity },
       { title: 'Database Management', path: '/database-management', icon: Database },
       { title: 'Platform Analytics', path: '/admin/platform-analytics', icon: BarChart3 },
       { title: 'System Configuration', path: '/platform-configuration', icon: Settings },
       { title: 'Mobile Optimization', path: '/mobile-optimization', icon: Smartphone },
-    ],
-  },
-  {
-    id: 'platform-features',
-    title: 'Platform Features',
-    icon: Zap,
-    path: '/root-admin/seo',
-    matchPatterns: ['/root-admin/seo*', '/social-media*', '/gpt5*'],
-    children: [
       { title: 'SEO Management', path: '/root-admin/seo', icon: Globe },
       { title: 'Social Media Generator', path: '/social-media-generator', icon: Share2 },
       { title: 'GPT-5 AI Dashboard', path: '/gpt5-dashboard', icon: Brain },
@@ -233,8 +210,8 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     ],
   },
   {
-    id: 'products',
-    title: 'Product Hub',
+    id: 'products-equipment',
+    title: 'Products & Equipment',
     icon: Package,
     path: '/product-hub',
     matchPatterns: [
@@ -244,6 +221,10 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/managed-services*',
       '/software-products*',
       '/service-products*',
+      '/equipment*',
+      '/purchase-orders*',
+      '/warehouse*',
+      '/inventory*',
     ],
     children: [
       { title: 'Product Hub', path: '/product-hub', icon: Package },
@@ -255,15 +236,6 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Professional Services', path: '/professional-services', icon: FileText },
       { title: 'Managed Services', path: '/managed-services', icon: Crown },
       { title: 'Service Products', path: '/service-products', icon: Wrench },
-    ],
-  },
-  {
-    id: 'equipment',
-    title: 'Equipment Lifecycle',
-    icon: Truck,
-    path: '/equipment-lifecycle',
-    matchPatterns: ['/equipment*', '/purchase-orders*', '/warehouse*', '/inventory*'],
-    children: [
       { title: 'Equipment Lifecycle', path: '/equipment-lifecycle', icon: Truck },
       { title: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
       { title: 'Warehouse Operations', path: '/warehouse-operations', icon: Building2 },
@@ -304,7 +276,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
   },
   {
     id: 'reports',
-    title: 'Reports',
+    title: 'Reports & Analytics',
     icon: BarChart3,
     path: '/reports',
     matchPatterns: [
@@ -333,23 +305,14 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     ],
   },
   {
-    id: 'tasks',
-    title: 'Task Management',
+    id: 'productivity',
+    title: 'Productivity',
     icon: CheckSquare,
-    path: '/tasks',
-    matchPatterns: ['/task*'],
+    path: '/task-management',
+    matchPatterns: ['/task*', '/ai*', '/calendar*', '/meeting*', '/search*', '/conversational-ai*'],
     children: [
       { title: 'Advanced Tasks', path: '/task-management', icon: Brain },
       { title: 'Basic Tasks', path: '/basic-tasks', icon: CheckSquare },
-    ],
-  },
-  {
-    id: 'ai-hub',
-    title: 'AI Hub',
-    icon: Brain,
-    path: '/ai-hub',
-    matchPatterns: ['/ai*', '/calendar*', '/meeting*', '/search*', '/conversational-ai*'],
-    children: [
       { title: 'AI Employees', path: '/ai-employees', icon: Bot },
       { title: 'Calendar Integration', path: '/calendar', icon: Calendar },
       { title: 'Meeting Transcription', path: '/meeting-transcription', icon: Video },
@@ -366,21 +329,8 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     matchPatterns: ['/knowledge-base*'],
   },
   {
-    id: 'customers',
-    title: 'Customers & CRM',
-    icon: Building2,
-    path: '/customers',
-    matchPatterns: ['/customers*', '/crm*', '/business-records*'],
-    children: [
-      { title: 'All Records', path: '/customers', icon: Building2 },
-      { title: 'Leads', path: '/customers?tab=leads', icon: UserPlus },
-      { title: 'Prospects', path: '/customers?tab=prospects', icon: Users },
-      { title: 'Active Customers', path: '/customers?tab=active', icon: UserCheck },
-    ],
-  },
-  {
-    id: 'integrations-hub',
-    title: 'Integrations',
+    id: 'administration',
+    title: 'Administration',
     icon: Plug,
     path: '/integration-hub',
     matchPatterns: [
@@ -389,21 +339,6 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/erp*',
       '/esignature*',
       '/system-integrations*',
-    ],
-    children: [
-      { title: 'Integration Hub', path: '/integration-hub', icon: Plug },
-      { title: 'QuickBooks Integration', path: '/quickbooks-integration', icon: DollarSign },
-      { title: 'ERP Integration', path: '/erp-integration', icon: Globe },
-      { title: 'E-Signature Integration', path: '/esignature-integration', icon: FileSignature },
-      { title: 'System Integrations', path: '/system-integrations', icon: Plug },
-    ],
-  },
-  {
-    id: 'system-admin',
-    title: 'System Administration',
-    icon: Settings,
-    path: '/workflow-automation',
-    matchPatterns: [
       '/workflow*',
       '/business-process*',
       '/document-management*',
@@ -413,6 +348,11 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/seo*',
     ],
     children: [
+      { title: 'Integration Hub', path: '/integration-hub', icon: Plug },
+      { title: 'QuickBooks Integration', path: '/quickbooks-integration', icon: DollarSign },
+      { title: 'ERP Integration', path: '/erp-integration', icon: Globe },
+      { title: 'E-Signature Integration', path: '/esignature-integration', icon: FileSignature },
+      { title: 'System Integrations', path: '/system-integrations', icon: Plug },
       { title: 'SEO Management', path: '/seo', icon: Search },
       { title: 'Workflow Automation', path: '/workflow-automation', icon: Zap },
       {
@@ -421,9 +361,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
         icon: TrendingUp,
       },
       { title: 'Document Management', path: '/document-management', icon: FileText },
-      { title: 'Security & Compliance', path: '/security-compliance-management', icon: Shield },
       { title: 'Deployment Readiness', path: '/deployment-readiness', icon: Rocket },
-      { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
       { title: 'Customer Number Settings', path: '/customer-number-settings', icon: Hash },
     ],
   },

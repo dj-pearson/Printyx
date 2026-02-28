@@ -31,12 +31,17 @@ export interface NavigationPermissionRule {
 export const SECTION_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   // Always visible to all users
   dashboard: { alwaysVisible: true },
-  tasks: { alwaysVisible: true },
-  'ai-hub': { alwaysVisible: true },
+  productivity: { alwaysVisible: true },
   'knowledge-base': { alwaysVisible: true },
   settings: { alwaysVisible: true },
 
-  // Platform Admin Only
+  // Backwards compat: old section IDs still resolve correctly
+  tasks: { alwaysVisible: true },
+  'ai-hub': { alwaysVisible: true },
+
+  // Platform Management (merged platform admin sections)
+  'platform-management': { platformOnly: true },
+  // Backwards compat for old section IDs
   'platform-admin-hub': { platformOnly: true },
   'tenant-org-management': { platformOnly: true },
   'user-access-management': { platformOnly: true },
@@ -54,11 +59,20 @@ export const SECTION_PERMISSIONS: Record<string, NavigationPermissionRule> = {
       'service.schedule.view_own',
     ],
   },
-  products: {
+  // Products & Equipment (merged)
+  'products-equipment': {
     requiredPermissions: [
-      'sales.customer.view_own', // Product catalog is tied to customer access
+      'sales.customer.view_own',
       'operations.inventory.view',
+      'operations.inventory.manage',
+      'operations.warehouse.receive',
+      'operations.po.view',
     ],
+    minLevel: 2,
+  },
+  // Backwards compat for old section IDs
+  products: {
+    requiredPermissions: ['sales.customer.view_own', 'operations.inventory.view'],
     minLevel: 2,
   },
   equipment: {
@@ -88,7 +102,16 @@ export const SECTION_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     ],
   },
 
-  // System sections - require higher level or admin permissions
+  // Administration (merged: Integrations + System Admin)
+  administration: {
+    requiredPermissions: [
+      'admin.settings.integrations',
+      'admin.settings.view',
+      'admin.settings.update',
+    ],
+    minLevel: 3,
+  },
+  // Backwards compat for old section IDs
   'integrations-hub': {
     requiredPermissions: ['admin.settings.integrations'],
     minLevel: 3,
@@ -809,10 +832,6 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   },
   '/customer-access-management': {
     requiredPermissions: ['admin.user.view'],
-    minLevel: 4,
-  },
-  '/seo': {
-    requiredPermissions: ['admin.settings.update'],
     minLevel: 4,
   },
 

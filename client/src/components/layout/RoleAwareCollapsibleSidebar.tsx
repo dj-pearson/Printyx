@@ -110,9 +110,10 @@ interface RoleAwareCollapsibleSidebarProps {
 }
 
 /**
- * Complete navigation structure - ALL sections and items are defined here.
- * Filtering by role/permissions happens separately using the permission map.
- * This separation ensures consistent hook ordering and avoids conditional rendering issues.
+ * Consolidated navigation structure - reduced from 18 to 11 top-level sections.
+ * Merges: Platform Admin sections → Platform Management, Products + Equipment → Products & Equipment,
+ * Tasks + AI Hub → Productivity, Integrations + System Admin → Administration.
+ * All navigation destinations preserved. RBAC filtering still applied via permission map.
  */
 const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
   // Always visible
@@ -124,58 +125,21 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     matchPatterns: ['/dashboard*'],
   },
 
-  // Platform Admin Hub (platform admins only)
+  // Platform Management (merged: Platform Admin Hub + Tenant & Org + User & Access + System Ops + Platform Features)
   {
-    id: 'platform-admin-hub',
-    title: 'Platform Admin Hub',
+    id: 'platform-management',
+    title: 'Platform Management',
     icon: Crown,
     path: '/admin-hub',
-    matchPatterns: ['/admin-hub*'],
-  },
-
-  // Tenant & Organization Management (platform admins only)
-  {
-    id: 'tenant-org-management',
-    title: 'Tenant & Organization',
-    icon: Building2,
-    path: '/admin/tenant-management',
-    matchPatterns: ['/admin/tenant*', '/root-admin-signups*', '/customer-self-service-portal*'],
-    children: [
-      { title: 'Tenant Management', path: '/admin/tenant-management', icon: Building2 },
-      { title: 'Tenant Onboarding', path: '/tenant-setup', icon: Rocket },
-      { title: 'Signups & Trials CRM', path: '/root-admin-signups-crm', icon: TrendingUp },
-      { title: 'Customer Portal', path: '/customer-self-service-portal', icon: UserCheck },
-    ],
-  },
-
-  // User & Access Management (platform admins only)
-  {
-    id: 'user-access-management',
-    title: 'User & Access',
-    icon: UserCheck,
-    path: '/admin/user-management',
     matchPatterns: [
+      '/admin-hub*',
+      '/admin/tenant*',
+      '/root-admin-signups*',
+      '/customer-self-service-portal*',
       '/admin/user*',
       '/admin/root-admin-security*',
       '/admin/system-security*',
       '/role-management*',
-      '/security-compliance-management*',
-    ],
-    children: [
-      { title: 'User Management', path: '/admin/user-management', icon: Users },
-      { title: 'Role Management', path: '/role-management', icon: Shield },
-      { title: 'Security & Permissions', path: '/admin/root-admin-security', icon: Shield },
-      { title: 'Audit & Compliance', path: '/security-compliance-management', icon: FileText },
-    ],
-  },
-
-  // System Operations & Monitoring (platform admins only)
-  {
-    id: 'system-operations',
-    title: 'System Operations',
-    icon: Monitor,
-    path: '/root-admin-dashboard',
-    matchPatterns: [
       '/root-admin-dashboard*',
       '/system-monitoring*',
       '/database-management*',
@@ -184,25 +148,27 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/admin/mobile-logs*',
       '/platform-configuration*',
       '/mobile-optimization*',
+      '/root-admin/seo*',
+      '/social-media*',
+      '/gpt5*',
+      '/tenant-setup*',
     ],
     children: [
+      { title: 'Admin Hub', path: '/admin-hub', icon: Crown },
+      { title: 'Tenant Management', path: '/admin/tenant-management', icon: Building2 },
+      { title: 'Tenant Onboarding', path: '/tenant-setup', icon: Rocket },
+      { title: 'Signups & Trials CRM', path: '/root-admin-signups-crm', icon: TrendingUp },
+      { title: 'Customer Portal', path: '/customer-self-service-portal', icon: UserCheck },
+      { title: 'User Management', path: '/admin/user-management', icon: Users },
+      { title: 'Role Management', path: '/role-management', icon: Shield },
+      { title: 'Security & Permissions', path: '/admin/root-admin-security', icon: Shield },
+      { title: 'Audit & Compliance', path: '/security-compliance-management', icon: FileText },
       { title: 'System Dashboard', path: '/root-admin-dashboard', icon: Activity },
       { title: 'Database Management', path: '/database-management', icon: Database },
       { title: 'Platform Analytics', path: '/admin/platform-analytics', icon: BarChart3 },
       { title: 'System Configuration', path: '/platform-configuration', icon: Settings },
       { title: 'Mobile Optimization', path: '/mobile-optimization', icon: Smartphone },
       { title: 'Mobile App Logs', path: '/admin/mobile-logs', icon: Smartphone },
-    ],
-  },
-
-  // Platform Features & Tools (platform admins only)
-  {
-    id: 'platform-features',
-    title: 'Platform Features',
-    icon: Zap,
-    path: '/root-admin/seo',
-    matchPatterns: ['/root-admin/seo*', '/social-media*', '/gpt5*'],
-    children: [
       { title: 'SEO Management', path: '/root-admin/seo', icon: Globe },
       { title: 'Social Media Generator', path: '/social-media-generator', icon: Share2 },
       { title: 'GPT-5 AI Dashboard', path: '/gpt5-dashboard', icon: Brain },
@@ -257,7 +223,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     ],
   },
 
-  // Service Hub - field service, technicians, and maintenance
+  // Service Hub
   {
     id: 'service',
     title: 'Service Hub',
@@ -292,10 +258,10 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     ],
   },
 
-  // Product Hub
+  // Products & Equipment (merged: Product Hub + Equipment Lifecycle)
   {
-    id: 'products',
-    title: 'Product Hub',
+    id: 'products-equipment',
+    title: 'Products & Equipment',
     icon: Package,
     path: '/product-hub',
     matchPatterns: [
@@ -305,6 +271,10 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/managed-services*',
       '/software-products*',
       '/service-products*',
+      '/equipment*',
+      '/purchase-orders*',
+      '/warehouse*',
+      '/inventory*',
     ],
     children: [
       { title: 'Product Hub', path: '/product-hub', icon: Package },
@@ -316,17 +286,6 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Professional Services', path: '/professional-services', icon: FileText },
       { title: 'Managed Services', path: '/managed-services', icon: Crown },
       { title: 'Service Products', path: '/service-products', icon: Wrench },
-    ],
-  },
-
-  // Equipment Lifecycle Hub
-  {
-    id: 'equipment',
-    title: 'Equipment Lifecycle',
-    icon: Truck,
-    path: '/equipment-lifecycle',
-    matchPatterns: ['/equipment*', '/purchase-orders*', '/warehouse*', '/inventory*'],
-    children: [
       { title: 'Equipment Lifecycle', path: '/equipment-lifecycle', icon: Truck },
       { title: 'Purchase Orders', path: '/purchase-orders', icon: ShoppingCart },
       { title: 'Warehouse Operations', path: '/warehouse-operations', icon: Building2 },
@@ -368,10 +327,10 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     ],
   },
 
-  // Reports Hub
+  // Reports & Analytics
   {
     id: 'reports',
-    title: 'Reports',
+    title: 'Reports & Analytics',
     icon: BarChart3,
     path: '/reports',
     matchPatterns: [
@@ -400,27 +359,16 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     ],
   },
 
-  // Task Management Hub - Always available
+  // Productivity (merged: Task Management + AI Hub)
   {
-    id: 'tasks',
-    title: 'Task Management',
+    id: 'productivity',
+    title: 'Productivity',
     icon: CheckSquare,
-    path: '/tasks',
-    matchPatterns: ['/task*'],
+    path: '/task-management',
+    matchPatterns: ['/task*', '/ai*', '/calendar*', '/meeting*', '/search*', '/conversational-ai*'],
     children: [
       { title: 'Advanced Tasks', path: '/task-management', icon: Brain },
       { title: 'Basic Tasks', path: '/basic-tasks', icon: CheckSquare },
-    ],
-  },
-
-  // AI Hub - Always available for AI-powered features
-  {
-    id: 'ai-hub',
-    title: 'AI Hub',
-    icon: Brain,
-    path: '/ai-hub',
-    matchPatterns: ['/ai*', '/calendar*', '/meeting*', '/search*', '/conversational-ai*'],
-    children: [
       { title: 'AI Employees', path: '/ai-employees', icon: Bot },
       { title: 'Calendar Integration', path: '/calendar', icon: Calendar },
       { title: 'Meeting Transcription', path: '/meeting-transcription', icon: Video },
@@ -430,7 +378,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     ],
   },
 
-  // Knowledge Base - Always available for all users
+  // Knowledge Base
   {
     id: 'knowledge-base',
     title: 'Knowledge Base',
@@ -439,10 +387,10 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     matchPatterns: ['/knowledge-base*'],
   },
 
-  // Integrations Hub
+  // Administration (merged: Integrations + System Administration)
   {
-    id: 'integrations-hub',
-    title: 'Integrations',
+    id: 'administration',
+    title: 'Administration',
     icon: Plug,
     path: '/integration-hub',
     matchPatterns: [
@@ -451,23 +399,6 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/erp*',
       '/esignature*',
       '/system-integrations*',
-    ],
-    children: [
-      { title: 'Integration Hub', path: '/integration-hub', icon: Plug },
-      { title: 'QuickBooks Integration', path: '/quickbooks-integration', icon: DollarSign },
-      { title: 'ERP Integration', path: '/erp-integration', icon: Globe },
-      { title: 'E-Signature Integration', path: '/esignature-integration', icon: FileSignature },
-      { title: 'System Integrations', path: '/system-integrations', icon: Plug },
-    ],
-  },
-
-  // System Administration
-  {
-    id: 'system-admin',
-    title: 'System Administration',
-    icon: Settings,
-    path: '/workflow-automation',
-    matchPatterns: [
       '/workflow*',
       '/business-process*',
       '/document-management*',
@@ -477,6 +408,11 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       '/seo*',
     ],
     children: [
+      { title: 'Integration Hub', path: '/integration-hub', icon: Plug },
+      { title: 'QuickBooks Integration', path: '/quickbooks-integration', icon: DollarSign },
+      { title: 'ERP Integration', path: '/erp-integration', icon: Globe },
+      { title: 'E-Signature Integration', path: '/esignature-integration', icon: FileSignature },
+      { title: 'System Integrations', path: '/system-integrations', icon: Plug },
       { title: 'SEO Management', path: '/seo', icon: Search },
       { title: 'Workflow Automation', path: '/workflow-automation', icon: Zap },
       {
@@ -485,14 +421,12 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
         icon: TrendingUp,
       },
       { title: 'Document Management', path: '/document-management', icon: FileText },
-      { title: 'Security & Compliance', path: '/security-compliance-management', icon: Shield },
       { title: 'Deployment Readiness', path: '/deployment-readiness', icon: Rocket },
-      { title: 'Performance Monitoring', path: '/performance-monitoring', icon: Activity },
       { title: 'Customer Number Settings', path: '/customer-number-settings', icon: Hash },
     ],
   },
 
-  // Settings - Always visible
+  // Settings
   {
     id: 'settings',
     title: 'Settings',
@@ -551,22 +485,15 @@ export function RoleAwareCollapsibleSidebar({
   // i18n key map for top-level navigation sections
   const NAV_I18N: Record<string, string> = {
     dashboard: 'nav.dashboard',
-    'platform-admin-hub': 'nav.platformAdminHub',
-    'tenant-org-management': 'nav.tenantOrganization',
-    'user-access-management': 'nav.userAccess',
-    'system-operations': 'nav.systemOperations',
-    'platform-features': 'nav.platformFeatures',
+    'platform-management': 'nav.platformManagement',
     crm: 'nav.salesHub',
     service: 'nav.serviceHub',
-    products: 'nav.productHub',
-    equipment: 'nav.equipmentLifecycle',
+    'products-equipment': 'nav.productsEquipment',
     billing: 'nav.billingHub',
     reports: 'nav.reports',
-    tasks: 'nav.taskManagement',
-    'ai-hub': 'nav.aiHub',
+    productivity: 'nav.productivity',
     'knowledge-base': 'nav.knowledgeBase',
-    'integrations-hub': 'nav.integrations',
-    'system-admin': 'nav.systemAdministration',
+    administration: 'nav.administration',
     settings: 'nav.settings',
   };
 

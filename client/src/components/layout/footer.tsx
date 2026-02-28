@@ -2,6 +2,8 @@ import { Separator } from '@/components/ui/separator';
 import { Link } from 'wouter';
 import { Linkedin, Twitter } from 'lucide-react';
 
+const APP_VERSION = __APP_VERSION__ ?? '1.0.0';
+
 const footerSections = [
   {
     title: 'Product',
@@ -13,30 +15,30 @@ const footerSections = [
     ],
   },
   {
-    title: 'Resources',
-    links: [
-      { href: '/blog', label: 'Blog' },
-      { href: '/knowledge-base', label: 'Knowledge Base' },
-      { href: '/roi-calculator', label: 'ROI Calculator' },
-      { href: '/compare-eautomate', label: 'E-Automate Alternative' },
-    ],
-  },
-  {
     title: 'Company',
     links: [
       { href: '/dealer-expertise', label: 'About Us' },
-      { href: '/battle-card', label: 'Why Printyx' },
+      { href: '/demo', label: 'Contact / Demo' },
       { href: '/case-studies', label: 'Case Studies' },
-      { href: '/demo', label: 'Request a Demo' },
+      { href: '/battle-card', label: 'Why Printyx' },
     ],
   },
   {
     title: 'Legal',
     links: [
-      { href: '/terms', label: 'Terms of Service' },
       { href: '/privacy', label: 'Privacy Policy' },
-      { href: '/eula', label: 'EULA' },
+      { href: '/terms', label: 'Terms of Service' },
       { href: '/security', label: 'Security' },
+      { href: '/eula', label: 'EULA' },
+    ],
+  },
+  {
+    title: 'Support',
+    links: [
+      { href: '/knowledge-base', label: 'Knowledge Base' },
+      { href: '/blog', label: 'Blog' },
+      { href: '/roi-calculator', label: 'ROI Calculator' },
+      { href: '/compare-eautomate', label: 'E-Automate Alternative' },
     ],
   },
 ];
@@ -78,6 +80,7 @@ export default function Footer() {
             <p className="text-center text-sm text-muted-foreground md:text-left">
               &copy; {currentYear} Printyx. All rights reserved.
             </p>
+            <span className="text-xs text-muted-foreground">v{APP_VERSION}</span>
           </div>
 
           <div className="flex items-center gap-4">
