@@ -37,6 +37,7 @@ interface CustomerUser {
   id: string;
   username: string;
   email: string;
+  companyName?: string;
   permissions: Record<string, boolean>;
   preferences: Record<string, any>;
 }

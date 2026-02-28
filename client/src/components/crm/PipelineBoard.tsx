@@ -38,6 +38,7 @@ import {
   Building2,
   MapPin,
   User,
+  Clock,
 } from 'lucide-react';
 
 // ─── Pipeline Stage Config ──────────────────────────────────────────────────
@@ -122,10 +123,12 @@ interface PipelineBoardProps {
 function PipelineColumn({
   stage,
   records,
+  stalledCount,
   children,
 }: {
   stage: PipelineStage;
   records: ProspectRecord[];
+  stalledCount: number;
   children: React.ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
@@ -146,6 +149,15 @@ function PipelineColumn({
           <Badge variant="secondary" className="h-5 min-w-[20px] px-1.5 text-xs">
             {records.length}
           </Badge>
+          {stalledCount > 0 && (
+            <Badge
+              variant="outline"
+              className="h-5 min-w-[20px] px-1.5 text-xs border-amber-300 bg-amber-50 text-amber-700"
+            >
+              <Clock className="h-3 w-3 mr-0.5" aria-hidden="true" />
+              {stalledCount} stalled
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -235,6 +247,26 @@ function ProspectCard({
                 {record.industry}
               </Badge>
             )}
+
+            {/* Stalled Badge - show when updatedAt is older than 7 days */}
+            {(() => {
+              const updatedAt = record.updatedAt || record.updated_at;
+              if (!updatedAt) return null;
+              const updatedDate = new Date(updatedAt);
+              const now = new Date();
+              const diffMs = now.getTime() - updatedDate.getTime();
+              const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+              if (diffDays <= 7) return null;
+              return (
+                <Badge
+                  variant="outline"
+                  className="mt-1.5 text-[10px] h-5 border-amber-300 bg-amber-50 text-amber-700"
+                >
+                  <Clock className="h-3 w-3 mr-1" aria-hidden="true" />
+                  Stalled ({diffDays}d)
+                </Badge>
+              );
+            })()}
           </div>
 
           {/* Actions */}
@@ -311,6 +343,25 @@ export function PipelineBoard({
     return groups;
   }, [records]);
 
+  // Count stalled deals per stage (updatedAt older than 7 days)
+  const stalledCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const now = new Date();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+    for (const stage of PIPELINE_STAGES) {
+      const stageRecords = stageGroups[stage.id] || [];
+      counts[stage.id] = stageRecords.filter((record) => {
+        const updatedAt = record.updatedAt || record.updated_at;
+        if (!updatedAt) return false;
+        const updatedDate = new Date(updatedAt);
+        return now.getTime() - updatedDate.getTime() > sevenDaysMs;
+      }).length;
+    }
+
+    return counts;
+  }, [stageGroups]);
+
   const activeRecord = useMemo(
     () => (activeId ? records.find((r) => r.id === activeId) : null),
     [activeId, records],
@@ -354,7 +405,12 @@ export function PipelineBoard({
     >
       <div className="flex gap-3 overflow-x-auto pb-4 -mx-1 px-1">
         {PIPELINE_STAGES.map((stage) => (
-          <PipelineColumn key={stage.id} stage={stage} records={stageGroups[stage.id] || []}>
+          <PipelineColumn
+            key={stage.id}
+            stage={stage}
+            records={stageGroups[stage.id] || []}
+            stalledCount={stalledCounts[stage.id] || 0}
+          >
             {(stageGroups[stage.id] || []).map((record) => (
               <ProspectCard
                 key={record.id}

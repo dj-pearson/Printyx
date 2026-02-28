@@ -44,8 +44,8 @@ const DialogContent = React.forwardRef<
         'border border-gray-200 bg-white text-gray-900 shadow-2xl',
         // Dark mode support
         'dark:bg-gray-900 dark:text-gray-100 dark:border-gray-700',
-        // Mobile: nearly full width with small margins
-        'w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)]',
+        // Mobile: constrained to 95vw for safe mobile display
+        'w-[calc(100vw-2rem)] max-w-[95vw] max-h-[calc(100vh-2rem)]',
         // Tablet and up: constrained width
         'sm:w-full sm:max-w-lg sm:max-h-[85vh]',
         // Responsive padding

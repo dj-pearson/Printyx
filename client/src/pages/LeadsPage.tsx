@@ -52,6 +52,9 @@ import {
   Thermometer,
   Snowflake,
   Plus,
+  AlertTriangle,
+  CalendarClock,
+  CheckCircle2,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -189,6 +192,55 @@ const leadColumns: ColumnDef[] = [
       if (diffDays < 7) return `${diffDays}d ago`;
       if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
       return date.toLocaleDateString();
+    },
+  },
+  {
+    key: 'createdAt',
+    label: 'Follow-up',
+    sortable: false,
+    render: (value, _record) => {
+      if (!value) {
+        return <span className="text-xs text-muted-foreground italic">No follow-up</span>;
+      }
+
+      const createdDate = new Date(value);
+      const followUpDate = new Date(createdDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const followUpDay = new Date(
+        followUpDate.getFullYear(),
+        followUpDate.getMonth(),
+        followUpDate.getDate(),
+      );
+
+      const diffMs = followUpDay.getTime() - today.getTime();
+      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0) {
+        // Overdue
+        return (
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600">
+            <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+            Overdue ({Math.abs(diffDays)}d)
+          </span>
+        );
+      } else if (diffDays === 0) {
+        // Due today
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-medium text-amber-700">
+            <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
+            Due Today
+          </span>
+        );
+      } else {
+        // Upcoming
+        return (
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+            {followUpDate.toLocaleDateString()}
+          </span>
+        );
+      }
     },
   },
 ];
