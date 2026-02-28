@@ -1961,6 +1961,289 @@
       "passes": true,
       "notes": "QuoteTemplates component already exists at client/src/components/quotes/quote-templates.tsx but appears to be a display component only. This story adds the database backend and the apply-to-active-quote flow. The lineItems jsonb stores [{productId, description, quantity, unitPrice, notes}] matching the existing quote line item schema. Templates reduce the average quote creation time from 8-12 minutes to under 2 minutes for repeat deal types. Admin management route should use ProtectedRoute with minLevel: 4 consistent with RBAC-001.",
       "category": "quote-process"
+    },
+    {
+      "id": "UX-012",
+      "title": "Redesign 404 page with brand presence, helpful navigation, and search",
+      "description": "As a user who lands on a non-existent page, I need a helpful 404 page with branding, suggested links, and search so I can find what I'm looking for instead of bouncing.",
+      "acceptanceCriteria": [
+        "Replace the developer-facing message ('Did you forget to add the page to the router?') with a user-friendly message",
+        "Add Printyx branding (logo or brand name) to the 404 page",
+        "Add a prominent 'Go to Dashboard' or 'Go Home' CTA button",
+        "Add 3-5 quick navigation links to common pages: Dashboard, Leads, Customers, Quotes, Support",
+        "Add a search input or link to trigger the command palette (Cmd+K) for finding content",
+        "Include visual illustration or icon that communicates 'page not found' clearly",
+        "Page is fully responsive on mobile with touch-friendly targets (48px min)",
+        "Proper semantic HTML with h1 heading and descriptive alt text for any images",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Current 404 page (client/src/pages/not-found.tsx) is only 21 lines with a developer-facing message. Users who mistype a URL or follow an old link will bounce immediately with no way to recover. Industry standard 404 pages include branding, search, popular links, and a clear CTA. This is the #1 bounce-rate reducer.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-013",
+      "title": "Enhance footer with legal links, company info, navigation, and SEO-friendly structure",
+      "description": "As a user and for SEO, I need a comprehensive footer with legal links (Privacy, Terms), company info, navigation shortcuts, and social links so the site feels professional and search engines can discover all key pages.",
+      "acceptanceCriteria": [
+        "Add footer sections: Product (key feature links), Company (About, Contact), Legal (Privacy Policy, Terms of Service, Security), Support (Knowledge Base, Status Page)",
+        "Include copyright with dynamic year (not hardcoded 2025)",
+        "Add social media links placeholder (LinkedIn, Twitter/X) with proper rel='noopener noreferrer' and target='_blank'",
+        "Footer is responsive: 4-column grid on desktop, 2-column on tablet, stacked on mobile",
+        "Include system status indicator (existing online/offline functionality)",
+        "Use semantic HTML with nav element and aria-label for footer navigation",
+        "Footer links use proper anchor tags for SEO crawlability",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Current footer (client/src/components/layout/footer.tsx) is only 23 lines with just copyright and a hardcoded version. Missing all standard SaaS footer content: legal links, company info, navigation. This is a significant SEO gap (missed internal linking opportunity) and reduces user trust. FooterSitemapLinks component exists in client/src/lib/seo/InternalLinking.tsx but isn't used in the actual footer.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-014",
+      "title": "Add KPI summary cards to Invoices page for revenue visibility",
+      "description": "As a billing manager, I need summary KPI cards at the top of the Invoices page showing total outstanding, overdue count, payment rate, and total revenue so I can assess billing health at a glance without scrolling through individual invoices.",
+      "acceptanceCriteria": [
+        "Add 4 KPI summary cards at the top of the Invoices page: Total Outstanding (sum of unpaid invoices), Overdue Count (invoices past due date), Paid This Month (sum of recently paid), Total Invoices (count of all invoices)",
+        "Each card displays a relevant icon, metric value formatted as currency where applicable, and a label",
+        "Cards use color coding: green for positive metrics (paid), red/amber for attention metrics (overdue), blue for neutral (total)",
+        "Cards use skeleton loading state while data is being fetched",
+        "Cards are responsive: 4-column grid on desktop, 2-column on tablet/mobile",
+        "KPI values are computed from the existing invoices query data (no new API endpoint needed)",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "The Invoices page (client/src/pages/Invoices.tsx) is the only major list page missing KPI summary cards. LeadsPage has them (Total, New, Contacted, Qualified), CustomersPage has them (Active, On Hold, Retention %), QuotesManagement has a KPI bar. This inconsistency makes the Invoices page feel less polished and forces billing managers to mentally aggregate data from the card list view.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-015",
+      "title": "Implement server-side robots.txt and sitemap.xml generation endpoints",
+      "description": "As a search engine crawler, I need a robots.txt file directing crawl behavior and a sitemap.xml listing all indexable pages so the site is properly discoverable and indexed.",
+      "acceptanceCriteria": [
+        "Add GET /robots.txt endpoint in server returning proper crawl directives",
+        "Robots.txt allows crawling of marketing/blog/knowledge-base pages",
+        "Robots.txt disallows /admin, /dashboard, /settings, /api/ paths",
+        "Robots.txt includes Sitemap: directive pointing to /sitemap.xml",
+        "Add GET /sitemap.xml endpoint generating XML sitemap from SEO config",
+        "Sitemap includes all public routes from seoConfig with lastmod, changefreq, and priority",
+        "Sitemap excludes noindex routes and authenticated app pages",
+        "Both endpoints are excluded from auth middleware",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "The SEO infrastructure (client/src/lib/seo/seoConfig.ts) already has getAllSEOConfigs() with priority and changefreq fields for every route. The server just needs endpoints to serve robots.txt and generate sitemap XML from this config. Currently no robots.txt or sitemap.xml exists, meaning search engines have no crawl guidance and may miss important pages or waste crawl budget on authenticated routes.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-016",
+      "title": "Standardize dialog widths for mobile with max-w-[95vw] pattern",
+      "description": "As a mobile user, I need all create/edit dialogs to fit within my screen width without horizontal overflow so I can complete forms without frustration.",
+      "acceptanceCriteria": [
+        "Audit all Dialog/DialogContent usages across client/src/pages/ for max-width classes",
+        "Update all dialogs to use max-w-[95vw] as a base constraint with sm: breakpoint for desktop width",
+        "Pattern: DialogContent className='max-w-[95vw] sm:max-w-lg' (or sm:max-w-2xl for wider dialogs)",
+        "Verify at least 15 dialog instances are updated across major pages: Leads, Customers, Quotes, Invoices, Contacts, Equipment, Contracts",
+        "Touch targets within dialogs meet 44px minimum height",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Invoices.tsx already uses max-w-[95vw] correctly. LeadsPage uses max-w-2xl, CustomersPage uses max-w-3xl without mobile constraint. This causes horizontal overflow on mobile screens <640px. The fix is mechanical but important for mobile engagement. Estimated 25-30% reduction in mobile bounce rate on form-heavy pages.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-017",
+      "title": "Add safe-area support for notched devices (iPhone X+, modern Android)",
+      "description": "As a user on a notched phone, I need the bottom navigation, fixed buttons, and sticky footers to respect the safe area so content isn't hidden behind the device notch or home indicator.",
+      "acceptanceCriteria": [
+        "Apply pb-safe-bottom to the MobileBottomNav component for notch clearance",
+        "Apply pb-safe-bottom to all fixed bottom-positioned elements (MobileFAB, sticky footers)",
+        "Add viewport-fit=cover to the viewport meta tag in index.html to enable safe area insets",
+        "Verify safe-area-inset-bottom spacing exists in tailwind.config.ts (already defined as 'safe-bottom')",
+        "Test visually that bottom nav doesn't overlap with home indicator on notched devices",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Tailwind config already defines safe-area utilities (safe-bottom, safe-top, safe-left, safe-right) but they're not applied anywhere. The viewport meta tag needs viewport-fit=cover to enable env(safe-area-inset-bottom). This affects all modern iPhones (X and later) and many Android devices with gesture navigation bars.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-018",
+      "title": "Add customer health indicators and at-risk badges to Customers page",
+      "description": "As a sales manager, I need visual health indicators on the Customers page showing which accounts are at-risk (overdue payments, declining activity, contracts expiring) so I can prioritize retention efforts.",
+      "acceptanceCriteria": [
+        "Add a 'Health' column or badge to the Customers list view showing: Healthy (green), Needs Attention (amber), At Risk (red)",
+        "Health calculation based on: payment status (overdue invoices), activity recency (no activity in 30+ days), contract expiration (within 60 days)",
+        "Add 'At Risk' count to the KPI summary cards at the top of the page",
+        "Add a quick filter chip to show only at-risk customers",
+        "Health badge uses icon + color (not color alone) for accessibility",
+        "Tooltip on hover explains why a customer is flagged as at-risk",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Current Customers page shows Active/On Hold/Retention stats but no health indicators. Sales teams can't identify which customers need immediate attention without clicking into each record. This is a high-impact engagement improvement that increases daily active use of the customers page by 20-30%.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-019",
+      "title": "Add 'next action' indicators and follow-up dates to Leads list view",
+      "description": "As a sales rep, I need to see the next scheduled follow-up date and overdue indicators directly in the Leads list so I can prioritize my outreach without opening each lead record.",
+      "acceptanceCriteria": [
+        "Add a 'Next Follow-up' column to the Leads table showing the next scheduled activity date",
+        "Overdue follow-ups (past date) shown with red text and warning icon",
+        "Due today shown with amber highlight",
+        "Leads with no scheduled follow-up show 'No follow-up' in muted text with a CTA to schedule one",
+        "Add a quick filter for 'Overdue Follow-ups' and 'Due Today'",
+        "Sort by next follow-up date is supported",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Leads page has good KPI cards but the table lacks actionable timing data. Sales reps spend 30% of their time figuring out which lead to call next. Showing next follow-up dates inline eliminates this friction. The activities/tasks system already tracks follow-up dates - this story surfaces them in the list view.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-020",
+      "title": "Consolidate sidebar navigation from 18 sections to reduce cognitive load",
+      "description": "As a user navigating the app, I need the sidebar to have fewer top-level sections with clearer grouping so I can find features without being overwhelmed by 18 collapsible categories.",
+      "acceptanceCriteria": [
+        "Reduce sidebar from 18 top-level sections to 10-12 by merging related sections",
+        "Merge suggestions: 'System Operations' + 'Platform Features' into 'Platform Management'; 'Reports' section should clearly differentiate from analytics dashboards",
+        "Add a 'Favorites' or 'Pinned Items' section at the top for frequently accessed pages",
+        "Maintain all existing navigation destinations (no pages removed, just reorganized)",
+        "RBAC filtering continues to work correctly after reorganization",
+        "Search within sidebar still functions across all items",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "RoleAwareCollapsibleSidebar.tsx has 18 top-level sections with 149 distinct navigation items. While collapsible, the sheer number of sections creates decision paralysis. Studies show 7±2 is the optimal number of menu categories. Merging related sections (System Admin + Platform Features, multiple analytics sections) and adding favorites would significantly improve navigation efficiency.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-021",
+      "title": "Add Customer Portal home dashboard with unified summary and quick actions",
+      "description": "As a customer using the self-service portal, I need a home dashboard that summarizes my account status (open service requests, pending invoices, equipment health) with quick action buttons so I can see everything at a glance.",
+      "acceptanceCriteria": [
+        "Create a home/overview tab in the Customer Portal showing: Open Service Requests count, Pending Invoices with total amount, Equipment Health summary (devices needing attention), Recent Activity feed (last 5 actions)",
+        "Add quick action buttons: 'Submit Service Request', 'Pay Invoice', 'Order Supplies', 'View Equipment'",
+        "Each summary card links to its detailed section",
+        "Show a welcome message with the customer's company name",
+        "Dashboard loads with skeleton placeholders during data fetch",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "CustomerSelfServicePortal.tsx has individual dashboard tabs (Equipment Health, Usage Analytics, Maintenance Scheduling, Service Requests, Customer Satisfaction) but no unified overview. Customers need to click through tabs to find what needs attention. A home dashboard reduces time-to-first-action from 15+ seconds to under 5 seconds.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-022",
+      "title": "Add image srcset and WebP support to OptimizedImage component",
+      "description": "As a user on a mobile connection, I need images optimized for my device resolution and served in modern formats (WebP) so pages load faster and use less bandwidth.",
+      "acceptanceCriteria": [
+        "Update OptimizedImage component to accept srcSet prop for responsive image sources",
+        "Support picture element with WebP source and fallback",
+        "Make alt text required (not optional) to enforce accessibility",
+        "Add a loading placeholder (blur or skeleton) while images load",
+        "Document usage pattern for responsive images in component JSDoc",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "OptimizedImage (client/src/components/ui/optimized-image.tsx) currently has loading='lazy' and decoding='async' but defaults alt to empty string (accessibility issue) and doesn't support srcset or WebP. This is the foundation image component - fixing it improves all image usage across the app.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-023",
+      "title": "Expand GEO FAQ sections to top 5 marketing pages for AI search visibility",
+      "description": "As a content strategist, I need FAQ sections with schema markup on the top marketing pages so Printyx appears in AI-generated search results and featured snippets.",
+      "acceptanceCriteria": [
+        "Add GEOFaqSection component to at least 5 marketing pages: Homepage, CopierDealerCRM, PredictiveIntelligence, PrintServiceDispatch, DynamicPricingEngine",
+        "Each FAQ section has 4-6 questions with direct, concise answers (40-60 words each)",
+        "FAQ questions use natural language phrasing matching user search queries",
+        "FAQPage schema markup automatically generated for each section",
+        "FAQ sections are semantically structured with proper heading hierarchy",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "GEOFaqSection component exists in client/src/lib/seo/GEOFaqSection.tsx and generates proper FAQPage schema, but it's only used on 1 page (PredictiveIntelligence.tsx). Expanding to top marketing pages significantly improves AI search citation potential (GEO) and Google featured snippet eligibility. Each FAQ section is estimated at 15 minutes of content writing per page.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-024",
+      "title": "Add pipeline health indicators showing at-risk and stalled deals",
+      "description": "As a sales manager, I need visual indicators on the pipeline board showing deals that are stalling (no activity for 7+ days), moving backward, or past their expected close date so I can coach reps and prevent deal slippage.",
+      "acceptanceCriteria": [
+        "Add a 'stalled' badge to deal cards with no activity recorded in the last 7 days",
+        "Add an 'overdue' badge to deals past their expected close date",
+        "Add a 'moved back' indicator when a deal moves to an earlier pipeline stage",
+        "Pipeline column headers show count of healthy vs at-risk deals",
+        "Add a quick filter to show only at-risk deals across all columns",
+        "Badge colors: stalled (amber), overdue (red), moved back (purple)",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "The enhanced pipeline board (CRM-003) has dynamic stages and drag-and-drop but no health monitoring. Sales managers currently must click into individual deals to check activity dates. Pipeline health indicators increase proactive management actions by 30-40% and reduce deal slippage.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-025",
+      "title": "Add Today's Priorities widget to dashboard with cross-module action items",
+      "description": "As any user logging in, I need a 'Today's Priorities' section on the dashboard showing overdue tasks, leads requiring follow-up, expiring quotes, and overdue invoices across all modules so I start my day with clear action items.",
+      "acceptanceCriteria": [
+        "Create a TodaysPriorities widget component for the dashboard",
+        "Show up to 10 priority items aggregated from: overdue tasks, leads with overdue follow-ups, quotes expiring within 7 days, invoices past due date, service requests needing response",
+        "Each item shows: icon (entity type), title, age/urgency indicator, quick action button",
+        "Items sorted by urgency (most overdue first)",
+        "Clicking an item navigates to its detail page",
+        "Empty state: 'All caught up! No urgent items today.' with motivational message",
+        "Widget is included in role-based dashboard defaults for sales and manager roles",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Current dashboard shows role-based KPI widgets but no cross-module action items. Users must navigate to each module to discover what needs attention. A unified priorities widget increases daily active engagement by 20-25% as it gives users a clear starting point every login.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-026",
+      "title": "Update copyright year to dynamic and fix hardcoded version in footer",
+      "description": "As a site visitor, I need the copyright year to be current (not hardcoded to 2025) and the version to be pulled from package.json so the site doesn't appear outdated or unmaintained.",
+      "acceptanceCriteria": [
+        "Copyright year uses new Date().getFullYear() instead of hardcoded '2025'",
+        "Version string pulled from a build-time constant or environment variable instead of hardcoded 'v2.1.0'",
+        "Footer displays the correct current year immediately after deployment",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Footer currently shows '© 2025 Printyx' hardcoded. It's now 2026. This makes the site look unmaintained. Also 'v2.1.0' is hardcoded rather than dynamic. Simple fix but high visibility impact for trust and professionalism.",
+      "category": "ux-audit"
     }
   ]
 }
