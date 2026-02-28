@@ -92,7 +92,7 @@ export function BulkOperationsToolbar({
     <>
       <div
         className={cn(
-          'fixed bottom-0 left-0 right-0 z-50 border-t bg-background shadow-lg transition-transform duration-200',
+          'fixed bottom-0 left-0 right-0 z-50 border-t bg-background shadow-lg transition-transform duration-200 pb-safe-bottom',
           'md:sticky md:top-0 md:bottom-auto md:border-b md:border-t-0',
           className,
         )}

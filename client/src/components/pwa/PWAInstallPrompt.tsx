@@ -63,7 +63,7 @@ export function PWAInstallPrompt({ onDismiss, variant = 'card' }: PWAInstallProm
   // Banner variant - compact banner
   if (variant === 'banner') {
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 shadow-lg md:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 pb-safe-bottom shadow-lg md:hidden">
         <div className="container mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-1">
             <Smartphone className="h-6 w-6 flex-shrink-0" />

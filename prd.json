@@ -512,7 +512,7 @@
       ],
       "priority": 29,
       "passes": true,
-      "notes": "Completed api-versioning.ts: added Accept-Version header support, added URL rewriting (/api/v1/* → /api/*), apiVersioning() already applied globally in routes.ts. req.apiVersion set on all requests. GET /api/versions returns version info. Documented versioning strategy and deprecation policy in CLAUDE.md. Build passes."
+      "notes": "Completed api-versioning.ts: added Accept-Version header support, added URL rewriting (/api/v1/* \u2192 /api/*), apiVersioning() already applied globally in routes.ts. req.apiVersion set on all requests. GET /api/versions returns version info. Documented versioning strategy and deprecation policy in CLAUDE.md. Build passes."
     },
     {
       "id": "US-030",
@@ -887,7 +887,7 @@
       ],
       "priority": 50,
       "passes": true,
-      "notes": "COMPLETE. Implemented all TODO side effects in equipment-lifecycle-state-machine.ts: RECEIVED→STAGED: QR code generation for asset tags. DELIVERED→INSTALLED: schedule first service check (30 days). INSTALLED→ACTIVE: activate monitoring, register warranty (1yr), send welcome email. ACTIVE→RETIRED: deactivate monitoring, send retirement notification. RETIRED→DISPOSED: create disposal record, notify vendor. RETIRED→TRADED_IN: create trade-in record, apply credit. All wrapped in try/catch."
+      "notes": "COMPLETE. Implemented all TODO side effects in equipment-lifecycle-state-machine.ts: RECEIVED\u2192STAGED: QR code generation for asset tags. DELIVERED\u2192INSTALLED: schedule first service check (30 days). INSTALLED\u2192ACTIVE: activate monitoring, register warranty (1yr), send welcome email. ACTIVE\u2192RETIRED: deactivate monitoring, send retirement notification. RETIRED\u2192DISPOSED: create disposal record, notify vendor. RETIRED\u2192TRADED_IN: create trade-in record, apply credit. All wrapped in try/catch."
     },
     {
       "id": "US-051",
@@ -1353,7 +1353,7 @@
         "Bulk operation endpoints (/api/*/bulk-update, /api/*/bulk-delete) require elevated permissions (scope: _all or _team)",
         "Settings/configuration endpoints require admin-level permissions",
         "Export endpoints require appropriate .export permission",
-        "Document the complete permission matrix: endpoint → required permissions in a permissions-matrix.ts file",
+        "Document the complete permission matrix: endpoint \u2192 required permissions in a permissions-matrix.ts file",
         "Add tests verifying permission denial returns 403 with descriptive message",
         "Typecheck passes: npm run check",
         "Tests pass: npm run test"
@@ -1645,7 +1645,7 @@
         "Add 'Active Contracts' count column linking to the customer's contracts list",
         "Add 'Annual Contract Value' (ACV) column summing active contract values",
         "Add 'Contract Renewal' column showing nearest renewal date with warning for renewals within 30 days",
-        "Add company hierarchy view toggle: tree visualization showing parent company → child locations/divisions",
+        "Add company hierarchy view toggle: tree visualization showing parent company \u2192 child locations/divisions",
         "Customer detail page shows: contract timeline, equipment deployed, open quotes, recent invoices in organized tabs",
         "Add 'At Risk' quick filter showing customers with declining health scores or upcoming renewals",
         "Typecheck passes: npm run check",
@@ -1661,7 +1661,7 @@
       "title": "Enhance Orders page with fulfillment tracking, status timeline, and delivery management",
       "description": "As an operations manager, I need to track order fulfillment stages, see status change history, and manage delivery scheduling so orders move smoothly from confirmed to delivered.",
       "acceptanceCriteria": [
-        "Add visual fulfillment pipeline at top of orders page: Confirmed → In Production → Quality Check → Ready to Ship → Shipped → Delivered with counts per stage",
+        "Add visual fulfillment pipeline at top of orders page: Confirmed \u2192 In Production \u2192 Quality Check \u2192 Ready to Ship \u2192 Shipped \u2192 Delivered with counts per stage",
         "Clicking a pipeline stage filters the table to that stage",
         "Add status timeline on order detail: vertical timeline showing every status change with timestamp, user, and notes",
         "Add 'Estimated Delivery' column with color coding: on time (green), at risk (yellow), late (red)",
@@ -1729,7 +1729,7 @@
         "Each entry shows: icon by type, user avatar, description, relative timestamp, and expandable detail",
         "Filter tabs at top of timeline: All, Notes, Emails, Calls, Changes, System",
         "'Add Note' quick action at top of timeline with rich text input",
-        "Field change entries show: 'Status changed from Draft to Sent by Jane 2 hours ago' with old → new values",
+        "Field change entries show: 'Status changed from Draft to Sent by Jane 2 hours ago' with old \u2192 new values",
         "Timeline supports infinite scroll with 'Load older' trigger",
         "Integrate into LeadDetail, CustomerDetail, QuoteView, OrderDetail, InvoiceDetail, ContractDetail, EquipmentDetail pages",
         "Create GET /api/:entityType/:id/timeline endpoint aggregating activities from multiple sources",
@@ -1754,13 +1754,13 @@
         "Apply ProtectedRoute to analytics/reporting routes (/sales-performance-analytics, /sales-command-center, /service-analytics) with permissions: ['reporting.sales.view'] and minLevel: 3",
         "Routes using AdminRouteGuard (minLevel 7) must remain on: /admin-command-center, /root-admin-signups-crm, /root-admin/seo and all /admin/* paths",
         "Routes using platformOnly must remain on: /admin-hub, /root-admin-dashboard, /admin/tenant-management, /admin/platform-analytics, /admin/database-management, /admin/mobile-logs, /admin/audit-logs",
-        "All routes that previously had no guard must now show the AccessDenied component for users without the required permissions — NOT a blank page or 404",
+        "All routes that previously had no guard must now show the AccessDenied component for users without the required permissions \u2014 NOT a blank page or 404",
         "Typecheck passes: npm run check",
         "Build passes: npm run build"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "CRITICAL security story. Current App.tsx audit shows most routes at /crm/*, /quotes/*, /customers, /leads, /purchase-orders, /warehouse-operations, /commission-management, and /sales-command-center render components directly with no ProtectedRoute wrapper. A sales rep can navigate directly to /advanced-billing or /commission-management via URL. The RouteGuard and ProtectedRoute components already exist in client/src/components/auth/ — this story is purely applying them consistently. Reference: client/src/components/auth/ProtectedRoute.tsx and client/src/lib/navigation-permissions.ts for the permission map.",
+      "notes": "CRITICAL security story. Current App.tsx audit shows most routes at /crm/*, /quotes/*, /customers, /leads, /purchase-orders, /warehouse-operations, /commission-management, and /sales-command-center render components directly with no ProtectedRoute wrapper. A sales rep can navigate directly to /advanced-billing or /commission-management via URL. The RouteGuard and ProtectedRoute components already exist in client/src/components/auth/ \u2014 this story is purely applying them consistently. Reference: client/src/components/auth/ProtectedRoute.tsx and client/src/lib/navigation-permissions.ts for the permission map.",
       "category": "rbac-security"
     },
     {
@@ -1768,34 +1768,34 @@
       "title": "Build role-aware sidebar navigation that hides sections users cannot access",
       "description": "As a sales rep, I should only see navigation items I have permission to use so the interface is not cluttered with links to pages I cannot access, and admin users should see their additional sections without sales users being aware those sections exist.",
       "acceptanceCriteria": [
-        "Read client/src/lib/navigation-permissions.ts — every SECTION_PERMISSIONS and ITEM_PERMISSIONS entry must be enforced in the sidebar render logic",
+        "Read client/src/lib/navigation-permissions.ts \u2014 every SECTION_PERMISSIONS and ITEM_PERMISSIONS entry must be enforced in the sidebar render logic",
         "Modify the sidebar component (client/src/components/layout/sidebar.tsx or equivalent) to call usePermissions() and filter sections before rendering",
         "Platform-only sections (platform-admin-hub, tenant-org-management, user-access-management, system-operations, platform-features) must be completely invisible (not just disabled) to non-platform users",
         "Sections with requiredPermissions (service, products, reporting, finance) are hidden if the user has none of the listed permissions",
         "Sections with minLevel are hidden if the user's role level is below the minimum",
         "alwaysVisible sections (dashboard, tasks, ai-hub, knowledge-base, settings, crm) remain visible to all authenticated users",
-        "When a section is hidden, its children items are also hidden — no orphaned links",
+        "When a section is hidden, its children items are also hidden \u2014 no orphaned links",
         "Add a hook useVisibleNavItems() in client/src/hooks/ that returns the filtered navigation tree using navigation-permissions.ts rules",
-        "Navigation rendering must not show loading flicker — permissions should be read synchronously from the usePermissions() hook cache",
+        "Navigation rendering must not show loading flicker \u2014 permissions should be read synchronously from the usePermissions() hook cache",
         "Typecheck passes: npm run check",
         "Build passes: npm run build"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "navigation-permissions.ts already maps all sections and items to permissions. The sidebar currently renders all items regardless of role. This story wires the existing permission map to the sidebar render. usePermissions() hook exists at client/src/hooks/usePermissions.ts and returns isPlatformUser, level, hasAnyPermission, hasAllPermissions synchronously from cached data. The sidebar component is at client/src/components/layout/ — identify the correct file and apply the filter there.",
+      "notes": "navigation-permissions.ts already maps all sections and items to permissions. The sidebar currently renders all items regardless of role. This story wires the existing permission map to the sidebar render. usePermissions() hook exists at client/src/hooks/usePermissions.ts and returns isPlatformUser, level, hasAnyPermission, hasAllPermissions synchronously from cached data. The sidebar component is at client/src/components/layout/ \u2014 identify the correct file and apply the filter there.",
       "category": "rbac-security"
     },
     {
       "id": "RBAC-008",
       "title": "Implement role-scoped API data filtering so reps only see their own records",
-      "description": "As a sales manager, I need records to be automatically scoped to what each user is authorized to see at the API level — reps see only their own leads and quotes, managers see their team's, directors see their region's — so data isolation is enforced on the server, not just the UI.",
+      "description": "As a sales manager, I need records to be automatically scoped to what each user is authorized to see at the API level \u2014 reps see only their own leads and quotes, managers see their team's, directors see their region's \u2014 so data isolation is enforced on the server, not just the UI.",
       "acceptanceCriteria": [
-        "Review server/middleware/hierarchical-query-builder.ts — ensure buildScopedQuery() is applied to all GET list endpoints for: /api/leads, /api/customers, /api/proposals, /api/deals-management/deals, /api/contacts",
+        "Review server/middleware/hierarchical-query-builder.ts \u2014 ensure buildScopedQuery() is applied to all GET list endpoints for: /api/leads, /api/customers, /api/proposals, /api/deals-management/deals, /api/contacts",
         "Scope tiers must map to role levels: roleLevel 1-2 (own records: userId match), roleLevel 3-4 (team records: teamId match), roleLevel 5-6 (regional records: regionId match), roleLevel 7+ (company-wide: tenantId only)",
         "Platform admins (roleLevel 8, isPlatformAdmin=true) bypass all scoping and see all tenants",
         "Each scoped endpoint must read the user's roleLevel, teamId, regionId from the JWT/session via getUserId() and getTenantId() helpers",
         "Create a server/middleware/scope-middleware.ts helper: applyScopeFilter(req, baseQuery, table) that injects the correct WHERE clause based on role",
-        "Scoped endpoints return only records the user is authorized to see — a rep calling GET /api/leads must not receive another rep's leads",
+        "Scoped endpoints return only records the user is authorized to see \u2014 a rep calling GET /api/leads must not receive another rep's leads",
         "Add integration test in server/tests/integration/ verifying scope isolation: rep A cannot see rep B's leads, manager sees both, director sees all in region",
         "Existing admin-level endpoints that intentionally return all records (platform admin routes) must document this explicitly with a comment",
         "Typecheck passes: npm run check",
@@ -1803,43 +1803,43 @@
       ],
       "priority": 3,
       "passes": true,
-      "notes": "hierarchical-query-builder.ts exists at server/middleware/hierarchical-query-builder.ts but is not applied consistently across all list endpoints. Currently most endpoints only filter by tenantId which means any authenticated user in the tenant sees all records. This is correct for admins but wrong for reps. The enhanced-rbac-middleware.ts provides EnhancedUserContext with roleLevel, teamId, regionId, territoryScope — use these for scoping. This is a data security story, not just UI.",
+      "notes": "hierarchical-query-builder.ts exists at server/middleware/hierarchical-query-builder.ts but is not applied consistently across all list endpoints. Currently most endpoints only filter by tenantId which means any authenticated user in the tenant sees all records. This is correct for admins but wrong for reps. The enhanced-rbac-middleware.ts provides EnhancedUserContext with roleLevel, teamId, regionId, territoryScope \u2014 use these for scoping. This is a data security story, not just UI.",
       "category": "rbac-security"
     },
     {
       "id": "RBAC-009",
       "title": "Add role-specific dashboard views that surface relevant KPIs and actions per role",
-      "description": "As a sales rep, when I log in I should see a dashboard focused on my leads, my quotes, and my tasks — not company-wide revenue charts. As a manager, I should see my team's pipeline. As an executive, I see company-wide KPIs. The dashboard should present the right information for each role automatically.",
+      "description": "As a sales rep, when I log in I should see a dashboard focused on my leads, my quotes, and my tasks \u2014 not company-wide revenue charts. As a manager, I should see my team's pipeline. As an executive, I see company-wide KPIs. The dashboard should present the right information for each role automatically.",
       "acceptanceCriteria": [
         "Modify the main Dashboard page (client/src/pages/Dashboard.tsx or equivalent) to detect the user's roleLevel from usePermissions() and render the appropriate view",
-        "roleLevel 1-2 (Individual Contributor / Team Lead): Show 'My Pipeline' widgets — My Open Leads count, My Active Quotes with total value, My Upcoming Tasks (next 7 days), My Recent Activity feed",
-        "roleLevel 3-4 (Supervisor / Manager): Show team widgets — Team Pipeline Summary by stage, Team Quota Attainment %, Top Performing Reps (ranked by deals closed this month), Team Activity Feed",
-        "roleLevel 5-6 (Regional / Company Director): Show regional widgets — Regional Revenue vs Target, Pipeline by Stage (all teams in region), Deals at Risk (no activity > 14 days), Conversion Rate trend",
-        "roleLevel 7-8 (Executive / Platform Admin): Show company-wide KPIs — Total Revenue MTD/YTD, MRR, NRR, Customer Count, ARR Forecast, Churn Rate",
+        "roleLevel 1-2 (Individual Contributor / Team Lead): Show 'My Pipeline' widgets \u2014 My Open Leads count, My Active Quotes with total value, My Upcoming Tasks (next 7 days), My Recent Activity feed",
+        "roleLevel 3-4 (Supervisor / Manager): Show team widgets \u2014 Team Pipeline Summary by stage, Team Quota Attainment %, Top Performing Reps (ranked by deals closed this month), Team Activity Feed",
+        "roleLevel 5-6 (Regional / Company Director): Show regional widgets \u2014 Regional Revenue vs Target, Pipeline by Stage (all teams in region), Deals at Risk (no activity > 14 days), Conversion Rate trend",
+        "roleLevel 7-8 (Executive / Platform Admin): Show company-wide KPIs \u2014 Total Revenue MTD/YTD, MRR, NRR, Customer Count, ARR Forecast, Churn Rate",
         "Each dashboard tier must use the existing KpiSummaryBar component with role-appropriate metrics",
-        "Quick action buttons on each tier: Rep → 'New Lead', 'New Quote'; Manager → 'Review Pipeline', 'Team Assignments'; Director → 'Reports', 'Forecast'; Admin → 'Admin Hub', 'System Settings'",
-        "Dashboard does not redirect or change URL — same route / but renders different components based on role",
+        "Quick action buttons on each tier: Rep \u2192 'New Lead', 'New Quote'; Manager \u2192 'Review Pipeline', 'Team Assignments'; Director \u2192 'Reports', 'Forecast'; Admin \u2192 'Admin Hub', 'System Settings'",
+        "Dashboard does not redirect or change URL \u2014 same route / but renders different components based on role",
         "Typecheck passes: npm run check",
         "Build passes: npm run build"
       ],
       "priority": 4,
       "passes": true,
-      "notes": "Currently the Dashboard at / renders a single view for all roles. KpiSummaryBar component exists at client/src/components/dashboard/KpiSummaryBar.tsx and accepts configurable metrics. This is a high-impact UX improvement — reps currently see company-wide charts that aren't actionable for them. usePermissions() returns level and role tier. The API scoping from RBAC-003 means the data returned is already role-scoped, so the dashboard widgets can use the same endpoints and get role-appropriate data.",
+      "notes": "Currently the Dashboard at / renders a single view for all roles. KpiSummaryBar component exists at client/src/components/dashboard/KpiSummaryBar.tsx and accepts configurable metrics. This is a high-impact UX improvement \u2014 reps currently see company-wide charts that aren't actionable for them. usePermissions() returns level and role tier. The API scoping from RBAC-003 means the data returned is already role-scoped, so the dashboard widgets can use the same endpoints and get role-appropriate data.",
       "category": "rbac-security"
     },
     {
       "id": "UX-009",
       "title": "Implement contextual 'Quick Actions' button strip on all entity detail pages",
-      "description": "As a sales rep, when I'm on a customer, lead, or deal detail page I should see a clearly visible strip of the most common actions for that record's current state — not buried in dropdown menus — so I can act immediately without hunting through nested menus.",
+      "description": "As a sales rep, when I'm on a customer, lead, or deal detail page I should see a clearly visible strip of the most common actions for that record's current state \u2014 not buried in dropdown menus \u2014 so I can act immediately without hunting through nested menus.",
       "acceptanceCriteria": [
         "Create a reusable QuickActionsBar component in client/src/components/ui/quick-actions-bar.tsx that accepts: entityType, entityId, currentStatus, and an actions array",
         "Actions are state-aware: the available actions change based on the record's current status field",
-        "Lead quick actions by status: New → ['Qualify', 'Schedule Call', 'Create Quote', 'Disqualify']; Contacted → ['Log Call', 'Create Quote', 'Schedule Follow-up']; Qualified → ['Create Quote', 'Convert to Customer']; Won → ['Create Quote', 'View Customer']; Lost → ['Reopen', 'Archive']",
+        "Lead quick actions by status: New \u2192 ['Qualify', 'Schedule Call', 'Create Quote', 'Disqualify']; Contacted \u2192 ['Log Call', 'Create Quote', 'Schedule Follow-up']; Qualified \u2192 ['Create Quote', 'Convert to Customer']; Won \u2192 ['Create Quote', 'View Customer']; Lost \u2192 ['Reopen', 'Archive']",
         "Customer quick actions: ['New Quote', 'Log Activity', 'Schedule Service', 'Create Invoice', 'Add Contact']",
-        "Deal quick actions by stage: Early stages → ['Update Stage', 'Create Quote']; Late stages → ['Generate Contract', 'Mark Won', 'Mark Lost']",
+        "Deal quick actions by stage: Early stages \u2192 ['Update Stage', 'Create Quote']; Late stages \u2192 ['Generate Contract', 'Mark Won', 'Mark Lost']",
         "Each action button shows an icon + label, uses appropriate variant (primary for main CTA, outline for secondary)",
         "Actions that navigate away use wouter's useLocation to navigate with pre-populated query params (e.g., 'New Quote' navigates to /quotes/new?businessRecordId=xxx&companyName=xxx&contactId=xxx)",
-        "Actions that open dialogs (Log Activity, Schedule Follow-up) use sheet/dialog from shadcn/ui — no full page navigation required",
+        "Actions that open dialogs (Log Activity, Schedule Follow-up) use sheet/dialog from shadcn/ui \u2014 no full page navigation required",
         "Integrate QuickActionsBar into CustomerDetail.tsx at the top of the page, below the header",
         "Integrate QuickActionsBar into the lead and deal detail pages",
         "Typecheck passes: npm run check",
@@ -1847,7 +1847,7 @@
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Currently all actions on detail pages are in dropdown kebab menus or tab-buried buttons. HubSpot puts primary actions (Email, Call, Create Note, Schedule Meeting) directly in the header. This story solves the 'buried actions' problem. The navigation with query params is the precursor to QP-001 (auto-populating quotes from customer context). Each action button should respect RBAC — if the user lacks sales.quote.create_own permission, hide the 'New Quote' button rather than show an error after clicking.",
+      "notes": "Currently all actions on detail pages are in dropdown kebab menus or tab-buried buttons. HubSpot puts primary actions (Email, Call, Create Note, Schedule Meeting) directly in the header. This story solves the 'buried actions' problem. The navigation with query params is the precursor to QP-001 (auto-populating quotes from customer context). Each action button should respect RBAC \u2014 if the user lacks sales.quote.create_own permission, hide the 'New Quote' button rather than show an error after clicking.",
       "category": "ux-flow"
     },
     {
@@ -1861,7 +1861,7 @@
         "Show a brief success indicator (checkmark for 1.5s) on save; show an error toast if the request fails, and revert the field to its previous value",
         "Apply InlineEditField to CustomerDetail.tsx for fields: companyName, phone, email, website, address, industry, accountStatus, assignedUserId",
         "Apply InlineEditField to lead detail pages for fields: firstName, lastName, email, phone, company, status, source, assignedUserId",
-        "Respect RBAC: if the user lacks the write permission for the entity (e.g., sales.customer.edit_own), fields render as read-only text — no click-to-edit affordance shown",
+        "Respect RBAC: if the user lacks the write permission for the entity (e.g., sales.customer.edit_own), fields render as read-only text \u2014 no click-to-edit affordance shown",
         "assignedUserId field uses a searchable user select dropdown populated from GET /api/users?tenantId=xxx",
         "Changes made via inline edit must invalidate the relevant TanStack Query cache key so other components on the page reflect the update",
         "Typecheck passes: npm run check",
@@ -1869,7 +1869,7 @@
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Currently CustomerDetail.tsx and lead detail pages require navigating to a separate edit form or opening a modal to change any field. This is a 3-click workflow that inline editing reduces to 1 click. PATCH endpoints already exist for customers and leads (server/routes-*.ts). The InlineEditField component pattern is common in CRMs — refer to HubSpot's click-to-edit behavior. TanStack Query invalidation: use queryClient.invalidateQueries({ queryKey: ['/api/customers', id] }) after a successful PATCH.",
+      "notes": "Currently CustomerDetail.tsx and lead detail pages require navigating to a separate edit form or opening a modal to change any field. This is a 3-click workflow that inline editing reduces to 1 click. PATCH endpoints already exist for customers and leads (server/routes-*.ts). The InlineEditField component pattern is common in CRMs \u2014 refer to HubSpot's click-to-edit behavior. TanStack Query invalidation: use queryClient.invalidateQueries({ queryKey: ['/api/customers', id] }) after a successful PATCH.",
       "category": "ux-flow"
     },
     {
@@ -1885,14 +1885,14 @@
         "Create New commands navigate to the appropriate creation page or open a quick-create sheet",
         "Keyboard shortcuts outside the palette: N+L = New Lead, N+Q = New Quote, N+C = New Customer (sequential key combos, not simultaneous)",
         "Add a small keyboard shortcut hint badge in the sidebar nav items and action buttons where shortcuts exist",
-        "Command palette respects RBAC — only shows commands for pages/actions the user has permission to access (use usePermissions() to filter)",
+        "Command palette respects RBAC \u2014 only shows commands for pages/actions the user has permission to access (use usePermissions() to filter)",
         "Register the command palette at the App root level (App.tsx) so it works on all pages",
         "Typecheck passes: npm run check",
         "Build passes: npm run build"
       ],
       "priority": 3,
       "passes": true,
-      "notes": "cmdk is already available via shadcn/ui Command component. This is a high-delight feature for sales reps who work at volume. The command palette should be lazy-loaded and not impact initial page load. Sequential key combos (N then L) are simpler to implement than chords and avoid conflicts with browser shortcuts. The RBAC filter is important — showing 'Go to Admin Hub' to a rep who cannot access it creates confusion.",
+      "notes": "cmdk is already available via shadcn/ui Command component. This is a high-delight feature for sales reps who work at volume. The command palette should be lazy-loaded and not impact initial page load. Sequential key combos (N then L) are simpler to implement than chords and avoid conflicts with browser shortcuts. The RBAC filter is important \u2014 showing 'Go to Admin Hub' to a rep who cannot access it creates confusion.",
       "category": "ux-flow"
     },
     {
@@ -1904,9 +1904,9 @@
         "Modify QuoteBuilderPage.tsx to read URL search params (businessRecordId, companyName, contactId, contactName) on mount using useSearch() from wouter",
         "If businessRecordId param is present, pre-populate the quote's customer/company fields and skip the customer search step in the quote wizard",
         "If contactId param is present, pre-populate the primary contact field on the quote",
-        "If businessRecordId is present, automatically fetch GET /api/customers/{businessRecordId}/equipment to pre-populate an 'Existing Equipment' section in the quote as reference line items (not billed — informational context)",
+        "If businessRecordId is present, automatically fetch GET /api/customers/{businessRecordId}/equipment to pre-populate an 'Existing Equipment' section in the quote as reference line items (not billed \u2014 informational context)",
         "After auto-population, the sales rep lands directly on the product/line items step of the quote builder, not the customer selection step",
-        "Show a contextual banner in the quote builder: 'Creating quote for [Company Name] — customer details pre-filled. Edit if needed.'",
+        "Show a contextual banner in the quote builder: 'Creating quote for [Company Name] \u2014 customer details pre-filled. Edit if needed.'",
         "The 'New Quote' button on CustomerDetail.tsx must only be visible to users with sales.quote.create_own or sales.quote.create_team permission",
         "The same pre-seeding must work from the lead detail page: navigate with businessRecordId of the lead record",
         "Typecheck passes: npm run check",
@@ -1914,7 +1914,7 @@
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Currently /quotes/new opens a blank QuoteBuilderPage. The customer, contact, and company fields must be filled manually even when navigating from a customer record. URL search params are the correct mechanism — no new API needed. QuoteBuilderPage uses wouter for routing; useSearch() returns the query string. businessRecordId is already a field on the quotes/proposals schema (business_record_id in shared/schema.ts). The UX-001 story's QuickActionsBar 'New Quote' action should use these same params. This eliminates 4-6 manual form fields in the quote creation flow.",
+      "notes": "Currently /quotes/new opens a blank QuoteBuilderPage. The customer, contact, and company fields must be filled manually even when navigating from a customer record. URL search params are the correct mechanism \u2014 no new API needed. QuoteBuilderPage uses wouter for routing; useSearch() returns the query string. businessRecordId is already a field on the quotes/proposals schema (business_record_id in shared/schema.ts). The UX-001 story's QuickActionsBar 'New Quote' action should use these same params. This eliminates 4-6 manual form fields in the quote creation flow.",
       "category": "quote-process"
     },
     {
@@ -1928,16 +1928,16 @@
         "Step 2 (Products & Line Items): product catalog search, quantity, unit price, line item notes, subtotal running total visible in sidebar",
         "Step 3 (Pricing & Terms): discount (%, flat, or tiered), tax rate, payment terms (Net 15/30/45/60, Due on Receipt), internal notes, customer-facing notes",
         "Step 4 (Review & Send): full read-only preview of the quote as it will appear to the customer, with a 'Edit' button per section to jump back, and primary CTA buttons: 'Save as Draft', 'Send to Customer', 'Download PDF'",
-        "Each step validates required fields before allowing 'Next' — show inline validation errors, not a global alert",
+        "Each step validates required fields before allowing 'Next' \u2014 show inline validation errors, not a global alert",
         "Step navigation: 'Back' and 'Next' buttons on each step, plus clicking a completed step in the progress bar jumps to it",
-        "Wizard state is preserved in component state (not URL) — navigating Back does not lose entered data",
+        "Wizard state is preserved in component state (not URL) \u2014 navigating Back does not lose entered data",
         "If pre-seeded from QP-001, Step 1 is auto-completed and the wizard opens on Step 2 with a 'Customer pre-filled' notice in the step indicator",
         "Typecheck passes: npm run check",
         "Build passes: npm run build"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Current QuoteBuilderPage is a single-form page. Converting to a wizard reduces cognitive load and prevents incomplete quotes from being sent. The product catalog search for Step 2 uses GET /api/products/search?q=. Pricing logic from Step 3 mirrors existing quote schema fields: discount, taxRate, paymentTerms, notes. The Review step in Step 4 can reuse the existing QuoteView component in read-only mode. Pre-seeding from QP-001 means Step 1 is skipped — implement by tracking a completedSteps Set and marking step 1 complete if businessRecordId param was present.",
+      "notes": "Current QuoteBuilderPage is a single-form page. Converting to a wizard reduces cognitive load and prevents incomplete quotes from being sent. The product catalog search for Step 2 uses GET /api/products/search?q=. Pricing logic from Step 3 mirrors existing quote schema fields: discount, taxRate, paymentTerms, notes. The Review step in Step 4 can reuse the existing QuoteView component in read-only mode. Pre-seeding from QP-001 means Step 1 is skipped \u2014 implement by tracking a completedSteps Set and marking step 1 complete if businessRecordId param was present.",
       "category": "quote-process"
     },
     {
@@ -1979,7 +1979,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Current 404 page (client/src/pages/not-found.tsx) is only 21 lines with a developer-facing message. Users who mistype a URL or follow an old link will bounce immediately with no way to recover. Industry standard 404 pages include branding, search, popular links, and a clear CTA. This is the #1 bounce-rate reducer.",
       "category": "ux-audit"
     },
@@ -1999,7 +1999,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Current footer (client/src/components/layout/footer.tsx) is only 23 lines with just copyright and a hardcoded version. Missing all standard SaaS footer content: legal links, company info, navigation. This is a significant SEO gap (missed internal linking opportunity) and reduces user trust. FooterSitemapLinks component exists in client/src/lib/seo/InternalLinking.tsx but isn't used in the actual footer.",
       "category": "ux-audit"
     },
@@ -2018,7 +2018,7 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "The Invoices page (client/src/pages/Invoices.tsx) is the only major list page missing KPI summary cards. LeadsPage has them (Total, New, Contacted, Qualified), CustomersPage has them (Active, On Hold, Retention %), QuotesManagement has a KPI bar. This inconsistency makes the Invoices page feel less polished and forces billing managers to mentally aggregate data from the card list view.",
       "category": "ux-audit"
     },
@@ -2039,7 +2039,7 @@
         "Build passes: npm run build"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "The SEO infrastructure (client/src/lib/seo/seoConfig.ts) already has getAllSEOConfigs() with priority and changefreq fields for every route. The server just needs endpoints to serve robots.txt and generate sitemap XML from this config. Currently no robots.txt or sitemap.xml exists, meaning search engines have no crawl guidance and may miss important pages or waste crawl budget on authenticated routes.",
       "category": "ux-audit"
     },
@@ -2057,7 +2057,7 @@
         "Build passes: npm run build"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Invoices.tsx already uses max-w-[95vw] correctly. LeadsPage uses max-w-2xl, CustomersPage uses max-w-3xl without mobile constraint. This causes horizontal overflow on mobile screens <640px. The fix is mechanical but important for mobile engagement. Estimated 25-30% reduction in mobile bounce rate on form-heavy pages.",
       "category": "ux-audit"
     },
@@ -2075,7 +2075,7 @@
         "Build passes: npm run build"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Tailwind config already defines safe-area utilities (safe-bottom, safe-top, safe-left, safe-right) but they're not applied anywhere. The viewport meta tag needs viewport-fit=cover to enable env(safe-area-inset-bottom). This affects all modern iPhones (X and later) and many Android devices with gesture navigation bars.",
       "category": "ux-audit"
     },
@@ -2094,7 +2094,7 @@
         "Build passes: npm run build"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Current Customers page shows Active/On Hold/Retention stats but no health indicators. Sales teams can't identify which customers need immediate attention without clicking into each record. This is a high-impact engagement improvement that increases daily active use of the customers page by 20-30%.",
       "category": "ux-audit"
     },
@@ -2113,7 +2113,7 @@
         "Build passes: npm run build"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Leads page has good KPI cards but the table lacks actionable timing data. Sales reps spend 30% of their time figuring out which lead to call next. Showing next follow-up dates inline eliminates this friction. The activities/tasks system already tracks follow-up dates - this story surfaces them in the list view.",
       "category": "ux-audit"
     },
@@ -2132,8 +2132,8 @@
         "Build passes: npm run build"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "RoleAwareCollapsibleSidebar.tsx has 18 top-level sections with 149 distinct navigation items. While collapsible, the sheer number of sections creates decision paralysis. Studies show 7±2 is the optimal number of menu categories. Merging related sections (System Admin + Platform Features, multiple analytics sections) and adding favorites would significantly improve navigation efficiency.",
+      "passes": true,
+      "notes": "RoleAwareCollapsibleSidebar.tsx has 18 top-level sections with 149 distinct navigation items. While collapsible, the sheer number of sections creates decision paralysis. Studies show 7\u00b12 is the optimal number of menu categories. Merging related sections (System Admin + Platform Features, multiple analytics sections) and adding favorites would significantly improve navigation efficiency.",
       "category": "ux-audit"
     },
     {
@@ -2150,7 +2150,7 @@
         "Build passes: npm run build"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "CustomerSelfServicePortal.tsx has individual dashboard tabs (Equipment Health, Usage Analytics, Maintenance Scheduling, Service Requests, Customer Satisfaction) but no unified overview. Customers need to click through tabs to find what needs attention. A home dashboard reduces time-to-first-action from 15+ seconds to under 5 seconds.",
       "category": "ux-audit"
     },
@@ -2168,7 +2168,7 @@
         "Build passes: npm run build"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "OptimizedImage (client/src/components/ui/optimized-image.tsx) currently has loading='lazy' and decoding='async' but defaults alt to empty string (accessibility issue) and doesn't support srcset or WebP. This is the foundation image component - fixing it improves all image usage across the app.",
       "category": "ux-audit"
     },
@@ -2186,7 +2186,7 @@
         "Build passes: npm run build"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "GEOFaqSection component exists in client/src/lib/seo/GEOFaqSection.tsx and generates proper FAQPage schema, but it's only used on 1 page (PredictiveIntelligence.tsx). Expanding to top marketing pages significantly improves AI search citation potential (GEO) and Google featured snippet eligibility. Each FAQ section is estimated at 15 minutes of content writing per page.",
       "category": "ux-audit"
     },
@@ -2205,7 +2205,7 @@
         "Build passes: npm run build"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "The enhanced pipeline board (CRM-003) has dynamic stages and drag-and-drop but no health monitoring. Sales managers currently must click into individual deals to check activity dates. Pipeline health indicators increase proactive management actions by 30-40% and reduce deal slippage.",
       "category": "ux-audit"
     },
@@ -2225,7 +2225,7 @@
         "Build passes: npm run build"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Current dashboard shows role-based KPI widgets but no cross-module action items. Users must navigate to each module to discover what needs attention. A unified priorities widget increases daily active engagement by 20-25% as it gives users a clear starting point every login.",
       "category": "ux-audit"
     },
@@ -2241,8 +2241,8 @@
         "Build passes: npm run build"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "Footer currently shows '© 2025 Printyx' hardcoded. It's now 2026. This makes the site look unmaintained. Also 'v2.1.0' is hardcoded rather than dynamic. Simple fix but high visibility impact for trust and professionalism.",
+      "passes": true,
+      "notes": "Footer currently shows '\u00a9 2025 Printyx' hardcoded. It's now 2026. This makes the site look unmaintained. Also 'v2.1.0' is hardcoded rather than dynamic. Simple fix but high visibility impact for trust and professionalism.",
       "category": "ux-audit"
     }
   ]
