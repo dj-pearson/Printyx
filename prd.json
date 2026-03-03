@@ -2244,6 +2244,317 @@
       "passes": true,
       "notes": "Footer currently shows '\u00a9 2025 Printyx' hardcoded. It's now 2026. This makes the site look unmaintained. Also 'v2.1.0' is hardcoded rather than dynamic. Simple fix but high visibility impact for trust and professionalism.",
       "category": "ux-audit"
+    },
+    {
+      "id": "SEC-001",
+      "title": "SQL injection hardening - parameterized query audit and enforcement",
+      "description": "As a platform operator, I need all database queries audited and enforced to use parameterized queries or the Drizzle ORM query builder, so that AI-driven pentest tools like Shannon cannot exploit SQL injection vectors anywhere in the 127 route files.",
+      "acceptanceCriteria": [
+        "Create server/scripts/sql-injection-audit.ts that statically scans all route files for raw SQL string concatenation, template literals in db.execute(), and sql.raw() without parameterization",
+        "Fix any discovered raw SQL patterns in route files to use Drizzle ORM query builder or drizzle sql`` tagged template with proper parameter binding",
+        "Add ESLint custom rule or eslint-plugin-security rule to flag db.execute() calls with template literal interpolation that isn't using sql`` placeholder syntax",
+        "Create server/tests/unit/sql-injection-prevention.test.ts with test cases: parameterized queries pass, string-concatenated queries are rejected by the linter, common SQLi payloads (UNION SELECT, OR 1=1, comment sequences) are safely handled",
+        "Audit all 42 server/routes/*.ts and 109 server/routes-*.ts files for raw query patterns",
+        "Add npm script audit:sqli that runs the static analysis scanner",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Shannon uses code-aware analysis to find SQL injection points, then verifies with real exploits. Drizzle ORM generally protects against SQLi when used correctly, but any db.execute() or sql.raw() calls with interpolated user input are vulnerable. This is the #1 OWASP vulnerability and Shannon's primary attack vector.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-002",
+      "title": "SSRF protection - URL validation and internal network blocking",
+      "description": "As a platform operator, I need all outbound HTTP requests validated against SSRF attacks, so that AI pentest tools cannot trick the server into accessing internal services, cloud metadata endpoints, or private network resources.",
+      "acceptanceCriteria": [
+        "Create server/middleware/ssrf-protection.ts with a validateUrl() function that blocks: private IP ranges (10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x), IPv6 loopback/link-local, cloud metadata endpoints (169.254.169.254, metadata.google.internal), file:// and other non-http(s) schemes, DNS rebinding by resolving hostname before request and validating resolved IP",
+        "Create server/lib/safe-http-client.ts wrapping fetch/axios that enforces SSRF validation on all outbound requests before they execute",
+        "Audit and replace all direct fetch/axios calls in: server/services/manufacturer-integration-service.ts, server/integrations/, server/routes-integration-hub.ts, and any webhook/callback URL handlers with the safe HTTP client",
+        "Add SSRF test suite: server/tests/unit/ssrf-protection.test.ts covering internal IP blocking, DNS rebinding detection, metadata endpoint blocking, scheme validation, redirect following to internal IPs",
+        "Validate webhook callback URLs (server/routes-*.ts with callback/webhook patterns) through SSRF filter before making outbound requests",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Shannon tests for SSRF as a primary vulnerability class. Our platform has manufacturer integrations, webhook callbacks, and third-party API calls that could be SSRF vectors. Cloud metadata endpoint access (169.254.169.254) is especially dangerous as it can leak service account credentials.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-003",
+      "title": "Security headers hardening with Helmet.js and strict CSP",
+      "description": "As a platform operator, I need comprehensive security headers enforced on all responses, so that browser-based exploit chains (XSS execution, clickjacking, MIME sniffing) used by AI pentest tools are blocked at the browser level.",
+      "acceptanceCriteria": [
+        "Install and configure helmet in server/index.ts as early middleware with strict settings",
+        "Content-Security-Policy: default-src 'self'; script-src 'self' with nonce-based inline scripts; style-src 'self' 'unsafe-inline' (for Tailwind); img-src 'self' data: https:; connect-src 'self' wss: https://api.printyx.net https://functions.printyx.net; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        "X-Content-Type-Options: nosniff on all responses",
+        "X-Frame-Options: DENY (prevent clickjacking)",
+        "Strict-Transport-Security: max-age=31536000; includeSubDomains; preload",
+        "Referrer-Policy: strict-origin-when-cross-origin",
+        "Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self)",
+        "Remove X-Powered-By header (Express fingerprint removal)",
+        "Create server/tests/unit/security-headers.test.ts verifying all headers present on API and page responses",
+        "CSP violation reporting endpoint at /api/csp-report that logs violations with createModuleLogger",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Shannon uses WhatWeb for technology fingerprinting - removing X-Powered-By reduces information leakage. CSP blocks XSS payload execution even if injection succeeds. Currently server/index.ts has minimal header configuration. The Vite dev server in server/vite.ts has some CSP but production needs full Helmet coverage.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-004",
+      "title": "Authentication hardening - account lockout, brute force, and credential stuffing defense",
+      "description": "As a platform operator, I need defense-in-depth authentication protections so that AI pentest tools cannot brute-force credentials, bypass MFA, or perform credential stuffing attacks against our login flows.",
+      "acceptanceCriteria": [
+        "Implement progressive account lockout in server/auth-routes.ts: after 5 failed login attempts within 15 minutes, lock account for 15 minutes; after 10 failed attempts, lock for 1 hour; after 20 failed attempts, require admin unlock",
+        "Store failed login attempts in database (security_sessions or new failed_login_attempts table) with: userId, ipAddress, userAgent, timestamp, attemptCount",
+        "Add IP-based rate limiting on /api/auth/login, /api/auth/signup, /api/auth/reset-password: max 10 requests per IP per 15-minute window (tighter than general auth rate limit)",
+        "Implement login anomaly detection: flag and log when login occurs from new IP/device after repeated failures, when login attempt uses known breached password patterns, when automated tool user-agent signatures detected (curl, python-requests, headless browser indicators)",
+        "Add /api/admin/security/locked-accounts endpoint for platform admins to view and unlock accounts",
+        "Create server/tests/unit/auth-hardening.test.ts covering: lockout progression, lockout expiry, IP rate limiting, anomaly flagging",
+        "Emit security audit log events for: failed_login, account_locked, account_unlocked, anomalous_login",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Shannon handles advanced 2FA/TOTP logins autonomously and attempts authentication bypass as a primary attack. Our current rate limiting (server/middleware/user-rate-limit.ts) has auth category limits but no progressive lockout or anomaly detection. Supabase GoTrue handles some of this but our session fallback auth path needs equivalent protection.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-005",
+      "title": "Command injection prevention - child process audit and sandboxing",
+      "description": "As a platform operator, I need all shell command executions audited and sandboxed so that AI pentest tools cannot achieve remote code execution through command injection in any server endpoint.",
+      "acceptanceCriteria": [
+        "Create server/scripts/command-injection-audit.ts that scans all server files for: child_process.exec(), child_process.execSync(), shell: true in spawn options, eval(), new Function(), vm.runInContext with user input, template literals passed to exec/spawn",
+        "Replace any exec/execSync calls that include user-derived input with execFile/execFileSync (no shell interpolation) or spawn with explicit argument arrays",
+        "Create server/lib/safe-exec.ts utility that: uses execFile (not exec), validates command against an allowlist of permitted binaries, escapes arguments, enforces timeout, logs all executions to audit log",
+        "Audit database backup scripts (server/scripts/db-backup.ts), report generation, PDF generation, and any file processing pipelines for command injection vectors",
+        "Add ESLint rule to flag direct child_process.exec() usage without the safe-exec wrapper",
+        "Create server/tests/unit/command-injection-prevention.test.ts with payloads: semicolon chaining (;id), pipe injection (|cat /etc/passwd), backtick injection (`whoami`), $() subshell, newline injection",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Shannon performs both browser and command-line based exploits and verifies RCE through actual command execution. Any child_process usage that interpolates user input is a critical vulnerability. Database backup, PDF generation, and file processing are common command injection vectors in Node.js apps.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-006",
+      "title": "API schema validation and fuzz testing with OpenAPI enforcement",
+      "description": "As a platform operator, I need all API endpoints validated against their OpenAPI schemas with automated fuzz testing so that AI pentest tools using schema-based attack tools like Schemathesis cannot find input handling vulnerabilities.",
+      "acceptanceCriteria": [
+        "Extend server/openapi/config.ts to generate complete OpenAPI 3.1 spec covering all 127 route files with request/response schemas derived from existing Zod validation schemas in shared/",
+        "Create server/middleware/openapi-validator.ts that validates all incoming requests against the OpenAPI spec: required fields, type coercion rejection, additional properties rejection, string format validation (email, uri, uuid, date-time)",
+        "Register the OpenAPI validation middleware in server/index.ts for all /api/* routes",
+        "Create scripts/fuzz-test.ts that uses the OpenAPI spec to generate edge-case inputs: boundary values, type confusion (string where number expected), oversized payloads, unicode edge cases, null bytes, deeply nested objects",
+        "Add npm script test:fuzz that runs the fuzz testing suite against a running dev server",
+        "Validation errors return standardized 400 responses with { message, code: 'VALIDATION_ERROR', details: [...field errors] }",
+        "Create server/tests/unit/openapi-validation.test.ts covering: valid requests pass, missing required fields rejected, wrong types rejected, additional properties rejected",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Shannon integrates Schemathesis for API schema-based testing, automatically generating malformed requests from OpenAPI specs. Having a validated spec is both a defense (strict validation rejects malformed input) and enables us to run our own fuzz testing first. Current Zod validation exists but isn't universally applied to all endpoints.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-007",
+      "title": "Automated security scanning CI pipeline with OWASP ZAP and dependency audit",
+      "description": "As a platform operator, I need automated security scanning integrated into the CI/CD pipeline so that vulnerabilities are caught before deployment, not by external AI pentest tools in production.",
+      "acceptanceCriteria": [
+        "Create .github/workflows/security-scan.yml (or extend existing CI) with: npm audit --audit-level=high failing on high/critical vulnerabilities, ESLint security plugin run, the custom SQL injection scanner (SEC-001), the command injection scanner (SEC-005)",
+        "Add npm script audit:security that runs all static security checks in sequence: npm audit, sql injection scan, command injection scan, dependency license check",
+        "Create scripts/owasp-zap-scan.ts configuration for running OWASP ZAP baseline scan against staging environment with: authentication configuration for Supabase JWT, target URL configuration, alert threshold settings (fail on medium+), report output in JSON and HTML",
+        "Add npm script test:security:dynamic for running the OWASP ZAP scan (requires running instance)",
+        "Create scripts/dependency-check.ts that: checks for known vulnerable packages, verifies no packages with critical CVEs, checks for typosquatting on critical dependencies (supabase, drizzle-orm, express, jsonwebtoken)",
+        "Document security scanning procedures in SECURITY.md with: scan schedule, alert thresholds, remediation SLAs, tool configuration",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Shannon is essentially an automated pentest pipeline. We need our own automated security pipeline to find issues first. The existing scripts/audit/security-audit.ts provides a foundation but isn't CI-integrated. npm audit exists but isn't enforced in CI. Supply chain attacks (typosquatting) are a real threat - Shannon's reconnaissance phase would identify outdated/vulnerable dependencies.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-008",
+      "title": "Behavioral anomaly detection and automated threat scoring",
+      "description": "As a platform operator, I need real-time behavioral analysis of API request patterns so that automated attack tools (AI pentesters, scrapers, enumeration bots) are detected and throttled before they can complete their attack chain.",
+      "acceptanceCriteria": [
+        "Create server/services/threat-detection-service.ts that tracks per-session/per-IP behavioral signals: request velocity (requests per second), endpoint coverage breadth (hitting many different endpoints rapidly), error rate (high 4xx/5xx ratio indicates fuzzing), parameter mutation rate (same endpoint with rapidly changing params), sequential ID enumeration patterns, authentication failure patterns",
+        "Implement a threat score (0-100) calculated from weighted behavioral signals, stored in-memory with sliding window (configurable, default 5 minutes)",
+        "Create server/middleware/threat-detection.ts middleware that: calculates threat score on each request, adds X-Threat-Score response header (internal/debug only), triggers progressive response: score 50+ adds artificial latency (100-500ms), score 70+ triggers CAPTCHA challenge flag, score 90+ blocks request with 429 and logs security event",
+        "Register threat detection middleware in server/index.ts for all /api/* routes",
+        "Create /api/admin/security/threats endpoint showing current high-threat sessions/IPs for platform admins",
+        "Create server/tests/unit/threat-detection.test.ts covering: normal traffic passes freely, rapid scanning pattern detected, fuzzing pattern detected, enumeration pattern detected, score decay over time",
+        "Emit structured security events to audit log: threat_score_elevated, threat_blocked, threat_captcha_triggered",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Shannon performs automated reconnaissance (Nmap, Subfinder, WhatWeb) followed by systematic exploitation. This creates detectable patterns: rapid endpoint scanning, high error rates during fuzzing, sequential parameter enumeration. Current rate limiting is per-endpoint; behavioral detection looks at cross-endpoint patterns that indicate automated tooling rather than human usage.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-009",
+      "title": "Data exfiltration prevention - response monitoring and bulk access detection",
+      "description": "As a platform operator, I need protections against data exfiltration so that even if an AI pentest tool achieves partial access, it cannot extract bulk data from the multi-tenant system.",
+      "acceptanceCriteria": [
+        "Create server/middleware/exfiltration-guard.ts that monitors: response payload sizes per user session (cumulative), number of records returned per time window, cross-tenant data access attempts (tenant ID mismatch in response vs authenticated tenant), rapid pagination through large datasets (iterating page=1,2,3... rapidly)",
+        "Configure thresholds: warn at 10MB cumulative response data per 10 minutes, block at 50MB; warn at 1000 records per 10 minutes, block at 5000; immediately block any cross-tenant data leakage",
+        "Add response size tracking middleware that accumulates per-session download volume",
+        "Create /api/admin/security/exfiltration-alerts endpoint showing recent alerts for platform admins",
+        "Add tenant isolation verification layer: server/middleware/tenant-response-validator.ts that spot-checks a sample of response records to verify tenantId matches the authenticated user's tenant (defense-in-depth beyond query-time filtering)",
+        "Create server/tests/unit/exfiltration-guard.test.ts covering: normal API usage passes, bulk download triggers alert, cross-tenant leak detected, rapid pagination detected",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Shannon verifies exploits through actual data exfiltration. In a multi-tenant SaaS, the blast radius of a successful attack is all tenant data. Current tenant isolation is at query time (WHERE tenantId = ?), but there's no response-level verification or volume monitoring. This is the last line of defense if query-level isolation is bypassed.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-010",
+      "title": "CORS hardening and origin validation",
+      "description": "As a platform operator, I need strict CORS policies so that AI pentest tools and malicious scripts cannot make cross-origin requests to our API or exploit misconfigured CORS to bypass same-origin protections.",
+      "acceptanceCriteria": [
+        "Audit current CORS configuration in server/index.ts and replace with strict allowlist: production domains only (printyx.net, *.printyx.net), no wildcard (*) origins in production, no credentials with wildcard origins",
+        "Create server/config/cors.ts with environment-specific CORS configs: development allows localhost:*, staging allows staging subdomain, production allows only production domains",
+        "Validate Origin header on all state-changing requests (POST/PUT/PATCH/DELETE) - reject requests with missing or non-allowlisted Origin in production",
+        "Ensure Access-Control-Allow-Credentials: true is only set when origin is explicitly allowlisted",
+        "Block Access-Control-Allow-Origin reflection (echoing back arbitrary Origin header) - this is a common misconfiguration Shannon exploits",
+        "Create server/tests/unit/cors-validation.test.ts covering: allowed origin passes, unknown origin blocked, wildcard not reflected, credentials not sent to unknown origins, preflight OPTIONS handled correctly",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Shannon's browser-based exploitation can leverage CORS misconfigurations. Origin reflection (echoing back the attacker's Origin) with credentials is equivalent to no CORS. The existing scripts/audit/security-audit.ts checks CORS config but findings may not be remediated.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-011",
+      "title": "Security event monitoring dashboard and real-time alerting",
+      "description": "As a platform admin, I need a real-time security monitoring dashboard so that attack patterns from AI pentest tools and real threats are visible, alertable, and actionable without digging through logs.",
+      "acceptanceCriteria": [
+        "Create client/src/pages/SecurityDashboard.tsx accessible only to platform admins (role level 8)",
+        "Dashboard displays: active threat scores by IP/session (from SEC-008), recent failed login attempts with geo-IP enrichment (from SEC-004), rate limit violations by endpoint and user, data exfiltration alerts (from SEC-009), CSP violation reports (from SEC-003), locked accounts pending review (from SEC-004)",
+        "Add route /security-dashboard in client/src/App.tsx with platformAdminRoute protection",
+        "Create server/routes-security-dashboard.ts with endpoints: GET /api/security/overview (aggregated stats), GET /api/security/events (paginated security events), GET /api/security/threats/active (current threat scores)",
+        "Implement WebSocket channel for real-time security event push to the dashboard",
+        "Add email/webhook alerting for critical security events: account lockout bursts (>5 in 10 min), threat score 90+ detections, cross-tenant data access attempts, mass authentication failures from single IP",
+        "All dashboard API endpoints require platformAdminRoute middleware",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Visibility is key to defense. Shannon's attacks generate detectable patterns but only if we're watching. This dashboard aggregates security signals from SEC-003, SEC-004, SEC-008, and SEC-009 into an actionable admin view. Existing audit log infrastructure (server/services/audit-log-service.ts) provides the data foundation.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-012",
+      "title": "Internal penetration testing harness using OWASP methodology",
+      "description": "As a developer, I need an internal security testing harness that runs Shannon-style attack patterns against our own platform so that we find vulnerabilities before external tools do.",
+      "acceptanceCriteria": [
+        "Create scripts/pentest/ directory with modular test scripts following OWASP Testing Guide categories",
+        "Create scripts/pentest/auth-tests.ts: brute force login, credential stuffing with common passwords, session fixation, JWT manipulation (algorithm confusion, expired token replay, signature stripping), MFA bypass attempts, password reset flow abuse",
+        "Create scripts/pentest/injection-tests.ts: SQL injection payloads on all form fields and query params, XSS payloads (reflected, stored, DOM-based) on all text input endpoints, command injection payloads on any endpoint that processes filenames or URLs, SSRF payloads on webhook/integration endpoints",
+        "Create scripts/pentest/authz-tests.ts: IDOR testing (accessing other users' resources by ID manipulation), tenant isolation testing (cross-tenant data access), privilege escalation (lower role accessing admin endpoints), horizontal privilege escalation (user A accessing user B's data)",
+        "Create scripts/pentest/config.ts for target configuration: base URL, test credentials per role level, tenant IDs for cross-tenant testing, output directory for reports",
+        "Create scripts/pentest/reporter.ts generating HTML report with: findings by severity, proof of concept for each finding, remediation recommendations, OWASP category mapping",
+        "Add npm script test:pentest that runs the full internal pentest suite against a running instance",
+        "Tests should verify defenses hold (expect 403/429 responses, not 200s with data)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "This is our internal Shannon - testing ourselves before an attacker does. Shannon discovered 20+ critical vulns in OWASP Juice Shop by running exactly these patterns. The key difference is our tests assert that attacks FAIL, proving our defenses work. This should be run on staging before each production deployment. Builds on the existing scripts/audit/security-audit.ts static analysis with dynamic testing.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-013",
+      "title": "Session security hardening - token rotation, device binding, and replay prevention",
+      "description": "As a platform operator, I need hardened session management so that AI pentest tools cannot replay, fixate, or hijack user sessions even if they obtain a token.",
+      "acceptanceCriteria": [
+        "Implement JWT refresh token rotation: each refresh grants a new refresh token and invalidates the previous one, detect and revoke entire token family if a previously-used refresh token is replayed (indicates theft)",
+        "Add device fingerprint binding to sessions: hash of User-Agent + Accept-Language + screen resolution (from client) stored with session, flag sessions where fingerprint changes mid-session",
+        "Implement session invalidation on privilege change: when user role changes, all existing sessions are invalidated requiring re-authentication",
+        "Add /api/auth/sessions endpoint for users to view and revoke their active sessions (device, location, last active)",
+        "Store session metadata in security_sessions table: device fingerprint, IP address, created_at, last_active_at, is_suspicious flag",
+        "Create server/tests/unit/session-hardening.test.ts covering: token rotation works, replay detection triggers revocation, fingerprint mismatch flagged, privilege change invalidates sessions",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Shannon handles 2FA/TOTP and advanced authentication flows autonomously. If it captures a session token, hardened session management limits the blast radius. Current security_sessions table exists (shared/security-schema.ts) but may not have rotation or device binding. Supabase GoTrue handles JWT issuance but our session fallback needs equivalent hardening.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-014",
+      "title": "Request fingerprinting and bot detection middleware",
+      "description": "As a platform operator, I need automated bot and tool detection so that AI pentest reconnaissance tools (Nmap, WhatWeb, Subfinder, headless browsers) are identified and their requests flagged before they begin exploitation.",
+      "acceptanceCriteria": [
+        "Create server/middleware/bot-detection.ts that analyzes request characteristics: User-Agent string patterns matching known security tools (nmap, nikto, sqlmap, whatweb, schemathesis, nuclei, burpsuite, zap), headless browser indicators (missing Accept-Language, navigator.webdriver, HeadlessChrome UA), TLS fingerprinting anomalies via JA3/JA4 hash comparison (if available from reverse proxy headers)",
+        "Implement request cadence analysis: perfectly uniform request intervals indicate automation (humans have jitter), missing standard browser headers (Accept, Accept-Encoding, Cache-Control) on web requests",
+        "Create a bot score (0-100) that feeds into the threat detection service (SEC-008)",
+        "Add configurable response for detected bots: allow (log only), challenge (CAPTCHA/JS challenge), throttle (artificial delay), block (403)",
+        "Create server/config/bot-signatures.ts with updatable list of known tool signatures and detection patterns",
+        "Do NOT block legitimate bots (Googlebot, etc.) - maintain an allowlist for verified crawler User-Agents with reverse DNS verification",
+        "Create server/tests/unit/bot-detection.test.ts covering: normal browser passes, known tool UA detected, headless browser detected, legitimate crawler allowed, missing headers flagged",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Shannon's first phase is reconnaissance using Nmap, Subfinder, and WhatWeb - all of which have identifiable signatures. Browser-based exploits use headless Chromium which can be fingerprinted. This is the outermost defense layer: detect and flag before the attack chain even begins. Must be careful not to block legitimate crawlers or accessibility tools.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-015",
+      "title": "Error message sanitization and information leakage prevention",
+      "description": "As a platform operator, I need all error responses sanitized in production so that AI pentest tools cannot extract stack traces, database schemas, internal paths, or technology details from error messages.",
+      "acceptanceCriteria": [
+        "Audit server/middleware/error-handler.ts to ensure: no stack traces in production responses, no database column/table names in error messages, no file paths or internal IPs in responses, no framework version numbers in errors",
+        "Create server/utils/error-sanitizer.ts (extend existing if present) that scrubs: PostgreSQL error details (column, table, constraint names), file paths matching /home/, /app/, /server/, internal IP addresses and hostnames, SQL fragments from error messages",
+        "Configure Express to not send default HTML error pages (they reveal Express version)",
+        "Ensure 404 responses don't enumerate valid vs invalid routes (consistent response format for all unmatched routes)",
+        "Audit all catch blocks in route files: replace any res.status(500).json({ error: err.message }) with sanitized generic messages in production",
+        "Create server/tests/unit/error-sanitization.test.ts: database errors return generic message, file path errors scrubbed, stack traces removed in production mode, 404s are consistent format",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Shannon's code-aware analysis benefits enormously from information leakage. Database error messages revealing table/column names guide SQL injection. Stack traces reveal framework versions and file structure. Consistent 404 format prevents endpoint enumeration. Existing server/utils/error-sanitizer.ts may partially address this but needs comprehensive coverage across all 127+ route files.",
+      "category": "ai-security-defense"
+    },
+    {
+      "id": "SEC-016",
+      "title": "Dependency supply chain security and lockfile integrity",
+      "description": "As a platform operator, I need automated supply chain security checks so that compromised or typosquatted npm packages cannot be introduced into the build, which AI pentest tools could identify and exploit.",
+      "acceptanceCriteria": [
+        "Create scripts/supply-chain-check.ts that verifies: no typosquatted packages (fuzzy matching critical deps: express, drizzle-orm, supabase, jsonwebtoken, bcrypt, helmet), package-lock.json integrity (npm ci validation), no packages with known critical CVEs (npm audit --audit-level=critical), no packages with install scripts that execute arbitrary code from untrusted sources",
+        "Add .npmrc configuration: ignore-scripts=false but audit install scripts, engine-strict=true, save-exact=true for deterministic installs",
+        "Create npm script audit:supply-chain that runs the supply chain checks",
+        "Add supply chain check to CI pipeline (or to the security scan workflow from SEC-007)",
+        "Implement package allowlist in scripts/supply-chain-check.ts for approved packages, flag any new transitive dependencies added between commits",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Shannon's reconnaissance phase includes WhatWeb which identifies technology stacks and versions. Known-vulnerable dependency versions are low-hanging fruit. Supply chain attacks (event-stream, ua-parser-js incidents) can give attackers direct code execution. Lockfile integrity prevents tampering. This complements SEC-007's CI scanning with supply-chain-specific checks.",
+      "category": "ai-security-defense"
     }
   ]
 }
