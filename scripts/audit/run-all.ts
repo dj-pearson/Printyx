@@ -83,6 +83,12 @@ const AUDITS: AuditConfig[] = [
     flag: '--security',
     description: 'Scans for common security issues',
   },
+  {
+    name: 'Supply Chain',
+    script: 'scripts/supply-chain-check.ts',
+    flag: '--supply-chain',
+    description: 'Checks for dependency typosquatting and lifecycle script risks',
+  },
 ];
 
 // ============================================================================

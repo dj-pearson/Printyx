@@ -629,7 +629,7 @@ export class SalesReportingService {
         AVG(o.amount)::decimal as average_deal_size,
         COUNT(CASE WHEN o.stage = 'Closed Won' THEN 1 END)::decimal / NULLIF(COUNT(*)::decimal, 0) * 100 as conversion_rate
       FROM opportunities o
-      WHERE o.ownerId = ANY(${sql.raw(`ARRAY[${accessibleUserIds.map((id) => `'${id}'`).join(',')}]`)})
+      WHERE o.ownerId = ANY(${accessibleUserIds})
         AND o.tenantId = ${userContext.tenantId}
         AND o.stage NOT IN ('Closed Lost', 'Cancelled')
         ${dateFilter}

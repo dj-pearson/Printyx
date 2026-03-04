@@ -217,7 +217,7 @@ export class ServiceSupervisorReportingService {
       LEFT JOIN service_calls sc ON sc.technician_id = u.id
         AND sc.tenantId = ${userContext.tenantId}
         ${dateFilter}
-      WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
+      WHERE l.id = ANY(${accessibleLocationIds})
         AND l.tenantId = ${userContext.tenantId}
       GROUP BY l.id, l.name, sc.priority, sc.status
       ORDER BY l.name, CASE sc.priority
@@ -338,7 +338,7 @@ export class ServiceSupervisorReportingService {
         LEFT JOIN time_entries te ON te.userId = u.id
           AND te.tenantId = ${userContext.tenantId}
           ${dateFilter}
-        WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
+        WHERE l.id = ANY(${accessibleLocationIds})
           AND l.tenantId = ${userContext.tenantId}
         GROUP BY l.id, l.name
       )
@@ -434,7 +434,7 @@ export class ServiceSupervisorReportingService {
       LEFT JOIN service_calls sc ON sc.technician_id = u.id
         AND sc.tenantId = ${userContext.tenantId}
         ${dateFilter}
-      WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
+      WHERE l.id = ANY(${accessibleLocationIds})
         AND l.tenantId = ${userContext.tenantId}
       GROUP BY l.id, l.name
       ORDER BY sla_compliance DESC
@@ -521,7 +521,7 @@ export class ServiceSupervisorReportingService {
       LEFT JOIN time_entries te ON te.userId = u.id
         AND te.tenantId = ${userContext.tenantId}
         ${dateFilter}
-      WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
+      WHERE l.id = ANY(${accessibleLocationIds})
         AND l.tenantId = ${userContext.tenantId}
       GROUP BY l.id, l.name
       ORDER BY total_hours DESC

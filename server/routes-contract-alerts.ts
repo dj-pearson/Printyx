@@ -67,7 +67,7 @@ router.get(
             eq(serviceContracts.contractStatus, 'active'),
             lte(
               serviceContracts.endDate,
-              sql`NOW() + INTERVAL '${sql.raw(String(daysAhead))} days'`,
+              sql`NOW() + INTERVAL '1 day' * ${Number(daysAhead)}`,
             ),
             gte(serviceContracts.endDate, sql`NOW()`),
           ),
@@ -97,7 +97,7 @@ router.get(
           and(
             eq(contracts.tenantId, tenantId),
             eq(contracts.status, 'active'),
-            lte(contracts.endDate, sql`NOW() + INTERVAL '${sql.raw(String(daysAhead))} days'`),
+            lte(contracts.endDate, sql`NOW() + INTERVAL '1 day' * ${Number(daysAhead)}`),
             gte(contracts.endDate, sql`NOW()`),
           ),
         )
