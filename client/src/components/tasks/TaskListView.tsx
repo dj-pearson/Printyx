@@ -21,7 +21,8 @@ import {
   InlineAssigneeSelect,
   InlineDatePicker,
 } from './InlineEditors';
-import { Timer, MessageSquare, Paperclip } from 'lucide-react';
+import { MessageSquare, Paperclip } from 'lucide-react';
+import { TaskTimerButton } from './TaskTimeTracker';
 
 interface Task {
   id: string;
@@ -144,10 +145,7 @@ export function TaskListView({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Timer className="h-3 w-3 mr-1" />
-                          {Math.floor((task.timeTracked ?? 0) / 60)}h
-                        </div>
+                        <TaskTimerButton taskId={task.id} timeTracked={task.timeTracked ?? 0} />
                       </TableCell>
                     </TableRow>
                   ))}

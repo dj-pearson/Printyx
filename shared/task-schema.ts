@@ -153,6 +153,8 @@ export const timeEntries = pgTable('time_entries', {
   description: text('description'),
   hours: integer('hours').notNull(), // In minutes for precision
   entryDate: timestamp('entry_date').notNull(),
+  startedAt: timestamp('started_at'), // When timer was started (null for manual entries)
+  isRunning: boolean('is_running').default(false), // Whether this is an active timer
   createdAt: timestamp('created_at').defaultNow(),
 });
 
