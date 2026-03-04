@@ -1,0 +1,117 @@
+# SEC-007: Automated Security Scanning CI Pipeline
+#
+# Runs dependency auditing, static security analysis, and secrets detection
+# on pushes to main/develop and on pull requests.
+
+name: Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── Dependency Audit ───────────────────────────────────────
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: npm audit (high+ severity)
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: Dependency integrity and typosquat check
+        run: npx tsx scripts/dependency-check.ts
+
+  # ─── Static Security Analysis ───────────────────────────────
+  static-security:
+    name: Static Security Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: ESLint security rules
+        run: npx eslint . --ext .ts,.tsx --rule '{"no-eval": "error", "no-implied-eval": "error", "no-new-func": "error"}' --max-warnings 0
+
+      - name: Run security audit script
+        run: npx tsx scripts/audit/security-audit.ts
+
+  # ─── Secrets Detection ──────────────────────────────────────
+  secrets-detection:
+    name: Secrets Detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: Run secret scanner
+        run: npm run check:secrets
+
+      - name: Grep-based secret patterns
+        run: |
+          echo "Scanning for common secret patterns in tracked files..."
+          FAILED=0
+
+          # Get list of tracked non-binary files, excluding known safe paths
+          FILES=$(git ls-files -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.json' '*.yml' '*.yaml' '*.env' \
+            ':!node_modules' ':!package-lock.json' ':!*.min.js' ':!dist/' ':!build/')
+
+          # AWS Access Keys
+          if echo "$FILES" | xargs grep -Pn 'AKIA[0-9A-Z]{16}' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.json' 2>/dev/null | grep -v 'node_modules' | grep -v '\.example' | grep -v '// '; then
+            echo "::error::AWS Access Key pattern detected"
+            FAILED=1
+          fi
+
+          # Private keys
+          if echo "$FILES" | xargs grep -Pn '-----BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----' 2>/dev/null | grep -v 'node_modules' | grep -v '\.example'; then
+            echo "::error::Private key detected in source"
+            FAILED=1
+          fi
+
+          # Generic high-entropy secrets (Stripe live keys)
+          if echo "$FILES" | xargs grep -Pn 'sk_live_[a-zA-Z0-9]{24,}' 2>/dev/null | grep -v 'node_modules' | grep -v '\.example'; then
+            echo "::error::Stripe live secret key detected"
+            FAILED=1
+          fi
+
+          # GitHub tokens
+          if echo "$FILES" | xargs grep -Pn 'gh[pousr]_[A-Za-z0-9_]{36,}' 2>/dev/null | grep -v 'node_modules' | grep -v '\.example'; then
+            echo "::error::GitHub token detected"
+            FAILED=1
+          fi
+
+          # Database URLs with embedded passwords
+          if echo "$FILES" | xargs grep -Pn '(postgres|mysql|mongodb)://[^:]+:[^@]{6,}@' 2>/dev/null | grep -v 'node_modules' | grep -v '\.example' | grep -v '\.env\.example' | grep -v 'process\.env' | grep -v '// '; then
+            echo "::error::Database URL with embedded credentials detected"
+            FAILED=1
+          fi
+
+          if [ "$FAILED" -eq 1 ]; then
+            echo "::error::Secret patterns found in source code. See above for details."
+            exit 1
+          fi
+
+          echo "No secret patterns detected."

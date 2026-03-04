@@ -41,38 +41,61 @@ const serverLog = createModuleLogger('server');
 // Trust reverse proxy (needed for secure cookies and rate limits behind proxies)
 app.set('trust proxy', 1);
 
+// CSP nonce generation middleware - must run before helmet
+app.use((req: Request, res: Response, next: NextFunction) => {
+  // Generate a unique nonce for each request
+  (res as any).cspNonce = randomUUID().replace(/-/g, '');
+  next();
+});
+
 // Security headers
-app.use(
-  helmet({
-    contentSecurityPolicy: process.env.NODE_ENV === 'production' && {
-      useDefaults: true,
-      directives: {
-        'default-src': ["'self'", 'https:'],
-        'script-src': ["'self'", "'unsafe-inline'", 'https:'],
-        'style-src': ["'self'", "'unsafe-inline'", 'https:'],
-        'img-src': ["'self'", 'data:', 'blob:', 'https:'],
-        'font-src': ["'self'", 'https:', 'data:'],
-        'connect-src': ["'self'", 'https:', 'wss:', 'http:'],
-        'frame-ancestors': ["'self'"],
-        'object-src': ["'none'"],
-        'base-uri': ["'self'"],
-        'form-action': ["'self'"],
-      },
-    },
-    referrerPolicy: { policy: 'no-referrer' },
+const isProduction = process.env.NODE_ENV === 'production';
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const nonce = (res as any).cspNonce;
+
+  const helmetMiddleware = helmet({
+    contentSecurityPolicy: isProduction
+      ? {
+          useDefaults: false,
+          directives: {
+            'default-src': ["'self'"],
+            'script-src': ["'self'", `'nonce-${nonce}'`],
+            'style-src': ["'self'", "'unsafe-inline'", 'https:'],
+            'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+            'font-src': ["'self'", 'https:', 'data:'],
+            'connect-src': [
+              "'self'",
+              'wss:',
+              'https://api.printyx.net',
+              'https://functions.printyx.net',
+            ],
+            'frame-ancestors': ["'none'"],
+            'object-src': ["'none'"],
+            'base-uri': ["'self'"],
+            'form-action': ["'self'"],
+            'report-uri': ['/api/csp-report'],
+            'report-to': ['csp-endpoint'],
+          },
+        }
+      : false, // Disable CSP in development for Vite HMR compatibility
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' as const },
     crossOriginOpenerPolicy: { policy: 'same-origin' },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
-    frameguard: process.env.NODE_ENV === 'production' ? { action: 'sameorigin' } : false,
-    hsts: { maxAge: 15552000, includeSubDomains: true, preload: true },
+    frameguard: { action: 'deny' },
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
     hidePoweredBy: true,
-  }),
-);
+    xContentTypeOptions: true, // X-Content-Type-Options: nosniff
+  });
 
-// Permissions-Policy (not provided by helmet v7 directly)
-app.use((req, res, next) => {
+  helmetMiddleware(req, res, next);
+});
+
+// Permissions-Policy header (not provided by helmet v7 directly)
+app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), payment=(), interest-cohort=()',
+    'camera=(), microphone=(), geolocation=(), payment=(self)',
   );
   next();
 });
@@ -97,113 +120,94 @@ setupMonitoringMiddleware(app, {
   },
 });
 
-// CORS configuration - ALWAYS allow production origins
-const allowedOriginsProd = [
-  /^https?:\/\/([a-z0-9-]+\.)?printyx\.net$/i,
-  'https://printyx.net',
-  'https://api.printyx.net', // Allow API subdomain for server-to-server
-];
+// SEC-010: CORS hardening with environment-specific origin validation
+import { getCorsConfig, getValidatedOrigin, isMutationMethod } from './config/cors';
 
-const allowedOriginsDev = [
-  'http://localhost:5000',
-  'http://localhost:3000',
-  'http://localhost:5173', // Vite default
-  'http://127.0.0.1:5000',
-  'http://127.0.0.1:3000',
-  /^https:\/\/.*\.replit\.dev$/, // Replit development environments
-];
+const currentEnv = process.env.NODE_ENV || 'development';
+const corsConfig = getCorsConfig(currentEnv);
+const corsLog = createModuleLogger('cors');
 
-const isDevelopment = process.env.NODE_ENV !== 'production';
-
-// Helper to check if origin is allowed and return the actual origin string
-function getAllowedOrigin(origin: string | undefined): string | false {
-  // No origin = server-to-server request, allow but don't set CORS headers
-  if (!origin) {
-    return false;
-  }
-
-  // Check production origins
-  const isProdOrigin = allowedOriginsProd.some((o) =>
-    o instanceof RegExp ? o.test(origin) : o === origin,
-  );
-  if (isProdOrigin) {
-    return origin; // Return the actual origin string, not true
-  }
-
-  // In development, also allow dev origins
-  if (isDevelopment) {
-    const isDevOrigin = allowedOriginsDev.some((o) =>
-      o instanceof RegExp ? o.test(origin) : o === origin,
-    );
-    if (isDevOrigin) {
-      return origin; // Return the actual origin string
-    }
-  }
-
-  return false;
-}
-
-// Manual CORS middleware to ensure headers are set correctly
-// This prevents proxies from overriding with Access-Control-Allow-Origin: *
+// Primary CORS middleware - validates origins and sets headers explicitly
+// Never uses wildcard `*`, never reflects arbitrary Origin headers
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const allowedOrigin = getAllowedOrigin(origin);
+  const origin = req.headers.origin as string | undefined;
+  const allowedOrigin = getValidatedOrigin(origin, currentEnv);
 
   if (allowedOrigin) {
-    // Set CORS headers explicitly with the specific origin (never *)
+    // Set CORS headers with the validated, specific origin (never *)
     res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader(
-      'Access-Control-Allow-Headers',
-      'Content-Type, Authorization, X-CSRF-Token, X-Requested-With, x-tenant-id, X-Demo-Auth',
-    );
-    res.setHeader('Access-Control-Expose-Headers', 'X-CSRF-Token');
-    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+    res.setHeader('Access-Control-Allow-Methods', corsConfig.methods.join(', '));
+    res.setHeader('Access-Control-Allow-Headers', corsConfig.allowedHeaders.join(', '));
+    res.setHeader('Access-Control-Expose-Headers', corsConfig.exposedHeaders.join(', '));
+    res.setHeader('Access-Control-Max-Age', String(corsConfig.maxAge));
+    // Vary by Origin so caches don't mix up responses for different origins
+    res.setHeader('Vary', 'Origin');
 
-    // Log CORS decision
-    log.info('[CORS] ✅ Allowed origin:', allowedOrigin);
+    corsLog.debug({ origin: allowedOrigin }, 'CORS allowed origin');
   } else if (origin) {
-    log.error('[CORS] ❌ BLOCKED origin:', origin);
+    // Origin was provided but not in allowlist - do NOT set any CORS headers
+    // This means the browser will block the response on the client side
+    corsLog.warn({ origin }, 'CORS blocked unknown origin');
   }
+  // No origin header = same-origin or server-to-server; no CORS headers needed
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
     if (allowedOrigin) {
-      res.setHeader('Vary', 'Origin');
       return res.status(204).end();
     } else {
       return res.status(403).json({ error: 'CORS not allowed for this origin' });
     }
   }
 
+  // Enforce Origin header on mutation requests in production/staging
+  if (corsConfig.enforceMutationOrigin && isMutationMethod(req.method)) {
+    if (!origin) {
+      corsLog.warn(
+        { method: req.method, path: req.path },
+        'Mutation request missing Origin header',
+      );
+      return res.status(403).json({
+        message: 'Origin header is required for mutation requests',
+        code: 'MISSING_ORIGIN',
+      });
+    }
+    if (!allowedOrigin) {
+      corsLog.warn(
+        { method: req.method, path: req.path, origin },
+        'Mutation request from non-allowlisted origin',
+      );
+      return res.status(403).json({
+        message: 'Origin not allowed',
+        code: 'ORIGIN_NOT_ALLOWED',
+      });
+    }
+  }
+
   next();
 });
 
-// Also use cors package as backup (it will respect already-set headers)
+// Backup cors package layer - uses the same validation logic
+// Ensures consistent behavior even if a proxy strips our manual headers
 app.use(
   cors({
     origin: (origin, callback) => {
-      const allowed = getAllowedOrigin(origin);
-      if (allowed || !origin) {
-        // Return the actual origin string, not true
-        callback(null, allowed || true);
+      const allowed = getValidatedOrigin(origin, currentEnv);
+      if (allowed) {
+        callback(null, allowed);
+      } else if (!origin) {
+        // No origin = same-origin/server-to-server, allow without setting CORS origin
+        callback(null, false);
       } else {
         callback(new Error('Not allowed by CORS'));
       }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-CSRF-Token',
-      'X-Requested-With',
-      'x-tenant-id',
-      'X-Demo-Auth',
-    ],
-    exposedHeaders: ['X-CSRF-Token'],
-    maxAge: 86400,
+    methods: corsConfig.methods,
+    allowedHeaders: corsConfig.allowedHeaders,
+    exposedHeaders: corsConfig.exposedHeaders,
+    maxAge: corsConfig.maxAge,
     preflightContinue: false,
     optionsSuccessStatus: 204,
   }),
