@@ -92,7 +92,8 @@
       "Bash(echo:*)",
       "Bash(npm run db:generate:*)",
       "Bash(curl:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(PGPASSWORD=\"Ta881v34EPbKK92E2F0oZpc4Els39giz\" \"/c/Program Files/PostgreSQL/18/bin/psql\":*)"
     ],
     "deny": [],
     "ask": []

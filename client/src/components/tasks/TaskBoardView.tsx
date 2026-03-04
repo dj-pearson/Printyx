@@ -22,10 +22,10 @@ import {
   Flag,
   AlertTriangle,
   CheckCircle,
-  Timer,
   Users,
   GripVertical,
 } from 'lucide-react';
+import { TaskTimeTracker } from './TaskTimeTracker';
 import { format, isToday, isTomorrow, isAfter, isBefore } from 'date-fns';
 import {
   DndContext,
@@ -469,14 +469,8 @@ function TaskCard({
               title={priorityConf.label}
             />
 
-            {/* Time Tracked */}
-            {task.timeTracked > 0 && (
-              <div className="flex items-center text-xs text-gray-600">
-                <Timer className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                <span className="hidden sm:inline">{Math.floor(task.timeTracked / 60)}h</span>
-                <span className="sm:hidden">{Math.floor(task.timeTracked / 60)}h</span>
-              </div>
-            )}
+            {/* Time Tracked with Timer */}
+            <TaskTimeTracker taskId={task.id} compact />
           </div>
 
           {/* Right side - Assignee and Indicators */}

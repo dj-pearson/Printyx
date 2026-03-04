@@ -23,7 +23,18 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar as CalendarIcon, Clock, Flag, Tag, Users, Link, Plus, X } from 'lucide-react';
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  Flag,
+  Tag,
+  Users,
+  Link,
+  Plus,
+  X,
+  Timer,
+} from 'lucide-react';
+import { TaskTimeTracker } from './TaskTimeTracker';
 import { format } from 'date-fns';
 
 interface Task {
@@ -763,198 +774,226 @@ export function EditTaskDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          {/* Task Title */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-title" className="text-sm sm:text-base">
-              Task Title *
-            </Label>
-            <Input
-              id="edit-title"
-              value={formData.title}
-              onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-              placeholder="What needs to be done?"
-              required
-              className="h-11 touch-manipulation text-base"
-            />
-          </div>
+        <Tabs defaultValue="details" className="w-full mt-4">
+          <TabsList className="grid w-full grid-cols-2 h-auto">
+            <TabsTrigger
+              value="details"
+              className="text-xs sm:text-sm min-h-[44px] touch-manipulation"
+            >
+              Details
+            </TabsTrigger>
+            <TabsTrigger
+              value="time"
+              className="text-xs sm:text-sm min-h-[44px] touch-manipulation"
+            >
+              <Timer className="h-4 w-4 mr-1.5" />
+              Time Tracking
+            </TabsTrigger>
+          </TabsList>
 
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-description" className="text-sm sm:text-base">
-              Description
-            </Label>
-            <Textarea
-              id="edit-description"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  description: e.target.value,
-                }))
-              }
-              placeholder="Add more details about this task..."
-              rows={3}
-              className="touch-manipulation text-base resize-none"
-            />
-          </div>
+          <TabsContent value="details">
+            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+              {/* Task Title */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-title" className="text-sm sm:text-base">
+                  Task Title *
+                </Label>
+                <Input
+                  id="edit-title"
+                  value={formData.title}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="What needs to be done?"
+                  required
+                  className="h-11 touch-manipulation text-base"
+                />
+              </div>
 
-          {/* Status & Priority */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm sm:text-base">Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, status: value as any }))
-                }
-              >
-                <SelectTrigger className="h-11 touch-manipulation">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todo" className="min-h-[44px]">
-                    To Do
-                  </SelectItem>
-                  <SelectItem value="in_progress" className="min-h-[44px]">
-                    In Progress
-                  </SelectItem>
-                  <SelectItem value="review" className="min-h-[44px]">
-                    Review
-                  </SelectItem>
-                  <SelectItem value="completed" className="min-h-[44px]">
-                    Completed
-                  </SelectItem>
-                  <SelectItem value="cancelled" className="min-h-[44px]">
-                    Cancelled
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm sm:text-base">Priority</Label>
-              <Select
-                value={formData.priority}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, priority: value as any }))
-                }
-              >
-                <SelectTrigger className="h-11 touch-manipulation">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low" className="min-h-[44px]">
-                    Low
-                  </SelectItem>
-                  <SelectItem value="medium" className="min-h-[44px]">
-                    Medium
-                  </SelectItem>
-                  <SelectItem value="high" className="min-h-[44px]">
-                    High
-                  </SelectItem>
-                  <SelectItem value="urgent" className="min-h-[44px]">
-                    Urgent
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Project & Assignee */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm sm:text-base">Project</Label>
-              <Select
-                value={formData.projectId}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, projectId: value }))}
-              >
-                <SelectTrigger className="h-11 touch-manipulation">
-                  <SelectValue placeholder="Select project" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none" className="min-h-[44px]">
-                    No Project
-                  </SelectItem>
-                  {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id} className="min-h-[44px]">
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm sm:text-base">Assignee</Label>
-              <Select
-                value={formData.assignedTo}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, assignedTo: value }))}
-              >
-                <SelectTrigger className="h-11 touch-manipulation">
-                  <SelectValue placeholder="Assign to..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned" className="min-h-[44px]">
-                    Unassigned
-                  </SelectItem>
-                  {teamMembers.map((member) => (
-                    <SelectItem key={member.id} value={member.id} className="min-h-[44px]">
-                      {member.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Due Date */}
-          <div className="space-y-2">
-            <Label className="text-sm sm:text-base">Due Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full h-11 touch-manipulation justify-start text-left font-normal"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.dueDate ? format(new Date(formData.dueDate), 'PPP') : 'Pick a date'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={formData.dueDate ? new Date(formData.dueDate) : undefined}
-                  onSelect={(date) =>
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-description" className="text-sm sm:text-base">
+                  Description
+                </Label>
+                <Textarea
+                  id="edit-description"
+                  value={formData.description}
+                  onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      dueDate: date?.toISOString(),
+                      description: e.target.value,
                     }))
                   }
-                  initialFocus
+                  placeholder="Add more details about this task..."
+                  rows={3}
+                  className="touch-manipulation text-base resize-none"
                 />
-              </PopoverContent>
-            </Popover>
-          </div>
+              </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2 mt-6">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="w-full sm:w-auto h-11 touch-manipulation active:scale-95 transition-transform"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || !formData.title}
-              className="w-full sm:w-auto h-11 touch-manipulation active:scale-95 transition-transform"
-            >
-              {isLoading ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </DialogFooter>
-        </form>
+              {/* Status & Priority */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm sm:text-base">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({ ...prev, status: value as any }))
+                    }
+                  >
+                    <SelectTrigger className="h-11 touch-manipulation">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todo" className="min-h-[44px]">
+                        To Do
+                      </SelectItem>
+                      <SelectItem value="in_progress" className="min-h-[44px]">
+                        In Progress
+                      </SelectItem>
+                      <SelectItem value="review" className="min-h-[44px]">
+                        Review
+                      </SelectItem>
+                      <SelectItem value="completed" className="min-h-[44px]">
+                        Completed
+                      </SelectItem>
+                      <SelectItem value="cancelled" className="min-h-[44px]">
+                        Cancelled
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm sm:text-base">Priority</Label>
+                  <Select
+                    value={formData.priority}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({ ...prev, priority: value as any }))
+                    }
+                  >
+                    <SelectTrigger className="h-11 touch-manipulation">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low" className="min-h-[44px]">
+                        Low
+                      </SelectItem>
+                      <SelectItem value="medium" className="min-h-[44px]">
+                        Medium
+                      </SelectItem>
+                      <SelectItem value="high" className="min-h-[44px]">
+                        High
+                      </SelectItem>
+                      <SelectItem value="urgent" className="min-h-[44px]">
+                        Urgent
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Project & Assignee */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm sm:text-base">Project</Label>
+                  <Select
+                    value={formData.projectId}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({ ...prev, projectId: value }))
+                    }
+                  >
+                    <SelectTrigger className="h-11 touch-manipulation">
+                      <SelectValue placeholder="Select project" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="min-h-[44px]">
+                        No Project
+                      </SelectItem>
+                      {projects.map((project) => (
+                        <SelectItem key={project.id} value={project.id} className="min-h-[44px]">
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm sm:text-base">Assignee</Label>
+                  <Select
+                    value={formData.assignedTo}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({ ...prev, assignedTo: value }))
+                    }
+                  >
+                    <SelectTrigger className="h-11 touch-manipulation">
+                      <SelectValue placeholder="Assign to..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned" className="min-h-[44px]">
+                        Unassigned
+                      </SelectItem>
+                      {teamMembers.map((member) => (
+                        <SelectItem key={member.id} value={member.id} className="min-h-[44px]">
+                          {member.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Due Date */}
+              <div className="space-y-2">
+                <Label className="text-sm sm:text-base">Due Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full h-11 touch-manipulation justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.dueDate ? format(new Date(formData.dueDate), 'PPP') : 'Pick a date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.dueDate ? new Date(formData.dueDate) : undefined}
+                      onSelect={(date) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          dueDate: date?.toISOString(),
+                        }))
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <DialogFooter className="flex-col sm:flex-row gap-2 mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="w-full sm:w-auto h-11 touch-manipulation active:scale-95 transition-transform"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isLoading || !formData.title}
+                  className="w-full sm:w-auto h-11 touch-manipulation active:scale-95 transition-transform"
+                >
+                  {isLoading ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </TabsContent>
+
+          <TabsContent value="time" className="mt-4">
+            <TaskTimeTracker taskId={task.id} />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

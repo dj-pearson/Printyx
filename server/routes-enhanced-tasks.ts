@@ -1,5 +1,5 @@
 import type { Express } from 'express';
-import { db } from './db';
+import { db, pool } from './db';
 import { tasks, projects, taskComments, timeEntries } from '../shared/task-schema.js';
 import { users } from '../shared/schema.js';
 import { eq, and, desc, sql, isNull, or, inArray } from 'drizzle-orm';
@@ -9,8 +9,55 @@ import { createModuleLogger } from './lib/logger';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 const log = createModuleLogger('routes-enhanced-tasks');
 
+// Ensure task-related tables exist (handles schema drift for self-hosted Supabase)
+async function ensureTaskTables() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS task_comments (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        tenant_id varchar NOT NULL,
+        task_id varchar NOT NULL,
+        user_id varchar NOT NULL,
+        comment text NOT NULL,
+        created_at timestamp DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS time_entries (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        tenant_id varchar NOT NULL,
+        task_id varchar NOT NULL,
+        user_id varchar NOT NULL,
+        description text,
+        hours integer NOT NULL,
+        entry_date timestamp NOT NULL,
+        started_at timestamp,
+        is_running boolean DEFAULT false,
+        created_at timestamp DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS project_templates (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        tenant_id varchar NOT NULL,
+        name varchar(255) NOT NULL,
+        description text,
+        category varchar,
+        task_template jsonb DEFAULT '[]',
+        is_public boolean DEFAULT false,
+        created_by varchar NOT NULL,
+        created_at timestamp DEFAULT now()
+      );
+      -- Add columns that may be missing from existing time_entries table
+      ALTER TABLE time_entries ADD COLUMN IF NOT EXISTS started_at timestamp;
+      ALTER TABLE time_entries ADD COLUMN IF NOT EXISTS is_running boolean DEFAULT false;
+    `);
+    log.info('Task tables verified/created successfully');
+  } catch (error) {
+    log.error('Error ensuring task tables:', error);
+  }
+}
+
 // Enhanced task routes for advanced task management functionality
 export function registerEnhancedTaskRoutes(app: Express) {
+  // Initialize tables on startup
+  ensureTaskTables();
   // Get enhanced tasks with all related data
   app.get('/api/tasks/enhanced', isAuthenticated, async (req: any, res) => {
     try {
@@ -336,6 +383,215 @@ export function registerEnhancedTaskRoutes(app: Express) {
     } catch (error) {
       log.error('Error adding time entry:', error);
       res.status(500).json({ error: 'Failed to add time entry' });
+    }
+  });
+
+  // Start timer on a task
+  app.post('/api/tasks/:id/timer/start', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const taskId = req.params.id;
+      const userId = getUserId(req);
+
+      if (!tenantId || !userId) {
+        return res.status(401).json({ message: 'Missing auth context' });
+      }
+
+      // Auto-stop any running timer for this user on this task
+      const runningEntries = await db
+        .select()
+        .from(timeEntries)
+        .where(
+          and(
+            eq(timeEntries.taskId, taskId),
+            eq(timeEntries.userId, userId),
+            eq(timeEntries.tenantId, tenantId),
+            eq(timeEntries.isRunning, true),
+          ),
+        );
+
+      for (const entry of runningEntries) {
+        const elapsed = Math.round((Date.now() - new Date(entry.startedAt!).getTime()) / 60000);
+        await db
+          .update(timeEntries)
+          .set({ isRunning: false, hours: Math.max(elapsed, 1) })
+          .where(eq(timeEntries.id, entry.id));
+        await db
+          .update(tasks)
+          .set({
+            timeTracked: sql`${tasks.timeTracked} + ${Math.max(elapsed, 1)}`,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
+      }
+
+      // Create a new running time entry
+      const [newEntry] = await db
+        .insert(timeEntries)
+        .values({
+          tenantId,
+          taskId,
+          userId,
+          description: req.body.description || null,
+          hours: 0,
+          entryDate: new Date(),
+          startedAt: new Date(),
+          isRunning: true,
+        })
+        .returning();
+
+      res.status(201).json(newEntry);
+    } catch (error) {
+      log.error('Error starting timer:', error);
+      res.status(500).json({ error: 'Failed to start timer' });
+    }
+  });
+
+  // Stop timer on a task
+  app.post('/api/tasks/:id/timer/stop', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const taskId = req.params.id;
+      const userId = getUserId(req);
+
+      if (!tenantId || !userId) {
+        return res.status(401).json({ message: 'Missing auth context' });
+      }
+
+      // Find the running entry
+      const [runningEntry] = await db
+        .select()
+        .from(timeEntries)
+        .where(
+          and(
+            eq(timeEntries.taskId, taskId),
+            eq(timeEntries.userId, userId),
+            eq(timeEntries.tenantId, tenantId),
+            eq(timeEntries.isRunning, true),
+          ),
+        );
+
+      if (!runningEntry) {
+        return res.status(404).json({ error: 'No running timer found' });
+      }
+
+      // Calculate elapsed minutes
+      const elapsedMinutes = Math.round(
+        (Date.now() - new Date(runningEntry.startedAt!).getTime()) / 60000,
+      );
+      const finalMinutes = Math.max(elapsedMinutes, 1); // At least 1 minute
+
+      // Update the entry
+      const [stoppedEntry] = await db
+        .update(timeEntries)
+        .set({
+          isRunning: false,
+          hours: finalMinutes,
+        })
+        .where(eq(timeEntries.id, runningEntry.id))
+        .returning();
+
+      // Update task's total time tracked
+      await db
+        .update(tasks)
+        .set({
+          timeTracked: sql`${tasks.timeTracked} + ${finalMinutes}`,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
+
+      res.json(stoppedEntry);
+    } catch (error) {
+      log.error('Error stopping timer:', error);
+      res.status(500).json({ error: 'Failed to stop timer' });
+    }
+  });
+
+  // List time entries for a task
+  app.get('/api/tasks/:id/time-entries', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const taskId = req.params.id;
+
+      if (!tenantId) {
+        return res.status(401).json({ message: 'Missing tenant context' });
+      }
+
+      const entries = await db
+        .select({
+          id: timeEntries.id,
+          taskId: timeEntries.taskId,
+          userId: timeEntries.userId,
+          description: timeEntries.description,
+          hours: timeEntries.hours,
+          entryDate: timeEntries.entryDate,
+          startedAt: timeEntries.startedAt,
+          isRunning: timeEntries.isRunning,
+          createdAt: timeEntries.createdAt,
+          userName: sql<string>`${users.firstName} || ' ' || ${users.lastName}`,
+        })
+        .from(timeEntries)
+        .leftJoin(users, eq(timeEntries.userId, users.id))
+        .where(and(eq(timeEntries.taskId, taskId), eq(timeEntries.tenantId, tenantId)))
+        .orderBy(desc(timeEntries.createdAt));
+
+      res.json(entries);
+    } catch (error) {
+      log.error('Error fetching time entries:', error);
+      res.status(500).json({ error: 'Failed to fetch time entries' });
+    }
+  });
+
+  // Delete a time entry
+  app.delete('/api/tasks/:id/time-entries/:entryId', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId;
+      const taskId = req.params.id;
+      const entryId = req.params.entryId;
+
+      if (!tenantId) {
+        return res.status(401).json({ message: 'Missing tenant context' });
+      }
+
+      // Get the entry to know how many minutes to subtract
+      const [entry] = await db
+        .select()
+        .from(timeEntries)
+        .where(
+          and(
+            eq(timeEntries.id, entryId),
+            eq(timeEntries.taskId, taskId),
+            eq(timeEntries.tenantId, tenantId),
+          ),
+        );
+
+      if (!entry) {
+        return res.status(404).json({ error: 'Time entry not found' });
+      }
+
+      // Don't allow deleting a running timer - stop it first
+      if (entry.isRunning) {
+        return res.status(400).json({ error: 'Stop the timer before deleting' });
+      }
+
+      // Delete the entry
+      await db.delete(timeEntries).where(eq(timeEntries.id, entryId));
+
+      // Subtract from task's total time tracked
+      if (entry.hours > 0) {
+        await db
+          .update(tasks)
+          .set({
+            timeTracked: sql`GREATEST(${tasks.timeTracked} - ${entry.hours}, 0)`,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(tasks.id, taskId), eq(tasks.tenantId, tenantId)));
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      log.error('Error deleting time entry:', error);
+      res.status(500).json({ error: 'Failed to delete time entry' });
     }
   });
 
