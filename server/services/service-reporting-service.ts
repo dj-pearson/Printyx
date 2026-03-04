@@ -579,7 +579,7 @@ export class ServiceReportingService {
       WHERE st.tenantId = ${userContext.tenantId}
         AND st.status IN ('open', 'scheduled', 'in_progress')
         AND (
-          st.assigned_technician_id = ANY(${sql.raw(`ARRAY[${accessibleUserIds.map((id) => `'${id}'`).join(',')}]`)})
+          st.assigned_technician_id = ANY(${accessibleUserIds})
           OR st.assigned_technician_id IS NULL
         )
         ${priorityFilter}

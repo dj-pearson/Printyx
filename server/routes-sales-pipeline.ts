@@ -102,9 +102,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
 
       query += ` ORDER BY br.updatedAt DESC`;
 
-      const result = await db.execute(
-        sql.raw(query.replace(/\$(\d+)/g, (match, num) => `'${params[parseInt(num) - 1]}'`)),
-      );
+      const result = await db.execute(sql.raw(query, params));
 
       // Transform the results to match the expected format
       const opportunities = result.rows.map((row: any) => ({
@@ -164,13 +162,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
           : '';
 
         const result = await db.execute(
-          sql.raw(
-            updateQuery
-              .replace('$1', `'${stage}'`)
-              .replace('$2', `'${notesText}'`)
-              .replace('$3', `'${id}'`)
-              .replace('$4', `'${tenantId}'`),
-          ),
+          sql.raw(updateQuery, [stage, notesText, id, tenantId]),
         );
 
         if (result.rows.length === 0) {
@@ -191,18 +183,14 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
       `;
 
         await db.execute(
-          sql.raw(
-            activityQuery
-              .replace('$1', `'${id}'`)
-              .replace('$2', `'stage_change'`)
-              .replace(
-                '$3',
-                `'Stage changed to ${PIPELINE_STAGES.find((s) => s.id === stage)?.name || stage}'`,
-              )
-              .replace('$4', `'${notes || `Moved to ${stage} stage`}'`)
-              .replace('$5', `'${userId}'`)
-              .replace('$6', `'${tenantId}'`),
-          ),
+          sql.raw(activityQuery, [
+            id,
+            'stage_change',
+            `Stage changed to ${PIPELINE_STAGES.find((s) => s.id === stage)?.name || stage}`,
+            notes || `Moved to ${stage} stage`,
+            userId,
+            tenantId,
+          ]),
         );
 
         res.json({ success: true, opportunity: result.rows[0] });
@@ -352,7 +340,7 @@ export function setupSalesPipelineRoutes(app: any, storage: any, requireAuth: an
       `;
 
       const result = await db.execute(
-        sql.raw(metricsQuery.replace('$1', `'${tenantId}'`).replace('$2', `'${tenantId}'`)),
+        sql.raw(metricsQuery, [tenantId, tenantId]),
       );
 
       const metrics = result.rows.map((row: any) => ({

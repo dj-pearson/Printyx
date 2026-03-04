@@ -137,6 +137,7 @@ import { registerFeatureFlagRoutes } from './routes-feature-flags';
 import { registerSessionManagementRoutes } from './routes-session-management';
 import { registerAdminStatsRoutes } from './routes-admin-stats';
 import incidentResponseRoutes from './routes-incident-response';
+import { registerCspReportRoutes } from './routes-csp-report';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-registry');
 
@@ -165,6 +166,9 @@ import mobileLogsRoutes, { registerMobileLogsAdminRoutes } from './routes-mobile
 export async function registerAllRouteModules(app: Express, requireAuth: any): Promise<void> {
   // ─── Health Check (pre-auth, called before middleware) ──────────────
   registerHealthRoutes(app);
+
+  // ─── CSP Violation Reporting (no auth required, browsers send automatically) ──
+  registerCspReportRoutes(app);
 
   // ─── Mobile Remote Logging (no auth required, must be early) ──────
   app.use('/api/mobile-logs', mobileLogsRoutes);
@@ -515,6 +519,10 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── GDPR & Breach Detection ────────────────────────────────────
   registerGdprRoutes(app);
   app.use('/api', breachDetectionRoutes);
+
+  // ─── Security Dashboard ────────────────────────────────────────
+  const { registerSecurityDashboardRoutes } = await import('./routes-security-dashboard');
+  registerSecurityDashboardRoutes(app);
   const validateRoutes = await import('./routes-validate');
   app.use('/api', validateRoutes.default);
 
