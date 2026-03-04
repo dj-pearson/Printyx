@@ -212,7 +212,7 @@ export class SalesSupervisorReportingService {
         AND o.tenantId = ${userContext.tenantId}
         AND o.stage NOT IN ('Closed Lost', 'Cancelled')
         ${dateFilter}
-      WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
+      WHERE l.id = ANY(${accessibleLocationIds})
         AND l.tenantId = ${userContext.tenantId}
       GROUP BY l.id, l.name, o.stage
       ORDER BY l.name, CASE o.stage
@@ -329,7 +329,7 @@ export class SalesSupervisorReportingService {
         LEFT JOIN users u ON u.primary_location_id = l.id AND u.tenantId = ${userContext.tenantId}
         LEFT JOIN opportunities o ON o.ownerId = u.id AND o.tenantId = ${userContext.tenantId} ${dateFilter}
         LEFT JOIN activities a ON a.userId = u.id AND a.tenantId = ${userContext.tenantId} ${dateFilter}
-        WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
+        WHERE l.id = ANY(${accessibleLocationIds})
           AND l.tenantId = ${userContext.tenantId}
         GROUP BY l.id, l.name
       ),
@@ -342,7 +342,7 @@ export class SalesSupervisorReportingService {
         LEFT JOIN users u ON u.primary_location_id = l.id
         LEFT JOIN quotas q ON q.userId = u.id AND q.period = 'current'
         LEFT JOIN opportunities o ON o.ownerId = u.id AND o.stage = 'Closed Won' AND o.tenantId = ${userContext.tenantId}
-        WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
+        WHERE l.id = ANY(${accessibleLocationIds})
         GROUP BY l.id
       )
       SELECT
@@ -436,7 +436,7 @@ export class SalesSupervisorReportingService {
         LEFT JOIN users u ON u.primary_location_id = l.id
         LEFT JOIN quotas q ON q.userId = u.id AND q.period = ${period}
         LEFT JOIN opportunities o ON o.ownerId = u.id AND o.tenantId = ${userContext.tenantId}
-        WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
+        WHERE l.id = ANY(${accessibleLocationIds})
           AND l.tenantId = ${userContext.tenantId}
         GROUP BY l.id, l.name
       )
@@ -536,7 +536,7 @@ export class SalesSupervisorReportingService {
       FROM locations l
       LEFT JOIN users u ON u.primary_location_id = l.id AND u.tenantId = ${userContext.tenantId}
       LEFT JOIN activities a ON a.userId = u.id AND a.tenantId = ${userContext.tenantId} ${dateFilter}
-      WHERE l.id = ANY(${sql.raw(`ARRAY[${accessibleLocationIds.map((id) => `'${id}'`).join(',')}]`)})
+      WHERE l.id = ANY(${accessibleLocationIds})
         AND l.tenantId = ${userContext.tenantId}
       GROUP BY l.id, l.name
       ORDER BY total_activities DESC

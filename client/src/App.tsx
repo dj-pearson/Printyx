@@ -289,6 +289,7 @@ const KnowledgeBaseAdmin = React.lazy(() => import('@/pages/admin/KnowledgeBaseA
 const ArticleEditor = React.lazy(() => import('@/pages/admin/ArticleEditor'));
 
 // Platform Admin Pages
+const SecurityDashboard = React.lazy(() => import('@/pages/SecurityDashboard'));
 const RootAdminSecurity = React.lazy(() => import('@/pages/admin/RootAdminSecurity'));
 const SystemSecurity = React.lazy(() => import('@/pages/admin/SystemSecurity'));
 const DatabaseUpdaterPage = React.lazy(() => import('@/pages/admin/DatabaseUpdaterPage'));
@@ -858,6 +859,9 @@ function Router() {
                 </Route>
                 <Route path="/admin/system-security">
                   {() => <AdminRouteGuard component={SystemSecurity} />}
+                </Route>
+                <Route path="/security-dashboard">
+                  {() => <ProtectedRoute component={SecurityDashboard} platformOnly />}
                 </Route>
                 <Route path="/admin/database-updater">
                   {() => <AdminRouteGuard component={DatabaseUpdaterPage} />}

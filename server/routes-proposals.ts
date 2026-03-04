@@ -201,7 +201,7 @@ router.get(
       if (filter === 'aging' && days) {
         const n = Number.parseInt(days, 10);
         if (!Number.isNaN(n) && n > 0) {
-          conditions.push(sql`${proposals.createdAt} < NOW() - INTERVAL '${n} days'`);
+          conditions.push(sql`${proposals.createdAt} < NOW() - INTERVAL '1 day' * ${n}`);
         }
       }
 

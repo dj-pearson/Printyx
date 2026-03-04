@@ -16,10 +16,20 @@ const log = createModuleLogger('auth-routes');
 
 const router = express.Router();
 
-// SECURITY: Account lockout configuration
-const MAX_LOGIN_ATTEMPTS = 5; // Lock after 5 failed attempts
-const LOCKOUT_DURATION_MINUTES = 30; // Lock for 30 minutes
+// SECURITY: Progressive account lockout configuration
+const LOCKOUT_TIERS = [
+  { threshold: 5, durationMinutes: 15 },   // 5 failures → 15 min lock
+  { threshold: 10, durationMinutes: 60 },   // 10 failures → 1 hour lock
+  { threshold: 20, durationMinutes: -1 },   // 20 failures → requires admin unlock (-1 = permanent)
+];
 const ATTEMPT_WINDOW_MINUTES = 15; // Count attempts within 15-minute window
+
+// Known automated tool User-Agent patterns
+const AUTOMATED_UA_PATTERNS = [
+  /curl\//i, /python-requests/i, /python-urllib/i, /axios\//i,
+  /headlesschrome/i, /phantomjs/i, /selenium/i, /puppeteer/i,
+  /scrapy/i, /httpie/i, /postman/i, /insomnia/i,
+];
 
 // SECURITY FIX: Enhanced password validation with complexity requirements
 const passwordSchema = z
@@ -123,7 +133,7 @@ const signupLimiter = rateLimit({
  */
 async function isAccountLocked(
   email: string,
-): Promise<{ locked: boolean; remainingMinutes?: number }> {
+): Promise<{ locked: boolean; remainingMinutes?: number; requiresAdminUnlock?: boolean }> {
   const normalizedEmail = email.toLowerCase().trim();
 
   const [attempt] = await db
@@ -134,6 +144,11 @@ async function isAccountLocked(
 
   if (!attempt || !attempt.lockedUntil) {
     return { locked: false };
+  }
+
+  // Check for permanent lock (sentinel value: epoch 0)
+  if (attempt.lockedUntil.getTime() === 0) {
+    return { locked: true, requiresAdminUnlock: true };
   }
 
   const now = new Date();
@@ -147,12 +162,44 @@ async function isAccountLocked(
 }
 
 /**
- * SECURITY: Record a failed login attempt and potentially lock the account
+ * SECURITY: Detect anomalous login behavior
+ */
+function detectLoginAnomaly(
+  req: express.Request,
+  email: string,
+): { isAnomalous: boolean; reasons: string[] } {
+  const reasons: string[] = [];
+  const userAgent = req.headers['user-agent'] || '';
+
+  // Check for automated tool signatures
+  for (const pattern of AUTOMATED_UA_PATTERNS) {
+    if (pattern.test(userAgent)) {
+      reasons.push(`automated_tool_detected:${pattern.source}`);
+      break;
+    }
+  }
+
+  // Missing standard browser headers
+  if (!req.headers['accept-language'] && userAgent) {
+    reasons.push('missing_accept_language');
+  }
+
+  // Empty or missing User-Agent
+  if (!userAgent) {
+    reasons.push('missing_user_agent');
+  }
+
+  return { isAnomalous: reasons.length > 0, reasons };
+}
+
+/**
+ * SECURITY: Record a failed login attempt with progressive lockout
  */
 async function recordFailedLoginAttempt(
   email: string,
   ipAddress: string,
-): Promise<{ locked: boolean; attemptsRemaining: number }> {
+  anomalyReasons: string[] = [],
+): Promise<{ locked: boolean; attemptsRemaining: number; requiresAdminUnlock: boolean }> {
   const normalizedEmail = email.toLowerCase().trim();
   const now = new Date();
   const windowStart = new Date(now.getTime() - ATTEMPT_WINDOW_MINUTES * 60 * 1000);
@@ -172,24 +219,38 @@ async function recordFailedLoginAttempt(
       lastAttemptAt: now,
       lastIpAddress: ipAddress,
     });
-    return { locked: false, attemptsRemaining: MAX_LOGIN_ATTEMPTS - 1 };
+    log.info(`[SECURITY] failed_login: email=${normalizedEmail} ip=${ipAddress} attempt=1${anomalyReasons.length > 0 ? ` anomaly=[${anomalyReasons.join(',')}]` : ''}`);
+    return { locked: false, attemptsRemaining: LOCKOUT_TIERS[0].threshold - 1, requiresAdminUnlock: false };
   }
 
   // Check if previous attempts are outside the window (reset counter)
+  // But DON'T reset if account requires admin unlock (permanent lock)
   let newAttemptCount: number;
-  if (existingAttempt.lastAttemptAt < windowStart) {
+  if (existingAttempt.lockedUntil && existingAttempt.lockedUntil.getTime() === 0) {
+    // Permanent lock (admin unlock required) - don't reset
+    newAttemptCount = existingAttempt.attemptCount + 1;
+  } else if (existingAttempt.lastAttemptAt < windowStart) {
     newAttemptCount = 1;
   } else {
     newAttemptCount = existingAttempt.attemptCount + 1;
   }
 
-  // Check if we should lock the account
+  // Progressive lockout: find the matching tier
   let lockedUntil: Date | null = null;
-  if (newAttemptCount >= MAX_LOGIN_ATTEMPTS) {
-    lockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_MINUTES * 60 * 1000);
-    log.info(
-      `[SECURITY] Account locked for email: ${normalizedEmail} until ${lockedUntil.toISOString()}`,
-    );
+  let requiresAdminUnlock = false;
+  for (const tier of LOCKOUT_TIERS) {
+    if (newAttemptCount >= tier.threshold) {
+      if (tier.durationMinutes === -1) {
+        // Permanent lock - requires admin unlock
+        // Use epoch 0 as sentinel for "admin unlock required"
+        lockedUntil = new Date(0);
+        requiresAdminUnlock = true;
+        log.info(`[SECURITY] account_locked_permanent: email=${normalizedEmail} attempts=${newAttemptCount} - requires admin unlock`);
+      } else {
+        lockedUntil = new Date(now.getTime() + tier.durationMinutes * 60 * 1000);
+        log.info(`[SECURITY] account_locked: email=${normalizedEmail} attempts=${newAttemptCount} duration=${tier.durationMinutes}min`);
+      }
+    }
   }
 
   // Update the record
@@ -204,9 +265,16 @@ async function recordFailedLoginAttempt(
     })
     .where(eq(loginAttempts.id, existingAttempt.id));
 
+  log.info(`[SECURITY] failed_login: email=${normalizedEmail} ip=${ipAddress} attempt=${newAttemptCount}${anomalyReasons.length > 0 ? ` anomaly=[${anomalyReasons.join(',')}]` : ''}`);
+
+  // Calculate remaining attempts until next lockout tier
+  const nextTier = LOCKOUT_TIERS.find(t => t.threshold > newAttemptCount);
+  const attemptsRemaining = nextTier ? nextTier.threshold - newAttemptCount : 0;
+
   return {
     locked: lockedUntil !== null,
-    attemptsRemaining: Math.max(0, MAX_LOGIN_ATTEMPTS - newAttemptCount),
+    attemptsRemaining,
+    requiresAdminUnlock,
   };
 }
 
@@ -236,6 +304,13 @@ router.post('/login', loginLimiter, async (req, res) => {
     const lockStatus = await isAccountLocked(email);
     if (lockStatus.locked) {
       log.info(`[SECURITY] Blocked login attempt for locked account: ${email}`);
+      if (lockStatus.requiresAdminUnlock) {
+        return res.status(429).json({
+          message: 'Account has been locked due to excessive failed attempts. Please contact your administrator to unlock.',
+          locked: true,
+          requiresAdminUnlock: true,
+        });
+      }
       return res.status(429).json({
         message: `Account is temporarily locked. Please try again in ${lockStatus.remainingMinutes} minute(s).`,
         locked: true,
@@ -243,16 +318,29 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
+    // SECURITY: Detect anomalous login behavior
+    const anomaly = detectLoginAnomaly(req, email);
+    if (anomaly.isAnomalous) {
+      log.info(`[SECURITY] anomalous_login: email=${email} ip=${ipAddress} reasons=[${anomaly.reasons.join(',')}]`);
+    }
+
     const user = await storage.authenticateUser(email, password);
     if (!user) {
-      // SECURITY: Record failed attempt and check for lockout
-      const attemptResult = await recordFailedLoginAttempt(email, ipAddress);
+      // SECURITY: Record failed attempt with anomaly info and check for progressive lockout
+      const attemptResult = await recordFailedLoginAttempt(email, ipAddress, anomaly.reasons);
+
+      if (attemptResult.requiresAdminUnlock) {
+        return res.status(429).json({
+          message: 'Account has been locked due to excessive failed attempts. Please contact your administrator to unlock.',
+          locked: true,
+          requiresAdminUnlock: true,
+        });
+      }
 
       if (attemptResult.locked) {
         return res.status(429).json({
-          message: `Too many failed attempts. Account locked for ${LOCKOUT_DURATION_MINUTES} minutes.`,
+          message: 'Too many failed attempts. Account temporarily locked.',
           locked: true,
-          remainingMinutes: LOCKOUT_DURATION_MINUTES,
         });
       }
 

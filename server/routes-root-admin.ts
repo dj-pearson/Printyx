@@ -716,4 +716,85 @@ router.get('/rbac-audit-logs/admin-bypass', requireRootAdmin, async (req, res) =
   }
 });
 
+// ============================================================================
+// SECURITY: LOCKED ACCOUNTS MANAGEMENT
+// ============================================================================
+
+import { loginAttempts } from '../shared/auth-schema';
+
+/**
+ * GET /root-admin/security/locked-accounts
+ * List all currently locked accounts
+ */
+router.get('/security/locked-accounts', async (_req, res) => {
+  try {
+    const now = new Date();
+    const locked = await db
+      .select({
+        id: loginAttempts.id,
+        email: loginAttempts.email,
+        attemptCount: loginAttempts.attemptCount,
+        lastAttemptAt: loginAttempts.lastAttemptAt,
+        lockedUntil: loginAttempts.lockedUntil,
+        lastIpAddress: loginAttempts.lastIpAddress,
+      })
+      .from(loginAttempts)
+      .where(
+        sql`${loginAttempts.lockedUntil} IS NOT NULL AND (${loginAttempts.lockedUntil} > ${now} OR ${loginAttempts.lockedUntil} = '1970-01-01T00:00:00.000Z'::timestamp)`,
+      );
+
+    const enriched = locked.map((account) => ({
+      ...account,
+      requiresAdminUnlock:
+        account.lockedUntil && account.lockedUntil.getTime() === 0,
+      lockedType:
+        account.lockedUntil && account.lockedUntil.getTime() === 0
+          ? 'permanent'
+          : 'temporary',
+    }));
+
+    res.json({ data: enriched, count: enriched.length });
+  } catch (error) {
+    log.error('Error fetching locked accounts:', error);
+    res.status(500).json({ message: 'Failed to fetch locked accounts' });
+  }
+});
+
+/**
+ * POST /root-admin/security/unlock-account
+ * Unlock a locked account
+ */
+router.post('/security/unlock-account', async (req, res) => {
+  try {
+    const { email } = z.object({ email: z.string().email() }).parse(req.body);
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const [attempt] = await db
+      .select()
+      .from(loginAttempts)
+      .where(eq(loginAttempts.email, normalizedEmail))
+      .limit(1);
+
+    if (!attempt) {
+      return res.status(404).json({ message: 'No login attempt record found for this email' });
+    }
+
+    await db
+      .update(loginAttempts)
+      .set({
+        attemptCount: 0,
+        lockedUntil: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(loginAttempts.email, normalizedEmail));
+
+    log.info(`[SECURITY] account_unlocked: email=${normalizedEmail} by admin`);
+
+    res.json({ message: `Account ${normalizedEmail} has been unlocked` });
+  } catch (error) {
+    log.error('Error unlocking account:', error);
+    res.status(500).json({ message: 'Failed to unlock account' });
+  }
+});
+
 export default router;
