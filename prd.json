@@ -2555,6 +2555,352 @@
       "passes": false,
       "notes": "Shannon's reconnaissance phase includes WhatWeb which identifies technology stacks and versions. Known-vulnerable dependency versions are low-hanging fruit. Supply chain attacks (event-stream, ua-parser-js incidents) can give attackers direct code execution. Lockfile integrity prevents tampering. This complements SEC-007's CI scanning with supply-chain-specific checks.",
       "category": "ai-security-defense"
+    },
+    {
+      "id": "UX-027",
+      "title": "Add bulk operations toolbar with multi-select to all list pages",
+      "description": "As a sales manager, I need to select multiple records in any list view and perform bulk actions (delete, assign, change status, export) so I can manage large datasets efficiently without clicking through records one by one.",
+      "acceptanceCriteria": [
+        "Extend the existing bulk-operations-toolbar.tsx component into a reusable, standardized pattern",
+        "Add checkbox column to DataTable component for multi-row selection with shift-click range select",
+        "Toolbar appears when 1+ rows are selected, showing count and available actions",
+        "Support bulk actions: delete, assign owner, change status, export selected, add tags",
+        "Add 'Select All' checkbox in header that selects current page, with 'Select all X results' option for full dataset",
+        "Confirmation dialog for destructive bulk actions (delete) showing affected record count",
+        "Apply to: Leads, Customers, Contacts, Quotes, Invoices, Orders list pages",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "bulk-operations-toolbar.tsx exists in client/src/components/ui/ but is only used in archived pages. Active list pages lack multi-select capability. Users managing 100+ records waste significant time on individual operations. This is a high-impact productivity feature for manager roles.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-028",
+      "title": "Add print-optimized layouts for invoices, quotes, and reports",
+      "description": "As a user printing or PDF-exporting business documents, I need print-specific CSS and layouts so invoices, quotes, and reports render cleanly on paper without navigation chrome, truncated tables, or broken layouts.",
+      "acceptanceCriteria": [
+        "Create a shared print stylesheet at client/src/styles/print.css with @media print rules",
+        "Hide sidebar, header, footer, and navigation elements when printing",
+        "Invoice detail page renders as a professional single-page document with company logo, line items table, and totals",
+        "Quote detail page renders with terms, line items, and signature area for print",
+        "Report pages render with proper page breaks between sections and charts",
+        "Tables do not split rows across page breaks (use break-inside: avoid)",
+        "Add a 'Print' button to Invoice, Quote, and Report detail page toolbars",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Only client/src/pages/marketing/CompetitiveBattleCard.tsx and accessibility.css have print styles. Print shop management software needs excellent print output. Users currently screenshot or copy-paste into Word to generate printable documents, which is a poor experience.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-029",
+      "title": "Implement dark mode with system preference detection and manual toggle",
+      "description": "As a user working in low-light environments or with visual preferences, I need a dark mode toggle that respects my system preference and persists my choice so the interface is comfortable for extended use.",
+      "acceptanceCriteria": [
+        "Create a ThemeProvider context that manages light/dark/system theme state",
+        "Detect system color scheme preference via prefers-color-scheme media query",
+        "Add theme toggle button to the header/toolbar area with sun/moon icons",
+        "Persist theme choice in localStorage with key 'printyx-theme'",
+        "Apply Tailwind dark: variants to all shadcn/ui components (most already support it)",
+        "Update CSS variables in globals.css for dark mode color palette",
+        "Ensure charts and data visualizations adapt colors for dark backgrounds",
+        "Test all critical pages (dashboard, CRM list views, detail pages, settings) in dark mode",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "shadcn/ui components already include dark: variants in their class definitions, so the foundation exists. Tailwind CSS supports dark mode natively via the 'class' strategy. Main work is adding the ThemeProvider, toggle, and ensuring no hardcoded colors break in dark mode. High user demand feature for SaaS applications.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-030",
+      "title": "Add session timeout warning with countdown and re-authentication",
+      "description": "As a user with an active session, I need a warning before my session expires so I can save my work and re-authenticate without losing unsaved changes or being abruptly logged out.",
+      "acceptanceCriteria": [
+        "Enhance SessionGuard component to show a modal warning 5 minutes before session expiry",
+        "Modal shows countdown timer with 'Stay Signed In' and 'Sign Out' buttons",
+        "Clicking 'Stay Signed In' refreshes the session token silently",
+        "If countdown reaches zero, redirect to login with a 'session expired' message",
+        "Preserve the current URL as a return path so user returns to their page after re-auth",
+        "Show a toast notification 'Your session was extended' after successful refresh",
+        "Detect idle time (no mouse/keyboard activity for configurable period) as trigger",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "SessionGuard component exists at client/src/components/SessionGuard.tsx but the UX around session expiry needs improvement. Users report being logged out while filling forms, losing unsaved data. This is critical for enterprise users on long form-fill workflows.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-031",
+      "title": "Add undo toast for destructive actions across all entity operations",
+      "description": "As a user who accidentally deletes or modifies a record, I need a brief undo window via a toast notification so I can reverse mistakes without navigating to a recovery interface.",
+      "acceptanceCriteria": [
+        "Create a reusable useUndoAction hook that wraps delete/status-change mutations",
+        "After any delete action, show a toast with 'Record deleted' message and 'Undo' button",
+        "Undo window lasts 8 seconds before the action is permanently committed",
+        "During undo window, the record is soft-hidden from the UI but not yet deleted from the database",
+        "Clicking 'Undo' restores the record and shows a 'Restored' confirmation toast",
+        "Apply to: Leads, Customers, Contacts, Quotes, Invoices, Tasks, Notes deletion",
+        "Also apply to status changes (e.g., 'Lead moved to Lost' with undo option)",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Some pages like Contacts.tsx and Invoices.tsx reference undo patterns but implementation is inconsistent. A standardized hook ensures all destructive actions follow the same undo pattern. This significantly reduces user anxiety around delete operations.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-032",
+      "title": "Implement responsive table patterns with horizontal scroll and card mode for mobile",
+      "description": "As a mobile user viewing data tables, I need tables to be usable on small screens either through horizontal scrolling with frozen columns or a card-based layout so I can access all data without a desktop.",
+      "acceptanceCriteria": [
+        "Create a ResponsiveTable wrapper component that switches between table and card layout at the md breakpoint",
+        "Table mode (md+): horizontal scroll with first column frozen/sticky for context",
+        "Card mode (<md): each row renders as a card with label-value pairs stacked vertically",
+        "Card mode shows the 4 most important fields by default with 'Show more' to expand",
+        "Preserve sorting and filtering controls in both modes",
+        "Add a toggle icon to let users manually switch between table and card view",
+        "Apply to the top 10 most-used list pages: Leads, Customers, Contacts, Quotes, Invoices, Orders, Equipment, Tasks, Products, Reports",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "With 227 pages and many containing data tables, mobile table UX is a critical gap. The mobile/ components directory exists but doesn't include responsive table patterns. Print shop staff often check data on phones/tablets while on the production floor.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-033",
+      "title": "Standardize data export experience with format selection and column picker",
+      "description": "As a user exporting data from any list view, I need a consistent export dialog with format options (CSV, Excel, PDF) and column selection so I can get exactly the data I need in my preferred format.",
+      "acceptanceCriteria": [
+        "Create a reusable ExportDialog component triggered by an 'Export' button on list pages",
+        "Support export formats: CSV, Excel (.xlsx), PDF table",
+        "Column picker allows selecting/deselecting which fields to include in the export",
+        "Remember last-used export preferences per entity type in localStorage",
+        "Show export progress indicator for large datasets",
+        "Include current filter/sort state in the export (export what you see)",
+        "Add row count estimate before export starts",
+        "Apply to all list pages that have data tables",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "client/src/lib/export-utils exists but the UI around it varies per page. Some pages have export buttons, others don't. A standardized dialog ensures consistent export UX. Enterprise customers frequently need to export data for external reporting.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-034",
+      "title": "Add standardized file upload component with drag-and-drop, preview, and progress",
+      "description": "As a user uploading files (logos, documents, attachments), I need a consistent drag-and-drop upload area with file type validation, preview, and progress indication so uploads feel reliable and intuitive.",
+      "acceptanceCriteria": [
+        "Create a reusable FileUpload component with drag-and-drop zone and click-to-browse",
+        "Show file type and size validation errors inline before upload starts",
+        "Display thumbnail previews for images and file icons for documents",
+        "Show upload progress bar with percentage for each file",
+        "Support multi-file upload with individual progress tracking",
+        "Allow removing files from the upload queue before or after upload",
+        "Integrate with the existing ObjectUploader component pattern",
+        "Apply to: company logo upload, document attachments, CSV imports, profile avatar",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "ObjectUploader.tsx exists in components/ and CSVImportWizard.tsx handles CSV imports, but there's no standardized file upload pattern. Different pages implement upload differently. A reusable component ensures consistent UX and proper error handling across all upload contexts.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-035",
+      "title": "Add destructive action confirmation pattern with entity name verification",
+      "description": "As a user performing irreversible actions (deleting a tenant, removing a team member, canceling a contract), I need a confirmation dialog that requires typing the entity name to prevent accidental destructive actions.",
+      "acceptanceCriteria": [
+        "Create a ConfirmDestructiveAction dialog component with configurable severity levels",
+        "Standard level: simple 'Are you sure?' with Cancel/Confirm buttons",
+        "High severity: requires typing the entity name to enable the Confirm button",
+        "Critical severity: requires typing a confirmation phrase (e.g., 'delete my-tenant-name')",
+        "Confirm button is disabled and grayed out until verification text matches",
+        "Show clear warning text explaining what will be permanently deleted/affected",
+        "Apply high severity to: tenant deletion, user removal, data purge operations",
+        "Apply standard severity to: record deletion, status changes that affect billing",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Current delete confirmations are simple window.confirm or basic dialogs. For a multi-tenant enterprise application, destructive actions on tenants, users, and billing-affecting records need stronger confirmation patterns. This prevents costly accidental data loss.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-036",
+      "title": "Add notification preferences page for per-channel and per-event configuration",
+      "description": "As a user receiving notifications, I need a preferences page where I can configure which events trigger notifications and through which channels (in-app, email, browser push) so I only receive relevant alerts.",
+      "acceptanceCriteria": [
+        "Create a NotificationPreferences page accessible from Settings",
+        "Display a matrix/grid of event types (rows) vs channels (columns: in-app, email, push)",
+        "Event categories: Sales (new lead, deal won, quote approved), Service (ticket assigned, SLA warning), Billing (invoice overdue, payment received), System (maintenance, security alerts)",
+        "Each cell has a toggle switch for enable/disable",
+        "Add 'Mute All' and 'Reset to Defaults' actions",
+        "Add quiet hours configuration (e.g., no push notifications 10pm-7am)",
+        "Save preferences to user profile with API endpoint",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "US-054 adds the notification center but doesn't address user preferences for notification delivery. Enterprise users need granular control over notification channels to avoid alert fatigue. This is a standard feature in mature SaaS platforms.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-037",
+      "title": "Add saved views with sharing to all filterable list pages",
+      "description": "As a sales rep, I need to save my frequently-used filter combinations as named views (e.g., 'My Hot Leads', 'Overdue Invoices') and optionally share them with my team so I don't re-configure filters every session.",
+      "acceptanceCriteria": [
+        "Extend the existing saved-filters.tsx component into a full Saved Views system",
+        "Users can save current filter + sort + column configuration as a named view",
+        "Views are scoped: 'My Views' (private) and 'Shared Views' (visible to team/tenant)",
+        "Add a view selector dropdown next to the filter bar on list pages",
+        "Allow editing, renaming, and deleting saved views",
+        "Default views provided per entity: 'All Records', 'My Records', 'Recently Modified'",
+        "Persist views in the database with userId and tenantId for proper scoping",
+        "Apply to: Leads, Customers, Contacts, Quotes, Invoices, Orders, Equipment, Tasks",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "saved-filters.tsx exists in client/src/components/ui/ providing basic filter persistence. This story elevates it to a full views system including column configuration and sharing. CRM-005 covers advanced filter panel building but not view persistence and sharing.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-038",
+      "title": "Reorganize Settings page with categorized sections and search",
+      "description": "As an admin configuring the platform, I need the Settings page organized into clear categories with a search function so I can quickly find specific settings without scrolling through a long undifferentiated list.",
+      "acceptanceCriteria": [
+        "Restructure Settings page into tabbed or sidebar-navigated categories: General, Users & Roles, Billing, Notifications, Integrations, Security, Advanced",
+        "Add a search/filter input at the top that filters visible settings by keyword",
+        "Each setting shows a label, description, and current value",
+        "Group related settings with section headers and dividers",
+        "Add breadcrumb showing Settings > Category for deep-linked navigation",
+        "Highlight changed-but-unsaved settings with a visual indicator",
+        "Add 'Save Changes' sticky footer that appears when settings are modified",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Settings.tsx is a single page that grows as features are added. Enterprise platforms typically have dozens of configuration options. A categorized settings page with search becomes essential as the platform matures. PlatformConfiguration.tsx exists separately, suggesting settings are already fragmenting.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-039",
+      "title": "Add recently viewed records quick-access panel",
+      "description": "As a user navigating between records throughout the day, I need quick access to my recently viewed leads, customers, quotes, and other records so I can rapidly return to items I was working on without searching or navigating menus.",
+      "acceptanceCriteria": [
+        "Track the last 20 records viewed per user (entity type, ID, title, timestamp) in localStorage",
+        "Add a 'Recent' section to the global search/command palette (UX-001/UX-011)",
+        "Show recently viewed items grouped by entity type with relative timestamps",
+        "Each item is clickable and navigates to the record's detail page",
+        "Clear individual items or clear all history",
+        "Items automatically expire after 7 days",
+        "Track views across: Leads, Customers, Contacts, Quotes, Invoices, Orders, Equipment",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "No recent items tracking exists currently. Users must rely on browser history or re-search to find records they viewed earlier. This is a standard CRM feature that significantly reduces navigation friction. Integrates with the global search (UX-001) and command palette (UX-011).",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-040",
+      "title": "Add consistent date and time picker with timezone awareness across all forms",
+      "description": "As a user entering dates in forms (due dates, follow-up dates, schedule times), I need a consistent date/time picker that shows my timezone, supports relative shortcuts ('tomorrow', 'next week'), and prevents invalid selections.",
+      "acceptanceCriteria": [
+        "Create a standardized DateTimePicker component wrapping the existing date picker with time selection",
+        "Display the user's current timezone with option to select a different one",
+        "Add quick-select shortcuts: Today, Tomorrow, Next Week, Next Month, custom",
+        "Disable past dates where contextually appropriate (e.g., due dates, scheduled dates)",
+        "Support date range selection for report filters and date-bounded queries",
+        "Show relative time preview ('3 days from now') next to the selected date",
+        "Replace inconsistent date inputs across: Leads (follow-up date), Quotes (expiry), Tasks (due date), Calendar events",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Multiple pages implement date picking differently. Some use native inputs, others use shadcn calendar. A multi-tenant platform serving different regions needs timezone-aware date handling. The calendar/ component directory exists but doesn't provide a standardized form-level date picker.",
+      "category": "ux-audit"
+    },
+    {
+      "id": "UX-041",
+      "title": "Add progress indicators for multi-step workflows and long-running operations",
+      "description": "As a user performing multi-step processes (onboarding, CSV import, report generation), I need clear progress indicators showing which step I'm on, what's completed, and estimated time remaining so the process feels transparent and predictable.",
+      "acceptanceCriteria": [
+        "Create a reusable StepProgress component showing numbered steps with labels and completion status",
+        "Active step is highlighted, completed steps show checkmarks, future steps are dimmed",
+        "For long-running operations (imports, report generation), show a progress bar with percentage and ETA",
+        "Add a pulsing/animated indicator for indeterminate progress (when percentage is unknown)",
+        "Allow users to navigate back to completed steps to review (where applicable)",
+        "Apply to: CSV Import Wizard, Onboarding Wizard, Report Generation, Bulk Operations, Data Export",
+        "Show success summary screen on completion with key stats and next actions",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "CSVImportWizard has its own progress UI but it's not reusable. ComprehensiveOnboardingForm has steps but uses a custom implementation. QP-002 (quote wizard) will also need step progress. A standardized component prevents each wizard from reinventing progress indication.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-042",
+      "title": "Add error recovery flows with contextual retry and support escalation",
+      "description": "As a user encountering an error during a critical operation (saving a quote, submitting an invoice, processing a payment), I need clear guidance on what went wrong, whether I can retry, and how to get help so errors don't become dead ends.",
+      "acceptanceCriteria": [
+        "Create an ErrorRecovery component that replaces generic error messages with actionable recovery UI",
+        "For network errors: show 'Connection lost' with auto-retry countdown and manual 'Retry Now' button",
+        "For validation errors: highlight specific fields that need correction with inline guidance",
+        "For server errors (500): show 'Something went wrong' with error reference ID and 'Contact Support' link",
+        "For permission errors (403): show 'You don't have access' with 'Request Access' button that notifies admin",
+        "Preserve user input when errors occur so users don't lose their work on retry",
+        "Add error boundary fallback UI (PageErrorBoundary enhancement) with 'Try Again' and 'Go Home' options",
+        "Log error details to the server for admin visibility",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "PageErrorBoundary.tsx and SectionErrorBoundary.tsx exist but provide basic fallback UI. The current error handling mostly shows toast messages that disappear. For enterprise workflows, errors need persistent, actionable recovery paths. This is especially important for payment and billing operations.",
+      "category": "ux-flow"
+    },
+    {
+      "id": "UX-043",
+      "title": "Add user profile page with avatar upload, preferences, and activity summary",
+      "description": "As a user, I need a profile page where I can manage my avatar, display name, contact details, and view my recent activity so I have a personal space to customize my account and review my work history.",
+      "acceptanceCriteria": [
+        "Create a UserProfile page accessible from the header avatar dropdown",
+        "Profile sections: Personal Info (name, email, phone, avatar), Preferences (timezone, date format, language), Security (password change, MFA setup link)",
+        "Avatar upload using the standardized FileUpload component with circular crop preview",
+        "Activity summary showing: records created this week, tasks completed, login history",
+        "Allow editing display name and contact details with inline save",
+        "Show role and permission summary (read-only) with link to request changes",
+        "Responsive layout that works on mobile",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "The /api/me endpoint exists for fetching user data. User management pages exist in admin/ but there's no self-service profile page for regular users. Profile management is a basic expectation for any SaaS application.",
+      "category": "ux-flow"
     }
   ]
 }
