@@ -196,6 +196,11 @@ function generateArticleSchema(
     },
     datePublished: new Date().toISOString(),
     dateModified: new Date().toISOString(),
+    speakable: {
+      '@type': 'SpeakableSpecification',
+      cssSelector: ['h1', 'h2', '[data-speakable]', '.article-summary'],
+    },
+    inLanguage: 'en-US',
   };
 }
 
@@ -244,6 +249,91 @@ function generateServiceSchema(config: SEORouteConfig): Record<string, unknown> 
 }
 
 /**
+ * Generate FAQPage schema from page config
+ */
+function generateFAQPageSchema(config: SEORouteConfig): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    name: config.title.split(' | ')[0],
+    description: config.description,
+    mainEntity: config.faqItems?.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer,
+      },
+    })) || [],
+    isPartOf: {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}/#website`,
+    },
+  };
+}
+
+/**
+ * Generate HowTo schema from page config
+ */
+function generateHowToSchema(config: SEORouteConfig): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: config.title.split(' | ')[0],
+    description: config.description,
+    image: config.ogImage || DEFAULT_OG_IMAGE,
+    totalTime: config.howToEstimatedTime,
+    step: config.howToSteps?.map((step, index) => ({
+      '@type': 'HowToStep',
+      position: index + 1,
+      name: step.name,
+      text: step.text,
+      ...(step.image && { image: step.image }),
+      url: `${SITE_URL}${config.path}#step-${index + 1}`,
+    })) || [],
+  };
+}
+
+/**
+ * Generate LocalBusiness schema
+ */
+function generateLocalBusinessSchema(config: SEORouteConfig): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    '@id': `${SITE_URL}/#localbusiness`,
+    name: ORGANIZATION_DATA.name,
+    description: config.description || ORGANIZATION_DATA.description,
+    url: SITE_URL,
+    image: ORGANIZATION_DATA.logo,
+    telephone: ORGANIZATION_DATA.contactPoint.telephone,
+    email: ORGANIZATION_DATA.contactPoint.email,
+    priceRange: '$$',
+    sameAs: ORGANIZATION_DATA.sameAs,
+    ...(config.localBusiness?.address && {
+      address: {
+        '@type': 'PostalAddress',
+        ...config.localBusiness.address,
+      },
+    }),
+    ...(config.localBusiness?.geo && {
+      geo: {
+        '@type': 'GeoCoordinates',
+        ...config.localBusiness.geo,
+      },
+    }),
+    ...(config.localBusiness?.openingHours && {
+      openingHoursSpecification: config.localBusiness.openingHours.map((hours) => ({
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: hours.dayOfWeek,
+        opens: hours.opens,
+        closes: hours.closes,
+      })),
+    }),
+  };
+}
+
+/**
  * Generate schema based on type
  */
 function generateSchema(config: SEORouteConfig): Record<string, unknown>[] {
@@ -276,10 +366,16 @@ function generateSchema(config: SEORouteConfig): Record<string, unknown>[] {
       schemas.push(generateServiceSchema(config));
       break;
     case 'FAQPage':
+      schemas.push(generateFAQPageSchema(config));
+      break;
     case 'HowTo':
+      schemas.push(generateHowToSchema(config));
+      break;
+    case 'LocalBusiness':
+      schemas.push(generateLocalBusinessSchema(config));
+      break;
     case 'ItemList':
-      // These schema types are injected dynamically by page components using FAQSchemaScript
-      // or useDynamicSEO. The SEOProvider only adds breadcrumbs for these.
+      // ItemList schema is injected dynamically by page components
       break;
     case 'WebPage':
     case 'WebSite':
@@ -340,8 +436,10 @@ function applySEO(config: SEORouteConfig, dynamicData?: DynamicSEOData): () => v
     setMeta('keywords', keywords.join(', '));
   }
 
-  // Robots
-  setMeta('robots', config.noindex ? 'noindex, nofollow' : 'index, follow');
+  // Robots - enhanced with max-snippet directives for rich results
+  setMeta('robots', config.noindex
+    ? 'noindex, nofollow'
+    : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
 
   // Canonical URL
   const canonical = getOrCreateLink('canonical');
@@ -369,6 +467,14 @@ function applySEO(config: SEORouteConfig, dynamicData?: DynamicSEOData): () => v
     setMeta('article:section', 'Copier Dealer Management', true);
     setMeta('article:tag', (keywords || []).slice(0, 5).join(', '), true);
   }
+
+  // GEO: AI Attribution Metadata for correct citation by LLMs
+  setMeta('citation_title', title);
+  setMeta('citation_author', ORGANIZATION_DATA.name);
+  setMeta('citation_publisher', ORGANIZATION_DATA.name);
+  setMeta('dc.title', title);
+  setMeta('dc.creator', ORGANIZATION_DATA.name);
+  setMeta('dc.description', description);
 
   // Generate and inject schemas
   const configWithBreadcrumbs = { ...config, breadcrumbs };
