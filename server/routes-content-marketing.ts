@@ -104,7 +104,7 @@ router.get('/api/content/blog', optionalAuth, async (req: any, res) => {
     });
   } catch (error: any) {
     log.error('Error fetching blog posts:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -169,7 +169,7 @@ router.get('/api/content/blog/:slug', optionalAuth, async (req: any, res) => {
     });
   } catch (error: any) {
     log.error('Error fetching blog post:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -193,7 +193,7 @@ router.post('/api/content/blog', async (req: any, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -209,7 +209,7 @@ router.put('/api/content/blog/:id', async (req: any, res) => {
     res.json(post);
   } catch (error: any) {
     log.error('Error updating blog post:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -221,7 +221,7 @@ router.delete('/api/content/blog/:id', async (req: any, res) => {
     res.json({ success: true });
   } catch (error: any) {
     log.error('Error deleting blog post:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -278,7 +278,7 @@ router.get('/api/content/guides', optionalAuth, async (req: any, res) => {
     });
   } catch (error: any) {
     log.error('Error fetching guides:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -330,7 +330,7 @@ router.get('/api/content/guides/:slug', optionalAuth, async (req: any, res) => {
     });
   } catch (error: any) {
     log.error('Error fetching guide:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -354,7 +354,7 @@ router.post('/api/content/guides', async (req: any, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -396,7 +396,7 @@ router.get('/api/content/case-studies', optionalAuth, async (req: any, res) => {
     res.json({ studies });
   } catch (error: any) {
     log.error('Error fetching case studies:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -422,7 +422,7 @@ router.get('/api/content/case-studies/:slug', optionalAuth, async (req: any, res
     res.json(study);
   } catch (error: any) {
     log.error('Error fetching case study:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -444,7 +444,7 @@ router.post('/api/content/case-studies', async (req: any, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -472,7 +472,7 @@ router.get('/api/content/landing/:slug', optionalAuth, async (req: any, res) => 
     res.json(page);
   } catch (error: any) {
     log.error('Error fetching landing page:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -494,7 +494,7 @@ router.post('/api/content/landing', async (req: any, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -510,7 +510,7 @@ router.put('/api/content/landing/:id', async (req: any, res) => {
     res.json(page);
   } catch (error: any) {
     log.error('Error updating landing page:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -534,7 +534,7 @@ router.post('/api/content/:contentType/:contentId/faq', async (req: any, res) =>
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -558,7 +558,7 @@ router.post('/api/content/:contentType/:contentId/citation', async (req: any, re
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -598,7 +598,7 @@ router.post('/api/content/analytics/view', optionalAuth, async (req: any, res) =
     res.json({ success: true });
   } catch (error: any) {
     log.error('Error tracking analytics:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -655,7 +655,7 @@ router.get('/api/content/analytics/:contentType/:contentId', async (req: any, re
     });
   } catch (error: any) {
     log.error('Error fetching analytics:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 

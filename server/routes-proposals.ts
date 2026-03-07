@@ -365,7 +365,7 @@ router.post(
         log.error('Error message:', error.message);
         log.error('Error stack:', error.stack);
       }
-      res.status(500).json({ error: 'Failed to create proposal', details: error.message });
+      res.status(500).json({ error: 'Failed to create proposal', });
     }
   },
 );
@@ -1521,7 +1521,7 @@ router.get('/:id/export/pdf', async (req: any, res: any) => {
 
     res.status(500).json({
       error: 'Failed to generate PDF',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      details: 'An internal error occurred',
       stack: error instanceof Error ? error.stack : undefined,
     });
   }
@@ -1769,7 +1769,7 @@ router.get('/:id/export/manager-pdf', async (req: any, res: any) => {
 
     res.status(500).json({
       error: 'Failed to generate manager PDF',
-      details: error instanceof Error ? error.message : 'Unknown error',
+      details: 'An internal error occurred',
       stack: error instanceof Error ? error.stack : undefined,
     });
   }

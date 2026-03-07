@@ -44,7 +44,7 @@ router.get('/:leadId', isAuthenticated, async (req: Request, res: Response) => {
     res.json(intelligence);
   } catch (error: any) {
     log.error('Get lead intelligence error:', error);
-    res.status(500).json({ error: 'Failed to get lead intelligence', message: error.message });
+    res.status(500).json({ error: 'Failed to get lead intelligence' });
   }
 });
 
@@ -72,7 +72,7 @@ router.post('/:leadId/score', isAuthenticated, async (req: Request, res: Respons
     });
   } catch (error: any) {
     log.error('Calculate lead score error:', error);
-    res.status(500).json({ error: 'Failed to calculate lead score', message: error.message });
+    res.status(500).json({ error: 'Failed to calculate lead score' });
   }
 });
 
@@ -100,7 +100,7 @@ router.post('/:leadId/enrich', isAuthenticated, async (req: Request, res: Respon
     });
   } catch (error: any) {
     log.error('Enrich lead error:', error);
-    res.status(500).json({ error: 'Failed to enrich lead', message: error.message });
+    res.status(500).json({ error: 'Failed to enrich lead' });
   }
 });
 
@@ -128,7 +128,7 @@ router.post('/:leadId/process', isAuthenticated, async (req: Request, res: Respo
     });
   } catch (error: any) {
     log.error('Process lead error:', error);
-    res.status(500).json({ error: 'Failed to process lead', message: error.message });
+    res.status(500).json({ error: 'Failed to process lead' });
   }
 });
 
@@ -160,7 +160,7 @@ router.post('/batch/score', isAuthenticated, async (req: Request, res: Response)
       return res.status(400).json({ error: 'Invalid request', details: error.errors });
     }
     log.error('Batch score error:', error);
-    res.status(500).json({ error: 'Failed to batch score leads', message: error.message });
+    res.status(500).json({ error: 'Failed to batch score leads' });
   }
 });
 
@@ -180,7 +180,7 @@ router.get('/analytics/overview', isAuthenticated, async (req: Request, res: Res
     res.json(analytics);
   } catch (error: any) {
     log.error('Get analytics error:', error);
-    res.status(500).json({ error: 'Failed to get analytics', message: error.message });
+    res.status(500).json({ error: 'Failed to get analytics' });
   }
 });
 
@@ -203,7 +203,7 @@ router.get('/attention/required', isAuthenticated, async (req: Request, res: Res
     log.error('Get attention required error:', error);
     res
       .status(500)
-      .json({ error: 'Failed to get leads requiring attention', message: error.message });
+      .json({ error: 'Failed to get leads requiring attention' });
   }
 });
 

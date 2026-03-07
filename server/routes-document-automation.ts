@@ -79,7 +79,7 @@ router.get('/api/document-templates', async (req: Request, res: Response) => {
     res.json(templates);
   } catch (error: any) {
     log.error('Error fetching templates:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 });
 
@@ -101,7 +101,7 @@ router.get('/api/document-templates/:id', async (req: Request, res: Response) =>
     res.json(template);
   } catch (error: any) {
     log.error('Error fetching template:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 });
 
@@ -178,7 +178,7 @@ router.delete('/api/document-templates/:id', async (req: Request, res: Response)
     res.json({ success: true });
   } catch (error: any) {
     log.error('Error deleting template:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 });
 
@@ -316,7 +316,7 @@ router.get('/api/documents/generated', async (req: Request, res: Response) => {
     res.json(documents);
   } catch (error: any) {
     log.error('Error fetching generated documents:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 });
 
@@ -351,7 +351,7 @@ router.get('/api/documents/generated/:id/download', async (req: Request, res: Re
     res.download(document.filePath, document.name);
   } catch (error: any) {
     log.error('Error downloading document:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 });
 
@@ -415,7 +415,7 @@ router.get('/api/documents/uploads/:id', async (req: Request, res: Response) => 
     res.json(upload);
   } catch (error: any) {
     log.error('Error fetching upload:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 });
 
@@ -432,7 +432,7 @@ router.get('/api/documents/uploads', async (req: Request, res: Response) => {
     res.json(uploads);
   } catch (error: any) {
     log.error('Error fetching uploads:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 });
 
@@ -465,7 +465,7 @@ router.post('/api/documents/uploads/:id/review', async (req: Request, res: Respo
     res.json({ success: true });
   } catch (error: any) {
     log.error('Error reviewing upload:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 });
 
@@ -486,7 +486,7 @@ router.get('/api/document-field-mappings', async (req: Request, res: Response) =
     res.json(mappings);
   } catch (error: any) {
     log.error('Error fetching field mappings:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 });
 

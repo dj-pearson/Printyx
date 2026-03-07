@@ -60,7 +60,7 @@ router.get('/api/seo/settings', async (req: any, res) => {
     res.json(settings || {});
   } catch (error: any) {
     log.error('Error fetching SEO settings:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -116,7 +116,7 @@ router.post('/api/seo/settings', async (req: any, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -166,7 +166,7 @@ router.post('/api/seo/audit', async (req: any, res) => {
     res.json(updatedAudit);
   } catch (error: any) {
     log.error('Error running SEO audit:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -192,7 +192,7 @@ router.get('/api/seo/audit/history', async (req: any, res) => {
     res.json(audits);
   } catch (error: any) {
     log.error('Error fetching audit history:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -217,7 +217,7 @@ router.get('/api/seo/audit/:id', async (req: any, res) => {
     res.json(audit);
   } catch (error: any) {
     log.error('Error fetching audit:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -255,7 +255,7 @@ router.post('/api/seo/audit/:id/apply-fixes', async (req: any, res) => {
     res.json(appliedFixes);
   } catch (error: any) {
     log.error('Error applying fixes:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -278,7 +278,7 @@ router.get('/api/seo/keywords', async (req: any, res) => {
     res.json(keywords);
   } catch (error: any) {
     log.error('Error fetching keywords:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -298,7 +298,7 @@ router.post('/api/seo/keywords', async (req: any, res) => {
     res.json(keyword);
   } catch (error: any) {
     log.error('Error adding keyword:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -319,7 +319,7 @@ router.put('/api/seo/keywords/:id', async (req: any, res) => {
     res.json(keyword);
   } catch (error: any) {
     log.error('Error updating keyword:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -338,7 +338,7 @@ router.delete('/api/seo/keywords/:id', async (req: any, res) => {
     res.json({ success: true });
   } catch (error: any) {
     log.error('Error deleting keyword:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -355,7 +355,7 @@ router.get('/api/seo/keywords/:id/history', async (req: any, res) => {
     res.json(history);
   } catch (error: any) {
     log.error('Error fetching keyword history:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -403,7 +403,7 @@ router.post('/api/seo/keywords/check-positions', async (req: any, res) => {
     res.json(results);
   } catch (error: any) {
     log.error('Error checking keyword positions:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -447,7 +447,7 @@ router.post('/api/seo/crawl', async (req: any, res) => {
     res.json({ crawlId, results: storedResults });
   } catch (error: any) {
     log.error('Error starting crawl:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -473,7 +473,7 @@ router.get('/api/seo/crawl/:crawlId', async (req: any, res) => {
     res.json(results);
   } catch (error: any) {
     log.error('Error fetching crawl results:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -511,7 +511,7 @@ router.post('/api/seo/core-web-vitals', async (req: any, res) => {
     res.json(stored);
   } catch (error: any) {
     log.error('Error checking Core Web Vitals:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -541,7 +541,7 @@ router.get('/api/seo/core-web-vitals', async (req: any, res) => {
     res.json(vitals);
   } catch (error: any) {
     log.error('Error fetching Core Web Vitals:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -576,7 +576,7 @@ router.post('/api/seo/analyze/page', async (req: any, res) => {
     res.json(stored);
   } catch (error: any) {
     log.error('Error analyzing page:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -598,7 +598,7 @@ router.get('/api/seo/page-scores', async (req: any, res) => {
     res.json(scores);
   } catch (error: any) {
     log.error('Error fetching page scores:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -638,7 +638,7 @@ router.post('/api/seo/analyze/images', async (req: any, res) => {
     res.json(storedImages);
   } catch (error: any) {
     log.error('Error analyzing images:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -667,7 +667,7 @@ router.get('/api/seo/images', async (req: any, res) => {
     res.json(images);
   } catch (error: any) {
     log.error('Error fetching image analysis:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -707,7 +707,7 @@ router.post('/api/seo/check/broken-links', async (req: any, res) => {
     res.json(storedLinks);
   } catch (error: any) {
     log.error('Error checking broken links:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -729,7 +729,7 @@ router.get('/api/seo/broken-links', async (req: any, res) => {
     res.json(brokenLinks);
   } catch (error: any) {
     log.error('Error fetching broken links:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -764,7 +764,7 @@ router.post('/api/seo/check/security', async (req: any, res) => {
     res.json(stored);
   } catch (error: any) {
     log.error('Error checking security:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -799,7 +799,7 @@ router.post('/api/seo/check/mobile', async (req: any, res) => {
     res.json(stored);
   } catch (error: any) {
     log.error('Error checking mobile friendliness:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -839,7 +839,7 @@ router.post('/api/seo/validate/structured-data', async (req: any, res) => {
     res.json(storedSchemas);
   } catch (error: any) {
     log.error('Error validating structured data:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -874,7 +874,7 @@ router.post('/api/seo/detect/redirect-chains', async (req: any, res) => {
     res.json(stored);
   } catch (error: any) {
     log.error('Error detecting redirect chains:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -910,7 +910,7 @@ router.post('/api/seo/detect/duplicate-content', async (req: any, res) => {
     res.json(stored);
   } catch (error: any) {
     log.error('Error detecting duplicate content:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -943,7 +943,7 @@ router.post('/api/seo/optimize/content', async (req: any, res) => {
     res.json(stored);
   } catch (error: any) {
     log.error('Error optimizing content:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -965,7 +965,7 @@ router.get('/api/seo/content-optimizations', async (req: any, res) => {
     res.json(optimizations);
   } catch (error: any) {
     log.error('Error fetching content optimizations:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -1000,7 +1000,7 @@ router.post('/api/seo/analyze/semantic', async (req: any, res) => {
     res.json(stored);
   } catch (error: any) {
     log.error('Error analyzing semantic keywords:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -1031,7 +1031,7 @@ router.get('/api/seo/alerts', async (req: any, res) => {
     res.json(alerts);
   } catch (error: any) {
     log.error('Error fetching alerts:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -1057,7 +1057,7 @@ router.post('/api/seo/alerts/:id/acknowledge', async (req: any, res) => {
     res.json(alert);
   } catch (error: any) {
     log.error('Error acknowledging alert:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -1086,7 +1086,7 @@ router.post('/api/seo/alerts/:id/resolve', async (req: any, res) => {
     res.json(alert);
   } catch (error: any) {
     log.error('Error resolving alert:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -1124,7 +1124,7 @@ router.get('/api/seo/monitoring/log', async (req: any, res) => {
     res.json(logs);
   } catch (error: any) {
     log.error('Error fetching monitoring log:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -1160,7 +1160,7 @@ router.post('/api/seo/analyze/competitor', async (req: any, res) => {
     res.json(stored);
   } catch (error: any) {
     log.error('Error analyzing competitor:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
@@ -1182,7 +1182,7 @@ router.get('/api/seo/competitors', async (req: any, res) => {
     res.json(competitors);
   } catch (error: any) {
     log.error('Error fetching competitors:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'An internal error occurred' });
   }
 });
 
