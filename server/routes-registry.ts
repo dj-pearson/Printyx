@@ -129,6 +129,7 @@ import consolidatedBillingRoutes from './routes/billing';
 import printCostCalculatorRoutes from './routes-print-cost-calculator';
 import contentMarketingRoutes from './routes-content-marketing';
 import seoRoutes from './routes-seo';
+import googleIndexingRoutes from './routes-google-indexing';
 import { registerHealthRoutes } from './routes/health-routes';
 import apiKeyRoutes from './routes/api-key-routes';
 import integrationRoutes from './integrations/routes';
@@ -451,6 +452,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use(contentMarketingRoutes);
   app.use(printCostCalculatorRoutes);
   app.use(seoRoutes);
+  app.use(googleIndexingRoutes);
 
   // ─── DoD & Validation ─────────────────────────────────────────────
   const dodEnforcementRoutes = (await import('./routes-dod-enforcement')).default;
