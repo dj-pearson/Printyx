@@ -61,7 +61,7 @@ router.get(
       log.error('Error fetching location pipeline overview:', error);
       res
         .status(500)
-        .json({ error: 'Failed to fetch location pipeline overview', details: error.message });
+        .json({ error: 'Failed to fetch location pipeline overview', });
     }
   },
 );
@@ -125,7 +125,7 @@ router.get(
       log.error('Error fetching location performance:', error);
       res
         .status(500)
-        .json({ error: 'Failed to fetch location performance', details: error.message });
+        .json({ error: 'Failed to fetch location performance', });
     }
   },
 );
@@ -178,7 +178,7 @@ router.get(
       });
     } catch (error: any) {
       log.error('Error fetching location quota:', error);
-      res.status(500).json({ error: 'Failed to fetch location quota', details: error.message });
+      res.status(500).json({ error: 'Failed to fetch location quota', });
     }
   },
 );
@@ -241,7 +241,7 @@ router.get(
       });
     } catch (error: any) {
       log.error('Error fetching location activity:', error);
-      res.status(500).json({ error: 'Failed to fetch location activity', details: error.message });
+      res.status(500).json({ error: 'Failed to fetch location activity', });
     }
   },
 );
@@ -273,7 +273,7 @@ router.post(
       });
     } catch (error: any) {
       log.error('Error invalidating cache:', error);
-      res.status(500).json({ error: 'Failed to invalidate cache', details: error.message });
+      res.status(500).json({ error: 'Failed to invalidate cache', });
     }
   },
 );

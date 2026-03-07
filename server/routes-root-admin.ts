@@ -469,22 +469,43 @@ router.post(
         });
       }
 
+      // Block multiple statements (prevent piggyback injection via semicolons)
+      // Remove string literals and comments before checking for semicolons
+      const withoutStrings = query.replace(/'[^']*'/g, '').replace(/"[^"]*"/g, '');
+      const withoutComments = withoutStrings.replace(/--[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      if (withoutComments.includes(';')) {
+        return res.status(400).json({
+          message: 'Multiple SQL statements are not allowed',
+        });
+      }
+
+      // Block dangerous SQL keywords that could be injected after SELECT
+      const dangerousKeywords = /\b(INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|DROP\s+|ALTER\s+|CREATE\s+|TRUNCATE\s+|GRANT\s+|REVOKE\s+|EXEC\s*\(|EXECUTE\s+|COPY\s+|pg_read_file|pg_write_file|lo_import|lo_export)\b/i;
+      if (dangerousKeywords.test(withoutStrings)) {
+        return res.status(400).json({
+          message: 'Query contains disallowed SQL operations',
+        });
+      }
+
       // Limit results to prevent memory issues
       const limitedQuery = query.includes('limit') ? query : `${query} LIMIT 1000`;
 
+      // Set a statement timeout to prevent long-running queries
+      const startTime = Date.now();
+      await db.execute(sql.raw('SET LOCAL statement_timeout = 10000')); // 10 second timeout
       const result = await db.execute(sql.raw(limitedQuery));
 
       res.json({
         success: true,
         rowCount: result.rows.length,
         data: result.rows,
-        executionTime: Date.now(), // Would be actual execution time
+        executionTime: Date.now() - startTime,
       });
     } catch (error) {
       log.error('Error executing query:', error);
       res.status(500).json({
         success: false,
-        message: error.message || 'Failed to execute query',
+        message: 'Failed to execute query',
       });
     }
   },

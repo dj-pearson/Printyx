@@ -120,7 +120,7 @@ const requireSeedAdmin = async (req: Request, res: Response, next: NextFunction)
     next();
   } catch (error: any) {
     log.error('[Seed] Admin check error:', error);
-    res.status(500).json({ error: 'Authorization check failed', message: error.message });
+    res.status(500).json({ error: 'Authorization check failed' });
   }
 };
 
@@ -159,7 +159,7 @@ router.get('/status', requireSeedAdmin, async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     log.error('[Seed] Error checking seed status:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 });
 
@@ -1377,7 +1377,7 @@ router.get('/roles', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     log.error('[Seed] Error listing roles:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 });
 
@@ -1427,7 +1427,7 @@ router.get('/my-role', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     log.error('[Seed] Error checking user role:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 });
 
@@ -1545,7 +1545,7 @@ router.post('/assign-role', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     log.error('[Seed] Error assigning role:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'An internal error occurred' });
   }
 });
 

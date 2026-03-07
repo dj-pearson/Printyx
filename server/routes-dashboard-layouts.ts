@@ -225,7 +225,7 @@ export function registerDashboardLayoutsRoutes(app: Express) {
         });
       } catch (error: any) {
         log.error('Error saving layout:', error);
-        res.status(500).json({ message: error.message || 'Failed to save dashboard layout' });
+        res.status(500).json({ message: 'Failed to save dashboard layout' });
       }
     },
   );

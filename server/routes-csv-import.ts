@@ -127,7 +127,7 @@ export function registerCsvImportRoutes(app: Express) {
         res.send(csvContent);
       } catch (error: any) {
         log.error('Error generating template:', error);
-        res.status(500).json({ message: error.message || 'Failed to generate template' });
+        res.status(500).json({ message: 'Failed to generate template' });
       }
     },
   );
@@ -191,7 +191,7 @@ export function registerCsvImportRoutes(app: Express) {
         });
       } catch (error: any) {
         log.error('Error creating import job:', error);
-        res.status(500).json({ message: error.message || 'Failed to create import job' });
+        res.status(500).json({ message: 'Failed to create import job' });
       }
     },
   );
@@ -234,7 +234,7 @@ export function registerCsvImportRoutes(app: Express) {
         });
       } catch (error: any) {
         log.error('Error previewing mapping:', error);
-        res.status(500).json({ message: error.message || 'Failed to preview mapping' });
+        res.status(500).json({ message: 'Failed to preview mapping' });
       }
     },
   );
@@ -356,7 +356,7 @@ export function registerCsvImportRoutes(app: Express) {
         res.json({ message: 'Column mappings updated' });
       } catch (error: any) {
         log.error('Error updating mappings:', error);
-        res.status(500).json({ message: error.message || 'Failed to update mappings' });
+        res.status(500).json({ message: 'Failed to update mappings' });
       }
     },
   );
@@ -399,7 +399,7 @@ export function registerCsvImportRoutes(app: Express) {
         });
       } catch (error: any) {
         log.error('Error validating import:', error);
-        res.status(500).json({ message: error.message || 'Failed to validate import' });
+        res.status(500).json({ message: 'Failed to validate import' });
       }
     },
   );
@@ -479,7 +479,7 @@ export function registerCsvImportRoutes(app: Express) {
         res.json({ message: 'Duplicate resolved' });
       } catch (error: any) {
         log.error('Error resolving duplicate:', error);
-        res.status(500).json({ message: error.message || 'Failed to resolve duplicate' });
+        res.status(500).json({ message: 'Failed to resolve duplicate' });
       }
     },
   );
@@ -523,7 +523,7 @@ export function registerCsvImportRoutes(app: Express) {
         res.json({ message: `Resolved ${count} duplicates`, count });
       } catch (error: any) {
         log.error('Error resolving duplicates:', error);
-        res.status(500).json({ message: error.message || 'Failed to resolve duplicates' });
+        res.status(500).json({ message: 'Failed to resolve duplicates' });
       }
     },
   );
@@ -566,7 +566,7 @@ export function registerCsvImportRoutes(app: Express) {
         });
       } catch (error: any) {
         log.error('Error executing import:', error);
-        res.status(500).json({ message: error.message || 'Failed to execute import' });
+        res.status(500).json({ message: 'Failed to execute import' });
       }
     },
   );
@@ -602,7 +602,7 @@ export function registerCsvImportRoutes(app: Express) {
         res.json({ message: 'Import job cancelled' });
       } catch (error: any) {
         log.error('Error cancelling import:', error);
-        res.status(500).json({ message: error.message || 'Failed to cancel import' });
+        res.status(500).json({ message: 'Failed to cancel import' });
       }
     },
   );
@@ -672,7 +672,7 @@ export function registerCsvImportRoutes(app: Express) {
         });
       } catch (error: any) {
         log.error('Error with AI mapping:', error);
-        res.status(500).json({ message: error.message || 'AI mapping failed' });
+        res.status(500).json({ message: 'AI mapping failed' });
       }
     },
   );
@@ -724,7 +724,7 @@ export function registerCsvImportRoutes(app: Express) {
         });
       } catch (error: any) {
         log.error('Error with AI processing:', error);
-        res.status(500).json({ message: error.message || 'AI processing failed' });
+        res.status(500).json({ message: 'AI processing failed' });
       }
     },
   );
