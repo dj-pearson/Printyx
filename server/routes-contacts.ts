@@ -126,7 +126,7 @@ export function registerContactsRoutes(app: Express) {
         } else {
           res
             .status(500)
-            .json({ error: 'Failed to create company contact', details: error.message });
+            .json({ error: 'Failed to create company contact', });
         }
       }
     },
@@ -381,8 +381,6 @@ export function registerContactsRoutes(app: Express) {
         log.error('[CONTACTS] Error stack:', error.stack);
         res.status(500).json({
           error: 'Failed to fetch contacts',
-          message: error.message,
-          details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
         });
       }
     },
@@ -415,7 +413,7 @@ export function registerContactsRoutes(app: Express) {
         res.status(201).json(contact);
       } catch (error: any) {
         log.error('Error creating contact:', error);
-        res.status(500).json({ error: 'Failed to create contact', details: error.message });
+        res.status(500).json({ error: 'Failed to create contact', });
       }
     },
   );

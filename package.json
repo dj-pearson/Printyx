@@ -97,7 +97,9 @@
     "audit:rls": "tsx scripts/audit/database-rls-audit.ts",
     "audit:security": "tsx scripts/audit/security-audit.ts",
     "audit:supply-chain": "tsx scripts/supply-chain-check.ts",
-    "audit:errors": "tsx scripts/audit/error-tracker.ts"
+    "audit:deps": "tsx scripts/dependency-check.ts",
+    "audit:errors": "tsx scripts/audit/error-tracker.ts",
+    "check:security": "npm audit --audit-level=high && tsx scripts/supply-chain-check.ts && tsx scripts/dependency-check.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

@@ -262,7 +262,7 @@ router.post('/auth/initiate', async (req: Request, res: Response) => {
     res.json(authResponse);
   } catch (error: any) {
     log.error('[SSO Routes] Error initiating auth:', error);
-    res.status(500).json({ error: error.message || 'Failed to initiate SSO authentication' });
+    res.status(500).json({ error: 'Failed to initiate SSO authentication' });
   }
 });
 

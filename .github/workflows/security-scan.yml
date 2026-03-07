@@ -52,6 +52,12 @@ jobs:
       - name: Run security audit script
         run: npx tsx scripts/audit/security-audit.ts
 
+      - name: SQL injection audit
+        run: npx tsx server/scripts/sql-injection-audit.ts
+
+      - name: Supply chain security check
+        run: npx tsx scripts/supply-chain-check.ts
+
   # ─── Secrets Detection ──────────────────────────────────────
   secrets-detection:
     name: Secrets Detection

@@ -2261,8 +2261,8 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Shannon uses code-aware analysis to find SQL injection points, then verifies with real exploits. Drizzle ORM generally protects against SQLi when used correctly, but any db.execute() or sql.raw() calls with interpolated user input are vulnerable. This is the #1 OWASP vulnerability and Shannon's primary attack vector.",
+      "passes": true,
+      "notes": "COMPLETE. SQL injection audit scanner exists (server/scripts/sql-injection-audit.ts), tests exist (server/tests/unit/sql-injection-prevention.test.ts), ESLint security plugin installed. Admin query endpoint hardened with multi-statement blocking, dangerous keyword blocking, and statement timeout. All sql.raw() uses in routes-sales-pipeline.ts use proper parameterization ($1, $2, etc.).",
       "category": "ai-security-defense"
     },
     {
@@ -2279,8 +2279,8 @@
         "Tests pass: npm run test"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Shannon tests for SSRF as a primary vulnerability class. Our platform has manufacturer integrations, webhook callbacks, and third-party API calls that could be SSRF vectors. Cloud metadata endpoint access (169.254.169.254) is especially dangerous as it can leak service account credentials.",
+      "passes": true,
+      "notes": "COMPLETE. server/middleware/ssrf-protection.ts validates URLs blocking private IPs, cloud metadata, non-http schemes, DNS rebinding. server/lib/safe-http-client.ts wraps fetch with 3-layer SSRF validation. Tests in server/tests/unit/ssrf-protection.test.ts (177 lines).",
       "category": "ai-security-defense"
     },
     {
@@ -2302,8 +2302,8 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Shannon uses WhatWeb for technology fingerprinting - removing X-Powered-By reduces information leakage. CSP blocks XSS payload execution even if injection succeeds. Currently server/index.ts has minimal header configuration. The Vite dev server in server/vite.ts has some CSP but production needs full Helmet coverage.",
+      "passes": true,
+      "notes": "COMPLETE. Helmet v7.2.0 configured in server/index.ts with full CSP (nonce-based scripts), HSTS, X-Frame-Options DENY, X-Powered-By removed, Permissions-Policy, Referrer-Policy. CSP violation reporting at /api/csp-report. Tests in server/tests/unit/security-headers.test.ts.",
       "category": "ai-security-defense"
     },
     {
@@ -2322,8 +2322,8 @@
         "Tests pass: npm run test"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Shannon handles advanced 2FA/TOTP logins autonomously and attempts authentication bypass as a primary attack. Our current rate limiting (server/middleware/user-rate-limit.ts) has auth category limits but no progressive lockout or anomaly detection. Supabase GoTrue handles some of this but our session fallback auth path needs equivalent protection.",
+      "passes": true,
+      "notes": "COMPLETE. 3-tier progressive lockout (5 failures=15min, 10=60min, 20=permanent). Rate limiting: auth 5/min, billing 20/min, mutation 100/min, read 200/min. Bot/anomaly detection for automated tools. Tests in server/tests/unit/auth-hardening.test.ts (295 lines).",
       "category": "ai-security-defense"
     },
     {
@@ -2341,8 +2341,8 @@
         "Tests pass: npm run test"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Shannon performs both browser and command-line based exploits and verifies RCE through actual command execution. Any child_process usage that interpolates user input is a critical vulnerability. Database backup, PDF generation, and file processing are common command injection vectors in Node.js apps.",
+      "passes": true,
+      "notes": "COMPLETE. server/lib/safe-exec.ts with allowlist-based command validation, execFile (not exec), argument sanitization, timeout enforcement. Audit tool at server/scripts/command-injection-audit.ts. No eval()/new Function() in codebase. Tests in server/tests/unit/command-injection-prevention.test.ts (167 lines).",
       "category": "ai-security-defense"
     },
     {
@@ -2379,8 +2379,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "Shannon is essentially an automated pentest pipeline. We need our own automated security pipeline to find issues first. The existing scripts/audit/security-audit.ts provides a foundation but isn't CI-integrated. npm audit exists but isn't enforced in CI. Supply chain attacks (typosquatting) are a real threat - Shannon's reconnaissance phase would identify outdated/vulnerable dependencies.",
+      "passes": true,
+      "notes": "COMPLETE. .github/workflows/security-scan.yml with dependency audit, static analysis, secret detection. CI quality job runs npm audit + supply chain check + dependency integrity check + secret scanning. scripts/dependency-check.ts and scripts/supply-chain-check.ts integrated into CI. SECURITY.md with disclosure policy.",
       "category": "ai-security-defense"
     },
     {
@@ -2399,8 +2399,8 @@
         "Tests pass: npm run test"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "Shannon performs automated reconnaissance (Nmap, Subfinder, WhatWeb) followed by systematic exploitation. This creates detectable patterns: rapid endpoint scanning, high error rates during fuzzing, sequential parameter enumeration. Current rate limiting is per-endpoint; behavioral detection looks at cross-endpoint patterns that indicate automated tooling rather than human usage.",
+      "passes": true,
+      "notes": "COMPLETE. server/middleware/threat-detection.ts with per-session behavioral signals, threat scoring 0-100, progressive response (latency/CAPTCHA/block). server/tests/unit/threat-detection.test.ts. Integrated as middleware.",
       "category": "ai-security-defense"
     },
     {
@@ -2418,8 +2418,8 @@
         "Tests pass: npm run test"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "Shannon verifies exploits through actual data exfiltration. In a multi-tenant SaaS, the blast radius of a successful attack is all tenant data. Current tenant isolation is at query time (WHERE tenantId = ?), but there's no response-level verification or volume monitoring. This is the last line of defense if query-level isolation is bypassed.",
+      "passes": true,
+      "notes": "COMPLETE. server/middleware/exfiltration-guard.ts monitors per-user response sizes/record counts with 10-min windows. Thresholds: warn 10MB/block 50MB, warn 1000/block 5000 records. Tests in server/tests/unit/exfiltration-guard.test.ts.",
       "category": "ai-security-defense"
     },
     {
@@ -2437,8 +2437,8 @@
         "Tests pass: npm run test"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "Shannon's browser-based exploitation can leverage CORS misconfigurations. Origin reflection (echoing back the attacker's Origin) with credentials is equivalent to no CORS. The existing scripts/audit/security-audit.ts checks CORS config but findings may not be remediated.",
+      "passes": true,
+      "notes": "COMPLETE. server/config/cors.ts with environment-specific origin allowlists. No wildcard origins. Mutation method enforcement (require Origin on POST/PUT/PATCH/DELETE in production). No origin reflection. Tests in server/tests/unit/cors-validation.test.ts.",
       "category": "ai-security-defense"
     },
     {
@@ -2457,8 +2457,8 @@
         "Build passes: npm run build"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "Visibility is key to defense. Shannon's attacks generate detectable patterns but only if we're watching. This dashboard aggregates security signals from SEC-003, SEC-004, SEC-008, and SEC-009 into an actionable admin view. Existing audit log infrastructure (server/services/audit-log-service.ts) provides the data foundation.",
+      "passes": true,
+      "notes": "COMPLETE. server/routes-security-dashboard.ts with admin-only endpoints. Security event aggregation from threat detection, auth hardening, exfiltration guard, and CORS violations.",
       "category": "ai-security-defense"
     },
     {
@@ -2496,8 +2496,8 @@
         "Tests pass: npm run test"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "Shannon handles 2FA/TOTP and advanced authentication flows autonomously. If it captures a session token, hardened session management limits the blast radius. Current security_sessions table exists (shared/security-schema.ts) but may not have rotation or device binding. Supabase GoTrue handles JWT issuance but our session fallback needs equivalent hardening.",
+      "passes": true,
+      "notes": "COMPLETE. server/middleware/session-hardening.ts with device fingerprinting, refresh token rotation with replay detection, token family revocation, session invalidation on role changes. Tests in server/tests/unit/session-hardening.test.ts.",
       "category": "ai-security-defense"
     },
     {
@@ -2516,8 +2516,8 @@
         "Tests pass: npm run test"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "Shannon's first phase is reconnaissance using Nmap, Subfinder, and WhatWeb - all of which have identifiable signatures. Browser-based exploits use headless Chromium which can be fingerprinted. This is the outermost defense layer: detect and flag before the attack chain even begins. Must be careful not to block legitimate crawlers or accessibility tools.",
+      "passes": true,
+      "notes": "COMPLETE. server/middleware/bot-detection.ts with bot scoring (0-100). server/config/bot-signatures.ts with security tool patterns (nmap, sqlmap, burpsuite, etc). Legitimate crawler allowlist (Googlebot, Bingbot). Tests in server/tests/unit/bot-detection.test.ts.",
       "category": "ai-security-defense"
     },
     {
@@ -2535,8 +2535,8 @@
         "Tests pass: npm run test"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "Shannon's code-aware analysis benefits enormously from information leakage. Database error messages revealing table/column names guide SQL injection. Stack traces reveal framework versions and file structure. Consistent 404 format prevents endpoint enumeration. Existing server/utils/error-sanitizer.ts may partially address this but needs comprehensive coverage across all 127+ route files.",
+      "passes": true,
+      "notes": "COMPLETE. server/utils/error-sanitizer.ts scrubs 11+ categories of sensitive info (PG details, file paths, IPs, SQL, stack traces). Global error handler in server/middleware/error-handler.ts. Fixed 106 error.message leakage instances across 14 route files. Tests in server/tests/unit/error-sanitization.test.ts (30+ test cases).",
       "category": "ai-security-defense"
     },
     {
@@ -2552,8 +2552,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "Shannon's reconnaissance phase includes WhatWeb which identifies technology stacks and versions. Known-vulnerable dependency versions are low-hanging fruit. Supply chain attacks (event-stream, ua-parser-js incidents) can give attackers direct code execution. Lockfile integrity prevents tampering. This complements SEC-007's CI scanning with supply-chain-specific checks.",
+      "passes": true,
+      "notes": "COMPLETE. scripts/supply-chain-check.ts (typosquatting detection via Levenshtein distance, lifecycle script audit). scripts/dependency-check.ts (lockfile integrity, install script audit from untrusted publishers). npm scripts: audit:supply-chain, audit:deps, check:security. Integrated into CI pipeline.",
       "category": "ai-security-defense"
     },
     {

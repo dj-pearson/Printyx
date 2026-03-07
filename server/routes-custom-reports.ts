@@ -310,7 +310,7 @@ export function registerCustomReportsRoutes(app: Express) {
         });
       } catch (error: any) {
         log.error('Error executing preview:', error);
-        res.status(500).json({ message: error.message || 'Failed to execute preview' });
+        res.status(500).json({ message: 'Failed to execute preview' });
       }
     },
   );
@@ -396,7 +396,7 @@ export function registerCustomReportsRoutes(app: Express) {
         });
       } catch (error: any) {
         log.error('Error creating custom report:', error);
-        res.status(500).json({ message: error.message || 'Failed to create custom report' });
+        res.status(500).json({ message: 'Failed to create custom report' });
       }
     },
   );
@@ -474,7 +474,7 @@ export function registerCustomReportsRoutes(app: Express) {
         });
       } catch (error: any) {
         log.error('Error updating custom report:', error);
-        res.status(500).json({ message: error.message || 'Failed to update custom report' });
+        res.status(500).json({ message: 'Failed to update custom report' });
       }
     },
   );
@@ -514,7 +514,7 @@ export function registerCustomReportsRoutes(app: Express) {
         res.json({ message: 'Report deleted successfully' });
       } catch (error: any) {
         log.error('Error deleting custom report:', error);
-        res.status(500).json({ message: error.message || 'Failed to delete custom report' });
+        res.status(500).json({ message: 'Failed to delete custom report' });
       }
     },
   );
@@ -725,7 +725,7 @@ export function registerCustomReportsRoutes(app: Express) {
         });
       } catch (error: any) {
         log.error('Error executing custom report:', error);
-        res.status(500).json({ message: error.message || 'Failed to execute report' });
+        res.status(500).json({ message: 'Failed to execute report' });
       }
     },
   );
