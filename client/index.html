@@ -54,10 +54,22 @@
     <link rel="canonical" href="https://printyx.net/" />
 
     <!-- Additional SEO -->
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="language" content="English" />
     <meta name="revisit-after" content="7 days" />
     <meta name="author" content="Printyx" />
+
+    <!-- GEO: Generative Engine Optimization - AI Attribution Metadata -->
+    <meta name="citation_title" content="Printyx - AI-Powered Copier Dealer Management Platform" />
+    <meta name="citation_author" content="Printyx" />
+    <meta name="citation_publication_date" content="2024-01-01" />
+    <meta name="citation_online_date" content="2024-01-01" />
+    <meta name="citation_publisher" content="Printyx Inc." />
+    <meta name="dc.title" content="Printyx - AI-Powered Copier Dealer Management Platform" />
+    <meta name="dc.creator" content="Printyx" />
+    <meta name="dc.publisher" content="Printyx Inc." />
+    <meta name="dc.type" content="Software" />
+    <meta name="dc.language" content="en" />
 
     <!-- PWA Configuration -->
     <link rel="manifest" href="/manifest.json" />
@@ -120,16 +132,90 @@
       {
         "@context": "https://schema.org",
         "@type": "Organization",
+        "@id": "https://printyx.net/#organization",
         "name": "Printyx",
         "url": "https://printyx.net",
-        "logo": "https://printyx.net/logo.png",
-        "description": "Modern cloud platform for copier dealer management with AI-powered predictive intelligence",
-        "sameAs": ["https://www.linkedin.com/company/printyx", "https://twitter.com/printyx"],
-        "contactPoint": {
-          "@type": "ContactPoint",
-          "contactType": "Sales",
-          "email": "sales@printyx.com"
-        }
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://printyx.net/logo.png",
+          "width": 512,
+          "height": 512
+        },
+        "description": "Modern cloud platform for copier dealer management with AI-powered predictive intelligence. Purpose-built for copier dealers and managed print service providers.",
+        "foundingDate": "2024",
+        "knowsAbout": [
+          "Copier Dealer Management",
+          "Managed Print Services",
+          "Field Service Dispatch",
+          "Print Fleet Management",
+          "AI Predictive Maintenance"
+        ],
+        "sameAs": [
+          "https://www.linkedin.com/company/printyx",
+          "https://twitter.com/printyx",
+          "https://www.youtube.com/@printyx"
+        ],
+        "contactPoint": [
+          {
+            "@type": "ContactPoint",
+            "contactType": "sales",
+            "email": "sales@printyx.com",
+            "availableLanguage": "English"
+          },
+          {
+            "@type": "ContactPoint",
+            "contactType": "customer service",
+            "email": "support@printyx.net",
+            "availableLanguage": "English"
+          }
+        ]
+      }
+    </script>
+
+    <!-- WebSite Schema with SearchAction for Sitelinks Search Box -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "@id": "https://printyx.net/#website",
+        "name": "Printyx",
+        "url": "https://printyx.net",
+        "description": "AI-Powered Copier Dealer Management Platform",
+        "publisher": {
+          "@id": "https://printyx.net/#organization"
+        },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://printyx.net/search?q={search_term_string}"
+          },
+          "query-input": "required name=search_term_string"
+        },
+        "inLanguage": "en-US"
+      }
+    </script>
+
+    <!-- WebPage Schema with Speakable for Voice Search / AI Overviews -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "@id": "https://printyx.net/#webpage",
+        "url": "https://printyx.net",
+        "name": "Printyx - AI-Powered Copier Dealer Management Platform",
+        "isPartOf": {
+          "@id": "https://printyx.net/#website"
+        },
+        "about": {
+          "@id": "https://printyx.net/#organization"
+        },
+        "description": "Transform your copier dealership with Printyx's predictive intelligence platform. Modern cloud architecture with AI-powered forecasting, automated billing, and smart service dispatch.",
+        "speakable": {
+          "@type": "SpeakableSpecification",
+          "cssSelector": ["h1", "h2", ".hero-description", "[data-speakable]"]
+        },
+        "inLanguage": "en-US"
       }
     </script>
   </head>
