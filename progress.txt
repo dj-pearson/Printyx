@@ -2836,3 +2836,72 @@ Ralph loop was invoked against prd.json. All 102 stories already had `passes: tr
 
 ---
 
+## Iteration - SEC: Critical Platform Security Hardening
+**Started**: 2026-03-07
+**Completed**: 2026-03-07
+**Status**: COMPLETE
+**Branch**: claude/critical-platform-improvements-GuATc
+
+### What Was Done (4 Critical Items):
+
+#### 1. SEC-001: SQL Injection Hardening (Admin Query Endpoint)
+- Hardened `server/routes-root-admin.ts` execute-query endpoint
+- Added multi-statement blocking (semicolon detection outside strings/comments)
+- Added dangerous keyword blocking (INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, GRANT, COPY, pg_read_file, etc.)
+- Added 10-second statement timeout to prevent long-running queries
+- Fixed error.message leakage in error response (now returns generic message)
+- **Impact**: Prevents SQL injection even from admin-level query execution
+
+#### 2. SEC-015: Error Message Sanitization (106 Fixes Across 14 Files)
+- Fixed 106 instances of `error.message` being leaked directly to API clients
+- Files fixed: routes-document-automation.ts (9), routes-seo.ts (36), routes-content-marketing.ts (18), routes-csv-import.ts (11), routes/sales-reports-api.ts (8), routes/lead-intelligence-routes.ts (6), routes/admin-seed-routes.ts (5), routes-custom-reports.ts (5), routes/sales-supervisor-reports-api.ts (3), routes-contacts.ts (2), routes-white-label.ts (1), routes/sso-routes.ts (1), routes-dashboard-layouts.ts (1), routes-proposals.ts (3)
+- All now return static error messages instead of potentially sensitive error.message content
+- **Impact**: Prevents information leakage of database details, file paths, SQL fragments, stack traces
+
+#### 3. SEC-016: Dependency Supply Chain Security
+- Verified scripts/supply-chain-check.ts (typosquatting via Levenshtein, lifecycle script audit)
+- Verified scripts/dependency-check.ts (lockfile integrity, install script audit)
+- Added npm scripts: `audit:deps` and `check:security` (combined audit + supply chain + dependency check)
+- Integrated supply chain check into CI pipeline (ci.yml quality job)
+- **Impact**: Catches typosquatted packages and supply chain attacks before deployment
+
+#### 4. SEC-007: CI Security Scanning Integration
+- Added supply chain security check to `.github/workflows/ci.yml` quality gate
+- Added dependency integrity check to CI quality gate
+- Added SQL injection audit and supply chain check to `.github/workflows/security-scan.yml`
+- **Impact**: Automated security scanning catches vulnerabilities in every PR/push
+
+### PRD Updates:
+- Marked 14 SEC stories as passes: true (SEC-001 through SEC-005, SEC-007 through SEC-011, SEC-013 through SEC-016)
+- 2 SEC stories remain for future Ralph loops: SEC-006 (OpenAPI fuzz testing), SEC-012 (internal pentest harness)
+
+### Files Modified:
+- `server/routes-root-admin.ts` — SQL injection hardening on execute-query endpoint
+- `server/routes-document-automation.ts` — 9 error leakage fixes
+- `server/routes-seo.ts` — 36 error leakage fixes
+- `server/routes-content-marketing.ts` — 18 error leakage fixes
+- `server/routes-csv-import.ts` — 11 error leakage fixes
+- `server/routes/sales-reports-api.ts` — 8 error leakage fixes
+- `server/routes/lead-intelligence-routes.ts` — 6 error leakage fixes
+- `server/routes/admin-seed-routes.ts` — 5 error leakage fixes
+- `server/routes-custom-reports.ts` — 5 error leakage fixes
+- `server/routes/sales-supervisor-reports-api.ts` — 3 error leakage fixes
+- `server/routes-contacts.ts` — 2 error leakage fixes
+- `server/routes-white-label.ts` — 1 error leakage fix
+- `server/routes/sso-routes.ts` — 1 error leakage fix
+- `server/routes-dashboard-layouts.ts` — 1 error leakage fix
+- `server/routes-proposals.ts` — 3 error leakage fixes
+- `package.json` — Added audit:deps and check:security scripts
+- `.github/workflows/ci.yml` — Added supply chain and dependency checks
+- `.github/workflows/security-scan.yml` — Added SQL injection and supply chain scans
+- `prd.json` — 14 SEC stories marked passes: true
+
+### Build Verification:
+- `npm run build` — PASSES (built in 24.42s)
+
+### Remaining Stories for Future Ralph Loops:
+- SEC-006: API schema validation and fuzz testing with OpenAPI enforcement (Priority 2)
+- SEC-012: Internal penetration testing harness using OWASP methodology (Priority 3)
+
+---
+

@@ -41,6 +41,10 @@ jobs:
       - run: npm run build
       - name: Dependency audit
         run: npm audit --audit-level=high --omit=dev || true
+      - name: Supply chain security check
+        run: npx tsx scripts/supply-chain-check.ts
+      - name: Dependency integrity check
+        run: npx tsx scripts/dependency-check.ts
       - name: Secret scanning
         run: npm run check:secrets
 

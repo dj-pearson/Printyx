@@ -253,7 +253,7 @@ export function registerWhiteLabelRoutes(app: Express) {
       });
     } catch (error: any) {
       log.error('Failed to apply preset:', error);
-      res.status(500).json({ error: error.message || 'Failed to apply preset' });
+      res.status(500).json({ error: 'Failed to apply preset' });
     }
   });
 
