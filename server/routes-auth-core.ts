@@ -13,6 +13,8 @@
 
 import type { Express } from 'express';
 import { authRoutes } from './auth-routes';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('auth-core');
 import { storage } from './storage';
 import { getUserId } from './utils/auth-helpers';
 import { db } from './db';
@@ -94,9 +96,9 @@ async function resolveEnhancedPermissions(
     return permCodes.map((p) => p.code);
   } catch (error) {
     // Enhanced RBAC tables may not exist yet - graceful fallback
-    console.warn(
-      'Enhanced RBAC permission resolution failed (tables may not exist):',
-      (error as Error).message,
+    log.warn(
+      { err: (error as Error).message },
+      'Enhanced RBAC permission resolution failed (tables may not exist)',
     );
     return null;
   }

@@ -241,46 +241,30 @@ export class GeofenceAlertsService {
 
       // Email notification
       if (rule.notifyByEmail) {
-        try {
-          // TODO: Integrate with email service
-          // await emailService.sendGeofenceAlert(userId, alert);
-          result.email = true;
-        } catch (error: any) {
-          result.errors.push({ type: 'email', userId, error: error.message });
-        }
+        // TODO: Integrate with email service
+        log.warn({ userId, alertType: 'geofence' }, 'Email notification skipped: email service not yet integrated');
+        result.email = false;
       }
 
       // Push notification
       if (rule.notifyByPush) {
-        try {
-          // TODO: Integrate with push notification service
-          // await pushService.sendGeofenceAlert(userId, alert);
-          result.push = true;
-        } catch (error: any) {
-          result.errors.push({ type: 'push', userId, error: error.message });
-        }
+        // TODO: Integrate with push notification service
+        log.warn({ userId, alertType: 'geofence' }, 'Push notification skipped: push service not yet integrated');
+        result.push = false;
       }
 
       // SMS notification
       if (rule.notifyBySms) {
-        try {
-          // TODO: Integrate with SMS service
-          // await smsService.sendGeofenceAlert(userId, alert);
-          result.sms = true;
-        } catch (error: any) {
-          result.errors.push({ type: 'sms', userId, error: error.message });
-        }
+        // TODO: Integrate with SMS service
+        log.warn({ userId, alertType: 'geofence' }, 'SMS notification skipped: SMS service not yet integrated');
+        result.sms = false;
       }
 
       // In-app notification
       if (rule.notifyInApp) {
-        try {
-          // TODO: Integrate with in-app notification system
-          // await notificationService.createNotification(userId, alert);
-          result.inApp = true;
-        } catch (error: any) {
-          result.errors.push({ type: 'inApp', userId, error: error.message });
-        }
+        // TODO: Integrate with in-app notification system
+        log.warn({ userId, alertType: 'geofence' }, 'In-app notification skipped: notification system not yet integrated');
+        result.inApp = false;
       }
     }
 

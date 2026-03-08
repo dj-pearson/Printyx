@@ -481,8 +481,11 @@ export function _clearUploadRateStore(): void {
 // PRE-CONFIGURED EXPORTS
 // ═══════════════════════════════════════════════════════════════════════
 
-/** Pre-configured secure multer instance with default settings (memory storage, 25MB limit) */
-export const secureUpload = createSecureUpload();
+/** Pre-configured secure multer instance. Uses disk storage in production to avoid OOM on concurrent uploads. */
+export const secureUpload = createSecureUpload({
+  useDiskStorage: process.env.NODE_ENV === 'production',
+  destination: '/tmp/printyx-uploads/',
+});
 
 /**
  * Combined middleware array for file upload routes.

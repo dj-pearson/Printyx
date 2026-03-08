@@ -418,8 +418,7 @@ const AISearchKnowledgeDashboard: React.FC = () => {
   };
 
   const handleAnswerFeedback = (answerId: string, isHelpful: boolean) => {
-    console.log(`Answer ${answerId} feedback:`, isHelpful ? 'helpful' : 'not helpful');
-    // In production, this would send feedback to the API
+    // TODO: Send feedback to the API when endpoint is available
   };
 
   const toggleSectionExpansion = (sectionId: string) => {

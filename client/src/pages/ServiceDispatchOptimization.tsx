@@ -422,7 +422,7 @@ export default function ServiceDispatchOptimization() {
               action: alert.suggestedAction
                 ? {
                     label: 'Take Action',
-                    onClick: () => console.log(`Taking action for alert ${alert.id}`),
+                    onClick: () => {},
                   }
                 : undefined,
             }))}

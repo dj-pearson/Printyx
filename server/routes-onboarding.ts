@@ -606,7 +606,7 @@ export function registerOnboardingRoutes(app: Express): void {
 
       const tenantId = user.tenantId;
 
-      log.info('[DEBUG] Raw request body:', JSON.stringify(req.body, null, 2));
+      log.debug('Onboarding checklist update', { fields: Object.keys(req.body || {}) });
 
       const validatedData = insertOnboardingChecklistSchema.parse({
         ...req.body,

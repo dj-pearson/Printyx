@@ -17,7 +17,7 @@ import { registerRoutes } from './routes';
 import { seedDashboardWidgets } from './seed-dashboard-widgets';
 import { randomUUID, createHash } from 'crypto';
 import fs from 'fs';
-import { setupVite, serveStatic, log } from './vite';
+import { setupVite, serveStatic } from './vite';
 import {
   initMonitoring,
   setupMonitoringMiddleware,
@@ -32,6 +32,28 @@ import { setupOpenApi } from './openapi';
 import { globalErrorHandler } from './middleware/error-handler';
 import { closeDbConnections } from './db';
 import { shutdownCache } from './lib/redis-client';
+
+// Global error handlers - catch unhandled errors before they crash the process
+process.on('unhandledRejection', (reason, promise) => {
+  const errorMsg = reason instanceof Error ? reason.message : String(reason);
+  log.error({ reason: errorMsg }, 'Unhandled promise rejection');
+  try {
+    getAPM().captureException(reason instanceof Error ? reason : new Error(errorMsg));
+  } catch {
+    // APM may not be initialized yet
+  }
+});
+
+process.on('uncaughtException', (error) => {
+  log.error(error, 'Uncaught exception - shutting down');
+  try {
+    getAPM().captureException(error);
+  } catch {
+    // APM may not be initialized yet
+  }
+  // Give APM time to flush, then exit
+  setTimeout(() => process.exit(1), 1000);
+});
 
 const app = express();
 
@@ -271,44 +293,6 @@ app.use((req: any, res, next) => {
   };
 
   res.on('finish', onFinish);
-  next();
-});
-
-// Legacy request logging middleware - kept for backward compatibility
-// Primary logging is now handled by setupMonitoringMiddleware above
-// This can be removed once all teams have migrated to structured logging
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    // Only log in development mode for legacy format
-    if (
-      path.startsWith('/api') &&
-      process.env.NODE_ENV === 'development' &&
-      process.env.LEGACY_LOGGING === 'true'
-    ) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + '…';
-      }
-
-      log(logLine);
-    }
-  });
-
   next();
 });
 

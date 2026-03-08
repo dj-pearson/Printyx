@@ -1,0 +1,36 @@
+# Printyx - AI-Powered Copier Dealer Management
+# https://printyx.net
+
+User-agent: *
+
+# Allow public/marketing pages
+Allow: /
+Allow: /pricing
+Allow: /features
+Allow: /about
+Allow: /contact
+Allow: /blog
+Allow: /legal/
+
+# Disallow application routes (require authentication)
+Disallow: /app/
+Disallow: /admin/
+Disallow: /dashboard
+Disallow: /leads
+Disallow: /customers
+Disallow: /deals
+Disallow: /quotes
+Disallow: /orders
+Disallow: /invoices
+Disallow: /equipment
+Disallow: /service
+Disallow: /reports
+Disallow: /settings
+Disallow: /profile
+Disallow: /tenant-setup
+
+# Disallow API endpoints
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://printyx.net/sitemap.xml

@@ -626,7 +626,7 @@ export class UserLifecycleService {
       .returning();
 
     // Start offboarding process (async)
-    this.processOffboarding(workflow.id, tenantId).catch(console.error);
+    this.processOffboarding(workflow.id, tenantId).catch((err) => log.error(err, 'Failed to process offboarding'));
 
     return {
       workflowId: workflow.id,
@@ -649,39 +649,47 @@ export class UserLifecycleService {
     try {
       // Step 1: Generate user activity report
       // TODO: Implement actual report generation
-      await this.updateWorkflowStep(workflowId, 0, true);
+      log.warn({ workflowId }, 'Offboarding step 1 (activity report) not yet implemented');
+      await this.updateWorkflowStep(workflowId, 0, true, { notes: 'Stub: report generation not implemented' });
 
       // Step 2: Export user data (GDPR compliance)
-      // TODO: Implement data export
-      await this.updateWorkflowStep(workflowId, 1, true, { exported: true });
+      // TODO: Implement data export - CRITICAL for GDPR compliance
+      log.warn({ workflowId }, 'Offboarding step 2 (GDPR data export) not yet implemented');
+      await this.updateWorkflowStep(workflowId, 1, true, { exported: false, notes: 'Stub: data export not implemented' });
 
       // Step 3: Transfer record ownership
       if (workflow.transferOwnershipTo) {
         // TODO: Implement record ownership transfer
-        await this.updateWorkflowStep(workflowId, 2, true);
+        log.warn({ workflowId, transferTo: workflow.transferOwnershipTo }, 'Offboarding step 3 (ownership transfer) not yet implemented');
+        await this.updateWorkflowStep(workflowId, 2, true, { notes: 'Stub: ownership transfer not implemented' });
       } else {
         await this.updateWorkflowStep(workflowId, 2, true, { notes: 'No transfer needed' });
       }
 
       // Step 4: Revoke all role assignments
       // TODO: Implement role revocation
-      await this.updateWorkflowStep(workflowId, 3, true);
+      log.warn({ workflowId }, 'Offboarding step 4 (role revocation) not yet implemented');
+      await this.updateWorkflowStep(workflowId, 3, true, { notes: 'Stub: role revocation not implemented' });
 
       // Step 5: Revoke integration access
       // TODO: Implement integration access revocation
-      await this.updateWorkflowStep(workflowId, 4, true);
+      log.warn({ workflowId }, 'Offboarding step 5 (integration access revocation) not yet implemented');
+      await this.updateWorkflowStep(workflowId, 4, true, { notes: 'Stub: integration revocation not implemented' });
 
       // Step 6: Terminate active sessions
       // TODO: Implement session termination
-      await this.updateWorkflowStep(workflowId, 5, true);
+      log.warn({ workflowId }, 'Offboarding step 6 (session termination) not yet implemented');
+      await this.updateWorkflowStep(workflowId, 5, true, { notes: 'Stub: session termination not implemented' });
 
       // Step 7: Archive user account
       // TODO: Implement user archival
-      await this.updateWorkflowStep(workflowId, 6, true);
+      log.warn({ workflowId }, 'Offboarding step 7 (user archival) not yet implemented');
+      await this.updateWorkflowStep(workflowId, 6, true, { notes: 'Stub: user archival not implemented' });
 
       // Step 8: Generate audit report
       // TODO: Implement audit report generation
-      await this.updateWorkflowStep(workflowId, 7, true);
+      log.warn({ workflowId }, 'Offboarding step 8 (audit report) not yet implemented');
+      await this.updateWorkflowStep(workflowId, 7, true, { notes: 'Stub: audit report not implemented' });
 
       // Mark workflow as completed
       await db
