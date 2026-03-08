@@ -22,6 +22,7 @@ import { storage } from './storage';
 import { insertLeadSchema, insertLeadContactSchema } from '@shared/schema';
 import { BusinessRecordsTransformer } from './data-field-mapping';
 import { cacheControl, etag } from './middleware/cache-middleware';
+import { enforceUsageLimits } from './middleware/subscription';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 
 // Multer for CSV import
@@ -140,7 +141,7 @@ export function registerCrmCoreRoutes(app: Express) {
 
   // ─── Lead Mutations ──────────────────────────────────────────────
 
-  app.post('/api/leads', async (req: any, res, next) => {
+  app.post('/api/leads', enforceUsageLimits, async (req: any, res, next) => {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {
@@ -278,7 +279,7 @@ export function registerCrmCoreRoutes(app: Express) {
 
   // ─── Business Records CSV Import ─────────────────────────────────
 
-  app.post('/api/business-records/import', upload.single('file'), async (req: any, res, next) => {
+  app.post('/api/business-records/import', enforceUsageLimits, upload.single('file'), async (req: any, res, next) => {
     try {
       const tenantId = getTenantId(req);
       if (!tenantId) {

@@ -11,8 +11,63 @@ const log = createModuleLogger('webhook-routes');
 
 const router = express.Router();
 
+/** Return a 400 for Zod validation errors, rethrow others */
+function handleWebhookError(error: unknown, provider: string, res: express.Response) {
+  if (error instanceof z.ZodError) {
+    log.warn({ provider, issues: error.issues }, 'Webhook payload validation failed');
+    return res.status(400).json({
+      error: 'Invalid webhook payload',
+      code: 'VALIDATION_ERROR',
+      details: error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+    });
+  }
+  log.error(`Webhook error for ${provider}:`, error);
+  return res.status(500).json({ error: 'Internal server error' });
+}
+
 // Raw body parser middleware for webhook signature verification
 const rawBodyParser = express.raw({ type: 'application/json' });
+
+// ─── Webhook Payload Schemas ──────────────────────────────────────────
+// Loose schemas that validate structure without being overly strict,
+// since providers may add new fields over time.
+
+const stripeWebhookSchema = z.object({
+  id: z.string().startsWith('evt_'),
+  object: z.literal('event'),
+  type: z.string().min(1),
+  data: z.object({ object: z.record(z.unknown()) }),
+});
+
+const salesforceWebhookSchema = z.object({
+  // Salesforce outbound messages contain sObject data
+}).passthrough().refine(
+  (data) => Object.keys(data).length > 0,
+  { message: 'Salesforce webhook payload cannot be empty' },
+);
+
+const microsoftGraphWebhookSchema = z.object({
+  value: z.array(z.object({
+    subscriptionId: z.string(),
+    changeType: z.string(),
+    resource: z.string(),
+  }).passthrough()),
+});
+
+const googleCalendarWebhookSchema = z.object({}).passthrough();
+
+const quickbooksWebhookSchema = z.object({
+  eventNotifications: z.array(z.object({
+    realmId: z.string(),
+    dataChangeEvent: z.object({
+      entities: z.array(z.object({
+        name: z.string(),
+        id: z.string(),
+        operation: z.string(),
+      }).passthrough()),
+    }),
+  }).passthrough()),
+});
 
 /**
  * Generic webhook endpoint that routes to provider-specific handlers
@@ -55,9 +110,10 @@ router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
  */
 router.post('/api/webhooks/salesforce', express.json(), async (req, res) => {
   try {
+    const payload = salesforceWebhookSchema.parse(req.body);
     const result = await WebhookService.processWebhook(
       'salesforce',
-      req.body,
+      payload,
       req.headers as Record<string, string>,
     );
 
@@ -67,8 +123,7 @@ router.post('/api/webhooks/salesforce', express.json(), async (req, res) => {
       res.status(400).json({ error: result.message });
     }
   } catch (error) {
-    log.error('Salesforce webhook error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    handleWebhookError(error, 'salesforce', res);
   }
 });
 
@@ -77,7 +132,8 @@ router.post('/api/webhooks/salesforce', express.json(), async (req, res) => {
  */
 router.post('/api/webhooks/stripe', rawBodyParser, async (req, res) => {
   try {
-    const payload = JSON.parse(req.body.toString());
+    const raw = JSON.parse(req.body.toString());
+    const payload = stripeWebhookSchema.parse(raw);
     const result = await WebhookService.processWebhook(
       'stripe',
       payload,
@@ -90,8 +146,7 @@ router.post('/api/webhooks/stripe', rawBodyParser, async (req, res) => {
       res.status(400).json({ error: result.message });
     }
   } catch (error) {
-    log.error('Stripe webhook error:', error);
-    res.status(400).json({ error: 'Invalid payload' });
+    handleWebhookError(error, 'stripe', res);
   }
 });
 
@@ -107,9 +162,10 @@ router.post('/api/webhooks/microsoft-calendar', express.json(), async (req, res)
       return;
     }
 
+    const payload = microsoftGraphWebhookSchema.parse(req.body);
     const result = await WebhookService.processWebhook(
       'microsoft-calendar',
-      req.body,
+      payload,
       req.headers as Record<string, string>,
     );
 
@@ -119,8 +175,7 @@ router.post('/api/webhooks/microsoft-calendar', express.json(), async (req, res)
       res.status(400).json({ error: result.message });
     }
   } catch (error) {
-    log.error('Microsoft webhook error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    handleWebhookError(error, 'microsoft-calendar', res);
   }
 });
 
@@ -129,9 +184,10 @@ router.post('/api/webhooks/microsoft-calendar', express.json(), async (req, res)
  */
 router.post('/api/webhooks/google-calendar', express.json(), async (req, res) => {
   try {
+    const payload = googleCalendarWebhookSchema.parse(req.body);
     const result = await WebhookService.processWebhook(
       'google-calendar',
-      req.body,
+      payload,
       req.headers as Record<string, string>,
     );
 
@@ -141,8 +197,7 @@ router.post('/api/webhooks/google-calendar', express.json(), async (req, res) =>
       res.status(400).json({ error: result.message });
     }
   } catch (error) {
-    log.error('Google Calendar webhook error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    handleWebhookError(error, 'google-calendar', res);
   }
 });
 
@@ -151,7 +206,8 @@ router.post('/api/webhooks/google-calendar', express.json(), async (req, res) =>
  */
 router.post('/api/webhooks/quickbooks', rawBodyParser, async (req, res) => {
   try {
-    const payload = JSON.parse(req.body.toString());
+    const raw = JSON.parse(req.body.toString());
+    const payload = quickbooksWebhookSchema.parse(raw);
     const result = await WebhookService.processWebhook(
       'quickbooks',
       payload,
@@ -164,8 +220,7 @@ router.post('/api/webhooks/quickbooks', rawBodyParser, async (req, res) => {
       res.status(400).json({ error: result.message });
     }
   } catch (error) {
-    log.error('QuickBooks webhook error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    handleWebhookError(error, 'quickbooks', res);
   }
 });
 
