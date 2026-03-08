@@ -176,6 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       '/api/trial',
       '/api/knowledge-base',
       '/api/signup-crm',
+      '/api/webhooks', // Webhooks use provider-specific signature verification, not JWT
     ];
     if (publicPaths.some((p) => req.path.startsWith(p))) return next();
     const userId = getUserId(req);
