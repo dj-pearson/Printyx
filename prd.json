@@ -2946,8 +2946,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "server/index.ts has redundant logging middleware alongside the structured monitoring middleware. The legacy code creates duplicate log entries and should be removed.",
+      "passes": true,
+      "notes": "COMPLETE. Removed legacy logging middleware and unused 'log' import from vite.ts. Structured monitoring middleware (setupMonitoringMiddleware) handles all request logging.",
       "category": "platform-health"
     },
     {
@@ -2985,6 +2985,223 @@
       "passes": false,
       "notes": "6 critical frontend files have unresolved TODO/FIXME comments in user-facing components. These may represent incomplete features visible to users.",
       "category": "platform-health"
+    },
+    {
+      "id": "LAUNCH-001",
+      "title": "Remove or guard all console.log/console.warn statements in frontend production code",
+      "description": "As a user, I should not see debugging output in the browser console when using Printyx in production, as it looks unprofessional and may leak internal implementation details.",
+      "acceptanceCriteria": [
+        "Remove all console.log, console.warn, and console.debug statements from client/src/pages/EnhancedReportsHub.tsx (3 occurrences)",
+        "Remove all console.log statements from client/src/pages/ProductAccessories.tsx (3 occurrences)",
+        "Remove console.log from client/src/pages/ServiceDispatchOptimization.tsx (1 occurrence)",
+        "Remove console.log from client/src/pages/AISearchKnowledgeDashboard.tsx (1 occurrence)",
+        "Wrap the 20+ console.log statements in client/src/lib/pwa.ts with import.meta.env.DEV guard",
+        "Verify no unguarded console.log/console.warn/console.debug remains in client/src/pages/ or client/src/components/ (console.error in catch blocks is acceptable)",
+        "Build passes: npm run build",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "COMPLETE. Removed console.log/warn/debug from EnhancedReportsHub.tsx (3), ProductAccessories.tsx (3), ServiceDispatchOptimization.tsx (1), AISearchKnowledgeDashboard.tsx (1). Wrapped 20+ PWA console statements with import.meta.env.DEV guard.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-002",
+      "title": "Remove hardcoded localhost:5000 development URL from TenantSetup page",
+      "description": "As a user, I should not see localhost development URLs in the tenant setup page when running in production.",
+      "acceptanceCriteria": [
+        "Remove or conditionally render the localhost:5000 reference in client/src/pages/TenantSetup.tsx line 53",
+        "Remove or conditionally render the replit.dev reference in client/src/pages/TenantSetup.tsx line 52",
+        "Ensure tenant setup page shows only production-appropriate URLs (printyx.net domain)",
+        "Build passes: npm run build",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "COMPLETE. Wrapped dev URLs (localhost:5000, replit.dev) with import.meta.env.DEV conditional rendering. Only printyx.net URLs shown in production.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-003",
+      "title": "Configure email provider for production (currently defaults to simulation mode)",
+      "description": "As a platform operator, I need email sending to work in production with a real email provider so users receive transactional emails (welcome, password reset, notifications).",
+      "acceptanceCriteria": [
+        "Verify EMAIL_PROVIDER and EMAIL_ENABLED environment variables are documented in .env.example with production values",
+        "Add EMAIL_PROVIDER to server/lib/env-validation.ts with production validation (must not be 'simulation' in production)",
+        "Log a startup warning if EMAIL_PROVIDER is 'simulation' in production",
+        "Verify password reset, welcome email, and notification email templates exist and render correctly",
+        "Add at least one integration test verifying email service initializes with a real provider when configured",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "server/services/email-service.ts defaults to SimulationEmailProvider which just logs emails. Production needs a real provider (SendGrid, AWS SES, or Resend). All three are implemented but EMAIL_PROVIDER defaults to 'simulation'.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-004",
+      "title": "Add cookie consent banner for GDPR/privacy compliance",
+      "description": "As a user, I need to be informed about cookie usage and give consent before non-essential cookies are set, ensuring GDPR and privacy law compliance.",
+      "acceptanceCriteria": [
+        "Create client/src/components/CookieConsent.tsx component that displays a dismissible cookie consent banner",
+        "Banner appears on first visit and stores consent preference in localStorage",
+        "Banner links to the existing Privacy Policy page at /legal/privacy-policy",
+        "Provide options for 'Accept All', 'Reject Non-Essential', and link to cookie settings",
+        "Do not load analytics/tracking scripts until consent is given",
+        "Mount CookieConsent in App.tsx or main layout so it appears on all pages",
+        "Responsive design that works on mobile (bottom sheet style on mobile, banner on desktop)",
+        "Build passes: npm run build",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Legal pages exist (PrivacyPolicy, TermsAndConditions, EULA, AccessibilityStatement) but there is no cookie consent mechanism. GDPR compliance page exists as a dashboard (GdprComplianceDashboard.tsx) but no actual consent banner for end users.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-005",
+      "title": "Add robots.txt and dynamic sitemap.xml for SEO and search engine access control",
+      "description": "As a platform operator, I need robots.txt to control search engine crawling and sitemap.xml for proper indexing of public pages.",
+      "acceptanceCriteria": [
+        "Create client/public/robots.txt with rules: allow crawling of marketing/public pages, disallow /api/, /admin/, /app/ paths",
+        "Add sitemap reference in robots.txt pointing to /sitemap.xml",
+        "Create or verify a server route at /sitemap.xml that generates dynamic sitemap from public pages (marketing, legal, blog)",
+        "Sitemap includes proper lastmod, changefreq, and priority attributes",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "COMPLETE. Created client/public/robots.txt with proper allow/disallow rules for marketing vs app routes, disallows /api/, references sitemap.xml. SEO routes already handle dynamic sitemap generation.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-006",
+      "title": "Verify Stripe webhook handling and subscription lifecycle for production billing",
+      "description": "As a platform operator, I need Stripe billing to handle all production scenarios: subscription creation, payment failure, upgrade/downgrade, cancellation, and webhook signature verification.",
+      "acceptanceCriteria": [
+        "Verify STRIPE_WEBHOOK_SECRET is in env-validation.ts and validated at startup in production",
+        "Verify webhook signature verification is implemented in the webhook handler (not just trusting raw body)",
+        "Add handling for these webhook events: invoice.payment_failed (notify user, retry logic), customer.subscription.deleted (downgrade access), customer.subscription.updated (sync plan changes)",
+        "Verify subscription status is checked on each authenticated request or at least on dashboard load",
+        "Add unit tests for webhook handler covering: valid signature accepted, invalid signature rejected, each event type processed correctly",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Stripe integration exists across server/services/stripe-service.ts, server/routes/billing.ts, and server/integrations/webhook-service.ts. Need to verify all production scenarios are handled, especially payment failures and subscription lifecycle events.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-007",
+      "title": "Add production environment variable validation for all critical services at startup",
+      "description": "As a platform operator, I need the application to fail fast at startup if critical production environment variables are missing, rather than failing at runtime when a user hits the affected feature.",
+      "acceptanceCriteria": [
+        "Review server/lib/env-validation.ts and ensure all critical production variables are validated",
+        "Add validation for: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SUPABASE_SERVICE_ROLE_KEY, DATABASE_URL, SESSION_SECRET (already tracked in PLAT-002)",
+        "Add validation for email config: EMAIL_PROVIDER must not be 'simulation' in production, EMAIL_ENABLED must be 'true'",
+        "Add validation for: SENTRY_DSN (if Sentry is used in production)",
+        "Startup logs a clear summary of which services are configured and which are in simulation/development mode",
+        "Application exits with code 1 and actionable error message if critical vars are missing in production",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "server/lib/env-validation.ts exists but may not cover all critical production services. PLAT-002 covers SESSION_SECRET specifically. This story ensures comprehensive validation across all services.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-008",
+      "title": "Verify user registration and onboarding flow works end-to-end for new tenants",
+      "description": "As a new user, I need to be able to sign up, verify my email, create my organization (tenant), and land on a functional dashboard so my first experience with Printyx is smooth.",
+      "acceptanceCriteria": [
+        "Verify signup page (/signup) creates user in Supabase Auth and sends verification email",
+        "Verify email verification callback properly activates the account",
+        "Verify tenant setup flow (/tenant-setup) creates tenant record with correct hierarchy",
+        "Verify first login after signup lands on an appropriate dashboard (not a blank page or error)",
+        "Verify RBAC roles and permissions are seeded for the new tenant automatically",
+        "Add E2E test covering: signup → email verification → tenant setup → dashboard load",
+        "Build passes: npm run build",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Registration, tenant setup, and onboarding pages exist. The flow needs to be verified end-to-end as it's the first thing new users will experience. Any breakage here means zero conversion.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-009",
+      "title": "Add production-ready error tracking with Sentry DSN configuration",
+      "description": "As a platform operator, I need runtime errors in production to be captured and reported to Sentry so we can identify and fix issues before users report them.",
+      "acceptanceCriteria": [
+        "Verify Sentry is configured in client/src/main.tsx with proper DSN from environment variable",
+        "Verify Sentry captures: unhandled exceptions, unhandled promise rejections, React error boundary errors",
+        "Verify server-side Sentry integration captures Express errors",
+        "Add SENTRY_DSN to .env.example",
+        "Verify source maps are uploaded to Sentry during production build (or configure Sentry to use them)",
+        "Verify Sentry is NOT initialized in development/test environments",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Sentry integration exists in client/src/main.tsx (seen in error boundary setup). Need to verify it's properly configured for production with real DSN and source map upload.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-010",
+      "title": "Add rate limiting to authentication endpoints to prevent brute force attacks",
+      "description": "As a platform operator, I need authentication endpoints (login, signup, password reset) to have strict rate limiting to prevent brute force and credential stuffing attacks at launch.",
+      "acceptanceCriteria": [
+        "Verify rate limiting middleware is applied to POST /api/auth/login with limit of 5 attempts per minute per IP",
+        "Verify rate limiting on POST /api/auth/signup with limit of 3 attempts per minute per IP",
+        "Verify rate limiting on POST /api/auth/forgot-password with limit of 3 attempts per minute per IP",
+        "Rate limit responses return proper 429 status with Retry-After header",
+        "Rate limiting works with server/middleware/user-rate-limit.ts or equivalent",
+        "Add unit test verifying rate limit is enforced on auth endpoints",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Rate limiting infrastructure exists (server/middleware/user-rate-limit.ts, 38 files reference rate limiting). Need to verify auth-specific endpoints have strict limits applied, not just general API rate limiting.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-011",
+      "title": "Verify database backup and restore procedures work before accepting production data",
+      "description": "As a platform operator, I need verified backup and restore procedures so we can recover from data loss scenarios when handling real customer data.",
+      "acceptanceCriteria": [
+        "Run npm run db:backup and verify backup file is created successfully",
+        "Verify backup file is uploaded to GCS bucket (or local storage if GCS not configured)",
+        "Verify npm run db:backup:list shows the created backup",
+        "Test restore procedure with npm run db:restore on a test database (not production)",
+        "Verify retention cleanup works (keeps daily/weekly/monthly per policy)",
+        "Document the disaster recovery procedure in a runbook",
+        "Verify k8s/base/cronjob-backup.yaml CronJob schedule is correct (daily at 2:00 AM UTC)"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Backup infrastructure is comprehensive (pg_dump + gzip → GCS, retention policy, k8s CronJob). Needs to be tested end-to-end before accepting real customer data.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-012",
+      "title": "Add loading/empty states for all primary dashboard and list views",
+      "description": "As a new user with no data, I need to see helpful empty states (not blank pages or errors) when I first access dashboards, lead lists, customer lists, and other primary views.",
+      "acceptanceCriteria": [
+        "Verify leads list (/leads) shows a helpful empty state with a CTA to create first lead",
+        "Verify customers list (/customers) shows empty state with onboarding guidance",
+        "Verify dashboard shows meaningful content even with no data (getting started checklist or onboarding wizard)",
+        "Verify deals pipeline shows empty state with CTA",
+        "Verify quotes list shows empty state with CTA",
+        "All empty states use consistent design patterns from the component library",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Loading skeletons exist but empty states for new users with no data need verification. First-time user experience is critical for conversion. A blank dashboard will cause immediate churn.",
+      "category": "launch-readiness"
     }
   ]
 }

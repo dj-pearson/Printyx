@@ -49,8 +49,12 @@ export default function TenantSetup() {
 
   const tenantUrls = {
     primary: `https://${slug}.printyx.net`, // Subdomain (Primary)
-    primaryDev: `https://${slug}.replit.dev`, // Development subdomain
-    current: `http://localhost:5000`, // Current development
+    ...(import.meta.env.DEV
+      ? {
+          primaryDev: `https://${slug}.replit.dev`,
+          current: `http://localhost:5000`,
+        }
+      : {}),
   };
 
   return (
@@ -141,49 +145,53 @@ export default function TenantSetup() {
                   </p>
                 </div>
 
-                <div>
-                  <Label className="text-sm font-medium">Development URL (Replit)</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Input value={tenantUrls.primaryDev} readOnly className="text-sm" />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => copyToClipboard(tenantUrls.primaryDev, 'Development URL')}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openUrl(tenantUrls.primaryDev)}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
+                {import.meta.env.DEV && tenantUrls.primaryDev && (
+                  <div>
+                    <Label className="text-sm font-medium">Development URL (Replit)</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input value={tenantUrls.primaryDev} readOnly className="text-sm" />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => copyToClipboard(tenantUrls.primaryDev!, 'Development URL')}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openUrl(tenantUrls.primaryDev!)}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">For testing and development</p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">For testing and development</p>
-                </div>
+                )}
 
-                <div>
-                  <Label className="text-sm font-medium">Local Development (Current)</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Input value={tenantUrls.current} readOnly className="text-sm" />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => copyToClipboard(tenantUrls.current, 'Development URL')}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => (window.location.href = '/')}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
+                {import.meta.env.DEV && tenantUrls.current && (
+                  <div>
+                    <Label className="text-sm font-medium">Local Development (Current)</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input value={tenantUrls.current} readOnly className="text-sm" />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => copyToClipboard(tenantUrls.current!, 'Development URL')}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => (window.location.href = '/')}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Currently active environment</p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Currently active environment</p>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>

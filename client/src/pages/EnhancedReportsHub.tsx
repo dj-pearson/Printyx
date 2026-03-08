@@ -237,7 +237,7 @@ export default function EnhancedReportsHub() {
             showExport={report?.supportsExport}
             autoRefresh={report?.isRealTime}
             onDrillDown={(dimension, value) => {
-              console.log('Drill down:', dimension, value);
+              // Drill-down handler - to be wired to navigation/filtering
             }}
           />
         </div>
@@ -312,7 +312,7 @@ export default function EnhancedReportsHub() {
                       percentage: Math.abs(kpi.variance_percentage),
                     }
                   : undefined,
-                onClick: () => console.log('KPI clicked:', kpi.id),
+                onClick: () => {},
               }))}
               columns={4}
               isLoading={kpisLoading}
@@ -366,9 +366,7 @@ export default function EnhancedReportsHub() {
                   category: dashboardState.selectedCategory,
                 },
               ]}
-              onChartDrillDown={(chartId, field, value) => {
-                console.log('Chart drill-down:', chartId, field, value);
-              }}
+              onChartDrillDown={() => {}}
               loading={reportsLoading}
             />
           </div>

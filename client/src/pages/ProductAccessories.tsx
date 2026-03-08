@@ -155,8 +155,6 @@ export default function ProductAccessories() {
   });
 
   const onSubmit = (data: InsertProductAccessory) => {
-    console.log('Submitting accessory data:', data);
-    console.log('Form errors:', form.formState.errors);
 
     // Remove tenantId from client data - server will add it
     const { tenantId, ...submitData } = data;
@@ -708,12 +706,6 @@ export default function ProductAccessories() {
                     <Button
                       type="submit"
                       disabled={createAccessoryMutation.isPending}
-                      onClick={() =>
-                        console.log('Submit button clicked', {
-                          isValid: form.formState.isValid,
-                          errors: form.formState.errors,
-                        })
-                      }
                     >
                       {createAccessoryMutation.isPending ? 'Creating...' : 'Create Accessory'}
                     </Button>
