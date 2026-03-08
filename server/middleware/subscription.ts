@@ -209,6 +209,49 @@ export async function checkUsageLimits(req: Request, res: Response, next: NextFu
 }
 
 /**
+ * Enforce usage limits middleware
+ * Blocks resource creation (POST) when tenant exceeds subscription limits.
+ * Use on routes that create billable entities (leads, customers, quotes, etc.).
+ */
+export async function enforceUsageLimits(req: Request, res: Response, next: NextFunction) {
+  try {
+    const tenantId = req.tenantId;
+    if (!tenantId) {
+      return next();
+    }
+
+    let status = req.subscriptionStatus;
+    if (!status) {
+      status = await SubscriptionService.getSubscriptionStatus(tenantId);
+      req.subscriptionStatus = status;
+    }
+
+    if (!status || status.subscription.isFree) {
+      return next();
+    }
+
+    if (status.isOverLimit) {
+      log.warn({ tenantId, overageDetails: status.overageDetails }, 'Blocked resource creation: over usage limits');
+      return res.status(403).json({
+        error: 'Usage limit exceeded',
+        code: 'USAGE_LIMIT_EXCEEDED',
+        message: 'You have exceeded your plan limits. Please upgrade your subscription to continue.',
+        overageDetails: status.overageDetails,
+        currentPlan: status.plan.slug,
+        redirectTo: '/settings/subscription',
+        upgradeRequired: true,
+      });
+    }
+
+    next();
+  } catch (error) {
+    log.error('Usage enforcement error:', error);
+    // Don't block on errors - fail open
+    next();
+  }
+}
+
+/**
  * Soft check subscription middleware
  * Adds subscription status to request but doesn't block
  * Useful for endpoints that work with or without subscription
