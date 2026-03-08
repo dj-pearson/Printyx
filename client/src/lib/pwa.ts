@@ -3,6 +3,8 @@
  * Handles service worker registration, installation prompts, and offline detection
  */
 
+const isDev = import.meta.env.DEV;
+
 export interface PWAInstallPrompt extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
@@ -21,7 +23,7 @@ interface PWAOfflineCallback {
  */
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) {
-    console.warn('[PWA] Service workers are not supported in this browser');
+    if (isDev) console.warn('[PWA] Service workers are not supported in this browser');
     return null;
   }
 
@@ -30,7 +32,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
       scope: '/',
     });
 
-    console.log('[PWA] Service worker registered successfully:', registration.scope);
+    if (isDev) console.log('[PWA] Service worker registered successfully:', registration.scope);
 
     // Check for updates on page load
     registration.update();
@@ -63,7 +65,7 @@ export async function unregisterServiceWorker(): Promise<boolean> {
 
     if (registration) {
       const unregistered = await registration.unregister();
-      console.log('[PWA] Service worker unregistered:', unregistered);
+      if (isDev) console.log('[PWA] Service worker unregistered:', unregistered);
       return unregistered;
     }
 
@@ -137,7 +139,7 @@ export function listenForInstallPrompt(): void {
     // Store the event for later use
     deferredPrompt = e as PWAInstallPrompt;
 
-    console.log('[PWA] Install prompt available');
+    if (isDev) console.log('[PWA] Install prompt available');
 
     // Dispatch custom event that components can listen to
     window.dispatchEvent(new Event('pwa-install-available'));
@@ -145,7 +147,7 @@ export function listenForInstallPrompt(): void {
 
   // Listen for successful installation
   window.addEventListener('appinstalled', () => {
-    console.log('[PWA] App installed successfully');
+    if (isDev) console.log('[PWA] App installed successfully');
     deferredPrompt = null;
 
     // Dispatch custom event
@@ -158,7 +160,7 @@ export function listenForInstallPrompt(): void {
  */
 export async function showInstallPrompt(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
   if (!deferredPrompt) {
-    console.log('[PWA] Install prompt not available');
+    if (isDev) console.log('[PWA] Install prompt not available');
     return 'unavailable';
   }
 
@@ -169,7 +171,7 @@ export async function showInstallPrompt(): Promise<'accepted' | 'dismissed' | 'u
     // Wait for the user to respond to the prompt
     const choiceResult = await deferredPrompt.userChoice;
 
-    console.log('[PWA] User choice:', choiceResult.outcome);
+    if (isDev) console.log('[PWA] User choice:', choiceResult.outcome);
 
     // Clear the deferred prompt
     deferredPrompt = null;
@@ -210,12 +212,12 @@ export function canInstall(): boolean {
  */
 export function listenForNetworkChanges(callback: PWAOfflineCallback): () => void {
   const handleOnline = () => {
-    console.log('[PWA] Network: Online');
+    if (isDev) console.log('[PWA] Network: Online');
     callback(false);
   };
 
   const handleOffline = () => {
-    console.log('[PWA] Network: Offline');
+    if (isDev) console.log('[PWA] Network: Offline');
     callback(true);
   };
 
@@ -245,13 +247,13 @@ export function isOffline(): boolean {
  */
 export async function requestPersistentStorage(): Promise<boolean> {
   if (!navigator.storage || !navigator.storage.persist) {
-    console.warn('[PWA] Persistent storage not supported');
+    if (isDev) console.warn('[PWA] Persistent storage not supported');
     return false;
   }
 
   try {
     const isPersisted = await navigator.storage.persist();
-    console.log('[PWA] Persistent storage:', isPersisted ? 'granted' : 'denied');
+    if (isDev) console.log('[PWA] Persistent storage:', isPersisted ? 'granted' : 'denied');
     return isPersisted;
   } catch (error) {
     console.error('[PWA] Persistent storage request failed:', error);
@@ -269,7 +271,7 @@ export async function getStorageEstimate(): Promise<StorageEstimate | null> {
 
   try {
     const estimate = await navigator.storage.estimate();
-    console.log('[PWA] Storage estimate:', estimate);
+    if (isDev) console.log('[PWA] Storage estimate:', estimate);
     return estimate;
   } catch (error) {
     console.error('[PWA] Storage estimate failed:', error);
@@ -282,17 +284,17 @@ export async function getStorageEstimate(): Promise<StorageEstimate | null> {
  */
 export async function share(data: ShareData): Promise<boolean> {
   if (!navigator.share) {
-    console.warn('[PWA] Web Share API not supported');
+    if (isDev) console.warn('[PWA] Web Share API not supported');
     return false;
   }
 
   try {
     await navigator.share(data);
-    console.log('[PWA] Content shared successfully');
+    if (isDev) console.log('[PWA] Content shared successfully');
     return true;
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
-      console.log('[PWA] Share cancelled by user');
+      if (isDev) console.log('[PWA] Share cancelled by user');
     } else {
       console.error('[PWA] Share failed:', error);
     }
@@ -320,7 +322,7 @@ export function canShare(data?: ShareData): boolean {
  * Call this once when app starts
  */
 export async function initializePWA(): Promise<void> {
-  console.log('[PWA] Initializing...');
+  if (isDev) console.log('[PWA] Initializing...');
 
   // Register service worker
   await registerServiceWorker();
@@ -331,12 +333,12 @@ export async function initializePWA(): Promise<void> {
   // Request persistent storage
   await requestPersistentStorage();
 
-  // Log installation status
-  console.log('[PWA] Installed:', isInstalled());
-  console.log('[PWA] Can install:', canInstall());
-  console.log('[PWA] Offline:', isOffline());
-
-  console.log('[PWA] Initialization complete');
+  if (isDev) {
+    console.log('[PWA] Installed:', isInstalled());
+    console.log('[PWA] Can install:', canInstall());
+    console.log('[PWA] Offline:', isOffline());
+    console.log('[PWA] Initialization complete');
+  }
 }
 
 /**

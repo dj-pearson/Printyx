@@ -525,7 +525,7 @@ export function startTokenRefreshJob(): void {
   );
 
   // Run initial check
-  refreshExpiringTokens().catch(console.error);
+  refreshExpiringTokens().catch((err) => log.error(err, 'Failed to refresh expiring tokens'));
 }
 
 /**

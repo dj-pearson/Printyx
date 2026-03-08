@@ -12,6 +12,7 @@ import { PWAProvider } from '@/components/pwa/PWAProvider';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { PageErrorBoundary } from '@/components/PageErrorBoundary';
 import { SessionGuard } from '@/components/SessionGuard';
+import { CookieConsent } from '@/components/CookieConsent';
 import { AccessibilityProvider } from '@/hooks/useAccessibility';
 import { LiveRegionProvider } from '@/components/accessibility/LiveRegion';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -964,6 +965,7 @@ function App() {
                   <SEOProvider>
                     <SkipNavigation />
                     <Toaster />
+                    <CookieConsent />
                     <ErrorBoundary
                       level="critical"
                       onError={(error, errorInfo) => {

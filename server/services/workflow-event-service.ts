@@ -139,7 +139,7 @@ export async function emitWorkflowEvent(
     // Trigger asynchronous execution (in production, this would use a job queue)
     if (executionIds.length > 0) {
       setImmediate(() => {
-        processQueuedExecutions(tenantId).catch(console.error);
+        processQueuedExecutions(tenantId).catch((err) => log.error(err, 'Failed to process queued executions'));
       });
     }
 
