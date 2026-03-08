@@ -243,9 +243,10 @@ export class TicketCreationService {
       // This is a simplified version - adjust based on your actual schema
       log.info('[TicketCreation] Using fallback ticket creation');
 
-      // For now, return a mock ticket object
+      // Return a temporary ticket object until schema is finalized
       // TODO: Replace with actual table when schema is finalized
-      const ticketId = `TKT-${Date.now()}`;
+      log.warn('Using fallback ticket creation - tickets are not persisted to database');
+      const ticketId = `TKT-TEMP-${Date.now()}`;
 
       return {
         id: ticketId,
