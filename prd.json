@@ -3265,6 +3265,73 @@
       "passes": false,
       "notes": ".env.example ships with sk_test_* keys. If these aren't replaced with live keys in production, all payments will be test-only and users won't be charged.",
       "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-017",
+      "title": "Add global unhandledRejection and uncaughtException handlers to server",
+      "description": "As a platform operator, I need unhandled errors caught and reported to APM before crashing so we can diagnose issues in production.",
+      "acceptanceCriteria": [
+        "Add process.on('unhandledRejection') handler in server/index.ts that logs error and reports to APM",
+        "Add process.on('uncaughtException') handler that logs, reports to APM, and exits with code 1",
+        "Verify Sentry/APM receives the error before process exits",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "COMPLETE. Added both handlers to server/index.ts after imports. unhandledRejection logs and reports to APM. uncaughtException logs, reports, and exits after 1s flush delay.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-018",
+      "title": "Audit and resolve 50+ TODO items in server service layer before launch",
+      "description": "As a developer, I need unresolved TODO items in server services audited and prioritized so incomplete features don't cause runtime errors for users.",
+      "acceptanceCriteria": [
+        "Audit all TODO/FIXME comments in server/services/ directory",
+        "For each TODO: classify as (a) launch-blocking, (b) post-launch, or (c) remove",
+        "Replace launch-blocking TODOs with working implementations or disable the feature with clear user-facing messaging",
+        "Remove TODOs that reference completed work",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "50+ TODOs across server/services/. None are in core server startup code. Most are in feature services (Google Maps, ML models, DNS verification, calculator email, user lifecycle). These represent incomplete integrations that may surface as runtime errors when users access those features.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-019",
+      "title": "Add E2E test for trial signup to paid subscription conversion flow",
+      "description": "As a platform operator, I need the complete user lifecycle tested end-to-end: trial signup, usage during trial, trial expiration warning, payment, and conversion to paid subscription.",
+      "acceptanceCriteria": [
+        "Create tests/e2e/trial-to-paid.spec.ts covering the full lifecycle",
+        "Test: new user signs up and starts trial",
+        "Test: trial status endpoint returns correct days remaining",
+        "Test: trial expiration email would be sent (verify email service called)",
+        "Test: user upgrades to paid plan via Stripe checkout",
+        "Test: subscription status reflects paid plan after payment",
+        "Tests pass: npm run test:e2e"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Individual components tested but no integrated flow test. This is the most critical business flow - if it breaks, no revenue. Billing engine tests exist in server/tests/unit/billing-engine.test.ts but no E2E coverage.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-020",
+      "title": "Load test the application with expected concurrent user counts",
+      "description": "As a platform operator, I need the application load-tested with realistic traffic so we know it can handle launch-day load without degradation.",
+      "acceptanceCriteria": [
+        "Create or verify load test script targeting key endpoints: login, dashboard, leads CRUD, search",
+        "Test with 50 concurrent users sustained for 5 minutes",
+        "Test with 200 concurrent users burst for 1 minute",
+        "P95 response time under 500ms for read endpoints, under 1000ms for writes",
+        "No 5xx errors during sustained load",
+        "Memory usage stays stable (no unbounded growth over test duration)",
+        "Document results and any bottlenecks found"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "K8s HPA configured for 2-10 replicas scaling on CPU/memory. Need to verify actual performance under load. Database pool configured for 2-20 connections per instance. WebSocket broadcasting to all tenant clients needs load testing.",
+      "category": "launch-readiness"
     }
   ]
 }
