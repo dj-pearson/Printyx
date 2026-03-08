@@ -33,6 +33,28 @@ import { globalErrorHandler } from './middleware/error-handler';
 import { closeDbConnections } from './db';
 import { shutdownCache } from './lib/redis-client';
 
+// Global error handlers - catch unhandled errors before they crash the process
+process.on('unhandledRejection', (reason, promise) => {
+  const errorMsg = reason instanceof Error ? reason.message : String(reason);
+  log.error({ reason: errorMsg }, 'Unhandled promise rejection');
+  try {
+    getAPM().captureException(reason instanceof Error ? reason : new Error(errorMsg));
+  } catch {
+    // APM may not be initialized yet
+  }
+});
+
+process.on('uncaughtException', (error) => {
+  log.error(error, 'Uncaught exception - shutting down');
+  try {
+    getAPM().captureException(error);
+  } catch {
+    // APM may not be initialized yet
+  }
+  // Give APM time to flush, then exit
+  setTimeout(() => process.exit(1), 1000);
+});
+
 const app = express();
 
 // Create module logger for server
