@@ -8,10 +8,12 @@ import { getUserId, getTenantId } from './utils/auth-helpers';
 // System integrations routes using real database data
 export function registerIntegrationRoutes(app: Express) {
   // Get all integrations
-  app.get('/api/integrations', async (req: any, res, next) => {
+  app.get('/api/integrations', isAuthenticated, async (req: any, res, next) => {
     try {
-      // Use hardcoded tenant ID for demo since authentication middleware isn't working properly
-      const tenantId = '1d4522ad-b3d8-4018-8890-f9294b2efbe6';
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(401).json({ message: 'Tenant context required' });
+      }
       const integrations = await storage.getSystemIntegrations(tenantId);
       res.json(integrations);
     } catch (error) {

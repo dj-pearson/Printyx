@@ -214,14 +214,42 @@ export class WebhookService {
       case 'stripe':
         return this.verifyStripeSignature(payload, headers['stripe-signature']);
 
-      case 'salesforce':
-        // Salesforce doesn't use signature verification, but you can validate source IP
-        return true;
+      case 'salesforce': {
+        // Validate Salesforce webhook using shared secret in custom header
+        const sfSecret = process.env.SALESFORCE_WEBHOOK_SECRET;
+        if (!sfSecret) {
+          log.warn('SALESFORCE_WEBHOOK_SECRET not configured - rejecting webhook');
+          return false;
+        }
+        const sfSignature = headers['x-salesforce-signature'] || headers['x-sfdc-signature'];
+        if (!sfSignature) {
+          log.warn('Salesforce webhook missing signature header');
+          return false;
+        }
+        const expectedSfSig = crypto
+          .createHmac('sha256', sfSecret)
+          .update(JSON.stringify(payload))
+          .digest('hex');
+        return crypto.timingSafeEqual(
+          Buffer.from(sfSignature),
+          Buffer.from(expectedSfSig),
+        );
+      }
 
-      case 'microsoft-calendar':
-        // Microsoft Graph webhooks don't have signature verification
-        // You should validate the validation token during subscription setup
+      case 'microsoft-calendar': {
+        // Validate Microsoft Graph webhook using client state token
+        const msSecret = process.env.MICROSOFT_WEBHOOK_SECRET;
+        if (!msSecret) {
+          log.warn('MICROSOFT_WEBHOOK_SECRET not configured - rejecting webhook');
+          return false;
+        }
+        const clientState = payload?.value?.[0]?.clientState || headers['x-ms-client-state'];
+        if (!clientState || clientState !== msSecret) {
+          log.warn('Microsoft webhook clientState mismatch');
+          return false;
+        }
         return true;
+      }
 
       case 'google-calendar':
         // Google Calendar push notifications include headers you can validate
