@@ -626,7 +626,7 @@ export class UserLifecycleService {
       .returning();
 
     // Start offboarding process (async)
-    this.processOffboarding(workflow.id, tenantId).catch(console.error);
+    this.processOffboarding(workflow.id, tenantId).catch((err) => log.error(err, 'Failed to process offboarding'));
 
     return {
       workflowId: workflow.id,

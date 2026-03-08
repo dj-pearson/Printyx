@@ -3,8 +3,10 @@
  * Handles incoming webhooks from all integrated services
  */
 import express from 'express';
+import { z } from 'zod';
 import { WebhookService } from './webhook-service';
 import { createModuleLogger } from '../lib/logger';
+import { stripSensitiveHeaders } from '../utils/error-sanitizer';
 const log = createModuleLogger('webhook-routes');
 
 const router = express.Router();
@@ -21,9 +23,9 @@ router.post('/api/webhooks/:provider', rawBodyParser, async (req, res) => {
     const payload = JSON.parse(req.body.toString());
     const headers = req.headers as Record<string, string>;
 
-    log.info(`Received webhook from ${provider}:`, {
-      headers: headers,
-      payload: JSON.stringify(payload, null, 2),
+    log.info(`Received webhook from ${provider}`, {
+      headers: stripSensitiveHeaders(headers),
+      event: payload?.type || payload?.event || 'unknown',
     });
 
     const result = await WebhookService.processWebhook(provider, payload, headers);
@@ -98,10 +100,10 @@ router.post('/api/webhooks/stripe', rawBodyParser, async (req, res) => {
  */
 router.post('/api/webhooks/microsoft-calendar', express.json(), async (req, res) => {
   try {
-    // Microsoft Graph webhook validation
+    // Microsoft Graph webhook validation - must echo back the token
     if (req.query.validationToken) {
-      // Return validation token for subscription setup
-      res.status(200).send(req.query.validationToken);
+      const token = z.string().max(512).parse(req.query.validationToken);
+      res.status(200).contentType('text/plain').send(token);
       return;
     }
 

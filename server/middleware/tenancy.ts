@@ -42,9 +42,9 @@ function logTenantSecurityEvent(
   if (eventType === 'TENANT_MISMATCH') {
     log.warn('[SECURITY] Tenant mismatch attempt:', JSON.stringify(logEntry));
   } else if (eventType === 'ADMIN_BYPASS') {
-    console.info('[SECURITY] Admin cross-tenant access:', JSON.stringify(logEntry));
+    log.info({ ...logEntry }, 'Admin cross-tenant access');
   } else {
-    console.info('[SECURITY] Tenant event:', JSON.stringify(logEntry));
+    log.info({ ...logEntry }, 'Tenant event');
   }
 }
 

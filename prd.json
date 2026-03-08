@@ -3332,6 +3332,56 @@
       "passes": false,
       "notes": "K8s HPA configured for 2-10 replicas scaling on CPU/memory. Need to verify actual performance under load. Database pool configured for 2-20 connections per instance. WebSocket broadcasting to all tenant clients needs load testing.",
       "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-021",
+      "title": "Sanitize webhook logging and add Zod validation to webhook payloads",
+      "description": "As a platform operator, I need webhook endpoints to validate payloads with Zod and not log sensitive headers/bodies so we comply with PCI-DSS and GDPR logging standards.",
+      "acceptanceCriteria": [
+        "Webhook logging uses stripSensitiveHeaders() instead of raw headers - DONE",
+        "Webhook logging does not include full payload bodies - DONE",
+        "Microsoft Graph validation token is Zod-validated before echo - DONE",
+        "Add Zod schemas for each webhook provider's expected payload format (Stripe, Salesforce, Microsoft, Google, QuickBooks)",
+        "Reject webhook payloads that don't match expected schema with 400 response",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Partially complete. Header sanitization and MS token validation fixed. Still needs per-provider Zod payload validation schemas. Currently raw JSON payloads are accepted without schema checks.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-022",
+      "title": "Replace remaining console.log/console.warn/console.error in server code with structured logger",
+      "description": "As a platform operator, I need all server-side logging to use the structured logger (createModuleLogger) so logs are aggregated, searchable, and sensitive data is automatically redacted.",
+      "acceptanceCriteria": [
+        "Replace console.info calls in server/middleware/tenancy.ts with log.info - DONE",
+        "Replace .catch(console.error) in services with .catch(err => log.error()) - DONE",
+        "Audit and fix remaining console.* calls in server/middleware/supabase-auth.ts",
+        "Audit and fix remaining console.* calls in server/routes-auth-core.ts",
+        "No console.log/console.warn/console.info remains in server/ code (console.error in catch blocks acceptable only if log.error isn't available)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Partially complete. Fixed tenancy.ts console.info calls, 3 .catch(console.error) patterns in services. Remaining console.* calls in supabase-auth.ts and routes-auth-core.ts still need migration.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-023",
+      "title": "Ensure webhook routes are accessible through auth middleware (publicPaths)",
+      "description": "As a platform operator, I need webhook endpoints to be accessible without JWT authentication since external services (Stripe, Salesforce) cannot provide our auth tokens.",
+      "acceptanceCriteria": [
+        "Verify /api/webhooks/* paths are in the publicPaths whitelist in server/routes.ts",
+        "If not whitelisted, add them with a comment explaining webhooks use signature verification instead of JWT",
+        "Verify all webhook providers can reach their endpoints (Stripe, Salesforce, Microsoft, Google, QuickBooks)",
+        "Add integration test that verifies webhook endpoints respond without auth headers",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Webhook routes are registered in server/integrations/webhook-routes.ts but may be blocked by auth middleware if /api/webhooks is not in publicPaths. Webhooks rely on signature verification (fixed in earlier commit) not JWT auth.",
+      "category": "launch-readiness"
     }
   ]
 }
