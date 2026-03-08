@@ -1153,11 +1153,12 @@ export class TenantOnboardingService {
    * Check tenant isolation (RLS, data leakage)
    */
   private static async checkTenantIsolation(tenantId: string): Promise<any[]> {
-    // TODO: Implement actual isolation checks
+    // TODO: Implement actual isolation checks (query RLS policies, test cross-tenant access)
+    // For now, return unchecked status so health reports don't falsely claim validation passed
     return [
-      { check: 'RLS policies active', passed: true },
-      { check: 'No cross-tenant data access', passed: true },
-      { check: 'Tenant ID filtering enforced', passed: true },
+      { check: 'RLS policies active', passed: null, note: 'Not yet validated - manual verification required' },
+      { check: 'No cross-tenant data access', passed: null, note: 'Not yet validated - manual verification required' },
+      { check: 'Tenant ID filtering enforced', passed: null, note: 'Not yet validated - manual verification required' },
     ];
   }
 
@@ -1165,11 +1166,11 @@ export class TenantOnboardingService {
    * Check user access configuration
    */
   private static async checkUserAccess(tenantId: string): Promise<any[]> {
-    // TODO: Implement actual access checks
+    // TODO: Implement actual access checks (verify admin exists, roles assigned, permissions bounded)
     return [
-      { check: 'Admin user created', passed: true },
-      { check: 'Role assignments valid', passed: true },
-      { check: 'Permission boundaries correct', passed: true },
+      { check: 'Admin user created', passed: null, note: 'Not yet validated - manual verification required' },
+      { check: 'Role assignments valid', passed: null, note: 'Not yet validated - manual verification required' },
+      { check: 'Permission boundaries correct', passed: null, note: 'Not yet validated - manual verification required' },
     ];
   }
 
