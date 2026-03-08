@@ -3202,6 +3202,69 @@
       "passes": false,
       "notes": "Loading skeletons exist but empty states for new users with no data need verification. First-time user experience is critical for conversion. A blank dashboard will cause immediate churn.",
       "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-013",
+      "title": "Enforce subscription usage limits before allowing billing operations",
+      "description": "As a platform operator, I need subscription usage limits enforced so that users on free/starter plans cannot exceed their allocated resources without upgrading.",
+      "acceptanceCriteria": [
+        "Add middleware or service check that validates subscription limits before creating leads, customers, quotes, and other billable entities",
+        "Check SubscriptionStatus.isOverLimit before allowing resource creation in critical routes",
+        "Return 402 Payment Required with clear upgrade message when limits are exceeded",
+        "Add unit tests for limit enforcement covering: within limits (allowed), at limit (allowed), over limit (blocked)",
+        "Typecheck passes: npm run check",
+        "Tests pass: npm run test"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "server/services/subscription-service.ts defines isOverLimit and overageDetails in SubscriptionStatus interface but no enforcement found in route handlers. Users can exceed plan limits without being blocked or charged.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-014",
+      "title": "Make STRIPE_WEBHOOK_SECRET required in production env validation",
+      "description": "As a platform operator, I need Stripe webhook verification to be mandatory in production so that fraudulent webhook events cannot be processed.",
+      "acceptanceCriteria": [
+        "Update server/lib/env-validation.ts to require STRIPE_WEBHOOK_SECRET in production when STRIPE_SECRET_KEY is set",
+        "Add startup error if Stripe is configured but webhook secret is missing",
+        "Add SALESFORCE_WEBHOOK_SECRET and MICROSOFT_WEBHOOK_SECRET to env validation when those integrations are enabled",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "STRIPE_WEBHOOK_SECRET is marked optional in env-validation.ts (z.string().optional()) but is critical for verifying webhook signatures. Without it, anyone can forge Stripe webhook events.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-015",
+      "title": "Switch file upload storage from memory to disk for production scalability",
+      "description": "As a platform operator, I need file uploads to use disk storage instead of memory storage so that concurrent large uploads don't cause out-of-memory crashes.",
+      "acceptanceCriteria": [
+        "Update server/middleware/file-upload-security.ts to use multer.diskStorage() in production",
+        "Configure upload temp directory with proper cleanup (e.g., /tmp/printyx-uploads/)",
+        "Add cleanup cron or middleware to remove orphaned temp files older than 1 hour",
+        "Verify file upload rate limiting uses Redis instead of in-memory store when Redis is available",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "file-upload-security.ts uses multer.memoryStorage() with 25MB limit. With concurrent uploads this can cause OOM. Rate limiting also uses in-memory store which doesn't work in clustered deployments.",
+      "category": "launch-readiness"
+    },
+    {
+      "id": "LAUNCH-016",
+      "title": "Add Stripe test key detection to prevent test keys in production",
+      "description": "As a platform operator, I need the application to reject Stripe test keys (sk_test_*) in production so billing doesn't silently fail or process test transactions.",
+      "acceptanceCriteria": [
+        "Add validation in env-validation.ts that STRIPE_SECRET_KEY does not start with 'sk_test_' when NODE_ENV=production",
+        "Add validation that STRIPE_PUBLISHABLE_KEY does not start with 'pk_test_' in production",
+        "Log clear warning at startup if test keys are detected in staging",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ".env.example ships with sk_test_* keys. If these aren't replaced with live keys in production, all payments will be test-only and users won't be charged.",
+      "category": "launch-readiness"
     }
   ]
 }

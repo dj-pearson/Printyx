@@ -5,6 +5,7 @@
 import express, { Request } from 'express';
 import { TrialManagementService } from './services/trial-management-service';
 import { AuthenticationError, AuthorizationError, NotFoundError } from './lib/api-errors';
+import { isPlatformAdmin } from './utils/auth-helpers';
 
 const router = express.Router();
 
@@ -49,9 +50,7 @@ router.post('/process-emails', async (req, res, next) => {
       throw new AuthenticationError();
     }
 
-    // TODO: Add admin role check here
-    // For now, allow any authenticated user in development
-    if (process.env.NODE_ENV === 'production') {
+    if (!isPlatformAdmin(req)) {
       throw new AuthorizationError('Admin access required');
     }
 
@@ -77,8 +76,7 @@ router.get('/users', async (req, res, next) => {
       throw new AuthenticationError();
     }
 
-    // TODO: Add admin role check here
-    if (process.env.NODE_ENV === 'production') {
+    if (!isPlatformAdmin(req)) {
       throw new AuthorizationError('Admin access required');
     }
 
