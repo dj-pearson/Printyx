@@ -2905,3 +2905,64 @@ Ralph loop was invoked against prd.json. All 102 stories already had `passes: tr
 
 ---
 
+## Iteration - PLAT: Critical Platform Infrastructure Improvements
+**Started**: 2026-03-08
+**Completed**: 2026-03-08
+**Status**: COMPLETE
+**Branch**: claude/critical-platform-improvements-BidmZ
+
+### What Was Done (4 Critical Items):
+
+#### 1. Fix .js file extension errors in routes-registry.ts (Runtime Crash Fix)
+- Fixed `./routes-proposals.js` → `./routes-proposals` in asyncMounts array
+- Fixed `./routes-documents.js` → `./routes-documents` in asyncMounts array
+- These incorrect extensions caused runtime `MODULE_NOT_FOUND` crashes for the proposals and documents API endpoints
+- **Impact**: Two entire API endpoint groups (/api/proposals, /api/documents) were broken at runtime
+
+#### 2. Fix silent async route loading failures (Race Condition + Silent Failures)
+- Converted 8 fire-and-forget `import().then().catch()` patterns to properly `await`ed imports with try/catch
+- Affected modules: analytics-routes, routes-catalog, routes-reporting, routes-gdpr-core, routes-territory-management, routes-cross-module, routes-oid-mappings, routes-misc-stubs
+- **Before**: Routes loaded asynchronously AFTER server started accepting requests → race condition where requests could hit endpoints before routes were registered → silent 404s
+- **After**: All routes are fully registered before server accepts any requests, with structured error logging on failure
+- **Impact**: Eliminates race-condition 404s on startup and prevents silent API endpoint failures
+
+#### 3. Fix require() in ESM module (server/routes.ts)
+- Replaced `require('crypto').randomBytes(32).toString('hex')` with ESM import: `import { randomBytes } from 'crypto'`
+- Added proper ESM import at top of file
+- **Impact**: Eliminates CommonJS/ESM module system mixing, prevents potential runtime errors in strict ESM environments
+
+#### 4. Add route module health tracking for failed loads
+- Added `failedRouteModules` tracking array to routes-registry.ts
+- Exported `getFailedRouteModules()` and `allRoutesHealthy()` functions
+- Integrated into /health/detailed endpoint showing route loading status
+- Each failed module is tracked with: module name, error message, timestamp
+- **Impact**: Platform operators can now detect partial service degradation when route modules fail to load, via the health endpoint
+
+### PRD Updates:
+- Added 5 new stories for future Ralph loops: PLAT-001 through PLAT-005
+  - PLAT-001: Consolidate 161 route files into logical domain modules
+  - PLAT-002: Add SESSION_SECRET to env validation
+  - PLAT-003: Remove legacy backward-compatibility logging middleware
+  - PLAT-004: Reduce initial JS bundle size from 551KB to under 350KB gzipped
+  - PLAT-005: Resolve TODO/FIXME comments in critical frontend components
+
+### Files Modified:
+- `server/routes-registry.ts` — Fixed .js extensions, converted fire-and-forget imports to awaited, added route health tracking
+- `server/routes.ts` — Replaced require('crypto') with ESM import
+- `server/routes/health-routes.ts` — Added route health status to /health/detailed endpoint
+- `prd.json` — Added 5 new PLAT stories for future work
+
+### Build Verification:
+- `npm run build` — PASSES (built in 31.14s)
+
+### Remaining Stories for Future Ralph Loops:
+- SEC-006: API schema validation and fuzz testing with OpenAPI enforcement (Priority 2)
+- SEC-012: Internal penetration testing harness using OWASP methodology (Priority 3)
+- PLAT-001: Consolidate 161 route files into logical domain modules (Priority 5)
+- PLAT-002: Add SESSION_SECRET to env validation (Priority 3)
+- PLAT-003: Remove legacy backward-compatibility logging middleware (Priority 6)
+- PLAT-004: Reduce initial JS bundle size (Priority 4)
+- PLAT-005: Resolve TODO/FIXME in critical frontend components (Priority 5)
+
+---
+

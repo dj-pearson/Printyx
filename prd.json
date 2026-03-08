@@ -2901,6 +2901,90 @@
       "passes": true,
       "notes": "The /api/me endpoint exists for fetching user data. User management pages exist in admin/ but there's no self-service profile page for regular users. Profile management is a basic expectation for any SaaS application.",
       "category": "ux-flow"
+    },
+    {
+      "id": "PLAT-001",
+      "title": "Consolidate 161 route files into logical domain modules",
+      "description": "As a developer, I need the 161 server/routes-*.ts files consolidated into ~20 logical domain modules so the codebase is navigable and maintainable.",
+      "acceptanceCriteria": [
+        "Group related route files into domain modules (e.g., all billing routes into routes-billing/, all CRM routes into routes-crm/)",
+        "Reduce the import count in routes-registry.ts from 134+ to under 30",
+        "Remove duplicate route mounting patterns found during consolidation",
+        "All API endpoints continue working at the same paths",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Currently 161 route files with complex registry in routes-registry.ts (568 lines, 134+ imports). Multiple mounting patterns for same modules create risk of duplicate/conflicting routes. High maintenance burden.",
+      "category": "platform-health"
+    },
+    {
+      "id": "PLAT-002",
+      "title": "Add SESSION_SECRET to env validation and .env.example for production safety",
+      "description": "As a platform operator, I need SESSION_SECRET validated at startup with clear error messages so production deployments don't fail silently or use insecure random secrets.",
+      "acceptanceCriteria": [
+        "Add SESSION_SECRET to server/lib/env-validation.ts Zod schema as required in production",
+        "Add SESSION_SECRET to .env.example with description comment",
+        "Log clear warning in development when SESSION_SECRET is not set",
+        "Fail fast in production with actionable error message if SESSION_SECRET is missing",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "server/routes.ts already throws if SESSION_SECRET missing in production, but env-validation.ts doesn't include it. The validation should happen at startup before routes are configured, not during route setup.",
+      "category": "platform-health"
+    },
+    {
+      "id": "PLAT-003",
+      "title": "Remove legacy backward-compatibility logging middleware from server/index.ts",
+      "description": "As a developer, I need the legacy logging middleware removed since the structured logger (createModuleLogger) is now the standard, eliminating redundant console output.",
+      "acceptanceCriteria": [
+        "Remove legacy logging middleware marked as 'kept for backward compatibility' in server/index.ts",
+        "Verify monitoring middleware from server/lib/monitoring.ts covers all logging needs",
+        "No duplicate request logging in server output",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "server/index.ts has redundant logging middleware alongside the structured monitoring middleware. The legacy code creates duplicate log entries and should be removed.",
+      "category": "platform-health"
+    },
+    {
+      "id": "PLAT-004",
+      "title": "Reduce initial JS bundle size from 551KB to under 350KB gzipped",
+      "description": "As a user, I need the initial page load to be fast with the main JS bundle optimized to under 350KB gzipped.",
+      "acceptanceCriteria": [
+        "Analyze current bundle with rollup-plugin-visualizer to identify largest contributors",
+        "Split schema-C-ks9sse.js (474KB) into lazy-loaded chunks by domain",
+        "Review vendor-charts-B8zarqdM.js (450KB) for tree-shaking opportunities",
+        "Configure Vite manualChunks to better split vendor dependencies",
+        "Initial JS bundle (index-*.js) under 350KB gzipped",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Current build output shows index-CgZ7ONPI.js at 551KB (143KB gzipped). schema chunk is 474KB (92KB gzipped). vendor-charts is 450KB (120KB gzipped). These are the biggest optimization targets. US-032 addressed code splitting but the initial bundle remains large.",
+      "category": "platform-health"
+    },
+    {
+      "id": "PLAT-005",
+      "title": "Resolve TODO/FIXME comments in critical frontend components",
+      "description": "As a developer, I need TODO/FIXME items in critical frontend components resolved so user-facing features are complete.",
+      "acceptanceCriteria": [
+        "Resolve TODOs in client/src/components/tasks/AIInsightsView.tsx",
+        "Resolve TODOs in client/src/components/tasks/TemplatesView.tsx",
+        "Resolve TODOs in client/src/components/dashboards/TodaysPriorities.tsx",
+        "Resolve TODOs in client/src/components/calendar/CalendarProvider.tsx",
+        "Resolve TODOs in client/src/pages/TodayDashboard.tsx",
+        "Resolve TODOs in client/src/pages/dashboards/TeamLeadDashboardNew.tsx",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "6 critical frontend files have unresolved TODO/FIXME comments in user-facing components. These may represent incomplete features visible to users.",
+      "category": "platform-health"
     }
   ]
 }
