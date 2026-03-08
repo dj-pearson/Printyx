@@ -142,6 +142,19 @@ import { registerCspReportRoutes } from './routes-csp-report';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-registry');
 
+// Track failed route module loads for health reporting
+const failedRouteModules: { module: string; error: string; timestamp: string }[] = [];
+
+/** Returns list of route modules that failed to load (for health endpoint) */
+export function getFailedRouteModules() {
+  return failedRouteModules;
+}
+
+/** Returns true if all route modules loaded successfully */
+export function allRoutesHealthy() {
+  return failedRouteModules.length === 0;
+}
+
 // Pricing handler imports
 import {
   getCompanyPricingSettings,
@@ -315,8 +328,8 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── Async Route Imports ──────────────────────────────────────────
   const asyncMounts: [string, string][] = [
-    ['/api/proposals', './routes-proposals.js'],
-    ['/api/documents', './routes-documents.js'],
+    ['/api/proposals', './routes-proposals'],
+    ['/api/documents', './routes-documents'],
     ['/api/root-admin', './routes-root-admin'],
     ['/api/admin', './routes-admin-workflows'],
     ['/api/dashboard', './routes-dashboard-customization'],
@@ -528,21 +541,48 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   const validateRoutes = await import('./routes-validate');
   app.use('/api', validateRoutes.default);
 
-  // ─── Lazy-Loaded Modules ──────────────────────────────────────────
-  import('./analytics-routes')
-    .then(({ analyticsRouter }) => app.use(analyticsRouter))
-    .catch((err) => log.error('Failed to load analytics routes:', err));
+  // ─── Previously Lazy-Loaded Modules (now properly awaited) ─────────
+  try {
+    const { analyticsRouter } = await import('./analytics-routes');
+    app.use(analyticsRouter);
+    log.info('✅ Analytics routes registered');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log.error('Failed to load analytics routes:', err);
+    failedRouteModules.push({
+      module: 'analytics-routes',
+      error: msg,
+      timestamp: new Date().toISOString(),
+    });
+  }
 
-  import('./routes-catalog')
-    .then(({ catalogRouter }) => app.use(catalogRouter))
-    .catch((err) => log.error('Failed to load catalog routes:', err));
+  try {
+    const { catalogRouter } = await import('./routes-catalog');
+    app.use(catalogRouter);
+    log.info('✅ Catalog routes registered');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log.error('Failed to load catalog routes:', err);
+    failedRouteModules.push({
+      module: 'routes-catalog',
+      error: msg,
+      timestamp: new Date().toISOString(),
+    });
+  }
 
-  import('./routes-reporting')
-    .then(({ default: reportingRouter }) => {
-      app.use('/api', reportingRouter);
-      log.info('✅ Reporting routes registered');
-    })
-    .catch((err) => log.error('Failed to load reporting routes:', err));
+  try {
+    const { default: reportingRouter } = await import('./routes-reporting');
+    app.use('/api', reportingRouter);
+    log.info('✅ Reporting routes registered');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log.error('Failed to load reporting routes:', err);
+    failedRouteModules.push({
+      module: 'routes-reporting',
+      error: msg,
+      timestamp: new Date().toISOString(),
+    });
+  }
 
   const lazyModules: [string, string, string][] = [
     ['/api/gdpr', './routes-gdpr-core', 'GDPR Core Features'],
@@ -551,18 +591,32 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     ['/api/oid-mappings', './routes-oid-mappings', 'OID Mappings'],
   ];
   for (const [mountPath, modulePath, label] of lazyModules) {
-    import(modulePath)
-      .then(({ default: router }) => {
-        app.use(mountPath, router);
-        log.info(`✅ ${label} routes registered`);
-      })
-      .catch((err) => log.error(`Failed to load ${label} routes:`, err));
+    try {
+      const { default: router } = await import(modulePath);
+      app.use(mountPath, router);
+      log.info(`✅ ${label} routes registered`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error(`Failed to load ${label} routes:`, err);
+      failedRouteModules.push({
+        module: modulePath,
+        error: msg,
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 
-  import('./routes-misc-stubs')
-    .then(({ registerMiscStubRoutes }) => {
-      registerMiscStubRoutes(app);
-      log.info('✅ Miscellaneous stub routes registered');
-    })
-    .catch((err) => log.error('Failed to load misc stub routes:', err));
+  try {
+    const { registerMiscStubRoutes } = await import('./routes-misc-stubs');
+    registerMiscStubRoutes(app);
+    log.info('✅ Miscellaneous stub routes registered');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log.error('Failed to load misc stub routes:', err);
+    failedRouteModules.push({
+      module: 'routes-misc-stubs',
+      error: msg,
+      timestamp: new Date().toISOString(),
+    });
+  }
 }

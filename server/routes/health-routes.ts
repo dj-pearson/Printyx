@@ -21,6 +21,7 @@ import { getCacheSync } from '../lib/redis-client';
 import { requireSupabaseAuth as requireAuth } from '../middleware/supabase-auth';
 import { isPlatformAdmin } from '../utils/auth-helpers';
 import { createModuleLogger } from '../lib/logger';
+import { getFailedRouteModules, allRoutesHealthy } from '../routes-registry';
 const log = createModuleLogger('health-routes');
 
 // Track last successful database check
@@ -234,6 +235,10 @@ export function registerHealthRoutes(app: Express): void {
           initialized: monitoringHealth.initialized,
           apm: monitoringHealth.apm,
           logging: monitoringHealth.logging,
+        },
+        routes: {
+          allLoaded: allRoutesHealthy(),
+          failedModules: getFailedRouteModules(),
         },
       },
       queryStats: getQueryStats(),
