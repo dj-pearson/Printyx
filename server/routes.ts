@@ -12,6 +12,7 @@
 
 import type { Express } from 'express';
 import { createServer, type Server } from 'http';
+import { randomBytes } from 'crypto';
 
 // ─── Middleware Imports ────────────────────────────────────────────────
 import session from 'express-session';
@@ -112,7 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   if (process.env.SESSION_SECRET) {
     sessionSecret = process.env.SESSION_SECRET;
   } else {
-    sessionSecret = require('crypto').randomBytes(32).toString('hex');
+    sessionSecret = randomBytes(32).toString('hex');
     log.warn(
       '[SECURITY WARNING] Using randomly generated session secret for development. Set SESSION_SECRET env var for persistent sessions.',
     );
