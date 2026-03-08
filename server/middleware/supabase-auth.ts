@@ -390,7 +390,7 @@ export const authenticateSupabaseJWT: RequestHandler = async (
     if (error instanceof JwtConfigurationError) {
       // JWT not configured - log once and continue without auth
       // This allows the server to start without JWT configured in dev mode
-      console.debug('[Auth] JWT verification skipped: secret not configured');
+      log.debug('JWT verification skipped: secret not configured');
     } else if (error instanceof jose.errors.JWTExpired) {
       log.warn('[Auth] Supabase JWT expired');
     } else if (error instanceof jose.errors.JWTInvalid) {

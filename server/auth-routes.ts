@@ -107,7 +107,7 @@ const loginLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: 'Too many login attempts. Please try again later.' },
+  message: { message: 'Too many login attempts. Please try again later.', code: 'RATE_LIMITED' },
 });
 
 // Rate limiting for password reset requests
