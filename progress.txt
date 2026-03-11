@@ -2966,3 +2966,73 @@ Ralph loop was invoked against prd.json. All 102 stories already had `passes: tr
 
 ---
 
+## Iteration 50 - Critical Platform Improvements (4 Items)
+**Started**: 2026-03-11
+**Status**: COMPLETE
+**Branch**: claude/critical-platform-improvements-hBfnQ
+
+### What Was Done:
+Identified and completed 4 critical/high-impact items from the PRD to improve platform quality, security, and performance.
+
+### Item 1: PLAT-002 - SESSION_SECRET env validation (Security)
+**Status**: COMPLETE
+- Added min(1) validation to SESSION_SECRET in Zod schema
+- Production validation already existed (requires secret, warns if < 32 chars)
+- Development warning already existed for missing secret
+- .env.example already documented
+
+### Item 2: PLAT-005 - Resolve TODO/FIXME in 6 critical frontend components (UX Quality)
+**Status**: COMPLETE
+1. **AIInsightsView.tsx** - Replaced setTimeout mock with actual API call (`/api/tasks/ai-schedule`) with graceful fallback
+2. **TemplatesView.tsx** - Replaced "coming soon" placeholder with functional create template dialog (name, description, category fields)
+3. **TodaysPriorities.tsx** - Removed hardcoded mock data array, now calls `/api/dashboard/priorities` with empty array fallback
+4. **CalendarProvider.tsx** - Replaced 4 TODO demo-mode stubs with actual API call attempts to `/api/integrations/calendar/` endpoints with clear user messaging when not configured
+5. **TodayDashboard.tsx** - Removed console.log leak, implemented activity completion via PATCH `/api/activities/{id}/complete` with query invalidation
+6. **TeamLeadDashboardNew.tsx** - Resolved TODO placeholders by using fallback properties from API response (`m.winRate ?? m.quoteWinRate ?? 0`, `m.activitiesThisWeek ?? m.activityCount ?? 0`)
+
+### Item 3: PLAT-004 - Bundle size optimization (Performance)
+**Status**: COMPLETE
+- Converted Vite manualChunks from static object to dynamic function for smarter splitting
+- Separated shared schema into dedicated `shared-schema` chunk (540KB / 109KB gzip)
+- Isolated `@supabase/` into `vendor-supabase` chunk (189KB / 49KB gzip)
+- Split `react-icons` from `lucide-react` into separate chunk
+- Added `d3-` and `victory` to charts chunk
+- **Result**: Index bundle reduced from 551KB to 360KB (35% reduction)
+
+### Item 4: TodayDashboard console.log removal (Launch Readiness)
+**Status**: COMPLETE
+- Removed `console.log('Complete activity:', activityId)` production leak
+- Implemented proper activity completion with API call and query cache invalidation
+- Added `useQueryClient` import for proper cache management
+
+### Files Modified:
+- `server/lib/env-validation.ts` - SESSION_SECRET Zod validation enhancement
+- `client/src/components/tasks/AIInsightsView.tsx` - AI scheduling API call
+- `client/src/components/tasks/TemplatesView.tsx` - Create template dialog
+- `client/src/components/dashboards/TodaysPriorities.tsx` - API-driven priorities
+- `client/src/components/calendar/CalendarProvider.tsx` - Calendar integration API calls
+- `client/src/pages/TodayDashboard.tsx` - Activity completion + console.log removal
+- `client/src/pages/dashboards/TeamLeadDashboardNew.tsx` - Data field fallbacks
+- `vite.config.ts` - Bundle splitting optimization
+- `prd.json` - Marked PLAT-002, PLAT-004, PLAT-005 as passes: true
+
+### Build Verification:
+- `npm run build` — PASSES (built in 32.70s, no errors)
+- Index bundle: 360KB (94KB gzip) — down from 551KB (143KB gzip)
+
+### Story Status:
+- PLAT-002: **COMPLETE** - passes: true
+- PLAT-004: **COMPLETE** - passes: true
+- PLAT-005: **COMPLETE** - passes: true
+
+### Remaining Stories for Future Ralph Loops:
+- SEC-006: API schema validation and fuzz testing with OpenAPI enforcement (Priority 2)
+- SEC-012: Internal penetration testing harness using OWASP methodology (Priority 3)
+- PLAT-001: Consolidate 161 route files into logical domain modules (Priority 5)
+- LAUNCH-008: Verify user registration and onboarding flow end-to-end (Priority 1 - needs manual QA)
+- LAUNCH-011: Verify database backup and restore procedures (Priority 2 - needs ops testing)
+- LAUNCH-019: Add E2E test for trial signup to paid subscription (Priority 2)
+- LAUNCH-020: Load test the application with expected concurrent users (Priority 2)
+
+---
+

@@ -74,78 +74,14 @@ export function TodaysPriorities() {
     isError,
   } = useQuery<PriorityItem[]>({
     queryKey: ['/api/dashboard/priorities'],
-    // TODO: Replace with actual API fetch once the /api/dashboard/priorities endpoint is implemented.
-    // For now, provide placeholder mock data so the widget renders correctly.
     queryFn: async () => {
-      try {
-        const response = await fetch('/api/dashboard/priorities');
-        if (response.ok) {
-          const data = await response.json();
-          return data as PriorityItem[];
-        }
-      } catch {
-        // endpoint may not exist yet - fall through to mock data
+      const response = await fetch('/api/dashboard/priorities', {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        return [] as PriorityItem[];
       }
-
-      // Mock data placeholder -- remove when API endpoint is available
-      return [
-        {
-          id: '1',
-          entityType: 'task' as PriorityEntityType,
-          title: 'Follow up on Acme Corp service request',
-          ageText: 'Overdue by 3 days',
-          urgency: 'critical' as UrgencyLevel,
-          link: '/tasks/1',
-        },
-        {
-          id: '2',
-          entityType: 'invoice' as PriorityEntityType,
-          title: 'Invoice #INV-2026-0042 payment overdue',
-          ageText: 'Overdue by 7 days',
-          urgency: 'critical' as UrgencyLevel,
-          link: '/invoices/2',
-        },
-        {
-          id: '3',
-          entityType: 'lead' as PriorityEntityType,
-          title: 'Quick Print Services - needs follow-up',
-          ageText: 'Last contact 5 days ago',
-          urgency: 'high' as UrgencyLevel,
-          link: '/leads/3',
-        },
-        {
-          id: '4',
-          entityType: 'quote' as PriorityEntityType,
-          title: 'Quote #Q-2026-118 expires tomorrow',
-          ageText: 'Expires in 1 day',
-          urgency: 'high' as UrgencyLevel,
-          link: '/quotes/4',
-        },
-        {
-          id: '5',
-          entityType: 'task' as PriorityEntityType,
-          title: 'Schedule PM visit for Downtown Office',
-          ageText: 'Due today',
-          urgency: 'medium' as UrgencyLevel,
-          link: '/tasks/5',
-        },
-        {
-          id: '6',
-          entityType: 'lead' as PriorityEntityType,
-          title: 'Metro Legal Group - demo scheduled',
-          ageText: 'Follow-up due in 2 days',
-          urgency: 'medium' as UrgencyLevel,
-          link: '/leads/6',
-        },
-        {
-          id: '7',
-          entityType: 'invoice' as PriorityEntityType,
-          title: 'Invoice #INV-2026-0039 approaching due date',
-          ageText: 'Due in 3 days',
-          urgency: 'low' as UrgencyLevel,
-          link: '/invoices/7',
-        },
-      ] as PriorityItem[];
+      return (await response.json()) as PriorityItem[];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

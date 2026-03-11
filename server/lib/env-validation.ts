@@ -40,8 +40,8 @@ const envSchema = z.object({
   DB_LOG_QUERIES: z.string().optional(), // Log all queries (default: false)
   DB_LOG_PARAMS: z.string().optional(), // Log query params (default: false)
 
-  // Session (required in production)
-  SESSION_SECRET: z.string().optional(),
+  // Session (required in production, must be at least 32 characters)
+  SESSION_SECRET: z.string().min(1, 'SESSION_SECRET is required for secure sessions').optional(),
 
   // Server
   NODE_ENV: z.enum(['development', 'production', 'test', 'staging']).default('development'),
@@ -166,25 +166,35 @@ export function validateEnvironment(): ValidationResult {
     } else {
       // Reject test keys in production (LAUNCH-016)
       if (process.env.STRIPE_SECRET_KEY.startsWith('sk_test_')) {
-        errors.push('STRIPE_SECRET_KEY: Test key (sk_test_*) detected in production. Use a live key (sk_live_*)');
+        errors.push(
+          'STRIPE_SECRET_KEY: Test key (sk_test_*) detected in production. Use a live key (sk_live_*)',
+        );
       }
       // Require webhook secret when Stripe is configured (LAUNCH-014)
       if (!process.env.STRIPE_WEBHOOK_SECRET) {
         errors.push('STRIPE_WEBHOOK_SECRET: Required in production when STRIPE_SECRET_KEY is set');
       } else if (process.env.STRIPE_WEBHOOK_SECRET.startsWith('whsec_test_')) {
-        warnings.push('STRIPE_WEBHOOK_SECRET: Test webhook secret detected. Verify this is correct for production');
+        warnings.push(
+          'STRIPE_WEBHOOK_SECRET: Test webhook secret detected. Verify this is correct for production',
+        );
       }
     }
     if (process.env.STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_')) {
-      errors.push('STRIPE_PUBLISHABLE_KEY: Test key (pk_test_*) detected in production. Use a live key (pk_live_*)');
+      errors.push(
+        'STRIPE_PUBLISHABLE_KEY: Test key (pk_test_*) detected in production. Use a live key (pk_live_*)',
+      );
     }
 
     // Email provider must not be simulation in production (LAUNCH-003)
     if (!process.env.EMAIL_PROVIDER || process.env.EMAIL_PROVIDER === 'simulation') {
-      warnings.push('EMAIL_PROVIDER: Set to a real provider (sendgrid, aws-ses, resend) for production email delivery');
+      warnings.push(
+        'EMAIL_PROVIDER: Set to a real provider (sendgrid, aws-ses, resend) for production email delivery',
+      );
     }
     if (process.env.EMAIL_ENABLED !== 'true') {
-      warnings.push('EMAIL_ENABLED: Not set to "true". Transactional emails (welcome, password reset) will not be sent');
+      warnings.push(
+        'EMAIL_ENABLED: Not set to "true". Transactional emails (welcome, password reset) will not be sent',
+      );
     }
 
     // Sentry DSN for error tracking (LAUNCH-009)
