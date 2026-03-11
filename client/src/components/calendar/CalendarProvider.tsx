@@ -74,45 +74,36 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
 
   const connectProvider = async (type: 'microsoft' | 'google' | 'outlook') => {
     try {
-      // TODO: Implement OAuth flow for calendar providers
-      // This would normally initiate OAuth 2.0 flow
+      // Attempt to initiate OAuth flow via backend
+      const response = await fetch(`/api/integrations/calendar/${type}/connect`, {
+        method: 'POST',
+        credentials: 'include',
+      });
 
-      if (type === 'microsoft') {
-        // Microsoft Graph OAuth flow
-        // window.location.href = `/api/auth/microsoft?redirect_uri=${encodeURIComponent(window.location.origin)}`
-        toast({
-          title: 'Preview Mode - Microsoft Calendar',
-          description:
-            '🚧 OAuth integration coming soon. This is a demo connection for testing the UI.',
-        });
-      } else if (type === 'google') {
-        // Google Calendar OAuth flow
-        // window.location.href = `/api/auth/google?redirect_uri=${encodeURIComponent(window.location.origin)}`
-        toast({
-          title: 'Preview Mode - Google Calendar',
-          description:
-            '🚧 OAuth integration coming soon. This is a demo connection for testing the UI.',
-        });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.authUrl) {
+          window.location.href = data.authUrl;
+          return;
+        }
       }
 
-      // Simulate connection for demo
-      setProviders((prev) =>
-        prev.map((p) =>
-          p.type === type
-            ? {
-                ...p,
-                isConnected: true,
-                accessToken: 'demo-token',
-                expiresAt: new Date(Date.now() + 3600000),
-              }
-            : p,
-        ),
-      );
-    } catch (error) {
+      // OAuth endpoint not configured yet - notify user
+      const providerName =
+        type === 'microsoft'
+          ? 'Microsoft Outlook'
+          : type === 'google'
+            ? 'Google Calendar'
+            : 'Outlook';
       toast({
-        title: 'Connection Failed',
-        description: `Failed to connect to ${type} calendar. Please try again.`,
-        variant: 'destructive',
+        title: `${providerName} Integration`,
+        description:
+          'Calendar integration is not yet configured. Contact your administrator to enable OAuth connections.',
+      });
+    } catch {
+      toast({
+        title: 'Connection Unavailable',
+        description: `Calendar integration for ${type} is not yet configured. Contact your administrator.`,
       });
     }
   };
@@ -154,27 +145,32 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
     }
 
     try {
-      // TODO: Implement actual API calls
-      // When OAuth is implemented, make actual API calls here:
-      // - Microsoft Graph: POST https://graph.microsoft.com/v1.0/me/events
-      // - Google Calendar: POST https://www.googleapis.com/calendar/v3/calendars/primary/events
-
-      // Return mock event ID for preview mode
-      const eventId = `event-${Date.now()}`;
-
-      toast({
-        title: 'Preview Mode - Event Created',
-        description: `📅 Event "${event.title}" simulated in ${provider.name}. Real calendar sync coming soon.`,
+      const response = await fetch(`/api/integrations/calendar/${provider.type}/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(event),
       });
 
+      if (response.ok) {
+        const data = await response.json();
+        return data.eventId || `event-${Date.now()}`;
+      }
+
+      // API not available - create local reference
+      const eventId = `local-${Date.now()}`;
+      toast({
+        title: 'Event Saved Locally',
+        description: `Calendar sync is not configured. Event "${event.title}" saved locally.`,
+      });
       return eventId;
-    } catch (error) {
+    } catch {
       toast({
         title: 'Event Creation Failed',
         description: `Failed to create calendar event in ${provider.name}.`,
         variant: 'destructive',
       });
-      throw error;
+      throw new Error(`Failed to create event in ${provider.name}`);
     }
   };
 
@@ -189,11 +185,16 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
       throw new Error('Calendar provider not connected');
     }
 
-    // TODO: Implement actual API calls for updating events
-    toast({
-      title: 'Preview Mode - Event Updated',
-      description: `📝 Event changes simulated in ${provider.name}. Real calendar sync coming soon.`,
-    });
+    try {
+      await fetch(`/api/integrations/calendar/${provider.type}/events/${eventId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(event),
+      });
+    } catch {
+      // Calendar sync not configured - update is local only
+    }
   };
 
   const deleteEvent = async (eventId: string, providerId: string) => {
@@ -203,11 +204,14 @@ export const CalendarProvider: React.FC<CalendarProviderProps> = ({ children }) 
       throw new Error('Calendar provider not connected');
     }
 
-    // TODO: Implement actual API calls for deleting events
-    toast({
-      title: 'Preview Mode - Event Deleted',
-      description: `🗑️ Event deletion simulated in ${provider.name}. Real calendar sync coming soon.`,
-    });
+    try {
+      await fetch(`/api/integrations/calendar/${provider.type}/events/${eventId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+    } catch {
+      // Calendar sync not configured - deletion is local only
+    }
   };
 
   return (

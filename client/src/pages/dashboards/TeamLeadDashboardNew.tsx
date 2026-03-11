@@ -347,9 +347,9 @@ export default function TeamLeadDashboardNew() {
                     userName: m.userName,
                     pipelineValue: m.pipelineValue,
                     dealsInProgress: m.dealCount,
-                    winRate: 0, // TODO: Add from another query
+                    winRate: m.winRate ?? m.quoteWinRate ?? 0,
                     averageDealSize: m.averageDealSize,
-                    activitiesThisWeek: 0, // TODO: Add from activity query
+                    activitiesThisWeek: m.activitiesThisWeek ?? m.activityCount ?? 0,
                     quotaAttainment: m.pipelineCoverage,
                   }))}
                   summary={pipelineData.summary}
