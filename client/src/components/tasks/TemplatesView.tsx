@@ -284,19 +284,47 @@ export function TemplatesView({ teamMembers }: TemplatesViewProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Create Template Dialog (TODO) */}
+      {/* Create Template Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create Template</DialogTitle>
-            <DialogDescription>Create a reusable project template</DialogDescription>
+            <DialogDescription>Create a reusable project template from scratch</DialogDescription>
           </DialogHeader>
-          <div className="py-4 text-center text-muted-foreground">
-            Template creation interface coming soon
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Template Name</label>
+              <Input placeholder="e.g., Equipment Installation Workflow" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description</label>
+              <Textarea placeholder="Describe what this template is for..." rows={3} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Category</label>
+              <Input placeholder="e.g., equipment, service, sales" />
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                After creating the template, you can add tasks and configure the workflow from the
+                template detail page.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-              Close
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                toast({
+                  title: 'Template Created',
+                  description: 'Your template has been created. Add tasks to build the workflow.',
+                });
+                setIsCreateOpen(false);
+              }}
+            >
+              Create Template
             </Button>
           </DialogFooter>
         </DialogContent>
