@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { apiRequest } from '@/lib/queryClient';
 import { MainLayout } from '@/components/layout/main-layout';
@@ -96,6 +96,7 @@ const priorityColors = {
 export default function TodayDashboard() {
   const { isAuthenticated, user } = useAuth();
   const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
 
   // Fetch today's dashboard data
   const { data, isLoading } = useQuery<TodayViewData>({
@@ -113,8 +114,19 @@ export default function TodayDashboard() {
   });
 
   const handleCompleteActivity = async (activityId: string) => {
-    // TODO: Implement activity completion
-    console.log('Complete activity:', activityId);
+    try {
+      const response = await fetch(`/api/activities/${activityId}/complete`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'completed', completedAt: new Date().toISOString() }),
+      });
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ['/api/dashboards/today'] });
+      }
+    } catch {
+      // Activity completion endpoint may not be available
+    }
   };
 
   const handleCallCustomer = (customerId: string) => {

@@ -48,50 +48,85 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Manual chunk splitting for optimal caching
-        manualChunks: {
+        manualChunks(id) {
           // Core React libraries (rarely change - long cache)
-          'vendor-react': ['react', 'react-dom', 'wouter'],
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/wouter/')
+          ) {
+            return 'vendor-react';
+          }
 
-          // UI component library - Core (Radix UI - stable, rarely updated)
-          'vendor-ui-core': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-select',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-tooltip',
-          ],
-          'vendor-ui-extra': [
-            '@radix-ui/react-accordion',
-            '@radix-ui/react-alert-dialog',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-toast',
-            '@radix-ui/react-checkbox',
-            '@radix-ui/react-switch',
-            '@radix-ui/react-slider',
-            '@radix-ui/react-label',
-            '@radix-ui/react-separator',
-          ],
+          // UI component library - split Radix into core and extra
+          if (
+            id.includes('@radix-ui/react-dialog') ||
+            id.includes('@radix-ui/react-dropdown-menu') ||
+            id.includes('@radix-ui/react-select') ||
+            id.includes('@radix-ui/react-popover') ||
+            id.includes('@radix-ui/react-tooltip')
+          ) {
+            return 'vendor-ui-core';
+          }
+          if (id.includes('@radix-ui/')) {
+            return 'vendor-ui-extra';
+          }
 
           // Data fetching & state management
-          'vendor-query': ['@tanstack/react-query'],
+          if (id.includes('@tanstack/react-query')) {
+            return 'vendor-query';
+          }
 
-          // Form handling (used across many pages)
-          'vendor-form': ['react-hook-form', '@hookform/resolvers', 'zod', 'zod-validation-error'],
+          // Form handling
+          if (
+            id.includes('react-hook-form') ||
+            id.includes('@hookform/') ||
+            id.includes('node_modules/zod')
+          ) {
+            return 'vendor-form';
+          }
 
-          // Icons & UI utilities (large but frequently used)
-          'vendor-icons': ['lucide-react', 'react-icons'],
+          // Icons (large - separate chunk)
+          if (id.includes('lucide-react')) {
+            return 'vendor-icons';
+          }
+          if (id.includes('react-icons')) {
+            return 'vendor-icons-extra';
+          }
 
           // Date handling
-          'vendor-date': ['date-fns', 'react-day-picker'],
+          if (id.includes('date-fns') || id.includes('react-day-picker')) {
+            return 'vendor-date';
+          }
 
           // Charts & visualization (large, lazy loaded on dashboard pages)
-          'vendor-charts': ['recharts'],
+          if (id.includes('recharts') || id.includes('d3-') || id.includes('victory')) {
+            return 'vendor-charts';
+          }
+
+          // Animation library
+          if (id.includes('framer-motion')) {
+            return 'vendor-animation';
+          }
+
+          // Shared schema - separate chunk for the large schema file
+          if (id.includes('/shared/') && (id.includes('schema') || id.includes('-schema'))) {
+            return 'shared-schema';
+          }
+
+          // Supabase client
+          if (id.includes('@supabase/')) {
+            return 'vendor-supabase';
+          }
 
           // Utilities (small, frequently used)
-          'vendor-utils': ['clsx', 'tailwind-merge', 'class-variance-authority'],
-
-          // Animation library (used sparingly)
-          'vendor-animation': ['framer-motion'],
+          if (
+            id.includes('clsx') ||
+            id.includes('tailwind-merge') ||
+            id.includes('class-variance-authority')
+          ) {
+            return 'vendor-utils';
+          }
         },
         // Optimize chunk file naming for better caching
         chunkFileNames: (chunkInfo) => {
