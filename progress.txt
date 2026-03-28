@@ -3349,3 +3349,59 @@ Branch: claude/security-prd-items-eMxFw
 
 ---
 
+## Launch Readiness Items - Sat, Mar 28, 2026
+Branch: claude/security-prd-items-eMxFw
+
+---
+
+### LAUNCH-020: Load test scripts
+**Status**: ⚙️ SCRIPTS READY - Requires execution against running app
+
+**What was done**:
+1. Updated `tests/load/load.js`:
+   - Added P95<500ms threshold for read endpoints (dashboard, leads, customers, search, quotes)
+   - Added P95<1000ms threshold for write endpoints (login, lead creation)
+   - Added CRUD write test (POST /api/leads)
+   - Added search endpoint test (GET /api/search)
+   - Added custom metrics: read_duration, write_duration, search_duration
+   - Stages: ramp to 50 users, sustain 3 min, ramp down (matches 50 concurrent / 5 min criteria)
+2. Updated `tests/load/stress.js`:
+   - Revised stages to ramp to 200 users and sustain for 1 min (matches burst criteria)
+3. Added npm scripts: `test:load`, `test:load:stress`
+
+**Files Modified**: tests/load/load.js, tests/load/stress.js, package.json
+
+**To execute**:
+```bash
+k6 run -e BASE_URL=https://app.printyx.net -e AUTH_TOKEN=<jwt> tests/load/load.js
+k6 run -e BASE_URL=https://app.printyx.net -e AUTH_TOKEN=<jwt> tests/load/stress.js
+```
+
+### LAUNCH-011: Database backup/restore verification
+**Status**: ⚙️ RUNBOOK CREATED - Requires ops testing against live DB
+
+**What was done**:
+1. Created `docs/DISASTER_RECOVERY_RUNBOOK.md`:
+   - Full disaster recovery procedure (assess → select backup → restore → verify → restart)
+   - Manual backup commands reference
+   - Environment variables documentation
+   - Monitoring and alerting guidance
+   - Pre-launch checklist for ops verification
+   - Common issues troubleshooting table
+2. Verified CronJob config at `k8s/base/cronjob-backup.yaml`:
+   - Schedule: daily at 2:00 AM UTC ✅
+   - Concurrency: Forbid ✅
+   - Timeout: 1 hour ✅
+   - Retention cleanup: daily 7d, weekly 4w, monthly 12m ✅
+   - Both main + forecasting databases backed up ✅
+
+**Files Created**: docs/DISASTER_RECOVERY_RUNBOOK.md
+
+**Remaining (requires live database access)**:
+- Run `npm run db:backup` and verify backup file creation
+- Verify backup uploaded to GCS
+- Test `npm run db:restore` on test database
+- Verify retention cleanup
+
+---
+
