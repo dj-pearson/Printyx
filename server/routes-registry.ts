@@ -3,160 +3,29 @@
  *
  * Contains all route module imports and registration calls.
  * Called from routes.ts after middleware setup.
+ *
+ * Routes are organized into ~20 logical domain modules in server/domains/.
+ * Each domain barrel re-exports registration functions from its member route files.
  */
 
 import type { Express } from 'express';
 
-// ─── Extracted Route Module Imports (Phase 4) ─────────────────────────
-import { registerAuthCoreRoutes } from './routes-auth-core';
-import { registerCrmCoreRoutes } from './routes-crm-core';
-import { registerDashboardsCoreRoutes } from './routes-dashboards-core';
-import { registerBillingCoreRoutes } from './routes-billing-core';
-import { registerSampleDataRoutes } from './routes-sample-data';
-import { registerProductsCrudRoutes } from './routes-products-crud';
-import { registerCatalogCsvRoutes } from './routes-catalog-csv';
-import { registerSeoCoreRoutes } from './routes-seo-core';
-import { registerFinancialForecastingRoutes } from './routes-financial-forecasting';
-import { registerOperationsExtendedRoutes } from './routes-operations-extended';
-import { registerAuditLogRoutes } from './routes-audit-logs';
-import { registerWorkflowMobileRoutes } from './routes-workflow-mobile';
-
-// ─── Static Route Module Imports ──────────────────────────────────────
-import { registerOnboardingRoutes } from './routes-onboarding';
-import { exportChecklistPDF, exportChecklistExcel, exportChecklistCSV } from './routes-export';
-import signupCrmRoutes from './routes-signup-crm';
-import universalSearchRoutes from './routes-universal-search';
-import knowledgeBaseRoutes from './routes-knowledge-base';
-import knowledgeBaseAdminRoutes from './routes/knowledge-base-admin-routes';
-import contentGapAnalysisRoutes from './routes/content-gap-analysis-routes';
-import articleBookmarksRoutes from './routes/article-bookmarks-routes';
-import readingHistoryRoutes from './routes/reading-history-routes';
-import articleRatingsRoutes from './routes/article-ratings-routes';
-import { trialRoutes } from './routes-trial';
-import emailParserRoutes from './routes-email-parser';
-import mobileTechnicianRoutes from './routes-mobile-technician';
-import equipmentQRRoutes from './routes-equipment-qr';
-import { registerMobileApiRoutes } from './routes-mobile-api';
-import businessRecordsRoutes from './routes-business-records';
-import accessibilityRoutes from './routes-accessibility';
-
-import { registerIntegrationRoutes } from './routes-integrations';
-import { registerTaskRoutes } from './routes-tasks';
-import { registerEnhancedTaskRoutes } from './routes-enhanced-tasks';
-import { registerTemplateRoutes } from './routes-templates';
-import { registerDealsManagementRoutes } from './routes-deals-management';
-import { registerOpportunitiesRoutes } from './routes-opportunities';
-import { registerDealDeskRoutes } from './routes-deal-desk';
-import { registerPipelineConfigurationRoutes } from './routes-pipeline-configuration';
-import { registerTechnicianManagementRoutes } from './routes-technician-management';
-import { registerProductModelsRoutes } from './routes-product-models';
-import { registerProductPricingRoutes } from './routes-product-pricing';
-import { registerSoftwareProductsRoutes } from './routes-software-products';
-import { registerPurchaseOrderRoutes } from './routes-purchase-orders';
-import { registerWarehouseRoutes } from './routes-warehouse';
-import { registerServiceAnalysisRoutes } from './routes-service-analysis';
-import { registerContactsRoutes } from './routes-contacts';
-import { registerCompaniesRoutes } from './routes-companies';
-import { registerActivitiesRoutes } from './routes-activities';
-import { registerNotificationRoutes } from './routes-notifications';
-import { registerAutomationRoutes } from './routes-automation';
-import equipmentLifecycleStateMachineRoutes from './routes-equipment-lifecycle-state-machine';
-import equipmentDisposalRoutes from './routes-equipment-disposal';
-import breachDetectionRoutes from './routes-breach-detection';
-import { registerGdprRoutes } from './routes-gdpr';
-import { registerCrmGoalRoutes } from './routes-crm-goals';
-import { registerSavedViewsRoutes } from './routes-saved-views';
-import { registerDealTagRoutes } from './routes-deal-tags';
-import { registerCrmBulkRoutes } from './routes-crm-bulk';
-import { registerBulkOperationsRoutes } from './routes-bulk-operations';
-import { registerRecordLayoutRoutes } from './routes-record-layout';
-import { registerBusinessRecordRoutes } from './routes-business-records';
-import { registerCustomerRoutes } from './routes-customers';
-import { registerDealsRoutes } from './routes-deals';
-import { registerCommissionRoutes } from './routes-commission';
-import { registerCatalogRoutes } from './routes-catalog';
-import { registerAnalyticsRoutes } from './routes-analytics';
-import { registerFinancialRoutes } from './routes-financial';
-import { registerCsvImportRoutes } from './routes-csv-import';
-import { registerCustomReportsRoutes } from './routes-custom-reports';
-import { registerScheduledReportsRoutes } from './routes-scheduled-reports';
-import { registerDashboardLayoutsRoutes } from './routes-dashboard-layouts';
-import { registerSalesforceRoutes } from './routes-salesforce-integration';
-import { registerSalesforceTestRoutes } from './test-salesforce-integration';
-import { registerDataEnrichmentRoutes } from './routes-data-enrichment';
-import { registerQuickBooksRoutes } from './routes-quickbooks-integration';
-import { setupSalesPipelineRoutes } from './routes-sales-pipeline';
-import { registerModularDashboardRoutes } from './routes-modular-dashboard';
-import { registerDashboardWidgetRoutes } from './routes-dashboard-widgets';
-import { registerTodayDashboardRoutes } from './routes-today-dashboard';
-import { registerManufacturerIntegrationRoutes } from './routes-manufacturer-integration';
-import { registerLeadAssignmentRoutes } from './routes-lead-assignment';
-import { registerSalesRepAssignmentRoutes } from './routes-sales-rep-assignments';
-import { registerLeadMapRoutes } from './routes-lead-map';
-import { registerAutoLeadRoutingRoutes } from './routes-auto-lead-routing';
-import { registerPredictiveServiceDispatchRoutes } from './routes-predictive-service-dispatch';
-import { registerWhiteLabelRoutes } from './routes-white-label';
-import autoSupplyReplenishmentRoutes from './routes-auto-supply-replenishment';
-import contractRenewalRoutes from './routes-contract-renewal';
-import { registerSalesHandoffRoutes } from './routes-sales-handoff';
-import { registerRenewalManagementRoutes } from './routes-renewal-management';
-import { registerClientMonitoringRoutes } from './routes-client-monitoring';
-import customerPortalRoutes from './routes-customer-portal';
-import clientMetricsRoutes from './routes-client-metrics';
-import deviceMonitoringRoutes from './routes-device-monitoring';
-import { serviceDispatchRouter } from './routes-service-dispatch';
-import { proactiveMaintenanceRouter } from './routes-proactive-maintenance';
-import { predictiveMaintenanceHubRouter } from './routes-predictive-maintenance-hub';
-import commissionRoutes from './routes-commission';
-import enhancedServiceRoutes from './routes-enhanced-service';
-import { enhancedRBACRoutes } from './routes-enhanced-rbac';
-import gpt5Routes from './routes-ai-gpt5';
-import salesForecastingRoutes from './routes-sales-forecasting';
-import reportsRoutes from './routes-reports';
-import reportingArchitectureRoutes from './routes-reporting-architecture';
-import salesReportsAPI from './routes/sales-reports-api';
-import serviceReportsAPI from './routes/service-reports-api';
-import warehouseReportsAPI from './routes/warehouse-reports-api';
-import salesSupervisorReportsAPI from './routes/sales-supervisor-reports-api';
-import serviceSupervisorReportsAPI from './routes/service-supervisor-reports-api';
-import teamReportsAPI from './routes/team-reports-api';
-import salesManagerReportsAPI from './routes/sales-manager-reports-api';
-import serviceManagerReportsAPI from './routes/service-manager-reports-api';
-import directorReportsAPI from './routes/director-reports-api';
-import executiveReportsAPI from './routes/executive-reports-api';
-import warehouseFpyRoutes from './routes-warehouse-fpy';
-import consolidatedBillingRoutes from './routes/billing';
-import printCostCalculatorRoutes from './routes-print-cost-calculator';
-import contentMarketingRoutes from './routes-content-marketing';
-import seoRoutes from './routes-seo';
-import googleIndexingRoutes from './routes-google-indexing';
-import { registerHealthRoutes } from './routes/health-routes';
-import apiKeyRoutes from './routes/api-key-routes';
-import integrationRoutes from './integrations/routes';
-import integrationHubRoutes from './routes-integration-hub';
-import { registerFeatureFlagRoutes } from './routes-feature-flags';
-import { registerSessionManagementRoutes } from './routes-session-management';
-import { registerAdminStatsRoutes } from './routes-admin-stats';
-import incidentResponseRoutes from './routes-incident-response';
-import { registerCspReportRoutes } from './routes-csp-report';
-import { createModuleLogger } from './lib/logger';
-const log = createModuleLogger('routes-registry');
-
-// Track failed route module loads for health reporting
-const failedRouteModules: { module: string; error: string; timestamp: string }[] = [];
-
-/** Returns list of route modules that failed to load (for health endpoint) */
-export function getFailedRouteModules() {
-  return failedRouteModules;
-}
-
-/** Returns true if all route modules loaded successfully */
-export function allRoutesHealthy() {
-  return failedRouteModules.length === 0;
-}
-
-// Pricing handler imports
+// ─── Domain Module Imports (20 domains) ────────────────────────────────
 import {
+  registerAuthCoreRoutes,
+  registerFeatureFlagRoutes,
+  registerSessionManagementRoutes,
+  enhancedRBACRoutes,
+  registerCspReportRoutes,
+  trialRoutes,
+} from './domains/auth';
+
+import {
+  registerBillingCoreRoutes,
+  registerFinancialRoutes,
+  registerFinancialForecastingRoutes,
+  registerCommissionRoutes,
+  registerQuickBooksRoutes,
   getCompanyPricingSettings,
   updateCompanyPricingSettings,
   getProductPricing,
@@ -171,11 +40,201 @@ import {
   updateQuoteLineItem,
   deleteQuoteLineItem,
   calculatePricingForProduct,
-} from './routes-pricing';
+  printCostCalculatorRoutes,
+  consolidatedBillingRoutes,
+  salesForecastingRoutes,
+} from './domains/billing';
 
+import {
+  registerCrmCoreRoutes,
+  registerContactsRoutes,
+  registerCompaniesRoutes,
+  registerActivitiesRoutes,
+  registerCustomerRoutes,
+  registerBusinessRecordRoutes,
+  registerCrmGoalRoutes,
+  registerSavedViewsRoutes,
+  registerCrmBulkRoutes,
+  registerBulkOperationsRoutes,
+  registerRecordLayoutRoutes,
+  registerCsvImportRoutes,
+  signupCrmRoutes,
+  universalSearchRoutes,
+  businessRecordsRoutes,
+} from './domains/crm';
+
+import {
+  registerDealsRoutes,
+  registerDealsManagementRoutes,
+  registerDealDeskRoutes,
+  registerDealTagRoutes,
+  registerOpportunitiesRoutes,
+  registerPipelineConfigurationRoutes,
+  setupSalesPipelineRoutes,
+  registerLeadAssignmentRoutes,
+  registerLeadMapRoutes,
+  registerAutoLeadRoutingRoutes,
+  registerSalesRepAssignmentRoutes,
+  registerSalesHandoffRoutes,
+  registerRenewalManagementRoutes,
+  contractRenewalRoutes,
+} from './domains/sales';
+
+import {
+  registerProductsCrudRoutes,
+  registerCatalogRoutes,
+  registerCatalogCsvRoutes,
+  registerProductModelsRoutes,
+  registerProductPricingRoutes,
+  registerSoftwareProductsRoutes,
+  registerDataEnrichmentRoutes,
+  registerManufacturerIntegrationRoutes,
+} from './domains/products';
+
+import {
+  registerWarehouseRoutes,
+  registerPurchaseOrderRoutes,
+  autoSupplyReplenishmentRoutes,
+  warehouseFpyRoutes,
+} from './domains/warehouse';
+
+import {
+  registerServiceAnalysisRoutes,
+  registerPredictiveServiceDispatchRoutes,
+  registerTechnicianManagementRoutes,
+  serviceDispatchRouter,
+  proactiveMaintenanceRouter,
+  predictiveMaintenanceHubRouter,
+  equipmentLifecycleStateMachineRoutes,
+  equipmentDisposalRoutes,
+  equipmentQRRoutes,
+  enhancedServiceRoutes,
+} from './domains/service';
+
+import {
+  registerMobileApiRoutes,
+  registerWorkflowMobileRoutes,
+  mobileTechnicianRoutes,
+  mobileLogsRoutes,
+  registerMobileLogsAdminRoutes,
+} from './domains/mobile';
+
+import {
+  registerDashboardsCoreRoutes,
+  registerModularDashboardRoutes,
+  registerDashboardWidgetRoutes,
+  registerTodayDashboardRoutes,
+  registerDashboardLayoutsRoutes,
+} from './domains/dashboard';
+
+import {
+  registerCustomReportsRoutes,
+  registerScheduledReportsRoutes,
+  reportsRoutes,
+  reportingArchitectureRoutes,
+  salesReportsAPI,
+  serviceReportsAPI,
+  warehouseReportsAPI,
+  salesSupervisorReportsAPI,
+  serviceSupervisorReportsAPI,
+  teamReportsAPI,
+  salesManagerReportsAPI,
+  serviceManagerReportsAPI,
+  directorReportsAPI,
+  executiveReportsAPI,
+} from './domains/reporting';
+
+import {
+  registerAdminStatsRoutes,
+  registerOperationsExtendedRoutes,
+  registerAuditLogRoutes,
+  registerSampleDataRoutes,
+} from './domains/admin';
+
+import {
+  registerGdprRoutes,
+  breachDetectionRoutes,
+  incidentResponseRoutes,
+} from './domains/security';
+
+import {
+  knowledgeBaseRoutes,
+  knowledgeBaseAdminRoutes,
+  contentGapAnalysisRoutes,
+  articleBookmarksRoutes,
+  readingHistoryRoutes,
+  articleRatingsRoutes,
+} from './domains/knowledge';
+
+import {
+  registerIntegrationRoutes,
+  registerSalesforceRoutes,
+  registerSalesforceTestRoutes,
+  integrationRoutes,
+  integrationHubRoutes,
+} from './domains/integrations';
+
+import {
+  registerTaskRoutes,
+  registerEnhancedTaskRoutes,
+  registerTemplateRoutes,
+  registerAutomationRoutes,
+} from './domains/tasks';
+
+import {
+  registerSeoCoreRoutes,
+  seoRoutes,
+  googleIndexingRoutes,
+  contentMarketingRoutes,
+} from './domains/content';
+
+import {
+  registerOnboardingRoutes,
+  exportChecklistPDF,
+  exportChecklistExcel,
+  exportChecklistCSV,
+  accessibilityRoutes,
+} from './domains/onboarding';
+
+import {
+  registerNotificationRoutes,
+  emailParserRoutes,
+} from './domains/notifications';
+
+import {
+  registerAnalyticsRoutes,
+  gpt5Routes,
+} from './domains/ai';
+
+import {
+  registerClientMonitoringRoutes,
+  registerWhiteLabelRoutes,
+  customerPortalRoutes,
+  clientMetricsRoutes,
+  deviceMonitoringRoutes,
+} from './domains/portal';
+
+// ─── Non-domain imports ──────────────────────────────────���──────────────
+import { registerHealthRoutes } from './routes/health-routes';
+import apiKeyRoutes from './routes/api-key-routes';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
-import mobileLogsRoutes, { registerMobileLogsAdminRoutes } from './routes-mobile-logs';
+import { createModuleLogger } from './lib/logger';
+
+const log = createModuleLogger('routes-registry');
+
+// Track failed route module loads for health reporting
+const failedRouteModules: { module: string; error: string; timestamp: string }[] = [];
+
+/** Returns list of route modules that failed to load (for health endpoint) */
+export function getFailedRouteModules() {
+  return failedRouteModules;
+}
+
+/** Returns true if all route modules loaded successfully */
+export function allRoutesHealthy() {
+  return failedRouteModules.length === 0;
+}
 
 export async function registerAllRouteModules(app: Express, requireAuth: any): Promise<void> {
   // ─── Health Check (pre-auth, called before middleware) ──────────────
@@ -201,12 +260,11 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     res.status(204).end();
   });
 
-  // ─── Auth & Trial ──────────────────────────────────────────────────
+  // ─── Auth & Trial ────────────────────────────────────────────���─────
   registerAuthCoreRoutes(app);
   app.use('/api/trial', trialRoutes);
 
   // ─── Edge Function Proxy (must be before CRM routes) ───────────────
-  // Forwards CRM API calls to Supabase Edge Functions for correct data
   registerEdgeFunctionProxy(app);
 
   // ─── Knowledge Base ────────────────────────────────────────────────
@@ -221,7 +279,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use(universalSearchRoutes);
   app.use('/api/accessibility', accessibilityRoutes);
 
-  // ─── Extracted Core Routes (Phase 4) ───────────────────────────────
+  // ─── Core Domain Routes ───────────────────────────────────────────
   registerSampleDataRoutes(app);
   registerCrmCoreRoutes(app);
   registerDashboardsCoreRoutes(app);
@@ -313,8 +371,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Sales Pipeline ───────────────────────────────────────────────
   setupSalesPipelineRoutes(app, storage, requireAuth);
 
-  // ─── Commission & Equipment ───────────────────────────────────────
-  app.use(commissionRoutes);
+  // ─── Equipment ────────────────────────────────────────────────────
   app.use(equipmentLifecycleStateMachineRoutes);
   app.use(equipmentDisposalRoutes);
 
@@ -351,7 +408,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use('/api/admin/seed', adminSeedRoutes.default);
   app.use('/api/root-admin/crm', signupCrmRoutes);
 
-  // ─── Admin Stats ──────────────────────────────────────────────────
+  // ─── Admin Stats ──────────────────────────────────────────────��───
   registerAdminStatsRoutes(app);
 
   // ─── Incident Response ──────────────────────────────────────────
@@ -363,7 +420,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   const companyIdRoutes = await import('./routes-company-ids');
   app.use('/api/company-ids', companyIdRoutes.default);
 
-  // ─── Feature Flags ──────────────────────────────────────────────────
+  // ─── Feature Flags ────────────────────────────────────────��─────────
   registerFeatureFlagRoutes(app);
 
   // ─── Session Management ────────────────────────────────────────────
