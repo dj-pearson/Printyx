@@ -5,6 +5,20 @@
  * All templates use a consistent branded design.
  */
 
+/** Escape user-controlled strings for safe embedding in HTML */
+function escapeHtml(text: string | number | undefined | null): string {
+  if (text === undefined || text === null) return '';
+  const str = String(text);
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  };
+  return str.replace(/[&<>"']/g, (m) => map[m]);
+}
+
 const EMAIL_BASE_STYLES = `
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #333; }
@@ -38,7 +52,8 @@ export class EmailTemplates {
    * Password Reset Email
    */
   static passwordReset(data: EmailTemplateData): { subject: string; html: string; text: string } {
-    const resetUrl = `${this.baseUrl}/reset-password?token=${data.resetToken}`;
+    const safeToken = encodeURIComponent(data.resetToken || '');
+    const resetUrl = `${this.baseUrl}/reset-password?token=${safeToken}`;
 
     return {
       subject: 'Reset Your Printyx Password',
@@ -54,16 +69,16 @@ export class EmailTemplates {
               <h1 style="margin: 0;">🔐 Password Reset</h1>
             </div>
             <div class="content">
-              <p>Hello${data.userName ? ` ${data.userName}` : ''},</p>
+              <p>Hello${data.userName ? ` ${escapeHtml(data.userName)}` : ''},</p>
 
               <p>We received a request to reset your password for your Printyx account.</p>
 
               <p style="text-align: center;">
-                <a href="${resetUrl}" class="button">Reset Password</a>
+                <a href="${escapeHtml(resetUrl)}" class="button">Reset Password</a>
               </p>
 
               <p>Or copy and paste this link into your browser:</p>
-              <p style="word-break: break-all; color: #2563eb; font-size: 14px;">${resetUrl}</p>
+              <p style="word-break: break-all; color: #2563eb; font-size: 14px;">${escapeHtml(resetUrl)}</p>
 
               <div class="warning">
                 <strong>Security Notice:</strong>
@@ -78,7 +93,7 @@ export class EmailTemplates {
             </div>
             <div class="footer">
               <p>© 2025 Printyx. All rights reserved.</p>
-              <p>This email was sent to ${data.userEmail}</p>
+              <p>This email was sent to ${escapeHtml(data.userEmail)}</p>
             </div>
           </div>
         </body>
@@ -125,7 +140,7 @@ This email was sent to ${data.userEmail}
               <h1 style="margin: 0;">✅ Password Changed</h1>
             </div>
             <div class="content">
-              <p>Hello${data.userName ? ` ${data.userName}` : ''},</p>
+              <p>Hello${data.userName ? ` ${escapeHtml(data.userName)}` : ''},</p>
 
               <p>This email confirms that your Printyx password has been successfully changed.</p>
 
@@ -143,7 +158,7 @@ This email was sent to ${data.userEmail}
             </div>
             <div class="footer">
               <p>© 2025 Printyx. All rights reserved.</p>
-              <p>This email was sent to ${data.userEmail}</p>
+              <p>This email was sent to ${escapeHtml(data.userEmail)}</p>
             </div>
           </div>
         </body>
@@ -178,7 +193,8 @@ This email was sent to ${data.userEmail}
     html: string;
     text: string;
   } {
-    const verifyUrl = `${this.baseUrl}/verify-email?token=${data.verificationToken}`;
+    const safeVerifyToken = encodeURIComponent(data.verificationToken || '');
+    const verifyUrl = `${this.baseUrl}/verify-email?token=${safeVerifyToken}`;
 
     return {
       subject: 'Verify Your Printyx Email Address',
@@ -194,22 +210,22 @@ This email was sent to ${data.userEmail}
               <h1 style="margin: 0;">📧 Verify Your Email</h1>
             </div>
             <div class="content">
-              <p>Hello${data.userName ? ` ${data.userName}` : ''},</p>
+              <p>Hello${data.userName ? ` ${escapeHtml(data.userName)}` : ''},</p>
 
               <p>Welcome to Printyx! Please verify your email address to activate your account.</p>
 
               <p style="text-align: center;">
-                <a href="${verifyUrl}" class="button">Verify Email Address</a>
+                <a href="${escapeHtml(verifyUrl)}" class="button">Verify Email Address</a>
               </p>
 
               <p>Or copy and paste this link into your browser:</p>
-              <p style="word-break: break-all; color: #2563eb; font-size: 14px;">${verifyUrl}</p>
+              <p style="word-break: break-all; color: #2563eb; font-size: 14px;">${escapeHtml(verifyUrl)}</p>
 
               <p>This link will expire in 24 hours.</p>
             </div>
             <div class="footer">
               <p>© 2025 Printyx. All rights reserved.</p>
-              <p>This email was sent to ${data.userEmail}</p>
+              <p>This email was sent to ${escapeHtml(data.userEmail)}</p>
             </div>
           </div>
         </body>
@@ -253,7 +269,7 @@ This email was sent to ${data.userEmail}
               <h1 style="margin: 0;">🎉 Welcome to Printyx!</h1>
             </div>
             <div class="content">
-              <p>Hello ${data.userName},</p>
+              <p>Hello ${escapeHtml(data.userName)},</p>
 
               <p>Welcome to Printyx - the unified platform for copier dealers! Your account has been created successfully.</p>
 
@@ -261,7 +277,7 @@ This email was sent to ${data.userEmail}
                 data.trialDays
                   ? `
                 <div style="background: #dbeafe; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
-                  <h2 style="margin: 0 0 10px 0; color: #1e40af;">Your ${data.trialDays}-Day Free Trial Has Started!</h2>
+                  <h2 style="margin: 0 0 10px 0; color: #1e40af;">Your ${escapeHtml(data.trialDays)}-Day Free Trial Has Started!</h2>
                   <p style="margin: 0; color: #1e3a8a;">No credit card required. Full access to all features.</p>
                 </div>
               `
@@ -284,7 +300,7 @@ This email was sent to ${data.userEmail}
             </div>
             <div class="footer">
               <p>© 2025 Printyx. All rights reserved.</p>
-              <p>This email was sent to ${data.userEmail}</p>
+              <p>This email was sent to ${escapeHtml(data.userEmail)}</p>
             </div>
           </div>
         </body>
@@ -336,7 +352,7 @@ This email was sent to ${data.userEmail}
               <h1 style="margin: 0;">🚀 Getting Started with Printyx</h1>
             </div>
             <div class="content">
-              <p>Hello ${data.userName},</p>
+              <p>Hello ${escapeHtml(data.userName)},</p>
 
               <p>You're now 3 days into your Printyx trial! Here are some tips to help you get the most out of the platform:</p>
 
@@ -362,7 +378,7 @@ This email was sent to ${data.userEmail}
             </div>
             <div class="footer">
               <p>© 2025 Printyx. All rights reserved.</p>
-              <p>This email was sent to ${data.userEmail}</p>
+              <p>This email was sent to ${escapeHtml(data.userEmail)}</p>
             </div>
           </div>
         </body>
@@ -410,7 +426,7 @@ Need help? Reply to this email!
               <h1 style="margin: 0;">⏳ Halfway There!</h1>
             </div>
             <div class="content">
-              <p>Hello ${data.userName},</p>
+              <p>Hello ${escapeHtml(data.userName)},</p>
 
               <p>You're at the midpoint of your 14-day trial.</p>
 
@@ -459,7 +475,7 @@ Continue exploring: ${dashboardUrl}
     const upgradeUrl = `${this.baseUrl}/settings/subscription`;
 
     return {
-      subject: `Your Printyx Trial Ends ${data.trialEndDate ? `on ${data.trialEndDate}` : 'Soon'}`,
+      subject: `Your Printyx Trial Ends ${data.trialEndDate ? `on ${String(data.trialEndDate).replace(/[<>"'&]/g, '')}` : 'Soon'}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -472,9 +488,9 @@ Continue exploring: ${dashboardUrl}
               <h1 style="margin: 0;">⏰ Trial Ending Soon</h1>
             </div>
             <div class="content">
-              <p>Hello ${data.userName},</p>
+              <p>Hello ${escapeHtml(data.userName)},</p>
 
-              <p>Your Printyx trial is ending soon${data.trialEndDate ? ` on ${data.trialEndDate}` : ''}.</p>
+              <p>Your Printyx trial is ending soon${data.trialEndDate ? ` on ${escapeHtml(data.trialEndDate)}` : ''}.</p>
 
               <div style="background: #fef3c7; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
                 <h2 style="margin: 0 0 10px 0; color: #92400e;">Don't Lose Access!</h2>
@@ -489,7 +505,7 @@ Continue exploring: ${dashboardUrl}
             </div>
             <div class="footer">
               <p>© 2025 Printyx. All rights reserved.</p>
-              <p>This email was sent to ${data.userEmail}</p>
+              <p>This email was sent to ${escapeHtml(data.userEmail)}</p>
             </div>
           </div>
         </body>

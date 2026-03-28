@@ -2726,76 +2726,78 @@ export class DatabaseStorage implements IStorage {
     recordType?: string,
     status?: string,
     search?: string,
-    limit?: number,
+    queryLimit?: number,
   ): Promise<any[]> {
     try {
-      // Use raw SQL to avoid Drizzle schema mapping issues
-      const conditions = [`tenant_id = '${tenantId}'`];
-      if (recordType) conditions.push(`record_type = '${recordType}'`);
-      if (status) conditions.push(`status = '${status}'`);
+      // Build parameterized conditions to prevent SQL injection
+      const conditions = [eq(businessRecords.tenantId, tenantId)];
+      if (recordType) conditions.push(eq(businessRecords.recordType, recordType));
+      if (status) conditions.push(eq(businessRecords.status, status));
 
-      // Add search functionality across company name and contact info
+      // Add search functionality across company name and contact info using parameterized LIKE
       if (search && search.length > 0) {
-        const searchTerm = search.toLowerCase();
-        conditions.push(`(
-          LOWER(company_name) LIKE '%${searchTerm}%' OR
-          LOWER(primary_contact_name) LIKE '%${searchTerm}%' OR
-          LOWER(primary_contact_email) LIKE '%${searchTerm}%' OR
-          LOWER(industry) LIKE '%${searchTerm}%' OR
-          LOWER(city) LIKE '%${searchTerm}%'
-        )`);
+        const searchPattern = `%${search.toLowerCase()}%`;
+        conditions.push(
+          or(
+            sql`LOWER(${businessRecords.companyName}) LIKE ${searchPattern}`,
+            sql`LOWER(${businessRecords.primaryContactName}) LIKE ${searchPattern}`,
+            sql`LOWER(${businessRecords.primaryContactEmail}) LIKE ${searchPattern}`,
+            sql`LOWER(${businessRecords.industry}) LIKE ${searchPattern}`,
+            sql`LOWER(${businessRecords.city}) LIKE ${searchPattern}`,
+          )!,
+        );
       }
 
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-      const limitClause = limit ? `LIMIT ${limit}` : '';
+      // Cap limit to prevent unbounded queries
+      const safeLimit = Math.min(Math.max(queryLimit || 200, 1), 500);
 
-      const result = await db.execute(sql`
-        SELECT 
-          id, 
-          tenant_id, 
-          company_name, 
-          status, 
-          record_type,
-          phone,
-          COALESCE(primary_contact_name, '') as primary_contact_name,
-          COALESCE(primary_contact_email, '') as primary_contact_email,
-          COALESCE(primary_contact_phone, '') as primary_contact_phone,
-          COALESCE(website, '') as website,
-          COALESCE(industry, '') as industry,
-          COALESCE(address_line1, '') as address_line1,
-          COALESCE(city, '') as city,
-          COALESCE(state, '') as state,
-          COALESCE(postal_code, '') as postal_code,
-          url_slug,
-          company_display_id,
-          created_at,
-          updated_at
-        FROM business_records 
-        ${sql.raw(whereClause)}
-        ORDER BY created_at DESC
-        ${sql.raw(limitClause)}
-      `);
+      const results = await db
+        .select({
+          id: businessRecords.id,
+          tenantId: businessRecords.tenantId,
+          companyName: businessRecords.companyName,
+          status: businessRecords.status,
+          recordType: businessRecords.recordType,
+          phone: businessRecords.phone,
+          primaryContactName: businessRecords.primaryContactName,
+          primaryContactEmail: businessRecords.primaryContactEmail,
+          primaryContactPhone: businessRecords.primaryContactPhone,
+          website: businessRecords.website,
+          industry: businessRecords.industry,
+          addressLine1: businessRecords.addressLine1,
+          city: businessRecords.city,
+          state: businessRecords.state,
+          postalCode: businessRecords.postalCode,
+          urlSlug: businessRecords.urlSlug,
+          companyDisplayId: businessRecords.companyDisplayId,
+          createdAt: businessRecords.createdAt,
+          updatedAt: businessRecords.updatedAt,
+        })
+        .from(businessRecords)
+        .where(and(...conditions))
+        .orderBy(desc(businessRecords.createdAt))
+        .limit(safeLimit);
 
-      return result.rows.map((row: any) => ({
+      return results.map((row) => ({
         id: row.id,
         tenantId: row.tenantId,
         companyName: row.companyName,
         status: row.status,
-        recordType: row.record_type,
+        recordType: row.recordType,
         phone: row.phone,
-        primaryContactName: row.primary_contact_name,
-        primaryContactEmail: row.primary_contact_email,
-        primaryContactPhone: row.primary_contact_phone,
-        website: row.website,
-        industry: row.industry,
-        addressLine1: row.address_line1,
-        city: row.city,
-        state: row.state,
-        postalCode: row.postalCode,
-        url_slug: row.url_slug,
-        urlSlug: row.url_slug,
-        company_display_id: row.company_display_id,
-        companyDisplayId: row.company_display_id,
+        primaryContactName: row.primaryContactName || '',
+        primaryContactEmail: row.primaryContactEmail || '',
+        primaryContactPhone: row.primaryContactPhone || '',
+        website: row.website || '',
+        industry: row.industry || '',
+        addressLine1: row.addressLine1 || '',
+        city: row.city || '',
+        state: row.state || '',
+        postalCode: row.postalCode || '',
+        url_slug: row.urlSlug,
+        urlSlug: row.urlSlug,
+        company_display_id: row.companyDisplayId,
+        companyDisplayId: row.companyDisplayId,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
       }));
