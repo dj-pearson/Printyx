@@ -18,6 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { sanitizeRichHtml } from '@/lib/sanitize-html';
 
 interface Article {
   id: string;
@@ -234,7 +235,7 @@ export default function KnowledgeArticle() {
                     prose-code:text-blue-600 dark:prose-code:text-blue-400
                     prose-pre:bg-gray-900 dark:prose-pre:bg-gray-950
                     prose-a:text-blue-600 dark:prose-a:text-blue-400"
-                  dangerouslySetInnerHTML={{ __html: article.htmlContent || '' }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(article.htmlContent || '') }}
                 />
               </CardContent>
             </Card>

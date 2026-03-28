@@ -33,6 +33,8 @@
     "test:e2e:webkit": "playwright test --project=webkit",
     "test:e2e:mobile": "playwright test --project=mobile-chrome --project=mobile-safari",
     "test:load:smoke": "k6 run tests/load/smoke.js",
+    "test:load": "k6 run tests/load/load.js",
+    "test:load:stress": "k6 run tests/load/stress.js",
     "test:fuzz": "tsx scripts/fuzz-test.ts",
     "test:pentest": "tsx scripts/pentest/index.ts",
     "test:all": "npm run test && npm run test:e2e",

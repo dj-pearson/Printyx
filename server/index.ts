@@ -96,11 +96,26 @@ app.use((req: Request, res: Response, next: NextFunction) => {
             'object-src': ["'none'"],
             'base-uri': ["'self'"],
             'form-action': ["'self'"],
+            'upgrade-insecure-requests': [],
             'report-uri': ['/api/csp-report'],
             'report-to': ['csp-endpoint'],
           },
         }
-      : false, // Disable CSP in development for Vite HMR compatibility
+      : {
+          // Relaxed CSP in development for Vite HMR compatibility
+          useDefaults: false,
+          directives: {
+            'default-src': ["'self'"],
+            'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+            'style-src': ["'self'", "'unsafe-inline'", 'https:'],
+            'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+            'font-src': ["'self'", 'https:', 'data:'],
+            'connect-src': ["'self'", 'ws:', 'wss:', 'http://localhost:*'],
+            'frame-ancestors': ["'none'"],
+            'object-src': ["'none'"],
+            'base-uri': ["'self'"],
+          },
+        },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' as const },
     crossOriginOpenerPolicy: { policy: 'same-origin' },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -246,6 +261,10 @@ app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 // Input sanitization - strip XSS, null bytes, control chars, reject path traversal
 import { inputSanitization } from './middleware/input-sanitization';
 app.use(inputSanitization);
+
+// Pagination bounds enforcement - clamp limit/pageSize to max 200, page >= 1
+import { enforcePaginationBounds } from './middleware/pagination-bounds';
+app.use(enforcePaginationBounds);
 
 // Audit log for root-admin actions and sensitive endpoints
 // Note: This is now primarily handled by the structured logging middleware,
