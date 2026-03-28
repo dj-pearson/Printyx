@@ -3182,7 +3182,7 @@
       ],
       "priority": 2,
       "passes": false,
-      "notes": "OPERATIONAL TASK: All backup/restore code exists and is comprehensive (pg_dump + gzip \u2192 GCS, retention policy, k8s CronJob at k8s/base/cronjob-backup.yaml). Requires running against actual database infrastructure to verify. Run: npm run db:backup && npm run db:backup:list && npm run db:restore -- --latest",
+      "notes": "OPERATIONAL TASK: All backup/restore code exists and is comprehensive (pg_dump + gzip \u2192 GCS, retention policy, k8s CronJob at k8s/base/cronjob-backup.yaml). Requires running against actual database infrastructure to verify. Run: npm run db:backup && npm run db:backup:list && npm run db:restore -- --latest [RUNBOOK CREATED 2026-03-28: docs/DISASTER_RECOVERY_RUNBOOK.md with full DR procedure, pre-launch checklist, and monitoring guidance. CronJob verified at k8s/base/cronjob-backup.yaml (daily 2AM UTC, correct config). Remaining: ops testing of actual backup/restore against live DB.]",
       "category": "launch-readiness"
     },
     {
@@ -3330,7 +3330,7 @@
       ],
       "priority": 2,
       "passes": false,
-      "notes": "K8s HPA configured for 2-10 replicas scaling on CPU/memory. Need to verify actual performance under load. Database pool configured for 2-20 connections per instance. WebSocket broadcasting to all tenant clients needs load testing.",
+      "notes": "K8s HPA configured for 2-10 replicas scaling on CPU/memory. Need to verify actual performance under load. Database pool configured for 2-20 connections per instance. WebSocket broadcasting to all tenant clients needs load testing. [LOAD TEST SCRIPTS UPDATED 2026-03-28: load.js updated with P95<500ms read / P95<1000ms write thresholds, CRUD write tests, search test. stress.js updated with 200-user burst for 1 min. Added npm run test:load and test:load:stress scripts. Requires running app + k6 to execute.]",
       "category": "launch-readiness"
     },
     {
