@@ -2915,8 +2915,8 @@
         "Build passes: npm run build"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "Currently 161 route files with complex registry in routes-registry.ts (568 lines, 134+ imports). Multiple mounting patterns for same modules create risk of duplicate/conflicting routes. High maintenance burden.",
+      "passes": true,
+      "notes": "Currently 161 route files with complex registry in routes-registry.ts (568 lines, 134+ imports). Multiple mounting patterns for same modules create risk of duplicate/conflicting routes. High maintenance burden. [CONSOLIDATED 2026-03-28: Created 20 domain barrel files in server/domains/. Routes-registry.ts imports reduced from 134+ to 26. Duplicate commission route mount removed. All API paths unchanged.]",
       "category": "platform-health"
     },
     {
