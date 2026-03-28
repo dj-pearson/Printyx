@@ -50,6 +50,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
+import { sanitizeBasicHtml } from '@/lib/sanitize-html';
 
 interface DocumentCategory {
   id: string;
@@ -824,7 +825,7 @@ export default function DocumentManagement() {
                             <div
                               key={idx}
                               className="text-sm"
-                              dangerouslySetInnerHTML={{ __html: highlight }}
+                              dangerouslySetInnerHTML={{ __html: sanitizeBasicHtml(highlight) }}
                             />
                           ))}
                         </div>

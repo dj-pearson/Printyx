@@ -454,6 +454,9 @@ router.post(
 
   requireRootAdmin,
   async (req, res) => {
+    const userId = getUserId(req);
+    const clientIp = req.ip || req.socket?.remoteAddress || 'unknown';
+
     try {
       const { query } = req.body;
 
@@ -464,6 +467,7 @@ router.post(
       // Safety check - only allow SELECT queries
       const trimmedQuery = query.trim().toLowerCase();
       if (!trimmedQuery.startsWith('select')) {
+        log.warn('Blocked non-SELECT query attempt', { userId, clientIp, queryPrefix: query.substring(0, 50) });
         return res.status(400).json({
           message: 'Only SELECT queries are allowed for security reasons',
         });
@@ -474,35 +478,50 @@ router.post(
       const withoutStrings = query.replace(/'[^']*'/g, '').replace(/"[^"]*"/g, '');
       const withoutComments = withoutStrings.replace(/--[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
       if (withoutComments.includes(';')) {
+        log.warn('Blocked multi-statement query attempt', { userId, clientIp });
         return res.status(400).json({
           message: 'Multiple SQL statements are not allowed',
         });
       }
 
       // Block dangerous SQL keywords that could be injected after SELECT
-      const dangerousKeywords = /\b(INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|DROP\s+|ALTER\s+|CREATE\s+|TRUNCATE\s+|GRANT\s+|REVOKE\s+|EXEC\s*\(|EXECUTE\s+|COPY\s+|pg_read_file|pg_write_file|lo_import|lo_export)\b/i;
+      const dangerousKeywords = /\b(INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|DROP\s+|ALTER\s+|CREATE\s+|TRUNCATE\s+|GRANT\s+|REVOKE\s+|EXEC\s*\(|EXECUTE\s+|COPY\s+|pg_read_file|pg_write_file|lo_import|lo_export|pg_sleep|pg_terminate_backend|pg_cancel_backend|set\s+role|set\s+session)\b/i;
       if (dangerousKeywords.test(withoutStrings)) {
+        log.warn('Blocked query with dangerous keywords', { userId, clientIp });
         return res.status(400).json({
           message: 'Query contains disallowed SQL operations',
         });
       }
 
-      // Limit results to prevent memory issues
-      const limitedQuery = query.includes('limit') ? query : `${query} LIMIT 1000`;
+      // Enforce server-side row limit (max 1000 rows)
+      const MAX_ROWS = 1000;
+      const limitedQuery = /\blimit\b/i.test(withoutComments) ? query : `${query} LIMIT ${MAX_ROWS}`;
 
-      // Set a statement timeout to prevent long-running queries
+      // Audit log: record query execution
+      log.info('Root admin SQL query executed', {
+        userId,
+        clientIp,
+        query: query.substring(0, 500),
+        timestamp: new Date().toISOString(),
+      });
+
+      // Set a statement timeout to prevent long-running queries (10 seconds)
       const startTime = Date.now();
-      await db.execute(sql.raw('SET LOCAL statement_timeout = 10000')); // 10 second timeout
+      await db.execute(sql.raw('SET LOCAL statement_timeout = 10000'));
       const result = await db.execute(sql.raw(limitedQuery));
+
+      // Enforce row limit on results even if user-provided LIMIT was higher
+      const limitedRows = result.rows.slice(0, MAX_ROWS);
 
       res.json({
         success: true,
-        rowCount: result.rows.length,
-        data: result.rows,
+        rowCount: limitedRows.length,
+        data: limitedRows,
         executionTime: Date.now() - startTime,
+        truncated: result.rows.length > MAX_ROWS,
       });
     } catch (error) {
-      log.error('Error executing query:', error);
+      log.error('Error executing query:', { error, userId, clientIp });
       res.status(500).json({
         success: false,
         message: 'Failed to execute query',
