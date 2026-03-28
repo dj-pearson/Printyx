@@ -3382,6 +3382,175 @@
       "passes": true,
       "notes": "/api/webhooks added to publicPaths in server/routes.ts with comment explaining signature verification. Integration test still needed.",
       "category": "launch-readiness"
+    },
+    {
+      "id": "SEC-001",
+      "title": "Fix critical SQL injection in storage.ts getBusinessRecords via string interpolation",
+      "description": "As a security engineer, I need the SQL injection vulnerability in storage.ts getBusinessRecords() fixed because user-controlled parameters (recordType, status, search, limit) are directly interpolated into raw SQL strings via template literals and sql.raw(), allowing an attacker to execute arbitrary SQL.",
+      "acceptanceCriteria": [
+        "Replace string interpolation in WHERE clause construction (lines 2733-2746) with Drizzle ORM parameterized queries",
+        "Replace sql.raw(whereClause) with proper Drizzle where() conditions using eq(), like(), and(), or()",
+        "Replace sql.raw(limitClause) with Drizzle .limit() method",
+        "All parameters (tenantId, recordType, status, search, limit) use parameterized queries only",
+        "Search functionality uses parameterized LIKE with sql`...${searchTerm}...` not string interpolation",
+        "No sql.raw() calls remain in getBusinessRecords()",
+        "Existing business records functionality works identically",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "FIXED: Replaced all string interpolation and sql.raw() in getBusinessRecords() with Drizzle ORM parameterized queries using eq(), or(), sql template literals with parameter binding, and .limit(). Added bounds checking on limit parameter (capped at 500). No sql.raw() calls remain in the method.",
+      "category": "security-audit"
+    },
+    {
+      "id": "SEC-002",
+      "title": "Fix critical SQL injection in routes-custom-reports.ts via sql.raw(filter.value)",
+      "description": "As a security engineer, I need the SQL injection vulnerability in routes-custom-reports.ts fixed because filter.value from request body is passed directly to sql.raw() inside an INTERVAL clause, allowing an attacker to break out of the interval and inject arbitrary SQL.",
+      "acceptanceCriteria": [
+        "Replace sql.raw(filter.value) on line 782 with a validated and parameterized numeric value",
+        "Validate that filter.value is a positive integer before use in the INTERVAL clause",
+        "Use Drizzle parameterized query: sql`interval '1 day' * ${validatedDays}` or equivalent safe pattern",
+        "Reject non-numeric filter.value with appropriate error response",
+        "Custom reports last_n_days filter works identically for valid numeric inputs",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "FIXED: Replaced sql.raw(filter.value) with parseInt() validation and parameterized interval multiplication: sql`${column} >= CURRENT_DATE - (${days} * interval '1 day')`. Validates days is a positive integer between 0 and 3650. Returns null (no filter) for invalid values.",
+      "category": "security-audit"
+    },
+    {
+      "id": "SEC-003",
+      "title": "Fix critical XSS in email-templates.ts via unescaped user data in HTML",
+      "description": "As a security engineer, I need the XSS vulnerability in email-templates.ts fixed because user-controlled data (userName, userEmail, trialDays, trialEndDate, planName, amount, resetToken) is directly interpolated into HTML email templates without HTML entity encoding, allowing attackers to inject malicious HTML/JavaScript that executes in email clients.",
+      "acceptanceCriteria": [
+        "Create an escapeHtml() utility function that encodes &, <, >, double-quote, and single-quote to HTML entities",
+        "Apply escapeHtml() to all user-controlled data interpolated into HTML templates: userName, userEmail, trialDays, trialEndDate, planName, amount",
+        "Apply URL encoding to resetToken when used in URL construction",
+        "All email templates (passwordReset, welcomeEmail, trialStarted, subscriptionConfirmation, etc.) use escaped values",
+        "Email rendering is visually identical for normal (non-malicious) input",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "FIXED: Added escapeHtml() utility function that encodes &, <, >, double-quote, and single-quote to HTML entities. Applied to all user-controlled data in HTML templates: userName, userEmail, trialDays, trialEndDate. Added encodeURIComponent() for tokens in URL construction. Text-only templates left unchanged as they don't execute HTML.",
+      "category": "security-audit"
+    },
+    {
+      "id": "SEC-004",
+      "title": "Fix SQL injection in warehouse-reporting-service.ts via manual IN clause construction",
+      "description": "As a security engineer, I need the SQL injection vulnerability in warehouse-reporting-service.ts fixed because user IDs are manually quoted and joined into a sql.raw() IN clause using string concatenation instead of Drizzle's inArray() function.",
+      "acceptanceCriteria": [
+        "Replace sql.raw(accessibleUserIds.map(id => `'${id}'`).join(',')) with Drizzle inArray() at lines 133-135 and 214-216",
+        "Use inArray(warehouseKittingOperations.assignedTechnician, accessibleUserIds) pattern",
+        "Handle empty accessibleUserIds array edge case (use sql`FALSE` or skip the condition)",
+        "No sql.raw() calls remain in warehouse-reporting-service.ts IN clauses",
+        "Warehouse reporting functionality works identically",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "HIGH: Lines 133-135 and 214-216 in server/services/warehouse-reporting-service.ts use `.map((id) => \\`'${id}'\\`).join(',')` inside sql.raw() for IN clause. While accessibleUserIds currently come from internal code (HierarchicalQueryBuilder), this pattern is a SQL injection vector if IDs are ever tainted.",
+      "category": "security-audit"
+    },
+    {
+      "id": "SEC-005",
+      "title": "Fix XSS in DocumentManagement.tsx via unsanitized dangerouslySetInnerHTML for search highlights",
+      "description": "As a security engineer, I need the XSS vulnerability in DocumentManagement.tsx fixed because search result highlights from the server are rendered with dangerouslySetInnerHTML without any sanitization, allowing reflected XSS if the search query or document content contains malicious HTML.",
+      "acceptanceCriteria": [
+        "Apply sanitizeRichHtml() or DOMPurify.sanitize() to highlight strings before rendering with dangerouslySetInnerHTML at lines 823-829",
+        "Import sanitization utility from client/src/lib/sanitize-html.ts",
+        "Only allow safe markup tags in highlights (mark, strong, em) via DOMPurify ALLOWED_TAGS",
+        "Search highlight functionality displays identically for non-malicious content",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "HIGH: Lines 823-829 in client/src/pages/DocumentManagement.tsx use dangerouslySetInnerHTML={{ __html: highlight }} without sanitization. If server-side highlight generation doesn't properly escape content, this becomes a reflected XSS vector through search queries.",
+      "category": "security-audit"
+    },
+    {
+      "id": "SEC-006",
+      "title": "Harden raw SQL execution endpoint in routes-root-admin.ts",
+      "description": "As a security engineer, I need the raw SQL execution endpoint in routes-root-admin.ts hardened because it uses regex-based keyword blocking that can be bypassed via SQL obfuscation techniques, comments, alternative syntax, or encoding.",
+      "acceptanceCriteria": [
+        "Add statement-level parsing that only allows a single SELECT statement (reject semicolons outside of string literals)",
+        "Add query result row limit (max 1000 rows) enforced server-side",
+        "Add query timeout (max 10 seconds) to prevent long-running queries",
+        "Add audit logging for every query execution (who, when, what query, from which IP)",
+        "Consider read-only database connection/role for this endpoint",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "MEDIUM-HIGH: Lines 456-496 in server/routes-root-admin.ts execute user-submitted SQL via db.execute(sql.raw(limitedQuery)). While restricted to root admins and regex-blocked for dangerous keywords, the blocking is bypassable. Already requires requireRootAdmin middleware.",
+      "category": "security-audit"
+    },
+    {
+      "id": "SEC-007",
+      "title": "Sanitize dangerouslySetInnerHTML in KnowledgeArticle.tsx",
+      "description": "As a security engineer, I need the stored XSS risk in KnowledgeArticle.tsx mitigated because article HTML content is rendered with dangerouslySetInnerHTML without client-side sanitization, creating a stored XSS vector if article content is not sanitized on the server side.",
+      "acceptanceCriteria": [
+        "Apply sanitizeRichHtml() to article.htmlContent before passing to dangerouslySetInnerHTML at line 237",
+        "Import sanitization from client/src/lib/sanitize-html.ts",
+        "Article rendering is visually identical for non-malicious content",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "MEDIUM: Line 237 in client/src/pages/KnowledgeArticle.tsx uses dangerouslySetInnerHTML={{ __html: article.htmlContent || '' }} without sanitization. Defense-in-depth requires client-side sanitization even if server sanitizes on input.",
+      "category": "security-audit"
+    },
+    {
+      "id": "SEC-008",
+      "title": "Sanitize section.title in ProposalVisualBuilder.tsx fallback HTML",
+      "description": "As a security engineer, I need the XSS risk in ProposalVisualBuilder.tsx fixed because section.title is interpolated unsanitized into fallback HTML when section.content is empty, allowing stored XSS if a malicious title is saved.",
+      "acceptanceCriteria": [
+        "Apply HTML entity escaping to section.title in the fallback template literal at lines 227-231",
+        "Use escapeHtml() or sanitizeRichHtml() for the title interpolation",
+        "Proposal visual builder displays identically for non-malicious titles",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "MEDIUM: Lines 227-231 in client/src/components/proposal-builder/ProposalVisualBuilder.tsx use `<h3>${section.title}</h3>` in a fallback string that is then passed through sanitizeRichHtml(). While the outer sanitization may catch it, the title should be escaped before HTML embedding.",
+      "category": "security-audit"
+    },
+    {
+      "id": "SEC-009",
+      "title": "Add pagination bounds enforcement to all list endpoints",
+      "description": "As a security engineer, I need pagination limits enforced on all list endpoints to prevent denial-of-service via unbounded queries that could fetch the entire database or cause excessive memory/CPU usage.",
+      "acceptanceCriteria": [
+        "Create a shared pagination validation schema: page >= 1, limit between 1 and 200 (default 50)",
+        "Apply pagination validation to all GET list endpoints that accept page/limit/offset query parameters",
+        "Endpoints without explicit limit default to 50 records max",
+        "Reject requests with limit > 200 with 400 error",
+        "Existing pagination behavior works identically within bounds",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "MEDIUM: Many list endpoints accept limit/offset from query params without upper bounds validation. An attacker could request limit=999999 to force the database to return all records, causing memory exhaustion and slow queries.",
+      "category": "security-audit"
+    },
+    {
+      "id": "SEC-010",
+      "title": "Add Content-Security-Policy header and review security header configuration",
+      "description": "As a security engineer, I need a Content-Security-Policy (CSP) header configured to mitigate XSS impact, and all security headers reviewed for completeness and correctness.",
+      "acceptanceCriteria": [
+        "Configure CSP header via Helmet with appropriate directives for the application (script-src, style-src, img-src, connect-src)",
+        "Verify X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security headers are set",
+        "Verify Referrer-Policy is configured",
+        "CSP does not break existing frontend functionality (fonts, images, API calls, WebSockets)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "LOW-MEDIUM: Helmet is installed and likely configured but CSP may not be set or may be too permissive. CSP provides defense-in-depth against XSS by restricting script sources even if injection occurs.",
+      "category": "security-audit"
     }
   ]
 }

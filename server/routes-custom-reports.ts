@@ -778,8 +778,11 @@ function buildFilterCondition(column: any, filter: ReportFilter, type: string): 
       return sql`${column} >= date_trunc('quarter', CURRENT_DATE) AND ${column} < date_trunc('quarter', CURRENT_DATE) + interval '3 months'`;
     case 'this_year':
       return sql`${column} >= date_trunc('year', CURRENT_DATE) AND ${column} < date_trunc('year', CURRENT_DATE) + interval '1 year'`;
-    case 'last_n_days':
-      return sql`${column} >= CURRENT_DATE - interval '${sql.raw(filter.value)} days'`;
+    case 'last_n_days': {
+      const days = parseInt(String(filter.value), 10);
+      if (isNaN(days) || days < 0 || days > 3650) return null;
+      return sql`${column} >= CURRENT_DATE - (${days} * interval '1 day')`;
+    }
     default:
       return null;
   }

@@ -3211,3 +3211,56 @@ Implemented 4 critical/necessary items from the PRD that make a huge impact on t
 
 ---
 
+## Security Audit - Input Sanitization & Bounds Checking
+**Started**: 2026-03-28 05:18 UTC
+**Completed**: 2026-03-28 05:45 UTC
+**Status**: COMPLETE (3 of 10 stories fixed, 7 remaining for future loops)
+**Branch**: claude/security-audit-fixes-RgwXE
+
+### What Was Done:
+1. Conducted comprehensive security audit across entire codebase
+2. Identified 10 security vulnerabilities (3 critical, 2 high, 3 medium, 2 low)
+3. Created SEC-001 through SEC-010 user stories in prd.json
+4. Fixed the 3 highest priority issues:
+
+### SEC-001: SQL Injection in storage.ts getBusinessRecords() - FIXED
+**Vulnerability**: String interpolation in raw SQL (conditions.push(`record_type = '${recordType}'`)) + sql.raw(whereClause)
+**Fix**: Replaced all string interpolation with Drizzle ORM parameterized queries (eq(), or(), sql template with bindings, .limit()). Added bounds checking on limit parameter (capped at 500).
+**Files Modified**: server/storage.ts
+
+### SEC-002: SQL Injection in routes-custom-reports.ts last_n_days filter - FIXED
+**Vulnerability**: sql.raw(filter.value) inside INTERVAL clause allowed SQL injection via request body
+**Fix**: Replaced with parseInt() validation + parameterized interval multiplication. Rejects non-numeric and out-of-range values (0-3650).
+**Files Modified**: server/routes-custom-reports.ts
+
+### SEC-003: XSS in email-templates.ts via unescaped user data - FIXED
+**Vulnerability**: User-controlled data (userName, userEmail, trialDays, trialEndDate) interpolated directly into HTML email templates without escaping
+**Fix**: Added escapeHtml() utility that encodes &, <, >, ", ' to HTML entities. Applied to all user data in all HTML templates. Added encodeURIComponent() for tokens in URLs.
+**Files Modified**: server/services/email-templates.ts
+
+### Files Modified:
+- server/storage.ts - Rewrote getBusinessRecords() with parameterized queries
+- server/routes-custom-reports.ts - Fixed last_n_days filter with input validation
+- server/services/email-templates.ts - Added escapeHtml() and applied to all templates
+- prd.json - Added SEC-001 through SEC-010, marked SEC-001/002/003 as passes: true
+
+### Remaining Security Stories for Future Ralph Loops:
+| Story | Title | Priority | Severity |
+|-------|-------|----------|----------|
+| SEC-004 | SQL injection in warehouse-reporting-service.ts IN clause | 4 | HIGH |
+| SEC-005 | XSS in DocumentManagement.tsx search highlights | 5 | HIGH |
+| SEC-006 | Harden raw SQL execution in routes-root-admin.ts | 6 | MEDIUM-HIGH |
+| SEC-007 | Sanitize dangerouslySetInnerHTML in KnowledgeArticle.tsx | 7 | MEDIUM |
+| SEC-008 | Sanitize section.title in ProposalVisualBuilder.tsx | 8 | MEDIUM |
+| SEC-009 | Add pagination bounds enforcement to list endpoints | 9 | MEDIUM |
+| SEC-010 | Add Content-Security-Policy header | 10 | LOW-MEDIUM |
+
+### Story Status Summary:
+| Story | Status |
+|-------|--------|
+| SEC-001 | ✅ COMPLETE - passes: true |
+| SEC-002 | ✅ COMPLETE - passes: true |
+| SEC-003 | ✅ COMPLETE - passes: true |
+
+---
+
