@@ -10,12 +10,11 @@ const leadsDuration = new Trend('leads_duration', true);
 
 export const options = {
   stages: [
-    { duration: '1m', target: 10 }, // Below normal load
-    { duration: '2m', target: 50 }, // Normal load
-    { duration: '2m', target: 100 }, // Around breaking point
-    { duration: '2m', target: 150 }, // Beyond breaking point
-    { duration: '2m', target: 200 }, // Maximum stress
-    { duration: '1m', target: 0 }, // Recovery
+    { duration: '30s', target: 50 }, // Ramp up to normal load
+    { duration: '1m', target: 100 }, // Around breaking point
+    { duration: '1m', target: 200 }, // 200 concurrent users burst (acceptance criteria)
+    { duration: '1m', target: 200 }, // Sustain 200 users
+    { duration: '30s', target: 0 }, // Recovery
   ],
   thresholds: {
     http_req_duration: ['p(95)<3000', 'p(99)<5000'],

@@ -130,9 +130,9 @@ export class WarehouseReportingService {
       .where(
         and(
           eq(warehouseKittingOperations.tenantId, userContext.tenantId),
-          sql`${warehouseKittingOperations.assignedTechnician} IN (${sql.raw(
-            accessibleUserIds.map((id) => `'${id}'`).join(',') || "''",
-          )})`,
+          accessibleUserIds.length > 0
+            ? inArray(warehouseKittingOperations.assignedTechnician, accessibleUserIds)
+            : sql`FALSE`,
           gte(warehouseKittingOperations.createdAt, dateFrom),
           lte(warehouseKittingOperations.createdAt, dateTo),
         ),
@@ -211,9 +211,9 @@ export class WarehouseReportingService {
       .where(
         and(
           eq(warehouseKittingOperations.tenantId, userContext.tenantId),
-          sql`${warehouseKittingOperations.assignedTechnician} IN (${sql.raw(
-            accessibleUserIds.map((id) => `'${id}'`).join(',') || "''",
-          )})`,
+          accessibleUserIds.length > 0
+            ? inArray(warehouseKittingOperations.assignedTechnician, accessibleUserIds)
+            : sql`FALSE`,
           gte(warehouseKittingOperations.createdAt, previousDateFrom),
           lte(warehouseKittingOperations.createdAt, dateFrom),
         ),

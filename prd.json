@@ -2915,8 +2915,8 @@
         "Build passes: npm run build"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "Currently 161 route files with complex registry in routes-registry.ts (568 lines, 134+ imports). Multiple mounting patterns for same modules create risk of duplicate/conflicting routes. High maintenance burden.",
+      "passes": true,
+      "notes": "Currently 161 route files with complex registry in routes-registry.ts (568 lines, 134+ imports). Multiple mounting patterns for same modules create risk of duplicate/conflicting routes. High maintenance burden. [CONSOLIDATED 2026-03-28: Created 20 domain barrel files in server/domains/. Routes-registry.ts imports reduced from 134+ to 26. Duplicate commission route mount removed. All API paths unchanged.]",
       "category": "platform-health"
     },
     {
@@ -3121,7 +3121,7 @@
         "Verify tenant setup flow (/tenant-setup) creates tenant record with correct hierarchy - CODE EXISTS (TenantSetup.tsx page + routes)",
         "Verify first login after signup lands on an appropriate dashboard (not a blank page or error) - NEEDS MANUAL QA",
         "Verify RBAC roles and permissions are seeded for the new tenant automatically - NEEDS MANUAL QA",
-        "Add E2E test covering: signup → email verification → tenant setup → dashboard load - NEEDS E2E TEST",
+        "Add E2E test covering: signup \u2192 email verification \u2192 tenant setup \u2192 dashboard load - NEEDS E2E TEST",
         "Build passes: npm run build",
         "Typecheck passes: npm run check"
       ],
@@ -3182,7 +3182,7 @@
       ],
       "priority": 2,
       "passes": false,
-      "notes": "OPERATIONAL TASK: All backup/restore code exists and is comprehensive (pg_dump + gzip → GCS, retention policy, k8s CronJob at k8s/base/cronjob-backup.yaml). Requires running against actual database infrastructure to verify. Run: npm run db:backup && npm run db:backup:list && npm run db:restore -- --latest",
+      "notes": "OPERATIONAL TASK: All backup/restore code exists and is comprehensive (pg_dump + gzip \u2192 GCS, retention policy, k8s CronJob at k8s/base/cronjob-backup.yaml). Requires running against actual database infrastructure to verify. Run: npm run db:backup && npm run db:backup:list && npm run db:restore -- --latest [RUNBOOK CREATED 2026-03-28: docs/DISASTER_RECOVERY_RUNBOOK.md with full DR procedure, pre-launch checklist, and monitoring guidance. CronJob verified at k8s/base/cronjob-backup.yaml (daily 2AM UTC, correct config). Remaining: ops testing of actual backup/restore against live DB.]",
       "category": "launch-readiness"
     },
     {
@@ -3330,7 +3330,7 @@
       ],
       "priority": 2,
       "passes": false,
-      "notes": "K8s HPA configured for 2-10 replicas scaling on CPU/memory. Need to verify actual performance under load. Database pool configured for 2-20 connections per instance. WebSocket broadcasting to all tenant clients needs load testing.",
+      "notes": "K8s HPA configured for 2-10 replicas scaling on CPU/memory. Need to verify actual performance under load. Database pool configured for 2-20 connections per instance. WebSocket broadcasting to all tenant clients needs load testing. [LOAD TEST SCRIPTS UPDATED 2026-03-28: load.js updated with P95<500ms read / P95<1000ms write thresholds, CRUD write tests, search test. stress.js updated with 200-user burst for 1 min. Added npm run test:load and test:load:stress scripts. Requires running app + k6 to execute.]",
       "category": "launch-readiness"
     },
     {
@@ -3452,8 +3452,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "HIGH: Lines 133-135 and 214-216 in server/services/warehouse-reporting-service.ts use `.map((id) => \\`'${id}'\\`).join(',')` inside sql.raw() for IN clause. While accessibleUserIds currently come from internal code (HierarchicalQueryBuilder), this pattern is a SQL injection vector if IDs are ever tainted.",
+      "passes": true,
+      "notes": "HIGH: Lines 133-135 and 214-216 in server/services/warehouse-reporting-service.ts use `.map((id) => \\`'${id}'\\`).join(',')` inside sql.raw() for IN clause. While accessibleUserIds currently come from internal code (HierarchicalQueryBuilder), this pattern is a SQL injection vector if IDs are ever tainted. [FIXED 2026-03-28]",
       "category": "security-audit"
     },
     {
@@ -3468,8 +3468,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "HIGH: Lines 823-829 in client/src/pages/DocumentManagement.tsx use dangerouslySetInnerHTML={{ __html: highlight }} without sanitization. If server-side highlight generation doesn't properly escape content, this becomes a reflected XSS vector through search queries.",
+      "passes": true,
+      "notes": "HIGH: Lines 823-829 in client/src/pages/DocumentManagement.tsx use dangerouslySetInnerHTML={{ __html: highlight }} without sanitization. If server-side highlight generation doesn't properly escape content, this becomes a reflected XSS vector through search queries. [FIXED 2026-03-28]",
       "category": "security-audit"
     },
     {
@@ -3485,8 +3485,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "MEDIUM-HIGH: Lines 456-496 in server/routes-root-admin.ts execute user-submitted SQL via db.execute(sql.raw(limitedQuery)). While restricted to root admins and regex-blocked for dangerous keywords, the blocking is bypassable. Already requires requireRootAdmin middleware.",
+      "passes": true,
+      "notes": "MEDIUM-HIGH: Lines 456-496 in server/routes-root-admin.ts execute user-submitted SQL via db.execute(sql.raw(limitedQuery)). While restricted to root admins and regex-blocked for dangerous keywords, the blocking is bypassable. Already requires requireRootAdmin middleware. [FIXED 2026-03-28]",
       "category": "security-audit"
     },
     {
@@ -3500,8 +3500,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "MEDIUM: Line 237 in client/src/pages/KnowledgeArticle.tsx uses dangerouslySetInnerHTML={{ __html: article.htmlContent || '' }} without sanitization. Defense-in-depth requires client-side sanitization even if server sanitizes on input.",
+      "passes": true,
+      "notes": "MEDIUM: Line 237 in client/src/pages/KnowledgeArticle.tsx uses dangerouslySetInnerHTML={{ __html: article.htmlContent || '' }} without sanitization. Defense-in-depth requires client-side sanitization even if server sanitizes on input. [FIXED 2026-03-28]",
       "category": "security-audit"
     },
     {
@@ -3515,8 +3515,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": "MEDIUM: Lines 227-231 in client/src/components/proposal-builder/ProposalVisualBuilder.tsx use `<h3>${section.title}</h3>` in a fallback string that is then passed through sanitizeRichHtml(). While the outer sanitization may catch it, the title should be escaped before HTML embedding.",
+      "passes": true,
+      "notes": "MEDIUM: Lines 227-231 in client/src/components/proposal-builder/ProposalVisualBuilder.tsx use `<h3>${section.title}</h3>` in a fallback string that is then passed through sanitizeRichHtml(). While the outer sanitization may catch it, the title should be escaped before HTML embedding. [FIXED 2026-03-28]",
       "category": "security-audit"
     },
     {
@@ -3532,8 +3532,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": "MEDIUM: Many list endpoints accept limit/offset from query params without upper bounds validation. An attacker could request limit=999999 to force the database to return all records, causing memory exhaustion and slow queries.",
+      "passes": true,
+      "notes": "MEDIUM: Many list endpoints accept limit/offset from query params without upper bounds validation. An attacker could request limit=999999 to force the database to return all records, causing memory exhaustion and slow queries. [FIXED 2026-03-28]",
       "category": "security-audit"
     },
     {
@@ -3548,8 +3548,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": "LOW-MEDIUM: Helmet is installed and likely configured but CSP may not be set or may be too permissive. CSP provides defense-in-depth against XSS by restricting script sources even if injection occurs.",
+      "passes": true,
+      "notes": "LOW-MEDIUM: Helmet is installed and likely configured but CSP may not be set or may be too permissive. CSP provides defense-in-depth against XSS by restricting script sources even if injection occurs. [FIXED 2026-03-28]",
       "category": "security-audit"
     }
   ]

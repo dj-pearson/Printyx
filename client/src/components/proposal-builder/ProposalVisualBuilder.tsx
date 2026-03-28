@@ -227,7 +227,7 @@ function SortableSection({
             dangerouslySetInnerHTML={{
               __html: sanitizeRichHtml(
                 section.content ||
-                  `<h3>${section.title}</h3><p>Double-click to edit content...</p>`,
+                  `<h3>${(section.title || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</h3><p>Double-click to edit content...</p>`,
               ),
             }}
           />
