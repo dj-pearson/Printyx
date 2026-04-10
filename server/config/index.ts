@@ -14,6 +14,10 @@
  */
 
 import { defaultConfig, type AppConfig } from './default';
+import { developmentConfig } from './development';
+import { stagingConfig } from './staging';
+import { productionConfig } from './production';
+import { testConfig } from './test';
 
 /** Utility type for deep partial overrides */
 export type DeepPartial<T> = {
@@ -53,17 +57,13 @@ function deepMerge<T extends Record<string, any>>(target: T, source: DeepPartial
 function loadEnvConfig(env: string): DeepPartial<AppConfig> {
   switch (env) {
     case 'development':
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('./development').developmentConfig;
+      return developmentConfig;
     case 'staging':
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('./staging').stagingConfig;
+      return stagingConfig;
     case 'production':
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('./production').productionConfig;
+      return productionConfig;
     case 'test':
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('./test').testConfig;
+      return testConfig;
     default:
       return {};
   }

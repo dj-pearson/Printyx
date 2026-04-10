@@ -10,6 +10,7 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { getPgSslConfigFromEnv } from './postgres-ssl';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,14 +37,44 @@ function buildDatabaseUrl(): string {
   return `postgresql://${user}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
 }
 
+/**
+ * Prefer a direct Postgres URL for migrations. PgBouncer / poolers (common on 5433) can reset
+ * connections when running DDL-heavy migration sessions.
+ */
+function migrationConnectionString(): string {
+  const direct =
+    process.env.DATABASE_URL_MIGRATE?.trim() || process.env.DIRECT_DATABASE_URL?.trim();
+  if (direct?.startsWith('postgres')) {
+    return direct;
+  }
+  return buildDatabaseUrl();
+}
+
+function logMigrationEndpoint(connectionString: string): void {
+  try {
+    const normalized = connectionString.replace(/^postgres(ql)?:\/\//, 'http://');
+    const u = new URL(normalized);
+    log.info(
+      `[Migrate] Using ${u.hostname}:${u.port || '5432'} (set DATABASE_URL_MIGRATE for direct Postgres if pooler fails)`,
+    );
+  } catch {
+    log.info('[Migrate] Database URL configured');
+  }
+}
+
+function logPoolerHintIfNetworkError(err: unknown): void {
+  const code = (err as NodeJS.ErrnoException).code;
+  if (code === 'ECONNRESET' || code === 'ECONNREFUSED' || code === 'ETIMEDOUT') {
+    log.warn(
+      '[Migrate] Pooler ports (e.g. 5433) often cause this. Use DATABASE_URL_MIGRATE or DIRECT_DATABASE_URL pointing at direct Postgres (usually 5432), or an SSH tunnel to the DB container port.',
+    );
+  }
+}
+
 function createPool(): pg.Pool {
-  const databaseUrl = buildDatabaseUrl();
-  const sslConfig =
-    process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production'
-      ? process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false'
-        ? { rejectUnauthorized: false }
-        : true
-      : undefined;
+  const databaseUrl = migrationConnectionString();
+  logMigrationEndpoint(databaseUrl);
+  const sslConfig = getPgSslConfigFromEnv(databaseUrl);
 
   return new Pool({
     connectionString: databaseUrl,
@@ -131,14 +162,17 @@ async function runMigrations(): Promise<void> {
 
     log.info('[Migrate] Migrations completed successfully.');
   } catch (error) {
-    log.error('[Migrate] Migration failed:', error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    logPoolerHintIfNetworkError(err);
+    log.error(err, '[Migrate] Migration failed');
     process.exit(1);
   } finally {
     try {
       await releaseLock(pool);
       log.info('[Migrate] Lock released.');
     } catch (lockError) {
-      log.error('[Migrate] Warning: Failed to release lock:', lockError);
+      const le = lockError instanceof Error ? lockError : new Error(String(lockError));
+      log.error(le, '[Migrate] Warning: Failed to release lock');
     }
     await pool.end();
   }
@@ -214,7 +248,9 @@ async function markBaseline(): Promise<void> {
     }
     log.info('[Migrate] Future schema changes will generate incremental migrations.');
   } catch (error) {
-    log.error('[Migrate] Baseline failed:', error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    logPoolerHintIfNetworkError(err);
+    log.error(err, '[Migrate] Baseline failed');
     process.exit(1);
   } finally {
     await pool.end();
@@ -247,7 +283,9 @@ async function showStatus(): Promise<void> {
       );
     }
   } catch (error) {
-    log.error('[Migrate] Error checking status:', error);
+    const err = error instanceof Error ? error : new Error(String(error));
+    logPoolerHintIfNetworkError(err);
+    log.error(err, '[Migrate] Error checking status');
     process.exit(1);
   } finally {
     await pool.end();

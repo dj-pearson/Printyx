@@ -15,6 +15,7 @@ import {
   DEFAULT_RETRY_CONFIG,
   isRetryableError,
 } from './lib/connection-resilience';
+import { getPgSslConfigFromEnv } from './lib/postgres-ssl';
 
 // Build DATABASE_URL from individual components if not provided
 function buildDatabaseUrl(): string {
@@ -71,13 +72,9 @@ const poolConfig: DatabaseConfig = {
   min: parseInt(process.env.DB_POOL_MIN || String(config.database.poolMin), 10),
 };
 
-// SSL configuration for self-hosted Supabase
-// Use ssl: false for local/self-hosted instances, or configure properly for production
-if (process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production') {
-  // For self-signed certs, use rejectUnauthorized: false
-  // For proper SSL, remove rejectUnauthorized or set to true
-  (poolConfig as any).ssl =
-    process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false' ? { rejectUnauthorized: false } : true;
+const sslConfig = getPgSslConfigFromEnv();
+if (sslConfig !== undefined) {
+  (poolConfig as any).ssl = sslConfig;
 }
 
 // Circuit breaker for database connections
