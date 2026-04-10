@@ -154,11 +154,14 @@ export function sanitizeEmail(email: string): string {
 }
 
 /**
- * Validate email domain against common disposable email providers
- * Optional additional security layer
+ * Quick client-side check against a tiny hardcoded list of the most common
+ * disposable email providers. This is an optimistic UX hint only — the
+ * authoritative blocklist lives in the `disposable_email_domains` table on
+ * the server and is enforced by the /api/auth/signup endpoint. Use
+ * `checkDisposableEmail(email)` to hit the server-backed list.
  *
  * @param email - Email address to check
- * @returns True if email domain is acceptable
+ * @returns True if the email domain is in the local hardcoded list
  */
 export function isDisposableEmail(email: string): boolean {
   const disposableDomains = [
@@ -167,11 +170,48 @@ export function isDisposableEmail(email: string): boolean {
     '10minutemail.com',
     'throwaway.email',
     'maildrop.cc',
-    // Add more as needed
+    'mailinator.com',
+    'yopmail.com',
+    'trashmail.com',
+    'dispostable.com',
   ];
 
   const domain = email.split('@')[1]?.toLowerCase();
   return disposableDomains.includes(domain || '');
+}
+
+/**
+ * Server-backed disposable email check. Calls the `/api/auth/check-disposable-email`
+ * endpoint which consults the full `disposable_email_domains` table maintained
+ * by platform admins. Use this for pre-submit validation in signup forms.
+ *
+ * Fails open: returns `{ blocked: false }` if the request errors out so a
+ * transient network issue never blocks legitimate signups on the client side
+ * (the backend still performs the authoritative check at POST /api/auth/signup).
+ *
+ * @param email - Email address to check
+ * @returns `{ blocked, domain }`
+ */
+export async function checkDisposableEmail(
+  email: string,
+): Promise<{ blocked: boolean; domain: string | null }> {
+  try {
+    const response = await fetch('/api/auth/check-disposable-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      return { blocked: false, domain: null };
+    }
+    const data = await response.json();
+    return {
+      blocked: !!data.blocked,
+      domain: data.domain ?? null,
+    };
+  } catch {
+    return { blocked: false, domain: null };
+  }
 }
 
 // ============================================================================
@@ -520,6 +560,7 @@ export default {
   // Email
   sanitizeEmail,
   isDisposableEmail,
+  checkDisposableEmail,
 
   // URLs
   sanitizeURL,
