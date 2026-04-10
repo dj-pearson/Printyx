@@ -229,6 +229,10 @@ export function formatAuthError(error: any): string {
       return 'An account with this email already exists';
     }
 
+    if (message.includes('disposable email')) {
+      return 'Disposable email addresses are not allowed. Please sign up with a permanent business email.';
+    }
+
     if (message.includes('invalid email')) {
       return 'Please enter a valid email address';
     }

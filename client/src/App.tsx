@@ -297,6 +297,9 @@ const DatabaseUpdaterPage = React.lazy(() => import('@/pages/admin/DatabaseUpdat
 const TenantManagement = React.lazy(() => import('@/pages/admin/TenantManagement'));
 const UserManagement = React.lazy(() => import('@/pages/admin/UserManagement'));
 const MobileLogsViewer = React.lazy(() => import('@/pages/admin/MobileLogsViewer'));
+const DisposableEmailDomainsAdmin = React.lazy(
+  () => import('@/pages/admin/DisposableEmailDomains'),
+);
 
 const LAST_ROUTE_KEY = 'printyx_last_route';
 
@@ -869,6 +872,11 @@ function Router() {
                 </Route>
                 <Route path="/admin/tenant-management">
                   {() => <ProtectedRoute component={TenantManagement} platformOnly />}
+                </Route>
+                <Route path="/admin/disposable-emails">
+                  {() => (
+                    <ProtectedRoute component={DisposableEmailDomainsAdmin} platformOnly />
+                  )}
                 </Route>
                 <Route path="/admin/user-management">
                   {() => (

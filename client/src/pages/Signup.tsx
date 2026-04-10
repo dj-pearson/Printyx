@@ -26,7 +26,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthContext } from '@/providers/AuthProvider';
 import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
-import { sanitizeEmail, sanitizeInput, PasswordSchema, EmailSchema } from '@/lib/validations';
+import {
+  sanitizeEmail,
+  sanitizeInput,
+  PasswordSchema,
+  EmailSchema,
+  checkDisposableEmail,
+} from '@/lib/validations';
 import { formatAuthError } from '@/lib/auth-utils';
 import { Printer, ArrowRight, ArrowLeft, CheckCircle, Eye, EyeOff, Mail } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -181,9 +187,27 @@ export default function Signup() {
     const fieldsToValidate = getFieldsForStep(currentStep);
     const isValid = await form.trigger(fieldsToValidate as any);
 
-    if (isValid) {
-      setCurrentStep((prev) => Math.min(prev + 1, 5));
+    if (!isValid) return;
+
+    // Step 2 is the email/password step — check the server-backed disposable
+    // email blocklist before advancing so the user doesn't get all the way to
+    // submit before being rejected.
+    if (currentStep === 2) {
+      const email = form.getValues('email');
+      if (email) {
+        const check = await checkDisposableEmail(email);
+        if (check.blocked) {
+          form.setError('email', {
+            type: 'manual',
+            message:
+              'Disposable email addresses are not allowed. Please use a permanent business email.',
+          });
+          return;
+        }
+      }
     }
+
+    setCurrentStep((prev) => Math.min(prev + 1, 5));
   };
 
   const prevStep = () => {

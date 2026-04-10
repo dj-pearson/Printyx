@@ -11,6 +11,7 @@ import { randomBytes } from 'crypto';
 import { EmailTemplates } from './services/email-templates';
 import { emailService } from './services/email-service';
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { isDisposableEmail } from './services/disposable-email-service';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('auth-routes');
 
@@ -504,6 +505,21 @@ router.get('/user', getCurrentUserHandler);
 router.post('/signup', signupLimiter, async (req, res) => {
   try {
     const data = signupSchema.parse(req.body);
+
+    // SECURITY: Block signups from known disposable / throwaway email providers.
+    // The blocklist is maintained in the `disposable_email_domains` table and
+    // can be managed by platform admins at /admin/disposable-emails.
+    const disposableCheck = await isDisposableEmail(data.email);
+    if (disposableCheck.blocked) {
+      log.info(
+        `[SIGNUP] Blocked disposable email: ${data.email} (domain=${disposableCheck.domain})`,
+      );
+      return res.status(400).json({
+        message:
+          'Disposable email addresses are not allowed. Please sign up with a permanent business email.',
+        code: 'DISPOSABLE_EMAIL_BLOCKED',
+      });
+    }
 
     // Check if email already exists
     const [existingUser] = await db
