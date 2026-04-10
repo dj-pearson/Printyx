@@ -119,6 +119,19 @@ export type {
   InsertPipelineAutomationLog,
 } from './pipeline-configuration-schema';
 
+// Re-export disposable email domain schemas (platform-global blocklist)
+export {
+  disposableEmailDomains,
+  insertDisposableEmailDomainSchema,
+  updateDisposableEmailDomainSchema,
+  bulkInsertDisposableEmailDomainsSchema,
+} from './disposable-email-schema';
+
+export type {
+  DisposableEmailDomain,
+  InsertDisposableEmailDomain,
+} from './disposable-email-schema';
+
 // Re-export deal desk schemas
 export {
   approvalRules,

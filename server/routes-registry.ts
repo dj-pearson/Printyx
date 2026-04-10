@@ -149,6 +149,7 @@ import {
   registerOperationsExtendedRoutes,
   registerAuditLogRoutes,
   registerSampleDataRoutes,
+  registerDisposableEmailRoutes,
 } from './domains/admin';
 
 import {
@@ -410,6 +411,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── Admin Stats ──────────────────────────────────────────────��───
   registerAdminStatsRoutes(app);
+
+  // ─── Disposable Email Blocklist ─────────────────────────────────
+  registerDisposableEmailRoutes(app);
 
   // ─── Incident Response ──────────────────────────────────────────
   app.use(incidentResponseRoutes);
