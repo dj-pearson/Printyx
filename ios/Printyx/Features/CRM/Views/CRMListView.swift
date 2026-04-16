@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Main CRM list with segmented control (All / Leads / Prospects / Customers).
 struct CRMListView: View {
+    @EnvironmentObject private var apiClient: APIClient
     @StateObject private var viewModel: CRMListViewModel
     @State private var showingCreateRecord = false
     @State private var selectedRecord: BusinessRecord?
@@ -81,7 +82,11 @@ struct CRMListView: View {
                 }
             }
             .sheet(item: $selectedRecord) { record in
-                CRMDetailView(crmService: CRMService(apiClient: APIClient()), recordId: record.id)
+                CRMDetailView(
+                    crmService: CRMService(apiClient: apiClient),
+                    recordId: record.id
+                )
+                .environmentObject(apiClient)
             }
             .task {
                 if viewModel.records.isEmpty {

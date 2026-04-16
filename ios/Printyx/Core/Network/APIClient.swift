@@ -36,6 +36,7 @@ final class APIClient: ObservableObject {
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
     private let keychain: KeychainManager
+    private let pinner: CertificatePinner
     private var isRefreshingToken = false
     private var pendingRequests: [CheckedContinuation<Data, Error>] = []
 
@@ -51,7 +52,13 @@ final class APIClient: ObservableObject {
         sessionConfig.timeoutIntervalForRequest = 30
         sessionConfig.timeoutIntervalForResource = 60
         sessionConfig.waitsForConnectivity = true
-        self.session = URLSession(configuration: sessionConfig)
+        let pinner = CertificatePinner()
+        self.pinner = pinner
+        self.session = URLSession(
+            configuration: sessionConfig,
+            delegate: pinner,
+            delegateQueue: nil
+        )
 
         self.decoder = JSONDecoder()
         self.decoder.dateDecodingStrategy = .custom { decoder in
@@ -134,10 +141,14 @@ final class APIClient: ObservableObject {
             @unknown default:
                 detail = decodingError.localizedDescription
             }
+            #if DEBUG
             print("[APIClient] Decode error for \(T.self) on \(endpoint.path): \(detail)")
             if let rawJSON = String(data: data.prefix(500), encoding: .utf8) {
                 print("[APIClient] Response preview: \(rawJSON)")
             }
+            #else
+            _ = detail // avoid unused-variable warning in release
+            #endif
             throw APIError.decodingError(decodingError)
         } catch {
             throw APIError.decodingError(error)

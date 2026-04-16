@@ -50,11 +50,38 @@
 	<string>AppIcon</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!--
+	    ATS scope:
+	      * Release: default ATS (HTTPS-only, no exceptions).
+	      * Debug: allow insecure HTTP only to `localhost` and `127.0.0.1`
+	        so the dev server at http://localhost:5000 works. We intentionally
+	        do NOT set NSAllowsLocalNetworking (too broad — covers all
+	        private RFC1918 ranges) or NSAllowsArbitraryLoads.
+	-->
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<false/>
+			</dict>
+			<key>127.0.0.1</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<false/>
+			</dict>
+		</dict>
 	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Printyx optionally tags logged calls, meetings, and visits with your location so managers can verify in-field activity.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Printyx uses Face ID to lock the app and protect your customer data if your phone is lost or stolen.</string>
 	<key>SUPABASE_URL</key>
 	<string>$(SUPABASE_URL)</string>
 	<key>SUPABASE_ANON_KEY</key>
