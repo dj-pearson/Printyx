@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Detailed view of a single CRM record with editing, activities, and actions.
 struct CRMDetailView: View {
+    @EnvironmentObject private var apiClient: APIClient
     @StateObject private var viewModel: CRMDetailViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingActivityForm = false
@@ -48,6 +49,13 @@ struct CRMDetailView: View {
             }
             .task {
                 await viewModel.load()
+                if let record = viewModel.record {
+                    LastViewedRecordStore.shared.record(
+                        id: record.id,
+                        kind: quickLogKind(for: record.recordType),
+                        displayName: record.displayName
+                    )
+                }
             }
             .alert("Convert to Customer?", isPresented: $showingConvertConfirm) {
                 Button("Convert", role: .none) {
@@ -79,6 +87,16 @@ struct CRMDetailView: View {
                 // Quick actions
                 if viewModel.isLead {
                     quickActions
+                }
+
+                // Customer 360 — only shown for existing records we can actually
+                // attach related entities to.
+                if let record = viewModel.record {
+                    Customer360Section(
+                        customerId: record.id,
+                        apiClient: apiClient
+                    )
+                    .padding(.horizontal)
                 }
 
                 // Company Info
@@ -393,5 +411,15 @@ struct CRMDetailView: View {
                 .padding(.horizontal)
             }
         }
+    }
+}
+
+// MARK: - Quick-log helpers
+
+private func quickLogKind(for recordType: RecordType) -> QuickLogRecordKind {
+    switch recordType {
+    case .lead: .lead
+    case .prospect: .prospect
+    case .customer, .formerCustomer: .customer
     }
 }

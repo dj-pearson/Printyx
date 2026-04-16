@@ -134,6 +134,11 @@ final class AuthManager: ObservableObject {
     // MARK: - Logout
 
     func logout() {
+        // Best-effort server-side revoke — we want the refresh token invalidated
+        // even if the network call fails. Local state is always cleared.
+        Task {
+            try? await apiClient.requestVoid(.logout())
+        }
         keychain.clearAll()
         currentUser = nil
         isAuthenticated = false

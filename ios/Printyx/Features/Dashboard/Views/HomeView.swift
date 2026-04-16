@@ -2,8 +2,14 @@ import SwiftUI
 
 /// Home dashboard tab with today's snapshot, quick actions, activity feed, and notifications.
 struct HomeView: View {
+    @EnvironmentObject private var apiClient: APIClient
     @StateObject private var viewModel: HomeViewModel
     @ObservedObject var authManager: AuthManager
+
+    /// Managers (roleLevel >= 5) see the team roll-up section. Reps don't.
+    private var showsManagerSection: Bool {
+        (authManager.currentUser?.roleLevel ?? 0) >= 5
+    }
 
     init(dashboardService: DashboardService, authManager: AuthManager) {
         _viewModel = StateObject(wrappedValue: HomeViewModel(dashboardService: dashboardService))
@@ -33,6 +39,11 @@ struct HomeView: View {
 
                         // Quick Actions
                         quickActionsSection
+
+                        // My Team (managers only)
+                        if showsManagerSection {
+                            ManagerTeamSection(apiClient: apiClient)
+                        }
 
                         // Notifications
                         if !viewModel.notifications.isEmpty {

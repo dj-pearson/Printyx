@@ -322,6 +322,29 @@ extension APIEndpoint {
     }
 }
 
+// MARK: - Manager / Team Reports Endpoints
+
+extension APIEndpoint {
+    static func teamPipeline() -> APIEndpoint {
+        APIEndpoint(path: "/api/team-reports/pipeline")
+    }
+
+    static func teamActivitiesByRep(days: Int = 7) -> APIEndpoint {
+        let items = [URLQueryItem(name: "days", value: "\(days)")]
+        return APIEndpoint(path: "/api/team-reports/activities", queryItems: items)
+    }
+
+    static func teamLeaderboard(period: String = "month") -> APIEndpoint {
+        let items = [URLQueryItem(name: "period", value: period)]
+        return APIEndpoint(path: "/api/team-reports/leaderboard", queryItems: items)
+    }
+
+    static func teamNoTouchAlerts(days: Int = 3) -> APIEndpoint {
+        let items = [URLQueryItem(name: "days", value: "\(days)")]
+        return APIEndpoint(path: "/api/team-reports/no-touch", queryItems: items)
+    }
+}
+
 // MARK: - Service Ticket Endpoints
 
 extension APIEndpoint {
@@ -530,5 +553,11 @@ extension APIEndpoint {
 
     static func currentUser() -> APIEndpoint {
         APIEndpoint(path: "/auth/v1/user")
+    }
+
+    /// Revokes the current refresh token server-side. Best-effort only — the
+    /// client still clears local keychain state regardless of the response.
+    static func logout() -> APIEndpoint {
+        APIEndpoint(path: "/auth/v1/logout", method: .post)
     }
 }
