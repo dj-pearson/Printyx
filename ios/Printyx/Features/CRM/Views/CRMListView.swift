@@ -58,6 +58,7 @@ struct CRMListView: View {
                             .font(.system(size: 22))
                             .foregroundStyle(Color.printyxPrimary)
                     }
+                    .accessibilityLabel("Add record")
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
@@ -71,6 +72,7 @@ struct CRMListView: View {
                         Image(systemName: "arrow.up.arrow.down.circle")
                             .font(.system(size: 20))
                     }
+                    .accessibilityLabel("Sort")
                 }
             }
             .refreshable {

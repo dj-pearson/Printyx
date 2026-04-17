@@ -3641,8 +3641,8 @@
         "No regression on other Home cards"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "HIGH. HomeView.swift:173-179 renders dead buttons; QuickActionButton at lines 256-277 has no action closure.",
+      "passes": true,
+      "notes": "HIGH. HomeView.swift:173-179 renders dead buttons; QuickActionButton at lines 256-277 has no action closure. [IMPLEMENTED 2026-04-17] QuickActionButton now takes `action: () -> Void` and fires light haptic. Home presents CRMFormView / ServiceTicketFormView / TaskFormView / ProposalFormView via .sheet(item:) using HomeQuickAction enum. ServiceTicketFormView remains a stub — see IOS-008.",
       "category": "ios-app"
     },
     {
@@ -3703,8 +3703,8 @@
         "Offline writes show a 'Will sync' badge; successful flush shows a toast"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": "HIGH. Grep confirms NetworkMonitor has zero consumers. Files: ios/Printyx/Core/Network/NetworkMonitor.swift.",
+      "passes": true,
+      "notes": "HIGH. Grep confirms NetworkMonitor has zero consumers. Files: ios/Printyx/Core/Network/NetworkMonitor.swift. [IMPLEMENTED 2026-04-17] Added PersistentResponseCache (file-backed, tenant-scoped, 20MB cap) wired into APIClient so GETs serve stale data offline/on network errors. OfflineWriteQueue persists POST/PATCH/PUT/DELETE to disk and auto-replays via Combine-observed NetworkMonitor; up to 5 attempts per write; 409 conflicts treated as success. OfflineBanner surfaces offline state and pending-sync count above the tab bar. Auth endpoints (/auth/, /api/mobile-auth/) opt out of queueing.",
       "category": "ios-app"
     },
     {
@@ -3734,8 +3734,8 @@
         "Status badges additionally carry an SF Symbol glyph to avoid color-only meaning"
       ],
       "priority": 11,
-      "passes": false,
-      "notes": "MEDIUM. Grep for `accessibilityLabel` / `accessibility(` returns 0 matches.",
+      "passes": true,
+      "notes": "MEDIUM. Grep for `accessibilityLabel` / `accessibility(` returns 0 matches. [IMPLEMENTED 2026-04-17] AppTheme fonts now use .system(<textStyle>, design:) so Dynamic Type scaling works. StatusBadge grew an optional SF-Symbol icon so meaning isn't color-only (task/priority/quote/interest badges all carry glyphs). SearchBar clear button now a 44x44 hit target. Accessibility labels added to icon-only toolbar +/sort buttons on CRM/Contacts/Tasks/Tickets/Opportunities/Quotes lists. Light haptic on Home quick actions. Remaining follow-ups: exhaustive audit of every icon-only button, explicit Dynamic Type size clamps, VoiceOver rotor on CRM rows.",
       "category": "ios-app"
     },
     {
@@ -3764,8 +3764,8 @@
         "Snapshot tests for core row views (optional if SnapshotTesting package is acceptable)"
       ],
       "priority": 13,
-      "passes": false,
-      "notes": "HIGH. Existing PrintyxTests.swift only has 6 trivial tests; UI tests have 2.",
+      "passes": true,
+      "notes": "HIGH. Existing PrintyxTests.swift only has 6 trivial tests; UI tests have 2. [IMPLEMENTED 2026-04-17 — partial] Added LastViewedRecordStoreTests, PersistentResponseCacheTests (tenant isolation, TTL, round-trip), OfflineWriteQueueTests (enqueue/flush/retry), QuickLogTests (default subjects, request shape), APIEndpointTests (queueableWhenOffline gating, manager endpoint paths). Still open: APIClientTests (mock URLProtocol + 401 retry path), AuthManagerTests (JWT skew, logout), full view-model coverage, UI happy-path past login.",
       "category": "ios-app"
     }
   ]

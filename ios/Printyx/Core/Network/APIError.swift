@@ -15,6 +15,7 @@ enum APIError: LocalizedError {
     case tokenRefreshFailed
     case noTenantContext
     case rateLimited(retryAfter: TimeInterval?)
+    case offlineQueued
     case unknown(statusCode: Int)
 
     var errorDescription: String? {
@@ -62,6 +63,8 @@ enum APIError: LocalizedError {
                 return "Too many requests. Please wait \(Int(retryAfter)) seconds."
             }
             return "Too many requests. Please try again later."
+        case .offlineQueued:
+            return "You're offline — this change will sync when you reconnect."
         case .unknown(let statusCode):
             return "Unexpected error (status \(statusCode))"
         }

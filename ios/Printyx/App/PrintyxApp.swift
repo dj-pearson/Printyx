@@ -4,6 +4,7 @@ import SwiftUI
 struct PrintyxApp: App {
     @StateObject private var apiClient = APIClient()
     @StateObject private var networkMonitor = NetworkMonitor.shared
+    @StateObject private var writeQueue = OfflineWriteQueue.shared
     @StateObject private var lockManager = BiometricLockManager()
     @Environment(\.scenePhase) private var scenePhase
 
@@ -12,9 +13,14 @@ struct PrintyxApp: App {
             RootView(apiClient: apiClient)
                 .environmentObject(apiClient)
                 .environmentObject(networkMonitor)
+                .environmentObject(writeQueue)
                 .environmentObject(lockManager)
                 .onChange(of: scenePhase) { _, newPhase in
                     lockManager.scenePhaseChanged(newPhase)
+                    // Opportunistic flush when the app comes back to foreground.
+                    if newPhase == .active {
+                        Task { await writeQueue.flush() }
+                    }
                 }
         }
     }

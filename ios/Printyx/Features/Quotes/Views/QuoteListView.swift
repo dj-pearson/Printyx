@@ -69,6 +69,7 @@ struct QuoteListView: View {
                             .font(.system(size: 22))
                             .foregroundStyle(Color.printyxPrimary)
                     }
+                    .accessibilityLabel("Create proposal or quote")
                 }
             }
             .refreshable {
