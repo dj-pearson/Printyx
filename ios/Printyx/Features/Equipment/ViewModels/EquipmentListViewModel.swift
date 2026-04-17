@@ -9,6 +9,7 @@ final class EquipmentListViewModel: ObservableObject {
 
     @Published var equipment: [Equipment] = []
     @Published var isLoading = false
+    @Published var isLoadingMore = false
     @Published var error: String?
     @Published var searchText = ""
 
@@ -74,6 +75,23 @@ final class EquipmentListViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    /// Page forward when the user scrolls to the bottom of the list.
+    func loadMore() async {
+        guard hasMore, !isLoading, !isLoadingMore else { return }
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+
+        let nextPage = currentPage + 1
+        do {
+            let fetched = try await equipmentService.fetchEquipment(page: nextPage, limit: pageSize)
+            equipment.append(contentsOf: fetched)
+            currentPage = nextPage
+            if fetched.count < pageSize { hasMore = false }
+        } catch {
+            // Swallow — retried on next scroll.
+        }
     }
 
     func refresh() async {

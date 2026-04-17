@@ -4,7 +4,7 @@ import SwiftUI
 struct MainTabView: View {
     let apiClient: APIClient
     @ObservedObject var authManager: AuthManager
-    @State private var selectedTab = 0
+    @EnvironmentObject var router: AppRouter
     @State private var showingQuickLog = false
     @StateObject private var quickLogViewModel: QuickLogViewModel
 
@@ -53,27 +53,30 @@ struct MainTabView: View {
     }
 
     private var tabs: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: Binding(
+            get: { router.selectedTab.rawValue },
+            set: { router.selectedTab = AppTab(rawValue: $0) ?? .home }
+        )) {
             // Home Dashboard
             HomeView(dashboardService: dashboardService, authManager: authManager)
                 .tabItem {
                     Label("Home", systemImage: "house")
                 }
-                .tag(0)
+                .tag(AppTab.home.rawValue)
 
             // CRM
             CRMListView(crmService: crmService)
                 .tabItem {
                     Label("CRM", systemImage: "person.2")
                 }
-                .tag(1)
+                .tag(AppTab.crm.rawValue)
 
             // Service (Tickets + Equipment)
             ServiceHubView(ticketService: ticketService, equipmentService: equipmentService)
                 .tabItem {
                     Label("Service", systemImage: "wrench.and.screwdriver")
                 }
-                .tag(2)
+                .tag(AppTab.service.rawValue)
 
             // Sales (Pipeline + Quotes + Contracts)
             SalesHubView(
@@ -84,14 +87,14 @@ struct MainTabView: View {
                 .tabItem {
                     Label("Sales", systemImage: "chart.line.uptrend.xyaxis")
                 }
-                .tag(3)
+                .tag(AppTab.sales.rawValue)
 
             // More (Tasks, Invoices, Contacts, Settings)
             MoreView(apiClient: apiClient, authManager: authManager)
                 .tabItem {
                     Label("More", systemImage: "ellipsis")
                 }
-                .tag(4)
+                .tag(AppTab.more.rawValue)
         }
         .tint(Color.printyxPrimary)
     }

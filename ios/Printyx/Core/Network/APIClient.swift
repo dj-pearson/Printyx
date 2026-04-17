@@ -52,6 +52,16 @@ final class APIClient: ObservableObject {
         sessionConfig.timeoutIntervalForRequest = 30
         sessionConfig.timeoutIntervalForResource = 60
         sessionConfig.waitsForConnectivity = true
+        // URLSession-level cache for GET responses. This is separate from
+        // PersistentResponseCache — URLCache respects Cache-Control headers
+        // and sits closer to the transport, while PersistentResponseCache is
+        // our offline-aware fallback. Sized modestly to keep the app bundle
+        // footprint small.
+        sessionConfig.urlCache = URLCache(
+            memoryCapacity: 10 * 1024 * 1024,
+            diskCapacity: 50 * 1024 * 1024
+        )
+        sessionConfig.requestCachePolicy = .useProtocolCachePolicy
         let pinner = CertificatePinner()
         self.pinner = pinner
         self.session = URLSession(

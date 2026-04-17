@@ -134,6 +134,15 @@ struct InvoiceListView: View {
                                 .tint(.green)
                             }
                         }
+                        .onAppear {
+                            if invoice.id == viewModel.filteredInvoices.last?.id {
+                                Task { await viewModel.loadMore() }
+                            }
+                        }
+                }
+
+                if viewModel.isLoadingMore {
+                    InlineLoadingView()
                 }
             }
         }
