@@ -116,6 +116,15 @@ struct ContractListView: View {
                     ContractRow(contract: contract)
                         .contentShape(Rectangle())
                         .onTapGesture { selectedContract = contract }
+                        .onAppear {
+                            if contract.id == viewModel.filteredContracts.last?.id {
+                                Task { await viewModel.loadMore() }
+                            }
+                        }
+                }
+
+                if viewModel.isLoadingMore {
+                    InlineLoadingView()
                 }
             }
         }

@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Detailed view of a single CRM record with editing, activities, and actions.
 struct CRMDetailView: View {
+    @EnvironmentObject private var apiClient: APIClient
     @StateObject private var viewModel: CRMDetailViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingActivityForm = false
@@ -12,55 +13,61 @@ struct CRMDetailView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if viewModel.isLoading {
-                    LoadingView()
-                } else if let error = viewModel.error, viewModel.record == nil {
-                    ErrorView(message: error, retryAction: { await viewModel.load() })
-                } else {
-                    recordContent
-                }
+        // CRMDetailView is pushed onto its parent tab's NavigationStack, so we
+        // don't wrap in another NavigationStack here — that would break the
+        // back button and gesture. The Save toolbar pops via `dismiss` which
+        // NavigationStack's environment binds to "pop this destination".
+        Group {
+            if viewModel.isLoading {
+                LoadingView()
+            } else if let error = viewModel.error, viewModel.record == nil {
+                ErrorView(message: error, retryAction: { await viewModel.load() })
+            } else {
+                recordContent
             }
-            .navigationTitle(viewModel.record?.displayName ?? "Record")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task {
-                            if await viewModel.save() {
-                                dismiss()
-                            }
-                        }
-                    } label: {
-                        if viewModel.isSaving {
-                            ProgressView()
-                        } else {
-                            Text("Save")
-                                .fontWeight(.semibold)
-                        }
-                    }
-                    .disabled(viewModel.isSaving)
-                }
-            }
-            .task {
-                await viewModel.load()
-            }
-            .alert("Convert to Customer?", isPresented: $showingConvertConfirm) {
-                Button("Convert", role: .none) {
+        }
+        .navigationTitle(viewModel.record?.displayName ?? "Record")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
                     Task {
-                        if await viewModel.convertToCustomer() {
+                        if await viewModel.save() {
                             dismiss()
                         }
                     }
+                } label: {
+                    if viewModel.isSaving {
+                        ProgressView()
+                    } else {
+                        Text("Save")
+                            .fontWeight(.semibold)
+                    }
                 }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This will convert this lead into a customer. All history will be preserved.")
+                .disabled(viewModel.isSaving)
             }
+        }
+        .task {
+            await viewModel.load()
+            if let record = viewModel.record {
+                LastViewedRecordStore.shared.record(
+                    id: record.id,
+                    kind: quickLogKind(for: record.recordType),
+                    displayName: record.displayName
+                )
+            }
+        }
+        .alert("Convert to Customer?", isPresented: $showingConvertConfirm) {
+            Button("Convert", role: .none) {
+                Task {
+                    if await viewModel.convertToCustomer() {
+                        dismiss()
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will convert this lead into a customer. All history will be preserved.")
         }
     }
 
@@ -79,6 +86,16 @@ struct CRMDetailView: View {
                 // Quick actions
                 if viewModel.isLead {
                     quickActions
+                }
+
+                // Customer 360 — only shown for existing records we can actually
+                // attach related entities to.
+                if let record = viewModel.record {
+                    Customer360Section(
+                        customerId: record.id,
+                        apiClient: apiClient
+                    )
+                    .padding(.horizontal)
                 }
 
                 // Company Info
@@ -393,5 +410,15 @@ struct CRMDetailView: View {
                 .padding(.horizontal)
             }
         }
+    }
+}
+
+// MARK: - Quick-log helpers
+
+private func quickLogKind(for recordType: RecordType) -> QuickLogRecordKind {
+    switch recordType {
+    case .lead: .lead
+    case .prospect: .prospect
+    case .customer, .formerCustomer: .customer
     }
 }

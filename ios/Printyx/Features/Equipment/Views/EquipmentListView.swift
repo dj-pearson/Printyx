@@ -62,6 +62,15 @@ struct EquipmentListView: View {
                 EquipmentRow(equipment: equip)
                     .contentShape(Rectangle())
                     .onTapGesture { selectedEquipment = equip }
+                    .onAppear {
+                        if equip.id == viewModel.filteredEquipment.last?.id {
+                            Task { await viewModel.loadMore() }
+                        }
+                    }
+            }
+
+            if viewModel.isLoadingMore {
+                InlineLoadingView()
             }
         }
         .listStyle(.insetGrouped)

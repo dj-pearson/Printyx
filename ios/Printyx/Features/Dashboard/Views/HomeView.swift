@@ -2,8 +2,15 @@ import SwiftUI
 
 /// Home dashboard tab with today's snapshot, quick actions, activity feed, and notifications.
 struct HomeView: View {
+    @EnvironmentObject private var apiClient: APIClient
     @StateObject private var viewModel: HomeViewModel
     @ObservedObject var authManager: AuthManager
+    @State private var activeQuickAction: HomeQuickAction?
+
+    /// Managers (roleLevel >= 5) see the team roll-up section. Reps don't.
+    private var showsManagerSection: Bool {
+        (authManager.currentUser?.roleLevel ?? 0) >= 5
+    }
 
     init(dashboardService: DashboardService, authManager: AuthManager) {
         _viewModel = StateObject(wrappedValue: HomeViewModel(dashboardService: dashboardService))
@@ -33,6 +40,11 @@ struct HomeView: View {
 
                         // Quick Actions
                         quickActionsSection
+
+                        // My Team (managers only)
+                        if showsManagerSection {
+                            ManagerTeamSection(apiClient: apiClient)
+                        }
 
                         // Notifications
                         if !viewModel.notifications.isEmpty {
@@ -171,10 +183,43 @@ struct HomeView: View {
                 .tracking(0.5)
 
             HStack(spacing: AppTheme.Spacing.md) {
-                QuickActionButton(icon: "person.badge.plus", label: "New Lead", color: .stageNew)
-                QuickActionButton(icon: "wrench.and.screwdriver", label: "New Ticket", color: .printyxAccent)
-                QuickActionButton(icon: "checkmark.circle", label: "New Task", color: .printyxPrimary)
-                QuickActionButton(icon: "doc.text", label: "New Quote", color: .printyxSecondary)
+                QuickActionButton(icon: "person.badge.plus", label: "New Lead", color: .stageNew) {
+                    activeQuickAction = .newLead
+                }
+                QuickActionButton(icon: "wrench.and.screwdriver", label: "New Ticket", color: .printyxAccent) {
+                    activeQuickAction = .newTicket
+                }
+                QuickActionButton(icon: "checkmark.circle", label: "New Task", color: .printyxPrimary) {
+                    activeQuickAction = .newTask
+                }
+                QuickActionButton(icon: "doc.text", label: "New Quote", color: .printyxSecondary) {
+                    activeQuickAction = .newQuote
+                }
+            }
+        }
+        .sheet(item: $activeQuickAction) { action in
+            quickActionSheet(for: action)
+        }
+    }
+
+    @ViewBuilder
+    private func quickActionSheet(for action: HomeQuickAction) -> some View {
+        switch action {
+        case .newLead:
+            CRMFormView(crmService: CRMService(apiClient: apiClient)) { _ in
+                Task { await viewModel.refresh() }
+            }
+        case .newTicket:
+            ServiceTicketFormView { _ in
+                Task { await viewModel.refresh() }
+            }
+        case .newTask:
+            TaskFormView(taskService: TaskService(apiClient: apiClient)) { _ in
+                Task { await viewModel.refresh() }
+            }
+        case .newQuote:
+            ProposalFormView(quoteService: QuoteService(apiClient: apiClient)) { _ in
+                Task { await viewModel.refresh() }
             }
         }
     }
@@ -253,26 +298,42 @@ struct HomeView: View {
 
 // MARK: - Quick Action Button
 
+/// Discriminant for the four Home quick-action sheets. Used as the `.sheet(item:)`
+/// identifier so SwiftUI can swap the presented view when the rep taps a
+/// different button without double-presentation.
+enum HomeQuickAction: String, Identifiable {
+    case newLead, newTicket, newTask, newQuote
+    var id: String { rawValue }
+}
+
 struct QuickActionButton: View {
     let icon: String
     let label: String
     let color: Color
+    let action: () -> Void
 
     var body: some View {
-        VStack(spacing: AppTheme.Spacing.xs) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundStyle(color)
-                .frame(width: 44, height: 44)
-                .background(color.opacity(0.12))
-                .clipShape(Circle())
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        } label: {
+            VStack(spacing: AppTheme.Spacing.xs) {
+                Image(systemName: icon)
+                    .font(.system(size: 20))
+                    .foregroundStyle(color)
+                    .frame(width: 44, height: 44)
+                    .background(color.opacity(0.12))
+                    .clipShape(Circle())
 
-            Text(label)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity)
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 }
 

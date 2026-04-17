@@ -9,6 +9,7 @@ final class ContractListViewModel: ObservableObject {
 
     @Published var contracts: [Contract] = []
     @Published var isLoading = false
+    @Published var isLoadingMore = false
     @Published var error: String?
     @Published var searchText = ""
     @Published var selectedStatus: ContractStatus?
@@ -83,6 +84,27 @@ final class ContractListViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    /// Page forward when the user scrolls to the bottom of the list.
+    func loadMore() async {
+        guard hasMore, !isLoading, !isLoadingMore else { return }
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+
+        let nextPage = currentPage + 1
+        do {
+            let fetched = try await contractService.fetchContracts(
+                status: selectedStatus?.rawValue,
+                page: nextPage,
+                limit: pageSize
+            )
+            contracts.append(contentsOf: fetched)
+            currentPage = nextPage
+            if fetched.count < pageSize { hasMore = false }
+        } catch {
+            // Swallow — retried on next scroll.
+        }
     }
 
     func refresh() async {

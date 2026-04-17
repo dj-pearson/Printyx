@@ -1,24 +1,36 @@
 import SwiftUI
 
 /// A colored badge indicating status (task, lead, quote, etc.).
+/// Optionally renders a leading SF Symbol so meaning isn't color-only —
+/// important for color-blind users and for VoiceOver users who hear the label.
 struct StatusBadge: View {
     let text: String
     let color: Color
+    let icon: String?
 
-    init(_ text: String, color: Color) {
+    init(_ text: String, color: Color, icon: String? = nil) {
         self.text = text
         self.color = color
+        self.icon = icon
     }
 
     var body: some View {
-        Text(text)
-            .font(.printyxSmall)
-            .fontWeight(.semibold)
-            .foregroundStyle(color)
-            .padding(.horizontal, AppTheme.Spacing.sm)
-            .padding(.vertical, AppTheme.Spacing.xs)
-            .background(color.opacity(0.12))
-            .cornerRadius(AppTheme.Radius.sm)
+        HStack(spacing: 4) {
+            if let icon {
+                Image(systemName: icon)
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            Text(text)
+                .font(.printyxSmall)
+                .fontWeight(.semibold)
+        }
+        .foregroundStyle(color)
+        .padding(.horizontal, AppTheme.Spacing.sm)
+        .padding(.vertical, AppTheme.Spacing.xs)
+        .background(color.opacity(0.12))
+        .cornerRadius(AppTheme.Radius.sm)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(text)
     }
 }
 
@@ -35,8 +47,16 @@ extension StatusBadge {
         case "cancelled": .statusCancelled
         default: .secondary
         }
+        let icon: String = switch status {
+        case "todo": "circle"
+        case "in_progress": "clock"
+        case "review": "magnifyingglass"
+        case "completed": "checkmark.circle.fill"
+        case "cancelled": "xmark.circle"
+        default: "circle"
+        }
         let label = status.replacingOccurrences(of: "_", with: " ").capitalized
-        return StatusBadge(label, color: color)
+        return StatusBadge(label, color: color, icon: icon)
     }
 
     /// Priority badge.
@@ -48,7 +68,14 @@ extension StatusBadge {
         case "urgent": .priorityUrgent
         default: .secondary
         }
-        return StatusBadge(priority.capitalized, color: color)
+        let icon: String = switch priority {
+        case "urgent", "critical": "exclamationmark.triangle.fill"
+        case "high": "arrow.up"
+        case "medium": "equal"
+        case "low": "arrow.down"
+        default: "circle"
+        }
+        return StatusBadge(priority.capitalized, color: color, icon: icon)
     }
 
     /// CRM record type badge.
@@ -74,7 +101,15 @@ extension StatusBadge {
         case "expired": .statusCancelled
         default: .secondary
         }
-        return StatusBadge(status.capitalized, color: color)
+        let icon: String = switch status {
+        case "draft": "doc"
+        case "sent": "paperplane"
+        case "accepted": "checkmark.seal.fill"
+        case "rejected": "xmark.seal"
+        case "expired": "clock.badge.xmark"
+        default: "doc"
+        }
+        return StatusBadge(status.capitalized, color: color, icon: icon)
     }
 
     /// Interest/temperature badge.
@@ -85,6 +120,12 @@ extension StatusBadge {
         case "cold": .priorityLow
         default: .secondary
         }
-        return StatusBadge(level.capitalized, color: color)
+        let icon: String = switch level.lowercased() {
+        case "hot": "flame.fill"
+        case "warm": "thermometer.medium"
+        case "cold": "snowflake"
+        default: "thermometer.low"
+        }
+        return StatusBadge(level.capitalized, color: color, icon: icon)
     }
 }

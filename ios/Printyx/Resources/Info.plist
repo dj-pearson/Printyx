@@ -50,11 +50,44 @@
 	<string>AppIcon</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!--
+	    ATS scope:
+	      * Release: default ATS (HTTPS-only, no exceptions).
+	      * Debug: allow insecure HTTP only to `localhost` and `127.0.0.1`
+	        so the dev server at http://localhost:5000 works. We intentionally
+	        do NOT set NSAllowsLocalNetworking (too broad — covers all
+	        private RFC1918 ranges) or NSAllowsArbitraryLoads.
+	-->
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<false/>
+			</dict>
+			<key>127.0.0.1</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<false/>
+			</dict>
+		</dict>
 	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Printyx optionally tags logged calls, meetings, and visits with your location so managers can verify in-field activity.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Printyx uses Face ID to lock the app and protect your customer data if your phone is lost or stolen.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Printyx uses the microphone when you dictate notes on an activity log or service ticket.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Printyx transcribes your dictated notes into activity logs and service tickets so you don't have to type one-handed in the field.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Printyx attaches photos you select to service tickets so technicians can document error codes, meter reads, and repair work.</string>
 	<key>SUPABASE_URL</key>
 	<string>$(SUPABASE_URL)</string>
 	<key>SUPABASE_ANON_KEY</key>

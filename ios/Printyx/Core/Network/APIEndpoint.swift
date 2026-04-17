@@ -30,7 +30,18 @@ struct APIEndpoint {
         self.body = body
         self.requiresAuth = requiresAuth
     }
+
+    /// Whether this mutation should be queued when the device is offline.
+    /// Authentication + refresh + logout explicitly opt out — replaying those
+    /// hours later would be nonsense. Everything else under `/api/` is eligible.
+    var queueableWhenOffline: Bool {
+        guard method != .get else { return false }
+        if path.hasPrefix("/auth/") { return false }
+        if path.hasPrefix("/api/mobile-auth/") { return false }
+        return true
+    }
 }
+
 
 // MARK: - Task Endpoints
 
@@ -185,6 +196,7 @@ extension APIEndpoint {
 extension APIEndpoint {
     static func opportunities(
         stage: String? = nil,
+        assignedTo: String? = nil,
         page: Int = 1,
         limit: Int = 25
     ) -> APIEndpoint {
@@ -193,6 +205,7 @@ extension APIEndpoint {
             URLQueryItem(name: "limit", value: "\(limit)"),
         ]
         if let stage { items.append(URLQueryItem(name: "stage", value: stage)) }
+        if let assignedTo { items.append(URLQueryItem(name: "assignedTo", value: assignedTo)) }
         return APIEndpoint(path: "/api/opportunities", queryItems: items)
     }
 
@@ -322,6 +335,35 @@ extension APIEndpoint {
     }
 }
 
+// MARK: - Manager / Team Reports Endpoints
+
+extension APIEndpoint {
+    static func teamPipeline() -> APIEndpoint {
+        APIEndpoint(path: "/api/team-reports/pipeline")
+    }
+
+    static func teamActivitiesByRep(days: Int = 7) -> APIEndpoint {
+        let items = [URLQueryItem(name: "days", value: "\(days)")]
+        return APIEndpoint(path: "/api/team-reports/activities", queryItems: items)
+    }
+
+    static func teamLeaderboard(period: String = "month") -> APIEndpoint {
+        let items = [URLQueryItem(name: "period", value: period)]
+        return APIEndpoint(path: "/api/team-reports/leaderboard", queryItems: items)
+    }
+
+    static func teamNoTouchAlerts(days: Int = 3) -> APIEndpoint {
+        let items = [URLQueryItem(name: "days", value: "\(days)")]
+        return APIEndpoint(path: "/api/team-reports/no-touch", queryItems: items)
+    }
+
+    /// List direct reports of the signed-in user. Used by managers to filter
+    /// opportunities / CRM records to a specific rep on their team.
+    static func myDirectReports() -> APIEndpoint {
+        APIEndpoint(path: "/api/users", queryItems: [URLQueryItem(name: "managerId", value: "me")])
+    }
+}
+
 // MARK: - Service Ticket Endpoints
 
 extension APIEndpoint {
@@ -362,6 +404,14 @@ extension APIEndpoint {
 
     static func addServiceTicketNote(ticketId: String, body: Encodable) -> APIEndpoint {
         APIEndpoint(path: "/api/service-tickets/\(ticketId)/updates", method: .post, body: body)
+    }
+
+    /// Upload a base64-encoded photo attachment to a ticket. The backend
+    /// accepts {filename, mimeType, base64} so we don't need a multipart
+    /// implementation on the client side (which would complicate the
+    /// offline write-queue serialisation).
+    static func uploadTicketAttachment(ticketId: String, body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/service-tickets/\(ticketId)/attachments", method: .post, body: body)
     }
 }
 
@@ -530,5 +580,17 @@ extension APIEndpoint {
 
     static func currentUser() -> APIEndpoint {
         APIEndpoint(path: "/auth/v1/user")
+    }
+
+    /// Revokes the current refresh token server-side. Best-effort only — the
+    /// client still clears local keychain state regardless of the response.
+    static func logout() -> APIEndpoint {
+        APIEndpoint(path: "/auth/v1/logout", method: .post)
+    }
+
+    /// Register (or refresh) this device's APNs token for push delivery.
+    /// Server dedupes on (userId, deviceToken).
+    static func registerDeviceToken(body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/mobile/device-tokens", method: .post, body: body)
     }
 }
