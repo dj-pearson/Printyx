@@ -1,4 +1,5 @@
 import Foundation
+@testable import Printyx
 
 /// URLProtocol that lets tests hand-roll HTTP responses for any request.
 /// Register via a `URLSessionConfiguration` whose `protocolClasses` puts
