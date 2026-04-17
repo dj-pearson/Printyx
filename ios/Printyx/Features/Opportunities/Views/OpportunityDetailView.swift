@@ -29,34 +29,31 @@ struct OpportunityDetailView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if isLoading {
-                    LoadingView()
-                } else if let error, opportunity == nil {
-                    ErrorView(message: error) { await load() }
-                } else {
-                    content
-                }
+        // Pushed onto the Sales tab's NavigationStack — no inner stack so the
+        // back button / swipe-back gesture work. Save pops via dismiss().
+        Group {
+            if isLoading {
+                LoadingView()
+            } else if let error, opportunity == nil {
+                ErrorView(message: error) { await load() }
+            } else {
+                content
             }
-            .navigationTitle("Opportunity")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await save() }
-                    } label: {
-                        if isSaving { ProgressView() }
-                        else { Text("Save").fontWeight(.semibold) }
-                    }
-                    .disabled(isSaving)
-                }
-            }
-            .task { await load() }
         }
+        .navigationTitle("Opportunity")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Task { await save() }
+                } label: {
+                    if isSaving { ProgressView() }
+                    else { Text("Save").fontWeight(.semibold) }
+                }
+                .disabled(isSaving)
+            }
+        }
+        .task { await load() }
     }
 
     private var content: some View {

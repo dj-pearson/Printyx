@@ -3,17 +3,17 @@ import SwiftUI
 /// Pipeline and list view for sales opportunities.
 struct OpportunityListView: View {
     @EnvironmentObject private var apiClient: APIClient
+    @EnvironmentObject private var router: AppRouter
     @StateObject private var viewModel: OpportunityListViewModel
     @State private var showingCreate = false
     @State private var showingSearch = false
-    @State private var selectedOpportunity: Opportunity?
 
     init(opportunityService: OpportunityService) {
         _viewModel = StateObject(wrappedValue: OpportunityListViewModel(opportunityService: opportunityService))
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: router.pathBinding(for: .sales)) {
             VStack(spacing: 0) {
                 // Pipeline metrics
                 pipelineMetrics
@@ -27,6 +27,10 @@ struct OpportunityListView: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal, AppTheme.Spacing.lg)
                 .padding(.vertical, AppTheme.Spacing.sm)
+
+                // Assigned-to filter chips (managers only — renders nothing
+                // when the signed-in user has no direct reports).
+                assignedToFilterRow
 
                 // Search
                 SearchBar(text: $viewModel.searchText, placeholder: "Search opportunities...")
@@ -78,21 +82,82 @@ struct OpportunityListView: View {
                     Task { await viewModel.refresh() }
                 }
             }
-            .sheet(item: $selectedOpportunity) { opp in
-                OpportunityDetailView(
-                    opportunityService: OpportunityService(apiClient: apiClient),
-                    opportunityId: opp.id
-                )
-            }
             .sheet(isPresented: $showingSearch) {
                 UniversalSearchSheet(apiClient: apiClient)
+            }
+            .navigationDestination(for: AppRoute.self) { route in
+                switch route {
+                case .opportunity(let id):
+                    OpportunityDetailView(
+                        opportunityService: OpportunityService(apiClient: apiClient),
+                        opportunityId: id
+                    )
+                default:
+                    Text("Unknown route")
+                }
             }
             .task {
                 if viewModel.opportunities.isEmpty {
                     await viewModel.loadInitial()
                 }
+                await viewModel.loadDirectReportsIfNeeded(apiClient: apiClient)
+            }
+            .onChange(of: viewModel.assignedToUserId) { _, _ in
+                Task { await viewModel.refresh() }
             }
         }
+    }
+
+    // MARK: - Assigned-to chips
+
+    @ViewBuilder
+    private var assignedToFilterRow: some View {
+        if !viewModel.directReports.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: AppTheme.Spacing.xs) {
+                    filterChip(
+                        label: "Everyone",
+                        isSelected: viewModel.assignedToUserId == nil
+                    ) {
+                        viewModel.assignedToUserId = nil
+                    }
+                    ForEach(viewModel.directReports) { rep in
+                        filterChip(
+                            label: rep.shortName,
+                            isSelected: viewModel.assignedToUserId == rep.id
+                        ) {
+                            viewModel.assignedToUserId = rep.id
+                        }
+                    }
+                }
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.bottom, AppTheme.Spacing.xs)
+            }
+        }
+    }
+
+    private func filterChip(
+        label: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.printyxCaption)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .padding(.horizontal, AppTheme.Spacing.md)
+                .padding(.vertical, AppTheme.Spacing.xs)
+                .background(
+                    isSelected
+                        ? Color.printyxPrimary.opacity(0.18)
+                        : Color(.secondarySystemBackground)
+                )
+                .foregroundStyle(isSelected ? Color.printyxPrimary : Color.primary)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Filter by \(label)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     // MARK: - Pipeline Metrics
@@ -133,7 +198,7 @@ struct OpportunityListView: View {
                     PipelineColumn(
                         stage: stageData.stage,
                         opportunities: stageData.opportunities,
-                        onSelect: { selectedOpportunity = $0 },
+                        onSelect: { router.push(.opportunity(id: $0.id)) },
                         onMoveForward: { opp in
                             let stages = DealStage.allCases
                             if let currentIndex = stages.firstIndex(of: stageData.stage),
@@ -159,7 +224,7 @@ struct OpportunityListView: View {
             ForEach(viewModel.filteredOpportunities) { opp in
                 OpportunityRowView(opportunity: opp)
                     .contentShape(Rectangle())
-                    .onTapGesture { selectedOpportunity = opp }
+                    .onTapGesture { router.push(.opportunity(id: opp.id)) }
             }
         }
         .listStyle(.insetGrouped)

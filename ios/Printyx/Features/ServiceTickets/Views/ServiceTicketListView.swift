@@ -3,17 +3,17 @@ import SwiftUI
 /// List view for service tickets with stats, filters, and search.
 struct ServiceTicketListView: View {
     @EnvironmentObject private var apiClient: APIClient
+    @EnvironmentObject private var router: AppRouter
     @StateObject private var viewModel: ServiceTicketListViewModel
     @State private var showingCreate = false
     @State private var showingSearch = false
-    @State private var selectedTicket: ServiceTicket?
 
     init(ticketService: ServiceTicketService) {
         _viewModel = StateObject(wrappedValue: ServiceTicketListViewModel(ticketService: ticketService))
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: router.pathBinding(for: .service)) {
             VStack(spacing: 0) {
                 // Stats
                 statsBar
@@ -66,11 +66,19 @@ struct ServiceTicketListView: View {
                     Task { await viewModel.refresh() }
                 }
             }
-            .sheet(item: $selectedTicket) { ticket in
-                ServiceTicketDetailView(ticket: ticket)
-            }
             .sheet(isPresented: $showingSearch) {
                 UniversalSearchSheet(apiClient: apiClient)
+            }
+            .navigationDestination(for: AppRoute.self) { route in
+                switch route {
+                case .serviceTicket(let id):
+                    ServiceTicketDetailView(ticketId: id)
+                        .environmentObject(apiClient)
+                case .equipment(let id):
+                    EquipmentDetailPlaceholder(id: id)
+                default:
+                    Text("Unknown route")
+                }
             }
             .task {
                 if viewModel.tickets.isEmpty {
@@ -135,7 +143,7 @@ struct ServiceTicketListView: View {
             ForEach(viewModel.filteredTickets) { ticket in
                 ServiceTicketRow(ticket: ticket)
                     .contentShape(Rectangle())
-                    .onTapGesture { selectedTicket = ticket }
+                    .onTapGesture { router.push(.serviceTicket(id: ticket.id)) }
                     .swipeActions(edge: .trailing) {
                         if ticket.status != "resolved" && ticket.status != "closed" {
                             Button {
@@ -530,13 +538,30 @@ struct EquipmentPickerSheet: View {
     }
 }
 
+/// Detail view pushed onto the Service tab's NavigationStack. Loads the
+/// ticket and its updates timeline independently and lets the rep add a
+/// note inline. Photo attachment capture is wired to the `/api/attachments`
+/// endpoint — technicians need this for error-code shots and meter reads.
 struct ServiceTicketDetailView: View {
-    let ticket: ServiceTicket
-    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var apiClient: APIClient
+    let ticketId: String
+
+    @State private var ticket: ServiceTicket?
+    @State private var updates: [TicketUpdate] = []
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+    @State private var newNote: String = ""
+    @State private var isSavingNote = false
+    @State private var showingPhotoPicker = false
+    @State private var attachmentCount = 0
 
     var body: some View {
-        NavigationStack {
-            List {
+        List {
+            if isLoading && ticket == nil {
+                Section {
+                    InlineLoadingView()
+                }
+            } else if let ticket {
                 Section("Details") {
                     LabeledContent("Status", value: ticket.statusEnum.displayName)
                     LabeledContent("Priority", value: ticket.priorityEnum.displayName)
@@ -560,14 +585,157 @@ struct ServiceTicketDetailView: View {
                         LabeledContent("Scheduled", value: scheduled.fullFormatted)
                     }
                 }
-            }
-            .navigationTitle(ticket.displayTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+
+                notesSection
+
+                photoSection
+            } else if let errorMessage {
+                Section {
+                    Text(errorMessage)
+                        .foregroundStyle(.red)
                 }
             }
         }
+        .navigationTitle(ticket?.displayTitle ?? "Ticket")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+        .sheet(isPresented: $showingPhotoPicker) {
+            TicketPhotoPickerSheet(ticketId: ticketId, apiClient: apiClient) {
+                attachmentCount += 1
+            }
+        }
+    }
+
+    // MARK: - Sections
+
+    private var notesSection: some View {
+        Section("Notes") {
+            if updates.isEmpty {
+                Text("No notes yet.")
+                    .font(.printyxCaption)
+                    .foregroundStyle(.tertiary)
+            } else {
+                ForEach(updates) { update in
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+                        HStack {
+                            Image(systemName: update.icon)
+                                .foregroundStyle(Color.printyxPrimary)
+                            Text(update.userName ?? "Team member")
+                                .font(.printyxCaption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            if let date = update.createdAt {
+                                Text(date.relativeDescription)
+                                    .font(.printyxSmall)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        if let content = update.content {
+                            Text(content)
+                                .font(.printyxBody)
+                        }
+                    }
+                    .padding(.vertical, AppTheme.Spacing.xs)
+                }
+            }
+
+            HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+                TextField("Add a note…", text: $newNote, axis: .vertical)
+                    .lineLimit(1...4)
+                    .textFieldStyle(.roundedBorder)
+
+                Button {
+                    Task { await addNote() }
+                } label: {
+                    if isSavingNote {
+                        ProgressView()
+                    } else {
+                        Image(systemName: "paperplane.fill")
+                            .foregroundStyle(Color.printyxPrimary)
+                    }
+                }
+                .disabled(newNote.trimmingCharacters(in: .whitespaces).isEmpty || isSavingNote)
+                .accessibilityLabel("Post note")
+            }
+        }
+    }
+
+    private var photoSection: some View {
+        Section("Photos") {
+            Button {
+                showingPhotoPicker = true
+            } label: {
+                Label(
+                    attachmentCount == 0 ? "Add photo of error code / meter"
+                                          : "Add another photo (\(attachmentCount) uploaded)",
+                    systemImage: "camera"
+                )
+            }
+        }
+    }
+
+    // MARK: - Loading & mutations
+
+    private func load() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        let service = ServiceTicketService(apiClient: apiClient)
+        do {
+            async let ticketReq = service.fetchTicket(id: ticketId)
+            async let updatesReq = service.fetchUpdates(ticketId: ticketId)
+            let (t, u) = try await (ticketReq, updatesReq)
+            self.ticket = t
+            self.updates = u
+        } catch {
+            self.errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    private func addNote() async {
+        let trimmed = newNote.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        isSavingNote = true
+        defer { isSavingNote = false }
+        let service = ServiceTicketService(apiClient: apiClient)
+        do {
+            let added = try await service.addNote(ticketId: ticketId, content: trimmed)
+            updates.insert(added, at: 0)
+            newNote = ""
+        } catch let apiError as APIError {
+            if case .offlineQueued = apiError {
+                newNote = ""
+            } else {
+                errorMessage = apiError.errorDescription
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+/// Placeholder equipment detail target for router deep-links. Equipment
+/// detail itself lives in EquipmentListView; this stub satisfies the
+/// navigationDestination(for: AppRoute.self) exhaustiveness without
+/// introducing a heavier dependency.
+struct EquipmentDetailPlaceholder: View {
+    let id: String
+
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.md) {
+            Image(systemName: "printer")
+                .font(.system(size: 40))
+                .foregroundStyle(Color.printyxPrimary)
+            Text("Equipment \(id)")
+                .font(.printyxHeadline)
+            Text("Open the Equipment list in Service for full details.")
+                .font(.printyxCaption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding()
+        .navigationTitle("Equipment")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

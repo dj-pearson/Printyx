@@ -9,8 +9,15 @@ final class OpportunityService {
         self.apiClient = apiClient
     }
 
-    func fetchOpportunities(stage: String? = nil, page: Int = 1, limit: Int = 25) async throws -> [Opportunity] {
-        try await apiClient.requestArray(.opportunities(stage: stage, page: page, limit: limit))
+    func fetchOpportunities(
+        stage: String? = nil,
+        assignedTo: String? = nil,
+        page: Int = 1,
+        limit: Int = 25
+    ) async throws -> [Opportunity] {
+        try await apiClient.requestArray(
+            .opportunities(stage: stage, assignedTo: assignedTo, page: page, limit: limit)
+        )
     }
 
     func fetchOpportunity(id: String) async throws -> Opportunity {

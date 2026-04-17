@@ -8,10 +8,20 @@ final class QuoteListViewModel: ObservableObject {
     @Published var proposals: [Proposal] = []
     @Published var quotes: [Quote] = []
     @Published var isLoading = false
+    @Published var isLoadingMoreProposals = false
+    @Published var isLoadingMoreQuotes = false
     @Published var error: String?
     @Published var searchText = ""
     @Published var selectedTab: QuoteTab = .proposals
     @Published var selectedStatus: ProposalStatus?
+
+    // Per-tab pagination state. Kept separate so switching tabs doesn't reset
+    // the other tab's scroll position.
+    private var proposalPage = 1
+    private var quotePage = 1
+    private var hasMoreProposals = true
+    private var hasMoreQuotes = true
+    private let pageSize = 25
 
     enum QuoteTab: String, CaseIterable, Identifiable {
         case proposals = "Proposals"
@@ -43,20 +53,28 @@ final class QuoteListViewModel: ObservableObject {
         guard !isLoading else { return }
         isLoading = true
         error = nil
+        proposalPage = 1
+        quotePage = 1
+        hasMoreProposals = true
+        hasMoreQuotes = true
 
         do {
             async let proposalsReq = quoteService.fetchProposals(
                 status: selectedStatus?.rawValue,
-                limit: 50
+                page: 1,
+                limit: pageSize
             )
             async let quotesReq = quoteService.fetchQuotes(
                 status: selectedStatus?.rawValue,
-                limit: 50
+                page: 1,
+                limit: pageSize
             )
 
             let (fetchedProposals, fetchedQuotes) = try await (proposalsReq, quotesReq)
             self.proposals = fetchedProposals
             self.quotes = fetchedQuotes
+            self.hasMoreProposals = fetchedProposals.count >= pageSize
+            self.hasMoreQuotes = fetchedQuotes.count >= pageSize
         } catch let apiError as APIError {
             self.error = apiError.errorDescription
         } catch {
@@ -64,6 +82,49 @@ final class QuoteListViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    /// Page forward on whichever tab the rep is currently scrolling. The
+    /// caller decides which — we don't try to guess from selectedTab because
+    /// the view already knows which list fired the onAppear.
+    func loadMoreProposals() async {
+        guard hasMoreProposals, !isLoading, !isLoadingMoreProposals else { return }
+        isLoadingMoreProposals = true
+        defer { isLoadingMoreProposals = false }
+
+        let next = proposalPage + 1
+        do {
+            let fetched = try await quoteService.fetchProposals(
+                status: selectedStatus?.rawValue,
+                page: next,
+                limit: pageSize
+            )
+            proposals.append(contentsOf: fetched)
+            proposalPage = next
+            if fetched.count < pageSize { hasMoreProposals = false }
+        } catch {
+            // Swallow — retried on next scroll.
+        }
+    }
+
+    func loadMoreQuotes() async {
+        guard hasMoreQuotes, !isLoading, !isLoadingMoreQuotes else { return }
+        isLoadingMoreQuotes = true
+        defer { isLoadingMoreQuotes = false }
+
+        let next = quotePage + 1
+        do {
+            let fetched = try await quoteService.fetchQuotes(
+                status: selectedStatus?.rawValue,
+                page: next,
+                limit: pageSize
+            )
+            quotes.append(contentsOf: fetched)
+            quotePage = next
+            if fetched.count < pageSize { hasMoreQuotes = false }
+        } catch {
+            // Swallow — retried on next scroll.
+        }
     }
 
     func refresh() async {

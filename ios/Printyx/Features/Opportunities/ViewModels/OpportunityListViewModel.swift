@@ -13,6 +13,11 @@ final class OpportunityListViewModel: ObservableObject {
     @Published var selectedStage: DealStage?
     @Published var viewMode: ViewMode = .pipeline
 
+    // Manager-only: filter by a specific rep. `nil` means "show everyone I
+    // have permission to see" — matches the backend's default behavior.
+    @Published var assignedToUserId: String?
+    @Published var directReports: [DirectReport] = []
+
     private var currentPage = 1
     private let pageSize = 50
     private var hasMore = true
@@ -53,6 +58,7 @@ final class OpportunityListViewModel: ObservableObject {
         do {
             let fetched = try await opportunityService.fetchOpportunities(
                 stage: selectedStage?.rawValue,
+                assignedTo: assignedToUserId,
                 page: currentPage,
                 limit: pageSize
             )
@@ -79,6 +85,7 @@ final class OpportunityListViewModel: ObservableObject {
         do {
             let fetched = try await opportunityService.fetchOpportunities(
                 stage: selectedStage?.rawValue,
+                assignedTo: assignedToUserId,
                 page: nextPage,
                 limit: pageSize
             )
@@ -89,6 +96,19 @@ final class OpportunityListViewModel: ObservableObject {
             // Swallow — the next scroll will retry. Errors here are almost
             // always cell-drop noise; bubbling them up would interrupt the
             // rep mid-flow for no good reason.
+        }
+    }
+
+    /// Fetch the signed-in user's direct reports so a manager can scope the
+    /// pipeline to a specific rep. Safe to call for everyone — non-managers
+    /// simply get an empty list back and the filter row hides itself.
+    func loadDirectReportsIfNeeded(apiClient: APIClient) async {
+        guard directReports.isEmpty else { return }
+        do {
+            let reports: [DirectReport] = try await apiClient.requestArray(.myDirectReports())
+            self.directReports = reports
+        } catch {
+            // Silent — non-manager users will see an empty filter row.
         }
     }
 

@@ -6,6 +6,8 @@ import SwiftUI
 struct QuickLogSheet: View {
     @ObservedObject var viewModel: QuickLogViewModel
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var transcriber = SpeechTranscriber()
+    @State private var preDictationDescription: String = ""
 
     var body: some View {
         NavigationStack {
@@ -148,6 +150,17 @@ struct QuickLogSheet: View {
         }
     }
 
+    /// Toggle speech-to-text on the description field. Snapshots the current
+    /// text so the live transcript appends instead of replacing.
+    private func toggleDictation() async {
+        if transcriber.isRecording {
+            transcriber.stop()
+        } else {
+            preDictationDescription = viewModel.description
+            await transcriber.start()
+        }
+    }
+
     private var detailFields: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             Text("Details")
@@ -157,9 +170,36 @@ struct QuickLogSheet: View {
             TextField("Subject", text: $viewModel.subject)
                 .textFieldStyle(.roundedBorder)
 
-            TextField("Description", text: $viewModel.description, axis: .vertical)
-                .textFieldStyle(.roundedBorder)
-                .lineLimit(2...6)
+            HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+                TextField("Description", text: $viewModel.description, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(2...6)
+
+                Button {
+                    Task { await toggleDictation() }
+                } label: {
+                    Image(systemName: transcriber.isRecording ? "mic.fill" : "mic")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(transcriber.isRecording ? Color.red : Color.printyxPrimary)
+                        .frame(width: AppTheme.minTouchTarget, height: AppTheme.minTouchTarget)
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.sm))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(transcriber.isRecording ? "Stop dictation" : "Start dictation")
+            }
+            .onChange(of: transcriber.transcript) { _, newText in
+                // Append live dictation to whatever the rep had typed when
+                // they hit the mic — lets them mix voice and keyboard input.
+                guard transcriber.isRecording else { return }
+                let separator = preDictationDescription.isEmpty ? "" : " "
+                viewModel.description = preDictationDescription + separator + newText
+            }
+            if let micError = transcriber.errorMessage {
+                Text(micError)
+                    .font(.printyxSmall)
+                    .foregroundStyle(.orange)
+            }
 
             Picker("Outcome", selection: Binding(
                 get: { viewModel.outcome },
