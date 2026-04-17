@@ -51,6 +51,7 @@ struct ServiceTicketListView: View {
                             .font(.system(size: 22))
                             .foregroundStyle(Color.printyxPrimary)
                     }
+                    .accessibilityLabel("Add ticket")
                 }
             }
             .refreshable {

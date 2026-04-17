@@ -30,7 +30,18 @@ struct APIEndpoint {
         self.body = body
         self.requiresAuth = requiresAuth
     }
+
+    /// Whether this mutation should be queued when the device is offline.
+    /// Authentication + refresh + logout explicitly opt out — replaying those
+    /// hours later would be nonsense. Everything else under `/api/` is eligible.
+    var queueableWhenOffline: Bool {
+        guard method != .get else { return false }
+        if path.hasPrefix("/auth/") { return false }
+        if path.hasPrefix("/api/mobile-auth/") { return false }
+        return true
+    }
 }
+
 
 // MARK: - Task Endpoints
 

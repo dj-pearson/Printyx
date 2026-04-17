@@ -47,12 +47,16 @@ enum AppTheme {
 }
 
 // MARK: - Typography Styles
+//
+// Prefer `.system(TextStyle, design:)` over fixed-point sizes so custom fonts
+// scale with the user's Dynamic Type setting. The fixed-size overloads remain
+// available for tight HIG elements (tab bar icons, micro labels).
 
 extension Font {
-    static let printyxTitle = Font.system(size: 28, weight: .bold, design: .rounded)
-    static let printyxHeadline = Font.system(size: 20, weight: .semibold, design: .rounded)
-    static let printyxSubheadline = Font.system(size: 16, weight: .medium)
-    static let printyxBody = Font.system(size: 15, weight: .regular)
-    static let printyxCaption = Font.system(size: 13, weight: .regular)
-    static let printyxSmall = Font.system(size: 11, weight: .medium)
+    static let printyxTitle = Font.system(.largeTitle, design: .rounded).weight(.bold)
+    static let printyxHeadline = Font.system(.title3, design: .rounded).weight(.semibold)
+    static let printyxSubheadline = Font.system(.headline)
+    static let printyxBody = Font.system(.body)
+    static let printyxCaption = Font.system(.subheadline)
+    static let printyxSmall = Font.system(.footnote).weight(.medium)
 }

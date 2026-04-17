@@ -32,7 +32,11 @@ struct SearchBar: View {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 16))
                         .foregroundStyle(.secondary)
+                        .frame(width: AppTheme.minTouchTarget, height: AppTheme.minTouchTarget)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
             }
         }
         .padding(.horizontal, AppTheme.Spacing.md)

@@ -63,6 +63,7 @@ struct OpportunityListView: View {
                             .font(.system(size: 22))
                             .foregroundStyle(Color.printyxPrimary)
                     }
+                    .accessibilityLabel("Add opportunity")
                 }
             }
             .refreshable {

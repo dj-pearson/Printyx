@@ -32,6 +32,16 @@ struct MainTabView: View {
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             tabs
+
+            // Offline / sync status banner, sits just above the tab bar.
+            VStack {
+                Spacer()
+                OfflineBanner()
+                    .animation(.easeInOut(duration: 0.2), value: UUID())
+                    .padding(.bottom, AppTheme.Spacing.xxl + AppTheme.Spacing.sm)
+            }
+            .allowsHitTesting(false)
+
             QuickLogFAB(viewModel: quickLogViewModel, isPresented: $showingQuickLog)
                 .padding(.trailing, AppTheme.Spacing.lg)
                 .padding(.bottom, AppTheme.Spacing.xxl + AppTheme.Spacing.lg) // clear the tab bar
