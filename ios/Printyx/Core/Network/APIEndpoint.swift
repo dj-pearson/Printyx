@@ -571,4 +571,10 @@ extension APIEndpoint {
     static func logout() -> APIEndpoint {
         APIEndpoint(path: "/auth/v1/logout", method: .post)
     }
+
+    /// Register (or refresh) this device's APNs token for push delivery.
+    /// Server dedupes on (userId, deviceToken).
+    static func registerDeviceToken(body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/mobile/device-tokens", method: .post, body: body)
+    }
 }

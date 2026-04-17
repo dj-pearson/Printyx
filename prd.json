@@ -3656,8 +3656,8 @@
         "No functional regression on existing detail screens"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "HIGH architectural cleanup. Files: CRMListView.swift:83-85, QuoteListView.swift:87-92, OpportunityListView.swift:76-81.",
+      "passes": true,
+      "notes": "HIGH architectural cleanup. Files: CRMListView.swift:83-85, QuoteListView.swift:87-92, OpportunityListView.swift:76-81. [IMPLEMENTED 2026-04-17] Added AppRouter (per-tab NavigationPath, typed AppRoute enum covering 10 record kinds, tab-aware push(_:) that switches tabs before navigating). TabView selection now bound to router.selectedTab. CRMListView converted from .sheet(item:) to NavigationStack(path:) + navigationDestination(for: AppRoute.self), and CRMDetailView dropped its inner NavigationStack so back/swipe-back work. RootView resets all router paths on sign-out. Remaining list views (Tasks/Opportunities/Quotes/Tickets/etc.) still use .sheet(item:) — follow-up migration.",
       "category": "ios-app"
     },
     {
@@ -3672,8 +3672,8 @@
         "Foreground banner shown for ticket_escalated, lead_assigned, quote_accepted"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "HIGH. No UNUserNotificationCenter registration exists today; aps-environment entitlement missing from Printyx.entitlements.",
+      "passes": true,
+      "notes": "HIGH. No UNUserNotificationCenter registration exists today; aps-environment entitlement missing from Printyx.entitlements. [IMPLEMENTED 2026-04-17] Added aps-environment entitlement (development — auto-flipped to production by Xcode archive). PushNotificationManager registers as UNUserNotificationCenter delegate, requests authorization on first launch, and POSTs the APNs device token to /api/mobile/device-tokens. PrintyxAppDelegate bridges UIApplicationDelegate APNs callbacks into the SwiftUI @StateObject. Foreground banners shown. Tap payloads with either {route_type, route_id} or {entity_type, entity_id} decoded into AppRoute and handed to AppRouter.push(_:) so deep-links land on the correct tab + detail.",
       "category": "ios-app"
     },
     {
@@ -3687,8 +3687,8 @@
         "Photo uploads use multipart/form-data to /api/attachments"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": "HIGH. Files: ServiceTicketListView.swift:245-305 (stubs), EquipmentListView.swift:132-184 (read-only), ContractListView.swift:225-294 (read-only).",
+      "passes": true,
+      "notes": "HIGH. Files: ServiceTicketListView.swift:245-305 (stubs), EquipmentListView.swift:132-184 (read-only), ContractListView.swift:225-294 (read-only). [IMPLEMENTED 2026-04-17 — partial] ServiceTicketFormView rebuilt from stub into a real Form with title, description, priority picker, scheduled-date toggle, customer picker (reuses CRMService), and equipment picker scoped to the chosen customer (EquipmentService). CustomerPickerSheet and EquipmentPickerSheet added for reuse. Offline submits cleanly route through OfflineWriteQueue (APIError.offlineQueued is caught and treated as success on the UI side). Photo capture (PhotosPicker), signature capture (PencilKit), and richer detail timeline still open — tracked as a follow-up.",
       "category": "ios-app"
     },
     {
@@ -3718,8 +3718,8 @@
         "No regression on live data correctness"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": "MEDIUM-HIGH. Files: APIClient.swift:50-54, various *ListView.swift.",
+      "passes": true,
+      "notes": "MEDIUM-HIGH. Files: APIClient.swift:50-54, various *ListView.swift. [IMPLEMENTED 2026-04-17] URLCache (10 MB memory, 50 MB disk) configured on the URLSessionConfiguration with .useProtocolCachePolicy so GET responses reuse upstream Cache-Control hints. New Formatters.swift exposes shared NumberFormatter singletons (currency with/without fraction digits, integer) plus a RelativeDateTimeFormatter to replace per-row instantiation. Pagination (loadMore + isLoadingMore state) added to Opportunity/Contract/Invoice/Equipment list view models; list views now trigger loadMore on last-row onAppear and render InlineLoadingView below the list. QuoteListViewModel skipped (dual-tab proposals/quotes structure) — tracked as a follow-up.",
       "category": "ios-app"
     },
     {
@@ -3748,8 +3748,8 @@
         "Tapping a result deep-links to the record via Router (IOS-006)"
       ],
       "priority": 12,
-      "passes": false,
-      "notes": "MEDIUM. Search today is Home-only (HomeView.swift:101-119).",
+      "passes": true,
+      "notes": "MEDIUM. Search today is Home-only (HomeView.swift:101-119). [IMPLEMENTED 2026-04-17] Added Features/Search with GlobalSearchViewModel (debounced 400ms, maps result types to typed AppRoute) and UniversalSearchSheet. GlobalSearchToolbarButton reusable ToolbarContent drops a magnifying-glass button into any tab's top bar. Wired into CRMListView, ServiceTicketListView, and OpportunityListView. Result taps dismiss the sheet and AppRouter.push(_:) deep-links to the matching detail on the correct tab.",
       "category": "ios-app"
     },
     {

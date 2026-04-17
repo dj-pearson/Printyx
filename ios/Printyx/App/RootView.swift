@@ -4,6 +4,7 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject var apiClient: APIClient
     @EnvironmentObject var lockManager: BiometricLockManager
+    @EnvironmentObject var router: AppRouter
     @StateObject private var authManager: AuthManager
 
     init(apiClient: APIClient) {
@@ -36,8 +37,11 @@ struct RootView: View {
         .animation(.easeInOut(duration: 0.2), value: lockManager.isLocked)
         .onChange(of: authManager.isAuthenticated) { wasAuth, isAuth in
             if !isAuth {
-                // Sign-out: clear the lock state so the next sign-in starts clean.
+                // Sign-out: clear the lock state so the next sign-in starts
+                // clean, and wipe any in-flight navigation paths so stale
+                // routes don't survive across sessions.
                 lockManager.unlock()
+                router.reset()
             } else if !wasAuth {
                 // false → true transitions that happen while the user is on
                 // LoginView are explicit logins; those should NOT re-lock.

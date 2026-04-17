@@ -2,8 +2,10 @@ import SwiftUI
 
 /// Pipeline and list view for sales opportunities.
 struct OpportunityListView: View {
+    @EnvironmentObject private var apiClient: APIClient
     @StateObject private var viewModel: OpportunityListViewModel
     @State private var showingCreate = false
+    @State private var showingSearch = false
     @State private var selectedOpportunity: Opportunity?
 
     init(opportunityService: OpportunityService) {
@@ -55,6 +57,8 @@ struct OpportunityListView: View {
             }
             .navigationTitle("Opportunities")
             .toolbar {
+                GlobalSearchToolbarButton(isPresented: $showingSearch)
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingCreate = true
@@ -76,9 +80,12 @@ struct OpportunityListView: View {
             }
             .sheet(item: $selectedOpportunity) { opp in
                 OpportunityDetailView(
-                    opportunityService: OpportunityService(apiClient: APIClient()),
+                    opportunityService: OpportunityService(apiClient: apiClient),
                     opportunityId: opp.id
                 )
+            }
+            .sheet(isPresented: $showingSearch) {
+                UniversalSearchSheet(apiClient: apiClient)
             }
             .task {
                 if viewModel.opportunities.isEmpty {
@@ -133,6 +140,9 @@ struct OpportunityListView: View {
                                currentIndex + 1 < stages.count {
                                 Task { await viewModel.updateStage(opp, to: stages[currentIndex + 1]) }
                             }
+                        },
+                        onReachedEnd: {
+                            Task { await viewModel.loadMore() }
                         }
                     )
                 }
@@ -205,6 +215,7 @@ struct PipelineColumn: View {
     let opportunities: [Opportunity]
     let onSelect: (Opportunity) -> Void
     let onMoveForward: (Opportunity) -> Void
+    var onReachedEnd: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
@@ -237,6 +248,14 @@ struct PipelineColumn: View {
                                 onMoveForward(opp)
                             } label: {
                                 Label("Move Forward", systemImage: "arrow.right")
+                            }
+                        }
+                        .onAppear {
+                            // When the last card in this column appears, nudge
+                            // the view-model to fetch the next page. Safe no-op
+                            // if another fetch is already in flight.
+                            if opp.id == opportunities.last?.id {
+                                onReachedEnd?()
                             }
                         }
                 }
