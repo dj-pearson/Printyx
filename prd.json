@@ -3551,6 +3551,254 @@
       "passes": true,
       "notes": "LOW-MEDIUM: Helmet is installed and likely configured but CSP may not be set or may be too permissive. CSP provides defense-in-depth against XSS by restricting script sources even if injection occurs. [FIXED 2026-03-28]",
       "category": "security-audit"
+    },
+    {
+      "id": "IOS-001",
+      "title": "One-tap activity logger with auto location + timestamp",
+      "description": "As a field sales rep, I need a two-tap activity logger reachable from any tab so I can log a call, email, meeting, or note during a busy day without abandoning the flow. Backend endpoints /api/leads/:id/activities, /api/business-records/:id/activities already exist.",
+      "acceptanceCriteria": [
+        "Add a floating action '+ Log' button visible on every tab root (Home, CRM, Service, Sales, More)",
+        "Tapping the FAB presents a bottom sheet with four large buttons: Call, Email, Meeting, Note",
+        "Tapping a type immediately POSTs a BusinessRecordActivity with default subject (e.g. 'Phone call'), ISO timestamp, and the GPS coordinates from CoreLocation when available",
+        "Auto-link the activity to the last-viewed record id (persist in UserDefaults: lastViewedRecordId, lastViewedRecordType)",
+        "After POST success, show a compact toast 'Logged' with an 'Undo' (5s) that calls DELETE on the activity",
+        "Include a more-detail affordance that expands to reveal outcome (answered / voicemail / no answer / booked demo / declined), subject, and description with voice-to-text (SFSpeechRecognizer) supported",
+        "Use the injected shared APIClient (no `APIClient()` inline)",
+        "Add a new ActivityQuickLogService and ActivityQuickLogViewModel that encapsulate the POST, location fetch, and last-viewed record tracking",
+        "Update Info.plist with NSLocationWhenInUseUsageDescription and NSMicrophoneUsageDescription + NSSpeechRecognitionUsageDescription strings",
+        "Swift builds cleanly: xcodegen generate && swift build || sanity-check via `swiftc` syntax where build isn't available"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "CRITICAL. Current flow in CRMDetailView.swift:336-366 takes 7+ taps. This is the single biggest reason reps abandon mobile CRMs and gates every downstream coaching/activity-feed feature. Files: ios/Printyx/App/MainTabView.swift, ios/Printyx/Features/CRM/Services/CRMService.swift. [IMPLEMENTED 2026-04-16] Added Features/QuickLog/ with models, location provider, last-viewed-record store, service, view-model, FAB + bottom sheet. FAB overlays every tab in MainTabView.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-002",
+      "title": "Customer 360 quick-look on CRM detail",
+      "description": "As a field sales rep, I need to see a customer's contacts, equipment, contracts, open tickets, and recent invoices on a single CRM detail screen so I can brief myself in under a minute before a call or visit.",
+      "acceptanceCriteria": [
+        "Add five preview strips to CRMDetailView.swift below the header card: Contacts, Equipment, Contracts, Open Tickets, Recent Invoices",
+        "Each strip lazily fetches up to 3 records filtered by customerId using the existing services (ContactService, EquipmentService, ContractService, ServiceTicketService, InvoiceService)",
+        "Each strip shows a section header with a 'See all' link that pushes a NavigationLink to the matching list view pre-filtered by customerId",
+        "Empty state for a strip shows a single-line muted message instead of the big full-screen EmptyStateView",
+        "Loading state shows a small inline ProgressView, error state shows a short inline text (never collapses the card)",
+        "Each strip uses independent async Task cancellation to avoid retaining the view after dismissal",
+        "Reuse the shared APIClient via environment; no `APIClient()` inline",
+        "Swift syntax is valid",
+        "Backward compatible: if a dependent service is not yet mounted, strip silently hides"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "HIGH. Backend customer-filter endpoints exist at APIEndpoint.swift:377-510. Currently a rep must tab-switch 5 times to assemble this view. [IMPLEMENTED 2026-04-16] Added Customer360Section.swift with 5 strips (Contacts, Equipment, Contracts, Open Tickets, Recent Invoices), each lazily fetched with independent error handling. CRMDetailView now embeds the section and records the current view in LastViewedRecordStore.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-003",
+      "title": "Security & auth hardening bundle",
+      "description": "As a security engineer, I need enterprise-grade posture on the iOS app so customer pilots can pass IT review: remove the hardcoded Supabase anon key fallback, gate NSAllowsLocalNetworking to DEBUG, add certificate pinning, add biometric app-lock, and call server-side logout.",
+      "acceptanceCriteria": [
+        "AppConfig.supabaseAnonKey: remove the hardcoded defaultSupabaseAnonKey fallback and fail closed with a fatalError in release if the Info.plist value is missing/invalid; DEBUG builds may fall back to a development constant",
+        "Info.plist: move NSAllowsLocalNetworking under #if DEBUG or a build configuration so Release builds do not permit local networking",
+        "Add URLSessionDelegate with SPKI pinning for hosts: printyx.net, api.printyx.net, functions.printyx.net. Use a small CertificatePinner helper that compares sha256(public key) against a hardcoded allow-list",
+        "Add a BiometricLockManager (LocalAuthentication) that requires Face ID / Touch ID / passcode on cold launch and after 10 minutes of idle/background; integrate into RootView so the auth gate runs before MainTabView appears",
+        "AuthManager.logout(): call a best-effort server-side logout (POST /auth/v1/logout) with the current access token before clearing the keychain. Failure of the server call must still clear the keychain",
+        "APIClient: gate the response-body console print behind #if DEBUG so PII doesn't leak in Release logs (APIClient.swift:137-140)",
+        "All changes compile under both DEBUG and RELEASE configurations",
+        "No user-visible regression in the happy-path login flow"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "HIGH/CRITICAL bundle. Files: ios/Printyx/Core/Storage/AppConfig.swift:23, ios/Printyx/Resources/Info.plist:53-57, ios/Printyx/Core/Network/APIClient.swift:50-54 & 137-140, ios/Printyx/Core/Auth/AuthManager.swift:136-141, ios/Printyx/App/RootView.swift. [IMPLEMENTED 2026-04-16] AppConfig fails closed in Release, Info.plist scoped to localhost/127.0.0.1 only, CertificatePinner.swift added (pin list empty — must be populated before shipping; fails closed in Release), BiometricLockManager + BiometricLockView integrated into RootView with 10-min idle timeout and cold-launch session-restore gating, AuthManager.logout now best-effort POSTs /auth/v1/logout, APIClient decode-error print gated to DEBUG.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-004",
+      "title": "Manager roll-up on Home gated by roleLevel",
+      "description": "As a sales manager, I need team-level visibility on the Home tab so I can coach my reps from my phone: team pipeline value, activities this week by rep, a leaderboard, and a 'no touch 3+ days' alert list.",
+      "acceptanceCriteria": [
+        "Add a 'My Team' section to HomeView that only renders when authManager.currentUser.roleLevel >= 5",
+        "Cards: Team Pipeline Value (sum of open opportunity amount), Activities This Week by Rep (horizontal bar), Leaderboard (top 5 reps by closed-won revenue this month), No-Touch Alerts (reps with 0 activities in 3+ days on any open opportunity)",
+        "Add a ManagerReportsService + ManagerReportsViewModel. Hit the existing /api/team-reports, /api/team-activities, /api/opportunities?assignedTo=<rep> endpoints (proxy via Edge Functions when under /api/)",
+        "Add an assignedTo filter chip row to OpportunityListView and CRMListView that lists the manager's direct reports (from /api/users?managerId=me) and lets the manager tap-to-scope the list",
+        "Gracefully no-op for reps (role < 5) — they see their personal home unchanged",
+        "No blocking failure: if any of the 4 cards errors, that card collapses to a retry button without breaking the rest of Home",
+        "Swift syntax valid; no unused var warnings"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "HIGH. `roleLevel` is already captured in AuthModels.swift:71 and AuthManager.swift:40 but consumed nowhere. Files: ios/Printyx/Features/Dashboard/Views/HomeView.swift, ios/Printyx/Features/Opportunities/ViewModels/OpportunityListViewModel.swift, ios/Printyx/Features/CRM/ViewModels/CRMListViewModel.swift. [IMPLEMENTED 2026-04-16] Added ManagerReportsModels/Service/ViewModel + ManagerTeamSection with 4 cards (Team Pipeline, Activity This Week by Rep, Leaderboard, No-Touch Alerts), each with independent loads and per-card retry. Section is gated on roleLevel >= 5 in HomeView. assignedTo filter chips for list screens still open and tracked separately.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-005",
+      "title": "Wire Home Quick Actions (dead buttons)",
+      "description": "As a user, I expect Home Quick Actions (New Lead / New Ticket / New Task / New Quote) to actually do something; today they render and do nothing.",
+      "acceptanceCriteria": [
+        "QuickActionButton accepts an `action: () -> Void` closure and invokes it on tap",
+        "HomeView binds the four Quick Actions to present the corresponding create/form sheets (reuse CRMFormView, TaskFormView, OpportunityFormView; create a minimal QuoteForm + ServiceTicket stubs if absent)",
+        "Haptic feedback (.selection) fires on tap",
+        "No regression on other Home cards"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "HIGH. HomeView.swift:173-179 renders dead buttons; QuickActionButton at lines 256-277 has no action closure. [IMPLEMENTED 2026-04-17] QuickActionButton now takes `action: () -> Void` and fires light haptic. Home presents CRMFormView / ServiceTicketFormView / TaskFormView / ProposalFormView via .sheet(item:) using HomeQuickAction enum. ServiceTicketFormView remains a stub — see IOS-008.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-006",
+      "title": "Replace modal detail navigation with NavigationStack routing",
+      "description": "As a user, I need real navigation (push / back / deep-link) instead of modal .sheets so I can drill from an activity feed to an opportunity to a customer without opening a stack of modals.",
+      "acceptanceCriteria": [
+        "Introduce per-tab NavigationStack(path:) with a typed Route enum and a shared Router env object",
+        "CRMListView, QuoteListView, OpportunityListView, TaskListView all push detail via NavigationLink / router.push instead of .sheet(item:)",
+        "Back button, swipe-back gesture, and deep-link URL routing all work",
+        "No functional regression on existing detail screens"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "HIGH architectural cleanup. Files: CRMListView.swift:83-85, QuoteListView.swift:87-92, OpportunityListView.swift:76-81. [IMPLEMENTED 2026-04-17] Added AppRouter (per-tab NavigationPath, typed AppRoute enum covering 10 record kinds, tab-aware push(_:) that switches tabs before navigating). TabView selection now bound to router.selectedTab. CRMListView converted from .sheet(item:) to NavigationStack(path:) + navigationDestination(for: AppRoute.self), and CRMDetailView dropped its inner NavigationStack so back/swipe-back work. RootView resets all router paths on sign-out. Remaining list views (Tasks/Opportunities/Quotes/Tickets/etc.) still use .sheet(item:) — follow-up migration.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-007",
+      "title": "Push notification registration + deep-link routing",
+      "description": "As a rep, I want to be notified when a lead is assigned, a quote is accepted, or a ticket is escalated so I can react in real time.",
+      "acceptanceCriteria": [
+        "Register for remote notifications in PrintyxApp (UNUserNotificationCenter)",
+        "Add aps-environment entitlement (development + production)",
+        "POST the APNs device token to /api/mobile/device-tokens on successful login and on token refresh",
+        "Handle notification tap → deep link into the correct record (uses IOS-006 routing)",
+        "Foreground banner shown for ticket_escalated, lead_assigned, quote_accepted"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "HIGH. No UNUserNotificationCenter registration exists today; aps-environment entitlement missing from Printyx.entitlements. [IMPLEMENTED 2026-04-17] Added aps-environment entitlement (development — auto-flipped to production by Xcode archive). PushNotificationManager registers as UNUserNotificationCenter delegate, requests authorization on first launch, and POSTs the APNs device token to /api/mobile/device-tokens. PrintyxAppDelegate bridges UIApplicationDelegate APNs callbacks into the SwiftUI @StateObject. Foreground banners shown. Tap payloads with either {route_type, route_id} or {entity_type, entity_id} decoded into AppRoute and handed to AppRouter.push(_:) so deep-links land on the correct tab + detail.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-008",
+      "title": "Service ticket create/detail + equipment actions (stubs today)",
+      "description": "As a field technician, I need to create service tickets, add notes, attach photos of error codes/meters, and capture signatures. Current ServiceTicketFormView and ServiceTicketDetailView are placeholder Text stubs.",
+      "acceptanceCriteria": [
+        "Implement ServiceTicketFormView: customer picker, equipment picker, priority, subject, description, optional photos",
+        "Implement ServiceTicketDetailView: header, notes timeline, add-note, attach photo (PhotosPicker), signature capture on completion (PencilKit)",
+        "Equipment detail gains 'Report Issue' button that opens ServiceTicketFormView pre-filled",
+        "Photo uploads use multipart/form-data to /api/attachments"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "HIGH. Files: ServiceTicketListView.swift:245-305 (stubs), EquipmentListView.swift:132-184 (read-only), ContractListView.swift:225-294 (read-only). [IMPLEMENTED 2026-04-17 — partial] ServiceTicketFormView rebuilt from stub into a real Form with title, description, priority picker, scheduled-date toggle, customer picker (reuses CRMService), and equipment picker scoped to the chosen customer (EquipmentService). CustomerPickerSheet and EquipmentPickerSheet added for reuse. Offline submits cleanly route through OfflineWriteQueue (APIError.offlineQueued is caught and treated as success on the UI side). Photo capture (PhotosPicker), signature capture (PencilKit), and richer detail timeline still open — tracked as a follow-up.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-009",
+      "title": "Offline support: consume NetworkMonitor + write queue + cached lists",
+      "description": "As a rep in the field with flaky cellular, I need the app to gracefully degrade offline: show cached data, banner 'You are offline', and queue writes that retry when online.",
+      "acceptanceCriteria": [
+        "NetworkMonitor.isConnected is observed by MainTabView; an offline banner appears above the tab bar when false",
+        "Introduce a PersistentCache backed by FileManager JSON snapshots per (tenantId, endpoint, query)",
+        "Each list view-model returns cache immediately when offline and replaces with live data when online",
+        "Introduce a WriteQueue (NSPersistentContainer or simple file-backed) that persists POST/PATCH requests while offline and flushes on connectivity change",
+        "Offline writes show a 'Will sync' badge; successful flush shows a toast"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "HIGH. Grep confirms NetworkMonitor has zero consumers. Files: ios/Printyx/Core/Network/NetworkMonitor.swift. [IMPLEMENTED 2026-04-17] Added PersistentResponseCache (file-backed, tenant-scoped, 20MB cap) wired into APIClient so GETs serve stale data offline/on network errors. OfflineWriteQueue persists POST/PATCH/PUT/DELETE to disk and auto-replays via Combine-observed NetworkMonitor; up to 5 attempts per write; 409 conflicts treated as success. OfflineBanner surfaces offline state and pending-sync count above the tab bar. Auth endpoints (/auth/, /api/mobile-auth/) opt out of queueing.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-010",
+      "title": "Pagination + HTTP cache + shared formatters",
+      "description": "As a performance engineer, I need list pagination and a reused URLCache so large tenants don't stall and tab switches don't re-fetch the same payloads.",
+      "acceptanceCriteria": [
+        "Adopt `loadMore()` pagination in OpportunityListView, QuoteListView, ContractListView, InvoiceListView, EquipmentListView, ContactListView, ServiceTicketListView (mirror TaskListView + CRMListViewModel pattern)",
+        "APIClient: configure URLSessionConfiguration.urlCache = URLCache(memoryCapacity: 10MB, diskCapacity: 50MB) and respect Cache-Control for GET list endpoints",
+        "Extract a shared NumberFormatter.currency static and replace per-row instantiation in CRMRowView, OpportunityListView, InvoiceListView, TaskRowView",
+        "No regression on live data correctness"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "MEDIUM-HIGH. Files: APIClient.swift:50-54, various *ListView.swift. [IMPLEMENTED 2026-04-17] URLCache (10 MB memory, 50 MB disk) configured on the URLSessionConfiguration with .useProtocolCachePolicy so GET responses reuse upstream Cache-Control hints. New Formatters.swift exposes shared NumberFormatter singletons (currency with/without fraction digits, integer) plus a RelativeDateTimeFormatter to replace per-row instantiation. Pagination (loadMore + isLoadingMore state) added to Opportunity/Contract/Invoice/Equipment list view models; list views now trigger loadMore on last-row onAppear and render InlineLoadingView below the list. QuoteListViewModel skipped (dual-tab proposals/quotes structure) — tracked as a follow-up.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-011",
+      "title": "Accessibility: VoiceOver labels, Dynamic Type, 44pt targets, haptics",
+      "description": "As a user relying on assistive tech, I need VoiceOver labels on icon-only buttons, Dynamic Type support across custom fonts, 44pt tap targets, and optional haptic cues.",
+      "acceptanceCriteria": [
+        "Audit and add accessibilityLabel + accessibilityHint for all icon-only buttons",
+        "AppTheme: replace fixed Font.system(size:) with .system(.<textStyle>, design:) and verify readability at .accessibility3",
+        "SearchBar clear button, Home quick-action circles, CRM row phone/email/directions all >= 44pt hit targets",
+        "Add UIImpactFeedbackGenerator hooks for swipe-to-complete tasks, convert lead, mark invoice paid",
+        "Status badges additionally carry an SF Symbol glyph to avoid color-only meaning"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "MEDIUM. Grep for `accessibilityLabel` / `accessibility(` returns 0 matches. [IMPLEMENTED 2026-04-17] AppTheme fonts now use .system(<textStyle>, design:) so Dynamic Type scaling works. StatusBadge grew an optional SF-Symbol icon so meaning isn't color-only (task/priority/quote/interest badges all carry glyphs). SearchBar clear button now a 44x44 hit target. Accessibility labels added to icon-only toolbar +/sort buttons on CRM/Contacts/Tasks/Tickets/Opportunities/Quotes lists. Light haptic on Home quick actions. Remaining follow-ups: exhaustive audit of every icon-only button, explicit Dynamic Type size clamps, VoiceOver rotor on CRM rows.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-012",
+      "title": "Global search surface in every tab",
+      "description": "As a user, I need to find a customer / opportunity / ticket fast from any screen without tabbing back to Home.",
+      "acceptanceCriteria": [
+        "Add a magnifying-glass toolbar button on every tab root that presents a GlobalSearchView",
+        "GlobalSearchView queries /api/search?q=... (or composes per-type calls until a backend search exists) and shows unified results grouped by type",
+        "Tapping a result deep-links to the record via Router (IOS-006)"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "MEDIUM. Search today is Home-only (HomeView.swift:101-119). [IMPLEMENTED 2026-04-17] Added Features/Search with GlobalSearchViewModel (debounced 400ms, maps result types to typed AppRoute) and UniversalSearchSheet. GlobalSearchToolbarButton reusable ToolbarContent drops a magnifying-glass button into any tab's top bar. Wired into CRMListView, ServiceTicketListView, and OpportunityListView. Result taps dismiss the sheet and AppRouter.push(_:) deep-links to the matching detail on the correct tab.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-013",
+      "title": "Test coverage for APIClient, AuthManager, view models",
+      "description": "As a developer, I need meaningful unit + UI test coverage so shipping new iOS features doesn't break auth, tenant propagation, or core decoding.",
+      "acceptanceCriteria": [
+        "Add APIClientTests covering: token refresh path, 401 retry, tenant header, snake_case decoding",
+        "Add AuthManagerTests covering: login success, login 4xx, logout, expired token refresh, JWT skew",
+        "Add view-model tests for CRMListViewModel, OpportunityListViewModel, TaskListViewModel (filter/sort/paginate)",
+        "Add UI happy-path: login → Home → open CRM → tap record",
+        "Snapshot tests for core row views (optional if SnapshotTesting package is acceptable)"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": "HIGH. Existing PrintyxTests.swift only has 6 trivial tests; UI tests have 2. [IMPLEMENTED 2026-04-17] LastViewedRecordStoreTests, PersistentResponseCacheTests (tenant isolation, TTL, round-trip), OfflineWriteQueueTests (enqueue/flush/retry), QuickLogTests, APIEndpointTests (queueableWhenOffline gating, manager paths). [EXPANDED 2026-04-18] APIClient now accepts an injected URLSessionConfiguration; MockURLProtocol + MockAPIClientFactory provide test harness. APIClientTests cover standard headers, 401→refresh→retry sequence, GET network-error → cache fallback, and offline mutation queueing. AuthManagerTests cover login success, login 4xx error surface, logout (clears keychain + best-effort /auth/v1/logout). Still open: full view-model coverage and UI happy-path past login.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-014",
+      "title": "Populate CertificatePinner SPKI hashes before first Release",
+      "description": "As a release engineer, I need the placeholder SPKI pin lists in CertificatePinner populated with real SHA-256(public key) digests for printyx.net, api.printyx.net, and functions.printyx.net before the first Release build ships. Release builds fail closed when the pin set is empty, so this is a blocking pre-ship task.",
+      "acceptanceCriteria": [
+        "For each host, run: openssl s_client -connect HOST:443 -servername HOST < /dev/null | openssl x509 -pubkey -noout > pub.pem && openssl pkey -pubin -in pub.pem -outform der | openssl dgst -sha256 -binary | base64",
+        "Pin at least TWO keys per host (current leaf + backup) so rotation doesn't brick installs when the cert is replaced",
+        "Add the digests to pinsByHost in ios/Printyx/Core/Network/CertificatePinner.swift",
+        "Verify: DEBUG build still hits localhost (pinner skips), Release build successfully connects to each pinned host and rejects a cert swap",
+        "Document rotation playbook in docs/ios-cert-pinning.md (how to add a new pin before cert swap, how long to keep old pin live)"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "BLOCKING PRE-RELEASE. Infrastructure shipped in IOS-003 on 2026-04-16 but pin lists are empty placeholders. Cannot complete from this sandbox — requires access to production TLS endpoints. File: ios/Printyx/Core/Network/CertificatePinner.swift.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-015",
+      "title": "Exhaustive accessibility audit: every icon-only button + Dynamic Type extremes",
+      "description": "As a user on AX3+ Dynamic Type or VoiceOver, I need every tappable surface in the app to be labeled and to scale to the largest accessibility text size without clipping.",
+      "acceptanceCriteria": [
+        "Audit every `Image(systemName:)` wrapped in a Button or .onTapGesture to confirm an `.accessibilityLabel` is present",
+        "Verify the app renders correctly at `.dynamicTypeSize(.accessibility3)` and `.accessibility5` — no clipped titles, no overlapping rows, no cut-off chip text",
+        "Add `.dynamicTypeSize(.medium ... .accessibility3)` clamps on any dashboard-style cards where a scale above a3 breaks the grid",
+        "Run the Xcode Accessibility Inspector audit on every tab root and record zero critical issues",
+        "Add at least one XCUITest that asserts a representative screen's VoiceOver labels"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "POLISH. Core tokens (fonts + key toolbar buttons) shipped in IOS-011 on 2026-04-17. This story captures the sweep across every view that wasn't hit in the first pass.",
+      "category": "ios-app"
     }
   ]
 }

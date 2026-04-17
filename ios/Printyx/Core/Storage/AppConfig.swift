@@ -17,29 +17,41 @@ enum AppConfig {
     }
 
     // MARK: - Supabase
-    // Read from Info.plist (injected at build time via Xcode build settings)
-    // Falls back to hardcoded defaults if build variables are unresolved
-    private static let defaultSupabaseURL = "https://api.printyx.net"
-    private static let defaultSupabaseAnonKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoiYW5vbiJ9.deZlFDdzzNQtSseKfZc2PXZpiYYHHsy6V8NE2cByL7c"
+    // Values MUST be injected at build time via Info.plist (SUPABASE_URL /
+    // SUPABASE_ANON_KEY). Release builds fail closed if injection didn't
+    // happen — previously a hardcoded anon-key fallback lived here, which
+    // defeated key rotation and left stale keys live in every shipped build.
+    #if DEBUG
+    private static let debugSupabaseURL = "https://api.printyx.net"
+    private static let debugSupabaseAnonKey = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzdXBhYmFzZSIsImlhdCI6MTc2NDk5ODEwMCwiZXhwIjo0OTIwNjcxNzAwLCJyb2xlIjoiYW5vbiJ9.deZlFDdzzNQtSseKfZc2PXZpiYYHHsy6V8NE2cByL7c"
+    #endif
 
     static var supabaseURL: String {
-        guard let value = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
-              !value.isEmpty,
-              !value.hasPrefix("$("),
-              value.hasPrefix("http") else {
-            return defaultSupabaseURL
+        if let value = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
+           !value.isEmpty,
+           !value.hasPrefix("$("),
+           value.hasPrefix("http") {
+            return value
         }
-        return value
+        #if DEBUG
+        return debugSupabaseURL
+        #else
+        fatalError("SUPABASE_URL is not configured. Inject via Info.plist at build time.")
+        #endif
     }
 
     static var supabaseAnonKey: String {
-        guard let value = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String,
-              !value.isEmpty,
-              !value.hasPrefix("$("),
-              value.hasPrefix("eyJ") else {
-            return defaultSupabaseAnonKey
+        if let value = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_ANON_KEY") as? String,
+           !value.isEmpty,
+           !value.hasPrefix("$("),
+           value.hasPrefix("eyJ") {
+            return value
         }
-        return value
+        #if DEBUG
+        return debugSupabaseAnonKey
+        #else
+        fatalError("SUPABASE_ANON_KEY is not configured. Inject via Info.plist at build time.")
+        #endif
     }
 
     // MARK: - App Info

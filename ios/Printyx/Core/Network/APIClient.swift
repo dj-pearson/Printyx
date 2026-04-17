@@ -36,6 +36,7 @@ final class APIClient: ObservableObject {
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
     private let keychain: KeychainManager
+    private let pinner: CertificatePinner
     private var isRefreshingToken = false
     private var pendingRequests: [CheckedContinuation<Data, Error>] = []
 
@@ -43,15 +44,38 @@ final class APIClient: ObservableObject {
 
     // MARK: - Init
 
-    init(configuration: Configuration = .production, keychain: KeychainManager = .shared) {
+    init(
+        configuration: Configuration = .production,
+        keychain: KeychainManager = .shared,
+        sessionConfiguration: URLSessionConfiguration? = nil
+    ) {
         self.configuration = configuration
         self.keychain = keychain
 
-        let sessionConfig = URLSessionConfiguration.default
-        sessionConfig.timeoutIntervalForRequest = 30
-        sessionConfig.timeoutIntervalForResource = 60
-        sessionConfig.waitsForConnectivity = true
-        self.session = URLSession(configuration: sessionConfig)
+        let sessionConfig = sessionConfiguration ?? {
+            let cfg = URLSessionConfiguration.default
+            cfg.timeoutIntervalForRequest = 30
+            cfg.timeoutIntervalForResource = 60
+            cfg.waitsForConnectivity = true
+            // URLSession-level cache for GET responses. This is separate from
+            // PersistentResponseCache — URLCache respects Cache-Control
+            // headers and sits closer to the transport, while
+            // PersistentResponseCache is our offline-aware fallback. Sized
+            // modestly to keep the app bundle footprint small.
+            cfg.urlCache = URLCache(
+                memoryCapacity: 10 * 1024 * 1024,
+                diskCapacity: 50 * 1024 * 1024
+            )
+            cfg.requestCachePolicy = .useProtocolCachePolicy
+            return cfg
+        }()
+        let pinner = CertificatePinner()
+        self.pinner = pinner
+        self.session = URLSession(
+            configuration: sessionConfig,
+            delegate: pinner,
+            delegateQueue: nil
+        )
 
         self.decoder = JSONDecoder()
         self.decoder.dateDecodingStrategy = .custom { decoder in
@@ -110,6 +134,13 @@ final class APIClient: ObservableObject {
         self.encoder.keyEncodingStrategy = .convertToSnakeCase
 
         self.isAuthenticated = keychain.getAccessToken() != nil
+
+        // Hand the write-queue a replay closure so it can re-submit queued
+        // mutations once connectivity returns without depending on this class.
+        OfflineWriteQueue.shared.configure { [weak self] write in
+            guard let self else { return }
+            try await self.replayQueuedWrite(write)
+        }
     }
 
     // MARK: - Public API
@@ -134,10 +165,14 @@ final class APIClient: ObservableObject {
             @unknown default:
                 detail = decodingError.localizedDescription
             }
+            #if DEBUG
             print("[APIClient] Decode error for \(T.self) on \(endpoint.path): \(detail)")
             if let rawJSON = String(data: data.prefix(500), encoding: .utf8) {
                 print("[APIClient] Response preview: \(rawJSON)")
             }
+            #else
+            _ = detail // avoid unused-variable warning in release
+            #endif
             throw APIError.decodingError(decodingError)
         } catch {
             throw APIError.decodingError(error)
@@ -169,10 +204,50 @@ final class APIClient: ObservableObject {
 
     // MARK: - Request Execution
 
+    /// Response cache is only consulted for safe GET requests. Writes don't
+    /// go through the cache; they go through the write queue when offline.
+    private var cache: PersistentResponseCache { .shared }
+
     private func executeRequest(_ endpoint: APIEndpoint) async throws -> Data {
         let urlRequest = try buildRequest(for: endpoint)
 
-        let (data, response) = try await performRequest(urlRequest)
+        // Offline-first read: if we're known to be offline and this is a safe
+        // GET, serve stale cache rather than failing.
+        if endpoint.method == .get, !NetworkMonitor.shared.isConnected {
+            if let cached = cache.load(
+                tenantId: keychain.getTenantId(),
+                path: endpoint.path,
+                query: queryString(for: endpoint)
+            ) {
+                return cached
+            }
+        }
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await performRequest(urlRequest)
+        } catch let apiError as APIError {
+            if case .networkError = apiError {
+                // GETs transparently fall back to cache.
+                if endpoint.method == .get {
+                    if let cached = cache.load(
+                        tenantId: keychain.getTenantId(),
+                        path: endpoint.path,
+                        query: queryString(for: endpoint)
+                    ) {
+                        return cached
+                    }
+                }
+                // Mutations opt into the offline queue — auth endpoints are
+                // excluded because replaying them has no value.
+                if endpoint.queueableWhenOffline {
+                    enqueueForOffline(endpoint)
+                    throw APIError.offlineQueued
+                }
+            }
+            throw apiError
+        }
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
@@ -180,6 +255,14 @@ final class APIClient: ObservableObject {
 
         switch httpResponse.statusCode {
         case 200...299:
+            if endpoint.method == .get {
+                cache.save(
+                    data: data,
+                    tenantId: keychain.getTenantId(),
+                    path: endpoint.path,
+                    query: queryString(for: endpoint)
+                )
+            }
             return data
 
         case 400:
@@ -255,6 +338,66 @@ final class APIClient: ObservableObject {
             return try await session.data(for: request)
         } catch {
             throw APIError.networkError(error)
+        }
+    }
+
+    /// Deterministic query string used as part of the cache key. We sort keys
+    /// so a tab-switch that reorders query items doesn't cause a cache miss.
+    private func queryString(for endpoint: APIEndpoint) -> String? {
+        guard let items = endpoint.queryItems, !items.isEmpty else { return nil }
+        return items
+            .sorted(by: { $0.name < $1.name })
+            .map { "\($0.name)=\($0.value ?? "")" }
+            .joined(separator: "&")
+    }
+
+    // MARK: - Offline write queue support
+
+    private func enqueueForOffline(_ endpoint: APIEndpoint) {
+        let bodyData: Data?
+        if let body = endpoint.body {
+            bodyData = try? encoder.encode(AnyEncodable(body))
+        } else {
+            bodyData = nil
+        }
+        let write = QueuedWrite(
+            id: UUID(),
+            method: endpoint.method.rawValue,
+            path: endpoint.path,
+            bodyJSON: bodyData,
+            tenantId: keychain.getTenantId(),
+            createdAt: Date(),
+            attempts: 0,
+            lastError: nil
+        )
+        OfflineWriteQueue.shared.enqueue(write)
+    }
+
+    /// Replays a previously-queued write. Builds a fresh URLRequest from the
+    /// stored path + body so auth headers and tenant context pick up any
+    /// changes since enqueue time. Attaches the raw JSON bytes verbatim to
+    /// sidestep encoder re-serialisation.
+    fileprivate func replayQueuedWrite(_ write: QueuedWrite) async throws {
+        let method = HTTPMethod(rawValue: write.method) ?? .post
+        let endpoint = APIEndpoint(
+            path: write.path,
+            method: method,
+            queryItems: nil,
+            body: nil,
+            requiresAuth: true
+        )
+        var urlRequest = try buildRequest(for: endpoint)
+        urlRequest.httpBody = write.bodyJSON
+
+        let (_, response) = try await performRequest(urlRequest)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        // 409 (conflict) is treated as success — the resource likely already
+        // exists because the user re-submitted online. Anything else bubbles
+        // up so the queue can retry.
+        guard (200...299).contains(http.statusCode) || http.statusCode == 409 else {
+            throw APIError.serverError(statusCode: http.statusCode, message: nil)
         }
     }
 

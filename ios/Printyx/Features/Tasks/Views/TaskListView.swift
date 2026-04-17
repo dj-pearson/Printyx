@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Main task list screen with search, filters, stats, and swipe actions.
 struct TaskListView: View {
+    @EnvironmentObject private var apiClient: APIClient
     @StateObject private var viewModel: TaskListViewModel
     @State private var showingCreateTask = false
     @State private var showingFilters = false
@@ -65,6 +66,7 @@ struct TaskListView: View {
                             .font(.system(size: 22))
                             .foregroundStyle(Color.printyxPrimary)
                     }
+                    .accessibilityLabel("Add task")
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
@@ -85,7 +87,7 @@ struct TaskListView: View {
             }
             .sheet(isPresented: $showingCreateTask) {
                 TaskFormView(
-                    taskService: TaskService(apiClient: APIClient()),
+                    taskService: TaskService(apiClient: apiClient),
                     onCreated: { _ in
                         Task { await viewModel.refresh() }
                     }
@@ -96,7 +98,7 @@ struct TaskListView: View {
                     .presentationDetents([.medium])
             }
             .sheet(item: $selectedTask) { task in
-                TaskDetailView(taskService: TaskService(apiClient: APIClient()), taskId: task.id)
+                TaskDetailView(taskService: TaskService(apiClient: apiClient), taskId: task.id)
             }
             .task {
                 if viewModel.tasks.isEmpty {

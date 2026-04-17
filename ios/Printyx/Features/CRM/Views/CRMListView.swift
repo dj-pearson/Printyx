@@ -2,16 +2,18 @@ import SwiftUI
 
 /// Main CRM list with segmented control (All / Leads / Prospects / Customers).
 struct CRMListView: View {
+    @EnvironmentObject private var apiClient: APIClient
+    @EnvironmentObject private var router: AppRouter
     @StateObject private var viewModel: CRMListViewModel
     @State private var showingCreateRecord = false
-    @State private var selectedRecord: BusinessRecord?
+    @State private var showingSearch = false
 
     init(crmService: CRMService) {
         _viewModel = StateObject(wrappedValue: CRMListViewModel(crmService: crmService))
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: router.pathBinding(for: .crm)) {
             VStack(spacing: 0) {
                 // Segment Control
                 Picker("Type", selection: $viewModel.selectedSegment) {
@@ -49,6 +51,8 @@ struct CRMListView: View {
             }
             .navigationTitle("CRM")
             .toolbar {
+                GlobalSearchToolbarButton(isPresented: $showingSearch)
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingCreateRecord = true
@@ -57,6 +61,7 @@ struct CRMListView: View {
                             .font(.system(size: 22))
                             .foregroundStyle(Color.printyxPrimary)
                     }
+                    .accessibilityLabel("Add record")
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
@@ -70,18 +75,33 @@ struct CRMListView: View {
                         Image(systemName: "arrow.up.arrow.down.circle")
                             .font(.system(size: 20))
                     }
+                    .accessibilityLabel("Sort")
                 }
             }
             .refreshable {
                 await viewModel.refresh()
             }
             .sheet(isPresented: $showingCreateRecord) {
-                CRMFormView(crmService: nil) { _ in
+                CRMFormView(crmService: CRMService(apiClient: apiClient)) { _ in
                     Task { await viewModel.refresh() }
                 }
             }
-            .sheet(item: $selectedRecord) { record in
-                CRMDetailView(crmService: CRMService(apiClient: APIClient()), recordId: record.id)
+            .sheet(isPresented: $showingSearch) {
+                UniversalSearchSheet(apiClient: apiClient)
+            }
+            .navigationDestination(for: AppRoute.self) { route in
+                switch route {
+                case .businessRecord(let id):
+                    CRMDetailView(
+                        crmService: CRMService(apiClient: apiClient),
+                        recordId: id
+                    )
+                    .environmentObject(apiClient)
+                default:
+                    // Routes handled by other tabs shouldn't land here, but
+                    // if one does we render a harmless fallback.
+                    Text("Unknown route")
+                }
             }
             .task {
                 if viewModel.records.isEmpty {
@@ -104,7 +124,7 @@ struct CRMListView: View {
                     ForEach(viewModel.needsFollowUp) { record in
                         CRMRowView(record: record)
                             .contentShape(Rectangle())
-                            .onTapGesture { selectedRecord = record }
+                            .onTapGesture { router.push(.businessRecord(id: record.id)) }
                     }
                 } header: {
                     Label("Needs Follow Up (\(viewModel.needsFollowUp.count))", systemImage: "bell.badge")
@@ -118,7 +138,7 @@ struct CRMListView: View {
                 ForEach(viewModel.filteredRecords) { record in
                     CRMRowView(record: record)
                         .contentShape(Rectangle())
-                        .onTapGesture { selectedRecord = record }
+                        .onTapGesture { router.push(.businessRecord(id: record.id)) }
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
                                 Task { await viewModel.deleteRecord(record) }

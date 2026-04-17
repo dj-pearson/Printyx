@@ -69,6 +69,7 @@ struct QuoteListView: View {
                             .font(.system(size: 22))
                             .foregroundStyle(Color.printyxPrimary)
                     }
+                    .accessibilityLabel("Create proposal or quote")
                 }
             }
             .refreshable {
@@ -178,6 +179,11 @@ struct QuoteListView: View {
                         ProposalRowView(proposal: proposal)
                             .contentShape(Rectangle())
                             .onTapGesture { selectedProposal = proposal }
+                            .onAppear {
+                                if proposal.id == viewModel.filteredProposals.last?.id {
+                                    Task { await viewModel.loadMoreProposals() }
+                                }
+                            }
                             .swipeActions(edge: .trailing) {
                                 if proposal.status == .draft {
                                     Button {
@@ -188,6 +194,9 @@ struct QuoteListView: View {
                                     .tint(.blue)
                                 }
                             }
+                    }
+                    if viewModel.isLoadingMoreProposals {
+                        InlineLoadingView()
                     }
                 }
                 .listStyle(.insetGrouped)
@@ -212,6 +221,14 @@ struct QuoteListView: View {
                     ForEach(viewModel.filteredQuotes) { quote in
                         QuoteRowView(quote: quote)
                             .contentShape(Rectangle())
+                            .onAppear {
+                                if quote.id == viewModel.filteredQuotes.last?.id {
+                                    Task { await viewModel.loadMoreQuotes() }
+                                }
+                            }
+                    }
+                    if viewModel.isLoadingMoreQuotes {
+                        InlineLoadingView()
                     }
                 }
                 .listStyle(.insetGrouped)

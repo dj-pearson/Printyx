@@ -7,10 +7,20 @@ final class OpportunityListViewModel: ObservableObject {
 
     @Published var opportunities: [Opportunity] = []
     @Published var isLoading = false
+    @Published var isLoadingMore = false
     @Published var error: String?
     @Published var searchText = ""
     @Published var selectedStage: DealStage?
     @Published var viewMode: ViewMode = .pipeline
+
+    // Manager-only: filter by a specific rep. `nil` means "show everyone I
+    // have permission to see" — matches the backend's default behavior.
+    @Published var assignedToUserId: String?
+    @Published var directReports: [DirectReport] = []
+
+    private var currentPage = 1
+    private let pageSize = 50
+    private var hasMore = true
 
     enum ViewMode: String, CaseIterable, Identifiable {
         case pipeline = "Pipeline"
@@ -42,13 +52,18 @@ final class OpportunityListViewModel: ObservableObject {
         guard !isLoading else { return }
         isLoading = true
         error = nil
+        currentPage = 1
+        hasMore = true
 
         do {
             let fetched = try await opportunityService.fetchOpportunities(
                 stage: selectedStage?.rawValue,
-                limit: 100
+                assignedTo: assignedToUserId,
+                page: currentPage,
+                limit: pageSize
             )
             self.opportunities = fetched
+            self.hasMore = fetched.count >= pageSize
         } catch let apiError as APIError {
             self.error = apiError.errorDescription
         } catch {
@@ -56,6 +71,45 @@ final class OpportunityListViewModel: ObservableObject {
         }
 
         isLoading = false
+    }
+
+    /// Page forward when the user scrolls to the bottom of the list. Safe to
+    /// call repeatedly — no-ops when a page is already in flight or when
+    /// the server has returned a short page.
+    func loadMore() async {
+        guard hasMore, !isLoading, !isLoadingMore else { return }
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+
+        let nextPage = currentPage + 1
+        do {
+            let fetched = try await opportunityService.fetchOpportunities(
+                stage: selectedStage?.rawValue,
+                assignedTo: assignedToUserId,
+                page: nextPage,
+                limit: pageSize
+            )
+            opportunities.append(contentsOf: fetched)
+            currentPage = nextPage
+            if fetched.count < pageSize { hasMore = false }
+        } catch {
+            // Swallow — the next scroll will retry. Errors here are almost
+            // always cell-drop noise; bubbling them up would interrupt the
+            // rep mid-flow for no good reason.
+        }
+    }
+
+    /// Fetch the signed-in user's direct reports so a manager can scope the
+    /// pipeline to a specific rep. Safe to call for everyone — non-managers
+    /// simply get an empty list back and the filter row hides itself.
+    func loadDirectReportsIfNeeded(apiClient: APIClient) async {
+        guard directReports.isEmpty else { return }
+        do {
+            let reports: [DirectReport] = try await apiClient.requestArray(.myDirectReports())
+            self.directReports = reports
+        } catch {
+            // Silent — non-manager users will see an empty filter row.
+        }
     }
 
     func refresh() async {

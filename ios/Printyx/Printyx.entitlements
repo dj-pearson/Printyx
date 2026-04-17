@@ -6,5 +6,16 @@
 	<array>
 		<string>$(AppIdentifierPrefix)net.printyx.mainapp</string>
 	</array>
+	<!--
+	    APNs environment:
+	        "development"  — sandbox APNs (dev builds from Xcode / TestFlight
+	                         internal groups)
+	        "production"   — production APNs (App Store builds)
+	    Xcode automatically flips this value based on build configuration,
+	    so leave it as "development" here for day-to-day work; production
+	    builds pick up the override from Archive / App Store provisioning.
+	-->
+	<key>aps-environment</key>
+	<string>development</string>
 </dict>
 </plist>
