@@ -3765,7 +3765,39 @@
       ],
       "priority": 13,
       "passes": true,
-      "notes": "HIGH. Existing PrintyxTests.swift only has 6 trivial tests; UI tests have 2. [IMPLEMENTED 2026-04-17 — partial] Added LastViewedRecordStoreTests, PersistentResponseCacheTests (tenant isolation, TTL, round-trip), OfflineWriteQueueTests (enqueue/flush/retry), QuickLogTests (default subjects, request shape), APIEndpointTests (queueableWhenOffline gating, manager endpoint paths). Still open: APIClientTests (mock URLProtocol + 401 retry path), AuthManagerTests (JWT skew, logout), full view-model coverage, UI happy-path past login.",
+      "notes": "HIGH. Existing PrintyxTests.swift only has 6 trivial tests; UI tests have 2. [IMPLEMENTED 2026-04-17] LastViewedRecordStoreTests, PersistentResponseCacheTests (tenant isolation, TTL, round-trip), OfflineWriteQueueTests (enqueue/flush/retry), QuickLogTests, APIEndpointTests (queueableWhenOffline gating, manager paths). [EXPANDED 2026-04-18] APIClient now accepts an injected URLSessionConfiguration; MockURLProtocol + MockAPIClientFactory provide test harness. APIClientTests cover standard headers, 401→refresh→retry sequence, GET network-error → cache fallback, and offline mutation queueing. AuthManagerTests cover login success, login 4xx error surface, logout (clears keychain + best-effort /auth/v1/logout). Still open: full view-model coverage and UI happy-path past login.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-014",
+      "title": "Populate CertificatePinner SPKI hashes before first Release",
+      "description": "As a release engineer, I need the placeholder SPKI pin lists in CertificatePinner populated with real SHA-256(public key) digests for printyx.net, api.printyx.net, and functions.printyx.net before the first Release build ships. Release builds fail closed when the pin set is empty, so this is a blocking pre-ship task.",
+      "acceptanceCriteria": [
+        "For each host, run: openssl s_client -connect HOST:443 -servername HOST < /dev/null | openssl x509 -pubkey -noout > pub.pem && openssl pkey -pubin -in pub.pem -outform der | openssl dgst -sha256 -binary | base64",
+        "Pin at least TWO keys per host (current leaf + backup) so rotation doesn't brick installs when the cert is replaced",
+        "Add the digests to pinsByHost in ios/Printyx/Core/Network/CertificatePinner.swift",
+        "Verify: DEBUG build still hits localhost (pinner skips), Release build successfully connects to each pinned host and rejects a cert swap",
+        "Document rotation playbook in docs/ios-cert-pinning.md (how to add a new pin before cert swap, how long to keep old pin live)"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "BLOCKING PRE-RELEASE. Infrastructure shipped in IOS-003 on 2026-04-16 but pin lists are empty placeholders. Cannot complete from this sandbox — requires access to production TLS endpoints. File: ios/Printyx/Core/Network/CertificatePinner.swift.",
+      "category": "ios-app"
+    },
+    {
+      "id": "IOS-015",
+      "title": "Exhaustive accessibility audit: every icon-only button + Dynamic Type extremes",
+      "description": "As a user on AX3+ Dynamic Type or VoiceOver, I need every tappable surface in the app to be labeled and to scale to the largest accessibility text size without clipping.",
+      "acceptanceCriteria": [
+        "Audit every `Image(systemName:)` wrapped in a Button or .onTapGesture to confirm an `.accessibilityLabel` is present",
+        "Verify the app renders correctly at `.dynamicTypeSize(.accessibility3)` and `.accessibility5` — no clipped titles, no overlapping rows, no cut-off chip text",
+        "Add `.dynamicTypeSize(.medium ... .accessibility3)` clamps on any dashboard-style cards where a scale above a3 breaks the grid",
+        "Run the Xcode Accessibility Inspector audit on every tab root and record zero critical issues",
+        "Add at least one XCUITest that asserts a representative screen's VoiceOver labels"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "POLISH. Core tokens (fonts + key toolbar buttons) shipped in IOS-011 on 2026-04-17. This story captures the sweep across every view that wasn't hit in the first pass.",
       "category": "ios-app"
     }
   ]

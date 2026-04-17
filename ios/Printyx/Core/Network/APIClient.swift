@@ -44,24 +44,31 @@ final class APIClient: ObservableObject {
 
     // MARK: - Init
 
-    init(configuration: Configuration = .production, keychain: KeychainManager = .shared) {
+    init(
+        configuration: Configuration = .production,
+        keychain: KeychainManager = .shared,
+        sessionConfiguration: URLSessionConfiguration? = nil
+    ) {
         self.configuration = configuration
         self.keychain = keychain
 
-        let sessionConfig = URLSessionConfiguration.default
-        sessionConfig.timeoutIntervalForRequest = 30
-        sessionConfig.timeoutIntervalForResource = 60
-        sessionConfig.waitsForConnectivity = true
-        // URLSession-level cache for GET responses. This is separate from
-        // PersistentResponseCache — URLCache respects Cache-Control headers
-        // and sits closer to the transport, while PersistentResponseCache is
-        // our offline-aware fallback. Sized modestly to keep the app bundle
-        // footprint small.
-        sessionConfig.urlCache = URLCache(
-            memoryCapacity: 10 * 1024 * 1024,
-            diskCapacity: 50 * 1024 * 1024
-        )
-        sessionConfig.requestCachePolicy = .useProtocolCachePolicy
+        let sessionConfig = sessionConfiguration ?? {
+            let cfg = URLSessionConfiguration.default
+            cfg.timeoutIntervalForRequest = 30
+            cfg.timeoutIntervalForResource = 60
+            cfg.waitsForConnectivity = true
+            // URLSession-level cache for GET responses. This is separate from
+            // PersistentResponseCache — URLCache respects Cache-Control
+            // headers and sits closer to the transport, while
+            // PersistentResponseCache is our offline-aware fallback. Sized
+            // modestly to keep the app bundle footprint small.
+            cfg.urlCache = URLCache(
+                memoryCapacity: 10 * 1024 * 1024,
+                diskCapacity: 50 * 1024 * 1024
+            )
+            cfg.requestCachePolicy = .useProtocolCachePolicy
+            return cfg
+        }()
         let pinner = CertificatePinner()
         self.pinner = pinner
         self.session = URLSession(

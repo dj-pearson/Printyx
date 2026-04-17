@@ -196,6 +196,7 @@ extension APIEndpoint {
 extension APIEndpoint {
     static func opportunities(
         stage: String? = nil,
+        assignedTo: String? = nil,
         page: Int = 1,
         limit: Int = 25
     ) -> APIEndpoint {
@@ -204,6 +205,7 @@ extension APIEndpoint {
             URLQueryItem(name: "limit", value: "\(limit)"),
         ]
         if let stage { items.append(URLQueryItem(name: "stage", value: stage)) }
+        if let assignedTo { items.append(URLQueryItem(name: "assignedTo", value: assignedTo)) }
         return APIEndpoint(path: "/api/opportunities", queryItems: items)
     }
 
@@ -354,6 +356,12 @@ extension APIEndpoint {
         let items = [URLQueryItem(name: "days", value: "\(days)")]
         return APIEndpoint(path: "/api/team-reports/no-touch", queryItems: items)
     }
+
+    /// List direct reports of the signed-in user. Used by managers to filter
+    /// opportunities / CRM records to a specific rep on their team.
+    static func myDirectReports() -> APIEndpoint {
+        APIEndpoint(path: "/api/users", queryItems: [URLQueryItem(name: "managerId", value: "me")])
+    }
 }
 
 // MARK: - Service Ticket Endpoints
@@ -396,6 +404,14 @@ extension APIEndpoint {
 
     static func addServiceTicketNote(ticketId: String, body: Encodable) -> APIEndpoint {
         APIEndpoint(path: "/api/service-tickets/\(ticketId)/updates", method: .post, body: body)
+    }
+
+    /// Upload a base64-encoded photo attachment to a ticket. The backend
+    /// accepts {filename, mimeType, base64} so we don't need a multipart
+    /// implementation on the client side (which would complicate the
+    /// offline write-queue serialisation).
+    static func uploadTicketAttachment(ticketId: String, body: Encodable) -> APIEndpoint {
+        APIEndpoint(path: "/api/service-tickets/\(ticketId)/attachments", method: .post, body: body)
     }
 }
 
