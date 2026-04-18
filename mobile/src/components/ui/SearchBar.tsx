@@ -1,30 +1,84 @@
 /**
- * SearchBar Component
+ * SearchBar
  *
- * Search input with icon and clear button.
+ * Pill-shaped search input with optional glass background, leading magnifier,
+ * clear button, and animated focus state.
  */
 
-import React from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, borderRadius, spacing, typography, touchTargets } from '@/theme';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import {
+  borderRadius,
+  colors,
+  motion,
+  spacing,
+  touchTargets,
+  typography,
+} from '@/theme';
+import { GlassSurface } from './GlassSurface';
 
 interface SearchBarProps {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
   autoFocus?: boolean;
+  variant?: 'solid' | 'glass';
+  onSubmit?: () => void;
+  style?: ViewStyle | ViewStyle[];
 }
 
 export function SearchBar({
   value,
   onChangeText,
-  placeholder = 'Search...',
+  placeholder = 'Search',
   autoFocus = false,
+  variant = 'solid',
+  onSubmit,
+  style,
 }: SearchBarProps) {
-  return (
-    <View style={styles.container}>
-      <MaterialCommunityIcons name="magnify" size={20} color={colors.gray[400]} />
+  const [focused, setFocused] = useState(false);
+  const focusValue = useSharedValue(0);
+
+  const ringStyle = useAnimatedStyle(() => ({
+    borderColor:
+      focusValue.value > 0.5 ? colors.primary[400] : 'transparent',
+    shadowOpacity: focusValue.value * 0.18,
+  }));
+
+  const handleFocus = () => {
+    setFocused(true);
+    focusValue.value = withTiming(1, { duration: motion.duration.fast });
+  };
+  const handleBlur = () => {
+    setFocused(false);
+    focusValue.value = withTiming(0, { duration: motion.duration.fast });
+  };
+
+  const handleClear = () => {
+    Haptics.selectionAsync();
+    onChangeText('');
+  };
+
+  const inner = (
+    <View style={styles.row}>
+      <MaterialCommunityIcons
+        name="magnify"
+        size={20}
+        color={focused ? colors.primary[500] : colors.gray[500]}
+      />
       <TextInput
         style={styles.input}
         value={value}
@@ -35,31 +89,80 @@ export function SearchBar({
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onSubmitEditing={onSubmit}
         accessibilityLabel="Search"
       />
-      {value.length > 0 && (
-        <TouchableOpacity
-          onPress={() => onChangeText('')}
+      {value.length > 0 ? (
+        <Pressable
+          onPress={handleClear}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityLabel="Clear search"
           accessibilityRole="button"
         >
-          <MaterialCommunityIcons name="close-circle" size={18} color={colors.gray[400]} />
-        </TouchableOpacity>
-      )}
+          <MaterialCommunityIcons
+            name="close-circle"
+            size={18}
+            color={colors.gray[400]}
+          />
+        </Pressable>
+      ) : null}
     </View>
+  );
+
+  if (variant === 'glass') {
+    return (
+      <Animated.View style={[styles.glassWrap, ringStyle, style]}>
+        <GlassSurface
+          tone="light"
+          intensity={60}
+          radius={borderRadius.full}
+          elevation="sm"
+          style={styles.glassInner}
+        >
+          {inner}
+        </GlassSurface>
+      </Animated.View>
+    );
+  }
+
+  return (
+    <Animated.View style={[styles.solid, ringStyle, style]}>
+      {inner}
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  solid: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.gray[100],
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.full,
     paddingHorizontal: spacing.md,
     minHeight: touchTargets.minimum,
+    borderWidth: 1.5,
+    shadowColor: colors.primary[400],
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 10,
+  },
+  glassWrap: {
+    borderRadius: borderRadius.full,
+    borderWidth: 1.5,
+    shadowColor: colors.primary[400],
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: 10,
+  },
+  glassInner: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 2,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.sm,
+    flex: 1,
   },
   input: {
     flex: 1,

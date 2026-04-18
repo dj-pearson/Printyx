@@ -1,28 +1,48 @@
 /**
  * Login Screen
  *
- * Email/password login with biometric option.
- * Matches the web app's Supabase GoTrue auth flow.
+ * Branded welcome experience with an animated gradient backdrop,
+ * a frosted glass form surface, and smooth entrance motion.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  ScrollView,
   StyleSheet,
-  Alert,
+  Text,
+  View,
 } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import * as Haptics from 'expo-haptics';
+import { StatusBar } from 'expo-status-bar';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useAuth } from '@/hooks/useAuth';
-import { Button, Input } from '@/components/ui';
-import { colors, spacing, typography } from '@/theme';
+import {
+  Button,
+  GlassSurface,
+  GradientBackground,
+  Input,
+} from '@/components/ui';
+import {
+  borderRadius,
+  colors,
+  motion,
+  shadows,
+  spacing,
+  typography,
+} from '@/theme';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -33,124 +53,172 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginScreen() {
   const { login } = useAuth();
-  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const entrance = useSharedValue(0);
 
-  const { control, handleSubmit, formState: { errors } } = useForm<LoginForm>({
+  useEffect(() => {
+    entrance.value = withTiming(1, { duration: motion.duration.slow });
+  }, [entrance]);
+
+  const entranceStyle = useAnimatedStyle(() => ({
+    opacity: entrance.value,
+    transform: [{ translateY: (1 - entrance.value) * 20 }],
+  }));
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
 
-  const onSubmit = useCallback(async (data: LoginForm) => {
-    setIsSubmitting(true);
-    try {
-      const result = await login(data.email, data.password);
-      if (result.error) {
-        Alert.alert('Login Failed', result.error);
+  const onSubmit = useCallback(
+    async (data: LoginForm) => {
+      setIsSubmitting(true);
+      try {
+        const result = await login(data.email, data.password);
+        if (result.error) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert('Login Failed', result.error);
+        } else {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      } catch {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+      } finally {
+        setIsSubmitting(false);
       }
-    } catch {
-      Alert.alert('Error', 'An unexpected error occurred. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [login]);
+    },
+    [login],
+  );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.flex}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+    <View style={styles.root}>
+      <StatusBar style="light" />
+      <GradientBackground variant="hero" withOrbs style={StyleSheet.absoluteFillObject} />
+
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.flex}
         >
-          {/* Logo & Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>P</Text>
-            </View>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>
-              Sign in to your Printyx account
-            </Text>
-          </View>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Animated.View style={[styles.hero, entranceStyle]}>
+              <View style={styles.logoBadge}>
+                <Text style={styles.logoLetter}>P</Text>
+              </View>
+              <Text style={styles.heroTitle}>Welcome back</Text>
+              <Text style={styles.heroSubtitle}>
+                Sign in to manage your print operations with Printyx.
+              </Text>
+            </Animated.View>
 
-          {/* Form */}
-          <View style={styles.form}>
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
-                  label="Email"
-                  placeholder="you@company.com"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={errors.email?.message}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  textContentType="emailAddress"
-                  returnKeyType="next"
-                  required
-                />
-              )}
-            />
+            <Animated.View style={entranceStyle}>
+              <GlassSurface
+                tone="light"
+                intensity={70}
+                radius={borderRadius['2xl']}
+                elevation="xl"
+                style={styles.formCard}
+              >
+                <View style={styles.form}>
+                  <Controller
+                    control={control}
+                    name="email"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input
+                        label="Email"
+                        placeholder="you@company.com"
+                        value={value}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        error={errors.email?.message}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoComplete="email"
+                        textContentType="emailAddress"
+                        returnKeyType="next"
+                        leadingIcon="email-outline"
+                        required
+                      />
+                    )}
+                  />
 
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
-                  label="Password"
-                  placeholder="Enter your password"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={errors.password?.message}
-                  secureTextEntry
-                  autoComplete="password"
-                  textContentType="password"
-                  returnKeyType="done"
-                  required
-                />
-              )}
-            />
+                  <Controller
+                    control={control}
+                    name="password"
+                    render={({ field: { onChange, onBlur, value } }) => (
+                      <Input
+                        label="Password"
+                        placeholder="Enter your password"
+                        value={value}
+                        onChangeText={onChange}
+                        onBlur={onBlur}
+                        error={errors.password?.message}
+                        secureTextEntry
+                        autoComplete="password"
+                        textContentType="password"
+                        returnKeyType="done"
+                        leadingIcon="lock-outline"
+                        onSubmitEditing={handleSubmit(onSubmit)}
+                        required
+                      />
+                    )}
+                  />
 
-            <Link href="/(auth)/forgot-password" asChild>
-              <Text style={styles.forgotPassword}>Forgot password?</Text>
-            </Link>
+                  <Link href="/(auth)/forgot-password" asChild>
+                    <Pressable
+                      accessibilityRole="link"
+                      style={({ pressed }) => [
+                        styles.forgotWrap,
+                        pressed && { opacity: 0.6 },
+                      ]}
+                    >
+                      <Text style={styles.forgotPassword}>Forgot password?</Text>
+                    </Pressable>
+                  </Link>
 
-            <Button
-              title="Sign In"
-              onPress={handleSubmit(onSubmit)}
-              loading={isSubmitting}
-              fullWidth
-              size="lg"
-            />
-          </View>
+                  <Button
+                    title="Sign In"
+                    onPress={handleSubmit(onSubmit)}
+                    loading={isSubmitting}
+                    fullWidth
+                    size="lg"
+                    variant="gradient"
+                  />
+                </View>
+              </GlassSurface>
+            </Animated.View>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Don't have an account?{' '}
-            </Text>
-            <Link href="/(auth)/signup" asChild>
-              <Text style={styles.footerLink}>Sign Up</Text>
-            </Link>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <Animated.View style={[styles.footer, entranceStyle]}>
+              <Text style={styles.footerText}>Don't have an account? </Text>
+              <Link href="/(auth)/signup" asChild>
+                <Pressable accessibilityRole="link" hitSlop={8}>
+                  <Text style={styles.footerLink}>Create one</Text>
+                </Pressable>
+              </Link>
+            </Animated.View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: colors.background.default,
+    backgroundColor: '#0b1020',
+  },
+  safe: {
+    flex: 1,
   },
   flex: {
     flex: 1,
@@ -158,46 +226,60 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: spacing['2xl'],
-    paddingVertical: spacing['3xl'],
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing['2xl'],
   },
-  header: {
+  hero: {
     alignItems: 'center',
-    marginBottom: spacing['3xl'],
+    marginBottom: spacing.xl,
   },
-  logoContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: colors.primary[600],
+  logoBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: borderRadius['2xl'],
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
+    ...shadows.md,
   },
-  logoText: {
-    fontSize: 32,
-    fontWeight: '700',
+  logoLetter: {
+    fontSize: 36,
+    fontWeight: '800',
     color: '#ffffff',
+    letterSpacing: -0.5,
   },
-  title: {
-    ...typography.h1,
-    color: colors.text.primary,
+  heroTitle: {
+    ...typography.display,
+    color: '#ffffff',
+    textAlign: 'center',
     marginBottom: spacing.sm,
   },
-  subtitle: {
+  heroSubtitle: {
     ...typography.body,
-    color: colors.text.secondary,
+    color: 'rgba(255,255,255,0.82)',
     textAlign: 'center',
+    maxWidth: 320,
+  },
+  formCard: {
+    padding: spacing.xl,
+    marginBottom: spacing.xl,
   },
   form: {
-    marginBottom: spacing['2xl'],
+    gap: 0,
+  },
+  forgotWrap: {
+    alignSelf: 'flex-end',
+    paddingVertical: 4,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.lg,
   },
   forgotPassword: {
     ...typography.bodySmall,
     color: colors.primary[600],
-    textAlign: 'right',
-    marginBottom: spacing.xl,
-    marginTop: -spacing.sm,
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
@@ -206,11 +288,12 @@ const styles = StyleSheet.create({
   },
   footerText: {
     ...typography.body,
-    color: colors.text.secondary,
+    color: 'rgba(255,255,255,0.82)',
   },
   footerLink: {
     ...typography.body,
-    color: colors.primary[600],
-    fontWeight: '600',
+    color: '#ffffff',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });
