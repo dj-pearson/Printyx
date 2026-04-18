@@ -140,7 +140,7 @@ export default function FieldServiceScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background.secondary },
-  content: { padding: spacing.lg, gap: spacing.md },
+  content: { padding: spacing.lg, paddingBottom: 140, gap: spacing.md },
   statusBar: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     backgroundColor: colors.background.default, borderRadius: borderRadius.lg,
