@@ -135,6 +135,7 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: spacing.lg,
+    paddingBottom: 140,
     gap: spacing.md,
   },
   leadCard: {

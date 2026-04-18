@@ -1,25 +1,30 @@
 /**
  * Authenticated App Layout
  *
- * Bottom tab navigation matching the platform's core features.
- * Uses MaterialCommunityIcons for consistent iconography.
+ * Bottom tab navigation using a custom frosted-glass tab bar for a modern
+ * iOS feel. Icons use MaterialCommunityIcons with dual-state filled/outline
+ * glyphs to emphasize the active tab.
  */
 
 import React from 'react';
-import { Platform, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { colors, typography } from '@/theme';
+import { GlassTabBar } from '@/components/ui';
 
-type TabIconProps = {
-  name: keyof typeof MaterialCommunityIcons.glyphMap;
-  color: string;
-  size: number;
-};
+type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
-function TabIcon({ name, color, size }: TabIconProps) {
-  return <MaterialCommunityIcons name={name} size={size} color={color} />;
+function iconFor(
+  focused: IconName,
+  unfocused: IconName,
+): (opts: { focused: boolean; color: string; size: number }) => React.ReactNode {
+  return ({ focused: isFocused, color, size }) => (
+    <MaterialCommunityIcons
+      name={isFocused ? focused : unfocused}
+      color={color}
+      size={size}
+    />
+  );
 }
 
 export default function AppLayout() {
@@ -28,84 +33,54 @@ export default function AppLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <GlassTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary[600],
-        tabBarInactiveTintColor: colors.gray[400],
-        tabBarLabelStyle: styles.tabLabel,
-        tabBarStyle: styles.tabBar,
         tabBarHideOnKeyboard: true,
       }}
     >
       <Tabs.Screen
         name="(dashboard)"
         options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="view-dashboard" color={color} size={size} />
-          ),
+          title: 'Home',
+          tabBarIcon: iconFor('view-dashboard', 'view-dashboard-outline'),
         }}
       />
       <Tabs.Screen
         name="(crm)"
         options={{
           title: 'CRM',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="account-group" color={color} size={size} />
-          ),
+          tabBarIcon: iconFor('account-group', 'account-group-outline'),
         }}
       />
       <Tabs.Screen
         name="(service)"
         options={{
           title: 'Service',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="wrench" color={color} size={size} />
-          ),
+          tabBarIcon: iconFor('wrench', 'wrench-outline'),
         }}
       />
       <Tabs.Screen
         name="(equipment)"
         options={{
-          title: 'Equipment',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="printer" color={color} size={size} />
-          ),
+          title: 'Fleet',
+          tabBarIcon: iconFor('printer', 'printer-outline'),
         }}
       />
       <Tabs.Screen
         name="(reports)"
         options={{
           title: 'Reports',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="chart-bar" color={color} size={size} />
-          ),
+          tabBarIcon: iconFor('chart-box', 'chart-box-outline'),
         }}
       />
       <Tabs.Screen
         name="(settings)"
         options={{
           title: 'More',
-          tabBarIcon: ({ color, size }) => (
-            <TabIcon name="dots-horizontal" color={color} size={size} />
-          ),
+          tabBarIcon: iconFor('dots-horizontal-circle', 'dots-horizontal-circle-outline'),
         }}
       />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: colors.background.default,
-    borderTopColor: colors.gray[200],
-    borderTopWidth: 1,
-    height: Platform.OS === 'ios' ? 88 : 64,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-    paddingTop: 8,
-  },
-  tabLabel: {
-    ...typography.caption,
-    fontWeight: '500',
-  },
-});

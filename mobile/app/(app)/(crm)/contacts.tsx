@@ -91,7 +91,7 @@ export default function ContactsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background.default },
   searchContainer: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.gray[100] },
-  list: { paddingBottom: spacing['3xl'] },
+  list: { paddingBottom: 140 },
   contactRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.md, minHeight: 64 },
   contactInfo: { flex: 1 },
   contactName: { ...typography.body, fontWeight: '500', color: colors.text.primary },

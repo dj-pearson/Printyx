@@ -89,7 +89,7 @@ function getStageVariant(stage?: string): 'default' | 'success' | 'warning' | 'e
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background.secondary },
-  list: { padding: spacing.lg, gap: spacing.md },
+  list: { padding: spacing.lg, paddingBottom: 140, gap: spacing.md },
   dealCard: { backgroundColor: colors.background.default, borderRadius: borderRadius.lg, padding: spacing.lg, ...shadows.sm },
   dealHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
   dealTitle: { ...typography.body, fontWeight: '600', color: colors.text.primary, flex: 1, marginRight: spacing.sm },

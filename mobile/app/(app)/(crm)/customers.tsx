@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.gray[100],
   },
-  list: { paddingBottom: spacing['3xl'] },
+  list: { paddingBottom: 140 },
   customerRow: {
     flexDirection: 'row',
     alignItems: 'center',
