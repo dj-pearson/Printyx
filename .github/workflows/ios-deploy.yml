@@ -65,6 +65,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch tags
+        run: git fetch --tags --force origin
+
       - name: Determine version numbers
         id: version
         run: |
@@ -79,11 +82,25 @@ jobs:
             VERSION="$CURRENT_VERSION"
           fi
 
-          # Use input build number or auto-increment
+          # Use input build number or auto-increment beyond the highest previously
+          # shipped build. project.yml isn't committed back each run, so relying on it
+          # produces duplicates. Compute the max across (a) project.yml, and
+          # (b) every ios/v*-<build> git tag ever pushed.
           if [ -n "${{ github.event.inputs.build_number }}" ]; then
             BUILD="${{ github.event.inputs.build_number }}"
           else
-            BUILD=$((CURRENT_BUILD + 1))
+            MAX_TAG_BUILD=$(git tag -l 'ios/v*' \
+              | awk -F'-' '{print $NF}' \
+              | grep -E '^[0-9]+$' \
+              | sort -n \
+              | tail -1)
+            MAX_TAG_BUILD=${MAX_TAG_BUILD:-0}
+            if [ "$MAX_TAG_BUILD" -gt "$CURRENT_BUILD" ]; then
+              BASE_BUILD=$MAX_TAG_BUILD
+            else
+              BASE_BUILD=$CURRENT_BUILD
+            fi
+            BUILD=$((BASE_BUILD + 1))
           fi
 
           echo "marketing_version=$VERSION" >> $GITHUB_OUTPUT
@@ -288,15 +305,24 @@ jobs:
       - name: Upload to App Store Connect
         run: |
           set -o pipefail
-          UPLOAD_OUTPUT=$(xcrun altool --upload-app \
+          set +e
+          xcrun altool --upload-app \
             --type ios \
             --file "$RUNNER_TEMP/export/Printyx.ipa" \
             --apiKey ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }} \
             --apiIssuer ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
             --show-progress \
-            --verbose 2>&1) || true
-          echo "$UPLOAD_OUTPUT"
-          if echo "$UPLOAD_OUTPUT" | grep -q "UPLOAD FAILED\|Upload failed\|Validation failed"; then
+            --verbose 2>&1 | tee "$RUNNER_TEMP/altool-upload.log"
+          UPLOAD_STATUS=${PIPESTATUS[0]}
+          set -e
+          if [ "$UPLOAD_STATUS" -ne 0 ]; then
+            echo "::error::App Store Connect upload failed (altool exit $UPLOAD_STATUS)"
+            exit "$UPLOAD_STATUS"
+          fi
+          # Belt-and-suspenders: scan for known failure signatures in case altool
+          # silently returns 0. grep is case-insensitive to catch variants.
+          if grep -Eiq 'upload failed|failed to upload|validation failed|ERROR ITMS|ENTITY_ERROR' \
+              "$RUNNER_TEMP/altool-upload.log"; then
             echo "::error::App Store Connect upload failed with validation errors"
             exit 1
           fi
@@ -327,9 +353,15 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git tag -a "ios/v${{ needs.version.outputs.marketing_version }}-${{ needs.version.outputs.build_number }}" \
-            -m "iOS v${{ needs.version.outputs.marketing_version }} build ${{ needs.version.outputs.build_number }}"
-          git push origin "ios/v${{ needs.version.outputs.marketing_version }}-${{ needs.version.outputs.build_number }}"
+          TAG="ios/v${{ needs.version.outputs.marketing_version }}-${{ needs.version.outputs.build_number }}"
+          # If the tag already exists on the remote (e.g., a previous run tagged but
+          # failed downstream), skip rather than failing the whole job.
+          if git ls-remote --tags --exit-code origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists on origin; skipping."
+            exit 0
+          fi
+          git tag -a "$TAG" -m "iOS v${{ needs.version.outputs.marketing_version }} build ${{ needs.version.outputs.build_number }}"
+          git push origin "$TAG"
 
   # ─────────────────────────────────────────────────
   # 4. Notify on completion
