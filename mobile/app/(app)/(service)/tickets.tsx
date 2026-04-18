@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: colors.primary[600] },
   filterChipText: { ...typography.bodySmall, color: colors.text.secondary, fontWeight: '500' },
   filterChipTextActive: { color: '#ffffff' },
-  list: { padding: spacing.lg, gap: spacing.md },
+  list: { padding: spacing.lg, paddingBottom: 140, gap: spacing.md },
   ticketCard: { backgroundColor: colors.background.default, borderRadius: borderRadius.lg, padding: spacing.lg, ...shadows.sm },
   ticketHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   ticketId: { ...typography.caption, color: colors.text.tertiary, fontWeight: '600' },

@@ -1,23 +1,46 @@
 /**
- * Button Component
+ * Button
  *
- * Platform-aware button with proper touch targets (min 44pt/48dp),
- * haptic feedback, and loading states.
+ * Platform-aware button with proper touch targets (44pt min), scale-on-press
+ * haptic feedback, loading state, and a primary-gradient variant for hero CTAs.
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
-  TouchableOpacity,
-  Text,
   ActivityIndicator,
+  Pressable,
   StyleSheet,
-  ViewStyle,
+  Text,
   TextStyle,
+  View,
+  ViewStyle,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, borderRadius, spacing, typography, touchTargets } from '@/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import {
+  borderRadius,
+  colors,
+  gradients,
+  motion,
+  shadows,
+  spacing,
+  touchTargets,
+  typography,
+} from '@/theme';
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
+type ButtonVariant =
+  | 'primary'
+  | 'gradient'
+  | 'secondary'
+  | 'outline'
+  | 'ghost'
+  | 'destructive'
+  | 'glass';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps {
@@ -28,10 +51,15 @@ interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   icon?: React.ReactNode;
+  trailingIcon?: React.ReactNode;
   fullWidth?: boolean;
+  haptic?: 'light' | 'medium' | 'heavy' | 'none';
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  style?: ViewStyle | ViewStyle[];
 }
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function Button({
   title,
@@ -41,53 +69,112 @@ export function Button({
   disabled = false,
   loading = false,
   icon,
+  trailingIcon,
   fullWidth = false,
+  haptic = 'medium',
   accessibilityLabel,
   accessibilityHint,
+  style,
 }: ButtonProps) {
-  const handlePress = () => {
-    if (disabled || loading) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onPress();
-  };
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
-  const containerStyle: ViewStyle[] = [
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(motion.pressScale.default, motion.spring.stiff);
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, motion.spring.gentle);
+  }, [scale]);
+
+  const handlePress = useCallback(() => {
+    if (disabled || loading) return;
+    if (haptic !== 'none') {
+      const map = {
+        light: Haptics.ImpactFeedbackStyle.Light,
+        medium: Haptics.ImpactFeedbackStyle.Medium,
+        heavy: Haptics.ImpactFeedbackStyle.Heavy,
+      } as const;
+      Haptics.impactAsync(map[haptic]);
+    }
+    onPress();
+  }, [disabled, loading, onPress, haptic]);
+
+  const variantStyle = VARIANT_STYLES[variant];
+  const sizeStyle = SIZE_STYLES[size];
+  const textColor = variantStyle.text.color ?? colors.text.primary;
+
+  const innerContent = (
+    <>
+      {loading ? (
+        <ActivityIndicator size="small" color={textColor} />
+      ) : (
+        <>
+          {icon ? <View style={styles.iconWrap}>{icon}</View> : null}
+          <Text style={[sizeStyle.text, variantStyle.text]} numberOfLines={1}>
+            {title}
+          </Text>
+          {trailingIcon ? <View style={styles.iconWrap}>{trailingIcon}</View> : null}
+        </>
+      )}
+    </>
+  );
+
+  const container: ViewStyle[] = [
     styles.base,
-    variantStyles[variant].container,
-    sizeStyles[size].container,
+    sizeStyle.container,
+    variantStyle.container,
     fullWidth && styles.fullWidth,
     (disabled || loading) && styles.disabled,
   ].filter(Boolean) as ViewStyle[];
 
-  const textStyle: TextStyle[] = [
-    variantStyles[variant].text,
-    sizeStyles[size].text,
-    (disabled || loading) && styles.disabledText,
-  ].filter(Boolean) as TextStyle[];
+  if (variant === 'gradient') {
+    return (
+      <AnimatedPressable
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={disabled || loading}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel || title}
+        accessibilityHint={accessibilityHint}
+        accessibilityState={{ disabled: disabled || loading, busy: loading }}
+        style={[animatedStyle, fullWidth && styles.fullWidth, shadows.glow, style]}
+      >
+        <LinearGradient
+          colors={gradients.brand as unknown as string[]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[
+            styles.base,
+            sizeStyle.container,
+            { borderRadius: borderRadius.xl },
+            fullWidth && styles.fullWidth,
+            (disabled || loading) && styles.disabled,
+          ]}
+        >
+          {innerContent}
+        </LinearGradient>
+      </AnimatedPressable>
+    );
+  }
 
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       disabled={disabled || loading}
-      style={containerStyle}
-      activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel || title}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
+      style={[animatedStyle, container, style]}
     >
-      {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={variant === 'primary' || variant === 'destructive' ? '#fff' : colors.primary[600]}
-        />
-      ) : (
-        <>
-          {icon}
-          <Text style={textStyle}>{title}</Text>
-        </>
-      )}
-    </TouchableOpacity>
+      {innerContent}
+    </AnimatedPressable>
   );
 }
 
@@ -97,7 +184,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     minHeight: touchTargets.minimum,
   },
   fullWidth: {
@@ -106,24 +193,34 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
-  disabledText: {
-    opacity: 0.7,
+  iconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
-const variantStyles: Record<ButtonVariant, { container: ViewStyle; text: TextStyle }> = {
+const VARIANT_STYLES: Record<ButtonVariant, { container: ViewStyle; text: TextStyle }> = {
   primary: {
-    container: { backgroundColor: colors.primary[600] },
+    container: {
+      backgroundColor: colors.primary[600],
+      ...shadows.sm,
+    },
+    text: { color: '#ffffff' },
+  },
+  gradient: {
+    container: {},
     text: { color: '#ffffff' },
   },
   secondary: {
-    container: { backgroundColor: colors.gray[100] },
+    container: {
+      backgroundColor: colors.gray[100],
+    },
     text: { color: colors.gray[900] },
   },
   outline: {
     container: {
       backgroundColor: 'transparent',
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth * 2,
       borderColor: colors.gray[300],
     },
     text: { color: colors.gray[700] },
@@ -133,22 +230,44 @@ const variantStyles: Record<ButtonVariant, { container: ViewStyle; text: TextSty
     text: { color: colors.primary[600] },
   },
   destructive: {
-    container: { backgroundColor: colors.error.main },
+    container: {
+      backgroundColor: colors.error.main,
+      ...shadows.sm,
+    },
+    text: { color: '#ffffff' },
+  },
+  glass: {
+    container: {
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: 'rgba(255,255,255,0.45)',
+    },
     text: { color: '#ffffff' },
   },
 };
 
-const sizeStyles: Record<ButtonSize, { container: ViewStyle; text: TextStyle }> = {
+const SIZE_STYLES: Record<ButtonSize, { container: ViewStyle; text: TextStyle }> = {
   sm: {
-    container: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+    container: {
+      paddingHorizontal: spacing.lg,
+      paddingVertical: 10,
+      minHeight: 40,
+    },
     text: { ...typography.buttonSmall },
   },
   md: {
-    container: { paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
+    container: {
+      paddingHorizontal: spacing.xl,
+      paddingVertical: 13,
+    },
     text: { ...typography.button },
   },
   lg: {
-    container: { paddingHorizontal: spacing['2xl'], paddingVertical: spacing.lg },
-    text: { ...typography.button, fontSize: 18 },
+    container: {
+      paddingHorizontal: spacing['2xl'],
+      paddingVertical: 16,
+      minHeight: 54,
+    },
+    text: { ...typography.button, fontSize: 17 },
   },
 };
