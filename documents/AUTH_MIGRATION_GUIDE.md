@@ -561,7 +561,7 @@ import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthInd
 
 - [AUTH_IMPROVEMENT_PLAN.md](./AUTH_IMPROVEMENT_PLAN.md) - Overall improvement plan
 - [AUTH_SETUP_DOCUMENTATION.md](./AUTH_SETUP_DOCUMENTATION.md) - EatPal reference implementation
-- [CLAUDE.md](./CLAUDE.md) - Project overview and conventions
+- [CLAUDE.md](../CLAUDE.md) - Project overview and conventions
 
 ### Code References
 

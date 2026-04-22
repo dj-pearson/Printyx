@@ -2,7 +2,7 @@
  * db-probe — Phase 1 proof-of-life edge function.
  *
  * Exercises every shared utility so Phase 1 lands atomically:
- *   - _shared/db.ts          (Drizzle + postgres-js)
+ *   - _shared/db.ts          (Supabase JS client via PostgREST)
  *   - _shared/auth.ts        (JWT + tenant resolution)
  *   - _shared/http.ts        (jsonResponse / errorResponse)
  *   - _shared/logger.ts      (structured JSON logs)
@@ -11,13 +11,14 @@
  * Responses:
  *   - Unauthenticated → 401 with structured error
  *   - Authenticated no tenant → 403
- *   - Authenticated + tenant → 200 with { status, tenantCount, rlsEnabled, durationMs, requestId }
+ *   - Authenticated + tenant → 200 with { status, tenantCount, outreachReachable, durationMs, requestId }
  *
- * The tenant count is returned unfiltered (all tenants). If you want to test RLS,
- * use the outreach function instead — this one uses the service-role client.
+ * This version uses the Supabase JS client (via PostgREST over HTTPS) instead of
+ * direct Postgres. Supavisor's pooler has a non-standard SSL handshake that
+ * crashes Deno's postgres-js; PostgREST is what the rest of the codebase uses
+ * and works reliably.
  */
 
-import { sql } from 'https://esm.sh/drizzle-orm@0.29.4';
 import { handleCors } from '../_shared/cors.ts';
 import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
@@ -49,44 +50,83 @@ export default async function handler(req: Request): Promise<Response> {
 
     const db = getDb();
 
-    // 1. Can we reach the DB?
-    const pingRows = await db.execute<{ now: string }>(sql`SELECT NOW() as now`);
-    const dbNow = pingRows?.[0]?.now;
+    // 1. Can we reach PostgREST at all? Count all tenants (service-role, bypasses RLS).
+    const tenantsQuery = await db.from('tenants').select('*', { count: 'exact', head: true });
 
-    // 2. Can we count tenants?
-    const tenantRows = await db.execute<{ count: string }>(
-      sql`SELECT COUNT(*)::text AS count FROM tenants`,
-    );
-    const tenantCount = parseInt(tenantRows?.[0]?.count ?? '0', 10);
-
-    // 3. Which outreach tables have RLS enabled? (helps verify US-003 landed)
-    const rlsRows = await db.execute<{ tablename: string; rowsecurity: boolean }>(sql`
-      SELECT tablename, rowsecurity
-      FROM pg_tables
-      WHERE schemaname = 'public'
-        AND tablename IN (
-          'business_contexts',
-          'rep_specializations',
-          'outreach_sequences',
-          'outreach_sequence_steps',
-          'outreach_prospects',
-          'outreach_drafts'
-        )
-    `);
-    const rlsEnabled: Record<string, boolean> = {};
-    for (const row of rlsRows ?? []) {
-      rlsEnabled[row.tablename] = !!row.rowsecurity;
+    if (tenantsQuery.error) {
+      scoped.error(
+        { err: tenantsQuery.error.message, code: tenantsQuery.error.code },
+        'tenants_query_failed',
+      );
+      return errorResponse(500, 'DB query failed: ' + tenantsQuery.error.message, req, {
+        code: 'DB_QUERY_ERROR',
+        details: {
+          pgCode: tenantsQuery.error.code,
+          pgHint: tenantsQuery.error.hint,
+          pgDetails: tenantsQuery.error.details,
+        },
+        requestId,
+      });
     }
 
+    // 2. Can we query an outreach table scoped to this tenant? Confirms migration ran.
+    const contextsQuery = await db
+      .from('business_contexts')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', ctx.tenantId);
+
+    const outreachTables = {
+      business_contexts: !contextsQuery.error,
+    };
+
+    // 3. Count sequences + drafts for this tenant — proves the rest of the
+    //    outreach migration landed and RLS (if enabled) lets us through.
+    const sequencesQuery = await db
+      .from('outreach_sequences')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', ctx.tenantId);
+    outreachTables['outreach_sequences'] = !sequencesQuery.error;
+
+    const draftsQuery = await db
+      .from('outreach_drafts')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', ctx.tenantId);
+    outreachTables['outreach_drafts'] = !draftsQuery.error;
+
+    const prospectsQuery = await db
+      .from('outreach_prospects')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', ctx.tenantId);
+    outreachTables['outreach_prospects'] = !prospectsQuery.error;
+
+    const specializationsQuery = await db
+      .from('rep_specializations')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', ctx.tenantId);
+    outreachTables['rep_specializations'] = !specializationsQuery.error;
+
+    const stepsQuery = await db
+      .from('outreach_sequence_steps')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', ctx.tenantId);
+    outreachTables['outreach_sequence_steps'] = !stepsQuery.error;
+
     const durationMs = Date.now() - t0;
-    scoped.info({ durationMs, tenantCount }, 'probe_success');
+    scoped.info({ durationMs, tenantCount: tenantsQuery.count }, 'probe_success');
 
     return jsonResponse(
       {
         status: 'ok',
-        dbNow,
-        tenantCount,
-        rlsEnabled,
+        tenantCount: tenantsQuery.count ?? 0,
+        outreachTables,
+        outreachCounts: {
+          businessContexts: contextsQuery.count ?? 0,
+          sequences: sequencesQuery.count ?? 0,
+          drafts: draftsQuery.count ?? 0,
+          prospects: prospectsQuery.count ?? 0,
+          specializations: specializationsQuery.count ?? 0,
+          sequenceSteps: stepsQuery.count ?? 0,
+        },
         authenticated: {
           userId: ctx.userId,
           tenantId: ctx.tenantId,

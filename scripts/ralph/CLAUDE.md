@@ -21,7 +21,7 @@ Read these files in this order:
 
 1. `prd.json` - Find the next story where `passes: false`
 2. `progress.txt` - Learn from previous iterations
-3. `CLAUDE.md` (project root) - Understand codebase conventions
+3. `CLAUDE.md` (project root) — Understand codebase conventions
 4. Git log - See recent changes
 
 ### Step 2: Implement

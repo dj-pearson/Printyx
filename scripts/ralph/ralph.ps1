@@ -7,6 +7,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$ProgressFile = "progress.txt"
 
 Write-Host "🤖 Ralph starting with $Tool (max $MaxIterations iterations)" -ForegroundColor Cyan
 
@@ -36,13 +37,17 @@ if ($currentBranch -ne $branchName) {
     }
 }
 
-# Initialize progress.txt if it doesn't exist
-if (-not (Test-Path "progress.txt")) {
+# Initialize progress log if it doesn't exist
+if (-not (Test-Path $ProgressFile)) {
+    $progressDir = Split-Path -Parent $ProgressFile
+    if ($progressDir -and -not (Test-Path $progressDir)) {
+        New-Item -ItemType Directory -Path $progressDir -Force | Out-Null
+    }
     @"
 Ralph Progress Log - $(Get-Date)
 Branch: $branchName
 
-"@ | Out-File -FilePath "progress.txt" -Encoding UTF8
+"@ | Out-File -FilePath $ProgressFile -Encoding UTF8
 }
 
 # Main loop
@@ -111,7 +116,7 @@ while ($currentIteration -lt $MaxIterations) {
 
 Iteration $currentIteration ($(Get-Date)): Story $nextStory
 Status: $(if ($storyComplete -eq "true") { "Complete" } else { "Needs Review" })
-"@ | Out-File -FilePath "progress.txt" -Append -Encoding UTF8
+"@ | Out-File -FilePath $ProgressFile -Append -Encoding UTF8
     
     # Short pause between iterations
     Start-Sleep -Seconds 2
