@@ -197,15 +197,9 @@ import {
   accessibilityRoutes,
 } from './domains/onboarding';
 
-import {
-  registerNotificationRoutes,
-  emailParserRoutes,
-} from './domains/notifications';
+import { registerNotificationRoutes, emailParserRoutes } from './domains/notifications';
 
-import {
-  registerAnalyticsRoutes,
-  gpt5Routes,
-} from './domains/ai';
+import { registerAnalyticsRoutes, gpt5Routes } from './domains/ai';
 
 import {
   registerClientMonitoringRoutes,
@@ -447,6 +441,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     ['/api/billing', './routes/advanced-billing-routes'],
     ['/api/customer-success', './routes/customer-success-routes'],
     ['/api/apollo', './routes/apollo-routes'],
+    ['/api/outreach', './routes/outreach-routes'],
     ['/api/extension', './routes/chrome-extension-routes'],
     ['/api/route-optimization', './routes/route-optimization-routes'],
     ['/api/mileage', './routes/mileage-routes'],
