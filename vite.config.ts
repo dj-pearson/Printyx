@@ -58,18 +58,16 @@ export default defineConfig({
             return 'vendor-react';
           }
 
-          // UI component library - split Radix into core and extra
-          if (
-            id.includes('@radix-ui/react-dialog') ||
-            id.includes('@radix-ui/react-dropdown-menu') ||
-            id.includes('@radix-ui/react-select') ||
-            id.includes('@radix-ui/react-popover') ||
-            id.includes('@radix-ui/react-tooltip')
-          ) {
-            return 'vendor-ui-core';
-          }
+          // UI component library: ALL @radix-ui/* into ONE chunk.
+          // Previously split into vendor-ui-core / vendor-ui-extra, but Radix
+          // components share internal helpers (react-primitive, react-slot,
+          // react-compose-refs, react-use-layout-effect, etc.) that Rollup
+          // extracted into one of the two chunks based on first consumer.
+          // Components in the OTHER chunk then referenced minified symbols
+          // that had not been initialized yet, producing runtime errors like
+          // "qn is not a function" at vendor-ui-extra-*.js load time.
           if (id.includes('@radix-ui/')) {
-            return 'vendor-ui-extra';
+            return 'vendor-ui';
           }
 
           // Data fetching & state management
