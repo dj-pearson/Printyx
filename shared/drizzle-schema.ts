@@ -20,6 +20,7 @@ export * from './auth-schema';
 export * from './csv-import-schema';
 export * from './customer-success-schema';
 export * from './lead-scoring-schema';
+export * from './outreach-schema';
 export * from './soc2-compliance-schema';
 export * from './sso-schema';
 // team-alerts-schema: `alertSeverityEnum` and `alertStatusEnum` conflict with intelligent-alerts-schema

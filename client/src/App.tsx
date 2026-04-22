@@ -175,6 +175,12 @@ const ManufacturerIntegrationAudit = React.lazy(
 const LeadsPage = React.lazy(() => import('@/pages/LeadsPage'));
 const ProspectsPage = React.lazy(() => import('@/pages/ProspectsPage'));
 const CustomersPage = React.lazy(() => import('@/pages/CustomersPage'));
+// Outreach Hub
+const OutreachHub = React.lazy(() => import('@/pages/outreach/OutreachHub'));
+const OutreachBusinessContext = React.lazy(() => import('@/pages/outreach/BusinessContext'));
+const OutreachMySpecialty = React.lazy(() => import('@/pages/outreach/MySpecialty'));
+const OutreachSequenceStudio = React.lazy(() => import('@/pages/outreach/SequenceStudio'));
+const OutreachDraftGenerator = React.lazy(() => import('@/pages/outreach/DraftGenerator'));
 const QuoteProposalGeneration = React.lazy(() => import('@/pages/QuoteProposalGeneration'));
 const QuoteBuilderPage = React.lazy(() => import('@/pages/QuoteBuilderPage'));
 const QuotesManagement = React.lazy(() => import('@/pages/QuotesManagement'));
@@ -531,6 +537,12 @@ function Router() {
                 <Route path="/deals" component={CrmDealsPage} />
                 <Route path="/opportunities" component={CrmDealsPage} />
                 <Route path="/deals-management" component={CrmDealsPage} />
+                {/* Outreach Hub */}
+                <Route path="/outreach" component={OutreachHub} />
+                <Route path="/outreach/business-context" component={OutreachBusinessContext} />
+                <Route path="/outreach/my-specialty" component={OutreachMySpecialty} />
+                <Route path="/outreach/sequence-studio" component={OutreachSequenceStudio} />
+                <Route path="/outreach/draft-generator" component={OutreachDraftGenerator} />
                 {/* Product Hub */}
                 <Route path="/product-hub" component={ProductHubUnified} />
                 {/* Equipment Lifecycle */}
@@ -874,9 +886,7 @@ function Router() {
                   {() => <ProtectedRoute component={TenantManagement} platformOnly />}
                 </Route>
                 <Route path="/admin/disposable-emails">
-                  {() => (
-                    <ProtectedRoute component={DisposableEmailDomainsAdmin} platformOnly />
-                  )}
+                  {() => <ProtectedRoute component={DisposableEmailDomainsAdmin} platformOnly />}
                 </Route>
                 <Route path="/admin/user-management">
                   {() => (

@@ -225,6 +225,22 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
     ],
   },
 
+  // Outreach Hub — AI-assisted cold email / LinkedIn drafting
+  {
+    id: 'outreach',
+    title: 'Outreach',
+    icon: Wand2,
+    path: '/outreach',
+    matchPatterns: ['/outreach*'],
+    children: [
+      { title: 'Overview', path: '/outreach', icon: Target },
+      { title: 'Business Context', path: '/outreach/business-context', icon: BookOpen },
+      { title: 'My Specialty', path: '/outreach/my-specialty', icon: Users },
+      { title: 'Sequence Studio', path: '/outreach/sequence-studio', icon: Layers },
+      { title: 'Draft Generator', path: '/outreach/draft-generator', icon: Wand2 },
+    ],
+  },
+
   // Service Hub
   {
     id: 'service',
