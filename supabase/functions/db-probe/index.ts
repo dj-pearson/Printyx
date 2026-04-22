@@ -111,8 +111,15 @@ export default async function handler(req: Request): Promise<Response> {
 
     const error = err as Error;
     log.error({ requestId, err: error.message, stack: error.stack }, 'probe_failed');
-    return errorResponse(500, 'Internal server error', req, {
-      code: 'INTERNAL',
+    // db-probe is a diagnostic endpoint — surface the actual error so we can
+    // diagnose without spelunking Coolify logs.
+    return errorResponse(500, 'Probe failed: ' + (error.message || 'unknown error'), req, {
+      code: 'PROBE_ERROR',
+      details: {
+        errorName: error.name,
+        errorMessage: error.message,
+        stack: error.stack?.split('\n').slice(0, 10),
+      },
       requestId,
     });
   } finally {
