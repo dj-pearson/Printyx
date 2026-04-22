@@ -4,15 +4,15 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { getCorsHeaders } from '/app/functions/_shared/cors.ts';
 
-const port = parseInt(Deno.env.get('PORT') || '3001');
+// Coolify's healthcheck is pinned at localhost:8000 — keep the default aligned.
+const port = parseInt(Deno.env.get('PORT') || '8000');
 
 // PostgreSQL returns timestamps in two formats depending on column type:
 // - timestamp WITHOUT time zone: "2024-01-15T10:30:00" or "2024-01-15T10:30:00.123456"
 // - timestamp WITH time zone:    "2024-01-15T10:30:00+00:00" or "2024-01-15T10:30:00.123456+00:00"
 // iOS ISO8601DateFormatter (default) only parses "YYYY-MM-DDTHH:mm:ssZ".
 // This regex matches both formats (timezone is optional).
-const PG_TIMESTAMP_RE =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
+const PG_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?$/;
 
 // Recursively normalize date strings in JSON responses.
 // Converts any PostgreSQL timestamp → "2024-01-15T10:30:00Z"
