@@ -42,6 +42,7 @@
     "test:discover": "tsx tools/automated-testing/comprehensive-discovery.ts",
     "test:execute": "tsx tools/automated-testing/comprehensive-execution.ts",
     "check:secrets": "tsx tools/automated-testing/check-no-secrets.ts",
+    "check:deno-schemas": "tsx scripts/check-schema-deno-portable.ts",
     "audit:sqli": "tsx server/scripts/sql-injection-audit.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx server/lib/migrate.ts",

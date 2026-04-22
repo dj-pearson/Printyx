@@ -1,0 +1,44 @@
+-- ============================================================================
+-- RLS Policy Template — DO NOT apply this file directly.
+-- It documents the canonical pattern. Use apply-rls.sql's apply_tenant_rls()
+-- function for actually applying policies to a table.
+-- ============================================================================
+--
+-- Pattern: every tenant-scoped table gets 4 policies (one per CRUD verb),
+-- all keyed on auth.jwt() -> 'app_metadata' ->> 'tenantId' matching the
+-- row's tenant_id column.
+--
+-- Assumptions:
+--   1. Every tenant-scoped table has a NOT NULL `tenant_id` column.
+--   2. Users authenticate via Supabase JWT with app_metadata.tenantId set.
+--   3. Edge functions that bypass RLS use the service-role client (not
+--      subject to policies).
+--
+-- Note: `TO authenticated` is REQUIRED. Omitting the role applies to every
+-- role including `anon`, which is NOT what we want.
+--
+-- Note: GRANT is also required — an RLS policy without GRANT produces 403s
+-- even for the correct tenant. See CLAUDE.md memory note.
+-- ============================================================================
+
+-- For reference only. Parameterized version is in apply-rls.sql.
+
+-- ALTER TABLE <table> ENABLE ROW LEVEL SECURITY;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON <table> TO authenticated;
+--
+-- CREATE POLICY "<table>_tenant_select"
+--   ON <table> FOR SELECT TO authenticated
+--   USING (tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenantId'));
+--
+-- CREATE POLICY "<table>_tenant_insert"
+--   ON <table> FOR INSERT TO authenticated
+--   WITH CHECK (tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenantId'));
+--
+-- CREATE POLICY "<table>_tenant_update"
+--   ON <table> FOR UPDATE TO authenticated
+--   USING (tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenantId'))
+--   WITH CHECK (tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenantId'));
+--
+-- CREATE POLICY "<table>_tenant_delete"
+--   ON <table> FOR DELETE TO authenticated
+--   USING (tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenantId'));
