@@ -1,99 +1,137 @@
 /**
- * Drizzle ORM client for edge functions.
+ * Database client for edge functions.
  *
- * Uses postgres-js (Deno-compatible) against the self-hosted Supabase Postgres pooler.
- * The client is cached at module scope so it's reused across requests in the same
- * Deno instance — that keeps connection count low and cold-start cost contained.
+ * Uses the Supabase JS client — the proven, working path on self-hosted Supabase
+ * + Coolify + Deno. Calls go through PostgREST over HTTPS against `SUPABASE_URL`,
+ * so they don't hit the Postgres pooler's TLS quirks that break postgres-js/deno-postgres.
  *
- * Requires env vars:
- *   DATABASE_URL                     — full postgres:// connection string
- *   DB_SSL_REJECT_UNAUTHORIZED       — "false" to accept self-signed certs (default: "false")
- *   DB_POOL_MAX                      — max pool size per instance (default: 2)
- *   DB_CONNECTION_LIFETIME_SECONDS   — force reconnect after N seconds (default: 600)
+ * Drizzle schemas (`shared/**\/*-schema.ts`) remain the single source of truth
+ * for table structure and TypeScript types. Import them TYPE-ONLY into edge
+ * functions — e.g. `type OutreachSequence = typeof outreachSequences.$inferSelect`.
  *
- * Usage:
- *   import { getDb } from '../_shared/db.ts';
- *   const db = getDb();
- *   const rows = await db.select().from(someTable).where(...);
+ * ============================================================================
+ *  Two client variants:
+ * ============================================================================
  *
- * Drizzle is imported via esm.sh (no import map required). Version-pinned to match
- * the package.json version so schema types line up 1:1 with the Node side.
+ *  getDb()       — SERVICE-ROLE client. Bypasses RLS. Use for most edge function
+ *                  queries where you've already authenticated the user and
+ *                  filter by `tenant_id` in application code.
+ *
+ *  getUserDb(jwt) — USER-SCOPED client. Passes the user's JWT through, so RLS
+ *                   policies apply. Use as defense-in-depth on top of your
+ *                   application-level filtering, or in rare cases where RLS
+ *                   alone is sufficient.
+ *
+ * ============================================================================
+ *  Example handler pattern:
+ * ============================================================================
+ *
+ *    import { handleCors } from '../_shared/cors.ts';
+ *    import { requireAuth } from '../_shared/auth.ts';
+ *    import { getDb } from '../_shared/db.ts';
+ *    import { jsonResponse } from '../_shared/http.ts';
+ *    import type { OutreachSequence } from '../../../shared/outreach-schema.ts';
+ *
+ *    const corsResult = handleCors(req);
+ *    if (corsResult) return corsResult;
+ *
+ *    const ctx = await requireAuth(req);
+ *    const db = getDb();
+ *
+ *    const { data, error } = await db
+ *      .from('outreach_sequences')
+ *      .select('*')
+ *      .eq('tenant_id', ctx.tenantId)
+ *      .eq('user_id', ctx.userId)
+ *      .order('updated_at', { ascending: false });
+ *
+ *    if (error) throw error;
+ *    return jsonResponse({ sequences: data as OutreachSequence[] }, 200, req);
  */
 
-import postgres from 'https://esm.sh/postgres@3.4.3';
-import { drizzle, type PostgresJsDatabase } from 'https://esm.sh/drizzle-orm@0.29.4/postgres-js';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
-let _client: ReturnType<typeof postgres> | null = null;
-let _db: PostgresJsDatabase | null = null;
+let _serviceClient: SupabaseClient | null = null;
 
-function readEnv(name: string, fallback?: string): string | undefined {
+function readEnv(name: string): string | undefined {
   try {
-    return Deno.env.get(name) ?? fallback;
+    return Deno.env.get(name);
   } catch {
-    return fallback;
+    return undefined;
   }
 }
 
-export function getDb(): PostgresJsDatabase {
-  if (_db) return _db;
+/**
+ * Service-role Supabase client. Bypasses RLS.
+ *
+ * Application code MUST filter by `tenant_id` explicitly when using this —
+ * RLS won't save you if you forget.
+ *
+ * Cached at module scope; reused across requests in the same Deno instance.
+ */
+export function getDb(): SupabaseClient {
+  if (_serviceClient) return _serviceClient;
 
-  const connectionString = readEnv('DATABASE_URL');
-  if (!connectionString) {
-    throw new Error(
-      'DATABASE_URL env var is required for edge function DB access. Set it in Coolify.',
-    );
+  const url = readEnv('SUPABASE_URL');
+  const serviceKey = readEnv('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!url) {
+    throw new Error('SUPABASE_URL env var is required for edge function DB access');
+  }
+  if (!serviceKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY env var is required for edge function DB access');
   }
 
-  const rejectUnauthorized = readEnv('DB_SSL_REJECT_UNAUTHORIZED', 'false') === 'true';
-  const maxPool = parseInt(readEnv('DB_POOL_MAX', '2') ?? '2', 10);
-
-  // SSL strategy (override with DB_SSL_MODE env var):
-  //   'disable'  → no TLS (plaintext socket)
-  //   'require'  → TLS, accept any cert (best for self-signed Supabase) — DEFAULT
-  //   'verify'   → TLS with full cert verification
-  //   'object'   → custom { rejectUnauthorized: false } — legacy behavior
-  const sslMode = (readEnv('DB_SSL_MODE', 'require') ?? 'require').toLowerCase();
-  let sslConfig: any;
-  if (sslMode === 'disable' || connectionString.includes('sslmode=disable')) {
-    sslConfig = false;
-  } else if (sslMode === 'verify' || rejectUnauthorized) {
-    sslConfig = true;
-  } else if (sslMode === 'object') {
-    sslConfig = { rejectUnauthorized: false };
-  } else {
-    sslConfig = 'require';
-  }
-
-  _client = postgres(connectionString, {
-    max: maxPool,
-    // Supabase pooler runs in transaction mode by default — prepared statements
-    // don't survive across transactions, so disable them.
-    prepare: false,
-    ssl: sslConfig,
-    onnotice: () => {}, // suppress NOTICE-level chatter
+  _serviceClient = createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    db: { schema: 'public' },
+    global: {
+      headers: {
+        'x-application-name': 'printyx-edge',
+      },
+    },
   });
 
-  _db = drizzle(_client);
-  return _db;
+  return _serviceClient;
 }
 
 /**
- * Tear down the pool. Mainly useful in tests; edge function instances are ephemeral
- * so you rarely need this in production.
+ * User-scoped Supabase client. RLS policies apply.
+ *
+ * Passes the user's JWT via Authorization header on every request, so
+ * PostgREST evaluates policies with the correct `auth.jwt()` claims.
+ *
+ * NOT cached — each call creates a new client bound to that JWT.
+ *
+ * Use this when you explicitly want RLS enforcement at the DB layer
+ * (e.g. public-facing endpoints where app code might have bugs).
  */
-export async function closeDb(): Promise<void> {
-  if (_client) {
-    await _client.end({ timeout: 5 });
-    _client = null;
-    _db = null;
-  }
+export function getUserDb(jwt: string): SupabaseClient {
+  const url = readEnv('SUPABASE_URL');
+  const anonKey = readEnv('SUPABASE_ANON_KEY');
+
+  if (!url) throw new Error('SUPABASE_URL env var is required');
+  if (!anonKey) throw new Error('SUPABASE_ANON_KEY env var is required');
+
+  return createClient(url, anonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+      },
+    },
+  });
 }
 
 /**
- * For ad-hoc raw SQL that doesn't fit the Drizzle query builder. Prefer Drizzle
- * query builders when possible for type safety.
+ * Reset the cached service client. For tests only.
  */
-export function getRawClient(): ReturnType<typeof postgres> {
-  if (!_client) getDb();
-  return _client!;
+export function _resetDbClient(): void {
+  _serviceClient = null;
 }
+
+/**
+ * Re-export SupabaseClient type so handlers can type their local vars
+ * without re-importing from esm.sh.
+ */
+export type { SupabaseClient };

@@ -7,6 +7,7 @@ set -e
 TOOL="claude"
 MAX_ITERATIONS=10
 CURRENT_ITERATION=0
+PROGRESS_FILE="progress.txt"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -44,19 +45,19 @@ if [ "$CURRENT_BRANCH" != "$BRANCH_NAME" ]; then
 fi
 
 # Archive previous run if prd.json changed significantly
-if [ -f "progress.txt" ] && [ "$(git diff HEAD -- prd.json | wc -l)" -gt 10 ]; then
+if [ -f "$PROGRESS_FILE" ] && [ "$(git diff HEAD -- prd.json | wc -l)" -gt 10 ]; then
   ARCHIVE_DIR="archive/$(date +%Y-%m-%d)-$BRANCH_NAME"
   mkdir -p "$ARCHIVE_DIR"
-  [ -f "progress.txt" ] && mv progress.txt "$ARCHIVE_DIR/"
+  [ -f "$PROGRESS_FILE" ] && mv "$PROGRESS_FILE" "$ARCHIVE_DIR/"
   [ -f "prd.json.previous" ] && mv prd.json.previous "$ARCHIVE_DIR/"
   echo "📦 Archived previous run to $ARCHIVE_DIR"
 fi
 
 # Initialize progress.txt if it doesn't exist
-if [ ! -f "progress.txt" ]; then
-  echo "Ralph Progress Log - $(date)" > progress.txt
-  echo "Branch: $BRANCH_NAME" >> progress.txt
-  echo "" >> progress.txt
+if [ ! -f "$PROGRESS_FILE" ]; then
+  echo "Ralph Progress Log - $(date)" > "$PROGRESS_FILE"
+  echo "Branch: $BRANCH_NAME" >> "$PROGRESS_FILE"
+  echo "" >> "$PROGRESS_FILE"
 fi
 
 # Main loop
@@ -116,9 +117,9 @@ while [ $CURRENT_ITERATION -lt $MAX_ITERATIONS ]; do
   fi
   
   # Add iteration summary to progress.txt
-  echo "" >> progress.txt
-  echo "Iteration $CURRENT_ITERATION ($(date)): Story $NEXT_STORY" >> progress.txt
-  echo "Status: $([ "$STORY_COMPLETE" = "true" ] && echo "Complete" || echo "Needs Review")" >> progress.txt
+  echo "" >> "$PROGRESS_FILE"
+  echo "Iteration $CURRENT_ITERATION ($(date)): Story $NEXT_STORY" >> "$PROGRESS_FILE"
+  echo "Status: $([ "$STORY_COMPLETE" = "true" ] && echo "Complete" || echo "Needs Review")" >> "$PROGRESS_FILE"
   
   # Short pause between iterations
   sleep 2
