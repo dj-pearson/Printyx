@@ -99,10 +99,17 @@ export default defineConfig({
             return 'vendor-date';
           }
 
-          // Charts & visualization (large, lazy loaded on dashboard pages)
-          if (id.includes('recharts') || id.includes('d3-') || id.includes('victory')) {
-            return 'vendor-charts';
-          }
+          // Charts & visualization: intentionally NOT manualChunked.
+          // The previous rule `id.includes('recharts') || id.includes('d3-') ||
+          // id.includes('victory')` failed to include transitive deps like
+          // internmap, victory-vendor, react-smooth, and recharts-scale, which
+          // Rollup then placed in a separate chunk that evaluated out of order.
+          // This produced the runtime TDZ error: "Cannot access 'P' before
+          // initialization" at vendor-charts-*.js:9. Including SOME transitive
+          // deps (e.g. eventemitter3, tiny-invariant) would break non-chart
+          // pages that share those utilities. The safe choice is to let
+          // Vite/Rollup handle chart code placement automatically — recharts
+          // will co-locate into the lazy-loaded dashboard chunks that use it.
 
           // Animation library
           if (id.includes('framer-motion')) {
