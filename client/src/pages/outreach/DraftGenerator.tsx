@@ -342,9 +342,9 @@ export default function DraftGenerator() {
               </CardHeader>
               <CardContent className="space-y-2">
                 <Select
-                  value={selectedSequenceId}
+                  value={selectedSequenceId || '__adhoc__'}
                   onValueChange={(v) => {
-                    setSelectedSequenceId(v);
+                    setSelectedSequenceId(v === '__adhoc__' ? '' : v);
                     setSelectedStepId('');
                   }}
                 >
@@ -352,7 +352,7 @@ export default function DraftGenerator() {
                     <SelectValue placeholder="Ad-hoc (no sequence)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Ad-hoc (no sequence)</SelectItem>
+                    <SelectItem value="__adhoc__">Ad-hoc (no sequence)</SelectItem>
                     {seqsData?.sequences.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
