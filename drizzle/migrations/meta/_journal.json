@@ -50,6 +50,13 @@
       "when": 1776882764831,
       "tag": "0006_certain_jean_grey",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1776906578136,
+      "tag": "0007_loose_charles_xavier",
+      "breakpoints": true
     }
   ]
 }

@@ -27,6 +27,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { config } from '@/lib/config';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -236,8 +237,13 @@ export function EnhancedNotificationBell() {
     }
   }, [notifications]);
 
-  // WebSocket listener for real-time notification delivery
+  // WebSocket listener for real-time notification delivery.
+  // Skipped in production — Cloudflare Pages doesn't support WS upgrades and
+  // the Express WS server isn't deployed. Polling (30s refetchInterval above)
+  // is the fallback until Phase 6 US-027 swaps to Supabase Realtime.
   useEffect(() => {
+    if (config.isProduction) return;
+
     const userId = user?.id;
     const tenantId = (user as any)?.tenantId;
     if (!userId || !tenantId) return;

@@ -188,6 +188,7 @@ export default async function handler(req: Request) {
         // Log the attempt
         await admin.from('webhook_logs').insert({
           webhook_id: webhookId,
+          tenant_id: tenantId,
           event: 'test',
           payload: testPayload,
           response_status: response.status,
@@ -208,6 +209,7 @@ export default async function handler(req: Request) {
       } catch (error) {
         await admin.from('webhook_logs').insert({
           webhook_id: webhookId,
+          tenant_id: tenantId,
           event: 'test',
           payload: testPayload,
           error_message: error instanceof Error ? error.message : 'Unknown error',
@@ -270,8 +272,13 @@ export default async function handler(req: Request) {
 
     // DELETE /webhooks/:id - Delete webhook
     if (req.method === 'DELETE' && webhookId) {
-      // Delete logs first
-      await admin.from('webhook_logs').delete().eq('webhook_id', webhookId);
+      // Delete logs first — scope by tenant_id defense-in-depth even though
+      // the subsequent webhook DELETE is tenant-scoped.
+      await admin
+        .from('webhook_logs')
+        .delete()
+        .eq('webhook_id', webhookId)
+        .eq('tenant_id', tenantId);
 
       const { error } = await admin
         .from('webhooks')

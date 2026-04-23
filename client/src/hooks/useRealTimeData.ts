@@ -5,6 +5,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { POLLING_INTERVALS, CACHE_TIMES } from '../lib/queryOptimizations';
+import { config } from '../lib/config';
 
 interface UseRealTimeDataOptions {
   enabled?: boolean;
@@ -111,6 +112,10 @@ export function useWebSocketData<T>(
 
   useEffect(() => {
     if (!enabled) return;
+    // Skip WS in production — Cloudflare Pages doesn't support WS upgrades
+    // and the Express WS server isn't deployed. Polling fallback below handles
+    // freshness until Phase 6 US-027 swaps to Supabase Realtime.
+    if (config.isProduction) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const ws = new WebSocket(`${protocol}//${window.location.host}${endpoint}`);
@@ -134,8 +139,9 @@ export function useWebSocketData<T>(
       console.log(`WebSocket disconnected: ${endpoint}`);
     };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+    ws.onerror = () => {
+      // Downgraded from console.error — the prod path is guarded above; dev-time
+      // errors here are usually "server not running", not actionable.
       setWsConnected(false);
     };
 

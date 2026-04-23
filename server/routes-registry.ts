@@ -70,7 +70,7 @@ import {
   registerDealTagRoutes,
   registerOpportunitiesRoutes,
   registerPipelineConfigurationRoutes,
-  setupSalesPipelineRoutes,
+  // setupSalesPipelineRoutes — migrated to supabase/functions/sales-pipeline/
   registerLeadAssignmentRoutes,
   registerLeadMapRoutes,
   registerAutoLeadRoutingRoutes,
@@ -122,7 +122,7 @@ import {
 import {
   registerDashboardsCoreRoutes,
   registerModularDashboardRoutes,
-  registerDashboardWidgetRoutes,
+  // registerDashboardWidgetRoutes — migrated to supabase/functions/dashboard-widgets/
   registerTodayDashboardRoutes,
   registerDashboardLayoutsRoutes,
 } from './domains/dashboard';
@@ -364,7 +364,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerQuickBooksRoutes(app);
 
   // ─── Sales Pipeline ───────────────────────────────────────────────
-  setupSalesPipelineRoutes(app, storage, requireAuth);
+  // setupSalesPipelineRoutes(app, storage, requireAuth) — migrated to supabase/functions/sales-pipeline/
 
   // ─── Equipment ────────────────────────────────────────────────────
   app.use(equipmentLifecycleStateMachineRoutes);
@@ -441,7 +441,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     ['/api/billing', './routes/advanced-billing-routes'],
     ['/api/customer-success', './routes/customer-success-routes'],
     ['/api/apollo', './routes/apollo-routes'],
-    ['/api/outreach', './routes/outreach-routes'],
+    // ['/api/outreach', './routes/outreach-routes'] — migrated to supabase/functions/outreach/
     ['/api/extension', './routes/chrome-extension-routes'],
     ['/api/route-optimization', './routes/route-optimization-routes'],
     ['/api/mileage', './routes/mileage-routes'],
@@ -477,7 +477,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── Dashboard & Onboarding ───────────────────────────────────────
   registerModularDashboardRoutes(app);
-  registerDashboardWidgetRoutes(app);
+  // registerDashboardWidgetRoutes(app) — migrated to supabase/functions/dashboard-widgets/
   registerTodayDashboardRoutes(app);
   registerOnboardingRoutes(app);
 

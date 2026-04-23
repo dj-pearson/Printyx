@@ -8,7 +8,7 @@ export { registerDealDeskRoutes } from '../routes-deal-desk';
 export { registerDealTagRoutes } from '../routes-deal-tags';
 export { registerOpportunitiesRoutes } from '../routes-opportunities';
 export { registerPipelineConfigurationRoutes } from '../routes-pipeline-configuration';
-export { setupSalesPipelineRoutes } from '../routes-sales-pipeline';
+// setupSalesPipelineRoutes — migrated to supabase/functions/sales-pipeline/
 export { registerLeadAssignmentRoutes } from '../routes-lead-assignment';
 export { registerLeadMapRoutes } from '../routes-lead-map';
 export { registerAutoLeadRoutingRoutes } from '../routes-auto-lead-routing';
