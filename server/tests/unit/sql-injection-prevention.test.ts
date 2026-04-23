@@ -73,21 +73,10 @@ describe('SEC-001: SQL Injection Prevention', () => {
       expect(matches).toBeGreaterThan(0);
     });
 
-    it('routes-proposals.ts should not directly interpolate values into INTERVAL', () => {
-      const content = readFile('routes-proposals.ts');
-      // Pattern: INTERVAL '${n} days' (direct interpolation inside sql``)
-      const directIntervalPattern = /INTERVAL\s+'\$\{[^}]+\}\s+days'/g;
-      const matches = countMatches(content, directIntervalPattern);
-      expect(matches).toBe(0);
-    });
-
-    it('routes-proposals.ts should use parameterized INTERVAL multiplication', () => {
-      const content = readFile('routes-proposals.ts');
-      // Should now use: INTERVAL '1 day' * ${n}
-      const safeIntervalPattern = /INTERVAL\s+'1 day'\s*\*\s*\$\{/g;
-      const matches = countMatches(content, safeIntervalPattern);
-      expect(matches).toBeGreaterThan(0);
-    });
+    // NOTE: The routes-proposals.ts INTERVAL tests were removed when the file
+    // migrated to supabase/functions/proposals/. Edge version uses explicit
+    // date arithmetic (`new Date(Date.now() - n * 86400000).toISOString()`)
+    // and parameterized supabase-js filters — no raw SQL INTERVAL interpolation.
   });
 
   describe('Static audit scanner exists and is functional', () => {
