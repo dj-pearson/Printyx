@@ -21,30 +21,11 @@ function countMatches(content: string, pattern: RegExp): number {
 }
 
 describe('SEC-001: SQL Injection Prevention', () => {
-  describe('CRITICAL: routes-sales-pipeline.ts - No .replace() for SQL parameters', () => {
-    const content = readFile('routes-sales-pipeline.ts');
-
-    it('should not use .replace() to substitute SQL $N placeholders with values', () => {
-      // Pattern: .replace('$1', `'${someVar}'`)
-      const replacePattern = /\.replace\s*\(\s*['"]\$\d+['"]\s*,\s*`'?\$\{/g;
-      const matches = countMatches(content, replacePattern);
-      expect(matches).toBe(0);
-    });
-
-    it('should not use regex .replace() to substitute all SQL placeholders at once', () => {
-      // Pattern: .replace(/\$(\d+)/g, ...)
-      const regexReplacePattern = /\.replace\s*\(\s*\/\\\$\(\\d\+\)\/g/g;
-      const matches = countMatches(content, regexReplacePattern);
-      expect(matches).toBe(0);
-    });
-
-    it('should use parameterized queries with sql.raw(query, params)', () => {
-      // Verify that sql.raw is called with a second array parameter
-      const parameterizedPattern = /sql\.raw\s*\(\s*\w+\s*,\s*\[/g;
-      const matches = countMatches(content, parameterizedPattern);
-      expect(matches).toBeGreaterThan(0);
-    });
-  });
+  // NOTE: The former `routes-sales-pipeline.ts` describe block was removed when
+  // the file was migrated to supabase/functions/sales-pipeline/ and the complex
+  // SQL moved to parameterized Postgres functions in drizzle/functions/sales-pipeline.sql.
+  // Edge-function SQL runs via .rpc() with typed parameters — no string
+  // interpolation, so the injection surface is gone.
 
   describe('HIGH: Reporting services - No ARRAY construction via sql.raw()', () => {
     const reportingServices = [
@@ -127,18 +108,16 @@ describe('SEC-001: SQL Injection Prevention', () => {
   describe('General SQL injection pattern checks across codebase', () => {
     it('should not have any .replace() patterns for SQL parameter substitution in server/', () => {
       // Scan key route files for the dangerous replace pattern
-      const routeFiles = fs.readdirSync(SERVER_DIR).filter(
-        (f) => f.startsWith('routes-') && f.endsWith('.ts'),
-      );
+      const routeFiles = fs
+        .readdirSync(SERVER_DIR)
+        .filter((f) => f.startsWith('routes-') && f.endsWith('.ts'));
 
       for (const file of routeFiles) {
         const content = readFile(file);
         const dangerousReplace = /\.replace\s*\(\s*['"]\$\d+['"]\s*,\s*`'?\$\{/g;
         const matches = countMatches(content, dangerousReplace);
         if (matches > 0) {
-          throw new Error(
-            `${file} contains ${matches} dangerous .replace() SQL substitution(s)`,
-          );
+          throw new Error(`${file} contains ${matches} dangerous .replace() SQL substitution(s)`);
         }
       }
     });

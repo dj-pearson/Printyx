@@ -305,6 +305,7 @@ export default async function handler(req: Request) {
         .from('integration_sync_logs')
         .insert({
           integration_id: integration.id,
+          tenant_id: tenantId,
           sync_type: body.syncType || body.sync_type || 'pull',
           entity_type: entityType,
           status: 'in_progress',

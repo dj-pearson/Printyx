@@ -1,8 +1,11 @@
-# Cloudflare Pages SPA redirects
-
-# NOTE: Cloudflare Pages _redirects proxy doesn't support POST requests to external URLs
-# Use VITE_API_BASE_URL environment variable instead and configure CORS on the backend
-
-# All routes should be handled by React Router (wouter)
-/* /index.html 200
-
+# Cloudflare Pages _redirects
+#
+# Intentionally empty. Cloudflare Pages auto-serves `index.html` on any path
+# that doesn't match a static file when `index.html` exists at the build output
+# root, so the previous `/* /index.html 200` rule was redundant and ignored.
+#
+# API calls go to `functions.printyx.net` via VITE_API_BASE_URL (see client/src/lib/config.ts)
+# — they don't need rewrite rules here.
+#
+# Add explicit rules below ONLY if you need to override the defaults (e.g.,
+# permanent redirects for deprecated URLs). Rules are evaluated top-to-bottom.

@@ -96,7 +96,9 @@
       "Bash(PGPASSWORD=\"Ta881v34EPbKK92E2F0oZpc4Els39giz\" \"/c/Program Files/PostgreSQL/18/bin/psql\":*)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=6144\" npx tsc --noEmit --project tsconfig.json shared/outreach-schema.ts server/services/outreach/specialty-knowledge-packs.ts server/services/outreach/outreach-ai-service.ts server/routes/outreach-routes.ts)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=6144\" npx tsc --noEmit)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(deno --version)",
+      "Bash(awk -F'\\(' '{print $1}')"
     ],
     "deny": [],
     "ask": []

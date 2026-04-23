@@ -17,6 +17,33 @@ import {
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
+// Re-export platform integrations + webhook schemas
+export {
+  platformIntegrations,
+  integrationWebhooks,
+  integrationSyncLogs,
+  webhooks,
+  webhookLogs,
+  insertPlatformIntegrationSchema,
+  insertIntegrationWebhookSchema,
+  insertIntegrationSyncLogSchema,
+  insertWebhookSchema,
+  insertWebhookLogSchema,
+} from './platform-integrations-schema';
+
+export type {
+  PlatformIntegration,
+  NewPlatformIntegration,
+  IntegrationWebhook,
+  NewIntegrationWebhook,
+  IntegrationSyncLog,
+  NewIntegrationSyncLog,
+  Webhook,
+  NewWebhook,
+  WebhookLog,
+  NewWebhookLog,
+} from './platform-integrations-schema';
+
 // Re-export equipment schemas
 export {
   warehouseOperations,
@@ -127,10 +154,7 @@ export {
   bulkInsertDisposableEmailDomainsSchema,
 } from './disposable-email-schema';
 
-export type {
-  DisposableEmailDomain,
-  InsertDisposableEmailDomain,
-} from './disposable-email-schema';
+export type { DisposableEmailDomain, InsertDisposableEmailDomain } from './disposable-email-schema';
 
 // Re-export deal desk schemas
 export {
