@@ -16,7 +16,6 @@
  * analytics endpoints.
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { z } from 'https://esm.sh/zod@3.22.4';
 import { handleCors } from '../_shared/cors.ts';
 import { requireAuth, AuthError } from '../_shared/auth.ts';
@@ -71,7 +70,7 @@ function stripPrefix(path: string): string {
   return path.replace(/^\/+/, '/').replace(/^\/sales-pipeline/, '') || '/';
 }
 
-serve(async (req) => {
+export default async function handler(req: Request) {
   const corsResult = handleCors(req);
   if (corsResult) return corsResult;
 
@@ -392,4 +391,4 @@ serve(async (req) => {
   } finally {
     log.info({ requestId, path, method, durationMs: Date.now() - startedAt }, 'request_complete');
   }
-});
+}

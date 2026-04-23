@@ -40,7 +40,6 @@
  *     GET    /proposals/:id/export/manager-pdf    — includes cost + margin; manager-only
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { handleCors } from '../_shared/cors.ts';
 import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
@@ -339,7 +338,7 @@ function buildProposalUpdate(body: Record<string, unknown>): Record<string, unkn
   return out;
 }
 
-serve(async (req) => {
+export default async function handler(req: Request) {
   const corsResult = handleCors(req);
   if (corsResult) return corsResult;
 
@@ -1232,4 +1231,4 @@ serve(async (req) => {
   } finally {
     log.info({ requestId, path, method, durationMs: Date.now() - startedAt }, 'request_complete');
   }
-});
+}

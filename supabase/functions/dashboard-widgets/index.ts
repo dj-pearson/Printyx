@@ -14,7 +14,6 @@
  * sources from the authenticated JWT — never from the request body or query.
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { handleCors } from '../_shared/cors.ts';
 import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
@@ -29,7 +28,7 @@ function stripPrefix(path: string): string {
   return path.replace(/^\/+/, '/').replace(/^\/dashboard/, '') || '/';
 }
 
-serve(async (req) => {
+export default async function handler(req: Request) {
   const corsResult = handleCors(req);
   if (corsResult) return corsResult;
 
@@ -203,4 +202,4 @@ serve(async (req) => {
   } finally {
     log.info({ requestId, path, method, durationMs: Date.now() - startedAt }, 'request_complete');
   }
-});
+}
