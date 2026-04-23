@@ -27,7 +27,6 @@
  *   \i drizzle/rls/lead-assignment.sql
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { handleCors } from '../_shared/cors.ts';
 import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
@@ -73,7 +72,7 @@ function stripKnownPrefix(path: string): { prefix: string; handler: string; rest
   return null;
 }
 
-serve(async (req) => {
+export default async function handler(req: Request) {
   const cors = handleCors(req);
   if (cors) return cors;
 
@@ -161,4 +160,4 @@ serve(async (req) => {
       'request_complete',
     );
   }
-});
+}
