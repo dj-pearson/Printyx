@@ -35,16 +35,9 @@
  *     GET    /proposals/:id/analytics
  *     POST   /proposals/:id/comments
  *
- *   PDF export (2) — STUBBED:
- *     GET    /proposals/:id/export/pdf            — 501 until pdf-lib port (Phase 4 leases pattern)
- *     GET    /proposals/:id/export/manager-pdf    — same
- *
- * Deferred to follow-ups:
- *   - upsertDealForProposal / createContractFromProposal (CRM sync on status='sent'/'accepted').
- *     The Express version runs these best-effort after status PATCH; edge version
- *     logs the intent but doesn't execute — tracked as its own follow-up issue.
- *   - PDF generation — requires the `pdf-lib` via esm.sh pattern from the
- *     Phase 4 leases PRD. Separate follow-up.
+ *   PDF export (2):
+ *     GET    /proposals/:id/export/pdf            — consumer-facing (_pdf.ts)
+ *     GET    /proposals/:id/export/manager-pdf    — includes cost + margin; manager-only
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -53,6 +46,7 @@ import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
+import { renderProposalPDF } from './_pdf.ts';
 
 const log = createLogger('proposals');
 
@@ -125,6 +119,188 @@ async function recalculateProposalTotals(
     })
     .eq('id', proposalId)
     .eq('tenant_id', tenantId);
+}
+
+// ─── Deal / Contract sync (ported from deleted routes-proposals.ts) ────────────
+//
+// Fires on PATCH /proposals/:id/status when status='sent' or 'accepted'.
+// Best-effort: the caller swallows thrown errors so a sync failure never blocks
+// the status update.
+
+async function getStageIdByName(
+  db: SB,
+  tenantId: string,
+  stageName: string,
+): Promise<string | null> {
+  const { data } = await db
+    .from('deal_stages')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('name', stageName)
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+async function getFirstStageId(db: SB, tenantId: string): Promise<string | null> {
+  const { data } = await db
+    .from('deal_stages')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .order('sort_order', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+async function getWonStageId(db: SB, tenantId: string): Promise<string | null> {
+  const { data } = await db
+    .from('deal_stages')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('is_won_stage', true)
+    .limit(1)
+    .maybeSingle();
+  if (data?.id) return data.id;
+  const byName = await getStageIdByName(db, tenantId, 'Closed Won');
+  if (byName) return byName;
+  return await getFirstStageId(db, tenantId);
+}
+
+async function getProposalSentStageId(db: SB, tenantId: string): Promise<string | null> {
+  // "Presentation Scheduled" is a safe mid-pipeline fallback.
+  for (const name of ['Contract Sent', 'Proposal Sent', 'Presentation Scheduled']) {
+    const id = await getStageIdByName(db, tenantId, name);
+    if (id) return id;
+  }
+  return await getFirstStageId(db, tenantId);
+}
+
+async function upsertDealForProposal(
+  db: SB,
+  proposal: any,
+  userId: string,
+  tenantId: string,
+  options?: { forceWon?: boolean },
+): Promise<string | null> {
+  const { data: customer } = await db
+    .from('business_records')
+    .select('id, company_name')
+    .eq('id', proposal.business_record_id)
+    .maybeSingle();
+
+  const title = `${proposal.title} (${proposal.proposal_number})`;
+
+  const { data: existing } = await db
+    .from('deals')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('title', title)
+    .limit(1)
+    .maybeSingle();
+
+  const stageId = options?.forceWon
+    ? await getWonStageId(db, tenantId)
+    : await getProposalSentStageId(db, tenantId);
+
+  if (!stageId) {
+    // No stages configured → can't satisfy the NOT NULL constraint. Abort
+    // quietly (matches deleted Express behavior).
+    return existing?.id ?? null;
+  }
+
+  const numericTotal =
+    proposal.total_amount !== null && proposal.total_amount !== undefined
+      ? Number(proposal.total_amount)
+      : null;
+  const amount = numericTotal !== null ? String(numericTotal) : null;
+
+  if (existing?.id) {
+    await db
+      .from('deals')
+      .update({
+        stage_id: stageId,
+        amount,
+        probability: options?.forceWon ? 100 : 70,
+        status: options?.forceWon ? 'won' : 'open',
+        actual_close_date: options?.forceWon ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+      .eq('tenant_id', tenantId);
+    return existing.id;
+  }
+
+  const { data: created } = await db
+    .from('deals')
+    .insert({
+      tenant_id: tenantId,
+      title,
+      description: proposal.executive_summary ?? null,
+      amount,
+      owner_id: userId,
+      customer_id: proposal.business_record_id ?? null,
+      company_name: customer?.company_name ?? null,
+      stage_id: stageId,
+      probability: options?.forceWon ? 100 : 70,
+      expected_close_date: proposal.valid_until ?? null,
+      status: options?.forceWon ? 'won' : 'open',
+      created_by_id: userId,
+    })
+    .select('id')
+    .maybeSingle();
+
+  return created?.id ?? null;
+}
+
+async function generateContractNumber(db: SB, tenantId: string): Promise<string> {
+  const year = new Date().getFullYear();
+  const prefix = `CT-${year}-`;
+  const { data } = await db
+    .from('contracts')
+    .select('contract_number')
+    .eq('tenant_id', tenantId)
+    .like('contract_number', `${prefix}%`)
+    .order('contract_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let next = 1;
+  if (data?.contract_number) {
+    const n = parseInt(String(data.contract_number).replace(prefix, ''), 10);
+    if (!isNaN(n)) next = n + 1;
+  }
+  return `${prefix}${String(next).padStart(4, '0')}`;
+}
+
+async function createContractFromProposal(
+  db: SB,
+  proposal: any,
+  tenantId: string,
+): Promise<string | null> {
+  // Deleted Express code wrote fields (contract_type, auto_renewal,
+  // billing_frequency, assigned_salesperson_id, notes) that don't exist in the
+  // actual contracts table (verified against migration 0000). We only insert
+  // the columns that exist.
+  const contractNumber = await generateContractNumber(db, tenantId);
+  const startDate = new Date();
+  const endDate = new Date();
+  endDate.setMonth(endDate.getMonth() + 36); // default 36-month term
+
+  const { data: created } = await db
+    .from('contracts')
+    .insert({
+      tenant_id: tenantId,
+      customer_id: proposal.business_record_id,
+      contract_number: contractNumber,
+      start_date: startDate.toISOString(),
+      end_date: endDate.toISOString(),
+      status: 'active',
+    })
+    .select('id')
+    .maybeSingle();
+
+  return created?.id ?? null;
 }
 
 // Field map for PATCH/PUT proposal update — matches Express
@@ -705,15 +881,28 @@ serve(async (req) => {
         return errorResponse(404, 'Proposal not found', req, { code: 'NOT_FOUND', requestId });
       }
 
-      // CRM/Contract sync (deferred): Express calls upsertDealForProposal and
-      // createContractFromProposal on status='sent'/'accepted'. Those depend
-      // on 4+ tables and business logic worth its own port. Flagged for
-      // follow-up — mirrors the check-approval stub pattern from deal-desk.
-      if (status === 'sent' || status === 'accepted') {
-        log.info(
-          { requestId, proposalId: id, status },
-          'CRM/contract sync skipped — follow-up task',
-        );
+      // Sales Pipeline + Contracts sync — best-effort, same semantics as the
+      // deleted Express routes-proposals.ts: errors here do NOT fail the
+      // status update. See upsertDealForProposal / createContractFromProposal
+      // below.
+      if (status === 'sent') {
+        try {
+          await upsertDealForProposal(db, proposal, ctx.userId, ctx.tenantId);
+        } catch (syncError) {
+          log.warn({ requestId, err: syncError }, 'Deal upsert failed (status=sent)');
+        }
+      }
+      if (status === 'accepted') {
+        try {
+          await upsertDealForProposal(db, proposal, ctx.userId, ctx.tenantId, { forceWon: true });
+        } catch (syncError) {
+          log.warn({ requestId, err: syncError }, 'Deal upsert failed (status=accepted)');
+        }
+        try {
+          await createContractFromProposal(db, proposal, ctx.tenantId);
+        } catch (syncError) {
+          log.warn({ requestId, err: syncError }, 'Contract create failed (status=accepted)');
+        }
       }
 
       // Best-effort analytics event
@@ -920,19 +1109,105 @@ serve(async (req) => {
     }
 
     // =========================================================================
-    // PDF export — STUBBED
+    // PDF export (pdf-lib via esm.sh — see _pdf.ts)
     // =========================================================================
 
     const pdfMatch = path.match(/^\/([^/]+)\/export\/(pdf|manager-pdf)$/);
     if (pdfMatch && method === 'GET') {
-      return errorResponse(501, 'PDF export is not yet implemented on the edge function.', req, {
-        code: 'NOT_IMPLEMENTED',
-        details: {
-          reason:
-            'Express used puppeteer + handlebars (Node-only). Edge port requires the pdf-lib via esm.sh pattern from Phase 4 leases PRD.',
-          followUp: 'Tracked as a post-migration task',
+      const id = pdfMatch[1];
+      const isManager = pdfMatch[2] === 'manager-pdf';
+
+      // Manager-PDF requires manager-level access. Mirror the Express role
+      // check: default-allow unless the user's role matches a sales-only
+      // pattern.
+      if (isManager) {
+        const rawRole = String(
+          (ctx.supabaseUser as any)?.app_metadata?.role ??
+            (ctx.supabaseUser as any)?.user_metadata?.role ??
+            '',
+        ).toLowerCase();
+        const salesOnlyRoles = ['sales_rep', 'salesperson', 'sales'];
+        const isSalesOnly = salesOnlyRoles.some((r) => rawRole === r || rawRole.endsWith(r));
+        if (isSalesOnly) {
+          return errorResponse(403, 'Manager-level access required', req, {
+            code: 'FORBIDDEN',
+            requestId,
+          });
+        }
+      }
+
+      const { data: proposal, error: pErr } = await db
+        .from('proposals')
+        .select('*')
+        .eq('id', id)
+        .eq('tenant_id', ctx.tenantId)
+        .maybeSingle();
+      if (pErr) {
+        return errorResponse(500, 'Failed to load proposal', req, {
+          code: 'DB_ERROR',
+          details: pErr,
+          requestId,
+        });
+      }
+      if (!proposal) {
+        return errorResponse(404, 'Proposal not found', req, { code: 'NOT_FOUND', requestId });
+      }
+
+      const { data: lineItems } = await db
+        .from('proposal_line_items')
+        .select('*')
+        .eq('proposal_id', id)
+        .eq('tenant_id', ctx.tenantId)
+        .order('line_number', { ascending: true });
+
+      let company: any = null;
+      if (proposal.business_record_id) {
+        const r = await db
+          .from('business_records')
+          .select('company_name, email, phone, first_name, last_name')
+          .eq('id', proposal.business_record_id)
+          .eq('tenant_id', ctx.tenantId)
+          .maybeSingle();
+        company = r.data;
+      }
+
+      let contact: any = null;
+      if (proposal.contact_id) {
+        const r = await db
+          .from('company_contacts')
+          .select('first_name, last_name')
+          .eq('id', proposal.contact_id)
+          .eq('tenant_id', ctx.tenantId)
+          .maybeSingle();
+        contact = r.data;
+      }
+
+      let pdfBytes: Uint8Array;
+      try {
+        pdfBytes = await renderProposalPDF({
+          proposal,
+          lineItems: lineItems ?? [],
+          company,
+          contact,
+          isManager,
+        });
+      } catch (renderErr) {
+        log.error({ requestId, err: String(renderErr) }, 'pdf_render_failed');
+        return errorResponse(500, 'Failed to render PDF', req, {
+          code: 'PDF_RENDER_ERROR',
+          requestId,
+        });
+      }
+
+      const filename = `Quote-${proposal.proposal_number}${isManager ? '-manager' : ''}.pdf`;
+      return new Response(pdfBytes, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+          'Content-Length': String(pdfBytes.byteLength),
+          'X-Request-ID': requestId,
         },
-        requestId,
       });
     }
 

@@ -98,7 +98,10 @@
       "Bash(NODE_OPTIONS=\"--max-old-space-size=6144\" npx tsc --noEmit)",
       "Bash(npm run *)",
       "Bash(deno --version)",
-      "Bash(awk -F'\\(' '{print $1}')"
+      "Bash(awk -F'\\(' '{print $1}')",
+      "Bash(deno check *)",
+      "Bash([ -f \"supabase/functions/$d/index.ts\" ])",
+      "Bash(awk '/^router\\\\.\\(get|post|put|delete|patch\\)/,/async \\\\\\(/' server/routes-territory-management.ts)"
     ],
     "deny": [],
     "ask": []
