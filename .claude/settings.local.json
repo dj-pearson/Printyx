@@ -103,7 +103,9 @@
       "Bash([ -f \"supabase/functions/$d/index.ts\" ])",
       "Bash(awk '/^router\\\\.\\(get|post|put|delete|patch\\)/,/async \\\\\\(/' server/routes-territory-management.ts)",
       "Bash(sed -n '1,30p' server/routes/lead-scoring-routes.ts)",
-      "Bash(sed -n '411,436p' server/routes/lead-scoring-routes.ts)"
+      "Bash(sed -n '411,436p' server/routes/lead-scoring-routes.ts)",
+      "Bash(sed -n '20,45p' server/routes/signature-routes.ts)",
+      "Bash(sed -n '80,115p' server/routes/signature-routes.ts)"
     ],
     "deny": [],
     "ask": []
