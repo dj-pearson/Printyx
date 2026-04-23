@@ -18,7 +18,28 @@ DECLARE
   insert_policy text := target_table || '_tenant_insert';
   update_policy text := target_table || '_tenant_update';
   delete_policy text := target_table || '_tenant_delete';
+  tenant_col_type text;
+  jwt_expr text;
 BEGIN
+  -- Introspect tenant_id column type — some tables use varchar/text, others use uuid.
+  -- The JWT value comes out as text, so uuid-typed columns need an explicit cast
+  -- to avoid "operator does not exist: uuid = text" errors at runtime.
+  SELECT data_type INTO tenant_col_type
+    FROM information_schema.columns
+   WHERE table_schema = 'public'
+     AND table_name = target_table
+     AND column_name = 'tenant_id';
+
+  IF tenant_col_type IS NULL THEN
+    RAISE EXCEPTION 'apply_tenant_rls(%): tenant_id column not found', target_table;
+  END IF;
+
+  IF tenant_col_type = 'uuid' THEN
+    jwt_expr := '((auth.jwt() -> ''app_metadata'' ->> ''tenantId'')::uuid)';
+  ELSE
+    jwt_expr := '(auth.jwt() -> ''app_metadata'' ->> ''tenantId'')';
+  END IF;
+
   -- Ensure RLS is on
   EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', target_table);
 
@@ -35,40 +56,31 @@ BEGIN
   EXECUTE format('DROP POLICY IF EXISTS %I ON %I', update_policy, target_table);
   EXECUTE format('DROP POLICY IF EXISTS %I ON %I', delete_policy, target_table);
 
-  -- SELECT: can read rows whose tenant_id matches the JWT
+  -- SELECT
   EXECUTE format(
-    'CREATE POLICY %I ON %I FOR SELECT TO authenticated ' ||
-    'USING (tenant_id = (auth.jwt() -> ''app_metadata'' ->> ''tenantId''))',
-    select_policy,
-    target_table
+    'CREATE POLICY %I ON %I FOR SELECT TO authenticated USING (tenant_id = %s)',
+    select_policy, target_table, jwt_expr
   );
 
-  -- INSERT: can insert rows whose tenant_id matches the JWT
+  -- INSERT
   EXECUTE format(
-    'CREATE POLICY %I ON %I FOR INSERT TO authenticated ' ||
-    'WITH CHECK (tenant_id = (auth.jwt() -> ''app_metadata'' ->> ''tenantId''))',
-    insert_policy,
-    target_table
+    'CREATE POLICY %I ON %I FOR INSERT TO authenticated WITH CHECK (tenant_id = %s)',
+    insert_policy, target_table, jwt_expr
   );
 
-  -- UPDATE: both USING and WITH CHECK — prevents re-parenting a row to another tenant
+  -- UPDATE — USING + WITH CHECK prevents re-parenting to another tenant
   EXECUTE format(
-    'CREATE POLICY %I ON %I FOR UPDATE TO authenticated ' ||
-    'USING (tenant_id = (auth.jwt() -> ''app_metadata'' ->> ''tenantId'')) ' ||
-    'WITH CHECK (tenant_id = (auth.jwt() -> ''app_metadata'' ->> ''tenantId''))',
-    update_policy,
-    target_table
+    'CREATE POLICY %I ON %I FOR UPDATE TO authenticated USING (tenant_id = %s) WITH CHECK (tenant_id = %s)',
+    update_policy, target_table, jwt_expr, jwt_expr
   );
 
-  -- DELETE: can delete rows whose tenant_id matches the JWT
+  -- DELETE
   EXECUTE format(
-    'CREATE POLICY %I ON %I FOR DELETE TO authenticated ' ||
-    'USING (tenant_id = (auth.jwt() -> ''app_metadata'' ->> ''tenantId''))',
-    delete_policy,
-    target_table
+    'CREATE POLICY %I ON %I FOR DELETE TO authenticated USING (tenant_id = %s)',
+    delete_policy, target_table, jwt_expr
   );
 
-  RAISE NOTICE 'RLS applied to %', target_table;
+  RAISE NOTICE 'RLS applied to % (tenant_id: %)', target_table, tenant_col_type;
 END;
 $$;
 
