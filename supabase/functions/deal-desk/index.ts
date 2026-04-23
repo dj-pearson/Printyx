@@ -116,6 +116,22 @@ export default async function handler(req: Request) {
       return createCorsResponse(rule, 201, req);
     }
 
+    // DELETE /deal-desk/rules/:id - Delete approval rule
+    if (req.method === 'DELETE' && resource === 'rules' && resourceId && !action) {
+      const { error } = await admin
+        .from('approval_rules')
+        .delete()
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId);
+
+      if (error) {
+        console.error('Error deleting approval rule:', error);
+        return createCorsResponse({ error: 'Failed to delete approval rule' }, 500, req);
+      }
+
+      return createCorsResponse({ success: true, message: 'Approval rule deleted' }, 200, req);
+    }
+
     // PUT /deal-desk/rules/:id - Update approval rule
     if (req.method === 'PUT' && resource === 'rules' && resourceId && !action) {
       const body = await req.json();
@@ -695,6 +711,171 @@ export default async function handler(req: Request) {
         200,
         req,
       );
+    }
+
+    // ==================== My Approvals ====================
+
+    // GET /deal-desk/my-approvals - Requests pending my approval
+    // Ports the JS-filtered version from ApprovalWorkflowService.getPendingApprovalsForUser —
+    // query pending/in_review requests for the tenant, then filter where the
+    // approval_chain JSON contains this user as a pending approver.
+    if (req.method === 'GET' && resource === 'my-approvals' && !resourceId) {
+      const { data: requests, error } = await admin
+        .from('approval_requests')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .in('status', ['pending', 'in_review']);
+
+      if (error) {
+        console.error('Error fetching my-approvals:', error);
+        return createCorsResponse({ error: 'Failed to fetch pending approvals' }, 500, req);
+      }
+
+      const mine = (requests || []).filter((r: Record<string, unknown>) => {
+        const chain = r.approval_chain;
+        if (!Array.isArray(chain)) return false;
+        return chain.some(
+          (m: { approverId?: string; approver_id?: string; status?: string }) =>
+            (m.approverId === user.id || m.approver_id === user.id) && m.status === 'pending',
+        );
+      });
+
+      return createCorsResponse(mine, 200, req);
+    }
+
+    // ==================== Check Approval / SLA (stubs) ====================
+
+    // POST /deal-desk/check-approval - evaluate whether approval is needed
+    // STUB: full port requires ApprovalWorkflowService.checkApprovalRequired
+    // (server/services/approval-workflow-service.ts, 1000+ lines). Tracked as a
+    // follow-up — until then, this returns `required: false` so deal submits
+    // proceed without gating. Tighten when approval engine lands.
+    if (req.method === 'POST' && resource === 'check-approval' && !resourceId) {
+      return createCorsResponse({ required: false, matchedRules: [] }, 200, req);
+    }
+
+    // POST /deal-desk/check-sla - cron-triggered SLA escalation
+    // Moved to pg_cron per Phase 6 US-026 — returns 501 until that job lands.
+    if (req.method === 'POST' && resource === 'check-sla' && !resourceId) {
+      return createCorsResponse(
+        {
+          error: 'SLA escalation moved to pg_cron',
+          message: 'Pending Phase 6 US-026 cron migration — schedule via pg_cron instead',
+        },
+        501,
+        req,
+      );
+    }
+
+    // ==================== Analytics: Discounts ====================
+
+    // GET /deal-desk/analytics/discounts
+    if (req.method === 'GET' && resource === 'analytics' && resourceId === 'discounts') {
+      const period = url.searchParams.get('period');
+      const startDate = url.searchParams.get('startDate') || url.searchParams.get('start_date');
+      const endDate = url.searchParams.get('endDate') || url.searchParams.get('end_date');
+
+      let query = admin
+        .from('discount_analytics')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('period_start', { ascending: false });
+
+      if (period) query = query.eq('period_type', period);
+      if (startDate) query = query.gte('period_start', startDate);
+      if (endDate) query = query.lte('period_end', endDate);
+
+      const { data, error } = await query;
+      if (error) {
+        console.error('Error fetching discount analytics:', error);
+        return createCorsResponse({ error: 'Failed to fetch discount analytics' }, 500, req);
+      }
+      return createCorsResponse(data || [], 200, req);
+    }
+
+    // ==================== Delegations ====================
+
+    // GET /deal-desk/delegations - requests where current user is delegator OR delegate
+    if (req.method === 'GET' && resource === 'delegations' && !resourceId) {
+      const { data, error } = await admin
+        .from('approval_delegations')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .or(`delegator_id.eq.${user.id},delegate_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching delegations:', error);
+        return createCorsResponse({ error: 'Failed to fetch delegations' }, 500, req);
+      }
+      return createCorsResponse(data || [], 200, req);
+    }
+
+    // POST /deal-desk/delegations - create delegation
+    if (req.method === 'POST' && resource === 'delegations' && !resourceId) {
+      const body = await req.json();
+
+      const insertRow = {
+        tenant_id: tenantId,
+        delegator_id: user.id,
+        delegate_id: body.delegateId || body.delegate_id,
+        delegation_type: body.delegationType || body.delegation_type || 'full',
+        approval_rule_ids: body.approvalRuleIds || body.approval_rule_ids || null,
+        max_discount_percentage: body.maxDiscountPercentage ?? body.max_discount_percentage ?? null,
+        max_deal_value: body.maxDealValue ?? body.max_deal_value ?? null,
+        start_date: body.startDate || body.start_date,
+        end_date: body.endDate || body.end_date,
+        reason: body.reason ?? null,
+        is_active: true,
+        created_by: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await admin
+        .from('approval_delegations')
+        .insert(insertRow)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating delegation:', error);
+        return createCorsResponse(
+          { error: 'Failed to create delegation', details: error },
+          500,
+          req,
+        );
+      }
+      return createCorsResponse(data, 201, req);
+    }
+
+    // PATCH /deal-desk/delegations/:id/deactivate
+    if (
+      req.method === 'PATCH' &&
+      resource === 'delegations' &&
+      resourceId &&
+      action === 'deactivate'
+    ) {
+      const { data, error } = await admin
+        .from('approval_delegations')
+        .update({
+          is_active: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId)
+        .eq('delegator_id', user.id) // only the delegator can deactivate
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error deactivating delegation:', error);
+        return createCorsResponse({ error: 'Failed to deactivate delegation' }, 500, req);
+      }
+      if (!data) {
+        return createCorsResponse({ error: 'Delegation not found' }, 404, req);
+      }
+      return createCorsResponse(data, 200, req);
     }
 
     // Method not allowed

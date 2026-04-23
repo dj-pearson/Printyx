@@ -66,10 +66,10 @@ import {
 import {
   registerDealsRoutes,
   registerDealsManagementRoutes,
-  registerDealDeskRoutes,
+  // registerDealDeskRoutes — migrated to supabase/functions/deal-desk/
   registerDealTagRoutes,
   registerOpportunitiesRoutes,
-  registerPipelineConfigurationRoutes,
+  // registerPipelineConfigurationRoutes — migrated to supabase/functions/pipeline-config/
   // setupSalesPipelineRoutes — migrated to supabase/functions/sales-pipeline/
   registerLeadAssignmentRoutes,
   registerLeadMapRoutes,
@@ -380,7 +380,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── Async Route Imports ──────────────────────────────────────────
   const asyncMounts: [string, string][] = [
-    ['/api/proposals', './routes-proposals'],
+    // ['/api/proposals', './routes-proposals'] — migrated to supabase/functions/proposals/
     ['/api/documents', './routes-documents'],
     ['/api/root-admin', './routes-root-admin'],
     ['/api/admin', './routes-admin-workflows'],
@@ -562,8 +562,8 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use(businessRecordsRoutes);
   registerDealsManagementRoutes(app);
   registerOpportunitiesRoutes(app);
-  registerDealDeskRoutes(app);
-  registerPipelineConfigurationRoutes(app);
+  // registerDealDeskRoutes(app) — migrated to supabase/functions/deal-desk/
+  // registerPipelineConfigurationRoutes(app) — migrated to supabase/functions/pipeline-config/
   registerTechnicianManagementRoutes(app);
   registerProductModelsRoutes(app);
   registerProductPricingRoutes(app);
