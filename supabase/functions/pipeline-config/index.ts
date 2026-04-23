@@ -26,12 +26,10 @@
  *     GET    /pipeline-config/analytics/conversion       — rpc
  *     GET    /pipeline-config/analytics/velocity         — rpc
  *
- * Transaction note: supabase-js has no client-side transactions, so multi-step
- * writes (create-template-with-stages, clone, transition, reorder) run as
- * sequential operations. If a step fails mid-sequence the preceding writes
- * stay committed. For true atomicity, wrap the operation in a Postgres
- * function. Flagged as a follow-up — the Express implementation had the same
- * pattern before this port.
+ * Transaction note: multi-step writes (clone, transition, reorder) go
+ * through PL/pgSQL functions in `drizzle/functions/pipeline-config.sql`.
+ * One `.rpc()` call = one transaction. See `pipeline_template_clone`,
+ * `pipeline_deal_transition`, `pipeline_stages_reorder`.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -332,99 +330,35 @@ serve(async (req) => {
         });
       }
 
-      const original = await db
-        .from('pipeline_templates')
-        .select('*')
-        .eq('id', id)
-        .eq('tenant_id', ctx.tenantId)
-        .limit(1)
-        .maybeSingle();
+      const { data, error } = await db.rpc('pipeline_template_clone', {
+        p_tenant_id: ctx.tenantId,
+        p_source_id: id,
+        p_new_name: newName,
+      });
 
-      if (original.error) {
-        return errorResponse(500, 'Failed to load original template', req, {
-          code: 'DB_ERROR',
-          details: original.error,
-          requestId,
-        });
-      }
-      if (!original.data) {
-        return errorResponse(404, 'Pipeline template not found', req, {
-          code: 'NOT_FOUND',
-          requestId,
-        });
-      }
-
-      const originalTpl = original.data as { name: string; pipeline_type: string };
-
-      const clonedTpl = await db
-        .from('pipeline_templates')
-        .insert({
-          tenant_id: ctx.tenantId,
-          name: newName,
-          description: `Cloned from ${originalTpl.name}`,
-          pipeline_type: originalTpl.pipeline_type,
-          is_default: false,
-          is_active: true,
-        })
-        .select()
-        .single();
-
-      if (clonedTpl.error || !clonedTpl.data) {
-        return errorResponse(500, 'Failed to clone template', req, {
-          code: 'DB_ERROR',
-          details: clonedTpl.error,
-          requestId,
-        });
-      }
-
-      const cloned = clonedTpl.data as { id: string };
-      const stages = await db
-        .from('pipeline_stages')
-        .select('*')
-        .eq('pipeline_template_id', id)
-        .order('order', { ascending: true });
-
-      if (stages.error) {
-        return errorResponse(500, 'Cloned template, but failed to load source stages', req, {
-          code: 'PARTIAL_DB_ERROR',
-          details: stages.error,
-          requestId,
-        });
-      }
-
-      const clonedStages = (stages.data ?? []).map((s: Record<string, unknown>) => ({
-        tenant_id: ctx.tenantId,
-        pipeline_template_id: cloned.id,
-        name: s.name,
-        display_name: s.display_name,
-        description: s.description,
-        order: s.order,
-        color: s.color,
-        icon: s.icon,
-        stage_type: s.stage_type,
-        is_final_stage: s.is_final_stage,
-        automation_triggers: s.automation_triggers,
-        required_fields: s.required_fields,
-        sla_enabled: s.sla_enabled,
-        sla_days: s.sla_days,
-        default_probability: s.default_probability,
-        allowed_transitions: s.allowed_transitions,
-      }));
-
-      let clonedStageRows: unknown[] = [];
-      if (clonedStages.length > 0) {
-        const stageInsert = await db.from('pipeline_stages').insert(clonedStages).select();
-        if (stageInsert.error) {
-          return errorResponse(500, 'Cloned template, but failed to clone stages', req, {
-            code: 'PARTIAL_DB_ERROR',
-            details: stageInsert.error,
+      if (error) {
+        if (error.code === 'P0002' || String(error.message ?? '').includes('not found')) {
+          return errorResponse(404, 'Pipeline template not found', req, {
+            code: 'NOT_FOUND',
             requestId,
           });
         }
-        clonedStageRows = stageInsert.data ?? [];
+        return errorResponse(500, 'Failed to clone template', req, {
+          code: 'DB_ERROR',
+          details: error,
+          requestId,
+        });
       }
 
-      return jsonResponse({ ...clonedTpl.data, stages: clonedStageRows }, 201, req, requestId);
+      // Postgres function returns { template, stages } — flatten to match the
+      // old shape ({ ...template, stages }).
+      const result = (data ?? {}) as { template?: Record<string, unknown>; stages?: unknown[] };
+      return jsonResponse(
+        { ...(result.template ?? {}), stages: result.stages ?? [] },
+        201,
+        req,
+        requestId,
+      );
     }
 
     // ─── GET /stages/:templateId ────────────────────────────────────────────
@@ -439,23 +373,23 @@ serve(async (req) => {
         });
       }
 
-      // No transaction support — run sequentially; any failure leaves a
-      // partial reorder. Client should re-run on failure.
-      for (const s of body.stages as Array<{ id: string; order: number }>) {
-        const { error } = await db
-          .from('pipeline_stages')
-          .update({ order: s.order, updated_at: new Date().toISOString() })
-          .eq('id', s.id)
-          .eq('tenant_id', ctx.tenantId);
-        if (error) {
-          return errorResponse(500, 'Reorder failed partway through', req, {
-            code: 'PARTIAL_DB_ERROR',
-            details: { failedStageId: s.id, error },
-            requestId,
-          });
-        }
+      const { data: updated, error } = await db.rpc('pipeline_stages_reorder', {
+        p_tenant_id: ctx.tenantId,
+        p_stages: body.stages,
+      });
+      if (error) {
+        return errorResponse(500, 'Failed to reorder stages', req, {
+          code: 'DB_ERROR',
+          details: error,
+          requestId,
+        });
       }
-      return jsonResponse({ message: 'Stages reordered successfully' }, 200, req, requestId);
+      return jsonResponse(
+        { message: 'Stages reordered successfully', updated: updated ?? 0 },
+        200,
+        req,
+        requestId,
+      );
     }
 
     const stagesList = path.match(/^\/stages\/([^/]+)$/);
@@ -599,139 +533,52 @@ serve(async (req) => {
         });
       }
 
-      const deal = await db
-        .from('deals')
-        .select('id, current_stage_id, created_at, updated_at')
-        .eq('id', dealId)
-        .eq('tenant_id', ctx.tenantId)
-        .limit(1)
-        .maybeSingle();
-
-      if (deal.error) {
-        return errorResponse(500, 'Failed to load deal', req, {
-          code: 'DB_ERROR',
-          details: deal.error,
-          requestId,
-        });
-      }
-      if (!deal.data) {
-        return errorResponse(404, 'Deal not found', req, { code: 'NOT_FOUND', requestId });
-      }
-
-      const fromStageId = (deal.data as { current_stage_id: string | null }).current_stage_id;
-
-      const fromStage = fromStageId
-        ? await db
-            .from('pipeline_stages')
-            .select('id, display_name')
-            .eq('id', fromStageId)
-            .limit(1)
-            .maybeSingle()
-        : { data: null, error: null };
-
-      const toStage = await db
-        .from('pipeline_stages')
-        .select(
-          'id, name, display_name, default_probability, automation_triggers, sla_enabled, sla_days',
-        )
-        .eq('id', toStageId)
-        .limit(1)
-        .maybeSingle();
-
-      if (toStage.error || !toStage.data) {
-        return errorResponse(404, 'Target stage not found', req, {
-          code: 'NOT_FOUND',
-          requestId,
-        });
-      }
-      const to = toStage.data as {
-        name: string;
-        display_name: string;
-        default_probability: number;
-        automation_triggers: unknown;
-        sla_enabled: boolean | null;
-        sla_days: number | null;
-      };
-
-      // Duration since the deal last moved (rough — matches Express)
-      const baseTimeISO =
-        (deal.data as { updated_at?: string; created_at?: string }).updated_at ??
-        (deal.data as { created_at?: string }).created_at ??
-        new Date().toISOString();
-      const durationDays = fromStageId
-        ? Math.floor((Date.now() - new Date(baseTimeISO).getTime()) / 86400000)
-        : 0;
-
-      // 1. Write history
-      const histRow = await db.from('deal_stage_history').insert({
-        tenant_id: ctx.tenantId,
-        deal_id: dealId,
-        from_stage_id: fromStageId,
-        from_stage_name: (fromStage.data as { display_name?: string } | null)?.display_name ?? null,
-        to_stage_id: toStageId,
-        to_stage_name: to.display_name,
-        transitioned_by_id: ctx.userId,
-        transitioned_by_name: ctx.email ?? null,
-        notes,
-        duration_days: durationDays,
+      const { data, error } = await db.rpc('pipeline_deal_transition', {
+        p_tenant_id: ctx.tenantId,
+        p_deal_id: dealId,
+        p_to_stage_id: toStageId,
+        p_changed_by: ctx.userId,
+        p_change_reason: notes,
       });
-      if (histRow.error) {
-        log.warn({ requestId, err: histRow.error }, 'stage history insert failed');
-      }
 
-      // 2. Update deal
-      const dealUpdate: Record<string, unknown> = {
-        current_stage_id: toStageId,
-        stage: to.name,
-        probability: to.default_probability,
-        updated_at: new Date().toISOString(),
-      };
-      if (to.sla_enabled && to.sla_days) {
-        const slaDeadline = new Date(Date.now() + to.sla_days * 86400000).toISOString();
-        dealUpdate.sla_deadline = slaDeadline;
-      }
-      const dealUpd = await db
-        .from('deals')
-        .update(dealUpdate)
-        .eq('id', dealId)
-        .eq('tenant_id', ctx.tenantId);
-
-      if (dealUpd.error) {
-        return errorResponse(500, 'Failed to update deal stage', req, {
+      if (error) {
+        if (error.code === 'P0002' || String(error.message ?? '').includes('not found')) {
+          return errorResponse(404, 'Deal or target stage not found', req, {
+            code: 'NOT_FOUND',
+            details: error,
+            requestId,
+          });
+        }
+        return errorResponse(500, 'Failed to transition deal', req, {
           code: 'DB_ERROR',
-          details: dealUpd.error,
+          details: error,
           requestId,
         });
       }
 
-      // 3. Log automation triggers (on_enter). Actual execution is left as
-      // a follow-up — matches Express TODO.
-      if (Array.isArray(to.automation_triggers)) {
-        for (const trigger of to.automation_triggers as Array<{
-          triggerType?: string;
-          actionType?: string;
-          actionConfig?: unknown;
-          isActive?: boolean;
-        }>) {
-          if (trigger.triggerType === 'on_enter' && trigger.isActive) {
-            const autoLog = await db.from('pipeline_automation_logs').insert({
-              tenant_id: ctx.tenantId,
-              deal_id: dealId,
-              stage_id: toStageId,
-              trigger_type: trigger.triggerType,
-              action_type: trigger.actionType,
-              action_config: trigger.actionConfig,
-              status: 'pending',
-              triggered_by_id: ctx.userId,
-            });
-            if (autoLog.error) {
-              log.warn({ requestId, err: autoLog.error }, 'automation log insert failed');
-            }
-          }
-        }
-      }
+      // Dispatch any automation actions the rpc enqueued. Done *after* the
+      // transaction commits so external side effects (email, tasks) aren't
+      // rolled back if a later step fails. Per-action failures update the
+      // log row's status but never fail the transition response.
+      const automationResult = await executePendingAutomations(db, {
+        tenantId: ctx.tenantId,
+        dealId,
+        stageId: toStageId,
+        actorUserId: ctx.userId,
+        log,
+        requestId,
+      });
 
-      return jsonResponse({ message: 'Deal transitioned successfully' }, 200, req, requestId);
+      return jsonResponse(
+        {
+          message: 'Deal transitioned successfully',
+          ...(data ?? {}),
+          automations: automationResult,
+        },
+        200,
+        req,
+        requestId,
+      );
     }
 
     // ─── GET /deals/:dealId/history ─────────────────────────────────────────
@@ -743,7 +590,7 @@ serve(async (req) => {
         .select('*')
         .eq('deal_id', dealId)
         .eq('tenant_id', ctx.tenantId)
-        .order('transitioned_at', { ascending: false });
+        .order('entered_at', { ascending: false });
 
       if (error) {
         return errorResponse(500, 'Failed to fetch deal history', req, {
@@ -810,3 +657,144 @@ serve(async (req) => {
     log.info({ requestId, path, method, durationMs: Date.now() - startedAt }, 'request_complete');
   }
 });
+
+// ─── Automation executor ──────────────────────────────────────────────────────
+//
+// `pipeline_deal_transition` enqueues rows in `pipeline_automation_logs` with
+// status='pending'. This helper walks those rows and dispatches the action.
+// Supported action types:
+//   - create_task         — insert a row in `tasks`
+//   - update_deal_field   — patch a single allowed field on `deals`
+//
+// Everything else (send_email, send_notification, webhook, etc.) is marked
+// status='not_implemented' with an error_message pointing to the Phase 3/4
+// PRDs where the corresponding transport lives. Never silently dropped.
+//
+// Failures update the log row, they never fail the transition response.
+
+// deno-lint-ignore no-explicit-any
+type DB = any;
+
+interface ExecuteAutomationsInput {
+  tenantId: string;
+  dealId: string;
+  stageId: string;
+  actorUserId: string;
+  // deno-lint-ignore no-explicit-any
+  log: any;
+  requestId: string;
+}
+
+interface AutomationResult {
+  considered: number;
+  executed: number;
+  failed: number;
+  notImplemented: number;
+}
+
+const ALLOWED_DEAL_FIELDS = new Set(['priority', 'status', 'probability', 'owner_id']);
+
+async function executePendingAutomations(
+  db: DB,
+  input: ExecuteAutomationsInput,
+): Promise<AutomationResult> {
+  const result: AutomationResult = { considered: 0, executed: 0, failed: 0, notImplemented: 0 };
+
+  const { data: pending, error: fetchErr } = await db
+    .from('pipeline_automation_logs')
+    .select('id, action_type, action_config')
+    .eq('tenant_id', input.tenantId)
+    .eq('deal_id', input.dealId)
+    .eq('stage_id', input.stageId)
+    .eq('status', 'pending')
+    .order('executed_at', { ascending: false })
+    .limit(50);
+
+  if (fetchErr) {
+    input.log.warn({ requestId: input.requestId, err: fetchErr }, 'automation_fetch_failed');
+    return result;
+  }
+
+  for (const row of pending ?? []) {
+    result.considered++;
+    const actionType = String(row.action_type ?? '').toLowerCase();
+    const cfg = (row.action_config ?? {}) as Record<string, unknown>;
+
+    try {
+      if (actionType === 'create_task') {
+        const title = String(cfg.title ?? `Follow-up: stage changed`);
+        const insertErr = (
+          await db.from('tasks').insert({
+            tenant_id: input.tenantId,
+            title,
+            description: typeof cfg.description === 'string' ? cfg.description : null,
+            status: 'todo',
+            priority: typeof cfg.priority === 'string' ? cfg.priority : 'medium',
+            assigned_to: typeof cfg.assignedTo === 'string' ? cfg.assignedTo : input.actorUserId,
+            due_date:
+              typeof cfg.dueInDays === 'number'
+                ? new Date(Date.now() + cfg.dueInDays * 86400000).toISOString()
+                : null,
+            created_by: input.actorUserId,
+          })
+        ).error;
+        if (insertErr) throw insertErr;
+        await markAutomation(db, row.id, 'executed');
+        result.executed++;
+      } else if (actionType === 'update_deal_field') {
+        const field = String(cfg.field ?? '');
+        if (!ALLOWED_DEAL_FIELDS.has(field)) {
+          await markAutomation(db, row.id, 'failed', `Field "${field}" not in ALLOWED_DEAL_FIELDS`);
+          result.failed++;
+          continue;
+        }
+        const updateErr = (
+          await db
+            .from('deals')
+            .update({ [field]: cfg.value, updated_at: new Date().toISOString() })
+            .eq('id', input.dealId)
+            .eq('tenant_id', input.tenantId)
+        ).error;
+        if (updateErr) throw updateErr;
+        await markAutomation(db, row.id, 'executed');
+        result.executed++;
+      } else {
+        // Transport-heavy action types (email, sms, webhook, notification)
+        // belong with the Phase 3 email-marketing / Phase 4 tasks-collab
+        // infra. Mark so they're visible, not silently dropped.
+        await markAutomation(
+          db,
+          row.id,
+          'not_implemented',
+          `Action type "${actionType}" requires external transport — deferred to Phase 3+`,
+        );
+        result.notImplemented++;
+      }
+    } catch (err) {
+      input.log.warn(
+        { requestId: input.requestId, logId: row.id, actionType, err: String(err) },
+        'automation_execute_failed',
+      );
+      await markAutomation(db, row.id, 'failed', err instanceof Error ? err.message : String(err));
+      result.failed++;
+    }
+  }
+
+  return result;
+}
+
+async function markAutomation(
+  db: DB,
+  id: string,
+  status: 'executed' | 'failed' | 'not_implemented',
+  errorMessage?: string,
+): Promise<void> {
+  await db
+    .from('pipeline_automation_logs')
+    .update({
+      status,
+      executed_at: new Date().toISOString(),
+      error_message: errorMessage ?? null,
+    })
+    .eq('id', id);
+}

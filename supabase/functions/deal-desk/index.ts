@@ -743,26 +743,103 @@ export default async function handler(req: Request) {
       return createCorsResponse(mine, 200, req);
     }
 
-    // ==================== Check Approval / SLA (stubs) ====================
+    // ==================== Check Approval / SLA ====================
 
     // POST /deal-desk/check-approval - evaluate whether approval is needed
-    // STUB: full port requires ApprovalWorkflowService.checkApprovalRequired
-    // (server/services/approval-workflow-service.ts, 1000+ lines). Tracked as a
-    // follow-up — until then, this returns `required: false` so deal submits
-    // proceed without gating. Tighten when approval engine lands.
+    //
+    // Ported from the deleted ApprovalWorkflowService.checkApprovalRequired.
+    // Chain building (buildApprovalChain) is still deferred — that step belongs
+    // in the actual request-creation flow, not in a read-only pre-check.
     if (req.method === 'POST' && resource === 'check-approval' && !resourceId) {
-      return createCorsResponse({ required: false, matchedRules: [] }, 200, req);
-    }
+      const ctx = (await req.json().catch(() => ({}))) as ApprovalCheckContext;
 
-    // POST /deal-desk/check-sla - cron-triggered SLA escalation
-    // Moved to pg_cron per Phase 6 US-026 — returns 501 until that job lands.
-    if (req.method === 'POST' && resource === 'check-sla' && !resourceId) {
+      const { data: rules, error: rulesError } = await admin
+        .from('approval_rules')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .order('priority', { ascending: false })
+        .order('order', { ascending: false });
+
+      if (rulesError) {
+        console.error('Error fetching approval rules:', rulesError);
+        return createCorsResponse({ error: 'Failed to evaluate approval' }, 500, req);
+      }
+
+      const matchedRules = (rules || []).filter((rule) => evaluateApprovalRule(rule, ctx));
+
       return createCorsResponse(
         {
-          error: 'SLA escalation moved to pg_cron',
-          message: 'Pending Phase 6 US-026 cron migration — schedule via pg_cron instead',
+          required: matchedRules.length > 0,
+          matchedRules,
         },
-        501,
+        200,
+        req,
+      );
+    }
+
+    // POST /deal-desk/check-sla - mark any approval_requests whose sla_deadline
+    // has passed as breached. Returns the count of newly-breached rows.
+    //
+    // This is the single-tenant edge-function version of the job; Phase 6
+    // US-026 will add a pg_cron entry that calls this per-tenant on a
+    // schedule. The dispatch wrapper there will pass INTERNAL_CRON_TOKEN for
+    // auth. For now: safe to call ad-hoc from the UI or a manual curl.
+    if (req.method === 'POST' && resource === 'check-sla' && !resourceId) {
+      const nowIso = new Date().toISOString();
+
+      const { data: overdue, error: fetchErr } = await admin
+        .from('approval_requests')
+        .select('id, deal_id, quote_id, current_approval_level, approval_chain')
+        .eq('tenant_id', tenantId)
+        .in('status', ['pending', 'in_review'])
+        .lte('sla_deadline', nowIso)
+        .eq('sla_breached', false)
+        .limit(500);
+
+      if (fetchErr) {
+        console.error('check-sla fetch failed:', fetchErr);
+        return createCorsResponse(
+          { error: 'Failed to scan overdue approvals', details: fetchErr },
+          500,
+          req,
+        );
+      }
+
+      const overdueRows = overdue ?? [];
+      if (overdueRows.length === 0) {
+        return createCorsResponse(
+          { breached: 0, checkedAt: nowIso, message: 'No SLA breaches' },
+          200,
+          req,
+        );
+      }
+
+      // Mark all in one UPDATE — cleaner than per-row loop and atomic.
+      const ids = overdueRows.map((r) => r.id as string);
+      const { error: updErr } = await admin
+        .from('approval_requests')
+        .update({ sla_breached: true, escalated_at: nowIso, updated_at: nowIso })
+        .in('id', ids)
+        .eq('tenant_id', tenantId);
+
+      if (updErr) {
+        console.error('check-sla update failed:', updErr);
+        return createCorsResponse({ error: 'Failed to mark breaches', details: updErr }, 500, req);
+      }
+
+      // Notification dispatch (email, push) is Phase 3+ territory. For now
+      // we return the breach summary so the caller (cron wrapper or UI)
+      // can surface it. When email lands, call the notification service
+      // here with `overdueRows` as input.
+      return createCorsResponse(
+        {
+          breached: ids.length,
+          checkedAt: nowIso,
+          breachedIds: ids,
+          followUp: 'Notification dispatch — Phase 3+ email-marketing / notifications service',
+        },
+        200,
         req,
       );
     }
@@ -887,5 +964,121 @@ export default async function handler(req: Request) {
       500,
       req,
     );
+  }
+}
+
+// ==================== Approval Evaluation Helpers ====================
+// Ported from server/services/approval-workflow-service.ts (deleted).
+
+interface ApprovalCheckContext {
+  dealId?: string;
+  quoteId?: string;
+  discountPercentage?: number;
+  discountAmount?: number;
+  margin?: number;
+  dealValue?: number;
+  totalContractValue?: number;
+  paymentTermsDays?: number;
+  customFields?: Record<string, any>;
+}
+
+interface ApprovalCondition {
+  field: string;
+  operator: string;
+  value: any;
+  logicalOperator?: 'AND' | 'OR';
+}
+
+// Maps approval_rules.threshold_type → which context field to compare.
+const THRESHOLD_FIELD_MAP: Record<string, keyof ApprovalCheckContext> = {
+  discount_percentage: 'discountPercentage',
+  discount_amount: 'discountAmount',
+  margin_below: 'margin',
+  deal_value: 'dealValue',
+  total_contract_value: 'totalContractValue',
+  payment_terms_days: 'paymentTermsDays',
+};
+
+function evaluateApprovalRule(rule: any, ctx: ApprovalCheckContext): boolean {
+  const contextField = THRESHOLD_FIELD_MAP[rule.threshold_type];
+  if (!contextField) return false;
+
+  const contextValue = ctx[contextField] as number | undefined;
+  if (contextValue === undefined || contextValue === null) return false;
+
+  const threshold = Number(rule.threshold_value);
+  if (!Number.isFinite(threshold)) return false;
+
+  if (!compareValues(contextValue, threshold, rule.comparison_operator)) {
+    return false;
+  }
+
+  const conditions = rule.conditions as ApprovalCondition[] | null | undefined;
+  if (Array.isArray(conditions) && conditions.length > 0) {
+    return evaluateConditionList(conditions, ctx);
+  }
+
+  return true;
+}
+
+function compareValues(value: number, threshold: number, operator: string): boolean {
+  switch (operator) {
+    case '>':
+      return value > threshold;
+    case '<':
+      return value < threshold;
+    case '>=':
+      return value >= threshold;
+    case '<=':
+      return value <= threshold;
+    case '==':
+    case '=':
+      return value === threshold;
+    case '!=':
+      return value !== threshold;
+    default:
+      return false;
+  }
+}
+
+function evaluateConditionList(
+  conditions: ApprovalCondition[],
+  ctx: ApprovalCheckContext,
+): boolean {
+  // Mirrors the deleted Express service: fold left with AND/OR as declared on
+  // the *previous* condition. First fold starts in AND mode (identity=true).
+  let result = true;
+  let op: 'AND' | 'OR' = 'AND';
+
+  for (const cond of conditions) {
+    const met = evaluateSingleCondition(cond, ctx);
+    result = op === 'AND' ? result && met : result || met;
+    op = cond.logicalOperator || 'AND';
+  }
+
+  return result;
+}
+
+function evaluateSingleCondition(cond: ApprovalCondition, ctx: ApprovalCheckContext): boolean {
+  const fromCtx = (ctx as any)[cond.field];
+  const fromCustom = ctx.customFields?.[cond.field];
+  const value = fromCtx !== undefined ? fromCtx : fromCustom;
+  if (value === undefined || value === null) return false;
+
+  switch (cond.operator) {
+    case 'equals':
+      return value === cond.value;
+    case 'not_equals':
+      return value !== cond.value;
+    case 'contains':
+      return String(value).includes(String(cond.value));
+    case 'in_list':
+      return Array.isArray(cond.value) && cond.value.includes(value);
+    case 'greater_than':
+      return Number(value) > Number(cond.value);
+    case 'less_than':
+      return Number(value) < Number(cond.value);
+    default:
+      return false;
   }
 }
