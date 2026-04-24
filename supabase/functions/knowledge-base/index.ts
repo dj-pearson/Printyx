@@ -2,6 +2,24 @@
 // Handles knowledge base article and category management
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { handleBookmarks } from './handlers/bookmarks.ts';
+import { handleRatings } from './handlers/ratings.ts';
+import { handleReadingHistory } from './handlers/reading-history.ts';
+import { generateRequestId } from '../_shared/http.ts';
+
+// Tolerant prefix normalizer — matches both `/knowledge-base/foo` and `/foo`
+// so engagement handlers work regardless of whether the router preserves
+// the function prefix. Used only by the engagement dispatch block added in
+// Phase 6 US-025; the rest of this file keeps its original pathParts[1]
+// indexing.
+function engagementPath(pathname: string): string[] {
+  const norm =
+    pathname
+      .replace(/\/+/g, '/')
+      .replace(/^\/knowledge-base(?=\/|$)/, '')
+      .replace(/\/$/, '') || '/';
+  return norm.split('/').filter(Boolean);
+}
 
 // Helper to generate slug from title
 function generateSlug(title: string): string {
@@ -55,6 +73,43 @@ export default async function handler(req: Request) {
     // pathParts: ['knowledge-base', ...rest]
     const resource = pathParts[1]; // Could be 'categories', 'popular', 'search', or article ID
     const subResource = pathParts[2]; // Could be 'rate' for articles or category ID
+
+    // ─── Engagement dispatch (Phase 6 US-025) ────────────────────────────────
+    // Routes /bookmarks, /ratings, /votes, /reading-history to their handlers.
+    // Uses tolerant path resolution (prefix-preserved OR stripped) so it works
+    // under both the current router and a corrected dispatcher. Falls through
+    // to the existing resource/subResource logic below if no match.
+    const engagementParts = engagementPath(url.pathname);
+    const engagementFirst = engagementParts[0];
+    if (
+      engagementFirst === 'bookmarks' ||
+      engagementFirst === 'ratings' ||
+      engagementFirst === 'votes' ||
+      engagementFirst === 'reading-history'
+    ) {
+      const requestId = generateRequestId();
+      const engagementCtx = {
+        tenantId,
+        userId: user.id,
+        db: admin,
+        requestId,
+        pathParts: engagementParts,
+        method: req.method.toUpperCase(),
+        url,
+      };
+
+      let engagementResult: Response | null = null;
+      if (engagementFirst === 'bookmarks') {
+        engagementResult = await handleBookmarks(req, engagementCtx);
+      } else if (engagementFirst === 'ratings' || engagementFirst === 'votes') {
+        engagementResult = await handleRatings(req, engagementCtx);
+      } else if (engagementFirst === 'reading-history') {
+        engagementResult = await handleReadingHistory(req, engagementCtx);
+      }
+
+      if (engagementResult) return engagementResult;
+      return createCorsResponse({ error: 'Engagement endpoint not found' }, 404, req);
+    }
 
     // ==================== CATEGORIES ENDPOINTS ====================
 
