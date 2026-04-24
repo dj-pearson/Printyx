@@ -38,6 +38,7 @@ import { handleDirector } from './handlers/director.ts';
 import { handleWarehouse } from './handlers/warehouse.ts';
 import { handleExecutive } from './handlers/executive.ts';
 import { handleSales } from './handlers/sales.ts';
+import { handleService } from './handlers/service.ts';
 
 const log = createLogger('persona-reports');
 
@@ -63,7 +64,7 @@ const PENDING_PERSONAS: Record<string, { sourceFile: string; endpoints: number }
     sourceFile: 'server/routes/sales-supervisor-reports-api.ts',
     endpoints: 6,
   },
-  service: { sourceFile: 'server/routes/service-reports-api.ts', endpoints: 8 },
+  // service is partially ported (4 of 7 endpoints); handler returns 501 for the rest.
   'service-manager': {
     sourceFile: 'server/routes/service-manager-reports-api.ts',
     endpoints: 6,
@@ -104,6 +105,8 @@ export default async function handler(req: Request) {
       result = await handleExecutive(req, ctx);
     } else if (persona === 'sales') {
       result = await handleSales(req, ctx);
+    } else if (persona === 'service') {
+      result = await handleService(req, ctx);
     } else if (persona && PENDING_PERSONAS[persona]) {
       const info = PENDING_PERSONAS[persona];
       return jsonResponse(
