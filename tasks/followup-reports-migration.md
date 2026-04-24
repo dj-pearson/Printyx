@@ -34,13 +34,26 @@ For every `server/routes/<persona>-reports-api.ts`:
 
 ## Inventory of pending endpoints (67 total)
 
-### Executive — `executive-reports-api.ts` (131 lines, 4 endpoints)
-Level gate: 7 (Executive). Service: `executive-reporting-service.ts` (321 lines).
+### Executive — `executive-reports-api.ts` (131 lines, 3 endpoints) ✅ DONE
+Handler: `supabase/functions/persona-reports/handlers/executive.ts`
+SQL: `drizzle/reports/executive.sql`
 
-- [ ] `GET /executive/financial-overview` — company P&L summary
-- [ ] `GET /executive/growth-metrics` — YoY growth, LTV, CAC
-- [ ] `GET /executive/strategic-initiatives` — initiative tracking
-- [ ] `POST /executive/clear-cache`
+- [x] `GET /executive/dashboard` — level 7+ tenant-scoped financials + KPIs
+- [x] `GET /executive/platform-admin` — level 8 cross-tenant metrics
+- [x] `POST /executive/clear-cache` — stateless no-op
+
+The PRD's 4-endpoint guess (financial-overview / growth-metrics /
+strategic-initiatives / clear-cache) didn't match the Express file — actual
+is 3 (dashboard / platform-admin / clear-cache). `/dashboard` covers the
+financial + strategic metrics in one response; `/platform-admin` is the
+Printyx-staff-only cross-tenant view.
+
+**Data caveat:** the Express service hardcoded many metrics (revenueGrowth,
+grossMargin, NPS, customerChurn, system uptime, feature adoption, MRR/ARR)
+because the underlying historical + telemetry data isn't tracked yet. The
+port preserves these placeholders with TODO comments in the SQL. Real
+values need historical snapshots (for growth/churn) and a monitoring feed
+(for uptime/error rate) — separate follow-ups.
 
 ### Sales — `sales-reports-api.ts` (414 lines, 10 endpoints)
 Level gate: 2+. Service: `sales-reporting-service.ts` (763 lines) — the largest service.
@@ -157,7 +170,7 @@ The scheduled dispatcher is already wired in pg_cron (`scheduled-reports-dispatc
 ## Recommended order
 
 1. ~~**Warehouse**~~ — done.
-2. **Executive** — 4 endpoints, similar shape to director (level-gated company-wide).
+2. ~~**Executive**~~ — done.
 3. **Sales + Service** (the rep-level ones) — 10 + 8 endpoints, largest services. Port together since the query patterns are symmetrical.
 4. **Manager / Supervisor personas** — filter-based variants of the rep queries; can often share PL/pgSQL with a `p_scope` argument.
 5. **Team** — 8 endpoints, 934-line service. Do last; most complex aggregation.

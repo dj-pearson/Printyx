@@ -36,6 +36,7 @@ import { createLogger } from '../_shared/logger.ts';
 
 import { handleDirector } from './handlers/director.ts';
 import { handleWarehouse } from './handlers/warehouse.ts';
+import { handleExecutive } from './handlers/executive.ts';
 
 const log = createLogger('persona-reports');
 
@@ -51,7 +52,7 @@ function stripPrefix(path: string): string {
 // Personas not yet ported — endpoint returns 501 with source-file pointer.
 // Remove entries as each persona's handler lands.
 const PENDING_PERSONAS: Record<string, { sourceFile: string; endpoints: number }> = {
-  executive: { sourceFile: 'server/routes/executive-reports-api.ts', endpoints: 4 },
+  // executive is ported below; intentionally omitted from PENDING_PERSONAS.
   sales: { sourceFile: 'server/routes/sales-reports-api.ts', endpoints: 10 },
   'sales-manager': {
     sourceFile: 'server/routes/sales-manager-reports-api.ts',
@@ -98,6 +99,8 @@ export default async function handler(req: Request) {
       result = await handleDirector(req, ctx);
     } else if (persona === 'warehouse') {
       result = await handleWarehouse(req, ctx);
+    } else if (persona === 'executive') {
+      result = await handleExecutive(req, ctx);
     } else if (persona && PENDING_PERSONAS[persona]) {
       const info = PENDING_PERSONAS[persona];
       return jsonResponse(
