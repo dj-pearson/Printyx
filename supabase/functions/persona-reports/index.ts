@@ -35,6 +35,7 @@ import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.
 import { createLogger } from '../_shared/logger.ts';
 
 import { handleDirector } from './handlers/director.ts';
+import { handleWarehouse } from './handlers/warehouse.ts';
 
 const log = createLogger('persona-reports');
 
@@ -70,7 +71,7 @@ const PENDING_PERSONAS: Record<string, { sourceFile: string; endpoints: number }
     endpoints: 6,
   },
   team: { sourceFile: 'server/routes/team-reports-api.ts', endpoints: 8 },
-  warehouse: { sourceFile: 'server/routes/warehouse-reports-api.ts', endpoints: 3 },
+  // warehouse is ported below; intentionally omitted from PENDING_PERSONAS.
 };
 
 export default async function handler(req: Request) {
@@ -95,6 +96,8 @@ export default async function handler(req: Request) {
     let result: Response | null = null;
     if (persona === 'director') {
       result = await handleDirector(req, ctx);
+    } else if (persona === 'warehouse') {
+      result = await handleWarehouse(req, ctx);
     } else if (persona && PENDING_PERSONAS[persona]) {
       const info = PENDING_PERSONAS[persona];
       return jsonResponse(

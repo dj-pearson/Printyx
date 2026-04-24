@@ -120,12 +120,23 @@ Service: `team-reporting-service.ts` (934 lines) — the largest service.
 - [ ] `GET /team/individual/:userId` — deep-dive on a member
 - [ ] `POST /team/clear-cache`
 
-### Warehouse — `warehouse-reports-api.ts` (100 lines, 3 endpoints)
-Service: `warehouse-reporting-service.ts` (294 lines) — smallest, good next target.
+### Warehouse — `warehouse-reports-api.ts` (100 lines, 2 endpoints) ✅ DONE
+Handler: `supabase/functions/persona-reports/handlers/warehouse.ts`
+SQL: `drizzle/reports/warehouse.sql` (`report_warehouse_team_quick_stats`)
 
-- [ ] `GET /warehouse/inventory-summary`
-- [ ] `GET /warehouse/low-stock-alerts`
-- [ ] `GET /warehouse/shipment-status`
+- [x] `GET /warehouse/team/quick-stats` — FPY + activity + trends from `warehouse_kitting_operations`
+- [x] `POST /warehouse/cache/invalidate` — stateless no-op (edge isolates don't cache)
+
+The PRD's original 3-endpoint guess (inventory-summary, low-stock-alerts,
+shipment-status) wasn't what the Express file actually implemented — it only
+exposes the team quick-stats FPY report and a cache bust. Those other
+endpoints may be a feature gap worth filing separately.
+
+**Hierarchical access:** the Express service used
+`HierarchicalQueryBuilder.getAccessibleUserIds()` to scope by team. The port
+uses a simpler heuristic — level 2 sees only themselves; level 3+ sees all
+users in the tenant. Refine when the full RBAC hierarchy builder gets its
+own port.
 
 ### Generic reporting engine — `reporting-api.ts` (968 lines, 9 endpoints)
 
@@ -145,7 +156,7 @@ The scheduled dispatcher is already wired in pg_cron (`scheduled-reports-dispatc
 
 ## Recommended order
 
-1. **Warehouse** — 3 endpoints, 100-line route, 294-line service. Easiest next port; good second template.
+1. ~~**Warehouse**~~ — done.
 2. **Executive** — 4 endpoints, similar shape to director (level-gated company-wide).
 3. **Sales + Service** (the rep-level ones) — 10 + 8 endpoints, largest services. Port together since the query patterns are symmetrical.
 4. **Manager / Supervisor personas** — filter-based variants of the rep queries; can often share PL/pgSQL with a `p_scope` argument.
