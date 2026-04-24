@@ -1,6 +1,6 @@
 # Follow-up: Reports Migration (Phase 6 US-023)
 
-**Status:** in progress — director persona ported as the template. 9 personas + the generic reporting engine remain.
+**Status:** in progress — director + warehouse + executive + sales (5/9) ported. 5 personas + the generic reporting engine remain.
 
 **Parent PRD:** `tasks/prd-migration-reports.md`
 
@@ -55,18 +55,24 @@ port preserves these placeholders with TODO comments in the SQL. Real
 values need historical snapshots (for growth/churn) and a monitoring feed
 (for uptime/error rate) — separate follow-ups.
 
-### Sales — `sales-reports-api.ts` (414 lines, 10 endpoints)
-Level gate: 2+. Service: `sales-reporting-service.ts` (763 lines) — the largest service.
+### Sales — `sales-reports-api.ts` (414 lines, 9 endpoints) 🟡 PARTIAL
+Handler: `supabase/functions/persona-reports/handlers/sales.ts`
+SQL: `drizzle/reports/sales.sql`
 
-- [ ] `GET /sales/my-pipeline` — rep's own pipeline view
-- [ ] `GET /sales/my-activity` — activity summary
-- [ ] `GET /sales/my-quota-attainment`
-- [ ] `GET /sales/my-deals/by-stage`
-- [ ] `GET /sales/my-deals/closing-this-month`
-- [ ] `GET /sales/my-win-rate`
-- [ ] `GET /sales/my-average-deal-size`
-- [ ] `GET /sales/my-forecast`
-- [ ] `GET /sales/my-ranking` — leaderboard position
+Actual endpoint paths differ from the PRD's guess. Real endpoints:
+
+- [x] `GET /sales/personal/pipeline` — pipeline by stage + conversion rates
+- [x] `GET /sales/personal/activity` — daily/weekly activity rollup
+- [x] `GET /sales/personal/quota` — quota attainment for current/previous/ytd
+- [ ] `GET /sales/personal/commissions` — needs `commission_plans` JOIN; 501
+- [ ] `GET /sales/personal/leaderboard` — needs hierarchical scope builder; 501
+- [x] `GET /sales/team/comparison` — team-member rollup (level 3+)
+- [x] `GET /sales/team/pipeline` — narrower projection of the same query
+- [ ] `GET /sales/team/pipeline-summary` — richer health classification; 501
+- [x] `POST /sales/cache/invalidate` — stateless no-op
+
+**5 of 9 done.** Remaining 4 endpoints return 501 from the handler with a
+source-file pointer.
 - [ ] `GET /sales/my-lead-conversion`
 
 ### Sales Manager — `sales-manager-reports-api.ts` (291 lines, 6 endpoints)
@@ -171,8 +177,9 @@ The scheduled dispatcher is already wired in pg_cron (`scheduled-reports-dispatc
 
 1. ~~**Warehouse**~~ — done.
 2. ~~**Executive**~~ — done.
-3. **Sales + Service** (the rep-level ones) — 10 + 8 endpoints, largest services. Port together since the query patterns are symmetrical.
-4. **Manager / Supervisor personas** — filter-based variants of the rep queries; can often share PL/pgSQL with a `p_scope` argument.
+3. **Sales** — 5/9 done this session. Finish the 4 stubbed (commissions, leaderboard, team/pipeline-summary) when the hierarchical builder lands.
+4. **Service** (the rep-level) — 8 endpoints. Symmetrical to sales — should reuse the pattern cleanly.
+5. **Manager / Supervisor personas** — filter-based variants of the rep queries; can often share PL/pgSQL with a `p_scope` argument.
 5. **Team** — 8 endpoints, 934-line service. Do last; most complex aggregation.
 6. **Generic reporting engine** — separate follow-up session. Unblocks scheduled report delivery.
 
