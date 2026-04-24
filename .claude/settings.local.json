@@ -107,7 +107,9 @@
       "Bash(sed -n '20,45p' server/routes/signature-routes.ts)",
       "Bash(sed -n '80,115p' server/routes/signature-routes.ts)",
       "Bash([ -d \"supabase/functions/$d\" ])",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Read(//tmp/**)",
+      "Bash(xargs -n1 basename)"
     ],
     "deny": [],
     "ask": []
