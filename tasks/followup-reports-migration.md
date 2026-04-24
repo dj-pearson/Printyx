@@ -1,6 +1,6 @@
 # Follow-up: Reports Migration (Phase 6 US-023)
 
-**Status:** in progress — director + warehouse + executive + sales (5/9) ported. 5 personas + the generic reporting engine remain.
+**Status:** in progress — director + warehouse + executive + sales (5/9) + service (4/7) ported. 4 personas + the generic reporting engine remain.
 
 **Parent PRD:** `tasks/prd-migration-reports.md`
 
@@ -95,17 +95,27 @@ Level gate: 3.
 - [ ] `GET /sales-supervisor/squad-leaderboard`
 - [ ] `POST /sales-supervisor/clear-cache`
 
-### Service — `service-reports-api.ts` (341 lines, 8 endpoints)
-Level gate: 2+. Service: `service-reporting-service.ts` (665 lines).
+### Service — `service-reports-api.ts` (341 lines, 7 endpoints) 🟡 PARTIAL
+Handler: `supabase/functions/persona-reports/handlers/service.ts`
+SQL: `drizzle/reports/service.sql`
 
-- [ ] `GET /service/my-tickets`
-- [ ] `GET /service/my-completion-rate`
-- [ ] `GET /service/my-first-time-fix`
-- [ ] `GET /service/my-average-resolution-time`
-- [ ] `GET /service/my-customer-satisfaction`
-- [ ] `GET /service/my-sla-compliance`
-- [ ] `GET /service/my-ticket-volume`
-- [ ] `GET /service/my-upcoming-maintenance`
+Actual endpoint paths:
+
+- [x] `GET /service/personal/calls` — rep's tickets + summary rollup
+- [x] `GET /service/personal/time` — time tracking with activity + day rollups
+- [ ] `GET /service/personal/parts` — parts usage aggregate; 501 pending schema check
+- [ ] `GET /service/personal/calls/:ticketId` — single-call detail with parts + time; 501
+- [x] `GET /service/team/quick-stats` — team FTF + SLA + top tech (L3+)
+- [ ] `GET /service/team/dispatch-queue` — SLA-status ranked queue; 501
+- [x] `POST /service/cache/invalidate` — stateless no-op (L4+)
+
+**4 of 7 done.** The PRD's 8-endpoint guess (my-tickets / my-completion-rate
+/ my-first-time-fix / etc. as separate endpoints) didn't match the Express
+file — real surface is narrower with richer summaries in `/personal/calls`.
+
+Fallback stubs return 501 with source-file pointers. Remaining endpoints
+need `service_ticket_parts` schema confirmation (parts) and the
+hierarchical scope builder (dispatch-queue).
 
 ### Service Manager — `service-manager-reports-api.ts` (292 lines, 6 endpoints)
 Level gate: 4.
@@ -177,8 +187,8 @@ The scheduled dispatcher is already wired in pg_cron (`scheduled-reports-dispatc
 
 1. ~~**Warehouse**~~ — done.
 2. ~~**Executive**~~ — done.
-3. **Sales** — 5/9 done this session. Finish the 4 stubbed (commissions, leaderboard, team/pipeline-summary) when the hierarchical builder lands.
-4. **Service** (the rep-level) — 8 endpoints. Symmetrical to sales — should reuse the pattern cleanly.
+3. **Sales** — 5/9 done. Finish the 4 stubbed (commissions, leaderboard, team/pipeline-summary) when the hierarchical builder lands.
+4. **Service** — 4/7 done. Finish parts / dispatch-queue / single-call detail.
 5. **Manager / Supervisor personas** — filter-based variants of the rep queries; can often share PL/pgSQL with a `p_scope` argument.
 5. **Team** — 8 endpoints, 934-line service. Do last; most complex aggregation.
 6. **Generic reporting engine** — separate follow-up session. Unblocks scheduled report delivery.
