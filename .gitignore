@@ -66,8 +66,8 @@ START_HERE_DEPLOYMENT.md
 .env
 scripts/export-complete-database.js
 report*
-!supabase/functions/reports/
-!supabase/functions/reports/**
+!drizzle/reports/
+!drizzle/reports/**
 Output.json
 .env.tmp
 
