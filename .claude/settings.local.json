@@ -106,7 +106,9 @@
       "Bash(sed -n '411,436p' server/routes/lead-scoring-routes.ts)",
       "Bash(sed -n '20,45p' server/routes/signature-routes.ts)",
       "Bash(sed -n '80,115p' server/routes/signature-routes.ts)",
-      "Bash([ -d \"supabase/functions/$d\" ])"
+      "Bash([ -d \"supabase/functions/$d\" ])",
+      "Bash(xargs basename *)",
+      "Bash(command -v deno)"
     ],
     "deny": [],
     "ask": []
