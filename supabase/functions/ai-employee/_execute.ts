@@ -13,7 +13,7 @@ import { createLogger } from '../_shared/logger.ts';
 
 const log = createLogger('ai-employee-execute');
 
-interface ExecutionResult {
+export interface ExecutionResult {
   success: boolean;
   result: Record<string, unknown>;
   qualityScore: number;
@@ -83,7 +83,7 @@ export async function executeTask(
   }
 }
 
-async function performTaskExecution(task: {
+export async function performTaskExecution(task: {
   task_type: string;
   task_title: string;
   task_description: string | null;

@@ -5,6 +5,7 @@ import { errorResponse, jsonResponse, validateBody } from '../../_shared/http.ts
 import { z } from 'https://esm.sh/zod@3.22.4';
 import type { HandlerCtx } from '../_context.ts';
 import { createLogger } from '../../_shared/logger.ts';
+import { executeWorkflow } from '../_workflow.ts';
 
 const log = createLogger('ai-employee-workflows');
 
@@ -54,20 +55,14 @@ export async function handleWorkflows(req: Request, ctx: HandlerCtx): Promise<Re
       });
     }
 
-    // Kick off processing (fire-and-forget). Step-by-step orchestration is a
-    // longer job; for now we mark completed immediately with a stub result so
-    // the frontend has something to render. The real step executor can be
-    // reintroduced via a pg_cron poller in Phase 6.
     log.info({ executionId: execution.id, workflowId: body.workflowId }, 'workflow_started');
-    await db
-      .from('ai_workflow_executions')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-        final_result: { steps: [], note: 'Workflow execution stub — step runner pending' },
-        steps_completed: 0,
-      })
-      .eq('id', execution.id);
+
+    // Run the step-by-step executor in the background. It updates the
+    // execution row through running → completed|failed as steps run; clients
+    // poll the execution to observe progress.
+    executeWorkflow(db, execution.id, auth.tenantId).catch((err) => {
+      log.error({ executionId: execution.id, err: String(err) }, 'workflow_dispatch_failed');
+    });
 
     return jsonResponse(
       {
