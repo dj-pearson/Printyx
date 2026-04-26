@@ -39,7 +39,11 @@ import { handleDashboards } from './handlers/dashboards.ts';
 import { handleDirector } from './handlers/director.ts';
 import { handleExecutive } from './handlers/executive.ts';
 import { handleSales } from './handlers/sales.ts';
+import { handleReportingEngine } from './handlers/reporting-engine.ts';
+import { handleScopedSales } from './handlers/scoped-sales.ts';
+import { handleScopedService } from './handlers/scoped-service.ts';
 import { handleService } from './handlers/service.ts';
+import { handleTeam } from './handlers/team.ts';
 import { handleWarehouse } from './handlers/warehouse.ts';
 
 const log = createLogger('reports');
@@ -98,14 +102,32 @@ export default async function handler(req: Request) {
         case 'director':
           result = await handleDirector(req, ctx);
           break;
+        case 'engine':
+          result = await handleReportingEngine(req, ctx);
+          break;
         case 'executive':
           result = await handleExecutive(req, ctx);
           break;
         case 'sales':
           result = await handleSales(req, ctx);
           break;
+        case 'sales-manager':
+          result = await handleScopedSales(req, ctx, 'region');
+          break;
+        case 'sales-supervisor':
+          result = await handleScopedSales(req, ctx, 'location');
+          break;
         case 'service':
           result = await handleService(req, ctx);
+          break;
+        case 'service-manager':
+          result = await handleScopedService(req, ctx, 'region');
+          break;
+        case 'service-supervisor':
+          result = await handleScopedService(req, ctx, 'location');
+          break;
+        case 'team':
+          result = await handleTeam(req, ctx);
           break;
         case 'warehouse':
           result = await handleWarehouse(req, ctx);
