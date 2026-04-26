@@ -108,7 +108,9 @@
       "Bash(sed -n '80,115p' server/routes/signature-routes.ts)",
       "Bash([ -d \"supabase/functions/$d\" ])",
       "Bash(xargs basename *)",
-      "Bash(command -v deno)"
+      "Bash(command -v deno)",
+      "Bash(git status *)",
+      "Bash(git check-ignore *)"
     ],
     "deny": [],
     "ask": []
