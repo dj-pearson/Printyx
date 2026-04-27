@@ -68,6 +68,24 @@ scripts/export-complete-database.js
 report*
 !drizzle/reports/
 !drizzle/reports/**
+!supabase/functions/reports/
+!supabase/functions/reports/**
+!supabase/functions/persona-reports/
+!supabase/functions/persona-reports/**
+!supabase/functions/sales-reports/
+!supabase/functions/sales-reports/**
+!supabase/functions/team-reports/
+!supabase/functions/team-reports/**
+!server/routes-reports.ts
+!server/routes-reporting.ts
+!server/routes-reporting-architecture.ts
+!server/routes-reporting-definitions.ts
+!server/routes-scheduled-reports.ts
+!server/routes-custom-reports.ts
+!server/routes/*-reports-api.ts
+!server/routes/reporting-api.ts
+!server/services/*-reporting-service.ts
+!server/services/*-reports-*.ts
 Output.json
 .env.tmp
 
