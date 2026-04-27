@@ -1,7 +1,7 @@
 /**
  * Reports edge function — modular dispatcher.
  *
- * Replaces (in progress):
+ * Replaces:
  *   server/routes/director-reports-api.ts        (4 endpoints)
  *   server/routes/executive-reports-api.ts       (4 endpoints)
  *   server/routes/sales-reports-api.ts           (10 endpoints)
@@ -11,8 +11,11 @@
  *   server/routes/service-manager-reports-api.ts (6 endpoints)
  *   server/routes/service-supervisor-reports-api.ts(6 endpoints)
  *   server/routes/team-reports-api.ts            (8 endpoints)
- *   server/routes/warehouse-reports-api.ts       (2 endpoints) ← ported
+ *   server/routes/warehouse-reports-api.ts       (2 endpoints)
  *   server/routes/reporting-api.ts               (9 endpoints, generic engine)
+ *   server/routes-reports.ts                     (5 endpoints — second tier)
+ *   server/routes-breach-detection.ts            (2 endpoints — breaches)
+ *   server/routes-custom-reports.ts              (7 endpoints — custom builder)
  *
  * URL layout (under /reports):
  *   /reports/<dashboard-type>                — legacy cross-domain dashboards
@@ -20,13 +23,25 @@
  *                                               business-insights, competitive-metrics,
  *                                               territory-performance, revenue-attribution)
  *   /reports/dashboards/<dashboard-type>     — same set, namespaced
- *   /reports/warehouse/team/quick-stats      — warehouse FPY widget
- *   /reports/warehouse/cache/invalidate      — warehouse cache flush
- *
- * Future personas (director / executive / sales / service / team) and the
- * generic definition/execution engine will land as new handlers/<persona>.ts
- * + _queries/<persona>.ts files. The dispatcher pattern is the same: switch
- * on `pathParts[0]` and delegate.
+ *   /reports/<persona>/...                   — director / executive / sales /
+ *                                              sales-manager / sales-supervisor /
+ *                                              service / service-manager /
+ *                                              service-supervisor / team / warehouse
+ *   /reports/engine/...                      — generic report engine CRUD
+ *   /reports/<second-tier>                   — breaches, breach-summary,
+ *                                              customer-health, sales-pipeline,
+ *                                              revenue-recognition,
+ *                                              service-sla-compliance,
+ *                                              technician-utilization
+ *   /reports/<frontend-stub>                 — financial-summary, payment-alerts,
+ *                                              ar-aging, customer-profitability,
+ *                                              cash-flow-forecast, territory-financials,
+ *                                              sales-reps, team-performance,
+ *                                              pipeline-funnel, service-forecasts,
+ *                                              technician-capacity, inventory-forecast,
+ *                                              service-summary, revenue
+ *   /reports/custom/...                      — list / create / preview / get / update /
+ *                                              delete / execute custom user reports
  */
 
 import { handleCors } from '../_shared/cors.ts';
@@ -45,6 +60,9 @@ import { handleScopedService } from './handlers/scoped-service.ts';
 import { handleService } from './handlers/service.ts';
 import { handleTeam } from './handlers/team.ts';
 import { handleWarehouse } from './handlers/warehouse.ts';
+import { handleSecondTier, isSecondTierEndpoint } from './handlers/second-tier.ts';
+import { handleFrontendStubs, isFrontendStubEndpoint } from './handlers/frontend-stubs.ts';
+import { handleCustomReports } from './handlers/custom-reports.ts';
 
 const log = createLogger('reports');
 
@@ -94,6 +112,12 @@ export default async function handler(req: Request) {
         ...ctx,
         pathParts: ['dashboards', ...pathParts],
       });
+    } else if (firstSegment === 'custom') {
+      result = await handleCustomReports(req, ctx);
+    } else if (firstSegment && isSecondTierEndpoint(firstSegment, method)) {
+      result = await handleSecondTier(req, ctx);
+    } else if (firstSegment && isFrontendStubEndpoint(firstSegment, method)) {
+      result = await handleFrontendStubs(req, ctx);
     } else {
       switch (firstSegment) {
         case 'dashboards':
