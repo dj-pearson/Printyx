@@ -102,3 +102,4 @@ EDA_Export_CustomExport_20260219.csv
 docker-compose_coolifyBackup.yml
 .gitignore
 docker-compose_coolifyOLD.yml
+/replit
