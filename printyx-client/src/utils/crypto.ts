@@ -119,14 +119,14 @@ export class CryptoManager {
   }
 
   /**
-   * Securely wipe a string from memory (best effort)
+   * Best-effort wipe of a Buffer holding a secret. JavaScript strings are
+   * immutable, so the previous string-based version of this method was a
+   * no-op — callers that care about clearing secret material must hold it
+   * in a Buffer and pass that Buffer here.
    */
-  static wipeString(str: string): void {
-    if (!str) return;
-    // In JavaScript, we can't truly wipe memory, but we can overwrite
-    for (let i = 0; i < str.length; i++) {
-      str = str.substring(0, i) + '\0' + str.substring(i + 1);
-    }
+  static wipeBuffer(buf: Buffer): void {
+    if (!buf || buf.length === 0) return;
+    buf.fill(0);
   }
 }
 

@@ -3,7 +3,9 @@
 import { Command } from 'commander';
 import * as path from 'path';
 import * as fs from 'fs';
-import { ConfigManager } from './config/config-manager';
+import * as https from 'https';
+import * as os from 'os';
+import { ConfigManager, ClientConfig } from './config/config-manager';
 import { PrintyxAPIClient } from './api/printyx-client';
 import { MetricsScheduler } from './services/scheduler';
 import { initLogger, getLogger } from './utils/logger';
@@ -46,6 +48,8 @@ program
         apiKey: config.api.apiKey,
         tenantId: config.api.tenantId,
         timeout: config.api.timeout,
+        clientVersion: packageJson.version,
+        security: config.api.security,
       });
 
       // Test connection
@@ -218,6 +222,159 @@ program
     console.log('Add these devices to your config.json file to monitor them.');
   });
 
+// Enroll command — exchange a one-time enrollment token for a permanent
+// API key and write a working config.json. This is what the bundled
+// platform installer calls.
+program
+  .command('enroll')
+  .description('Redeem a one-time enrollment token for a permanent API key + config')
+  .requiredOption('-t, --token <token>', 'Enrollment token (et_...)')
+  .requiredOption('-e, --endpoint <url>', 'Printyx HTTPS endpoint (e.g. https://app.printyx.net)')
+  .option('-o, --output <path>', 'Where to write config.json', 'config.json')
+  .option('--bundle <path>', 'Read endpoint+token from a bootstrap-config.json bundle')
+  .option('--client-name <name>', 'Friendly name for this installation', os.hostname())
+  .action(async (options) => {
+    initLogger('info');
+    const logger = getLogger();
+    try {
+      let endpoint = options.endpoint;
+      let token = options.token;
+      if (options.bundle) {
+        const bundle = JSON.parse(fs.readFileSync(options.bundle, 'utf-8'));
+        endpoint = bundle.endpoint || endpoint;
+        token = bundle.enrollmentToken || token;
+      }
+      if (!endpoint?.startsWith('https://')) {
+        throw new Error('Endpoint must be HTTPS.');
+      }
+
+      logger.info(`Enrolling against ${endpoint}`);
+      const result = await postJson(`${endpoint}/api/client-metrics/enroll`, {
+        token,
+        hostname: os.hostname(),
+        clientVersion: packageJson.version,
+      });
+
+      const config: ClientConfig = {
+        client: {
+          id: result.clientId,
+          name: options.clientName || result.clientName || os.hostname(),
+          version: packageJson.version,
+        },
+        api: {
+          endpoint: result.endpoint || endpoint,
+          apiKey: result.apiKey,
+          tenantId: String(result.tenantId),
+          timeout: 30000,
+          security: {
+            rejectUnauthorized: true,
+            minTLSVersion: 'TLSv1.2',
+          },
+        },
+        collection: {
+          pollingInterval: result.configuration?.pollingInterval || 300,
+          discoveryEnabled: result.configuration?.discoveryEnabled ?? true,
+          networkRanges: [],
+          retryAttempts: result.configuration?.retryAttempts || 3,
+          timeout: result.configuration?.timeout || 10000,
+        },
+        devices: [],
+        alerts: {
+          tonerThreshold: result.configuration?.tonerThreshold || 15,
+          paperThreshold: result.configuration?.paperThreshold || 20,
+        },
+        logging: { level: 'info' },
+      };
+
+      const outputPath = path.resolve(options.output);
+      fs.writeFileSync(outputPath, JSON.stringify(config, null, 2), 'utf-8');
+      if (process.platform !== 'win32') {
+        fs.chmodSync(outputPath, 0o600);
+      }
+
+      logger.info(`Enrollment complete. Config written to ${outputPath}`);
+      console.log('');
+      console.log(`  client id   : ${result.clientId}`);
+      console.log(`  tenant id   : ${result.tenantId}`);
+      console.log(`  endpoint    : ${result.endpoint || endpoint}`);
+      console.log('');
+      console.log('Start with: printyx-client start -c ' + outputPath);
+    } catch (error) {
+      logger.error('Enrollment failed', { error: errorMessage(error) });
+      process.exit(1);
+    }
+  });
+
+// Register command — for admins who already have a session/admin token.
+// Calls the platform's POST /api/client-metrics/clients endpoint to
+// register a brand-new client and writes config.json with the freshly
+// issued API key. Most users won't need this — use `enroll` with a token
+// generated in the platform UI instead.
+program
+  .command('register')
+  .description('Register a new client against the platform (admin auth required)')
+  .requiredOption('-e, --endpoint <url>', 'Printyx HTTPS endpoint')
+  .requiredOption('--admin-token <token>', 'Admin session token / Bearer JWT')
+  .requiredOption('--tenant-id <id>', 'Tenant ID')
+  .requiredOption('--client-name <name>', 'Friendly name for this installation')
+  .option('-o, --output <path>', 'Where to write config.json', 'config.json')
+  .option('--location <text>', 'Optional physical location label')
+  .action(async (options) => {
+    initLogger('info');
+    const logger = getLogger();
+    try {
+      if (!options.endpoint.startsWith('https://')) {
+        throw new Error('Endpoint must be HTTPS.');
+      }
+      const body = { clientName: options.clientName, location: options.location };
+      const headers = {
+        Authorization: `Bearer ${options.adminToken}`,
+        'X-Tenant-ID': options.tenantId,
+      };
+      logger.info(`Registering '${options.clientName}' at ${options.endpoint}`);
+      const result = await postJson(
+        `${options.endpoint}/api/client-metrics/clients`,
+        body,
+        headers,
+      );
+      const created = result.client || result;
+
+      const config: ClientConfig = {
+        client: {
+          id: created.clientId,
+          name: created.clientName,
+          version: packageJson.version,
+        },
+        api: {
+          endpoint: options.endpoint,
+          apiKey: created.plainApiKey,
+          tenantId: String(options.tenantId),
+          timeout: 30000,
+          security: { rejectUnauthorized: true, minTLSVersion: 'TLSv1.2' },
+        },
+        collection: {
+          pollingInterval: 300,
+          discoveryEnabled: true,
+          networkRanges: [],
+          retryAttempts: 3,
+          timeout: 10000,
+        },
+        devices: [],
+        alerts: { tonerThreshold: 15, paperThreshold: 20 },
+        logging: { level: 'info' },
+      };
+      const outputPath = path.resolve(options.output);
+      fs.writeFileSync(outputPath, JSON.stringify(config, null, 2), 'utf-8');
+      if (process.platform !== 'win32') {
+        fs.chmodSync(outputPath, 0o600);
+      }
+      logger.info(`Registration complete. Config written to ${outputPath}`);
+    } catch (error) {
+      logger.error('Registration failed', { error: errorMessage(error) });
+      process.exit(1);
+    }
+  });
+
 // Version command
 program
   .command('version')
@@ -225,6 +382,66 @@ program
   .action(() => {
     console.log(`Printyx Monitoring Client v${packageJson.version}`);
   });
+
+// -----------------------------------------------------------------------
+// Helpers used by enroll/register. Kept out of services/ because they
+// are CLI-only HTTPS POST helpers that intentionally don't pull the full
+// PrintyxAPIClient construction path (we don't have an api key yet).
+// -----------------------------------------------------------------------
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+function postJson<T = any>(
+  url: string,
+  body: any,
+  extraHeaders: Record<string, string> = {},
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    if (u.protocol !== 'https:') {
+      return reject(new Error('Refusing to enroll over non-HTTPS endpoint.'));
+    }
+    const payload = Buffer.from(JSON.stringify(body));
+    const req = https.request(
+      {
+        method: 'POST',
+        host: u.hostname,
+        port: u.port || 443,
+        path: u.pathname + u.search,
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': payload.length,
+          'User-Agent': `Printyx-Client/${packageJson.version}`,
+          ...extraHeaders,
+        },
+        // Strict TLS 1.2+ — same posture as the runtime client.
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized: true,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (c) => chunks.push(c));
+        res.on('end', () => {
+          const text = Buffer.concat(chunks).toString('utf-8');
+          if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+            return reject(new Error(`HTTP ${res.statusCode}: ${text || res.statusMessage}`));
+          }
+          try {
+            resolve(JSON.parse(text) as T);
+          } catch (e) {
+            reject(new Error(`Invalid JSON response: ${text.substring(0, 200)}`));
+          }
+        });
+      },
+    );
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
 
 // Parse command line arguments
 program.parse(process.argv);

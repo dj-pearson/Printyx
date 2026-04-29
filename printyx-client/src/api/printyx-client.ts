@@ -10,6 +10,7 @@ export interface PrintyxClientConfig {
   apiKey: string;
   tenantId: string;
   timeout?: number;
+  clientVersion?: string;
   // Security options
   security?: {
     rejectUnauthorized?: boolean; // Reject self-signed certificates (default: true)
@@ -53,10 +54,25 @@ export class PrintyxAPIClient {
   constructor(config: PrintyxClientConfig) {
     this.config = config;
 
-    // Enforce HTTPS
-    if (!config.endpoint.startsWith('https://')) {
+    // Enforce HTTPS — refuse plaintext HTTP outright.
+    let parsedEndpoint: URL;
+    try {
+      parsedEndpoint = new URL(config.endpoint);
+    } catch {
+      throw new Error(`Invalid endpoint URL: ${config.endpoint}`);
+    }
+    if (parsedEndpoint.protocol !== 'https:') {
       throw new Error(
-        'Security Error: Only HTTPS endpoints are allowed. HTTP is not secure for production use.',
+        'Security Error: Only HTTPS endpoints are allowed. HTTP traffic is rejected to prevent ' +
+          'credential leakage and to keep all platform traffic on TCP/443.',
+      );
+    }
+    // Vulnerability scanners on enterprise networks tend to flag traffic on non-443 ports.
+    // We allow it (some self-hosted setups use 8443) but log a warning so the operator notices.
+    const port = parsedEndpoint.port === '' ? 443 : parseInt(parsedEndpoint.port, 10);
+    if (port !== 443) {
+      this.logger.warn(
+        `Endpoint uses non-standard HTTPS port ${port}. Internal vulnerability scanners may flag this.`,
       );
     }
 
@@ -70,7 +86,7 @@ export class PrintyxAPIClient {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${config.apiKey}`,
         'X-Tenant-ID': config.tenantId,
-        'User-Agent': 'Printyx-Client/1.0',
+        'User-Agent': `Printyx-Client/${config.clientVersion || '1.0.0'}`,
       },
       httpsAgent,
     });

@@ -241,6 +241,35 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Mobile Remote Logging (no auth required, must be early) ──────
   app.use('/api/mobile-logs', mobileLogsRoutes);
 
+  // ─── Public Installer Script (no auth — script itself contains no secrets) ──
+  // Serves the printyx-client Windows installer at /install/printyx-client.ps1
+  // so admins can run `irm <base>/install/printyx-client.ps1 | iex`. The
+  // script does nothing useful without an enrollment token, which the admin
+  // generates separately in the platform UI.
+  app.get('/install/printyx-client.ps1', async (req, res) => {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const scriptsDir =
+        process.env.PRINTYX_CLIENT_SCRIPTS_DIR ||
+        path.resolve(process.cwd(), 'printyx-client', 'scripts');
+      const file = path.join(scriptsDir, 'install-windows.ps1');
+      if (!fs.existsSync(file)) {
+        return res
+          .status(503)
+          .type('text/plain')
+          .send(
+            '# Printyx installer script not available. Re-deploy the platform with printyx-client/scripts.',
+          );
+      }
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-cache');
+      fs.createReadStream(file).pipe(res);
+    } catch (e) {
+      res.status(500).type('text/plain').send('# Installer fetch failed.');
+    }
+  });
+
   // ─── Client Error Logging (accepts errors from PageErrorBoundary / SectionErrorBoundary) ──
   app.post('/api/client-errors', (req, res) => {
     const { message, stack, componentStack, page, section, url, timestamp } = req.body || {};

@@ -1,498 +1,126 @@
-import express, { Response } from 'express';
+// Admin endpoints for monitoring clients + enrollment + installer bundle.
+//
+// IMPORTANT: This module USED to expose duplicate /submit, /heartbeat, and
+// /config handlers backed by a different table (`client_registrations`).
+// Those handlers were shadowed by the active implementation in
+// `routes-client-monitoring.ts` and are intentionally not present here.
+// All admin endpoints in this file now operate on `monitoring_clients`,
+// the same table the active /submit handler authenticates against.
+import express, { type Request, type Response } from 'express';
 import { db } from './db';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-client-metrics');
 
 import {
-  clientRegistrations,
-  clientCollectedMetrics,
+  monitoringClients,
   clientActivityLogs,
-  monitoredDevices,
-  tonerAlerts,
-  type ClientCollectedMetric,
-  type NewClientCollectedMetric,
-  type NewClientActivityLog,
-  type NewTonerAlert,
+  clientEnrollmentTokens,
+  type MonitoringClient,
 } from '@shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, gt, isNull, lt } from 'drizzle-orm';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
-// RBAC Integration
-import {
-  enhanceUserContext,
-  requirePermission,
-  PERMISSIONS,
-  type AuthenticatedRequest,
-} from './middleware/rbac-route-helper';
+import { enhanceUserContext } from './middleware/rbac-route-helper';
 import crypto from 'crypto';
+import * as path from 'path';
+import * as fs from 'fs';
+// `archiver` ships its own d.ts in newer versions; fall back to `any` if
+// @types/archiver isn't present in this checkout.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore — types are provided by the runtime package or @types/archiver
+import archiver from 'archiver';
 
-import { getUserId, getTenantId } from './utils/auth-helpers';
 const router = express.Router();
 
-// Apply RBAC context to all client metrics routes
+// All admin endpoints in this file require an authenticated user; tenancy
+// middleware enforces tenant scoping. The actual ingest endpoints
+// (/submit, /heartbeat, /config) live in routes-client-monitoring.ts and
+// authenticate via the per-client API key.
 router.use(enhanceUserContext);
 
-// Types for API requests/responses
-interface DeviceMetricsPayload {
-  serialNumber: string;
-  ipAddress: string;
-  manufacturer?: string;
-  model?: string;
-  deviceName?: string;
-  tonerLevels?: {
-    black?: number;
-    cyan?: number;
-    magenta?: number;
-    yellow?: number;
-  };
-  paperLevels?: {
-    tray1?: number;
-    tray2?: number;
-    tray3?: number;
-    tray4?: number;
-  };
-  meters?: {
-    totalImpressions?: number;
-    bwImpressions?: number;
-    colorImpressions?: number;
-    largeImpressions?: number;
-  };
-  supplyInfo?: {
-    fuserLife?: number;
-    drumLife?: number;
-    transferBeltLife?: number;
-  };
-  deviceStatus: 'online' | 'offline' | 'error' | 'maintenance' | 'warning';
-  errorCodes?: string[];
-  warningCodes?: string[];
-  collectionTimestamp: string;
-  rawData?: any;
+// =====================================================
+// HELPERS
+// =====================================================
+
+const hashApiKey = (key: string) => crypto.createHash('sha256').update(key).digest('hex');
+
+/** Generates a fresh API key + its SHA-256 hash. The plain key is shown once. */
+function newApiKeyPair() {
+  const plain = `pk_${crypto.randomBytes(32).toString('base64url')}`;
+  return { plain, hash: hashApiKey(plain) };
 }
 
-interface SubmitMetricsRequest {
-  clientId: string;
-  clientVersion: string;
-  timestamp: string;
-  devices: DeviceMetricsPayload[];
+/** Build the public-facing client object (never includes the api key hash). */
+function publicClient(c: MonitoringClient) {
+  const { apiKey, ...rest } = c;
+  return rest;
 }
 
-interface SubmitMetricsResponse {
-  message: string;
-  processed: number;
-  errors: number;
-  details: {
-    successful: string[];
-    failed: Array<{ serialNumber: string; error: string }>;
-  };
+/** Map the active /submit endpoint URL given the request, falling back to env. */
+function resolvePlatformBaseUrl(req: Request): string {
+  // Configured base URL wins — useful when the API is behind a proxy that
+  // rewrites Host. Otherwise reflect what the caller used.
+  const configured = process.env.PUBLIC_API_BASE_URL;
+  if (configured) return configured.replace(/\/$/, '');
+  const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
+  const host = (req.headers['x-forwarded-host'] as string) || req.get('host') || 'localhost';
+  return `${proto}://${host}`;
 }
 
 // =====================================================
-// HELPER FUNCTIONS
+// 1. ADMIN: list / create / fetch / rotate / delete clients
+//    (UI calls these — URLs unchanged from the previous version)
 // =====================================================
 
-/**
- * Process toner alerts - check if any devices have low toner and create alerts
- */
-async function processTonerAlerts(
-  tenantId: number,
-  clientId: string,
-  devices: DeviceMetricsPayload[],
-): Promise<void> {
-  const alertPromises: Promise<any>[] = [];
-  const TONER_THRESHOLD = 15; // Can be configured per device later
-
-  for (const device of devices) {
-    if (!device.tonerLevels) continue;
-
-    const colors = ['black', 'cyan', 'magenta', 'yellow'] as const;
-
-    for (const color of colors) {
-      const level = device.tonerLevels[color];
-
-      if (level !== undefined && level <= TONER_THRESHOLD) {
-        // Check if alert already exists for this device/color
-        const existingAlert = await db.query.tonerAlerts.findFirst({
-          where: and(
-            eq(tonerAlerts.tenantId, tenantId),
-            eq(tonerAlerts.serialNumber, device.serialNumber),
-            eq(tonerAlerts.supplyType, color),
-            eq(tonerAlerts.status, 'active'),
-          ),
-        });
-
-        if (!existingAlert) {
-          // Create new alert
-          const newAlert: NewTonerAlert = {
-            tenantId,
-            clientId,
-            serialNumber: device.serialNumber,
-            alertType: level === 0 ? 'toner_empty' : 'toner_low',
-            supplyType: color,
-            currentLevel: level,
-            threshold: TONER_THRESHOLD,
-            status: 'active',
-          };
-
-          alertPromises.push(db.insert(tonerAlerts).values(newAlert));
-        } else if (existingAlert.currentLevel !== level) {
-          // Update existing alert with new level
-          alertPromises.push(
-            db
-              .update(tonerAlerts)
-              .set({
-                currentLevel: level,
-                alertType: level === 0 ? 'toner_empty' : 'toner_low',
-                updatedAt: new Date(),
-              })
-              .where(eq(tonerAlerts.id, existingAlert.id)),
-          );
-        }
-      } else if (level !== undefined && level > TONER_THRESHOLD + 5) {
-        // Toner level recovered, resolve any active alerts
-        alertPromises.push(
-          db
-            .update(tonerAlerts)
-            .set({ status: 'resolved', resolvedAt: new Date() })
-            .where(
-              and(
-                eq(tonerAlerts.tenantId, tenantId),
-                eq(tonerAlerts.serialNumber, device.serialNumber),
-                eq(tonerAlerts.supplyType, color),
-                eq(tonerAlerts.status, 'active'),
-              ),
-            ),
-        );
-      }
-    }
-  }
-
-  if (alertPromises.length > 0) {
-    await Promise.allSettled(alertPromises);
-  }
-}
-
-/**
- * Authenticate client via API key and tenant ID
- */
-async function authenticateClient(apiKey: string | undefined, tenantIdHeader: string | undefined) {
-  if (!apiKey || !tenantIdHeader) {
-    return null;
-  }
-
-  try {
-    const tenantId = parseInt(tenantIdHeader);
-    if (isNaN(tenantId)) {
-      return null;
-    }
-
-    const client = await db.query.clientRegistrations.findFirst({
-      where: and(
-        eq(clientRegistrations.apiKey, apiKey),
-        eq(clientRegistrations.tenantId, tenantId),
-        eq(clientRegistrations.status, 'active'),
-      ),
-    });
-
-    return client;
-  } catch (error) {
-    log.error('Error authenticating client:', error);
-    return null;
-  }
-}
-
-// =====================================================
-// 1. SUBMIT METRICS ENDPOINT
-// =====================================================
-router.post('/submit', async (req, res: Response<SubmitMetricsResponse>) => {
-  try {
-    // Authenticate via Bearer token (API key)
-    const authHeader = req.headers.authorization;
-    const apiKey = authHeader?.replace('Bearer ', '');
-    const tenantIdHeader = req.headers['x-tenant-id'] as string;
-
-    const client = await authenticateClient(apiKey, tenantIdHeader);
-
-    if (!client) {
-      return res.status(401).json({
-        message: 'Invalid API key or tenant ID',
-        processed: 0,
-        errors: 0,
-        details: { successful: [], failed: [] },
-      });
-    }
-
-    const body: SubmitMetricsRequest = req.body;
-    const { clientId, clientVersion, timestamp, devices } = body;
-
-    if (!devices || !Array.isArray(devices) || devices.length === 0) {
-      return res.status(400).json({
-        message: 'No devices provided',
-        processed: 0,
-        errors: 0,
-        details: { successful: [], failed: [] },
-      });
-    }
-
-    // Insert metrics for each device
-    const results = await Promise.allSettled(
-      devices.map((device) => {
-        const metricData: NewClientCollectedMetric = {
-          tenantId: client.tenantId,
-          clientId: client.clientId,
-          serialNumber: device.serialNumber,
-          ipAddress: device.ipAddress,
-          manufacturer: device.manufacturer,
-          model: device.model,
-          deviceName: device.deviceName,
-          tonerBlack: device.tonerLevels?.black,
-          tonerCyan: device.tonerLevels?.cyan,
-          tonerMagenta: device.tonerLevels?.magenta,
-          tonerYellow: device.tonerLevels?.yellow,
-          paperTray1: device.paperLevels?.tray1,
-          paperTray2: device.paperLevels?.tray2,
-          paperTray3: device.paperLevels?.tray3,
-          paperTray4: device.paperLevels?.tray4,
-          totalImpressions: device.meters?.totalImpressions,
-          bwImpressions: device.meters?.bwImpressions,
-          colorImpressions: device.meters?.colorImpressions,
-          largeImpressions: device.meters?.largeImpressions,
-          fuserLife: device.supplyInfo?.fuserLife,
-          drumLife: device.supplyInfo?.drumLife,
-          transferBeltLife: device.supplyInfo?.transferBeltLife,
-          deviceStatus: device.deviceStatus,
-          errorCodes: device.errorCodes,
-          warningCodes: device.warningCodes,
-          collectionTimestamp: new Date(device.collectionTimestamp),
-          rawData: device.rawData,
-        };
-
-        return db.insert(clientCollectedMetrics).values(metricData);
-      }),
-    );
-
-    const successful = results.filter((r) => r.status === 'fulfilled').length;
-    const failed = results.filter((r) => r.status === 'rejected').length;
-
-    const successfulDevices = devices
-      .filter((_, i) => results[i].status === 'fulfilled')
-      .map((d) => d.serialNumber);
-
-    const failedDevices = devices
-      .map((d, i) => ({
-        device: d,
-        result: results[i],
-      }))
-      .filter(({ result }) => result.status === 'rejected')
-      .map(({ device, result }) => ({
-        serialNumber: device.serialNumber,
-        error: result.status === 'rejected' ? result.reason.message : 'Unknown error',
-      }));
-
-    // Process toner alerts (fire and forget, don't block response)
-    processTonerAlerts(client.tenantId, client.clientId, devices).catch((err) => {
-      log.error('Error processing toner alerts:', err);
-    });
-
-    // Log activity
-    const activityLog: NewClientActivityLog = {
-      tenantId: client.tenantId,
-      clientId: client.clientId,
-      eventType: 'metrics',
-      eventData: { deviceCount: devices.length, successful, failed, clientVersion },
-      severity: failed > 0 ? 'warning' : 'info',
-      message: `Submitted metrics for ${successful} devices (${failed} failed)`,
-    };
-
-    await db
-      .insert(clientActivityLogs)
-      .values(activityLog)
-      .catch((err) => {
-        log.error('Error logging activity:', err);
-      });
-
-    res.status(200).json({
-      message: 'Metrics received',
-      processed: successful,
-      errors: failed,
-      details: {
-        successful: successfulDevices,
-        failed: failedDevices,
-      },
-    });
-  } catch (error) {
-    log.error('Error submitting metrics:', error);
-    res.status(500).json({
-      message: 'Internal server error',
-      processed: 0,
-      errors: 0,
-      details: { successful: [], failed: [] },
-    });
-  }
-});
-
-// =====================================================
-// 2. HEARTBEAT ENDPOINT
-// =====================================================
-router.post('/heartbeat', async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    const apiKey = authHeader?.replace('Bearer ', '');
-    const tenantIdHeader = req.headers['x-tenant-id'] as string;
-
-    const client = await authenticateClient(apiKey, tenantIdHeader);
-
-    if (!client) {
-      return res.status(401).json({ message: 'Invalid API key' });
-    }
-
-    const { clientVersion, bufferSize } = req.body;
-
-    // Update last heartbeat
-    await db
-      .update(clientRegistrations)
-      .set({
-        lastHeartbeat: new Date(),
-        clientVersion: clientVersion || client.clientVersion,
-      })
-      .where(eq(clientRegistrations.id, client.id));
-
-    // Log heartbeat if buffer has pending items
-    if (bufferSize && bufferSize > 0) {
-      const activityLog: NewClientActivityLog = {
-        tenantId: client.tenantId,
-        clientId: client.clientId,
-        eventType: 'heartbeat',
-        eventData: { clientVersion, bufferSize },
-        severity: bufferSize > 50 ? 'warning' : 'info',
-        message: `Heartbeat received (buffer: ${bufferSize} pending)`,
-      };
-
-      await db
-        .insert(clientActivityLogs)
-        .values(activityLog)
-        .catch((err) => {
-          log.error('Error logging heartbeat:', err);
-        });
-    }
-
-    res.status(200).json({
-      message: 'Heartbeat acknowledged',
-      serverTime: new Date().toISOString(),
-      status: 'healthy',
-    });
-  } catch (error) {
-    log.error('Error processing heartbeat:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
-// =====================================================
-// 3. GET REMOTE CONFIGURATION
-// =====================================================
-router.get('/config', async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    const apiKey = authHeader?.replace('Bearer ', '');
-    const tenantIdHeader = req.headers['x-tenant-id'] as string;
-
-    const client = await authenticateClient(apiKey, tenantIdHeader);
-
-    if (!client) {
-      return res.status(401).json({ message: 'Invalid API key' });
-    }
-
-    // Get monitored devices for this client
-    const devices = await db.query.monitoredDevices.findMany({
-      where: and(
-        eq(monitoredDevices.tenantId, client.tenantId),
-        eq(monitoredDevices.clientId, client.clientId),
-        eq(monitoredDevices.enabled, true),
-      ),
-    });
-
-    res.status(200).json({
-      clientId: client.clientId,
-      clientName: client.clientName,
-      status: client.status,
-      configuration: {
-        pollingInterval: 300, // 5 minutes (can be made configurable per-client)
-        tonerThreshold: 15,
-        paperThreshold: 20,
-        discoveryEnabled: true,
-        devices: devices.map((d) => ({
-          ipAddress: d.ipAddress,
-          protocol: d.protocol,
-          snmpVersion: d.snmpVersion,
-          snmpPort: d.snmpPort,
-          pollingInterval: d.pollingInterval || 300,
-        })),
-      },
-      serverTime: new Date().toISOString(),
-    });
-  } catch (error) {
-    log.error('Error fetching config:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
-// =====================================================
-// 4. CLIENT MANAGEMENT ENDPOINTS (Admin only)
-// =====================================================
-
-/**
- * Register a new monitoring client
- * POST /api/client-metrics/clients
- * Requires: Admin authentication
- */
 router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
-    const { clientName, location } = req.body;
     const tenantId = req.tenantId!;
+    const { clientName, location, customerId, networkRanges } = req.body || {};
+    if (!clientName) return res.status(400).json({ message: 'clientName is required' });
 
-    if (!clientName) {
-      return res.status(400).json({ message: 'Client name is required' });
-    }
+    const clientShortId = `client-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+    const { plain, hash } = newApiKeyPair();
 
-    // Generate unique client ID
-    const clientId = `client-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-
-    // Generate secure API key
-    const apiKey = `pk_${crypto.randomBytes(32).toString('base64url')}`;
-
-    // Create client registration
-    const [newClient] = await db
-      .insert(clientRegistrations)
+    const [created] = await db
+      .insert(monitoringClients)
       .values({
         tenantId,
-        clientId,
+        clientId: clientShortId,
         clientName,
         location,
-        apiKey,
-        status: 'active',
+        apiKey: hash,
+        apiKeyLastRotated: new Date(),
+        status: 'pending_setup',
+        networkRanges: Array.isArray(networkRanges) ? networkRanges : undefined,
+        // Store the customerId in the configuration blob; many existing rows
+        // already use this jsonb for arbitrary per-client config. A dedicated
+        // column can be added later.
+        configuration: {
+          pollingInterval: 300,
+          discoveryEnabled: true,
+          retryAttempts: 3,
+          timeout: 10000,
+          tonerThreshold: 15,
+          paperThreshold: 20,
+          customerId: customerId || null,
+        },
       })
       .returning();
 
-    // Log activity
-    const activityLog: NewClientActivityLog = {
+    await db.insert(clientActivityLogs).values({
       tenantId,
-      clientId: newClient.clientId,
-      eventType: 'config_update',
-      eventData: { action: 'client_registered', by: req.user?.id },
-      severity: 'info',
+      clientId: created.id,
+      activity: 'config_update',
+      status: 'success',
       message: `Client '${clientName}' registered`,
-    };
-
-    await db.insert(clientActivityLogs).values(activityLog);
+      details: { action: 'client_registered', by: req.user?.id },
+    });
 
     res.status(201).json({
       message: 'Client registered successfully',
       client: {
-        id: newClient.id,
-        clientId: newClient.clientId,
-        clientName: newClient.clientName,
-        apiKey: newClient.apiKey, // Only show on creation
-        tenantId: newClient.tenantId,
-        status: newClient.status,
-        createdAt: newClient.createdAt,
+        ...publicClient(created),
+        // Surfaced once at creation — never returned again.
+        plainApiKey: plain,
       },
     });
   } catch (error) {
@@ -501,149 +129,361 @@ router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest,
   }
 });
 
-/**
- * List all clients for tenant
- * GET /api/client-metrics/clients
- */
 router.get('/clients', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const tenantId = req.tenantId!;
-
-    const clients = await db.query.clientRegistrations.findMany({
-      where: eq(clientRegistrations.tenantId, tenantId),
-      orderBy: [desc(clientRegistrations.createdAt)],
+    const clients = await db.query.monitoringClients.findMany({
+      where: eq(monitoringClients.tenantId, tenantId),
+      orderBy: [desc(monitoringClients.createdAt)],
     });
-
-    // Don't return API keys in list view
-    const clientsWithoutKeys = clients.map(({ apiKey, ...client }) => client);
-
-    res.status(200).json({ clients: clientsWithoutKeys });
+    res.json({ clients: clients.map(publicClient) });
   } catch (error) {
     log.error('Error fetching clients:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
 
-/**
- * Get client details with recent activity
- * GET /api/client-metrics/clients/:clientId
- */
 router.get('/clients/:clientId', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
-    const { clientId } = req.params;
     const tenantId = req.tenantId!;
+    const client = await loadClientForTenant(req.params.clientId, tenantId);
+    if (!client) return res.status(404).json({ message: 'Client not found' });
 
-    const client = await db.query.clientRegistrations.findFirst({
-      where: and(
-        eq(clientRegistrations.clientId, clientId),
-        eq(clientRegistrations.tenantId, tenantId),
-      ),
-    });
-
-    if (!client) {
-      return res.status(404).json({ message: 'Client not found' });
-    }
-
-    // Get recent activity logs (last 100)
     const activity = await db.query.clientActivityLogs.findMany({
       where: and(
-        eq(clientActivityLogs.clientId, clientId),
         eq(clientActivityLogs.tenantId, tenantId),
+        eq(clientActivityLogs.clientId, client.id),
       ),
       orderBy: [desc(clientActivityLogs.timestamp)],
       limit: 100,
     });
 
-    // Get device count
-    const deviceCount = await db.query.monitoredDevices.findMany({
-      where: and(
-        eq(monitoredDevices.clientId, clientId),
-        eq(monitoredDevices.tenantId, tenantId),
-        eq(monitoredDevices.enabled, true),
-      ),
-    });
-
-    // Get active alerts
-    const activeAlerts = await db.query.tonerAlerts.findMany({
-      where: and(
-        eq(tonerAlerts.clientId, clientId),
-        eq(tonerAlerts.tenantId, tenantId),
-        eq(tonerAlerts.status, 'active'),
-      ),
-      orderBy: [desc(tonerAlerts.createdAt)],
-      limit: 50,
-    });
-
-    const { apiKey, ...clientWithoutKey } = client;
-
-    res.status(200).json({
-      client: {
-        ...clientWithoutKey,
-        deviceCount: deviceCount.length,
-        activeAlertsCount: activeAlerts.length,
-      },
-      activity,
-      activeAlerts,
-    });
+    res.json({ client: publicClient(client), activity });
   } catch (error) {
     log.error('Error fetching client details:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });
 
-/**
- * Regenerate API key for client
- * POST /api/client-metrics/clients/:clientId/regenerate-key
- */
 router.post(
   '/clients/:clientId/regenerate-key',
   resolveTenant,
   requireTenant,
   async (req: TenantRequest, res) => {
     try {
-      const { clientId } = req.params;
       const tenantId = req.tenantId!;
+      const client = await loadClientForTenant(req.params.clientId, tenantId);
+      if (!client) return res.status(404).json({ message: 'Client not found' });
 
-      const client = await db.query.clientRegistrations.findFirst({
-        where: and(
-          eq(clientRegistrations.clientId, clientId),
-          eq(clientRegistrations.tenantId, tenantId),
-        ),
-      });
-
-      if (!client) {
-        return res.status(404).json({ message: 'Client not found' });
-      }
-
-      // Generate new API key
-      const newApiKey = `pk_${crypto.randomBytes(32).toString('base64url')}`;
-
+      const { plain, hash } = newApiKeyPair();
       await db
-        .update(clientRegistrations)
-        .set({ apiKey: newApiKey, updatedAt: new Date() })
-        .where(eq(clientRegistrations.id, client.id));
+        .update(monitoringClients)
+        .set({ apiKey: hash, apiKeyLastRotated: new Date(), updatedAt: new Date() })
+        .where(eq(monitoringClients.id, client.id));
 
-      // Log activity
-      const activityLog: NewClientActivityLog = {
+      await db.insert(clientActivityLogs).values({
         tenantId,
-        clientId: client.clientId,
-        eventType: 'config_update',
-        eventData: { action: 'api_key_regenerated', by: req.user?.id },
-        severity: 'warning',
-        message: 'API key regenerated',
-      };
-
-      await db.insert(clientActivityLogs).values(activityLog);
-
-      res.status(200).json({
-        message: 'API key regenerated successfully',
-        apiKey: newApiKey,
+        clientId: client.id,
+        activity: 'config_update',
+        status: 'warning',
+        message: 'API key rotated',
+        details: { by: req.user?.id },
       });
+
+      res.json({ message: 'API key regenerated successfully', apiKey: plain });
     } catch (error) {
       log.error('Error regenerating API key:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   },
 );
+
+router.delete(
+  '/clients/:clientId',
+  resolveTenant,
+  requireTenant,
+  async (req: TenantRequest, res) => {
+    try {
+      const tenantId = req.tenantId!;
+      const client = await loadClientForTenant(req.params.clientId, tenantId);
+      if (!client) return res.status(404).json({ message: 'Client not found' });
+
+      await db.delete(monitoringClients).where(eq(monitoringClients.id, client.id));
+      res.json({ message: 'Client deleted' });
+    } catch (error) {
+      log.error('Error deleting client:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+);
+
+// =====================================================
+// 2. ENROLLMENT: admin generates a token, installer redeems it.
+// =====================================================
+
+const DEFAULT_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+
+/**
+ * POST /api/client-metrics/clients/:clientId/enrollment-token
+ *
+ * Admin endpoint. Returns a one-time token (and a copy-paste install
+ * command) that the installer can exchange for the client's API key.
+ */
+router.post(
+  '/clients/:clientId/enrollment-token',
+  resolveTenant,
+  requireTenant,
+  async (req: TenantRequest, res) => {
+    try {
+      const tenantId = req.tenantId!;
+      const client = await loadClientForTenant(req.params.clientId, tenantId);
+      if (!client) return res.status(404).json({ message: 'Client not found' });
+
+      const ttlMs = Math.min(
+        Math.max(Number(req.body?.ttlSeconds || 0) * 1000 || DEFAULT_TOKEN_TTL_MS, 60_000),
+        7 * 24 * 60 * 60 * 1000, // hard cap 7d
+      );
+
+      const plain = `et_${crypto.randomBytes(32).toString('base64url')}`;
+      const tokenHash = hashApiKey(plain);
+      const expiresAt = new Date(Date.now() + ttlMs);
+
+      await db.insert(clientEnrollmentTokens).values({
+        tenantId,
+        clientId: client.id,
+        tokenHash,
+        createdByUserId: req.user?.id,
+        expiresAt,
+      });
+
+      const baseUrl = resolvePlatformBaseUrl(req);
+      const installCommand =
+        `iwr -UseBasicParsing ${baseUrl}/install/printyx-client.ps1 -OutFile $env:TEMP\\printyx-install.ps1; ` +
+        `& $env:TEMP\\printyx-install.ps1 -EnrollmentToken '${plain}' -Endpoint '${baseUrl}'`;
+
+      res.status(201).json({
+        token: plain,
+        expiresAt: expiresAt.toISOString(),
+        endpoint: baseUrl,
+        clientId: client.clientId,
+        installCommand,
+      });
+    } catch (error) {
+      log.error('Error creating enrollment token:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+);
+
+/**
+ * POST /api/client-metrics/enroll
+ *
+ * No-auth endpoint (the token IS the auth). Installer body:
+ *   { token: "et_...", hostname?: "WINSRV01", clientVersion?: "1.0.0" }
+ *
+ * Response:
+ *   { tenantId, clientId, apiKey, endpoint, configuration }
+ */
+router.post('/enroll', async (req, res) => {
+  try {
+    const { token, hostname, clientVersion } = req.body || {};
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({ message: 'token is required' });
+    }
+    const tokenHash = hashApiKey(token);
+
+    const enrollment = await db.query.clientEnrollmentTokens.findFirst({
+      where: eq(clientEnrollmentTokens.tokenHash, tokenHash),
+    });
+    if (!enrollment) return res.status(404).json({ message: 'Invalid enrollment token' });
+    if (enrollment.usedAt)
+      return res.status(409).json({ message: 'Enrollment token already used' });
+    if (enrollment.revokedAt) return res.status(403).json({ message: 'Enrollment token revoked' });
+    if (enrollment.expiresAt.getTime() < Date.now()) {
+      return res.status(410).json({ message: 'Enrollment token expired' });
+    }
+
+    const client = await db.query.monitoringClients.findFirst({
+      where: eq(monitoringClients.id, enrollment.clientId),
+    });
+    if (!client) return res.status(404).json({ message: 'Client not found' });
+
+    // Issue a fresh API key on enrollment so a token leak doesn't reveal a
+    // pre-existing key.
+    const { plain, hash } = newApiKeyPair();
+    await db
+      .update(monitoringClients)
+      .set({
+        apiKey: hash,
+        apiKeyLastRotated: new Date(),
+        hostname: hostname || client.hostname,
+        version: clientVersion || client.version,
+        status: 'active',
+        isActive: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(monitoringClients.id, client.id));
+
+    await db
+      .update(clientEnrollmentTokens)
+      .set({
+        usedAt: new Date(),
+        usedFromIp: req.ip,
+        usedFromHostname: hostname || null,
+      })
+      .where(eq(clientEnrollmentTokens.id, enrollment.id));
+
+    await db.insert(clientActivityLogs).values({
+      tenantId: client.tenantId,
+      clientId: client.id,
+      activity: 'config_update',
+      status: 'success',
+      message: 'Client enrolled via one-time token',
+      details: { hostname, ip: req.ip },
+    });
+
+    res.json({
+      tenantId: client.tenantId,
+      clientId: client.clientId,
+      clientName: client.clientName,
+      apiKey: plain,
+      endpoint: resolvePlatformBaseUrl(req),
+      configuration: client.configuration,
+    });
+  } catch (error) {
+    log.error('Error during enrollment:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// =====================================================
+// 3. INSTALLER BUNDLE
+// =====================================================
+
+/**
+ * GET /api/client-metrics/clients/:clientId/installer.zip
+ *
+ * Streams a zip with:
+ *   - install-windows.ps1     (the generic installer)
+ *   - uninstall-windows.ps1
+ *   - bootstrap-config.json   (endpoint + enrollment token, no API key)
+ *
+ * The bundled config contains a freshly generated enrollment token rather
+ * than the API key itself. The installer will redeem that token at install
+ * time, so a leaked zip exposes only a short-lived enrollment artifact —
+ * not a long-lived credential.
+ */
+router.get(
+  '/clients/:clientId/installer.zip',
+  resolveTenant,
+  requireTenant,
+  async (req: TenantRequest, res) => {
+    try {
+      const tenantId = req.tenantId!;
+      const client = await loadClientForTenant(req.params.clientId, tenantId);
+      if (!client) return res.status(404).json({ message: 'Client not found' });
+
+      // Issue a fresh enrollment token scoped to this client.
+      const plain = `et_${crypto.randomBytes(32).toString('base64url')}`;
+      const ttlHours = Math.min(Math.max(Number(req.query.ttlHours || 24), 1), 168);
+      const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
+      await db.insert(clientEnrollmentTokens).values({
+        tenantId,
+        clientId: client.id,
+        tokenHash: hashApiKey(plain),
+        createdByUserId: req.user?.id,
+        expiresAt,
+      });
+
+      const installerDir = resolveInstallerDir();
+      const installPs1 = path.join(installerDir, 'install-windows.ps1');
+      const uninstallPs1 = path.join(installerDir, 'uninstall-windows.ps1');
+      if (!fs.existsSync(installPs1)) {
+        return res.status(503).json({
+          message:
+            'Installer scripts not found on the server. Re-deploy the platform with printyx-client/scripts/ included.',
+        });
+      }
+
+      const bootstrap = {
+        endpoint: resolvePlatformBaseUrl(req),
+        tenantId,
+        clientId: client.clientId,
+        clientName: client.clientName,
+        enrollmentToken: plain,
+        enrollmentExpiresAt: expiresAt.toISOString(),
+      };
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="printyx-client-${client.clientId}.zip"`,
+      );
+
+      const archive = archiver('zip', { zlib: { level: 9 } });
+      archive.on('error', (err) => {
+        log.error('Archiver error:', err);
+        if (!res.headersSent) res.status(500).end();
+      });
+      archive.pipe(res);
+
+      archive.file(installPs1, { name: 'install-windows.ps1' });
+      if (fs.existsSync(uninstallPs1)) {
+        archive.file(uninstallPs1, { name: 'uninstall-windows.ps1' });
+      }
+      archive.append(JSON.stringify(bootstrap, null, 2), { name: 'bootstrap-config.json' });
+      archive.append(README_FOR_BUNDLE, { name: 'README.txt' });
+
+      await archive.finalize();
+    } catch (error) {
+      log.error('Error generating installer bundle:', error);
+      if (!res.headersSent) res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+);
+
+// =====================================================
+// HELPERS (shared with the routes above)
+// =====================================================
+
+async function loadClientForTenant(idOrSlug: string, tenantId: string) {
+  // Accept either the UUID primary key or the human-readable client_id slug.
+  const byUuid = await db.query.monitoringClients.findFirst({
+    where: and(eq(monitoringClients.id, idOrSlug), eq(monitoringClients.tenantId, tenantId)),
+  });
+  if (byUuid) return byUuid;
+  return db.query.monitoringClients.findFirst({
+    where: and(eq(monitoringClients.clientId, idOrSlug), eq(monitoringClients.tenantId, tenantId)),
+  });
+}
+
+function resolveInstallerDir(): string {
+  // The repo layout puts the scripts at <repo-root>/printyx-client/scripts.
+  // In a built/deployed image they should be copied to the same relative
+  // path next to the server bundle. Allow override via env.
+  const envDir = process.env.PRINTYX_CLIENT_SCRIPTS_DIR;
+  if (envDir) return envDir;
+  return path.resolve(process.cwd(), 'printyx-client', 'scripts');
+}
+
+const README_FOR_BUNDLE = `Printyx Monitoring Client — install bundle
+================================================
+
+This zip contains everything needed to install the monitoring client on a
+Windows Server. Run from an elevated PowerShell:
+
+    Set-ExecutionPolicy -Scope Process Bypass -Force
+    .\\install-windows.ps1 -ConfigBundle .\\bootstrap-config.json
+
+The bundled config includes a one-time enrollment token (NOT an API key).
+The installer will redeem the token at install time over HTTPS/443 to
+receive its permanent API key. The token expires per the timestamp inside
+bootstrap-config.json — generate a new bundle from the platform if it
+expires before you install.
+
+To uninstall later:
+
+    .\\uninstall-windows.ps1
+`;
 
 export default router;

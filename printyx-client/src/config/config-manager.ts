@@ -226,10 +226,14 @@ export class ConfigManager {
         version: '1.0.0',
       },
       api: {
-        endpoint: 'https://your-printyx-instance.com/api/client-metrics/submit',
+        endpoint: 'https://your-printyx-instance.com',
         apiKey: 'your-api-key-here',
         tenantId: 'your-tenant-id',
         timeout: 30000,
+        security: {
+          rejectUnauthorized: true,
+          minTLSVersion: 'TLSv1.2',
+        },
       },
       collection: {
         pollingInterval: 300, // 5 minutes
@@ -238,13 +242,21 @@ export class ConfigManager {
         retryAttempts: 3,
         timeout: 10000,
       },
+      // Default to SNMPv3 with auth+priv. SNMPv2c with the "public" community
+      // is still supported (just change protocol/version) but should be
+      // avoided in production: the community string traverses the LAN in
+      // plaintext and any device that responds to it can be polled.
       devices: [
         {
           ipAddress: '192.168.1.100',
           protocol: 'snmp',
-          snmpCommunity: 'public',
-          snmpVersion: '2c',
+          snmpVersion: '3',
           snmpPort: 161,
+          snmpUsername: 'printyx-monitor',
+          snmpAuthProtocol: 'SHA',
+          snmpAuthKey: 'change-me-auth-passphrase',
+          snmpPrivProtocol: 'AES',
+          snmpPrivKey: 'change-me-priv-passphrase',
         },
       ],
       alerts: {
