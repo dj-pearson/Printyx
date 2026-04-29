@@ -2,7 +2,31 @@
 
 This guide will help you quickly connect the Printyx monitoring client to the new device monitoring dashboard.
 
-## ⚡ 5-Minute Setup
+## ⚡ Two-Click Setup (Windows, recommended)
+
+1. **Platform side:** UI → **Monitoring → Monitoring Clients → Add Client →
+   Download Windows Installer**. You receive
+   `printyx-client-<clientid>.zip`. The zip is tied to that tenant +
+   customer; the installer figures out where to send data automatically.
+2. **Server side:** copy the zip to the target Windows Server, then in an
+   elevated PowerShell:
+
+   ```powershell
+   Expand-Archive .\printyx-client-clientid.zip -DestinationPath .\printyx
+   cd .\printyx
+   Set-ExecutionPolicy -Scope Process Bypass -Force
+   .\install-windows.ps1 -ConfigBundle .\bootstrap-config.json
+   ```
+
+   That's it. The installer redeems the bundle's one-time enrollment
+   token over HTTPS/443, receives the permanent API key, hardens NTFS
+   ACLs, registers the `PrintyxClient` Windows service, and starts it.
+
+If you'd rather hand out a single command instead of a zip, use **Generate
+Token** in the same UI screen and paste the resulting `iwr ... | iex`
+one-liner on the server.
+
+## ⚡ 5-Minute Setup (manual / Linux)
 
 ### Step 1: Register Client (Web UI)
 
@@ -187,6 +211,22 @@ sudo systemctl enable printyx-client
 sudo systemctl start printyx-client
 sudo systemctl status printyx-client
 ```
+
+### Run as a Service (Windows)
+
+Skip the manual steps — there is a one-shot installer:
+
+```powershell
+# Elevated PowerShell, from the printyx-client directory
+Set-ExecutionPolicy -Scope Process Bypass -Force
+.\scripts\install-windows.ps1
+```
+
+It builds the client, hardens config-file ACLs, installs the
+`PrintyxClient` Windows service via NSSM, adds an outbound firewall rule
+restricted to TCP/443, and starts the service. See
+[README.md](README.md#windows-installation-recommended) for parameter usage
+and unattended install.
 
 ### Add More Devices
 

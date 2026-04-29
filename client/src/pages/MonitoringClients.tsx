@@ -104,6 +104,12 @@ export default function MonitoringClients() {
     null,
   );
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [enrollmentResult, setEnrollmentResult] = useState<{
+    token: string;
+    expiresAt: string;
+    installCommand: string;
+    clientId: string;
+  } | null>(null);
 
   // Fetch all clients
   const { data: clientsData, isLoading } = useQuery<{ clients: MonitoringClient[] }>({
@@ -149,6 +155,56 @@ export default function MonitoringClients() {
       });
     },
   });
+
+  // Generate enrollment token mutation
+  const generateTokenMutation = useMutation({
+    mutationFn: async (clientId: string) => {
+      const response = await fetch(`/api/client-metrics/clients/${clientId}/enrollment-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to generate token');
+      }
+      return response.json() as Promise<{
+        token: string;
+        expiresAt: string;
+        endpoint: string;
+        clientId: string;
+        installCommand: string;
+      }>;
+    },
+    onSuccess: (data) => {
+      setEnrollmentResult({
+        token: data.token,
+        expiresAt: data.expiresAt,
+        installCommand: data.installCommand,
+        clientId: data.clientId,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to generate enrollment token',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Download bundled installer (zip)
+  const downloadInstaller = (clientId: string) => {
+    // Anchor + click pattern preserves the browser's session cookies for auth.
+    const a = document.createElement('a');
+    a.href = `/api/client-metrics/clients/${clientId}/installer.zip`;
+    a.download = `printyx-client-${clientId}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    toast({ title: 'Installer downloading', description: 'Run on the target Windows server.' });
+  };
 
   // Regenerate API key mutation
   const regenerateKeyMutation = useMutation({
@@ -386,7 +442,11 @@ export default function MonitoringClients() {
                     </ol>
                   </div>
 
-                  <Button className="w-full" variant="default">
+                  <Button
+                    className="w-full"
+                    variant="default"
+                    onClick={() => downloadInstaller(registeredClient.clientId)}
+                  >
                     <Download className="h-4 w-4 mr-2" />
                     Download Windows Installer
                   </Button>
@@ -525,6 +585,16 @@ export default function MonitoringClients() {
                               <Eye className="h-4 w-4 mr-2" />
                               View Details
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => downloadInstaller(client.clientId)}>
+                              <Download className="h-4 w-4 mr-2" />
+                              Download Windows Installer
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => generateTokenMutation.mutate(client.clientId)}
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Generate Enrollment Token
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => regenerateKeyMutation.mutate(client.clientId)}
                             >
@@ -547,6 +617,68 @@ export default function MonitoringClients() {
           )}
         </CardContent>
       </Card>
+
+      {/* Enrollment Token Dialog */}
+      {enrollmentResult && (
+        <Dialog open={!!enrollmentResult} onOpenChange={() => setEnrollmentResult(null)}>
+          <DialogContent className="sm:max-w-[640px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Check className="h-5 w-5 text-green-500" />
+                Enrollment Token Generated
+              </DialogTitle>
+              <DialogDescription>
+                Run the command below on the target Windows server. The token can only be redeemed
+                once and expires {format(new Date(enrollmentResult.expiresAt), 'PPp')}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>One-line installer (PowerShell, run as Administrator)</Label>
+                <div className="flex items-start gap-2">
+                  <Input
+                    value={enrollmentResult.installCommand}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() =>
+                      copyToClipboard(enrollmentResult.installCommand, 'Install command')
+                    }
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Token (for use with -EnrollmentToken on an existing checkout)</Label>
+                <div className="flex items-center gap-2">
+                  <Input value={enrollmentResult.token} readOnly className="font-mono text-xs" />
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => copyToClipboard(enrollmentResult.token, 'Enrollment token')}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  The token is only shown once. If you lose it, generate a new one — old tokens
+                  remain redeemable until they expire or are used.
+                </AlertDescription>
+              </Alert>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setEnrollmentResult(null)}>Done</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Client Details Dialog */}
       {selectedClientId && clientDetails && (

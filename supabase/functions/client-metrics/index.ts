@@ -1,5 +1,17 @@
-// Client Metrics Edge Function
-// Handles metrics submission from monitoring clients
+// DEPRECATED — DO NOT EXTEND.
+//
+// This edge function predates the consolidated ingest path. The live
+// /api/client-metrics/{submit,heartbeat,config} handlers live in
+// server/routes-client-monitoring.ts (Express) and authenticate against
+// monitoring_clients.api_key (SHA-256). This function uses a divergent
+// auth header (x-api-key vs Bearer) and a divergent schema (snake_case
+// monitoring_clients vs camelCase). It is retained for backwards
+// compatibility with anything that may still call it directly. New
+// integrations MUST use the Express endpoints documented in
+// printyx-client/AUDIT.md.
+//
+// To remove: confirm no DNS or proxy rule routes /functions/v1/client-metrics
+// to this function, then delete the directory.
 import { createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 

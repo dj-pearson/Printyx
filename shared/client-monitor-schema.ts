@@ -161,10 +161,51 @@ export const clientDiscoveredDevices = pgTable(
   }),
 );
 
+// Enrollment tokens for the bootstrap flow.
+//
+// An admin generates a one-time, short-lived token in the platform; the
+// installer trades the token for the client's permanent API key over HTTPS.
+// The token is stored as a SHA-256 hash so a database leak does not surrender
+// usable enrollment material.
+export const clientEnrollmentTokens = pgTable(
+  'client_enrollment_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id').notNull(),
+    clientId: uuid('client_id')
+      .notNull()
+      .references(() => monitoringClients.id, { onDelete: 'cascade' }),
+    tokenHash: varchar('token_hash', { length: 64 }).notNull().unique(), // sha256 hex
+    createdByUserId: varchar('created_by_user_id', { length: 255 }),
+    expiresAt: timestamp('expires_at').notNull(),
+    usedAt: timestamp('used_at'),
+    usedFromIp: varchar('used_from_ip', { length: 45 }),
+    usedFromHostname: varchar('used_from_hostname', { length: 255 }),
+    revokedAt: timestamp('revoked_at'),
+    createdAt: timestamp('created_at')
+      .default(sql`now()`)
+      .notNull(),
+  },
+  (table) => ({
+    tenantIdx: index('enrollment_tenant_idx').on(table.tenantId),
+    clientIdx: index('enrollment_client_idx').on(table.clientId),
+    tokenHashIdx: index('enrollment_token_hash_idx').on(table.tokenHash),
+    expiresIdx: index('enrollment_expires_idx').on(table.expiresAt),
+  }),
+);
+
 // Relations
 export const monitoringClientsRelations = relations(monitoringClients, ({ many }) => ({
   activityLogs: many(clientActivityLogs),
   discoveredDevices: many(clientDiscoveredDevices),
+  enrollmentTokens: many(clientEnrollmentTokens),
+}));
+
+export const clientEnrollmentTokensRelations = relations(clientEnrollmentTokens, ({ one }) => ({
+  client: one(monitoringClients, {
+    fields: [clientEnrollmentTokens.clientId],
+    references: [monitoringClients.id],
+  }),
 }));
 
 export const clientActivityLogsRelations = relations(clientActivityLogs, ({ one }) => ({
@@ -189,6 +230,7 @@ export const clientDiscoveredDevicesRelations = relations(clientDiscoveredDevice
 export const insertMonitoringClientSchema = createInsertSchema(monitoringClients);
 export const insertClientActivityLogSchema = createInsertSchema(clientActivityLogs);
 export const insertClientDiscoveredDeviceSchema = createInsertSchema(clientDiscoveredDevices);
+export const insertClientEnrollmentTokenSchema = createInsertSchema(clientEnrollmentTokens);
 
 // Types
 export type MonitoringClient = typeof monitoringClients.$inferSelect;
@@ -197,6 +239,8 @@ export type ClientActivityLog = typeof clientActivityLogs.$inferSelect;
 export type InsertClientActivityLog = z.infer<typeof insertClientActivityLogSchema>;
 export type ClientDiscoveredDevice = typeof clientDiscoveredDevices.$inferSelect;
 export type InsertClientDiscoveredDevice = z.infer<typeof insertClientDiscoveredDeviceSchema>;
+export type ClientEnrollmentToken = typeof clientEnrollmentTokens.$inferSelect;
+export type InsertClientEnrollmentToken = z.infer<typeof insertClientEnrollmentTokenSchema>;
 
 // Request validation schemas
 export const clientMetricSubmissionSchema = z.object({

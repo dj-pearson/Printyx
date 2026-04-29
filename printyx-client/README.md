@@ -126,24 +126,110 @@ sudo systemctl start printyx-client
 sudo systemctl status printyx-client
 ```
 
-### Windows Installation
+### Windows Installation (recommended)
+
+There are three install paths, in order of operator effort:
+
+#### A. Tenant-scoped bundle from the platform
+
+In the Printyx UI: **Monitoring → Monitoring Clients → Add Client →
+Download Windows Installer**. You get back a zip pre-wired to that tenant
+and customer:
+
+```
+printyx-client-<clientid>.zip
+├── install-windows.ps1
+├── uninstall-windows.ps1
+└── bootstrap-config.json   ← endpoint + one-time enrollment token
+```
+
+On the target server (elevated PowerShell):
 
 ```powershell
-# Build the client
-npm run build
-npm install -g .
-
-# Generate config
-printyx-client init -o C:\ProgramData\Printyx\config.json
-
-# Edit configuration
-notepad C:\ProgramData\Printyx\config.json
-
-# Install as Windows Service (using nssm or similar)
-# Download nssm from https://nssm.cc/
-nssm install PrintyxClient "C:\Program Files\nodejs\printyx-client" start -c C:\ProgramData\Printyx\config.json
-nssm start PrintyxClient
+Expand-Archive .\printyx-client-clientid.zip -DestinationPath .\printyx
+cd .\printyx
+Set-ExecutionPolicy -Scope Process Bypass -Force
+.\install-windows.ps1 -ConfigBundle .\bootstrap-config.json
 ```
+
+The installer redeems the bundle's enrollment token at install time (over
+HTTPS/443), receives a permanent API key, writes `config.json`, and starts
+the Windows service. **No API key ever touches the zip** — just a
+short-lived token that becomes useless after redemption.
+
+#### B. Generic installer + enrollment token
+
+Hand out one PowerShell command per server:
+
+```powershell
+# In the platform UI: Monitoring → Monitoring Clients → Generate Token
+# It returns an `et_...` token + a copy-paste command that looks like:
+iwr -UseBasicParsing https://app.printyx.net/install/printyx-client.ps1 `
+    -OutFile $env:TEMP\printyx-install.ps1
+& $env:TEMP\printyx-install.ps1 `
+    -EnrollmentToken 'et_xxxxxxxxxxxxxxxx' `
+    -Endpoint        'https://app.printyx.net'
+```
+
+#### C. Local checkout (developer install)
+
+If you cloned the repo manually:
+
+```powershell
+# From the printyx-client directory, in an elevated PowerShell:
+Set-ExecutionPolicy -Scope Process Bypass -Force
+.\scripts\install-windows.ps1
+```
+
+It will prompt for endpoint, API key, tenant ID, and (optionally) a CIDR
+range. To run unattended:
+
+```powershell
+.\scripts\install-windows.ps1 `
+    -Endpoint     'https://app.printyx.net' `
+    -ApiKey       'pk_xxxxxxxxxxxxxxxx' `
+    -TenantId     '1' `
+    -NetworkRange '192.168.1.0/24' `
+    -NonInteractive
+```
+
+What the installer does:
+
+| Step | Result |
+| --- | --- |
+| Verifies Node.js >= 18 | aborts otherwise |
+| Validates the endpoint over TCP/443 before writing config | catches DNS/firewall errors early |
+| Copies the built client to `C:\Program Files\Printyx\Client` | |
+| Writes `C:\ProgramData\Printyx\config.json` | NTFS ACL: Administrators + SYSTEM only |
+| Downloads NSSM (https://nssm.cc) and registers `PrintyxClient` service | runs as `NetworkService`, auto-start, auto-restart, 10 MB log rotation |
+| Adds outbound firewall rule | `node.exe` → TCP/443 only |
+| Starts the service and confirms it is `Running` | |
+
+After install:
+
+```powershell
+Get-Service PrintyxClient
+Get-Content 'C:\ProgramData\Printyx\logs\printyx-client.log' -Tail 50 -Wait
+```
+
+To remove:
+
+```powershell
+.\scripts\uninstall-windows.ps1                # full removal
+.\scripts\uninstall-windows.ps1 -KeepConfig    # keep config + meter state
+```
+
+### Windows: one-line bootstrap
+
+If you want to install on a fresh server with no local repo checkout, host
+`Install-FromWeb.ps1` somewhere reachable and run:
+
+```powershell
+irm https://your-printyx.example/install.ps1 | iex
+```
+
+It downloads the printyx-client release archive, extracts it to a temp
+directory, and hands off to `install-windows.ps1`.
 
 ## Configuration
 
