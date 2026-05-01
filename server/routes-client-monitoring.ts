@@ -2,6 +2,7 @@ import type { Express } from 'express';
 import { db } from './db';
 import { eq, and, desc, like, or, lte, gte, inArray, isNotNull } from 'drizzle-orm';
 import { materializeAlerts } from './services/alert-materializer';
+import { resolveOfflineFor } from './services/offline-detector';
 import crypto from 'crypto';
 import { emailService } from './services/email-service';
 import { smsService } from './services/sms-service';
@@ -841,6 +842,14 @@ export function registerClientMonitoringRoutes(app: Express) {
               alertErr,
             });
           }
+
+          // A fresh /submit means the device just talked to us — resolve
+          // any open offline alert in O(1). The sweep would catch this
+          // eventually but the operator shouldn't have to wait an extra
+          // 5 minutes for the dashboard to clear.
+          await resolveOfflineFor(tenantId, device[0].id).catch(() => {
+            /* swallowed inside the helper */
+          });
 
           // Check for meter differential and billing (if provided by client)
           if (deviceData.rawData?.differential) {

@@ -185,6 +185,48 @@ UI side:
   so the "active" badge in the dashboard header matches the alerts
   list exactly.
 
+## Offline detection
+
+The supply alert pipeline only catches conditions visible inside a
+/submit payload — toner/paper/levels/meters. If a device stops talking
+entirely (powered off, network unplugged, agent crashed), no /submit
+arrives and supply alerts can't fire. Symmetric to that: a periodic
+sweep watches `device_registrations.last_seen` and materialises an
+`offline` alert (`supply_type='device'`) when it goes stale.
+
+`server/services/offline-detector.ts`:
+
+- **`startOfflineSweep()`** — `setInterval` in the Express process,
+  default cadence 5 minutes. Tunable via `OFFLINE_SWEEP_INTERVAL_MS`.
+- **Two thresholds**, both env-tunable:
+  - `OFFLINE_WARN_MS` (default 30 min) → `severity='warning'` + `alert_type='low'`
+  - `OFFLINE_CRIT_MS` (default 2 h) → `severity='critical'` + `alert_type='critical'`
+- One DB round-trip per sweep — LEFT JOIN `device_registrations` to
+  `device_alerts` (open offline alert, if any), then branch:
+  insert / upgrade-to-critical / refresh `last_seen_at`.
+- Once an alert hits `critical`, it doesn't downgrade until /submit
+  resolves it. Avoids flapping when a device sits exactly at the
+  warning threshold.
+- **Auto-resolve on /submit** via `resolveOfflineFor(tenantId, deviceId)`.
+  Hooked into the metric ingest path in `routes-client-monitoring.ts`,
+  so the moment a device reports the dashboard clears its offline
+  alert without waiting for the next sweep.
+- Disable for a deployment with `ENABLE_OFFLINE_SWEEP=false`.
+- **Multi-replica deployments**: this runs in-process. For >1 replica,
+  gate `startOfflineSweep()` on a leader-election lock — otherwise N
+  replicas all sweep concurrently. Single insert/upgrade is idempotent
+  thanks to the partial unique index on open `device_alerts`, so the
+  worst case is wasted CPU, not duplicate rows.
+
+UI:
+
+- The existing alert list (`DeviceMonitoring.tsx`) renders
+  `supply_type='device'` alerts with a "Device offline (severity)"
+  label and uses the `message` column for the body, so operators don't
+  see a meaningless `DEVICE at NULL%`.
+- Acknowledge / Snooze / Resolve all work the same way — same
+  materialised table, same endpoints.
+
 ## Auto-order on critical alerts
 
 When a NEW critical (or empty) toner alert is materialised — or an

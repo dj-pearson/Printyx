@@ -1,11 +1,9 @@
 /**
-
-import { createModuleLogger } from '../lib/logger';
-const log = createModuleLogger('integrations-service');
-
  * INTEGRATIONS SERVICE
  * Handles connections to real third-party APIs for copier dealer platforms
  */
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('integrations-service');
 
 export class IntegrationsService {
   /**
