@@ -10,7 +10,10 @@ import { db } from './db';
 import { isAuthenticated } from './replitAuth';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
-import { invoices, equipment, activities } from '@shared/schema';
+// The schema renamed `activities` → `businessRecordActivities`; this
+// file was written against the old name. Local rename keeps the rest
+// unchanged.
+import { invoices, equipment, businessRecordActivities as activities } from '@shared/schema';
 
 const log = createModuleLogger('routes-bulk-operations');
 

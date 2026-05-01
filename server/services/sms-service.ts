@@ -1,8 +1,4 @@
 /**
-
-import { createModuleLogger } from '../lib/logger';
-const log = createModuleLogger('sms-service');
-
  * SMS Service Adapter
  *
  * Provider-agnostic SMS service that supports multiple providers:
@@ -14,6 +10,8 @@ const log = createModuleLogger('sms-service');
  * - SMS_PROVIDER: 'twilio' | 'aws-sns' | 'simulation'
  * - SMS_ENABLED: 'true' | 'false'
  */
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('sms-service');
 
 interface SMSMessage {
   to: string; // E.164 format: +1234567890

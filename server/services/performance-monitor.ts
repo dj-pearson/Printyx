@@ -1,11 +1,9 @@
 /**
-
-import { createModuleLogger } from '../lib/logger';
-const log = createModuleLogger('performance-monitor');
-
  * Performance Monitoring Service
  * Monitors and optimizes Motion AI system performance
  */
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('performance-monitor');
 
 interface PerformanceMetric {
   name: string;

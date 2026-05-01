@@ -73,6 +73,8 @@ interface TonerAlert {
   deviceName?: string | null;
   alertType: string;
   supplyType: string;
+  /** 'info' | 'warning' | 'critical' */
+  severity?: string;
   currentLevel: number;
   threshold: number;
   status: 'active' | 'acknowledged' | 'snoozed' | 'resolved';
@@ -317,7 +319,9 @@ export default function DeviceMonitoring() {
                 <div key={alert.id} className="flex items-center gap-2 text-xs text-red-800">
                   <AlertCircle className="h-3 w-3" />
                   <span>
-                    {alert.supplyType.toUpperCase()} at {alert.currentLevel}%
+                    {alert.supplyType === 'device'
+                      ? `Device offline (${alert.severity})`
+                      : `${alert.supplyType.toUpperCase()} at ${alert.currentLevel}%`}
                   </span>
                 </div>
               ))}
@@ -805,8 +809,9 @@ export default function DeviceMonitoring() {
                                     <div className="flex items-center gap-2 mb-1">
                                       <AlertCircle className="h-4 w-4 text-red-600" />
                                       <span className="font-medium text-red-900">
-                                        {alert.supplyType.toUpperCase()} -{' '}
-                                        {alert.alertType.replace('_', ' ')}
+                                        {alert.supplyType === 'device'
+                                          ? `Device offline (${alert.severity})`
+                                          : `${alert.supplyType.toUpperCase()} - ${alert.alertType.replace('_', ' ')}`}
                                       </span>
                                       {isAcked && (
                                         <Badge variant="outline" className="text-yellow-800">
@@ -822,10 +827,17 @@ export default function DeviceMonitoring() {
                                         </Badge>
                                       )}
                                     </div>
-                                    <p className="text-sm text-red-800">
-                                      Current level: {alert.currentLevel}% (threshold:{' '}
-                                      {alert.threshold}%)
-                                    </p>
+                                    {alert.supplyType === 'device' ? (
+                                      <p className="text-sm text-red-800">
+                                        {alert.message ||
+                                          'Device has stopped reporting to the agent.'}
+                                      </p>
+                                    ) : (
+                                      <p className="text-sm text-red-800">
+                                        Current level: {alert.currentLevel}% (threshold:{' '}
+                                        {alert.threshold}%)
+                                      </p>
+                                    )}
                                     <p className="text-xs text-red-600 mt-2">
                                       Last seen{' '}
                                       {formatDistanceToNow(

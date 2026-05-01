@@ -1,11 +1,9 @@
 /**
-
-import { createModuleLogger } from '../lib/logger';
-const log = createModuleLogger('claude-ai-service');
-
  * Claude AI Service
  * Handles all interactions with Claude API for Motion AI features
  */
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('claude-ai-service');
 
 interface ClaudeMessage {
   role: 'user' | 'assistant';

@@ -207,6 +207,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Infrastructure
   // ═════════════════════════════════════════════════════════════════
 
+  // Offline detector: periodic sweep that materialises offline alerts
+  // for devices whose `last_seen` has gone stale. Symmetric to the
+  // supply-level alert pipeline — gives us a signal when a printer (or
+  // its agent) goes dark instead of just looking healthy because no
+  // numbers come in. Default cadence is 5 minutes; tune via
+  // OFFLINE_SWEEP_INTERVAL_MS / OFFLINE_WARN_MS / OFFLINE_CRIT_MS.
+  if (process.env.ENABLE_OFFLINE_SWEEP !== 'false') {
+    import('./services/offline-detector')
+      .then(({ startOfflineSweep }) => {
+        startOfflineSweep();
+      })
+      .catch((err) => log.error('Failed to start offline detector:', err));
+  } else {
+    log.info('ℹ️ Offline sweep disabled (ENABLE_OFFLINE_SWEEP=false)');
+  }
+
   // Database updater manager
   if (process.env.ENABLE_DATABASE_UPDATER === 'true') {
     import('./database-updater')

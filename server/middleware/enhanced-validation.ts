@@ -84,22 +84,26 @@ export const dateStringSchema = z
   .transform((val) => new Date(val).toISOString());
 
 /**
- * Date range validation
+ * Date range validation.
+ *
+ * Split into two pieces because Zod's `.refine()` returns a `ZodEffects`
+ * that has no `.shape` and can't be passed to `.merge()`. Anywhere that
+ * needs to compose the date-range fields with another schema should
+ * spread `dateRangeShape` rather than reach for `dateRangeSchema.shape`.
  */
-export const dateRangeSchema = z
-  .object({
-    startDate: dateStringSchema.optional(),
-    endDate: dateStringSchema.optional(),
-  })
-  .refine(
-    (data) => {
-      if (data.startDate && data.endDate) {
-        return new Date(data.startDate) <= new Date(data.endDate);
-      }
-      return true;
-    },
-    { message: 'Start date must be before end date' },
-  );
+const dateRangeShape = {
+  startDate: dateStringSchema.optional(),
+  endDate: dateStringSchema.optional(),
+};
+export const dateRangeSchema = z.object(dateRangeShape).refine(
+  (data) => {
+    if (data.startDate && data.endDate) {
+      return new Date(data.startDate) <= new Date(data.endDate);
+    }
+    return true;
+  },
+  { message: 'Start date must be before end date' },
+);
 
 // ============================================================================
 // Pagination & Query Schemas
@@ -136,12 +140,18 @@ export const sortSchema = z.object({
 });
 
 /**
- * Combined list query schema
+ * Combined list query schema.
+ *
+ * Built by spreading the four component shapes together rather than
+ * chaining `.merge()`, because `dateRangeSchema` is a `ZodEffects`
+ * (carries a `.refine()`) and `.merge()` only accepts `ZodObject`.
  */
-export const listQuerySchema = paginationSchema
-  .merge(searchSchema)
-  .merge(sortSchema)
-  .merge(dateRangeSchema);
+export const listQuerySchema = z.object({
+  ...paginationSchema.shape,
+  ...searchSchema.shape,
+  ...sortSchema.shape,
+  ...dateRangeShape,
+});
 
 // ============================================================================
 // Entity-Specific Schemas
