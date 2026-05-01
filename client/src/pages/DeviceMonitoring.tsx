@@ -84,6 +84,7 @@ interface TonerAlert {
   firstSeenAt?: string;
   lastSeenAt?: string;
   createdAt: string;
+  triggeredOrderId?: string | null;
 }
 
 export default function DeviceMonitoring() {
@@ -832,6 +833,12 @@ export default function DeviceMonitoring() {
                                         { addSuffix: true },
                                       )}
                                     </p>
+                                    {alert.triggeredOrderId && (
+                                      <p className="text-xs text-blue-700 mt-1 font-medium">
+                                        <ShoppingCart className="h-3 w-3 inline mr-1" />
+                                        Auto-order created — review in Supply Orders
+                                      </p>
+                                    )}
                                   </div>
                                   <div className="flex flex-col gap-1 shrink-0">
                                     {!isAcked && !isSnoozed && (

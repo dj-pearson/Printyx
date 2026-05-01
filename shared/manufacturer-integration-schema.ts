@@ -107,6 +107,12 @@ export const deviceRegistrations = pgTable(
     department: varchar('department', { length: 255 }),
     status: deviceStatusEnum('status').default('unknown').notNull(),
     capabilities: jsonb('capabilities').default([]), // Supported features
+    // Optional pointer to the customer (business_records row) this device
+    // belongs to. Denormalised from monitoring_clients.customer_id at
+    // ingest time so auto-order, supply-runway-by-customer, etc. don't
+    // need a 3-way join. Update by re-running /submit after relinking
+    // the agent's customer in the platform UI.
+    customerId: varchar('customer_id', { length: 255 }),
     lastSeen: timestamp('last_seen'),
     registeredAt: timestamp('registered_at')
       .default(sql`now()`)
@@ -242,6 +248,12 @@ export const deviceAlerts = pgTable(
     acknowledgedBy: varchar('acknowledged_by', { length: 255 }),
     snoozedUntil: timestamp('snoozed_until'),
     resolvedAt: timestamp('resolved_at'),
+    /**
+     * Set when auto-order fired for this alert. Soft pointer to
+     * device_supply_orders.id (no FK so the alert can survive an order
+     * being deleted in cleanup). Cleared if the order is cancelled.
+     */
+    triggeredOrderId: uuid('triggered_order_id'),
     firstSeenAt: timestamp('first_seen_at')
       .default(sql`now()`)
       .notNull(),
@@ -260,6 +272,67 @@ export const deviceAlerts = pgTable(
     deviceIdx: index('device_alerts_device_idx').on(table.deviceId),
     severityIdx: index('device_alerts_severity_idx').on(table.severity),
     snoozeExpiryIdx: index('device_alerts_snooze_expiry_idx').on(table.snoozedUntil),
+  }),
+);
+
+// Auto-generated supply orders.
+//
+// Distinct from `customer_supply_orders` (which is the customer-portal
+// flow with delivery addresses, invoices, and payment). This table is
+// the agent-driven path: when a critical alert materialises and the
+// monitoring client has auto-order enabled, a row is inserted here
+// with status='pending'. Operators approve / cancel / send to the
+// fulfilment side from there.
+//
+// Status flow:
+//   pending  — auto-generated, awaiting operator approval
+//   approved — operator approved; ready to be turned into a real order
+//   ordered  — fulfilment confirmed
+//   shipped  — carrier confirmed dispatch
+//   delivered
+//   cancelled
+export const deviceSupplyOrders = pgTable(
+  'device_supply_orders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id').notNull(),
+    customerId: varchar('customer_id', { length: 255 }), // business_records.id (varchar PK)
+    deviceId: uuid('device_id')
+      .notNull()
+      .references(() => deviceRegistrations.id, { onDelete: 'cascade' }),
+    alertId: uuid('alert_id'), // soft FK — alert may be deleted later
+    supplyType: varchar('supply_type', { length: 64 }).notNull(),
+    productId: varchar('product_id', { length: 255 }), // supplies.id (varchar PK)
+    productSku: varchar('product_sku', { length: 100 }),
+    productName: varchar('product_name', { length: 255 }),
+    quantity: integer('quantity').default(1).notNull(),
+    unitPrice: decimal('unit_price', { precision: 10, scale: 2 }),
+    totalPrice: decimal('total_price', { precision: 10, scale: 2 }),
+    // 'pending' | 'approved' | 'ordered' | 'shipped' | 'delivered' | 'cancelled'
+    status: varchar('status', { length: 24 }).default('pending').notNull(),
+    // 'auto' (materializer) | 'manual' (operator clicked Order) | 'forecast' (supply runway)
+    triggeredBy: varchar('triggered_by', { length: 16 }).default('auto').notNull(),
+    triggeredByUserId: varchar('triggered_by_user_id', { length: 255 }),
+    approvedAt: timestamp('approved_at'),
+    approvedBy: varchar('approved_by', { length: 255 }),
+    orderedAt: timestamp('ordered_at'),
+    cancelledAt: timestamp('cancelled_at'),
+    notes: text('notes'),
+    createdAt: timestamp('created_at')
+      .default(sql`now()`)
+      .notNull(),
+    updatedAt: timestamp('updated_at')
+      .default(sql`now()`)
+      .notNull(),
+  },
+  (table) => ({
+    tenantStatusIdx: index('device_supply_orders_tenant_status_idx').on(
+      table.tenantId,
+      table.status,
+    ),
+    deviceIdx: index('device_supply_orders_device_idx').on(table.deviceId),
+    alertIdx: index('device_supply_orders_alert_idx').on(table.alertId),
+    customerIdx: index('device_supply_orders_customer_idx').on(table.customerId),
   }),
 );
 
@@ -339,6 +412,7 @@ export const insertDeviceMetricSchema = createInsertSchema(deviceMetrics);
 export const insertIntegrationAuditLogSchema = createInsertSchema(integrationAuditLogs);
 export const insertThirdPartyIntegrationSchema = createInsertSchema(thirdPartyIntegrations);
 export const insertDeviceAlertSchema = createInsertSchema(deviceAlerts);
+export const insertDeviceSupplyOrderSchema = createInsertSchema(deviceSupplyOrders);
 
 // Types
 export type ManufacturerIntegration = typeof manufacturerIntegrations.$inferSelect;
@@ -353,3 +427,5 @@ export type ThirdPartyIntegration = typeof thirdPartyIntegrations.$inferSelect;
 export type InsertThirdPartyIntegration = z.infer<typeof insertThirdPartyIntegrationSchema>;
 export type DeviceAlert = typeof deviceAlerts.$inferSelect;
 export type InsertDeviceAlert = z.infer<typeof insertDeviceAlertSchema>;
+export type DeviceSupplyOrder = typeof deviceSupplyOrders.$inferSelect;
+export type InsertDeviceSupplyOrder = z.infer<typeof insertDeviceSupplyOrderSchema>;

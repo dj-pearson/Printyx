@@ -75,7 +75,7 @@ function resolvePlatformBaseUrl(req: Request): string {
 router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
   try {
     const tenantId = req.tenantId!;
-    const { clientName, location, customerId, networkRanges } = req.body || {};
+    const { clientName, location, customerId, networkRanges, autoOrderEnabled } = req.body || {};
     if (!clientName) return res.status(400).json({ message: 'clientName is required' });
 
     const clientShortId = `client-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
@@ -100,6 +100,10 @@ router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest,
           timeout: 10000,
           tonerThreshold: 15,
           paperThreshold: 20,
+          // Off by default — opt in deliberately. When true, the alert
+          // materialiser will fire device_supply_orders rows on critical
+          // alerts; operators see them under Supply Orders.
+          autoOrderEnabled: autoOrderEnabled === true,
         },
       })
       .returning();
@@ -191,6 +195,44 @@ router.post(
       res.json({ message: 'API key regenerated successfully', apiKey: plain });
     } catch (error) {
       log.error('Error regenerating API key:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+);
+
+router.patch(
+  '/clients/:clientId',
+  resolveTenant,
+  requireTenant,
+  async (req: TenantRequest, res) => {
+    try {
+      const tenantId = req.tenantId!;
+      const client = await loadClientForTenant(req.params.clientId, tenantId);
+      if (!client) return res.status(404).json({ message: 'Client not found' });
+
+      const { customerId, autoOrderEnabled, location, clientName } = req.body || {};
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (typeof customerId === 'string' || customerId === null) {
+        updates.customerId = customerId || null;
+      }
+      if (typeof location === 'string') updates.location = location;
+      if (typeof clientName === 'string' && clientName.trim())
+        updates.clientName = clientName.trim();
+
+      // autoOrderEnabled lives in the JSON config blob — read-modify-write.
+      if (typeof autoOrderEnabled === 'boolean') {
+        const cfg = (client.configuration as any) || {};
+        updates.configuration = { ...cfg, autoOrderEnabled };
+      }
+
+      await db.update(monitoringClients).set(updates).where(eq(monitoringClients.id, client.id));
+
+      const refreshed = await db.query.monitoringClients.findFirst({
+        where: eq(monitoringClients.id, client.id),
+      });
+      res.json({ client: refreshed ? publicClient(refreshed) : null });
+    } catch (error) {
+      log.error('Error updating client:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   },

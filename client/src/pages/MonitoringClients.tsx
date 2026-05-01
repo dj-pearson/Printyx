@@ -117,6 +117,7 @@ export default function MonitoringClients() {
   const [newClientName, setNewClientName] = useState('');
   const [newClientLocation, setNewClientLocation] = useState('');
   const [newClientCustomerId, setNewClientCustomerId] = useState<string>('');
+  const [newClientAutoOrder, setNewClientAutoOrder] = useState<boolean>(false);
   const [registeredClient, setRegisteredClient] = useState<NewClientResponse['client'] | null>(
     null,
   );
@@ -157,7 +158,12 @@ export default function MonitoringClients() {
 
   // Register new client mutation
   const registerClientMutation = useMutation({
-    mutationFn: async (data: { clientName: string; location?: string; customerId?: string }) => {
+    mutationFn: async (data: {
+      clientName: string;
+      location?: string;
+      customerId?: string;
+      autoOrderEnabled?: boolean;
+    }) => {
       const response = await fetch('/api/client-metrics/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -317,6 +323,7 @@ export default function MonitoringClients() {
       clientName: newClientName.trim(),
       location: newClientLocation.trim() || undefined,
       customerId: newClientCustomerId || undefined,
+      autoOrderEnabled: newClientAutoOrder,
     });
   };
 
@@ -325,6 +332,7 @@ export default function MonitoringClients() {
     setNewClientName('');
     setNewClientLocation('');
     setNewClientCustomerId('');
+    setNewClientAutoOrder(false);
     setRegisteredClient(null);
   };
 
@@ -434,6 +442,26 @@ export default function MonitoringClients() {
                       Linking a client to a customer ties the bundled installer and all collected
                       meter data to that account.
                     </p>
+                  </div>
+
+                  <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <input
+                      id="autoOrder"
+                      type="checkbox"
+                      checked={newClientAutoOrder}
+                      onChange={(e) => setNewClientAutoOrder(e.target.checked)}
+                      className="mt-1 h-4 w-4"
+                    />
+                    <div className="flex-1">
+                      <Label htmlFor="autoOrder" className="text-sm font-medium">
+                        Auto-order on critical toner alerts
+                      </Label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        When a device hits ≤10% on any colour, fire a draft supply order in the
+                        platform. Operators approve before fulfilment. Leave off if you'd rather
+                        route every alert through manual review.
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <DialogFooter>

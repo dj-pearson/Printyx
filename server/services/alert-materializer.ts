@@ -22,6 +22,7 @@ import { db } from '../db';
 import { deviceAlerts } from '@shared/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { createModuleLogger } from '../lib/logger';
+import { maybeAutoOrder } from './auto-order';
 
 const log = createModuleLogger('alert-materializer');
 
@@ -132,20 +133,41 @@ async function materializeOne(
   }
 
   // Case B: condition is tripping and we don't have an open row → insert.
+  // This is the only path that can trigger auto-order: an alert
+  // *transition* into an open state, not a re-affirmation of an
+  // already-open one. Prevents oscillation from spamming the order queue.
   if (!existing) {
-    await db.insert(deviceAlerts).values({
-      tenantId,
-      deviceId,
-      supplyType: supply,
-      alertType: desired.alertType,
-      severity: desired.severity,
-      currentValue: level,
-      threshold: desired.threshold,
-      status: 'active',
-      message: desired.message,
-      firstSeenAt: now,
-      lastSeenAt: now,
-    });
+    const [created] = await db
+      .insert(deviceAlerts)
+      .values({
+        tenantId,
+        deviceId,
+        supplyType: supply,
+        alertType: desired.alertType,
+        severity: desired.severity,
+        currentValue: level,
+        threshold: desired.threshold,
+        status: 'active',
+        message: desired.message,
+        firstSeenAt: now,
+        lastSeenAt: now,
+      })
+      .returning({ id: deviceAlerts.id });
+
+    // Fire-and-forget the auto-order check; result is logged inside.
+    if (created?.id) {
+      try {
+        await maybeAutoOrder({
+          alertId: created.id,
+          tenantId,
+          deviceId,
+          supplyType: supply,
+          alertType: desired.alertType,
+        });
+      } catch (err) {
+        log.warn('auto-order check failed (non-fatal)', { err });
+      }
+    }
     return;
   }
 
@@ -170,4 +192,23 @@ async function materializeOne(
       updatedAt: now,
     })
     .where(eq(deviceAlerts.id, existing.id));
+
+  // Auto-order on UPGRADE: alert was 'low', now 'critical'/'empty'. We
+  // didn't fire on the original low alert (too noisy), but the upgrade
+  // is real and warrants an order if one wasn't already triggered.
+  const wasLow = existing.alertType === 'low';
+  const nowCritical = desired.alertType === 'critical' || desired.alertType === 'empty';
+  if (wasLow && nowCritical && !existing.triggeredOrderId) {
+    try {
+      await maybeAutoOrder({
+        alertId: existing.id,
+        tenantId,
+        deviceId,
+        supplyType: supply,
+        alertType: desired.alertType,
+      });
+    } catch (err) {
+      log.warn('auto-order on upgrade failed (non-fatal)', { err });
+    }
+  }
 }
