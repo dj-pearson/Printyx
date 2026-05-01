@@ -303,8 +303,14 @@ printyx-client start -c /path/to/config.json
 printyx-client test 192.168.1.100
 printyx-client test 192.168.1.100 --community private
 
-# Discover printers on network
-printyx-client discover 192.168.1.0/24
+# Discover printers on the local subnet (default: mDNS + WSD, ~5s)
+printyx-client discover
+
+# Pick specific discovery methods
+printyx-client discover --method mdns
+printyx-client discover --method wsd
+printyx-client discover 192.168.1.0/24 --method cidr      # legacy CIDR sweep
+printyx-client discover 192.168.1.0/24 --method all       # all three, merged
 
 # Show version
 printyx-client version

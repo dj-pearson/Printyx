@@ -121,7 +121,13 @@ program
   .command('test <ip>')
   .description('Test connectivity to a device')
   .option('-p, --protocol <protocol>', 'Protocol to test (snmp, http)', 'snmp')
-  .option('-c, --community <community>', 'SNMP community string', 'public')
+  .option('-c, --community <community>', 'SNMP community string (v1/v2c only)', 'public')
+  .option('-V, --snmp-version <version>', 'SNMP version: 1 | 2c | 3', '2c')
+  .option('-u, --snmp-username <name>', 'SNMPv3 username')
+  .option('--snmp-auth-protocol <p>', 'SNMPv3 auth protocol: MD5|SHA|SHA224|SHA256|SHA384|SHA512')
+  .option('--snmp-auth-key <key>', 'SNMPv3 auth key')
+  .option('--snmp-priv-protocol <p>', 'SNMPv3 priv protocol: DES|AES')
+  .option('--snmp-priv-key <key>', 'SNMPv3 priv key')
   .action(async (ip, options) => {
     initLogger('info');
     const logger = getLogger();
@@ -130,20 +136,34 @@ program
 
     if (options.protocol === 'snmp') {
       const collector = new SNMPCollector();
+      const isV3 = options.snmpVersion === '3';
+      const collectorOpts: any = {
+        community: options.community,
+        version: options.snmpVersion,
+      };
+      if (isV3) {
+        if (!options.snmpUsername) {
+          logger.error('SNMPv3 requires --snmp-username');
+          process.exit(1);
+        }
+        collectorOpts.v3 = {
+          username: options.snmpUsername,
+          authProtocol: options.snmpAuthProtocol,
+          authKey: options.snmpAuthKey,
+          privProtocol: options.snmpPrivProtocol,
+          privKey: options.snmpPrivKey,
+        };
+      }
 
       try {
-        const connected = await collector.testConnection(ip, {
-          community: options.community,
-        });
+        const connected = await collector.testConnection(ip, collectorOpts);
 
         if (connected) {
           logger.info(`✓ SNMP connection successful`);
 
           // Try to collect metrics
           logger.info('Attempting to collect metrics...');
-          const metrics = await collector.collect(ip, {
-            community: options.community,
-          });
+          const metrics = await collector.collect(ip, collectorOpts);
 
           console.log('\nDevice Information:');
           console.log(`  Serial Number: ${metrics.serialNumber}`);
@@ -193,16 +213,35 @@ program
 
 // Discover command - Scan network for printers
 program
-  .command('discover <network>')
-  .description('Discover printers on network (e.g., 192.168.1.0/24)')
-  .action(async (network) => {
+  .command('discover [network]')
+  .description(
+    'Discover printers on the local network. Defaults to mDNS + WSD; pass a CIDR (e.g., 192.168.1.0/24) to also do a CIDR sweep.',
+  )
+  .option(
+    '-m, --method <methods>',
+    'Comma-separated list of discovery methods: mdns, wsd, cidr, all',
+    'mdns,wsd',
+  )
+  .action(async (network, options) => {
     initLogger('info');
     const logger = getLogger();
 
-    logger.info(`Scanning network: ${network}`);
+    const methods = (options.method as string)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean) as Array<'mdns' | 'wsd' | 'cidr' | 'all'>;
+
+    if (network) {
+      logger.info(`Discovery: ${methods.join(',')} (CIDR target: ${network})`);
+    } else {
+      logger.info(`Discovery: ${methods.join(',')} (no CIDR target)`);
+      if (methods.includes('cidr')) {
+        logger.warn('Method "cidr" requested but no network range supplied — skipping CIDR sweep.');
+      }
+    }
 
     const scanner = new NetworkScanner();
-    const devices = await scanner.discoverDevices([network]);
+    const devices = await scanner.discoverDevices(network ? [network] : [], methods);
 
     if (devices.length === 0) {
       console.log('\nNo devices found.');
@@ -216,6 +255,10 @@ program
       if (device.manufacturer) console.log(`    Manufacturer: ${device.manufacturer}`);
       if (device.model) console.log(`    Model: ${device.model}`);
       console.log(`    Protocol: ${device.protocol.toUpperCase()}`);
+      if (device.discoveredVia && device.discoveredVia.length > 0) {
+        console.log(`    Found via: ${device.discoveredVia.join(', ')}`);
+      }
+      if (device.hostname) console.log(`    Hostname: ${device.hostname}`);
       console.log('');
     }
 

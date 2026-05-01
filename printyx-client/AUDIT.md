@@ -94,6 +94,23 @@ returns a zip that pairs the install scripts with a `bootstrap-config.json`
 containing a freshly-issued enrollment token (NOT the api key). Same
 redemption flow, fewer manual steps.
 
+## Tenant + customer linkage
+
+Every monitoring client carries:
+
+- `tenant_id` — uuid; enforced by `requireTenant` middleware on every
+  admin endpoint and by SHA-256 API-key match on the ingest path.
+- `customer_id` — optional `varchar` pointer to `business_records.id`.
+  Set when an admin picks a customer in the registration dialog. Surfaced
+  in the bundled `bootstrap-config.json` and in the `/enroll` response so
+  installers and downstream tooling know which account the meter data
+  belongs to.
+
+There is intentionally no SQL-level foreign-key on `customer_id` — the
+referenced `business_records.id` column is `varchar` (uuid as text) and
+the table is heavily used with soft-delete patterns, so a hard FK would
+fail too eagerly. Application code is the integrity boundary.
+
 ## Security posture (client side)
 
 Already in place:
@@ -123,13 +140,107 @@ Improvements in this revision:
 
 Still worth doing later (not in this PR):
 
-- Replace HTTP printer scraping fallback with HTTPS where the device
-  supports it; today `http-collector.ts` defaults to `http://:80`.
 - Pull the active server endpoint into the OpenAPI spec so the contract
   is enforced in CI.
-- Wire a UI surface in **Monitoring → Monitoring Clients** that calls
-  `POST /clients/:id/enrollment-token` and offers the bundled installer
-  download (`installer.zip`).
+
+## Alerts — materialised, ack/snooze/resolve
+
+`device_alerts` (added in `0011_device_alerts.sql`) holds one row per
+(tenant, device, supply) lifecycle. Status flow:
+
+```
+active ──ack──▶ acknowledged ──supply restored──▶ resolved
+   │                  │
+   └─snooze─▶ snoozed ─┘   (auto-revert to active on snoozed_until)
+```
+
+Server side:
+
+- `server/services/alert-materializer.ts` runs on every
+  `/api/client-metrics/submit`. Idempotent — re-running on the same
+  metric is a no-op. Operator state (acknowledged / snoozed) is
+  preserved across submissions; auto-resolution flips status when a
+  level crosses back over the warning threshold.
+- A partial unique index on `(tenant, device, supply)` for non-resolved
+  rows guarantees there's only one open alert per supply.
+- `routes-device-monitoring.ts` exposes:
+  - `GET  /api/device-monitoring/active-alerts` — open alerts (active +
+    acked + snoozed) for the tenant, joined with device info.
+  - `GET  /api/device-monitoring/device/:serialNumber/alerts` — per-device,
+    pass `?includeResolved=true` for history.
+  - `POST /api/device-monitoring/alerts/:id/acknowledge`
+  - `POST /api/device-monitoring/alerts/:id/snooze` (body `{hours}`,
+    1–168, default 4)
+  - `POST /api/device-monitoring/alerts/:id/resolve`
+- A snoozed alert whose `snoozed_until` has elapsed is shown as
+  "active" by the read decorator immediately, even before the next
+  /submit cycle re-runs the materializer.
+
+UI side:
+
+- `DeviceMonitoring.tsx` device-detail Alerts tab renders Acknowledge /
+  Snooze 4h / Resolve buttons per row, plus a status badge.
+- The fleet `activeAlerts` count (used by `/statistics`) reads from
+  `device_alerts` instead of being recomputed from `device_metrics`,
+  so the "active" badge in the dashboard header matches the alerts
+  list exactly.
+
+## HTTP collector — vendor coverage
+
+`http-collector.ts` is the fallback for devices with SNMP disabled or
+locked behind a community string the operator hasn't shared with us.
+Defaults to **HTTPS** with strict TLS validation; per-device override
+via `httpRejectUnauthorized: false` for self-signed embedded admin UIs.
+
+`src/collectors/vendor-scrapers.ts` is the dispatch table. Implemented:
+
+| Vendor | Path family | What we read |
+| ------ | ----------- | ------------ |
+| HP | `/DevMgmt/{ProductConfig,ConsumableConfig,PrinterUsage,ProductStatus}Dyn.xml` | serial, model, toner per CMYK, total/BW/color impressions, status |
+| Konica Minolta | `/wcd/{system_device,info_counter,info_supply}.xml` | serial, model, toner per CMYK, total/BW/color/large counters |
+
+Other vendors (Canon, Xerox, Ricoh, Brother, Lexmark, Sharp, Toshiba,
+Epson, Kyocera, OKI, Samsung) are recognised by `detectVendor()` but
+don't yet have dedicated scrapers — the HP and KM scrapers are tried
+as a fallback because their endpoints rarely exist on other vendors,
+so a 404 there is harmless.
+
+To add a vendor: drop a new `scrapeXxx` function next to `scrapeHp` in
+`vendor-scrapers.ts`, register it in `VENDOR_SCRAPERS`, and add a test
+fixture against canned XML.
+
+## SNMP collector — vendor coverage
+
+`src/collectors/vendor-oids.ts` is the single source of truth for:
+
+- IANA enterprise prefix → vendor mapping (used for **sysObjectID-based**
+  detection — much more reliable than parsing sysDescr free-text).
+- Vendor counter OIDs for total / B&W / colour / large impressions.
+
+Currently supported vendors with vendor-specific counter OIDs: HP,
+Canon, Xerox, Ricoh, Konica Minolta, Lexmark, Brother, Sharp, Toshiba,
+Epson, Kyocera, OKI, Samsung. For any other vendor — and for vendor
+models whose counters aren't in the map — the collector falls back to a
+walk of `prtMarkerLifeCount` (RFC 3805).
+
+The supplies walk now reads the entire `prtMarkerSuppliesEntry` table,
+so the `rawData.supplies` field on every submission carries every
+supply unit reported by the device — drum life, fuser life, waste-toner
+bottle, maintenance kits — not just CMYK toners.
+
+## SNMPv3
+
+Wired through `snmp.createV3Session()`:
+
+- `level` is auto-derived from which keys are present (`authKey + privKey`
+  → `authPriv`, `authKey` only → `authNoPriv`, neither → `noAuthNoPriv`).
+- Auth protocols: MD5, SHA, SHA-224/256/384/512 (per RFC 7860).
+- Priv protocols: DES, AES.
+- Per-device config maps onto the runtime via `scheduler.ts` —
+  `snmpUsername`, `snmpAuthProtocol`, `snmpAuthKey`, `snmpPrivProtocol`,
+  `snmpPrivKey`, optional `snmpVersion: '3'`.
+
+CLI test command takes the same flags — see `docs/SNMP-TESTING.md`.
 
 ## Windows install
 
@@ -155,11 +266,46 @@ off to `install-windows.ps1`.
 
 | Port  | Direction | Required? | Note |
 | ----- | --------- | --------- | ---- |
-| 443/TCP | outbound  | yes | Printyx API. The only port that crosses a public boundary. |
-| 161/UDP | outbound (intra-LAN) | for SNMP printers | Not exposed to internet. |
+| 443/TCP   | outbound        | yes | Printyx API. The only port that crosses a public boundary. |
+| 161/UDP   | outbound (intra-LAN) | for SNMP printers | Not exposed to internet. |
 | 80/TCP, 443/TCP | outbound (intra-LAN) | for HTTP scrape | Not exposed to internet. |
-| any | inbound | no | The client never listens. |
+| 5353/UDP  | in + out (intra-LAN) | for mDNS discovery (opt-in) | Multicast `224.0.0.251`. Domain/Private profiles only. |
+| 3702/UDP  | in + out (intra-LAN) | for WSD discovery (opt-in) | Multicast `239.255.255.250`. Domain/Private profiles only. |
+
+The discovery ports are off by default. Pass `-EnableDiscoveryFirewall`
+to `install-windows.ps1`, or add them by hand later. The agent itself
+binds to ephemeral UDP ports — the multicast packets are intra-LAN and
+the multicast TTL is set to 1, so they cannot route out of the subnet.
 
 If your enterprise uses a TLS-inspecting proxy, install its CA into the
 config via `api.security.customCA` and certificate validation will
 continue to pass.
+
+## Discovery methods
+
+`NetworkScanner.discoverDevices(ranges, methods)` accepts any
+combination of three methods, run in parallel and merged by IP:
+
+| Method | What it does | When it shines |
+| ------ | ------------ | -------------- |
+| `mdns` | Listens for printer service types (`_ipp._tcp`, `_pdl-datastream._tcp`, `_printer._tcp`, `_uscan._tcp`, `_ipps._tcp`) on UDP 5353. | HP / Brother / Canon / Xerox / Konica / Kyocera fleets. Near-instant (default 5s window). |
+| `wsd`  | Sends a single WS-Discovery `Probe` SOAP message to UDP `239.255.255.250:3702` and parses `ProbeMatches` responses. | Any printer with a Windows-class WSD driver — typical office MFPs. |
+| `cidr` | Sequentially SNMP-probes every host in the supplied CIDR range. The legacy method. | Networks where mDNS/WSD are firewalled off, or as a gap-filler. |
+
+Default for the running agent: `['mdns', 'wsd']` — cheap, intra-LAN
+multicast, near-instant, no CPU burn on a /24 sweep. Only operators
+who explicitly want a CIDR scan supply `discoveryMethods: ['mdns',
+'wsd', 'cidr']` plus `networkRanges`.
+
+CLI:
+
+```bash
+printyx-client discover                              # mDNS + WSD
+printyx-client discover --method mdns                # mDNS only
+printyx-client discover --method wsd                 # WSD only
+printyx-client discover 192.168.1.0/24 --method cidr # legacy CIDR sweep
+printyx-client discover 192.168.1.0/24 --method all  # all three, merged
+```
+
+`discoveredVia` is preserved on each result so the UI can show why a
+device showed up.

@@ -2,6 +2,8 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { SNMPCollector } from '../collectors/snmp-collector';
 import { HTTPCollector } from '../collectors/http-collector';
+import { MdnsDiscovery } from './mdns-discovery';
+import { WsdDiscovery } from './wsd-discovery';
 import { getLogger } from '../utils/logger';
 
 const execAsync = promisify(exec);
@@ -14,31 +16,110 @@ export interface DiscoveredDevice {
   model?: string;
   protocol: 'snmp' | 'http';
   isResponding: boolean;
+  /** Source(s) the device was found through — useful for diagnosing why a
+   *  device shows up but doesn't respond to SNMP, etc. */
+  discoveredVia?: Array<'cidr' | 'mdns' | 'wsd'>;
 }
+
+export type DiscoveryMethod = 'cidr' | 'mdns' | 'wsd' | 'all';
 
 export class NetworkScanner {
   private logger = getLogger();
   private snmpCollector = new SNMPCollector();
   private httpCollector = new HTTPCollector();
+  private mdns = new MdnsDiscovery();
+  private wsd = new WsdDiscovery();
 
   /**
-   * Discover printers on network ranges
+   * Discover printers on network ranges using one or more methods.
+   * Methods are run in parallel and de-duplicated by IP. The default
+   * method set is `['mdns', 'wsd']` because they're nearly instant and
+   * don't blast the network with thousands of SNMP probes; if no
+   * devices are found they fall back to a CIDR scan when ranges are
+   * supplied.
    */
-  async discoverDevices(networkRanges: string[]): Promise<DiscoveredDevice[]> {
-    this.logger.info('Starting device discovery', { networkRanges });
+  async discoverDevices(
+    networkRanges: string[],
+    methods: DiscoveryMethod[] = ['mdns', 'wsd', 'cidr'],
+  ): Promise<DiscoveredDevice[]> {
+    this.logger.info('Starting device discovery', { networkRanges, methods });
 
+    const wantsCidr = methods.includes('cidr') || methods.includes('all');
+    const wantsMdns = methods.includes('mdns') || methods.includes('all');
+    const wantsWsd = methods.includes('wsd') || methods.includes('all');
+
+    const promises: Array<Promise<DiscoveredDevice[]>> = [];
+    if (wantsMdns) promises.push(this.runMdns());
+    if (wantsWsd) promises.push(this.runWsd());
+    if (wantsCidr) promises.push(this.runCidr(networkRanges));
+
+    const results = await Promise.all(promises);
+
+    // De-dupe by IP, merging metadata.
+    const merged = new Map<string, DiscoveredDevice>();
+    for (const list of results) {
+      for (const device of list) {
+        const existing = merged.get(device.ipAddress);
+        if (!existing) {
+          merged.set(device.ipAddress, device);
+        } else {
+          merged.set(device.ipAddress, {
+            ...existing,
+            hostname: existing.hostname || device.hostname,
+            manufacturer: existing.manufacturer || device.manufacturer,
+            model: existing.model || device.model,
+            protocol: existing.protocol || device.protocol,
+            isResponding: existing.isResponding || device.isResponding,
+            discoveredVia: [
+              ...new Set([...(existing.discoveredVia || []), ...(device.discoveredVia || [])]),
+            ],
+          });
+        }
+      }
+    }
+
+    const all = [...merged.values()];
+    this.logger.info(`Discovery complete: found ${all.length} unique devices`);
+    return all;
+  }
+
+  // ── individual method runners ────────────────────────────────────
+
+  private async runMdns(): Promise<DiscoveredDevice[]> {
+    try {
+      this.logger.debug('Discovery: running mDNS browse');
+      const found = await this.mdns.discover({ timeoutMs: 5000 });
+      this.logger.info(`Discovery: mDNS found ${found.length} device(s)`);
+      return found.map((d) => ({ ...d, discoveredVia: ['mdns'] }));
+    } catch (error) {
+      this.logger.warn('mDNS discovery failed', { error });
+      return [];
+    }
+  }
+
+  private async runWsd(): Promise<DiscoveredDevice[]> {
+    try {
+      this.logger.debug('Discovery: running WSD probe');
+      const found = await this.wsd.discover({ timeoutMs: 4000 });
+      this.logger.info(`Discovery: WSD found ${found.length} device(s)`);
+      return found.map((d) => ({ ...d, discoveredVia: ['wsd'] }));
+    } catch (error) {
+      this.logger.warn('WSD discovery failed', { error });
+      return [];
+    }
+  }
+
+  private async runCidr(networkRanges: string[]): Promise<DiscoveredDevice[]> {
+    if (!networkRanges || networkRanges.length === 0) return [];
     const allDevices: DiscoveredDevice[] = [];
-
     for (const range of networkRanges) {
       try {
         const devices = await this.scanRange(range);
-        allDevices.push(...devices);
+        allDevices.push(...devices.map((d) => ({ ...d, discoveredVia: ['cidr' as const] })));
       } catch (error) {
         this.logger.error(`Failed to scan range ${range}`, { error });
       }
     }
-
-    this.logger.info(`Discovery complete: found ${allDevices.length} devices`);
     return allDevices;
   }
 

@@ -59,6 +59,10 @@ CREATE INDEX IF NOT EXISTS "client_status_idx"      ON "monitoring_clients" ("st
 CREATE INDEX IF NOT EXISTS "client_heartbeat_idx"   ON "monitoring_clients" ("last_heartbeat");
 CREATE INDEX IF NOT EXISTS "client_api_key_idx"     ON "monitoring_clients" ("api_key");
 
+-- customer_id (also added separately by 0009 for already-existing tables).
+ALTER TABLE "monitoring_clients" ADD COLUMN IF NOT EXISTS "customer_id" varchar(255);
+CREATE INDEX IF NOT EXISTS "monitoring_clients_customer_idx" ON "monitoring_clients" ("customer_id");
+
 -- Main table: client_enrollment_tokens --------------------------------
 CREATE TABLE IF NOT EXISTS "client_enrollment_tokens" (
     "id"                  uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,

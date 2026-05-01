@@ -786,6 +786,10 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     requiredPermissions: ['service.equipment.view', 'service.equipment.configure'],
     minLevel: 3,
   },
+  '/supply-runway': {
+    requiredPermissions: ['service.equipment.view'],
+    minLevel: 3,
+  },
   '/oid-management': {
     requiredPermissions: ['service.equipment.configure'],
     minLevel: 4,

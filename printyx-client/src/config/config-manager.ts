@@ -17,6 +17,12 @@ export interface DeviceConfig {
   httpPort?: number;
   username?: string;
   password?: string;
+  /**
+   * For HTTP/HTTPS collection only. Defaults to `true` (enforce strict
+   * TLS). Set to `false` if the device's admin UI is on a self-signed
+   * certificate and you trust the local network. Per-device, never global.
+   */
+  httpRejectUnauthorized?: boolean;
 }
 
 export interface ClientConfig {
@@ -45,6 +51,14 @@ export interface ClientConfig {
     pollingInterval: number; // seconds
     discoveryEnabled: boolean;
     networkRanges?: string[];
+    /**
+     * Discovery methods to run when discoveryEnabled is true. Defaults to
+     * `['mdns', 'wsd']` when omitted — these are nearly instant and
+     * cover most modern fleets without burning CPU on a CIDR sweep.
+     * Supply `['cidr']` (and `networkRanges`) to fall back to the
+     * legacy SNMP probe sweep, or `['mdns', 'wsd', 'cidr']` for both.
+     */
+    discoveryMethods?: Array<'mdns' | 'wsd' | 'cidr' | 'all'>;
     retryAttempts: number;
     timeout: number; // milliseconds
   };
@@ -238,7 +252,11 @@ export class ConfigManager {
       collection: {
         pollingInterval: 300, // 5 minutes
         discoveryEnabled: true,
-        networkRanges: ['192.168.1.0/24'],
+        // Default to mDNS + WSD multicast — near-instant, no /24 SNMP
+        // sweep needed. Add 'cidr' (and a networkRanges entry) if your
+        // network blocks multicast.
+        discoveryMethods: ['mdns', 'wsd'],
+        networkRanges: [],
         retryAttempts: 3,
         timeout: 10000,
       },

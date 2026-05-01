@@ -70,6 +70,12 @@ export const monitoringClients = pgTable(
     location: varchar('location', { length: 255 }),
     contactEmail: varchar('contact_email', { length: 255 }),
 
+    // Optional pointer to the customer (business_records row) this client
+    // monitors. Filled when an admin creates a client in the UI and picks a
+    // customer; the bundled installer can then surface customer context to
+    // the operator without making a second lookup.
+    customerId: varchar('customer_id', { length: 255 }),
+
     isActive: boolean('is_active').default(true).notNull(),
     createdAt: timestamp('created_at')
       .default(sql`now()`)
@@ -194,11 +200,60 @@ export const clientEnrollmentTokens = pgTable(
   }),
 );
 
+// Remote-control commands queued for a monitoring client.
+//
+// The platform writes a row here when an operator wants the agent to do
+// something (rescan the network, reload config, rotate its API key, force
+// a metrics submission). The agent reads pending commands on every
+// heartbeat, executes them, and posts the result back via
+// /api/client-metrics/commands/:id/ack.
+//
+// Status flow:
+//   queued -> dispatched (agent picked it up) -> done | failed | expired
+export const clientCommands = pgTable(
+  'client_commands',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id').notNull(),
+    clientId: uuid('client_id')
+      .notNull()
+      .references(() => monitoringClients.id, { onDelete: 'cascade' }),
+    // Command discriminator: 'rescan', 'reload-config', 'force-submit',
+    // 'rotate-key', 'restart'. New commands are added by the agent's
+    // CommandProcessor switch — anything it doesn't recognise is acked
+    // with status='failed' so the queue doesn't stick.
+    command: varchar('command', { length: 64 }).notNull(),
+    payload: jsonb('payload').default({}),
+    status: varchar('status', { length: 32 }).notNull().default('queued'),
+    issuedByUserId: varchar('issued_by_user_id', { length: 255 }),
+    dispatchedAt: timestamp('dispatched_at'),
+    completedAt: timestamp('completed_at'),
+    expiresAt: timestamp('expires_at').notNull(),
+    result: jsonb('result'),
+    errorMessage: text('error_message'),
+    createdAt: timestamp('created_at')
+      .default(sql`now()`)
+      .notNull(),
+  },
+  (table) => ({
+    clientStatusIdx: index('client_commands_client_status_idx').on(table.clientId, table.status),
+    expiresIdx: index('client_commands_expires_idx').on(table.expiresAt),
+  }),
+);
+
 // Relations
 export const monitoringClientsRelations = relations(monitoringClients, ({ many }) => ({
   activityLogs: many(clientActivityLogs),
   discoveredDevices: many(clientDiscoveredDevices),
   enrollmentTokens: many(clientEnrollmentTokens),
+  commands: many(clientCommands),
+}));
+
+export const clientCommandsRelations = relations(clientCommands, ({ one }) => ({
+  client: one(monitoringClients, {
+    fields: [clientCommands.clientId],
+    references: [monitoringClients.id],
+  }),
 }));
 
 export const clientEnrollmentTokensRelations = relations(clientEnrollmentTokens, ({ one }) => ({
@@ -231,6 +286,7 @@ export const insertMonitoringClientSchema = createInsertSchema(monitoringClients
 export const insertClientActivityLogSchema = createInsertSchema(clientActivityLogs);
 export const insertClientDiscoveredDeviceSchema = createInsertSchema(clientDiscoveredDevices);
 export const insertClientEnrollmentTokenSchema = createInsertSchema(clientEnrollmentTokens);
+export const insertClientCommandSchema = createInsertSchema(clientCommands);
 
 // Types
 export type MonitoringClient = typeof monitoringClients.$inferSelect;
@@ -241,6 +297,8 @@ export type ClientDiscoveredDevice = typeof clientDiscoveredDevices.$inferSelect
 export type InsertClientDiscoveredDevice = z.infer<typeof insertClientDiscoveredDeviceSchema>;
 export type ClientEnrollmentToken = typeof clientEnrollmentTokens.$inferSelect;
 export type InsertClientEnrollmentToken = z.infer<typeof insertClientEnrollmentTokenSchema>;
+export type ClientCommand = typeof clientCommands.$inferSelect;
+export type InsertClientCommand = z.infer<typeof insertClientCommandSchema>;
 
 // Request validation schemas
 export const clientMetricSubmissionSchema = z.object({

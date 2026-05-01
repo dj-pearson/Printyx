@@ -7,6 +7,7 @@ import { ConfigManager, DeviceConfig } from '../config/config-manager';
 import { NetworkScanner } from '../discovery/network-scanner';
 import { DataBuffer } from './data-buffer';
 import { MeterTracker } from './meter-tracker';
+import { CommandProcessor } from './command-processor';
 import { getLogger } from '../utils/logger';
 
 export class MetricsScheduler {
@@ -18,17 +19,24 @@ export class MetricsScheduler {
   private networkScanner = new NetworkScanner();
   private dataBuffer: DataBuffer;
   private meterTracker: MeterTracker;
+  private commandProcessor: CommandProcessor;
 
   private collectionTask: cron.ScheduledTask | null = null;
   private heartbeatTask: cron.ScheduledTask | null = null;
   private retryTask: cron.ScheduledTask | null = null;
   private isCollecting = false;
+  private currentPollingCron: string | null = null;
 
   constructor(configManager: ConfigManager, apiClient: PrintyxAPIClient) {
     this.configManager = configManager;
     this.apiClient = apiClient;
     this.dataBuffer = new DataBuffer();
     this.meterTracker = new MeterTracker();
+    this.commandProcessor = new CommandProcessor(apiClient, configManager, {
+      forceSubmit: () => this.handleForceSubmit(),
+      rescan: () => this.handleRescan(),
+      reloadConfig: () => this.handleReloadConfig(),
+    });
   }
 
   /**
@@ -44,6 +52,7 @@ export class MetricsScheduler {
 
     // Schedule metrics collection
     const collectionCron = this.secondsToCron(config.collection.pollingInterval);
+    this.currentPollingCron = collectionCron;
     this.collectionTask = cron.schedule(collectionCron, () => {
       this.collectAndSubmitMetrics();
     });
@@ -263,13 +272,24 @@ export class MetricsScheduler {
   private async getDevicesToMonitor(): Promise<DeviceConfig[]> {
     const config = this.configManager.getConfig();
 
-    // If discovery is enabled, scan for new devices
-    if (config.collection.discoveryEnabled && config.collection.networkRanges) {
+    // If discovery is enabled, scan for new devices. By default we use
+    // mDNS + WSD (cheap, intra-LAN multicast, near-instant) and fall back
+    // to CIDR only when the operator explicitly asks for it.
+    const methods =
+      config.collection.discoveryMethods && config.collection.discoveryMethods.length > 0
+        ? config.collection.discoveryMethods
+        : ['mdns' as const, 'wsd' as const];
+    const ranges = config.collection.networkRanges || [];
+    const wantsScan =
+      config.collection.discoveryEnabled &&
+      (methods.includes('mdns') ||
+        methods.includes('wsd') ||
+        methods.includes('all') ||
+        (methods.includes('cidr') && ranges.length > 0));
+    if (wantsScan) {
       try {
-        this.logger.info('Running device discovery');
-        const discovered = await this.networkScanner.discoverDevices(
-          config.collection.networkRanges,
-        );
+        this.logger.info('Running device discovery', { methods });
+        const discovered = await this.networkScanner.discoverDevices(ranges, methods);
 
         if (discovered.length > 0) {
           this.logger.info(`Discovered ${discovered.length} new devices`);
@@ -307,20 +327,33 @@ export class MetricsScheduler {
 
     try {
       if (device.protocol === 'snmp') {
+        const v3 =
+          device.snmpVersion === '3'
+            ? {
+                username: device.snmpUsername || '',
+                authProtocol: device.snmpAuthProtocol,
+                authKey: device.snmpAuthKey,
+                privProtocol: device.snmpPrivProtocol,
+                privKey: device.snmpPrivKey,
+              }
+            : undefined;
         return await this.snmpCollector.collect(device.ipAddress, {
           community: device.snmpCommunity || 'public',
-          version: this.getSNMPVersion(device.snmpVersion || '2c'),
+          version: device.snmpVersion || '2c',
           port: device.snmpPort || 161,
           timeout: config.collection.timeout,
           retries: config.collection.retryAttempts,
+          v3,
         });
       } else {
+        const httpProto = device.protocol === 'https' ? 'https' : 'http';
         return await this.httpCollector.collect(device.ipAddress, {
-          protocol: device.protocol === 'https' ? 'https' : 'http',
-          port: device.httpPort || 80,
+          protocol: httpProto,
+          port: device.httpPort || (httpProto === 'https' ? 443 : 80),
           username: device.username,
           password: device.password,
           timeout: config.collection.timeout,
+          rejectUnauthorized: device.httpRejectUnauthorized !== false,
         });
       }
     } catch (error) {
@@ -330,15 +363,153 @@ export class MetricsScheduler {
   }
 
   /**
-   * Send heartbeat to Printyx
+   * Send heartbeat to Printyx and process any commands the server
+   * returned. Failures here are non-fatal — collection keeps running.
    */
   private async sendHeartbeat(): Promise<void> {
     try {
-      await this.apiClient.sendHeartbeat();
+      const response = await this.apiClient.sendHeartbeat();
       this.logger.debug('Heartbeat sent successfully');
+      if (response.pendingCommands && response.pendingCommands.length > 0) {
+        // Fire-and-forget; CommandProcessor handles its own errors and acks.
+        this.commandProcessor.processBatch(response.pendingCommands).catch((err) => {
+          this.logger.error('Command batch processing crashed', { err });
+        });
+      }
     } catch (error) {
       this.logger.error('Failed to send heartbeat', { error });
     }
+  }
+
+  // ── Command handlers (called by CommandProcessor) ──────────────────
+
+  private async handleForceSubmit(): Promise<{
+    devicesCollected: number;
+    devicesSubmitted: number;
+  }> {
+    const before = this.dataBuffer.getStats().totalSubmissions;
+    await this.collectAndSubmitMetrics();
+    const after = this.dataBuffer.getStats().totalSubmissions;
+    // If buffer grew, submission failed; otherwise it succeeded.
+    const config = this.configManager.getConfig();
+    const deviceCount = (config.devices || []).length;
+    return {
+      devicesCollected: deviceCount,
+      devicesSubmitted: after <= before ? deviceCount : 0,
+    };
+  }
+
+  private async handleRescan(): Promise<{ discovered: number }> {
+    const config = this.configManager.getConfig();
+    const methods =
+      config.collection.discoveryMethods && config.collection.discoveryMethods.length > 0
+        ? config.collection.discoveryMethods
+        : ['mdns' as const, 'wsd' as const];
+    const ranges = config.collection.networkRanges || [];
+    // mDNS / WSD don't need a network range; only short-circuit if the
+    // operator explicitly chose CIDR-only with no ranges.
+    const onlyCidr = methods.length === 1 && methods[0] === 'cidr';
+    if (onlyCidr && ranges.length === 0) {
+      return { discovered: 0 };
+    }
+    const discovered = await this.networkScanner.discoverDevices(ranges, methods);
+    const existingIPs = new Set((config.devices || []).map((d) => d.ipAddress));
+    const newOnes = discovered.filter((d) => !existingIPs.has(d.ipAddress));
+    if (newOnes.length > 0) {
+      config.devices = [
+        ...(config.devices || []),
+        ...newOnes.map((d) => ({
+          ipAddress: d.ipAddress,
+          protocol: d.protocol,
+          snmpCommunity: d.protocol === 'snmp' ? 'public' : undefined,
+          snmpVersion: d.protocol === 'snmp' ? ('2c' as const) : undefined,
+        })),
+      ];
+      this.configManager.saveConfig(config);
+    }
+    return { discovered: newOnes.length };
+  }
+
+  /**
+   * Re-fetch /config from the platform and apply updates to the running
+   * agent without a restart. Currently applied: pollingInterval (re-cron),
+   * networkRanges, devices, alert thresholds. Anything else is logged
+   * but not applied — those changes still require a service restart.
+   */
+  private async handleReloadConfig(): Promise<{ changed: string[] }> {
+    const remote = await this.apiClient.getConfig();
+    const local = this.configManager.getConfig();
+    const remoteCfg = (remote as any).configuration || {};
+    const changed: string[] = [];
+
+    // pollingInterval — reschedule the collection cron in place.
+    if (
+      typeof remoteCfg.pollingInterval === 'number' &&
+      remoteCfg.pollingInterval !== local.collection.pollingInterval
+    ) {
+      local.collection.pollingInterval = remoteCfg.pollingInterval;
+      const newCron = this.secondsToCron(remoteCfg.pollingInterval);
+      if (newCron !== this.currentPollingCron) {
+        if (this.collectionTask) this.collectionTask.stop();
+        this.collectionTask = cron.schedule(newCron, () => this.collectAndSubmitMetrics());
+        this.currentPollingCron = newCron;
+      }
+      changed.push('pollingInterval');
+    }
+
+    // networkRanges
+    if (Array.isArray(remoteCfg.networkRanges)) {
+      const localRanges = (local.collection.networkRanges || []).join(',');
+      const remoteRanges = remoteCfg.networkRanges.join(',');
+      if (localRanges !== remoteRanges) {
+        local.collection.networkRanges = remoteCfg.networkRanges;
+        changed.push('networkRanges');
+      }
+    }
+
+    // devices: replace wholesale if the platform's list differs by length
+    // or by ipAddress set. We DON'T merge — the platform is authoritative
+    // when it sends a device list.
+    if (Array.isArray(remoteCfg.devices)) {
+      const localIps = new Set((local.devices || []).map((d) => d.ipAddress));
+      const remoteIps = new Set((remoteCfg.devices as any[]).map((d) => d.ipAddress));
+      const sameSet =
+        localIps.size === remoteIps.size && [...localIps].every((ip) => remoteIps.has(ip));
+      if (!sameSet) {
+        local.devices = remoteCfg.devices;
+        changed.push('devices');
+      }
+    }
+
+    // alert thresholds
+    if (
+      typeof remoteCfg.tonerThreshold === 'number' &&
+      remoteCfg.tonerThreshold !== local.alerts?.tonerThreshold
+    ) {
+      local.alerts = {
+        ...(local.alerts || { tonerThreshold: 15, paperThreshold: 20 }),
+        tonerThreshold: remoteCfg.tonerThreshold,
+      };
+      changed.push('alerts.tonerThreshold');
+    }
+    if (
+      typeof remoteCfg.paperThreshold === 'number' &&
+      remoteCfg.paperThreshold !== local.alerts?.paperThreshold
+    ) {
+      local.alerts = {
+        ...(local.alerts || { tonerThreshold: 15, paperThreshold: 20 }),
+        paperThreshold: remoteCfg.paperThreshold,
+      };
+      changed.push('alerts.paperThreshold');
+    }
+
+    if (changed.length > 0) {
+      this.configManager.saveConfig(local);
+      this.logger.info('Config updated from platform', { changed });
+    } else {
+      this.logger.debug('Config check: no changes from platform');
+    }
+    return { changed };
   }
 
   /**
@@ -354,23 +525,6 @@ export class MetricsScheduler {
     } else {
       const hours = Math.floor(seconds / 3600);
       return `0 */${hours} * * *`;
-    }
-  }
-
-  /**
-   * Get SNMP version enum
-   */
-  private getSNMPVersion(version: '1' | '2c' | '3'): any {
-    const snmp = require('net-snmp');
-    switch (version) {
-      case '1':
-        return snmp.Version1;
-      case '2c':
-        return snmp.Version2c;
-      case '3':
-        return snmp.Version3;
-      default:
-        return snmp.Version2c;
     }
   }
 }

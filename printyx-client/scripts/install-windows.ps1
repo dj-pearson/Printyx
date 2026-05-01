@@ -71,7 +71,12 @@ param(
     [string]$ConfigBundle,
     [switch]$NonInteractive,
     [switch]$SkipFirewallRule,
-    [switch]$SkipNodeCheck
+    [switch]$SkipNodeCheck,
+    # When set, add inbound firewall rules for mDNS (UDP 5353) and WSD
+    # (UDP 3702) scoped to the local subnet so the agent can do
+    # zero-config printer discovery. Off by default — only relevant if
+    # discoveryMethods includes 'mdns' or 'wsd'.
+    [switch]$EnableDiscoveryFirewall
 )
 
 $ErrorActionPreference = 'Stop'
@@ -404,6 +409,38 @@ if (-not $SkipFirewallRule) {
         -Program $nodeExe -Protocol TCP -RemotePort 443 `
         -Profile Any | Out-Null
     Write-Ok "Firewall rule added"
+}
+
+# -- Discovery firewall rules (opt-in: -EnableDiscoveryFirewall) -----------
+# mDNS (UDP/5353) and WSD (UDP/3702) are intra-LAN multicast. We allow
+# them on the Domain + Private profiles only — never Public — so a
+# laptop that wanders onto an airport WiFi can't be probed remotely.
+if ($EnableDiscoveryFirewall) {
+    Write-Step "Adding firewall rules for mDNS + WSD (Domain/Private profiles only)"
+
+    foreach ($rule in @(
+        @{ Name = 'Printyx Client - mDNS Discovery (in)';  Direction = 'Inbound';  Port = 5353 },
+        @{ Name = 'Printyx Client - mDNS Discovery (out)'; Direction = 'Outbound'; Port = 5353 },
+        @{ Name = 'Printyx Client - WSD Discovery (in)';   Direction = 'Inbound';  Port = 3702 },
+        @{ Name = 'Printyx Client - WSD Discovery (out)';  Direction = 'Outbound'; Port = 3702 }
+    )) {
+        Get-NetFirewallRule -DisplayName $rule.Name -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+        $params = @{
+            DisplayName = $rule.Name
+            Direction   = $rule.Direction
+            Action      = 'Allow'
+            Program     = $nodeExe
+            Protocol    = 'UDP'
+            Profile     = 'Domain,Private'
+        }
+        if ($rule.Direction -eq 'Inbound') {
+            $params.LocalPort = $rule.Port
+        } else {
+            $params.RemotePort = $rule.Port
+        }
+        New-NetFirewallRule @params | Out-Null
+    }
+    Write-Ok "Discovery firewall rules added (mDNS 5353, WSD 3702 — Domain/Private only)"
 }
 
 # -- Start service ---------------------------------------------------------
