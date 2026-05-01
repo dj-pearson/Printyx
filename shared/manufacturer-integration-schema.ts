@@ -200,6 +200,69 @@ export const integrationAuditLogs = pgTable(
   }),
 );
 
+// Materialised device alerts.
+//
+// Computed from device_metrics on each ingest by alert-materializer.ts.
+// Persisting them (instead of deriving on every dashboard read) lets
+// operators acknowledge / snooze / manually resolve, and gives us a
+// stable id to attach notes / tickets / orders to later.
+//
+// Lifecycle:
+//   active        — supply is over threshold, no operator action
+//   acknowledged  — operator has seen it; sticks until the supply
+//                   condition clears or the operator resolves
+//   snoozed       — temporarily silenced; reverts to 'active' after
+//                   snoozed_until elapses if the condition still holds
+//   resolved      — supply crossed back over threshold OR operator
+//                   manually resolved
+//
+// Uniqueness constraint (enforced at the table level via partial
+// unique index on tenant + device + supply for non-resolved rows) so
+// the same supply can't have two open alerts.
+export const deviceAlerts = pgTable(
+  'device_alerts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id').notNull(),
+    deviceId: uuid('device_id')
+      .notNull()
+      .references(() => deviceRegistrations.id, { onDelete: 'cascade' }),
+    // 'black' | 'cyan' | 'magenta' | 'yellow' | 'paper-tray1' | 'fuser' | …
+    supplyType: varchar('supply_type', { length: 64 }).notNull(),
+    // 'low' | 'critical' | 'empty' | 'offline'
+    alertType: varchar('alert_type', { length: 32 }).notNull(),
+    // 'info' | 'warning' | 'critical'
+    severity: varchar('severity', { length: 16 }).notNull(),
+    currentValue: integer('current_value'),
+    threshold: integer('threshold'),
+    // 'active' | 'acknowledged' | 'snoozed' | 'resolved'
+    status: varchar('status', { length: 16 }).notNull().default('active'),
+    message: text('message'),
+    acknowledgedAt: timestamp('acknowledged_at'),
+    acknowledgedBy: varchar('acknowledged_by', { length: 255 }),
+    snoozedUntil: timestamp('snoozed_until'),
+    resolvedAt: timestamp('resolved_at'),
+    firstSeenAt: timestamp('first_seen_at')
+      .default(sql`now()`)
+      .notNull(),
+    lastSeenAt: timestamp('last_seen_at')
+      .default(sql`now()`)
+      .notNull(),
+    createdAt: timestamp('created_at')
+      .default(sql`now()`)
+      .notNull(),
+    updatedAt: timestamp('updated_at')
+      .default(sql`now()`)
+      .notNull(),
+  },
+  (table) => ({
+    tenantStatusIdx: index('device_alerts_tenant_status_idx').on(table.tenantId, table.status),
+    deviceIdx: index('device_alerts_device_idx').on(table.deviceId),
+    severityIdx: index('device_alerts_severity_idx').on(table.severity),
+    snoozeExpiryIdx: index('device_alerts_snooze_expiry_idx').on(table.snoozedUntil),
+  }),
+);
+
 // Third-Party Integration Support (FMAudit/Printanista)
 export const thirdPartyIntegrations = pgTable(
   'third_party_integrations',
@@ -275,6 +338,7 @@ export const insertDeviceRegistrationSchema = createInsertSchema(deviceRegistrat
 export const insertDeviceMetricSchema = createInsertSchema(deviceMetrics);
 export const insertIntegrationAuditLogSchema = createInsertSchema(integrationAuditLogs);
 export const insertThirdPartyIntegrationSchema = createInsertSchema(thirdPartyIntegrations);
+export const insertDeviceAlertSchema = createInsertSchema(deviceAlerts);
 
 // Types
 export type ManufacturerIntegration = typeof manufacturerIntegrations.$inferSelect;
@@ -287,3 +351,5 @@ export type IntegrationAuditLog = typeof integrationAuditLogs.$inferSelect;
 export type InsertIntegrationAuditLog = z.infer<typeof insertIntegrationAuditLogSchema>;
 export type ThirdPartyIntegration = typeof thirdPartyIntegrations.$inferSelect;
 export type InsertThirdPartyIntegration = z.infer<typeof insertThirdPartyIntegrationSchema>;
+export type DeviceAlert = typeof deviceAlerts.$inferSelect;
+export type InsertDeviceAlert = z.infer<typeof insertDeviceAlertSchema>;

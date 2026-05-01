@@ -6,88 +6,61 @@ import {
   PaperLevels,
   MeterReadings,
 } from './collector-interface';
+import {
+  PRINTER_MIB,
+  SupplyType,
+  VENDOR_COUNTERS,
+  VendorDisplayName,
+  counterOidsFor,
+  detectVendor,
+  type Vendor,
+} from './vendor-oids';
 import { getLogger } from '../utils/logger';
-
-// Standard Printer MIB OIDs (RFC 3805)
-const PRINTER_MIB_OIDS = {
-  // Device information
-  deviceSerialNumber: '1.3.6.1.2.1.43.5.1.1.17.1',
-  deviceManufacturer: '1.3.6.1.2.1.43.8.2.1.14.1.1',
-  deviceModel: '1.3.6.1.2.1.43.5.1.1.16.1',
-  deviceStatus: '1.3.6.1.2.1.25.3.2.1.5.1',
-
-  // Marker supplies (toner, ink)
-  markerSupplyType: '1.3.6.1.2.1.43.11.1.1.6.1',
-  markerSupplyDescription: '1.3.6.1.2.1.43.11.1.1.6.1',
-  markerSupplyMaxCapacity: '1.3.6.1.2.1.43.11.1.1.8.1',
-  markerSupplyCurrentLevel: '1.3.6.1.2.1.43.11.1.1.9.1',
-  markerSupplyColorantValue: '1.3.6.1.2.1.43.12.1.1.4.1',
-
-  // Input trays (paper)
-  inputType: '1.3.6.1.2.1.43.8.2.1.2.1',
-  inputCurrentLevel: '1.3.6.1.2.1.43.8.2.1.10.1',
-  inputMaxCapacity: '1.3.6.1.2.1.43.8.2.1.9.1',
-
-  // Counter/meter readings
-  totalPrinted: '1.3.6.1.2.1.43.10.2.1.4.1.1',
-
-  // System information
-  sysDescr: '1.3.6.1.2.1.1.1.0',
-  sysName: '1.3.6.1.2.1.1.5.0',
-};
-
-// Vendor-specific OIDs for common manufacturers
-const VENDOR_OIDS = {
-  canon: {
-    totalCounter: '1.3.6.1.4.1.1602.1.11.1.3.1.4.101',
-    bwCounter: '1.3.6.1.4.1.1602.1.11.1.3.1.4.102',
-    colorCounter: '1.3.6.1.4.1.1602.1.11.1.3.1.4.103',
-  },
-  xerox: {
-    totalCounter: '1.3.6.1.4.1.253.8.53.13.2.1.6.1.20.1',
-    bwCounter: '1.3.6.1.4.1.253.8.53.13.2.1.6.1.20.33',
-    colorCounter: '1.3.6.1.4.1.253.8.53.13.2.1.6.1.20.34',
-  },
-  hp: {
-    totalCounter: '1.3.6.1.4.1.11.2.3.9.4.2.1.4.1.2.6.0',
-    serialNumber: '1.3.6.1.4.1.11.2.3.9.4.2.1.1.3.3.0',
-  },
-  ricoh: {
-    totalCounter: '1.3.6.1.4.1.367.3.2.1.2.19.5.1.5.1',
-    serialNumber: '1.3.6.1.4.1.367.3.2.1.2.1.4.0',
-  },
-};
 
 export interface SNMPCollectorOptions {
   community?: string;
-  version?: snmp.Version;
+  version?: '1' | '2c' | '3' | snmp.Version;
   port?: number;
   timeout?: number;
   retries?: number;
+  // SNMPv3 (mandatory when version === '3' or snmp.Version3)
+  v3?: {
+    username: string;
+    level?: 'noAuthNoPriv' | 'authNoPriv' | 'authPriv';
+    authProtocol?: 'MD5' | 'SHA' | 'SHA224' | 'SHA256' | 'SHA384' | 'SHA512';
+    authKey?: string;
+    privProtocol?: 'DES' | 'AES';
+    privKey?: string;
+    context?: string;
+  };
+}
+
+interface DeviceInfo {
+  serialNumber?: string;
+  manufacturer?: string;
+  model?: string;
+  vendor: Vendor;
+  sysObjectID?: string;
+  sysDescr?: string;
 }
 
 export class SNMPCollector implements ICollector {
   private logger = getLogger();
   private defaultOptions: SNMPCollectorOptions = {
     community: 'public',
-    version: snmp.Version2c,
+    version: '2c',
     port: 161,
     timeout: 10000,
     retries: 3,
   };
 
-  /**
-   * Test SNMP connection to a device
-   */
+  // ── public surface ─────────────────────────────────────────────────
   async testConnection(ipAddress: string, options?: SNMPCollectorOptions): Promise<boolean> {
     const opts = { ...this.defaultOptions, ...options };
-
     return new Promise((resolve) => {
       const session = this.createSession(ipAddress, opts);
-
-      session.get([PRINTER_MIB_OIDS.sysDescr], (error, varbinds) => {
+      session.get([PRINTER_MIB.sysDescr], (error: Error | null) => {
         session.close();
-
         if (error) {
           this.logger.debug(`SNMP connection test failed for ${ipAddress}`, {
             error: error.message,
@@ -100,47 +73,41 @@ export class SNMPCollector implements ICollector {
     });
   }
 
-  /**
-   * Collect metrics from a device via SNMP
-   */
   async collect(ipAddress: string, options?: SNMPCollectorOptions): Promise<DeviceMetrics> {
     const opts = { ...this.defaultOptions, ...options };
-    this.logger.info(`Collecting metrics from ${ipAddress} via SNMP`);
+    this.logger.info(`Collecting metrics from ${ipAddress} via SNMP${this.versionLabel(opts)}`);
 
     try {
-      // Get basic device information
-      const deviceInfo = await this.getDeviceInfo(ipAddress, opts);
-
-      // Get toner levels
-      const tonerLevels = await this.getTonerLevels(ipAddress, opts);
-
-      // Get paper levels
-      const paperLevels = await this.getPaperLevels(ipAddress, opts);
-
-      // Get meter readings
-      const meters = await this.getMeterReadings(ipAddress, opts, deviceInfo.manufacturer);
+      const info = await this.getDeviceInfo(ipAddress, opts);
+      const [supplies, paperLevels, meters] = await Promise.all([
+        this.getSupplies(ipAddress, opts),
+        this.getPaperLevels(ipAddress, opts),
+        this.getMeterReadings(ipAddress, opts, info.vendor),
+      ]);
 
       const metrics: DeviceMetrics = {
-        serialNumber: deviceInfo.serialNumber || `UNKNOWN-${ipAddress}`,
+        serialNumber: info.serialNumber || `UNKNOWN-${ipAddress}`,
         ipAddress,
-        manufacturer: deviceInfo.manufacturer,
-        model: deviceInfo.model,
-        tonerLevels,
+        manufacturer: info.manufacturer,
+        model: info.model,
+        tonerLevels: supplies.tonerLevels,
         paperLevels,
         meters,
         deviceStatus: 'online',
         errorCodes: [],
         collectionTimestamp: new Date().toISOString(),
         rawData: {
-          deviceInfo,
+          vendor: info.vendor,
+          sysObjectID: info.sysObjectID,
+          sysDescr: info.sysDescr,
+          supplies: supplies.detailedSupplies, // full marker-supplies table
         },
       };
 
-      this.logger.info(`Successfully collected metrics from ${ipAddress}`);
+      this.logger.info(`Collected metrics from ${ipAddress} (${info.vendor})`);
       return metrics;
     } catch (error) {
       this.logger.error(`Failed to collect metrics from ${ipAddress}`, { error });
-
       return {
         serialNumber: `ERROR-${ipAddress}`,
         ipAddress,
@@ -151,266 +118,365 @@ export class SNMPCollector implements ICollector {
     }
   }
 
-  /**
-   * Create SNMP session
-   */
+  // ── session creation (v1 / v2c / v3) ───────────────────────────────
   private createSession(ipAddress: string, options: SNMPCollectorOptions): snmp.Session {
-    return snmp.createSession(ipAddress, options.community, {
-      port: options.port,
-      retries: options.retries,
-      timeout: options.timeout,
-      version: options.version,
+    const version = this.normalizedVersion(options.version);
+    if (version === snmp.Version3) {
+      return this.createV3Session(ipAddress, options);
+    }
+    return snmp.createSession(ipAddress, options.community || 'public', {
+      port: options.port || 161,
+      retries: options.retries ?? 3,
+      timeout: options.timeout ?? 10000,
+      version,
     });
   }
 
-  /**
-   * Get basic device information
-   */
+  private createV3Session(ipAddress: string, options: SNMPCollectorOptions): snmp.Session {
+    const v3 = options.v3;
+    if (!v3 || !v3.username) {
+      throw new Error('SNMPv3 selected but options.v3.username was not provided.');
+    }
+
+    const level = this.resolveSecurityLevel(v3);
+    const user: any = { name: v3.username, level };
+
+    if (level !== snmp.SecurityLevel.noAuthNoPriv) {
+      if (!v3.authKey) {
+        throw new Error('SNMPv3 authNoPriv/authPriv selected but authKey was not provided.');
+      }
+      user.authProtocol = this.resolveAuthProtocol(v3.authProtocol);
+      user.authKey = v3.authKey;
+    }
+    if (level === snmp.SecurityLevel.authPriv) {
+      if (!v3.privKey) {
+        throw new Error('SNMPv3 authPriv selected but privKey was not provided.');
+      }
+      user.privProtocol = this.resolvePrivProtocol(v3.privProtocol);
+      user.privKey = v3.privKey;
+    }
+
+    return snmp.createV3Session(ipAddress, user, {
+      port: options.port || 161,
+      retries: options.retries ?? 3,
+      timeout: options.timeout ?? 10000,
+      version: snmp.Version3,
+      context: v3.context || '',
+    });
+  }
+
+  private resolveSecurityLevel(v3: NonNullable<SNMPCollectorOptions['v3']>): number {
+    if (v3.level === 'noAuthNoPriv') return snmp.SecurityLevel.noAuthNoPriv;
+    if (v3.level === 'authNoPriv') return snmp.SecurityLevel.authNoPriv;
+    // Default to authPriv when keys are present, otherwise noAuthNoPriv.
+    if (v3.authKey && v3.privKey) return snmp.SecurityLevel.authPriv;
+    if (v3.authKey) return snmp.SecurityLevel.authNoPriv;
+    return snmp.SecurityLevel.noAuthNoPriv;
+  }
+
+  private resolveAuthProtocol(value?: string) {
+    switch ((value || 'SHA').toUpperCase()) {
+      case 'MD5':
+        return snmp.AuthProtocols.md5;
+      case 'SHA':
+        return snmp.AuthProtocols.sha;
+      case 'SHA224':
+        return (snmp.AuthProtocols as any).sha224 || snmp.AuthProtocols.sha;
+      case 'SHA256':
+        return (snmp.AuthProtocols as any).sha256 || snmp.AuthProtocols.sha;
+      case 'SHA384':
+        return (snmp.AuthProtocols as any).sha384 || snmp.AuthProtocols.sha;
+      case 'SHA512':
+        return (snmp.AuthProtocols as any).sha512 || snmp.AuthProtocols.sha;
+      default:
+        return snmp.AuthProtocols.sha;
+    }
+  }
+
+  private resolvePrivProtocol(value?: string) {
+    switch ((value || 'AES').toUpperCase()) {
+      case 'DES':
+        return snmp.PrivProtocols.des;
+      case 'AES':
+        return snmp.PrivProtocols.aes;
+      default:
+        return snmp.PrivProtocols.aes;
+    }
+  }
+
+  private normalizedVersion(value?: string | snmp.Version): snmp.Version {
+    if (value === '1' || value === snmp.Version1) return snmp.Version1;
+    if (value === '3' || value === snmp.Version3) return snmp.Version3;
+    return snmp.Version2c;
+  }
+
+  private versionLabel(opts: SNMPCollectorOptions) {
+    const v = this.normalizedVersion(opts.version);
+    if (v === snmp.Version1) return ' (v1)';
+    if (v === snmp.Version3) return ' (v3)';
+    return ' (v2c)';
+  }
+
+  // ── device info: serial, model, vendor ─────────────────────────────
   private async getDeviceInfo(
     ipAddress: string,
     options: SNMPCollectorOptions,
-  ): Promise<{
-    serialNumber?: string;
-    manufacturer?: string;
-    model?: string;
-  }> {
+  ): Promise<DeviceInfo> {
     const session = this.createSession(ipAddress, options);
-
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const oids = [
-        PRINTER_MIB_OIDS.deviceSerialNumber,
-        PRINTER_MIB_OIDS.deviceManufacturer,
-        PRINTER_MIB_OIDS.deviceModel,
-        PRINTER_MIB_OIDS.sysDescr,
+        PRINTER_MIB.prtGeneralSerialNumber,
+        PRINTER_MIB.sysObjectID,
+        PRINTER_MIB.sysDescr,
+        PRINTER_MIB.sysName,
       ];
-
       session.get(oids, (error, varbinds) => {
         session.close();
-
+        const info: DeviceInfo = { vendor: 'unknown' };
         if (error) {
-          this.logger.warn(`Failed to get device info from ${ipAddress}`, { error: error.message });
-          // Try to get at least system description
-          const fallbackSession = this.createSession(ipAddress, options);
-          fallbackSession.get([PRINTER_MIB_OIDS.sysDescr], (err, vbs) => {
-            fallbackSession.close();
-            if (!err && vbs && vbs.length > 0) {
-              const sysDescr = vbs[0].value.toString();
-              const manufacturer = this.detectManufacturerFromSysDescr(sysDescr);
-              resolve({ manufacturer });
-            } else {
-              resolve({});
-            }
+          this.logger.warn(`Failed to fetch device info from ${ipAddress}`, {
+            error: error.message,
           });
+          resolve(info);
           return;
         }
-
-        const info: any = {};
-
         if (varbinds[0] && !snmp.isVarbindError(varbinds[0])) {
-          info.serialNumber = varbinds[0].value.toString();
+          info.serialNumber = String(varbinds[0].value).trim();
         }
         if (varbinds[1] && !snmp.isVarbindError(varbinds[1])) {
-          info.manufacturer = varbinds[1].value.toString();
+          info.sysObjectID = String(varbinds[1].value);
         }
         if (varbinds[2] && !snmp.isVarbindError(varbinds[2])) {
-          info.model = varbinds[2].value.toString();
+          info.sysDescr = String(varbinds[2].value);
         }
-        if (varbinds[3] && !snmp.isVarbindError(varbinds[3])) {
-          const sysDescr = varbinds[3].value.toString();
-          if (!info.manufacturer) {
-            info.manufacturer = this.detectManufacturerFromSysDescr(sysDescr);
-          }
-        }
-
+        info.vendor = detectVendor(info.sysObjectID, info.sysDescr);
+        info.manufacturer = VendorDisplayName[info.vendor];
+        info.model = this.extractModelFromSysDescr(info.sysDescr, info.vendor);
         resolve(info);
       });
     });
   }
 
-  /**
-   * Get toner levels
-   */
-  private async getTonerLevels(
+  private extractModelFromSysDescr(sysDescr?: string, vendor?: Vendor): string | undefined {
+    if (!sysDescr) return undefined;
+    // Heuristic: strip the manufacturer name from sysDescr; the remainder
+    // usually starts with the model. Manufacturer-specific cleaners can
+    // be added when patterns matter.
+    let s = sysDescr;
+    if (vendor && vendor !== 'unknown') {
+      const name = VendorDisplayName[vendor];
+      s = s.replace(new RegExp(name, 'i'), '').trim();
+    }
+    // sysDescr lines often include "Hardware Address ..." or firmware noise.
+    // Take the leading model token group.
+    const match = s.match(/^[\s,;\-]*([\w-]+(?:\s+[\w/-]+){0,4})/);
+    return match ? match[1].trim() : undefined;
+  }
+
+  // ── supplies (toner / drum / fuser / waste) ────────────────────────
+  private async getSupplies(
     ipAddress: string,
     options: SNMPCollectorOptions,
-  ): Promise<TonerLevels> {
+  ): Promise<{
+    tonerLevels: TonerLevels;
+    detailedSupplies: SupplyEntry[];
+  }> {
     const session = this.createSession(ipAddress, options);
-
     return new Promise((resolve) => {
-      const tonerLevels: TonerLevels = {};
+      session.table(PRINTER_MIB.prtMarkerSuppliesEntry, (error, table) => {
+        session.close();
+        if (error) {
+          this.logger.warn(`Supply table fetch failed for ${ipAddress}`, {
+            error: error.message,
+          });
+          resolve({ tonerLevels: {}, detailedSupplies: [] });
+          return;
+        }
 
-      // Walk the marker supply table
-      session.table(
-        PRINTER_MIB_OIDS.markerSupplyCurrentLevel,
-        [PRINTER_MIB_OIDS.markerSupplyMaxCapacity, PRINTER_MIB_OIDS.markerSupplyDescription],
-        (error, table) => {
-          session.close();
+        const tonerLevels: TonerLevels = {};
+        const detailedSupplies: SupplyEntry[] = [];
 
-          if (error) {
-            this.logger.warn(`Failed to get toner levels from ${ipAddress}`, {
-              error: error.message,
-            });
-            resolve({});
-            return;
-          }
+        for (const index in table) {
+          const row = table[index] as Record<string, any>;
+          // The `table()` helper returns rows keyed by the column number
+          // *within* the entry OID. Column numbers come from RFC 3805.
+          const supplyClass = Number(row['4']); // prtMarkerSuppliesClass
+          const supplyType = Number(row['5']); // prtMarkerSuppliesType
+          const description = String(row['6'] ?? '').trim(); // prtMarkerSuppliesDescription
+          const maxCapacity = Number(row['8']); // prtMarkerSuppliesMaxCapacity
+          const level = Number(row['9']); // prtMarkerSuppliesLevel
 
-          for (const index in table) {
-            const row = table[index];
-            const currentLevel = row[PRINTER_MIB_OIDS.markerSupplyCurrentLevel];
-            const maxCapacity = row[PRINTER_MIB_OIDS.markerSupplyMaxCapacity];
-            const description = row[PRINTER_MIB_OIDS.markerSupplyDescription];
+          // Per RFC 3805, level -2 = unknown, -3 = remaining, but in practice
+          // -2 means "supply is present but level can't be measured".
+          const percentage =
+            maxCapacity > 0 && level >= 0 ? Math.round((level / maxCapacity) * 100) : undefined;
 
-            if (currentLevel && maxCapacity && maxCapacity > 0) {
-              const percentage = Math.round((currentLevel / maxCapacity) * 100);
-              const color = this.detectColorFromDescription(description?.toString() || '');
+          const entry: SupplyEntry = {
+            index: parseInt(index, 10),
+            description,
+            type: SupplyType[supplyType] || `unknown(${supplyType})`,
+            class: supplyClass === 4 ? 'receptacle' : 'consumable',
+            level,
+            maxCapacity,
+            percentage,
+          };
+          detailedSupplies.push(entry);
 
-              if (color) {
-                tonerLevels[color] = percentage;
-              }
+          // Map the standard CMYK to the toner-levels surface so existing
+          // dashboards keep working.
+          if (supplyType === 3 || supplyType === 21 || supplyType === 5) {
+            const colour = this.detectColorFromDescription(description);
+            if (colour && percentage !== undefined) {
+              tonerLevels[colour] = percentage;
             }
           }
+        }
 
-          resolve(tonerLevels);
-        },
-      );
+        resolve({ tonerLevels, detailedSupplies });
+      });
     });
   }
 
-  /**
-   * Get paper levels
-   */
+  // ── paper trays ────────────────────────────────────────────────────
   private async getPaperLevels(
     ipAddress: string,
     options: SNMPCollectorOptions,
   ): Promise<PaperLevels> {
     const session = this.createSession(ipAddress, options);
-
     return new Promise((resolve) => {
-      const paperLevels: PaperLevels = {};
-
-      session.table(
-        PRINTER_MIB_OIDS.inputCurrentLevel,
-        [PRINTER_MIB_OIDS.inputMaxCapacity],
-        (error, table) => {
-          session.close();
-
-          if (error) {
-            this.logger.warn(`Failed to get paper levels from ${ipAddress}`, {
-              error: error.message,
-            });
-            resolve({});
-            return;
-          }
-
-          let trayIndex = 1;
-          for (const index in table) {
-            const row = table[index];
-            const currentLevel = row[PRINTER_MIB_OIDS.inputCurrentLevel];
-            const maxCapacity = row[PRINTER_MIB_OIDS.inputMaxCapacity];
-
-            if (currentLevel && maxCapacity && maxCapacity > 0) {
-              const percentage = Math.round((currentLevel / maxCapacity) * 100);
-              paperLevels[`tray${trayIndex}`] = percentage;
-              trayIndex++;
-            }
-          }
-
-          resolve(paperLevels);
-        },
-      );
-    });
-  }
-
-  /**
-   * Get meter readings
-   */
-  private async getMeterReadings(
-    ipAddress: string,
-    options: SNMPCollectorOptions,
-    manufacturer?: string,
-  ): Promise<MeterReadings> {
-    const session = this.createSession(ipAddress, options);
-
-    return new Promise((resolve) => {
-      const meters: MeterReadings = {};
-
-      // Try manufacturer-specific OIDs first
-      let oids = [PRINTER_MIB_OIDS.totalPrinted];
-
-      if (manufacturer) {
-        const vendor = manufacturer.toLowerCase();
-        if (vendor.includes('canon') && VENDOR_OIDS.canon) {
-          oids = [
-            VENDOR_OIDS.canon.totalCounter,
-            VENDOR_OIDS.canon.bwCounter,
-            VENDOR_OIDS.canon.colorCounter,
-          ];
-        } else if (vendor.includes('xerox') && VENDOR_OIDS.xerox) {
-          oids = [
-            VENDOR_OIDS.xerox.totalCounter,
-            VENDOR_OIDS.xerox.bwCounter,
-            VENDOR_OIDS.xerox.colorCounter,
-          ];
-        } else if (vendor.includes('hp') && VENDOR_OIDS.hp) {
-          oids = [VENDOR_OIDS.hp.totalCounter];
-        }
-      }
-
-      session.get(oids, (error, varbinds) => {
+      session.table(PRINTER_MIB.prtInputCurrentLevel, (error, table) => {
         session.close();
-
         if (error) {
-          this.logger.warn(`Failed to get meter readings from ${ipAddress}`, {
+          this.logger.warn(`Paper table fetch failed for ${ipAddress}`, {
             error: error.message,
           });
           resolve({});
           return;
         }
-
-        if (varbinds[0] && !snmp.isVarbindError(varbinds[0])) {
-          meters.totalImpressions = parseInt(varbinds[0].value.toString());
+        const paperLevels: PaperLevels = {};
+        let trayIndex = 1;
+        for (const idx in table) {
+          const row = table[idx] as Record<string, any>;
+          const current = Number(row['10'] ?? row['1']);
+          const max = Number(row['9'] ?? row['2']);
+          if (max > 0 && current >= 0) {
+            paperLevels[`tray${trayIndex}`] = Math.round((current / max) * 100);
+          }
+          trayIndex++;
         }
-        if (varbinds[1] && !snmp.isVarbindError(varbinds[1])) {
-          meters.bwImpressions = parseInt(varbinds[1].value.toString());
-        }
-        if (varbinds[2] && !snmp.isVarbindError(varbinds[2])) {
-          meters.colorImpressions = parseInt(varbinds[2].value.toString());
-        }
-
-        resolve(meters);
+        resolve(paperLevels);
       });
     });
   }
 
-  /**
-   * Detect color from supply description
-   */
+  // ── meter readings ─────────────────────────────────────────────────
+  private async getMeterReadings(
+    ipAddress: string,
+    options: SNMPCollectorOptions,
+    vendor: Vendor,
+  ): Promise<MeterReadings> {
+    const meters: MeterReadings = {};
+    const counters = counterOidsFor(vendor);
+
+    // (1) Try vendor-specific scalar counters first.
+    if (counters.total || counters.bw || counters.color || counters.large) {
+      const oids = [counters.total, counters.bw, counters.color, counters.large].filter(
+        (o): o is string => Boolean(o),
+      );
+
+      const values = await this.snmpGet(ipAddress, options, oids).catch(() => null);
+      if (values) {
+        let i = 0;
+        if (counters.total) meters.totalImpressions = values[i++];
+        if (counters.bw) meters.bwImpressions = values[i++];
+        if (counters.color) meters.colorImpressions = values[i++];
+        if (counters.large) meters.largeImpressions = values[i++];
+      }
+    }
+
+    // (2) Fallback: walk prtMarkerLifeCount. Many devices populate this
+    //     with one entry for total, or split (mono / colour engines).
+    if (meters.totalImpressions === undefined) {
+      const walked = await this.walkLifeCount(ipAddress, options).catch(() => null);
+      if (walked) {
+        if (walked.length === 1) {
+          meters.totalImpressions = walked[0];
+        } else if (walked.length >= 2) {
+          // Convention varies; sum is the safest "total" interpretation.
+          meters.totalImpressions = walked.reduce((a, b) => a + b, 0);
+          // Heuristic: lower index is often the colour engine, higher is mono.
+          // Don't surface BW/colour from the walk — too unreliable cross-vendor.
+        }
+      }
+    }
+
+    return meters;
+  }
+
+  private async walkLifeCount(ipAddress: string, options: SNMPCollectorOptions): Promise<number[]> {
+    return new Promise((resolve, reject) => {
+      const session = this.createSession(ipAddress, options);
+      const values: number[] = [];
+      session.subtree(
+        PRINTER_MIB.prtMarkerLifeCount,
+        20,
+        (varbinds: any[]) => {
+          for (const vb of varbinds) {
+            if (!snmp.isVarbindError(vb)) {
+              const n = Number(vb.value);
+              if (Number.isFinite(n)) values.push(n);
+            }
+          }
+        },
+        (error: Error | null) => {
+          session.close();
+          if (error) reject(error);
+          else resolve(values);
+        },
+      );
+    });
+  }
+
+  private snmpGet(
+    ipAddress: string,
+    options: SNMPCollectorOptions,
+    oids: string[],
+  ): Promise<number[]> {
+    return new Promise((resolve, reject) => {
+      const session = this.createSession(ipAddress, options);
+      session.get(oids, (error: Error | null, varbinds: any[]) => {
+        session.close();
+        if (error) return reject(error);
+        const out: number[] = [];
+        for (const vb of varbinds) {
+          if (snmp.isVarbindError(vb)) {
+            out.push(NaN);
+          } else {
+            const n = Number(vb.value);
+            out.push(Number.isFinite(n) ? n : NaN);
+          }
+        }
+        resolve(out);
+      });
+    });
+  }
+
   private detectColorFromDescription(description: string): string | null {
     const lower = description.toLowerCase();
-
-    if (lower.includes('black') || lower.includes('bk')) return 'black';
-    if (lower.includes('cyan') || lower.includes('cy')) return 'cyan';
-    if (lower.includes('magenta') || lower.includes('mg')) return 'magenta';
-    if (lower.includes('yellow') || lower.includes('yl')) return 'yellow';
-
+    if (lower.includes('black') || /\bbk\b|\bk\b/.test(lower)) return 'black';
+    if (lower.includes('cyan') || /\bcy?\b/.test(lower)) return 'cyan';
+    if (lower.includes('magenta') || /\bmg?\b/.test(lower)) return 'magenta';
+    if (lower.includes('yellow') || /\byl?\b/.test(lower)) return 'yellow';
     return null;
   }
+}
 
-  /**
-   * Detect manufacturer from system description
-   */
-  private detectManufacturerFromSysDescr(sysDescr: string): string | undefined {
-    const lower = sysDescr.toLowerCase();
-
-    if (lower.includes('canon')) return 'Canon';
-    if (lower.includes('xerox')) return 'Xerox';
-    if (lower.includes('hp') || lower.includes('hewlett')) return 'HP';
-    if (lower.includes('ricoh')) return 'Ricoh';
-    if (lower.includes('konica')) return 'Konica Minolta';
-    if (lower.includes('lexmark')) return 'Lexmark';
-    if (lower.includes('brother')) return 'Brother';
-    if (lower.includes('epson')) return 'Epson';
-
-    return undefined;
-  }
+export interface SupplyEntry {
+  index: number;
+  description: string;
+  type: string; // toner | wasteToner | drum | fuser | …
+  class: 'consumable' | 'receptacle';
+  level: number; // raw value (-2 = unknown, -3 = remaining count)
+  maxCapacity: number;
+  percentage?: number;
 }

@@ -37,6 +37,19 @@ export interface SubmissionResponse {
 export interface HeartbeatResponse {
   message: string;
   serverTime: string;
+  // The platform piggybacks its remote-control queue on the heartbeat.
+  // Agents must execute each command and ack via /commands/:id/ack.
+  pendingCommands?: Array<{
+    id: string;
+    command: string;
+    payload?: Record<string, unknown>;
+  }>;
+}
+
+export interface CommandAckBody {
+  status: 'done' | 'failed';
+  result?: Record<string, unknown>;
+  errorMessage?: string;
 }
 
 export interface ClientConfigResponse {
@@ -239,6 +252,18 @@ export class PrintyxAPIClient {
       return response.data;
     } catch (error) {
       this.logger.error('Failed to send heartbeat', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Acknowledge a command issued via the heartbeat response.
+   */
+  async ackCommand(commandId: string, body: CommandAckBody): Promise<void> {
+    try {
+      await this.client.post(`/api/client-metrics/commands/${commandId}/ack`, body);
+    } catch (error) {
+      this.logger.error('Failed to ack command', { commandId, error });
       throw error;
     }
   }

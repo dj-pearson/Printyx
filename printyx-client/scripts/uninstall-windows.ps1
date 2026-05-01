@@ -46,10 +46,18 @@ if ($svc) {
     Write-Ok "Service was not registered"
 }
 
-Write-Step "Removing firewall rule"
-Get-NetFirewallRule -DisplayName 'Printyx Client - Outbound HTTPS' -ErrorAction SilentlyContinue |
-    Remove-NetFirewallRule
-Write-Ok "Firewall rule removed (if present)"
+Write-Step "Removing firewall rules"
+foreach ($name in @(
+    'Printyx Client - Outbound HTTPS',
+    'Printyx Client - mDNS Discovery (in)',
+    'Printyx Client - mDNS Discovery (out)',
+    'Printyx Client - WSD Discovery (in)',
+    'Printyx Client - WSD Discovery (out)'
+)) {
+    Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue |
+        Remove-NetFirewallRule
+}
+Write-Ok "Firewall rules removed (if present)"
 
 Write-Step "Removing $InstallDir"
 if (Test-Path $InstallDir) {

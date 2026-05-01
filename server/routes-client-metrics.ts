@@ -15,9 +15,10 @@ import {
   monitoringClients,
   clientActivityLogs,
   clientEnrollmentTokens,
+  clientCommands,
   type MonitoringClient,
 } from '@shared/schema';
-import { eq, and, desc, gt, isNull, lt } from 'drizzle-orm';
+import { eq, and, desc, gt, isNull, lt, inArray } from 'drizzle-orm';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
 import { enhanceUserContext } from './middleware/rbac-route-helper';
 import crypto from 'crypto';
@@ -91,9 +92,7 @@ router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest,
         apiKeyLastRotated: new Date(),
         status: 'pending_setup',
         networkRanges: Array.isArray(networkRanges) ? networkRanges : undefined,
-        // Store the customerId in the configuration blob; many existing rows
-        // already use this jsonb for arbitrary per-client config. A dedicated
-        // column can be added later.
+        customerId: customerId || null,
         configuration: {
           pollingInterval: 300,
           discoveryEnabled: true,
@@ -101,7 +100,6 @@ router.post('/clients', resolveTenant, requireTenant, async (req: TenantRequest,
           timeout: 10000,
           tonerThreshold: 15,
           paperThreshold: 20,
-          customerId: customerId || null,
         },
       })
       .returning();
@@ -212,6 +210,138 @@ router.delete(
       res.json({ message: 'Client deleted' });
     } catch (error) {
       log.error('Error deleting client:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+);
+
+// =====================================================
+// 1b. REMOTE COMMANDS — enqueue / list / cancel
+// =====================================================
+//
+// Each row in `client_commands` is a one-shot instruction the agent
+// will execute on its next heartbeat. The agent acks via
+// /api/client-metrics/commands/:id/ack.
+//
+// Supported commands (validated client-side too):
+//   rescan          — agent re-runs network discovery now
+//   reload-config   — agent re-fetches /config and applies updates
+//   force-submit    — agent collects + submits a metrics cycle now
+//   rotate-key      — agent treats this heartbeat as the last one with
+//                     the current key and prompts for re-enrollment
+//                     (server has not yet rotated the stored hash —
+//                     pair with POST /clients/:id/regenerate-key for
+//                     the actual rotation).
+
+const SUPPORTED_COMMANDS = new Set(['rescan', 'reload-config', 'force-submit', 'rotate-key']);
+
+const DEFAULT_COMMAND_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+router.post(
+  '/clients/:clientId/commands',
+  resolveTenant,
+  requireTenant,
+  async (req: TenantRequest, res) => {
+    try {
+      const tenantId = req.tenantId!;
+      const client = await loadClientForTenant(req.params.clientId, tenantId);
+      if (!client) return res.status(404).json({ message: 'Client not found' });
+
+      const { command, payload, ttlSeconds } = req.body || {};
+      if (!command || !SUPPORTED_COMMANDS.has(command)) {
+        return res.status(400).json({
+          message: `Unsupported command. Use one of: ${[...SUPPORTED_COMMANDS].join(', ')}`,
+        });
+      }
+
+      const ttlMs = Math.min(
+        Math.max(Number(ttlSeconds || 0) * 1000 || DEFAULT_COMMAND_TTL_MS, 60_000),
+        24 * 60 * 60 * 1000, // hard cap 24h
+      );
+
+      const [created] = await db
+        .insert(clientCommands)
+        .values({
+          tenantId,
+          clientId: client.id,
+          command,
+          payload: payload && typeof payload === 'object' ? payload : {},
+          status: 'queued',
+          issuedByUserId: req.user?.id,
+          expiresAt: new Date(Date.now() + ttlMs),
+        })
+        .returning();
+
+      await db.insert(clientActivityLogs).values({
+        tenantId,
+        clientId: client.id,
+        activity: 'config_update',
+        status: 'success',
+        message: `Command '${command}' queued`,
+        details: { commandId: created.id, by: req.user?.id },
+      });
+
+      res.status(201).json({ command: created });
+    } catch (error) {
+      log.error('Error enqueueing command:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+);
+
+router.get(
+  '/clients/:clientId/commands',
+  resolveTenant,
+  requireTenant,
+  async (req: TenantRequest, res) => {
+    try {
+      const tenantId = req.tenantId!;
+      const client = await loadClientForTenant(req.params.clientId, tenantId);
+      if (!client) return res.status(404).json({ message: 'Client not found' });
+
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 500);
+      const rows = await db.query.clientCommands.findMany({
+        where: eq(clientCommands.clientId, client.id),
+        orderBy: [desc(clientCommands.createdAt)],
+        limit,
+      });
+      res.json({ commands: rows });
+    } catch (error) {
+      log.error('Error listing commands:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+);
+
+router.delete(
+  '/clients/:clientId/commands/:commandId',
+  resolveTenant,
+  requireTenant,
+  async (req: TenantRequest, res) => {
+    try {
+      const tenantId = req.tenantId!;
+      const client = await loadClientForTenant(req.params.clientId, tenantId);
+      if (!client) return res.status(404).json({ message: 'Client not found' });
+
+      const cmd = await db.query.clientCommands.findFirst({
+        where: and(
+          eq(clientCommands.id, req.params.commandId),
+          eq(clientCommands.clientId, client.id),
+        ),
+      });
+      if (!cmd) return res.status(404).json({ message: 'Command not found' });
+      if (!['queued', 'dispatched'].includes(cmd.status)) {
+        return res
+          .status(409)
+          .json({ message: `Command is already ${cmd.status} — nothing to cancel` });
+      }
+      await db
+        .update(clientCommands)
+        .set({ status: 'expired', completedAt: new Date() })
+        .where(eq(clientCommands.id, cmd.id));
+      res.json({ message: 'Command cancelled' });
+    } catch (error) {
+      log.error('Error cancelling command:', error);
       res.status(500).json({ message: 'Internal server error' });
     }
   },
@@ -346,6 +476,7 @@ router.post('/enroll', async (req, res) => {
       tenantId: client.tenantId,
       clientId: client.clientId,
       clientName: client.clientName,
+      customerId: client.customerId,
       apiKey: plain,
       endpoint: resolvePlatformBaseUrl(req),
       configuration: client.configuration,
@@ -410,6 +541,7 @@ router.get(
         tenantId,
         clientId: client.clientId,
         clientName: client.clientName,
+        customerId: client.customerId,
         enrollmentToken: plain,
         enrollmentExpiresAt: expiresAt.toISOString(),
       };

@@ -14,6 +14,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -30,6 +37,9 @@ import {
   MoreVertical,
   Eye,
   Trash2,
+  Zap,
+  Search,
+  Send,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -54,12 +64,18 @@ interface MonitoringClient {
   clientId: string;
   clientName: string;
   location?: string;
+  customerId?: string | null;
   status: 'active' | 'inactive' | 'disabled';
   lastHeartbeat?: string;
   clientVersion?: string;
   createdAt: string;
   deviceCount?: number;
   activeAlertsCount?: number;
+}
+
+interface CustomerOption {
+  id: string;
+  companyName: string;
 }
 
 interface NewClientResponse {
@@ -100,6 +116,7 @@ export default function MonitoringClients() {
   const [isRegisterDialogOpen, setIsRegisterDialogOpen] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [newClientLocation, setNewClientLocation] = useState('');
+  const [newClientCustomerId, setNewClientCustomerId] = useState<string>('');
   const [registeredClient, setRegisteredClient] = useState<NewClientResponse['client'] | null>(
     null,
   );
@@ -116,6 +133,22 @@ export default function MonitoringClients() {
     queryKey: ['/api/client-metrics/clients'],
   });
 
+  // Customers picker (links a monitoring client to its customer / business
+  // record so the bundled installer carries that context).
+  const { data: customers = [] } = useQuery<CustomerOption[]>({
+    queryKey: ['/api/customers'],
+    queryFn: async () => {
+      const response = await fetch('/api/customers', { credentials: 'include' });
+      if (!response.ok) return [];
+      const raw = await response.json();
+      const list = Array.isArray(raw) ? raw : raw?.records || raw?.data || [];
+      return list.map((c: any) => ({
+        id: String(c.id),
+        companyName: c.companyName || c.company_name || c.name || '(unnamed)',
+      }));
+    },
+  });
+
   // Fetch selected client details
   const { data: clientDetails } = useQuery<ClientDetails>({
     queryKey: [`/api/client-metrics/clients/${selectedClientId}`],
@@ -124,7 +157,7 @@ export default function MonitoringClients() {
 
   // Register new client mutation
   const registerClientMutation = useMutation({
-    mutationFn: async (data: { clientName: string; location?: string }) => {
+    mutationFn: async (data: { clientName: string; location?: string; customerId?: string }) => {
       const response = await fetch('/api/client-metrics/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -194,6 +227,39 @@ export default function MonitoringClients() {
     },
   });
 
+  // Send a remote-control command to a client (rescan / reload / force-submit / rotate)
+  const sendCommandMutation = useMutation({
+    mutationFn: async ({ clientId, command }: { clientId: string; command: string }) => {
+      const response = await fetch(`/api/client-metrics/clients/${clientId}/commands`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command }),
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to send command');
+      }
+      return response.json() as Promise<{
+        command: { id: string; command: string; status: string };
+      }>;
+    },
+    onSuccess: (_data, { command }) => {
+      toast({
+        title: 'Command queued',
+        description: `'${command}' will run on the next heartbeat (within 5 minutes).`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/client-metrics/clients'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not queue command',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Download bundled installer (zip)
   const downloadInstaller = (clientId: string) => {
     // Anchor + click pattern preserves the browser's session cookies for auth.
@@ -250,6 +316,7 @@ export default function MonitoringClients() {
     registerClientMutation.mutate({
       clientName: newClientName.trim(),
       location: newClientLocation.trim() || undefined,
+      customerId: newClientCustomerId || undefined,
     });
   };
 
@@ -257,6 +324,7 @@ export default function MonitoringClients() {
     setIsRegisterDialogOpen(false);
     setNewClientName('');
     setNewClientLocation('');
+    setNewClientCustomerId('');
     setRegisteredClient(null);
   };
 
@@ -343,6 +411,29 @@ export default function MonitoringClients() {
                       value={newClientLocation}
                       onChange={(e) => setNewClientLocation(e.target.value)}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="customer">Customer (Optional)</Label>
+                    <Select
+                      value={newClientCustomerId || '__none__'}
+                      onValueChange={(v) => setNewClientCustomerId(v === '__none__' ? '' : v)}
+                    >
+                      <SelectTrigger id="customer">
+                        <SelectValue placeholder="Link to a customer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— None —</SelectItem>
+                        {customers.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.companyName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500">
+                      Linking a client to a customer ties the bundled installer and all collected
+                      meter data to that account.
+                    </p>
                   </div>
                 </div>
                 <DialogFooter>
@@ -528,6 +619,7 @@ export default function MonitoringClients() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Client Name</TableHead>
+                  <TableHead>Customer</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Seen</TableHead>
@@ -540,9 +632,20 @@ export default function MonitoringClients() {
               <TableBody>
                 {clients.map((client) => {
                   const lastSeenStatus = getLastSeenStatus(client.lastHeartbeat);
+                  const customerName = client.customerId
+                    ? customers.find((c) => c.id === client.customerId)?.companyName ||
+                      client.customerId
+                    : null;
                   return (
                     <TableRow key={client.id}>
                       <TableCell className="font-medium">{client.clientName}</TableCell>
+                      <TableCell>
+                        {customerName ? (
+                          <span className="text-sm">{customerName}</span>
+                        ) : (
+                          <span className="text-gray-400 text-sm">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>{client.location || '-'}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="flex items-center gap-1 w-fit">
@@ -594,6 +697,43 @@ export default function MonitoringClients() {
                             >
                               <Copy className="h-4 w-4 mr-2" />
                               Generate Enrollment Token
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-xs text-gray-500">
+                              Remote Control
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                sendCommandMutation.mutate({
+                                  clientId: client.clientId,
+                                  command: 'force-submit',
+                                })
+                              }
+                            >
+                              <Send className="h-4 w-4 mr-2" />
+                              Force Sync Now
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                sendCommandMutation.mutate({
+                                  clientId: client.clientId,
+                                  command: 'rescan',
+                                })
+                              }
+                            >
+                              <Search className="h-4 w-4 mr-2" />
+                              Rescan Network
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                sendCommandMutation.mutate({
+                                  clientId: client.clientId,
+                                  command: 'reload-config',
+                                })
+                              }
+                            >
+                              <Zap className="h-4 w-4 mr-2" />
+                              Reload Config
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => regenerateKeyMutation.mutate(client.clientId)}
@@ -695,6 +835,7 @@ export default function MonitoringClients() {
                 <TabsTrigger value="alerts">
                   Active Alerts ({clientDetails.activeAlerts?.length || 0})
                 </TabsTrigger>
+                <TabsTrigger value="commands">Remote Control</TabsTrigger>
               </TabsList>
 
               <TabsContent value="activity" className="space-y-4">
@@ -719,6 +860,15 @@ export default function MonitoringClients() {
                 ) : (
                   <p className="text-center text-gray-500 py-8">No activity logs yet</p>
                 )}
+              </TabsContent>
+
+              <TabsContent value="commands" className="space-y-4">
+                <CommandsPanel
+                  clientId={clientDetails.clientId}
+                  onSend={(command) =>
+                    sendCommandMutation.mutate({ clientId: clientDetails.clientId, command })
+                  }
+                />
               </TabsContent>
 
               <TabsContent value="alerts" className="space-y-4">
@@ -756,6 +906,111 @@ export default function MonitoringClients() {
             </Tabs>
           </DialogContent>
         </Dialog>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Inline component: command history + quick-action buttons inside the
+// client details dialog. Keeps the file self-contained.
+// ──────────────────────────────────────────────────────────────────────
+
+interface ClientCommand {
+  id: string;
+  command: string;
+  status: 'queued' | 'dispatched' | 'done' | 'failed' | 'expired';
+  result?: any;
+  errorMessage?: string | null;
+  createdAt: string;
+  dispatchedAt?: string | null;
+  completedAt?: string | null;
+}
+
+function CommandsPanel({
+  clientId,
+  onSend,
+}: {
+  clientId: string;
+  onSend: (command: string) => void;
+}) {
+  const { data, isLoading } = useQuery<{ commands: ClientCommand[] }>({
+    queryKey: [`/api/client-metrics/clients/${clientId}/commands`],
+    refetchInterval: 10_000, // refresh while dialog is open
+  });
+
+  const statusBadge = (s: ClientCommand['status']) => {
+    switch (s) {
+      case 'queued':
+        return <Badge variant="outline">queued</Badge>;
+      case 'dispatched':
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">dispatched</Badge>;
+      case 'done':
+        return <Badge className="bg-green-100 text-green-800 border-green-200">done</Badge>;
+      case 'failed':
+        return <Badge variant="destructive">failed</Badge>;
+      case 'expired':
+        return (
+          <Badge variant="outline" className="text-gray-500">
+            expired
+          </Badge>
+        );
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={() => onSend('force-submit')}>
+          <Send className="h-4 w-4 mr-2" />
+          Force Sync Now
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => onSend('rescan')}>
+          <Search className="h-4 w-4 mr-2" />
+          Rescan Network
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => onSend('reload-config')}>
+          <Zap className="h-4 w-4 mr-2" />
+          Reload Config
+        </Button>
+        <p className="text-xs text-gray-500 self-center w-full mt-1">
+          Commands run on the next heartbeat (within 5 minutes). The agent posts an ack when it
+          finishes — see history below.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <p className="text-sm text-gray-500">Loading command history…</p>
+      ) : !data?.commands || data.commands.length === 0 ? (
+        <p className="text-center text-sm text-gray-500 py-6">No commands yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {data.commands.map((c) => (
+            <div key={c.id} className="border rounded-lg p-3 text-sm">
+              <div className="flex justify-between items-start gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono">{c.command}</span>
+                    {statusBadge(c.status)}
+                  </div>
+                  {c.status === 'failed' && c.errorMessage && (
+                    <p className="text-red-700 mt-1">{c.errorMessage}</p>
+                  )}
+                  {c.status === 'done' && c.result && (
+                    <p className="text-gray-600 mt-1 text-xs">
+                      {Object.entries(c.result)
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join(' · ')}
+                    </p>
+                  )}
+                </div>
+                <span className="text-xs text-gray-500 whitespace-nowrap">
+                  {format(new Date(c.completedAt || c.dispatchedAt || c.createdAt), 'PPp')}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

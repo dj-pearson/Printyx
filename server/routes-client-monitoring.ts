@@ -1,6 +1,7 @@
 import type { Express } from 'express';
 import { db } from './db';
-import { eq, and, desc, like, or, lte, gte } from 'drizzle-orm';
+import { eq, and, desc, like, or, lte, gte, inArray, isNotNull } from 'drizzle-orm';
+import { materializeAlerts } from './services/alert-materializer';
 import crypto from 'crypto';
 import { emailService } from './services/email-service';
 import { smsService } from './services/sms-service';
@@ -11,6 +12,7 @@ import {
   monitoringClients,
   clientActivityLogs,
   clientDiscoveredDevices,
+  clientCommands,
   deviceRegistrations,
   deviceMetrics,
   manufacturerIntegrations,
@@ -813,28 +815,23 @@ export function registerClientMonitoringRoutes(app: Express) {
             rawData: deviceData.rawData || {},
           });
 
-          // Check for toner alerts and trigger notifications
-          if (deviceData.tonerLevels) {
-            const CRITICAL_THRESHOLD = 10;
-            const WARNING_THRESHOLD = 20;
-
-            for (const [color, level] of Object.entries(deviceData.tonerLevels)) {
-              if (level <= CRITICAL_THRESHOLD) {
-                // Critical toner level - trigger replenishment order
-                log.info(
-                  `[TONER ALERT] Critical: ${device[0].deviceName} - ${color} toner at ${level}%`,
-                );
-
-                // TODO: Integration with notification system
-                // Create notification for low toner
-                // Trigger automatic toner order if contract includes toner
-              } else if (level <= WARNING_THRESHOLD) {
-                // Warning level - notify but don't order yet
-                log.info(
-                  `[TONER ALERT] Warning: ${device[0].deviceName} - ${color} toner at ${level}%`,
-                );
-              }
-            }
+          // Materialise alerts into the device_alerts table. Idempotent —
+          // upserts active alerts, auto-resolves cleared conditions,
+          // preserves operator acknowledge/snooze state. Errors here are
+          // non-fatal: a metric should always be ingested, even if the
+          // alert pipeline trips.
+          try {
+            await materializeAlerts({
+              tenantId,
+              deviceId: device[0].id,
+              tonerLevels: deviceData.tonerLevels,
+              paperLevels: deviceData.paperLevels,
+            });
+          } catch (alertErr) {
+            log.warn('Alert materialisation failed (non-fatal)', {
+              deviceId: device[0].id,
+              alertErr,
+            });
           }
 
           // Check for meter differential and billing (if provided by client)
@@ -926,7 +923,10 @@ export function registerClientMonitoringRoutes(app: Express) {
     }
   });
 
-  // Client heartbeat endpoint
+  // Client heartbeat endpoint. The agent calls this every 5 minutes.
+  // We piggyback the command channel: any pending commands for this
+  // client are returned in the response and atomically marked
+  // 'dispatched' so a second concurrent heartbeat doesn't double-process.
   app.post('/api/client-metrics/heartbeat', authenticateClient, async (req: any, res) => {
     try {
       const client = req.monitoringClient;
@@ -939,24 +939,107 @@ export function registerClientMonitoringRoutes(app: Express) {
         })
         .where(eq(monitoringClients.id, client.id));
 
+      // Expire stale commands so the queue self-heals when an agent goes
+      // dark. Cheap one-row sweep on each heartbeat.
+      await db
+        .update(clientCommands)
+        .set({ status: 'expired', completedAt: new Date() })
+        .where(
+          and(
+            eq(clientCommands.clientId, client.id),
+            inArray(clientCommands.status, ['queued', 'dispatched']),
+            lte(clientCommands.expiresAt, new Date()),
+          ),
+        );
+
+      // Pull queued commands and atomically mark them dispatched. Drizzle's
+      // returning() lets us do this without a separate select.
+      const dispatched = await db
+        .update(clientCommands)
+        .set({ status: 'dispatched', dispatchedAt: new Date() })
+        .where(and(eq(clientCommands.clientId, client.id), eq(clientCommands.status, 'queued')))
+        .returning({
+          id: clientCommands.id,
+          command: clientCommands.command,
+          payload: clientCommands.payload,
+        });
+
       // Log heartbeat
       await db.insert(clientActivityLogs).values({
         tenantId: req.tenantId,
         clientId: client.id,
         activity: 'heartbeat',
         status: 'success',
-        message: 'Client heartbeat received',
+        message:
+          dispatched.length > 0
+            ? `Heartbeat — dispatched ${dispatched.length} command(s)`
+            : 'Client heartbeat received',
       });
 
       res.json({
         message: 'Heartbeat received',
         serverTime: new Date().toISOString(),
+        pendingCommands: dispatched.map((c) => ({
+          id: c.id,
+          command: c.command,
+          payload: c.payload || {},
+        })),
       });
     } catch (error) {
       log.error('Error processing heartbeat:', error);
       res.status(500).json({ message: 'Failed to process heartbeat' });
     }
   });
+
+  // Agent posts result of a dispatched command. The handler validates
+  // ownership (the command must belong to the authenticating client) and
+  // accepts a status of 'done' or 'failed' plus an optional result blob.
+  app.post(
+    '/api/client-metrics/commands/:commandId/ack',
+    authenticateClient,
+    async (req: any, res) => {
+      try {
+        const client = req.monitoringClient;
+        const { commandId } = req.params;
+        const { status, result, errorMessage } = req.body || {};
+        if (status !== 'done' && status !== 'failed') {
+          return res.status(400).json({ message: 'status must be "done" or "failed"' });
+        }
+        const command = await db.query.clientCommands.findFirst({
+          where: and(eq(clientCommands.id, commandId), eq(clientCommands.clientId, client.id)),
+        });
+        if (!command) {
+          return res.status(404).json({ message: 'Command not found' });
+        }
+        if (command.status !== 'dispatched') {
+          return res
+            .status(409)
+            .json({ message: `Command is in status '${command.status}', cannot ack` });
+        }
+        await db
+          .update(clientCommands)
+          .set({
+            status,
+            completedAt: new Date(),
+            result: result ?? null,
+            errorMessage: errorMessage ?? null,
+          })
+          .where(eq(clientCommands.id, commandId));
+        await db.insert(clientActivityLogs).values({
+          tenantId: req.tenantId,
+          clientId: client.id,
+          activity: 'command_ack',
+          status: status === 'done' ? 'success' : 'error',
+          message: `Command '${command.command}' ${status}`,
+          details: { commandId, result, errorMessage },
+        });
+        res.json({ message: 'Command ack recorded' });
+      } catch (error) {
+        log.error('Error processing command ack:', error);
+        res.status(500).json({ message: 'Failed to process ack' });
+      }
+    },
+  );
 
   // Get client configuration
   app.get('/api/client-metrics/config', authenticateClient, async (req: any, res) => {

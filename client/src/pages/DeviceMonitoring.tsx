@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,21 +68,72 @@ interface DeviceMetric {
 }
 
 interface TonerAlert {
-  id: number;
+  id: string;
   serialNumber: string;
+  deviceName?: string | null;
   alertType: string;
   supplyType: string;
   currentLevel: number;
   threshold: number;
-  status: string;
+  status: 'active' | 'acknowledged' | 'snoozed' | 'resolved';
+  message?: string;
+  acknowledgedAt?: string | null;
+  acknowledgedBy?: string | null;
+  snoozedUntil?: string | null;
+  resolvedAt?: string | null;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
   createdAt: string;
 }
 
 export default function DeviceMonitoring() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+
+  const alertActionMutation = useMutation({
+    mutationFn: async ({
+      alertId,
+      action,
+      hours,
+    }: {
+      alertId: string;
+      action: 'acknowledge' | 'snooze' | 'resolve';
+      hours?: number;
+    }) => {
+      const body = action === 'snooze' ? JSON.stringify({ hours }) : undefined;
+      const response = await fetch(`/api/device-monitoring/alerts/${alertId}/${action}`, {
+        method: 'POST',
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body,
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || `Failed to ${action} alert`);
+      }
+      return response.json();
+    },
+    onSuccess: (_data, vars) => {
+      const labels = {
+        acknowledge: 'Acknowledged',
+        snooze: `Snoozed for ${vars.hours || 4}h`,
+        resolve: 'Resolved',
+      } as const;
+      toast({ title: 'Alert updated', description: labels[vars.action] });
+      queryClient.invalidateQueries({ queryKey: ['/api/device-monitoring/active-alerts'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not update alert',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
 
   // Fetch latest metrics for all devices
   const { data: metricsData, isLoading } = useQuery<{ metrics: DeviceMetric[] }>({
@@ -733,36 +785,102 @@ export default function DeviceMonitoring() {
                           </CardContent>
                         </Card>
                       ) : (
-                        deviceAlerts.map((alert) => (
-                          <Card key={alert.id} className="border-red-200 bg-red-50">
-                            <CardContent className="p-4">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <AlertCircle className="h-4 w-4 text-red-600" />
-                                    <span className="font-medium text-red-900">
-                                      {alert.supplyType.toUpperCase()} Toner -{' '}
-                                      {alert.alertType.replace('_', ' ')}
-                                    </span>
+                        deviceAlerts.map((alert) => {
+                          const isAcked = alert.status === 'acknowledged';
+                          const isSnoozed =
+                            alert.status === 'snoozed' &&
+                            alert.snoozedUntil &&
+                            new Date(alert.snoozedUntil) > new Date();
+                          const cardClass = isSnoozed
+                            ? 'border-gray-200 bg-gray-50'
+                            : isAcked
+                              ? 'border-yellow-200 bg-yellow-50'
+                              : 'border-red-200 bg-red-50';
+                          return (
+                            <Card key={alert.id} className={cardClass}>
+                              <CardContent className="p-4">
+                                <div className="flex justify-between items-start gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <AlertCircle className="h-4 w-4 text-red-600" />
+                                      <span className="font-medium text-red-900">
+                                        {alert.supplyType.toUpperCase()} -{' '}
+                                        {alert.alertType.replace('_', ' ')}
+                                      </span>
+                                      {isAcked && (
+                                        <Badge variant="outline" className="text-yellow-800">
+                                          Acknowledged
+                                        </Badge>
+                                      )}
+                                      {isSnoozed && (
+                                        <Badge variant="outline" className="text-gray-600">
+                                          Snoozed{' '}
+                                          {alert.snoozedUntil
+                                            ? `until ${formatDistanceToNow(new Date(alert.snoozedUntil), { addSuffix: true })}`
+                                            : ''}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-red-800">
+                                      Current level: {alert.currentLevel}% (threshold:{' '}
+                                      {alert.threshold}%)
+                                    </p>
+                                    <p className="text-xs text-red-600 mt-2">
+                                      Last seen{' '}
+                                      {formatDistanceToNow(
+                                        new Date(alert.lastSeenAt || alert.createdAt),
+                                        { addSuffix: true },
+                                      )}
+                                    </p>
                                   </div>
-                                  <p className="text-sm text-red-800">
-                                    Current level: {alert.currentLevel}% (threshold:{' '}
-                                    {alert.threshold}%)
-                                  </p>
-                                  <p className="text-xs text-red-600 mt-2">
-                                    Created{' '}
-                                    {formatDistanceToNow(new Date(alert.createdAt), {
-                                      addSuffix: true,
-                                    })}
-                                  </p>
+                                  <div className="flex flex-col gap-1 shrink-0">
+                                    {!isAcked && !isSnoozed && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                          alertActionMutation.mutate({
+                                            alertId: alert.id,
+                                            action: 'acknowledge',
+                                          })
+                                        }
+                                      >
+                                        Acknowledge
+                                      </Button>
+                                    )}
+                                    {!isSnoozed && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() =>
+                                          alertActionMutation.mutate({
+                                            alertId: alert.id,
+                                            action: 'snooze',
+                                            hours: 4,
+                                          })
+                                        }
+                                      >
+                                        Snooze 4h
+                                      </Button>
+                                    )}
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() =>
+                                        alertActionMutation.mutate({
+                                          alertId: alert.id,
+                                          action: 'resolve',
+                                        })
+                                      }
+                                    >
+                                      Resolve
+                                    </Button>
+                                  </div>
                                 </div>
-                                <Button size="sm" variant="outline">
-                                  Order Now
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))
+                              </CardContent>
+                            </Card>
+                          );
+                        })
                       )}
                     </TabsContent>
                   </Tabs>
