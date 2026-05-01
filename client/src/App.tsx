@@ -161,6 +161,7 @@ const Settings = React.lazy(() => import('@/pages/Settings'));
 const MonitoringClients = React.lazy(() => import('@/pages/MonitoringClients'));
 const DeviceMonitoring = React.lazy(() => import('@/pages/DeviceMonitoring'));
 const SupplyRunway = React.lazy(() => import('@/pages/SupplyRunway'));
+const SupplyOrders = React.lazy(() => import('@/pages/SupplyOrders'));
 const OidManagement = React.lazy(() => import('@/pages/OidManagement'));
 const Pricing = React.lazy(() => import('@/pages/Pricing'));
 const SubscriptionSettings = React.lazy(() => import('@/pages/SubscriptionSettings'));
@@ -744,6 +745,7 @@ function Router() {
                 <Route path="/monitoring-clients" component={MonitoringClients} />
                 <Route path="/device-monitoring" component={DeviceMonitoring} />
                 <Route path="/supply-runway" component={SupplyRunway} />
+                <Route path="/supply-orders" component={SupplyOrders} />
                 <Route path="/oid-management" component={OidManagement} />
                 <Route path="/pricing" component={Pricing} />
                 <Route path="/settings/subscription" component={SubscriptionSettings} />

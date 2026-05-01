@@ -185,6 +185,43 @@ UI side:
   so the "active" badge in the dashboard header matches the alerts
   list exactly.
 
+## Auto-order on critical alerts
+
+When a NEW critical (or empty) toner alert is materialised — or an
+existing `low` alert is upgraded to `critical`/`empty` — the
+materialiser calls `server/services/auto-order.ts`. That function:
+
+1. Resolves the device's `customer_id` (denormalised onto
+   `device_registrations` from `monitoring_clients.customer_id` at
+   ingest time).
+2. Verifies the client's `configuration.autoOrderEnabled` is `true`
+   (default false — explicit opt-in per agent).
+3. Skips if a non-cancelled order already exists for the same
+   `(device, supply)` pair (avoids oscillation duplicates).
+4. Calls the same toner-product matcher used by the customer-portal
+   flow (`supplies` catalog match by manufacturer/model/colour patterns).
+5. Inserts a `device_supply_orders` row with `status='pending'` and
+   `triggered_by='auto'`, then stamps the alert's `triggered_order_id`.
+
+A separate `device_supply_orders` table — distinct from the
+customer-portal `customer_supply_orders` — is the agent-driven order
+pipeline. Lifecycle: `pending → approved → ordered → shipped →
+delivered` (or `cancelled` from any non-terminal state). Cancelling
+clears `device_alerts.triggered_order_id` so a future critical reading
+can fire a fresh order.
+
+UI:
+
+- `client/src/pages/SupplyOrders.tsx` — tabular view, Approve / Cancel,
+  filter by pending / open / closed, summary cards for pending +
+  approved + in-flight.
+- `DeviceMonitoring.tsx` alert cards show "Auto-order created" when the
+  alert has a `triggered_order_id`.
+- `MonitoringClients.tsx` Add-Client dialog has an opt-in checkbox for
+  `autoOrderEnabled`.
+- `PATCH /api/client-metrics/clients/:id` toggles the flag on existing
+  clients without re-creation.
+
 ## HTTP collector — vendor coverage
 
 `http-collector.ts` is the fallback for devices with SNMP disabled or

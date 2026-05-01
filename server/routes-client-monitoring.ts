@@ -755,7 +755,10 @@ export function registerClientMonitoringRoutes(app: Express) {
             .limit(1);
 
           if (!device[0]) {
-            // Register new device
+            // Register new device. Denormalise the monitoring client's
+            // customer link onto the device row so auto-order and
+            // customer-scoped reporting don't have to traverse
+            // monitoring_clients on every read.
             [device[0]] = await db
               .insert(deviceRegistrations)
               .values({
@@ -767,6 +770,7 @@ export function registerClientMonitoringRoutes(app: Express) {
                 serialNumber: deviceData.serialNumber,
                 ipAddress: deviceData.ipAddress,
                 status: deviceData.deviceStatus || 'online',
+                customerId: client.customerId || null,
                 lastSeen: new Date(deviceData.collectionTimestamp),
               })
               .returning();
@@ -786,13 +790,17 @@ export function registerClientMonitoringRoutes(app: Express) {
               lastSeen: new Date(deviceData.collectionTimestamp),
             });
           } else {
-            // Update existing device
+            // Update existing device. Re-sync customerId from the
+            // monitoring client so re-linking the client to a different
+            // customer in the UI propagates to its devices on the
+            // next /submit cycle.
             await db
               .update(deviceRegistrations)
               .set({
                 status: deviceData.deviceStatus || device[0].status,
                 lastSeen: new Date(deviceData.collectionTimestamp),
                 ipAddress: deviceData.ipAddress || device[0].ipAddress,
+                customerId: client.customerId || device[0].customerId,
                 updatedAt: new Date(),
               })
               .where(eq(deviceRegistrations.id, device[0].id));

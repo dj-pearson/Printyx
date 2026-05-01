@@ -11,7 +11,12 @@
 // new field, add it to device_metrics or compute on the fly.
 import express from 'express';
 import { db } from './db';
-import { deviceRegistrations, deviceMetrics, deviceAlerts } from '@shared/schema';
+import {
+  deviceRegistrations,
+  deviceMetrics,
+  deviceAlerts,
+  deviceSupplyOrders,
+} from '@shared/schema';
 import { eq, and, desc, sql, gte, inArray } from 'drizzle-orm';
 import { resolveTenant, requireTenant, type TenantRequest } from './middleware/tenancy';
 import { enhanceUserContext } from './middleware/rbac-route-helper';
@@ -95,6 +100,7 @@ function decorateAlert(alert: any, reg: any) {
     acknowledgedBy: alert.acknowledgedBy,
     snoozedUntil: alert.snoozedUntil,
     resolvedAt: alert.resolvedAt,
+    triggeredOrderId: alert.triggeredOrderId,
     firstSeenAt: alert.firstSeenAt,
     lastSeenAt: alert.lastSeenAt,
     createdAt: alert.createdAt,
@@ -233,6 +239,7 @@ router.get('/active-alerts', resolveTenant, requireTenant, async (req: TenantReq
           acknowledgedBy: r.acknowledged_by,
           snoozedUntil: r.snoozed_until,
           resolvedAt: r.resolved_at,
+          triggeredOrderId: r.triggered_order_id,
           firstSeenAt: r.first_seen_at,
           lastSeenAt: r.last_seen_at,
           createdAt: r.created_at,
@@ -585,5 +592,144 @@ router.get('/statistics', resolveTenant, requireTenant, async (req: TenantReques
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+// =====================================================
+// SUPPLY ORDERS (auto + manual)
+// =====================================================
+
+/** List orders. Filter by status with ?status=pending,approved (CSV). */
+router.get('/supply-orders', resolveTenant, requireTenant, async (req: TenantRequest, res) => {
+  try {
+    const tenantId = req.tenantId!;
+    const filter = (req.query.status as string | undefined)?.split(',').filter(Boolean);
+
+    const rows =
+      (
+        (await db.execute(sql<any>`
+          SELECT o.*, r.serial_number, r.device_name, r.manufacturer, r.model
+            FROM device_supply_orders o
+            LEFT JOIN device_registrations r ON r.id = o.device_id
+                                              AND r.tenant_id = o.tenant_id
+           WHERE o.tenant_id = ${tenantId}
+             ${
+               filter && filter.length > 0
+                 ? sql`AND o.status = ANY(${sql.raw(`'{${filter.map((s) => s.replace(/[^a-z]/g, '')).join(',')}}'`)})`
+                 : sql``
+             }
+           ORDER BY o.created_at DESC
+           LIMIT 500
+        `)) as any
+      ).rows ?? [];
+
+    const orders = rows.map((r: any) => ({
+      id: r.id,
+      tenantId: r.tenant_id,
+      customerId: r.customer_id,
+      deviceId: r.device_id,
+      alertId: r.alert_id,
+      supplyType: r.supply_type,
+      productSku: r.product_sku,
+      productName: r.product_name,
+      quantity: r.quantity,
+      unitPrice: r.unit_price,
+      totalPrice: r.total_price,
+      status: r.status,
+      triggeredBy: r.triggered_by,
+      createdAt: r.created_at,
+      approvedAt: r.approved_at,
+      orderedAt: r.ordered_at,
+      cancelledAt: r.cancelled_at,
+      notes: r.notes,
+      device: {
+        serialNumber: r.serial_number,
+        deviceName: r.device_name,
+        manufacturer: r.manufacturer,
+        model: r.model,
+      },
+    }));
+    res.json({ orders });
+  } catch (error) {
+    log.error('Error fetching supply orders:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+/** Approve a pending order — operator confirms it's a real fulfilment. */
+router.post(
+  '/supply-orders/:orderId/approve',
+  resolveTenant,
+  requireTenant,
+  async (req: TenantRequest, res) => {
+    try {
+      const tenantId = req.tenantId!;
+      const order = await db.query.deviceSupplyOrders.findFirst({
+        where: and(
+          eq(deviceSupplyOrders.id, req.params.orderId),
+          eq(deviceSupplyOrders.tenantId, tenantId),
+        ),
+      });
+      if (!order) return res.status(404).json({ message: 'Order not found' });
+      if (order.status !== 'pending') {
+        return res
+          .status(409)
+          .json({ message: `Order is in status '${order.status}', not 'pending'` });
+      }
+      await db
+        .update(deviceSupplyOrders)
+        .set({
+          status: 'approved',
+          approvedAt: new Date(),
+          approvedBy: req.user?.id || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(deviceSupplyOrders.id, order.id));
+      res.json({ message: 'Order approved' });
+    } catch (error) {
+      log.error('Error approving order:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+);
+
+/** Cancel an order. Also clears the triggered_order_id on the alert
+ *  so the next critical reading can fire a fresh auto-order. */
+router.post(
+  '/supply-orders/:orderId/cancel',
+  resolveTenant,
+  requireTenant,
+  async (req: TenantRequest, res) => {
+    try {
+      const tenantId = req.tenantId!;
+      const order = await db.query.deviceSupplyOrders.findFirst({
+        where: and(
+          eq(deviceSupplyOrders.id, req.params.orderId),
+          eq(deviceSupplyOrders.tenantId, tenantId),
+        ),
+      });
+      if (!order) return res.status(404).json({ message: 'Order not found' });
+      if (order.status === 'cancelled') {
+        return res.json({ message: 'Already cancelled' });
+      }
+      if (order.status === 'shipped' || order.status === 'delivered') {
+        return res.status(409).json({ message: `Cannot cancel order in status '${order.status}'` });
+      }
+      await db
+        .update(deviceSupplyOrders)
+        .set({ status: 'cancelled', cancelledAt: new Date(), updatedAt: new Date() })
+        .where(eq(deviceSupplyOrders.id, order.id));
+      // Clear the alert's pointer so a future critical can re-trigger.
+      if (order.alertId) {
+        await db
+          .update(deviceAlerts)
+          .set({ triggeredOrderId: null, updatedAt: new Date() })
+          .where(eq(deviceAlerts.id, order.alertId));
+      }
+      res.json({ message: 'Order cancelled' });
+    } catch (error) {
+      log.error('Error cancelling order:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  },
+);
 
 export default router;
