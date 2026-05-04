@@ -628,19 +628,10 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     });
   }
 
-  try {
-    const { default: reportingRouter } = await import('./routes-reporting');
-    app.use('/api', reportingRouter);
-    log.info('✅ Reporting routes registered');
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    log.error('Failed to load reporting routes:', err);
-    failedRouteModules.push({
-      module: 'routes-reporting',
-      error: msg,
-      timestamp: new Date().toISOString(),
-    });
-  }
+  // routes-reporting.ts (KPIs, reporting catalog, exports, dashboard summary)
+  // migrated to supabase/functions/reports/handlers/{kpis,reporting}.ts in
+  // EDGE-003. Frontend hits /api/kpis/* and /api/reporting/* via the
+  // edge-function-proxy.
 
   const lazyModules: [string, string, string][] = [
     ['/api/gdpr', './routes-gdpr-core', 'GDPR Core Features'],

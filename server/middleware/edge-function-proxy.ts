@@ -1,15 +1,29 @@
 /**
  * Edge Function Proxy Middleware
  *
- * Forwards CRM API requests from Express to Supabase Edge Functions.
- * This ensures that ALL clients (mobile, web, integrations) hitting the
- * Express backend get data from the correct, up-to-date edge functions
- * instead of deprecated Express route handlers that query obsolete tables.
+ * Forwards API requests from Express to Supabase Edge Functions so all
+ * clients (mobile, web, integrations) hitting the Express backend get
+ * canonical responses from the up-to-date edge functions instead of
+ * legacy Express handlers that may query obsolete tables.
  *
- * The proxy preserves Authentication, tenant ID, and query parameters.
+ * Body handling:
+ *   - JSON / urlencoded: re-serialize req.body (express.json/urlencoded
+ *     already parsed it, so the original stream is gone).
+ *   - multipart/form-data: read the raw stream into a buffer and forward.
+ *     Express body-parser doesn't touch multipart, so req is still readable.
+ *   - GET / DELETE / no body: no body sent.
+ *
+ * Response handling:
+ *   - Text-like (JSON, text/*, xml, html, csv): response.text() → res.send.
+ *   - Binary (PDF, ZIP, image, octet-stream): response.arrayBuffer() →
+ *     res.end(Buffer). Required for invoice PDFs, installer ZIPs, etc.
+ *
+ * On a network error, the proxy calls next() so a fallback Express handler
+ * (if mounted later) can pick up the request. Note this does NOT trigger on
+ * a 404/500 from the edge function — those are returned to the client as-is.
  */
 
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response as ExpressResponse, NextFunction } from 'express';
 import { createModuleLogger } from '../lib/logger';
 
 const log = createModuleLogger('edge-function-proxy');
@@ -22,85 +36,182 @@ const EDGE_FUNCTIONS_URL = (
 
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 
-/**
- * Build request headers for forwarding to edge functions.
- */
-function buildProxyHeaders(req: Request): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH']);
 
-  if (req.headers.authorization) {
-    headers['Authorization'] = req.headers.authorization;
+/**
+ * True if the response Content-Type is safe to read as text.
+ * Anything else (PDFs, ZIPs, images, octet-stream) is treated as binary.
+ */
+export function isTextContentType(contentType: string | null | undefined): boolean {
+  if (!contentType) return true; // no content-type → assume text/plain
+  const ct = contentType.toLowerCase();
+  return (
+    ct.includes('json') ||
+    ct.startsWith('text/') ||
+    ct.includes('xml') ||
+    ct.includes('javascript') ||
+    ct.includes('html') ||
+    ct.includes('csv') ||
+    ct.includes('urlencoded')
+  );
+}
+
+/**
+ * Build outgoing request headers. Caller decides whether to forward the
+ * incoming Content-Type (for multipart pass-through) or set
+ * application/json (for JSON re-serialization).
+ */
+function buildProxyHeaders(req: Request, mode: 'json' | 'passthrough' | 'none'): Headers {
+  const headers = new Headers();
+
+  if (mode === 'json') {
+    headers.set('Content-Type', 'application/json');
+  } else if (mode === 'passthrough') {
+    const incoming = req.headers['content-type'];
+    if (incoming) headers.set('Content-Type', incoming as string);
   }
 
-  // Forward tenant ID from any available source
+  if (req.headers.authorization) {
+    headers.set('Authorization', req.headers.authorization as string);
+  }
+
   const tenantId =
-    (req.headers['x-tenant-id'] as string) ||
+    (req.headers['x-tenant-id'] as string | undefined) ||
     (req as any).user?.tenantId ||
     (req as any).supabaseUser?.tenantId;
   if (tenantId) {
-    headers['x-tenant-id'] = tenantId;
+    headers.set('x-tenant-id', tenantId);
   }
 
-  // Edge functions require the apikey header (Supabase Kong gateway)
   if (SUPABASE_ANON_KEY) {
-    headers['apikey'] = SUPABASE_ANON_KEY;
+    headers.set('apikey', SUPABASE_ANON_KEY);
   }
 
   return headers;
 }
 
 /**
- * Forward an Express request to an edge function URL and pipe the response back.
+ * Read the entire request body into a Buffer. Used for multipart forwarding
+ * where the original boundary must be preserved byte-for-byte.
  */
-function forwardToEdgeFunction(req: Request, res: Response, next: NextFunction, edgeUrl: string) {
-  const headers = buildProxyHeaders(req);
-  const hasBody = ['POST', 'PUT', 'PATCH'].includes(req.method);
-  const bodyStr = hasBody && req.body ? JSON.stringify(req.body) : undefined;
+async function readRawBody(req: Request): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : (chunk as Buffer));
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
+ * Forward an Express request to an edge function URL and pipe the response
+ * back. Handles JSON, multipart, and binary responses correctly.
+ */
+async function forwardToEdgeFunction(
+  req: Request,
+  res: ExpressResponse,
+  next: NextFunction,
+  edgeUrl: string,
+): Promise<void> {
+  const reqContentType = (req.headers['content-type'] || '').toLowerCase();
+  const isMultipart = reqContentType.includes('multipart/');
+  const isWriteMethod = WRITE_METHODS.has(req.method);
+
+  let headers: Headers;
+  let body: BodyInit | undefined;
+
+  try {
+    if (!isWriteMethod) {
+      headers = buildProxyHeaders(req, 'none');
+      body = undefined;
+    } else if (isMultipart) {
+      // Stream raw body — body-parser doesn't touch multipart, so req is
+      // still readable. Preserve the original Content-Type (with boundary).
+      const raw = await readRawBody(req);
+      headers = buildProxyHeaders(req, 'passthrough');
+      body = raw;
+    } else if (req.body !== undefined && req.body !== null) {
+      // express.json() or express.urlencoded() already consumed the stream
+      // and parsed the body; re-serialize as JSON for the edge function.
+      headers = buildProxyHeaders(req, 'json');
+      body = JSON.stringify(req.body);
+    } else {
+      headers = buildProxyHeaders(req, 'none');
+      body = undefined;
+    }
+  } catch (err) {
+    log.error(`[Proxy] Failed to read request body for ${edgeUrl}: ${String(err)}`);
+    return next();
+  }
 
   log.info(`[Proxy] ${req.method} ${req.originalUrl} → ${edgeUrl}`);
 
-  fetch(edgeUrl, {
-    method: req.method,
-    headers,
-    body: bodyStr,
-  })
-    .then(async (response) => {
-      const data = await response.text();
-      res.status(response.status);
-
-      const contentType = response.headers.get('content-type');
-      if (contentType) {
-        res.setHeader('Content-Type', contentType);
-      }
-
-      res.send(data);
-    })
-    .catch((error) => {
-      log.error(`[Proxy] Error forwarding to ${edgeUrl}:`, error);
-      // On proxy failure, fall through to the original Express handler
-      next();
+  let response: globalThis.Response;
+  try {
+    response = await fetch(edgeUrl, {
+      method: req.method,
+      headers,
+      body,
     });
+  } catch (error) {
+    log.error(`[Proxy] Network error forwarding to ${edgeUrl}: ${String(error)}`);
+    return next();
+  }
+
+  res.status(response.status);
+
+  // Forward content-related response headers. We avoid blanket-copying every
+  // header (e.g. content-encoding, transfer-encoding, content-length all
+  // become inaccurate after Express re-encodes the body).
+  const respContentType = response.headers.get('content-type');
+  if (respContentType) res.setHeader('Content-Type', respContentType);
+
+  const respDisposition = response.headers.get('content-disposition');
+  if (respDisposition) res.setHeader('Content-Disposition', respDisposition);
+
+  const cacheControl = response.headers.get('cache-control');
+  if (cacheControl) res.setHeader('Cache-Control', cacheControl);
+
+  try {
+    if (isTextContentType(respContentType)) {
+      const data = await response.text();
+      res.send(data);
+    } else {
+      const buf = await response.arrayBuffer();
+      res.end(Buffer.from(buf));
+    }
+  } catch (error) {
+    log.error(`[Proxy] Failed to read response body from ${edgeUrl}: ${String(error)}`);
+    if (!res.headersSent) res.status(502);
+    res.end();
+  }
 }
+
+/**
+ * Per-prefix proxy target. The simple form is just an edge function name
+ * (e.g. 'companies'); the object form supports re-routing to a sub-path of
+ * a multi-handler edge function (e.g. /api/kpis/* → reports edge function
+ * with /kpis/* path).
+ */
+type ProxyTarget = string | { fn: string; pathPrefix: string };
 
 /**
  * Create an Express middleware that proxies requests to a specific edge function.
  *
  * When mounted at /api/companies, req.path becomes relative (e.g. "/" or "/123").
  * This factory captures the edge function name so the middleware knows where to forward.
- *
- * @param functionName - The edge function name (e.g. "companies", "deals")
  */
-function createProxyHandler(functionName: string) {
-  return (req: Request, res: Response, next: NextFunction) => {
+function createProxyHandler(target: ProxyTarget) {
+  const fn = typeof target === 'string' ? target : target.fn;
+  const pathPrefix = typeof target === 'string' ? '' : target.pathPrefix;
+
+  return (req: Request, res: ExpressResponse, next: NextFunction) => {
     // req.path is relative to mount point: "/" for list, "/123" for single, "/stats" for stats
     // req.url includes query string: "/?search=test&limit=50"
     const subPath = req.path === '/' ? '' : req.path;
     const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
-    const edgeUrl = `${EDGE_FUNCTIONS_URL}/${functionName}${subPath}${queryString}`;
+    const edgeUrl = `${EDGE_FUNCTIONS_URL}/${fn}${pathPrefix}${subPath}${queryString}`;
 
-    forwardToEdgeFunction(req, res, next, edgeUrl);
+    void forwardToEdgeFunction(req, res, next, edgeUrl);
   };
 }
 
@@ -128,9 +239,10 @@ export function registerEdgeFunctionProxy(app: any) {
   //     in EDGE-002a-EDGE-002k follow-ups in prd.json)
   //   - client-metrics (DEPRECATED edge function — frontend uses Express
   //     `routes-client-monitoring.ts` for the live device-monitoring path)
-  //   - any /import endpoint (multipart bodies — proxy stringifies as JSON)
-  //   - any /pdf or installer.zip endpoint (binary — proxy uses .text())
-  const crmProxies: Record<string, string> = {
+  //
+  // Multipart uploads (CSV imports) and binary downloads (PDFs, ZIPs) are
+  // now handled correctly by `forwardToEdgeFunction` (EDGE-002l).
+  const crmProxies: Record<string, ProxyTarget> = {
     // Core CRM (EDGE-001 baseline)
     '/api/business-records': 'business-records',
     '/api/companies': 'companies',
@@ -154,6 +266,11 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/users': 'users',
     '/api/vendors': 'vendors',
     '/api/webhooks': 'webhooks',
+
+    // EDGE-003: KPIs and reporting catalog/exports/dashboard live inside the
+    // reports edge function (handlers/kpis.ts, handlers/reporting.ts).
+    '/api/kpis': { fn: 'reports', pathPrefix: '/kpis' },
+    '/api/reporting': { fn: 'reports', pathPrefix: '/reporting' },
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {
@@ -163,15 +280,23 @@ export function registerEdgeFunctionProxy(app: any) {
   // Special case: GET /api/customers → companies edge function with recordType=Customer
   // The old mobile app calls /api/customers but there's no "customers" edge function.
   // Route it to the companies edge function with an added recordType filter.
-  app.get('/api/customers', (req: Request, res: Response, next: NextFunction) => {
+  app.get('/api/customers', (req: Request, res: ExpressResponse, next: NextFunction) => {
     const search = (req.query as any)?.search || '';
     const limit = (req.query as any)?.limit || '50';
     const offset = (req.query as any)?.offset || '0';
     const qs = `?recordType=Customer&search=${encodeURIComponent(search)}&limit=${limit}&offset=${offset}`;
     const edgeUrl = `${EDGE_FUNCTIONS_URL}/companies${qs}`;
 
-    forwardToEdgeFunction(req, res, next, edgeUrl);
+    void forwardToEdgeFunction(req, res, next, edgeUrl);
   });
 
   log.info('✅ Edge function proxy registered for CRM routes');
 }
+
+// Export internals for testing
+export const __test = {
+  isTextContentType,
+  buildProxyHeaders,
+  readRawBody,
+  forwardToEdgeFunction,
+};

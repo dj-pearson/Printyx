@@ -63,6 +63,8 @@ import { handleWarehouse } from './handlers/warehouse.ts';
 import { handleSecondTier, isSecondTierEndpoint } from './handlers/second-tier.ts';
 import { handleFrontendStubs, isFrontendStubEndpoint } from './handlers/frontend-stubs.ts';
 import { handleCustomReports } from './handlers/custom-reports.ts';
+import { handleKpis } from './handlers/kpis.ts';
+import { handleReporting } from './handlers/reporting.ts';
 
 const log = createLogger('reports');
 
@@ -114,6 +116,10 @@ export default async function handler(req: Request) {
       });
     } else if (firstSegment === 'custom') {
       result = await handleCustomReports(req, ctx);
+    } else if (firstSegment === 'kpis') {
+      result = await handleKpis(req, ctx);
+    } else if (firstSegment === 'reporting') {
+      result = await handleReporting(req, ctx);
     } else if (firstSegment && isSecondTierEndpoint(firstSegment, method)) {
       result = await handleSecondTier(req, ctx);
     } else if (firstSegment && isFrontendStubEndpoint(firstSegment, method)) {
