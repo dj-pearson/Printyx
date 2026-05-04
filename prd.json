@@ -3995,24 +3995,243 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Highest-leverage single change. Per tasks/SESSION-STATUS-2026-04-27.md the edge handlers (second-tier.ts, frontend-stubs.ts, custom-reports.ts, persona dispatchers) are complete but unreachable. Explicit warning in that doc: re-verify all six dashboards against Coolify before deleting Express files because the proxy will shadow the 7 working Express endpoints.",
+      "passes": true,
+      "notes": "DONE 2026-05-04. Wired /api/reports proxy entry; converted 16 frontend files (11 dashboards + 4 stat widgets + BreachTiles) from raw fetch with /api/<persona>-reports/<sub> URLs to apiRequest with canonical /api/reports/<persona>/<sub> URLs (also fixed missing auth headers). Deleted 14 superseded Express files (-6,644 lines): routes-reports.ts, routes-breach-detection.ts, routes-custom-reports.ts, routes-reporting-architecture.ts, routes-reporting-definitions.ts, plus the 11 unimported persona-reports-api.ts files. Updated routes-registry.ts and domains/security.ts + domains/reporting.ts barrels. Pre-existing tsc errors went from 10,902 to 10,075 lines. npm run build: ✓ 54.08s.",
       "category": "edge-migration"
     },
     {
       "id": "EDGE-002",
-      "title": "Expand edge-function proxy to ~47 already-ported domains (Tier 1)",
-      "description": "As a defensive measure during sunset, I need every Express mount path that has a fully-ported edge function counterpart to route through the proxy so anyone hitting Express directly (mobile, integrations, internal tools) gets the canonical edge response instead of the legacy Express handler that may query obsolete tables.",
+      "title": "Expand edge-function proxy to Tier 1 SAFE domains (12 of 47)",
+      "description": "As a defensive measure during sunset, I need Express mount paths whose edge function counterpart is verified-complete to route through the proxy so anyone hitting Express directly (mobile, integrations, internal tools) gets the canonical edge response instead of the legacy Express handler that may query obsolete tables.",
       "acceptanceCriteria": [
-        "Add the following to crmProxies in server/middleware/edge-function-proxy.ts: activities, api-keys, audit-logs, auto-lead-routing, auto-supply-replenishment, billing, catalog, client-metrics, commission, company-contacts, company-ids, contract-renewal, cross-module, customer-numbers, customer-portal, customer-success, equipment, feature-flags, gdpr, knowledge-base, leads, manufacturer-integrations, notifications, oid-mappings, parts-orders, performance, platform-deals, predictive-dispatch, products, purchase-orders, quickbooks, rbac, remote-monitoring, roles, root-admin, seo, service-tickets, social-media, software-products, subscriptions, supplies, tasks, territories, users, vendors, warehouse-operations, webhooks",
-        "Each entry's edge function exists with no degraded:/stub: blocks (verified via grep)",
-        "Smoke-test 5 representative dashboards still load (CustomerHub, BillingDashboard, KnowledgeBase, TasksHub, AdminDashboard)",
-        "Each Express route file whose mount is now proxied gets a deletion candidate marker (// DELETE-AFTER-EDGE-002 comment at top)",
-        "Typecheck passes: npm run check"
+        "Add the following 12 audit-verified SAFE entries to crmProxies in server/middleware/edge-function-proxy.ts: api-keys, company-contacts, cross-module, feature-flags, knowledge-base, notifications, roles, tasks, territories, users, vendors, webhooks",
+        "Each entry's edge function dispatcher actually handles every URL path the frontend (client/src) calls (verified via grep + read of edge function index.ts)",
+        "Per-domain follow-ups EDGE-002a through EDGE-002k filed for the 35 RISKY domains where the edge function would 404 on real frontend URLs",
+        "Smoke-test representative pages: KnowledgeBase, TasksHub, AdminTeams (vendors/territories), Notifications drawer, MyApiKeys",
+        "Typecheck passes: npm run check (no new errors)",
+        "Build passes: npm run build"
       ],
       "priority": 2,
+      "passes": true,
+      "notes": "DONE 2026-05-04. Audit (tasks/edge-001-audit-report markdown in 2026-05-04 session) revealed only 12 of 47 originally-listed Tier 1 domains are actually safe — the other 35 have edge function gaps where frontend URLs would 404. Architectural concerns also surfaced: proxy stringifies multipart bodies as JSON (corrupts /import endpoints), proxy reads response.text() (corrupts /pdf and installer.zip binary downloads), and several edge functions index pathParts[1] for the resource ID which only works under Supabase native runtime, not via Coolify's server.ts which strips the function name. Filed as EDGE-002l.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002a",
+      "title": "Port missing endpoints to billing edge function",
+      "description": "Frontend hits /api/billing/configurations, /cycles, /cycles/run, /adjustments, /payment-methods, /service-entries, /invoices/:id/pdf, /invoices/:id/email — none exist on the billing edge function. Edge function only has /analytics, /invoices, /rules, /rules/:id, /generate-invoices, /contract-profitability.",
+      "acceptanceCriteria": [
+        "Inventory the missing endpoints by reading server/routes/advanced-billing-routes.ts and server/routes/automated-billing-routes.ts",
+        "Schema-audit billing tables against shared/schema.ts (expect drift — follow the degraded: pattern)",
+        "Add handlers under supabase/functions/billing/handlers/ for: configurations, billing-cycles, adjustments, payment-methods, service-entries",
+        "/invoices/:id/pdf needs binary response handling (see EDGE-002m)",
+        "/invoices/:id/email is a side-effect (sendgrid) — port to edge function with fetch-based sendgrid call",
+        "Add '/api/billing': 'billing' to crmProxies",
+        "Smoke-test BillingDashboard, AdvancedBillingEngine, PaymentMethodsPage"
+      ],
+      "priority": 3,
       "passes": false,
-      "notes": "Tier 1 from the 2026-05-04 audit. Tier 2 (functions with degraded:/stub: blocks like demos, inventory, mfa, sso, signatures, lead-assignment, teams, meetings, crm) is deferred to EDGE-007 because some frontend paths may rely on degraded data shape.",
+      "notes": "Edge function existed at port time but only as MVP. Express handlers in advanced-billing-routes.ts, automated-billing-routes.ts, consolidated-billing-routes.ts have the full surface. Six high-traffic pages would break if proxied without porting first.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002b",
+      "title": "Port missing endpoints to customer-portal edge function",
+      "description": "Frontend hits /api/customer-portal/usage-analytics, /satisfaction/surveys, /equipment (POST), /maintenance-availability, /maintenance-appointments (CRUD), /maintenance-appointments/:id/reschedule, /equipment-health. The edge function dispatcher only knows /dashboard, /service-requests, /equipment (GET), /supply-orders, /knowledge-base.",
+      "acceptanceCriteria": [
+        "Port the maintenance scheduling flow (used by MaintenanceSchedulingComponent.tsx)",
+        "Port satisfaction surveys CRUD (used by ServiceRequestsDashboard.tsx)",
+        "Port equipment-health endpoint (used by EquipmentHealthDashboard.tsx)",
+        "Port usage-analytics endpoint (used by UsageAnalyticsDashboard.tsx)",
+        "Add '/api/customer-portal': 'customer-portal' to crmProxies",
+        "Verify customer portal pages load real data"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Express source at server/routes-customer-portal.ts. Customer portal is high-visibility (end-customer-facing).",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002c",
+      "title": "Port missing endpoints to subscriptions edge function (Stripe flow)",
+      "description": "The entire Stripe checkout/portal flow lives in Express only: /api/subscriptions/current, /create, /upgrade, /cancel, /convert-trial, /stripe/config, /checkout, /checkout/addon, /portal, /preview-upgrade, /checkout/session/:id, /notifications, /notifications/:id/dismiss. Edge function only has /plans, /usage, /invoices, /features, /change-plan.",
+      "acceptanceCriteria": [
+        "Port Stripe-flow endpoints (use the existing stripe.ts client pattern from npm: stripe via esm.sh)",
+        "Port subscription notifications (in-app billing alerts)",
+        "Schema-audit subscriptions, subscription_invoices, subscription_features tables",
+        "Verify /checkout/session/:id and /portal redirect URLs round-trip through Stripe correctly",
+        "Add '/api/subscriptions': 'subscriptions' to crmProxies",
+        "Smoke-test SubscriptionDashboard, BillingPlanUpgrade, TrialConversion flows"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Express source: routes-subscriptions.ts. Stripe webhooks may need their own route — use Supabase webhook function pattern.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002d",
+      "title": "Port missing endpoints to root-admin edge function",
+      "description": "Frontend hits /api/root-admin/system-resources, /pending-tasks, /database-tables, /execute-query, /signups, /signups-analytics. Edge function only has /overview, /tenants, /tenants/:id, /security-alerts, /users, /audit-logs.",
+      "acceptanceCriteria": [
+        "Port /system-resources (system-level metrics)",
+        "Port /database-tables (admin database introspection)",
+        "/execute-query is dangerous — gate behind platformAdminRoute and rate-limit, OR remove this feature entirely",
+        "Port /signups + /signups-analytics (used by RootAdminSignupsCRM page)",
+        "Port /pending-tasks (admin task queue)",
+        "Add '/api/root-admin': 'root-admin' to crmProxies",
+        "Smoke-test all pages under /pages/admin/**"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Express source: routes-root-admin.ts. /execute-query is a security-sensitive feature; consider whether to port at all.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002e",
+      "title": "Port missing endpoints to seo edge function",
+      "description": "Frontend hits /api/seo/audit/history, /keywords, /competitors, /alerts, /regenerate-sitemap, /regenerate-robots, /regenerate-llms. Edge function has /settings, /pages, /pages/:id, /analytics, /sitemap/generate, /redirects.",
+      "acceptanceCriteria": [
+        "Port /audit/history, /keywords, /competitors, /alerts (the SEO monitoring features)",
+        "Port /regenerate-robots and /regenerate-llms (file generation)",
+        "Add '/api/seo': 'seo' to crmProxies",
+        "Smoke-test SEODashboard and RootAdminSEO"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Express source: routes-seo-core.ts. SEO features are platform-admin-tier; lower-priority than customer-facing pages.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002f",
+      "title": "Port missing endpoints to leads edge function (incl. lead-map and contact attaching)",
+      "description": "Frontend hits /api/leads/:id/contacts (POST — used at LeadDetail.tsx:128,529), /map-data (used at LeadMapViewer.tsx), /geocode, /import-eda. Edge function has /, /:id, /:id/convert, /:id/qualify only.",
+      "acceptanceCriteria": [
+        "Port /:id/contacts POST endpoint (attach contact to lead)",
+        "Port /map-data (lead geographic data for map)",
+        "Port /geocode (street-address-to-lat-lon)",
+        "/import-eda is multipart upload (CSV) — gate on EDGE-002l proxy multipart fix",
+        "Add '/api/leads': 'leads' to crmProxies",
+        "Smoke-test LeadDetail.tsx contact attachment flow + LeadMapViewer.tsx"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Express source: routes-leads.ts (or domains/sales.ts). LeadMapViewer is a heavy feature page.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002g",
+      "title": "Port missing endpoints to auto-lead-routing, auto-supply-replenishment, contract-renewal, predictive-dispatch dashboards",
+      "description": "Each of these has an edge function with /rules-style CRUD endpoints, but the frontend dashboards call /dashboard, /at-risk, /low-supplies, /devices-at-risk, /technician-performance, /analyze-all etc. These are typically aggregated dashboard endpoints that need to be ported to handlers/dashboard.ts.",
+      "acceptanceCriteria": [
+        "Port auto-lead-routing /dashboard, /config, /route/:leadId",
+        "Port auto-supply-replenishment /dashboard, /low-supplies, /orders, /analyze-all",
+        "Port contract-renewal /dashboard, /at-risk, /proposals, /analyze-all",
+        "Port predictive-dispatch /dashboard, /devices-at-risk, /technician-performance, /analyze/:serialNumber, /analyze-all",
+        "Add the four prefixes to crmProxies",
+        "Smoke-test the four dashboards"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Group of related dashboard ports — common pattern: aggregate read endpoints feeding a dashboard page.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002h",
+      "title": "Port missing endpoints to commission, equipment, gdpr, manufacturer-integrations, oid-mappings, performance, platform-deals, parts-orders, products, purchase-orders, quickbooks, rbac, remote-monitoring, social-media, supplies, warehouse-operations",
+      "description": "Each of these edge functions has partial coverage — typically CRUD on the main resource works, but some sub-routes (/test, /export, /:id/items, /devices-at-risk, etc.) are missing or have a different naming convention. Port the missing endpoints OR add URL aliasing in the dispatcher.",
+      "acceptanceCriteria": [
+        "Per-domain audit of frontend caller URLs vs edge function endpoints",
+        "Port or alias each missing URL",
+        "Add the prefix to crmProxies",
+        "Smoke-test the affected pages"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Bundled because each is a small surface gap (1-3 endpoints). Could be split per domain if a sub-team picks them up.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002i",
+      "title": "Audit and fix audit-logs edge function permission gating",
+      "description": "Edge function audit-logs/index.ts requires isPlatformAdmin === true. Express may have allowed admin-tier (not just platform-admin) access. Verify expected callers.",
+      "acceptanceCriteria": [
+        "Determine if frontend AuditLogViewer.tsx caller IS platform admin only (likely) or admin-tier",
+        "If admin-tier: relax the edge function check to platformOrCompanyAdmin",
+        "Add '/api/audit-logs': 'audit-logs' to crmProxies",
+        "Smoke-test AuditLogViewer for both platform admin and company admin users"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Small audit task before flipping the proxy.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002j",
+      "title": "Resolve client-metrics dual-implementation (Express vs deprecated edge function)",
+      "description": "supabase/functions/client-metrics/index.ts has a 'DEPRECATED — DO NOT EXTEND' header. The live device-monitoring path runs through server/routes-client-monitoring.ts (Express). Frontend MonitoringClients.tsx calls /clients, /clients/:id, /clients/:id/enrollment-token, /clients/:id/commands, /clients/:id/installer.zip, /clients/:id/regenerate-key — NONE of which exist on the edge function. The edge function uses x-api-key auth; the frontend uses Bearer JWT.",
+      "acceptanceCriteria": [
+        "Decide: port routes-client-monitoring.ts to a NEW edge function (e.g., 'device-monitoring') OR extend the existing client-metrics edge function with the missing endpoints + dual-auth",
+        "If new function: pick canonical name, deprecate the other",
+        "Port /clients CRUD with Bearer auth",
+        "Port /enrollment-token generation",
+        "Port /commands queue",
+        "/installer.zip is binary download — gate on EDGE-002m proxy binary fix",
+        "Add the proxy entry once endpoints are ported",
+        "Update MonitoringClients.tsx if the URL prefix changed"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "DO NOT add /api/client-metrics to the proxy until this is resolved — would break the live device monitoring page.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002k",
+      "title": "Port missing endpoints to activities, customer-numbers, customer-success, company-ids edge functions",
+      "description": "Bundled small ports. activities is missing /:id/complete. customer-numbers has a name mismatch (/config vs /settings) plus /history and /preview missing. customer-success is borderline — verify /usage-analytics and /satisfaction. company-ids is missing /missing-ids, /backfill, /preview-slug, plus /generate/:id conflicts with /:id GET routing.",
+      "acceptanceCriteria": [
+        "Port activities /:id/complete (used by TodayDashboard.tsx:118)",
+        "Resolve customer-numbers name conflict (/config vs /settings) — pick one and update the other side",
+        "Port customer-numbers /history, /preview",
+        "Verify customer-success /usage-analytics, /satisfaction",
+        "Refactor company-ids dispatcher to handle /generate/:id without conflicting with /:id GET",
+        "Add the four prefixes to crmProxies",
+        "Smoke-test the affected pages"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "Each is a small fix; bundle for one PR.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002l",
+      "title": "Fix edge-function proxy to handle multipart bodies and binary responses",
+      "description": "Architectural fix: server/middleware/edge-function-proxy.ts currently does JSON.stringify(req.body) which corrupts multipart/form-data uploads (CSV imports), and uses await response.text() which corrupts binary responses (PDFs, ZIP downloads). This blocks any /import or /pdf endpoint from being safely proxied.",
+      "acceptanceCriteria": [
+        "Detect Content-Type on the incoming request: if multipart/form-data, stream the raw body with the boundary preserved (use Express's raw body buffer if available, or pipe the request)",
+        "Detect Content-Type on the edge response: if not JSON-ish (text/*, application/json), use response.arrayBuffer() and res.end(Buffer.from(buf)) to preserve binary",
+        "Add unit test for multipart pass-through (mock edge function returning 200, verify boundary preserved)",
+        "Add unit test for binary response (mock edge function returning a PNG, verify byte-equal pass-through)",
+        "Verify with one real /import flow once the corresponding edge function endpoint exists (gate on EDGE-002a /api/billing or whatever lands first)"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "Unblocks all /import endpoints (catalog, software-products, supplies, oid-mappings, leads/import-eda) and all /pdf or /installer.zip endpoints (billing/invoices, client-metrics) for proxy use.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002m",
+      "title": "Audit and fix pathParts indexing across edge functions",
+      "description": "supabase/functions/server.ts:108 strips the function name from the URL before dispatching to the handler (newUrl.pathname = '/' + pathParts.slice(1).join('/')). Many edge function dispatchers index pathParts[1] for the resource ID, assuming the function name is still in the URL. Under server.ts they index off-by-one and resource routes never fire. This is a pre-existing bug but worth surfacing now.",
+      "acceptanceCriteria": [
+        "Inventory edge functions that index pathParts[1] without first stripping their own function-name prefix",
+        "Decide on a canonical helper: a _shared/path.ts that returns normalized pathParts regardless of caller (server.ts strips, Supabase native runtime doesn't)",
+        "Refactor each affected function to use the helper, OR update server.ts to NOT strip (and fix functions that assume strip)",
+        "Add a smoke test to /supabase/functions/_test that hits both modes",
+        "Verify activities/:id, notifications/:id, etc. work after fix"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "Found during EDGE-002 audit. Functions that have their own stripPrefix (like reports/index.ts) are immune. Note: this may be a phantom bug if Supabase native runtime is never the actual caller — verify the production deployment topology first. If everything goes through server.ts, then the bug is real but the fix is to standardize on pathParts[0] indexing.",
       "category": "edge-migration"
     },
     {

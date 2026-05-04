@@ -112,8 +112,26 @@ function createProxyHandler(functionName: string) {
 export function registerEdgeFunctionProxy(app: any) {
   log.info('Registering edge function proxy → ' + EDGE_FUNCTIONS_URL);
 
-  // Core CRM endpoints → forward to matching edge functions
+  // /api/<prefix> → forward to matching edge function.
+  //
+  // Adding an entry here makes Express stop serving that prefix; every
+  // request is forwarded to the edge function (and on a network error,
+  // falls through to next() so any remaining Express handler can pick up).
+  //
+  // Only add a domain here AFTER verifying the edge function dispatcher
+  // covers every URL path the frontend (`client/src`) calls. Otherwise
+  // requests get a 404 from the edge function (proxy fall-through only
+  // triggers on network failure, not on 404 responses).
+  //
+  // Tracked exceptions (edge function exists but NOT safe to proxy yet):
+  //   - billing, catalog, customer-portal, etc. (35 RISKY domains tracked
+  //     in EDGE-002a-EDGE-002k follow-ups in prd.json)
+  //   - client-metrics (DEPRECATED edge function — frontend uses Express
+  //     `routes-client-monitoring.ts` for the live device-monitoring path)
+  //   - any /import endpoint (multipart bodies — proxy stringifies as JSON)
+  //   - any /pdf or installer.zip endpoint (binary — proxy uses .text())
   const crmProxies: Record<string, string> = {
+    // Core CRM (EDGE-001 baseline)
     '/api/business-records': 'business-records',
     '/api/companies': 'companies',
     '/api/deals': 'deals',
@@ -122,6 +140,20 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/quotes': 'quotes',
     '/api/proposals': 'proposals',
     '/api/reports': 'reports',
+
+    // EDGE-002 Tier 1 SAFE batch (audit-verified 2026-05-04)
+    '/api/api-keys': 'api-keys',
+    '/api/company-contacts': 'company-contacts',
+    '/api/cross-module': 'cross-module',
+    '/api/feature-flags': 'feature-flags',
+    '/api/knowledge-base': 'knowledge-base',
+    '/api/notifications': 'notifications',
+    '/api/roles': 'roles',
+    '/api/tasks': 'tasks',
+    '/api/territories': 'territories',
+    '/api/users': 'users',
+    '/api/vendors': 'vendors',
+    '/api/webhooks': 'webhooks',
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {
