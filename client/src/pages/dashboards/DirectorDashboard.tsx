@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -32,29 +33,25 @@ export default function DirectorDashboard() {
     isLoading: salesLoading,
     refetch: refetchSales,
   } = useQuery({
-    queryKey: ['director-reports', 'sales', 'company-performance', dateRange],
+    queryKey: ['reports', 'director', 'sales', 'company-performance', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/director-reports/sales/company-performance?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch sales performance');
-      return res.json();
+      return apiRequest(`/api/reports/director/sales/company-performance?${params}`);
     },
   });
 
   // Fetch company-wide service performance
   const { data: serviceData, isLoading: serviceLoading } = useQuery({
-    queryKey: ['director-reports', 'service', 'company-performance', dateRange],
+    queryKey: ['reports', 'director', 'service', 'company-performance', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/director-reports/service/company-performance?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch service performance');
-      return res.json();
+      return apiRequest(`/api/reports/director/service/company-performance?${params}`);
     },
   });
 

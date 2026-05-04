@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -31,57 +32,49 @@ export default function ServiceManagerDashboard() {
     isLoading: serviceCallsLoading,
     refetch: refetchServiceCalls,
   } = useQuery({
-    queryKey: ['service-manager-reports', 'regional', 'service-calls', dateRange],
+    queryKey: ['reports', 'service-manager', 'regional-service-calls', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/service-manager-reports/regional-service-calls?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch service calls');
-      return res.json();
+      return apiRequest(`/api/reports/service-manager/regional-service-calls?${params}`);
     },
   });
 
   // Fetch regional performance (Report 34)
   const { data: performanceData, isLoading: performanceLoading } = useQuery({
-    queryKey: ['service-manager-reports', 'regional', 'performance', dateRange],
+    queryKey: ['reports', 'service-manager', 'regional-performance', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/service-manager-reports/regional-performance?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch performance');
-      return res.json();
+      return apiRequest(`/api/reports/service-manager/regional-performance?${params}`);
     },
   });
 
   // Fetch regional SLA (Report 35)
   const { data: slaData, isLoading: slaLoading } = useQuery({
-    queryKey: ['service-manager-reports', 'regional', 'sla', dateRange],
+    queryKey: ['reports', 'service-manager', 'regional-sla', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/service-manager-reports/regional-sla?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch SLA');
-      return res.json();
+      return apiRequest(`/api/reports/service-manager/regional-sla?${params}`);
     },
   });
 
   // Fetch regional activity (Report 36)
   const { data: activityData, isLoading: activityLoading } = useQuery({
-    queryKey: ['service-manager-reports', 'regional', 'activity', dateRange],
+    queryKey: ['reports', 'service-manager', 'regional-activity', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/service-manager-reports/regional-activity?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch activity');
-      return res.json();
+      return apiRequest(`/api/reports/service-manager/regional-activity?${params}`);
     },
   });
 

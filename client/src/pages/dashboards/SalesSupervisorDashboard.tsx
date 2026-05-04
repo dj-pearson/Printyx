@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -36,53 +37,43 @@ export default function SalesSupervisorDashboard() {
     isLoading: pipelineLoading,
     refetch: refetchPipeline,
   } = useQuery({
-    queryKey: ['sales-supervisor-reports', 'location', 'pipeline-overview', dateRange],
+    queryKey: ['reports', 'sales-supervisor', 'location', 'pipeline-overview', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/sales-supervisor-reports/location/pipeline-overview?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch pipeline overview');
-      return res.json();
+      return apiRequest(`/api/reports/sales-supervisor/location/pipeline-overview?${params}`);
     },
   });
 
   // Fetch location performance (Report 9)
   const { data: performanceData, isLoading: performanceLoading } = useQuery({
-    queryKey: ['sales-supervisor-reports', 'location', 'performance', dateRange],
+    queryKey: ['reports', 'sales-supervisor', 'location', 'performance', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/sales-supervisor-reports/location/performance?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch performance');
-      return res.json();
+      return apiRequest(`/api/reports/sales-supervisor/location/performance?${params}`);
     },
   });
 
   // Fetch location quota (Report 10)
   const { data: quotaData, isLoading: quotaLoading } = useQuery({
-    queryKey: ['sales-supervisor-reports', 'location', 'quota', 'current'],
-    queryFn: async () => {
-      const res = await fetch('/api/sales-supervisor-reports/location/quota?period=current');
-      if (!res.ok) throw new Error('Failed to fetch quota');
-      return res.json();
-    },
+    queryKey: ['reports', 'sales-supervisor', 'location', 'quota', 'current'],
+    queryFn: () => apiRequest('/api/reports/sales-supervisor/location/quota?period=current'),
   });
 
   // Fetch location activity (Report 11)
   const { data: activityData, isLoading: activityLoading } = useQuery({
-    queryKey: ['sales-supervisor-reports', 'location', 'activity', dateRange],
+    queryKey: ['reports', 'sales-supervisor', 'location', 'activity', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/sales-supervisor-reports/location/activity?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch activity');
-      return res.json();
+      return apiRequest(`/api/reports/sales-supervisor/location/activity?${params}`);
     },
   });
 

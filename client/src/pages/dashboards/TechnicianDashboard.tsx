@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -29,43 +30,37 @@ export default function TechnicianDashboard() {
     isLoading: callsLoading,
     refetch: refetchCalls,
   } = useQuery({
-    queryKey: ['service-reports', 'personal', 'calls', dateRange],
+    queryKey: ['reports', 'service', 'personal', 'calls', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/service-reports/personal/calls?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch service calls');
-      return res.json();
+      return apiRequest(`/api/reports/service/personal/calls?${params}`);
     },
   });
 
   // Fetch parts usage data
   const { data: partsData, isLoading: partsLoading } = useQuery({
-    queryKey: ['service-reports', 'personal', 'parts', dateRange],
+    queryKey: ['reports', 'service', 'personal', 'parts', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/service-reports/personal/parts?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch parts usage');
-      return res.json();
+      return apiRequest(`/api/reports/service/personal/parts?${params}`);
     },
   });
 
   // Fetch time tracking data
   const { data: timeData, isLoading: timeLoading } = useQuery({
-    queryKey: ['service-reports', 'personal', 'time', dateRange],
+    queryKey: ['reports', 'service', 'personal', 'time', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/service-reports/personal/time?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch time tracking');
-      return res.json();
+      return apiRequest(`/api/reports/service/personal/time?${params}`);
     },
   });
 

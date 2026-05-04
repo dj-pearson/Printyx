@@ -5,6 +5,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -66,14 +67,8 @@ export function TeamLeaderboard({
     isLoading: activityLoading,
     refetch: refetchActivity,
   } = useQuery({
-    queryKey: ['team-activity-leaderboard'],
-    queryFn: async () => {
-      const res = await fetch('/api/team-reports/activity-leaderboard', {
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to fetch activity leaderboard');
-      return res.json();
-    },
+    queryKey: ['reports', 'team', 'activity-leaderboard'],
+    queryFn: () => apiRequest('/api/reports/team/activity-leaderboard'),
     enabled: selectedMetric === 'activity',
   });
 
@@ -83,14 +78,8 @@ export function TeamLeaderboard({
     isLoading: pipelineLoading,
     refetch: refetchPipeline,
   } = useQuery({
-    queryKey: ['team-pipeline-comparison'],
-    queryFn: async () => {
-      const res = await fetch('/api/team-reports/pipeline-comparison', {
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to fetch pipeline comparison');
-      return res.json();
-    },
+    queryKey: ['reports', 'team', 'pipeline-comparison'],
+    queryFn: () => apiRequest('/api/reports/team/pipeline-comparison'),
     enabled: selectedMetric === 'pipeline',
   });
 
@@ -100,14 +89,8 @@ export function TeamLeaderboard({
     isLoading: performanceLoading,
     refetch: refetchPerformance,
   } = useQuery({
-    queryKey: ['team-performance-dashboard'],
-    queryFn: async () => {
-      const res = await fetch('/api/team-reports/performance-dashboard', {
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to fetch performance dashboard');
-      return res.json();
-    },
+    queryKey: ['reports', 'team', 'performance-dashboard'],
+    queryFn: () => apiRequest('/api/reports/team/performance-dashboard'),
     enabled: selectedMetric === 'quota',
   });
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -36,40 +37,32 @@ export default function TeamLeadDashboard() {
     isLoading: performanceLoading,
     refetch: refetchPerformance,
   } = useQuery({
-    queryKey: ['sales-reports', 'team', 'comparison', dateRange],
+    queryKey: ['reports', 'sales', 'team', 'comparison', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/sales-reports/team/comparison?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch team performance');
-      return res.json();
+      return apiRequest(`/api/reports/sales/team/comparison?${params}`);
     },
   });
 
   // Fetch team pipeline summary (Report 7)
   const { data: pipelineSummary, isLoading: pipelineLoading } = useQuery({
-    queryKey: ['sales-reports', 'team', 'pipeline-summary', dateRange],
+    queryKey: ['reports', 'sales', 'team', 'pipeline-summary', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/sales-reports/team/pipeline-summary?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch pipeline summary');
-      return res.json();
+      return apiRequest(`/api/reports/sales/team/pipeline-summary?${params}`);
     },
   });
 
   // Fetch dispatch queue (Report 28)
   const { data: dispatchQueue, isLoading: dispatchLoading } = useQuery({
-    queryKey: ['service-reports', 'team', 'dispatch-queue'],
-    queryFn: async () => {
-      const res = await fetch('/api/service-reports/team/dispatch-queue');
-      if (!res.ok) throw new Error('Failed to fetch dispatch queue');
-      return res.json();
-    },
+    queryKey: ['reports', 'service', 'team', 'dispatch-queue'],
+    queryFn: () => apiRequest('/api/reports/service/team/dispatch-queue'),
   });
 
   const handleRefresh = () => {

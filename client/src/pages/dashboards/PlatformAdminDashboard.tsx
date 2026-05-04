@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -16,12 +17,8 @@ import {
 export default function PlatformAdminDashboard() {
   // Fetch platform admin dashboard
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['executive-reports', 'platform-admin'],
-    queryFn: async () => {
-      const res = await fetch('/api/executive-reports/platform-admin');
-      if (!res.ok) throw new Error('Failed to fetch platform admin dashboard');
-      return res.json();
-    },
+    queryKey: ['reports', 'executive', 'platform-admin'],
+    queryFn: () => apiRequest('/api/reports/executive/platform-admin'),
   });
 
   return (

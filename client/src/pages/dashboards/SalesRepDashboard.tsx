@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -38,68 +39,56 @@ export default function SalesRepDashboard() {
     isLoading: pipelineLoading,
     refetch: refetchPipeline,
   } = useQuery({
-    queryKey: ['sales-reports', 'personal', 'pipeline', dateRange],
+    queryKey: ['reports', 'sales', 'personal', 'pipeline', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/sales-reports/personal/pipeline?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch pipeline');
-      return res.json();
+      return apiRequest(`/api/reports/sales/personal/pipeline?${params}`);
     },
   });
 
   // Fetch quota data
   const { data: quotaData, isLoading: quotaLoading } = useQuery({
-    queryKey: ['sales-reports', 'personal', 'quota', 'current'],
-    queryFn: async () => {
-      const res = await fetch('/api/sales-reports/personal/quota?period=current');
-      if (!res.ok) throw new Error('Failed to fetch quota');
-      return res.json();
-    },
+    queryKey: ['reports', 'sales', 'personal', 'quota', 'current'],
+    queryFn: () => apiRequest('/api/reports/sales/personal/quota?period=current'),
   });
 
   // Fetch activity data
   const { data: activityData, isLoading: activityLoading } = useQuery({
-    queryKey: ['sales-reports', 'personal', 'activity', dateRange],
+    queryKey: ['reports', 'sales', 'personal', 'activity', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
         granularity: 'day',
       });
-      const res = await fetch(`/api/sales-reports/personal/activity?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch activity');
-      return res.json();
+      return apiRequest(`/api/reports/sales/personal/activity?${params}`);
     },
   });
 
   // Fetch leaderboard data
   const { data: leaderboardData, isLoading: leaderboardLoading } = useQuery({
-    queryKey: ['sales-reports', 'personal', 'leaderboard', 'revenue', 'location'],
+    queryKey: ['reports', 'sales', 'personal', 'leaderboard', 'revenue', 'location'],
     queryFn: async () => {
       const params = new URLSearchParams({
         metric: 'revenue',
         scope: 'location',
       });
-      const res = await fetch(`/api/sales-reports/personal/leaderboard?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch leaderboard');
-      return res.json();
+      return apiRequest(`/api/reports/sales/personal/leaderboard?${params}`);
     },
   });
 
   // Fetch commission data
   const { data: commissionData } = useQuery({
-    queryKey: ['sales-reports', 'personal', 'commissions', dateRange],
+    queryKey: ['reports', 'sales', 'personal', 'commissions', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/sales-reports/personal/commissions?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch commissions');
-      return res.json();
+      return apiRequest(`/api/reports/sales/personal/commissions?${params}`);
     },
   });
 
