@@ -1,5 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -72,17 +73,7 @@ export default function BreachTiles() {
     refetch,
   } = useQuery<Breach[]>({
     queryKey: ['/api/reports/breaches'],
-    queryFn: async () => {
-      const response = await fetch('/api/reports/breaches', {
-        headers: {
-          'x-tenant-id': localStorage.getItem('currentTenantId') || '',
-        },
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch breach data');
-      }
-      return response.json();
-    },
+    queryFn: () => apiRequest('/api/reports/breaches'),
     refetchInterval: 60000, // Check for breaches every minute
   });
 

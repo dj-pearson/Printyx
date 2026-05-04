@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -31,57 +32,49 @@ export default function ServiceSupervisorDashboard() {
     isLoading: serviceCallsLoading,
     refetch: refetchServiceCalls,
   } = useQuery({
-    queryKey: ['service-supervisor-reports', 'location', 'service-calls', dateRange],
+    queryKey: ['reports', 'service-supervisor', 'location-service-calls', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/service-supervisor-reports/location-service-calls?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch service calls');
-      return res.json();
+      return apiRequest(`/api/reports/service-supervisor/location-service-calls?${params}`);
     },
   });
 
   // Fetch location performance (Report 30)
   const { data: performanceData, isLoading: performanceLoading } = useQuery({
-    queryKey: ['service-supervisor-reports', 'location', 'performance', dateRange],
+    queryKey: ['reports', 'service-supervisor', 'location-performance', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/service-supervisor-reports/location-performance?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch performance');
-      return res.json();
+      return apiRequest(`/api/reports/service-supervisor/location-performance?${params}`);
     },
   });
 
   // Fetch location SLA (Report 31)
   const { data: slaData, isLoading: slaLoading } = useQuery({
-    queryKey: ['service-supervisor-reports', 'location', 'sla', dateRange],
+    queryKey: ['reports', 'service-supervisor', 'location-sla', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/service-supervisor-reports/location-sla?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch SLA');
-      return res.json();
+      return apiRequest(`/api/reports/service-supervisor/location-sla?${params}`);
     },
   });
 
   // Fetch location activity (Report 32)
   const { data: activityData, isLoading: activityLoading } = useQuery({
-    queryKey: ['service-supervisor-reports', 'location', 'activity', dateRange],
+    queryKey: ['reports', 'service-supervisor', 'location-activity', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/service-supervisor-reports/location-activity?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch activity');
-      return res.json();
+      return apiRequest(`/api/reports/service-supervisor/location-activity?${params}`);
     },
   });
 

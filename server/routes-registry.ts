@@ -127,22 +127,7 @@ import {
   registerDashboardLayoutsRoutes,
 } from './domains/dashboard';
 
-import {
-  registerCustomReportsRoutes,
-  registerScheduledReportsRoutes,
-  reportsRoutes,
-  reportingArchitectureRoutes,
-  salesReportsAPI,
-  serviceReportsAPI,
-  warehouseReportsAPI,
-  salesSupervisorReportsAPI,
-  serviceSupervisorReportsAPI,
-  teamReportsAPI,
-  salesManagerReportsAPI,
-  serviceManagerReportsAPI,
-  directorReportsAPI,
-  executiveReportsAPI,
-} from './domains/reporting';
+import { registerScheduledReportsRoutes } from './domains/reporting';
 
 import {
   registerAdminStatsRoutes,
@@ -152,11 +137,7 @@ import {
   registerDisposableEmailRoutes,
 } from './domains/admin';
 
-import {
-  registerGdprRoutes,
-  breachDetectionRoutes,
-  incidentResponseRoutes,
-} from './domains/security';
+import { registerGdprRoutes, incidentResponseRoutes } from './domains/security';
 
 import {
   knowledgeBaseRoutes,
@@ -383,7 +364,6 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerRecordLayoutRoutes(app);
   registerBusinessRecordRoutes(app);
   registerCsvImportRoutes(app);
-  registerCustomReportsRoutes(app);
   registerScheduledReportsRoutes(app);
   registerDashboardLayoutsRoutes(app);
 
@@ -532,18 +512,10 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   app.use('/api', enhancedServiceRoutes);
 
   // ─── Reporting ────────────────────────────────────────────────────
-  app.use('/api/reporting', reportingArchitectureRoutes);
-  app.use('/api/sales-reports', salesReportsAPI);
-  app.use('/api/service-reports', serviceReportsAPI);
-  app.use('/api/warehouse-reports', warehouseReportsAPI);
-  app.use('/api/sales-supervisor-reports', salesSupervisorReportsAPI);
-  app.use('/api/service-supervisor-reports', serviceSupervisorReportsAPI);
-  app.use('/api/team-reports', teamReportsAPI);
-  app.use('/api/sales-manager-reports', salesManagerReportsAPI);
-  app.use('/api/service-manager-reports', serviceManagerReportsAPI);
-  app.use('/api/director-reports', directorReportsAPI);
-  app.use('/api/executive-reports', executiveReportsAPI);
-  app.use('/api', reportsRoutes);
+  // All persona-scoped + second-tier reports live at /api/reports/* via the
+  // edge-function-proxy → supabase/functions/reports/. The legacy persona
+  // prefixes (/api/director-reports, etc.) and bare /api/reports stub mount
+  // were removed in EDGE-001.
   app.use('/api', warehouseFpyRoutes);
 
   // ─── Content & SEO ────────────────────────────────────────────────
@@ -616,9 +588,10 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Sales Forecasting ────────────────────────────────────────────
   app.use(salesForecastingRoutes);
 
-  // ─── GDPR & Breach Detection ────────────────────────────────────
+  // ─── GDPR ────────────────────────────────────────────────────────
+  // Breach detection migrated to supabase/functions/reports/handlers/second-tier.ts
+  // (frontend hits /api/reports/breaches via the edge-function-proxy).
   registerGdprRoutes(app);
-  app.use('/api', breachDetectionRoutes);
 
   // ─── Security Dashboard ────────────────────────────────────────
   const { registerSecurityDashboardRoutes } = await import('./routes-security-dashboard');

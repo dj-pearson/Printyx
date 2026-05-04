@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -31,57 +32,49 @@ export default function SalesManagerDashboard() {
     isLoading: pipelineLoading,
     refetch: refetchPipeline,
   } = useQuery({
-    queryKey: ['sales-manager-reports', 'regional', 'pipeline', dateRange],
+    queryKey: ['reports', 'sales-manager', 'regional-pipeline', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/sales-manager-reports/regional-pipeline?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch pipeline');
-      return res.json();
+      return apiRequest(`/api/reports/sales-manager/regional-pipeline?${params}`);
     },
   });
 
   // Fetch regional performance (Report 13)
   const { data: performanceData, isLoading: performanceLoading } = useQuery({
-    queryKey: ['sales-manager-reports', 'regional', 'performance', dateRange],
+    queryKey: ['reports', 'sales-manager', 'regional-performance', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/sales-manager-reports/regional-performance?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch performance');
-      return res.json();
+      return apiRequest(`/api/reports/sales-manager/regional-performance?${params}`);
     },
   });
 
   // Fetch regional quota (Report 14)
   const { data: quotaData, isLoading: quotaLoading } = useQuery({
-    queryKey: ['sales-manager-reports', 'regional', 'quota', dateRange],
+    queryKey: ['reports', 'sales-manager', 'regional-quota', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/sales-manager-reports/regional-quota?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch quota');
-      return res.json();
+      return apiRequest(`/api/reports/sales-manager/regional-quota?${params}`);
     },
   });
 
   // Fetch regional activity (Report 15)
   const { data: activityData, isLoading: activityLoading } = useQuery({
-    queryKey: ['sales-manager-reports', 'regional', 'activity', dateRange],
+    queryKey: ['reports', 'sales-manager', 'regional-activity', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/sales-manager-reports/regional-activity?${params}`);
-      if (!res.ok) throw new Error('Failed to fetch activity');
-      return res.json();
+      return apiRequest(`/api/reports/sales-manager/regional-activity?${params}`);
     },
   });
 

@@ -6,6 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -83,19 +84,8 @@ export default function WarehouseTeamStatsWidget({
     error,
     refetch,
   } = useQuery<WarehouseTeamQuickStats>({
-    queryKey: ['warehouse-team-quick-stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/warehouse-reports/team/quick-stats', {
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        if (res.status === 403) {
-          throw new Error('You do not have permission to view warehouse team stats');
-        }
-        throw new Error('Failed to fetch warehouse team stats');
-      }
-      return res.json();
-    },
+    queryKey: ['reports', 'warehouse', 'team', 'quick-stats'],
+    queryFn: () => apiRequest('/api/reports/warehouse/team/quick-stats'),
     refetchInterval: autoRefresh ? 60000 : false, // Refresh every minute if enabled
     retry: (failureCount, error: any) => {
       // Don't retry on permission errors

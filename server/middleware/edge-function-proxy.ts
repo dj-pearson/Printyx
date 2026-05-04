@@ -54,12 +54,7 @@ function buildProxyHeaders(req: Request): Record<string, string> {
 /**
  * Forward an Express request to an edge function URL and pipe the response back.
  */
-function forwardToEdgeFunction(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-  edgeUrl: string,
-) {
+function forwardToEdgeFunction(req: Request, res: Response, next: NextFunction, edgeUrl: string) {
   const headers = buildProxyHeaders(req);
   const hasBody = ['POST', 'PUT', 'PATCH'].includes(req.method);
   const bodyStr = hasBody && req.body ? JSON.stringify(req.body) : undefined;
@@ -102,9 +97,7 @@ function createProxyHandler(functionName: string) {
     // req.path is relative to mount point: "/" for list, "/123" for single, "/stats" for stats
     // req.url includes query string: "/?search=test&limit=50"
     const subPath = req.path === '/' ? '' : req.path;
-    const queryString = req.url.includes('?')
-      ? req.url.substring(req.url.indexOf('?'))
-      : '';
+    const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
     const edgeUrl = `${EDGE_FUNCTIONS_URL}/${functionName}${subPath}${queryString}`;
 
     forwardToEdgeFunction(req, res, next, edgeUrl);
@@ -128,6 +121,7 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/opportunities': 'opportunities',
     '/api/quotes': 'quotes',
     '/api/proposals': 'proposals',
+    '/api/reports': 'reports',
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {

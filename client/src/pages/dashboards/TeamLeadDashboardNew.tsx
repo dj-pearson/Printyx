@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -45,17 +46,13 @@ export default function TeamLeadDashboardNew() {
     isLoading: coachingLoading,
     refetch: refetchCoaching,
   } = useQuery({
-    queryKey: ['team-coaching-report', dateRange],
+    queryKey: ['reports', 'team', 'coaching', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/team-reports/coaching?${params}`, {
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to fetch coaching report');
-      return res.json();
+      return apiRequest(`/api/reports/team/coaching?${params}`);
     },
   });
 
@@ -65,17 +62,13 @@ export default function TeamLeadDashboardNew() {
     isLoading: leadLoading,
     refetch: refetchLeads,
   } = useQuery({
-    queryKey: ['team-lead-management', dateRange],
+    queryKey: ['reports', 'team', 'lead-management', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/team-reports/lead-management?${params}`, {
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to fetch lead management');
-      return res.json();
+      return apiRequest(`/api/reports/team/lead-management?${params}`);
     },
   });
 
@@ -85,17 +78,13 @@ export default function TeamLeadDashboardNew() {
     isLoading: pipelineLoading,
     refetch: refetchPipeline,
   } = useQuery({
-    queryKey: ['team-pipeline-comparison', dateRange],
+    queryKey: ['reports', 'team', 'pipeline-comparison', dateRange],
     queryFn: async () => {
       const params = new URLSearchParams({
         dateFrom: dateRange.from.toISOString(),
         dateTo: dateRange.to.toISOString(),
       });
-      const res = await fetch(`/api/team-reports/pipeline-comparison?${params}`, {
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Failed to fetch pipeline comparison');
-      return res.json();
+      return apiRequest(`/api/reports/team/pipeline-comparison?${params}`);
     },
   });
 

@@ -65,19 +65,8 @@ export function TeamStatsWidget({
     error,
     refetch,
   } = useQuery<TeamQuickStats>({
-    queryKey: ['team-quick-stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/team-reports/quick-stats', {
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        if (res.status === 403) {
-          throw new Error('You do not have permission to view team stats');
-        }
-        throw new Error('Failed to fetch team stats');
-      }
-      return res.json();
-    },
+    queryKey: ['reports', 'team', 'quick-stats'],
+    queryFn: () => apiRequest('/api/reports/team/quick-stats'),
     refetchInterval: autoRefresh ? 60000 : false, // Refresh every minute if enabled
     retry: (failureCount, error: any) => {
       // Don't retry on permission errors

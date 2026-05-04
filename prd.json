@@ -3980,6 +3980,198 @@
       "passes": false,
       "notes": "Blocks the next TestFlight / App Store promotion after IOS-016 lands.",
       "category": "ios-app"
+    },
+    {
+      "id": "EDGE-001",
+      "title": "Wire /api/reports through the edge-function proxy and sunset Express reports files",
+      "description": "As a frontend dashboard, I need /api/reports/* requests to reach the supabase/functions/reports/ edge function so the second-tier dashboards (Financial Intelligence, Sales Performance, Service Forecasting, Custom Report Builder, Breach Detection, persona dashboards) actually display real data. Today the edge handlers exist but Express still serves these paths because the proxy only forwards 7 CRM endpoints.",
+      "acceptanceCriteria": [
+        "Add '/api/reports': 'reports' to crmProxies in server/middleware/edge-function-proxy.ts",
+        "Smoke-test the six dashboards: ExecutiveDashboard, BreachDetectionTiles, FinancialIntelligenceDashboard, SalesPerformanceAnalytics, ServiceForecastingAnalytics, CustomReportBuilder",
+        "Delete server/routes-reports.ts, server/routes-breach-detection.ts, server/routes-custom-reports.ts after smoke-test passes",
+        "Delete server/routes/{director,executive,sales,sales-manager,sales-supervisor,service,service-manager,service-supervisor,team,warehouse}-reports-api.ts and server/routes/reporting-api.ts (all superseded by reports/handlers/)",
+        "Verify with grep that no remaining server/ file imports those deleted modules",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "Highest-leverage single change. Per tasks/SESSION-STATUS-2026-04-27.md the edge handlers (second-tier.ts, frontend-stubs.ts, custom-reports.ts, persona dispatchers) are complete but unreachable. Explicit warning in that doc: re-verify all six dashboards against Coolify before deleting Express files because the proxy will shadow the 7 working Express endpoints.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002",
+      "title": "Expand edge-function proxy to ~47 already-ported domains (Tier 1)",
+      "description": "As a defensive measure during sunset, I need every Express mount path that has a fully-ported edge function counterpart to route through the proxy so anyone hitting Express directly (mobile, integrations, internal tools) gets the canonical edge response instead of the legacy Express handler that may query obsolete tables.",
+      "acceptanceCriteria": [
+        "Add the following to crmProxies in server/middleware/edge-function-proxy.ts: activities, api-keys, audit-logs, auto-lead-routing, auto-supply-replenishment, billing, catalog, client-metrics, commission, company-contacts, company-ids, contract-renewal, cross-module, customer-numbers, customer-portal, customer-success, equipment, feature-flags, gdpr, knowledge-base, leads, manufacturer-integrations, notifications, oid-mappings, parts-orders, performance, platform-deals, predictive-dispatch, products, purchase-orders, quickbooks, rbac, remote-monitoring, roles, root-admin, seo, service-tickets, social-media, software-products, subscriptions, supplies, tasks, territories, users, vendors, warehouse-operations, webhooks",
+        "Each entry's edge function exists with no degraded:/stub: blocks (verified via grep)",
+        "Smoke-test 5 representative dashboards still load (CustomerHub, BillingDashboard, KnowledgeBase, TasksHub, AdminDashboard)",
+        "Each Express route file whose mount is now proxied gets a deletion candidate marker (// DELETE-AFTER-EDGE-002 comment at top)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Tier 1 from the 2026-05-04 audit. Tier 2 (functions with degraded:/stub: blocks like demos, inventory, mfa, sso, signatures, lead-assignment, teams, meetings, crm) is deferred to EDGE-007 because some frontend paths may rely on degraded data shape.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-003",
+      "title": "Port /api/kpis and /api/reporting endpoints to reports edge function",
+      "description": "As the role-aware dashboard config (client/src/lib/role-dashboard-config.ts:152), I need /api/kpis/* and /api/reporting/dashboard/summary, /api/reporting/exports/* to resolve in production. Today these 404 because no kpis/ or reporting/ edge function exists — only reports/. server/routes-reporting.ts is the source of truth.",
+      "acceptanceCriteria": [
+        "Inventory all endpoints in server/routes-reporting.ts (KPIs + dashboard summary + exports)",
+        "Schema-audit each table reference against shared/schema.ts (expect missing tables/columns — follow the degraded: pattern)",
+        "Add handlers under supabase/functions/reports/handlers/kpis.ts and supabase/functions/reports/handlers/reporting.ts",
+        "Update reports/index.ts dispatcher to recognize 'kpis/...' and 'reporting/...' path prefixes",
+        "Add /api/kpis and /api/reporting to crmProxies",
+        "Verify role-dashboard-config.ts pages load with real data",
+        "Delete server/routes-reporting.ts after verification",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Per audit, /api/kpis/* and /api/reporting/* are confirmed 404s in production. Custom report engine raw-SQL execution stays degraded — see degraded.rawSqlExecution in supabase/functions/reports/handlers/custom-reports.ts.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-004",
+      "title": "Port platform admin endpoints (platform-crm, platform-activities, platform-analytics, platform-cs)",
+      "description": "As the platform admin pages, I need /api/platform-crm, /api/platform-activities, /api/platform-analytics, /api/platform-cs to resolve. Only /api/platform-deals has an edge function today. Express still serves the others via routes-platform-business-records.ts, routes-platform-activities.ts, routes-platform-analytics.ts, routes-platform-customer-success.ts but they 404 in production where the frontend bypasses Express entirely.",
+      "acceptanceCriteria": [
+        "Create supabase/functions/platform-crm/, platform-activities/, platform-analytics/, platform-cs/ each with index.ts dispatching by URL path",
+        "Tenant-aware queries that use platformAdminRoute equivalent (require canAccessAllTenants)",
+        "Schema audit against shared/schema.ts before writing each handler",
+        "RLS policies for platform-admin scope (or service-role bypass with explicit comment)",
+        "Add the four prefixes to crmProxies",
+        "Smoke-test PlatformAdminDashboard, PlatformCSDashboard, PlatformAnalytics pages",
+        "Delete the four server/routes-platform-*.ts files after verification"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Platform admin features are visibility-gated by roles.can_access_all_tenants per CLAUDE.md memory note. Frontend pages currently render with empty data in production because Express isn't reachable.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-005",
+      "title": "Decide and execute on stale frontend prefixes that have no edge function (Tier 3 cleanup)",
+      "description": "As the codebase, I need a documented disposition (port / delete / alias) for ~30 frontend /api/* prefixes that have no matching edge function and no proxy fallback. Today these silently 404: workflow-automation, universal-search, validate, white-label, saved-views, scheduled-reports, sales-forecasts, security, security-compliance, service-products, signature-analytics, signature-requests, signature-templates, system-monitoring, technician-sessions, trial, sales-rep-assignments, sales-performance, record-layout-config, quote-templates, public/calculator, predictive-analytics, predictive-maintenance, pipeline-forecast, lead-intelligence, lease-payments, integration-hub, incident-response, financial-forecasting, erp-integration, deployment, contract-tiered-rates, business-process, customer-access, bug-reports, service-analytics.",
+      "acceptanceCriteria": [
+        "Produce docs/frontend-orphan-prefixes.md classifying each prefix as PORT (needs edge function), ALIAS (re-route to existing edge fn), or DELETE-CALLER (frontend stale)",
+        "For each PORT, file a child issue with effort estimate",
+        "For each ALIAS, add the path mapping to either edge-function-proxy.ts or to the relevant edge function's dispatcher",
+        "For each DELETE-CALLER, remove the dead React code",
+        "Verify with grep that no /api/* prefix in client/src lacks a resolution path",
+        "Typecheck passes after frontend cleanup"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Audit candidates that are likely DELETE-CALLER: bug-reports, customer-access, service-analytics (all from server/routes-misc-stubs.ts which returns hardcoded zeros). Likely ALIAS: accounts-payable -> account-payable, accounts-receivable -> account-receivable, phone-tickets -> phone-in-tickets, deployment -> deployment-readiness, signature-* -> signatures (sub-path).",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-006",
+      "title": "Deduplicate edge functions with singular/plural and overlapping names",
+      "description": "As the maintainer, I need the duplicate-named edge functions consolidated so there is one canonical implementation per domain: audit-log/audit-logs, account-payable/accounts-payable, account-receivable/accounts-receivable, contract-renewal/contract-renewals. Also fold lead-assignment-{history,queue,rules} into lead-assignment, and tasks-{bulk,enhanced,stats} + task-comments into tasks.",
+      "acceptanceCriteria": [
+        "Pick one canonical name per pair (audit-logs, account-payable, account-receivable, contract-renewals — based on which has more endpoints)",
+        "Merge handlers from the deprecated function into the canonical, preserving every URL path",
+        "Update edge-function-proxy.ts to point to the canonical name",
+        "Delete the deprecated function directory",
+        "Confirm via grep that nothing references the deleted name",
+        "Update supabase/config.toml or deployment manifest if functions are explicitly listed",
+        "Smoke-test admin audit-log views and AP/AR pages still work"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Session-status-2026-04-26 flagged audit-log/audit-logs as 'almost certainly a duplicate that needs deduplication'. Verify before deleting that no Coolify deployment manifest pins the deprecated name.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-007",
+      "title": "Delete persona-reports/ edge function (superseded by reports/)",
+      "description": "As cleanup, I need supabase/functions/persona-reports/ deleted since its handlers were re-implemented under supabase/functions/reports/handlers/ during the 2026-04-26 / 2026-04-27 sessions. The persona-reports directory still exists and 'recent commits added new handlers to persona-reports/ rather than reports/, which suggests confusion about which is canonical' (session-status-2026-04-27).",
+      "acceptanceCriteria": [
+        "Diff persona-reports/handlers/{sales,sales-manager,service,warehouse}.ts against supabase/functions/reports/handlers/ to confirm reports/ is a strict superset (or port any missing endpoint)",
+        "Delete supabase/functions/persona-reports/",
+        "Verify no Coolify deployment pins persona-reports as a function name",
+        "Verify with grep that no edge function imports from ../persona-reports/",
+        "If persona-reports has its own /api prefix in production traffic, add a temporary alias from persona-reports/* to reports/ in edge-function-proxy.ts before deletion"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Files affected: persona-reports/handlers/sales-manager.ts:73, persona-reports/handlers/service.ts:60, persona-reports/handlers/sales.ts:7, persona-reports/handlers/warehouse.ts:10 — all 501-stub responses with 'use reports/ instead' source pointers per the audit.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-008",
+      "title": "Tier 2 proxy expansion — domains with degraded fields or stubs",
+      "description": "As a maintainer, I need the second tier of Express mounts (where the edge function exists but has known degraded:/stub: blocks) to route through the proxy with explicit acknowledgement of the stubbed behavior. Domains: demos, inventory, database-updater, sso, mfa, manufacturer-orders, signatures, lead-assignment, teams, meetings, crm.",
+      "acceptanceCriteria": [
+        "For each domain, document the degraded fields in docs/edge-function-stubs.md so callers know what to expect",
+        "Add each prefix to crmProxies",
+        "Smoke-test the corresponding frontend pages (DemosHub, InventoryDashboard, AdminDatabaseUpdater, SSOLogin, MFASettings, ManufacturerOrdersHub, ESignatures, LeadAssignmentDashboard, TeamsHub, CalendarHub, CRMHub)",
+        "If a degraded field crashes the UI (e.g. chart library can't handle null), patch the handler to return zero/empty array with degraded: true marker (already the established pattern)",
+        "Delete the corresponding Express route files after verification"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "Audit found ~30 degraded: blocks across reports/handlers/ and stub:true blocks in field-service/, sso/, mfa/, manufacturer-orders/, signatures/, lead-assignment/, teams/, meetings/, crm/. The crm/ TODO at lines 38/45/51/84 returns hardcoded goals/stats — low-effort fix.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-009",
+      "title": "Migrate remaining cron jobs to pg_cron and remove node-cron",
+      "description": "As production infrastructure, I need every recurring job that references node-cron in the Express server moved to pg_cron in drizzle/cron/*.sql so the Express runtime can be deleted (US-026 in prd-edge-functions-migration.md).",
+      "acceptanceCriteria": [
+        "grep -rn 'cron.schedule\\|node-cron\\|require..node-cron' server/ produces a definitive inventory list",
+        "Each schedule is represented as a pg_cron job in drizzle/cron/*.sql, calling either an edge function via pg_net.http_post or pure SQL where possible",
+        "drizzle/cron/README.md documents every active schedule (cadence, target, owner)",
+        "node-cron is removed from package.json dependencies",
+        "Run npm run db:migrate against staging and verify pg_cron.job table contains the expected rows",
+        "Smoke-test at least one cron path end-to-end (billing reconcile or contract-renewal alerts)"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "Per session-status-2026-04-26 the bootstrap, billing, contract-renewals, customer-success, email-marketing, leases, mileage, retention, subscriptions schedules already exist in drizzle/cron/. Confirm none are missing from node-cron call sites.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-010",
+      "title": "Replace WebSocket reporting with Supabase Realtime postgres_changes",
+      "description": "As the live reporting widgets, I need the WebSocket dependency on server/websocket-service.ts replaced with Supabase Realtime so the Express runtime can be deleted (US-027 in prd-edge-functions-migration.md).",
+      "acceptanceCriteria": [
+        "grep -rln 'useWebSocket\\|websocket-service\\|/ws/' client/src enumerates every caller (~5 frontend files per session-status)",
+        "Replace useWebSocket with a useRealtimeChannel hook that subscribes to postgres_changes on the relevant tables",
+        "Replace application-event channels (e.g. 'a user clicked save and 5 dashboards refresh') with Realtime broadcast channels",
+        "Verify reporting dashboards update live in browser after a tracked DB write",
+        "Delete server/websocket-service.ts and the /ws/* mount in server/index.ts (or wherever it lives)",
+        "Confirm Cloudflare/Coolify ingress no longer routes /ws/ requests"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Risky frontend work — defer until Coolify supports a UI test pass. Per session-status-2026-04-26: 'don't do it without ability to manually test'.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-011",
+      "title": "Final sunset — delete server/ directory and Node-only dependencies",
+      "description": "As the migration target, I need server/ deleted, Dockerfile removed, k8s/ removed, and Node-only packages stripped from package.json once every other EDGE-### story is complete (US-028 in prd-edge-functions-migration.md).",
+      "acceptanceCriteria": [
+        "grep -r 'from .../../server' returns nothing in client/ and supabase/functions/",
+        "server/ directory deleted",
+        "Dockerfile deleted (only Dockerfile.edge-functions remains)",
+        "k8s/ directory deleted",
+        "Remove from package.json: express, pg, drizzle-orm Node-postgres path, pino, node-cron, and any other Node-only packages",
+        "npm run dev:frontend still runs the frontend in isolation",
+        "npm run build still passes",
+        "Final commit: 'chore: remove Express server — pure Edge Functions now'",
+        "Update CLAUDE.md to reflect the pure-edge-function architecture"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Gated by EDGE-001 through EDGE-010. Do not start until every domain is confirmed-complete. Premature deletion breaks frontend silently per session-status-2026-04-26.",
+      "category": "edge-migration"
     }
   ]
 }
