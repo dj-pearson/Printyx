@@ -2,6 +2,7 @@
 // Handles vendor/supplier CRUD operations
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -40,8 +41,8 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const vendorId = pathParts[1]; // /vendors/:id
+    const { parts } = normalizePath(url.pathname, 'vendors');
+    const vendorId = parts[0]; // /vendors/:id
 
     // GET /vendors - List all vendors with filters
     if (req.method === 'GET' && !vendorId) {

@@ -2,6 +2,7 @@
 // Handles sales territory management and assignment
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 const TERRITORY_TYPES = {
   geographic: {
@@ -63,9 +64,9 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const territoryId = pathParts[1];
-    const subResource = pathParts[2]; // 'types', 'stats', etc.
+    const { parts } = normalizePath(url.pathname, 'territories');
+    const territoryId = parts[0]; // also the literal 'types' / 'stats' keywords (see branches below)
+    const subResource = parts[1];
 
     // GET /territories/types - Get territory type definitions
     if (req.method === 'GET' && territoryId === 'types') {

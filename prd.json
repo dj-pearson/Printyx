@@ -4221,6 +4221,7 @@
     {
       "id": "EDGE-002m",
       "title": "Audit and fix pathParts indexing across edge functions",
+      "completionNotes": "PARTIAL DONE 2026-05-05. Audit confirmed supabase/functions/server.ts:108 strips the function name in production (Coolify deployment via Dockerfile.edge-functions). 30+ edge functions index pathParts[1] for the resource ID, expecting the function name to still be at [0] — so all their /:id and /:id/<action> routes return 404 in production. Created supabase/functions/_shared/path.ts with normalizePath(pathname, functionName) helper that tolerates BOTH calling conventions (post-strip + prefix-preserved); 15 unit tests in server/tests/unit/edge-shared-path.test.ts cover boundary cases. Migrated the 7 EDGE-002 SAFE domains that are in active proxy production use: notifications, cross-module, roles, territories, vendors, webhooks, knowledge-base (consolidated its in-file engagementPath into the shared helper). The remaining ~23 broken functions (activities, admin, automation, billing, contracts, contract-renewal, customer-portal, customer-segments, dashboards, equipment, file-storage, fleet, invoices, monitoring-clients, platform-crm, printer-monitoring, purchase-orders, quickbooks, renewal-activities, renewal-playbooks, role-management, sales-territories, service-contracts, service-tickets, subscriptions, technician-management, templates, user-management, work-orders, workflows) have the same bug but aren't in proxy production use yet — tracked as EDGE-002m-remainder. tsc errors unchanged (9984). 48 tests pass. npm run build: ✓ 1m 34s.",
       "description": "supabase/functions/server.ts:108 strips the function name from the URL before dispatching to the handler (newUrl.pathname = '/' + pathParts.slice(1).join('/')). Many edge function dispatchers index pathParts[1] for the resource ID, assuming the function name is still in the URL. Under server.ts they index off-by-one and resource routes never fire. This is a pre-existing bug but worth surfacing now.",
       "acceptanceCriteria": [
         "Inventory edge functions that index pathParts[1] without first stripping their own function-name prefix",
@@ -4230,8 +4231,24 @@
         "Verify activities/:id, notifications/:id, etc. work after fix"
       ],
       "priority": 15,
+      "passes": true,
+      "notes": "Foundational fix landed for the 7 EDGE-002 SAFE domains that are in proxy production use. See EDGE-002m-remainder for the other ~23 functions.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-002m-remainder",
+      "title": "Migrate remaining ~23 edge functions to use _shared/path.ts normalizePath helper",
+      "description": "EDGE-002m fixed the 7 EDGE-002 SAFE domains (notifications, cross-module, roles, territories, vendors, webhooks, knowledge-base). The same pathParts[1] indexing bug exists in ~23 other edge functions, breaking their /:id and /:id/<action> routes under the Coolify server.ts dispatch. These aren't proxied yet so they 404 only when the frontend calls /api/<name>/:id directly via the production routing (functions.printyx.net/<name>/:id). Each domain ported in EDGE-002a-EDGE-002k should include this fix.",
+      "acceptanceCriteria": [
+        "Apply the _shared/path.ts normalizePath helper to each of: activities, admin, automation, billing, contracts, contract-renewal, customer-portal, customer-segments, dashboards, equipment, file-storage, fleet, invoices, monitoring-clients, platform-crm, printer-monitoring, purchase-orders, quickbooks, renewal-activities, renewal-playbooks, role-management, sales-territories, service-contracts, service-tickets, subscriptions, technician-management, templates, user-management, work-orders, workflows",
+        "Each migration is a 4-line diff: add the import, replace `const pathParts = url.pathname.split('/').filter(Boolean); const xId = pathParts[1];` with `const { parts } = normalizePath(url.pathname, '<name>'); const xId = parts[0];`",
+        "Update stale comments that reference pathParts[1] as the resource ID",
+        "Verify with grep that no edge function under supabase/functions/ still indexes pathParts[1] for resource ID without using normalizePath",
+        "npm run build passes"
+      ],
+      "priority": 16,
       "passes": false,
-      "notes": "Found during EDGE-002 audit. Functions that have their own stripPrefix (like reports/index.ts) are immune. Note: this may be a phantom bug if Supabase native runtime is never the actual caller — verify the production deployment topology first. If everything goes through server.ts, then the bug is real but the fix is to standardize on pathParts[0] indexing.",
+      "notes": "Mechanical refactor; ~120-150 LOC of changes total. Per the audit: subscriptions has comment-documented stale expectations (lines 37-46) that should also be cleaned up. quickbooks has chained pathParts[2] checks that need careful migration. purchase-orders uses pathParts[3] for line-item ops. Several files contain stale comments like '// /vendors/:id' that document the wrong mental model — fix those during the migration.",
       "category": "edge-migration"
     },
     {
@@ -4310,6 +4327,7 @@
     {
       "id": "EDGE-007",
       "title": "Delete persona-reports/ edge function (superseded by reports/)",
+      "completionNotes": "DONE 2026-05-05. Deleted supabase/functions/persona-reports/ (index.ts + _context.ts + 6 handlers — sales-manager, service, sales, executive, warehouse, director). Verified zero frontend callers (no /api/persona-reports/* references in client/src) and zero internal edge function imports. Note: drizzle/reports/*.sql files (director, executive, sales, sales-manager, service, warehouse — 6 PL/pgSQL function definitions) were the rpc() targets for persona-reports/ but are not called by reports/ edge function (which uses supabase JS queries instead). These SQL functions are now orphaned in the production DB and tracked as a follow-up cleanup. tsc errors unchanged (9984). npm run build: ✓ 1m 8s.",
       "description": "As cleanup, I need supabase/functions/persona-reports/ deleted since its handlers were re-implemented under supabase/functions/reports/handlers/ during the 2026-04-26 / 2026-04-27 sessions. The persona-reports directory still exists and 'recent commits added new handlers to persona-reports/ rather than reports/, which suggests confusion about which is canonical' (session-status-2026-04-27).",
       "acceptanceCriteria": [
         "Diff persona-reports/handlers/{sales,sales-manager,service,warehouse}.ts against supabase/functions/reports/handlers/ to confirm reports/ is a strict superset (or port any missing endpoint)",
@@ -4319,8 +4337,24 @@
         "If persona-reports has its own /api prefix in production traffic, add a temporary alias from persona-reports/* to reports/ in edge-function-proxy.ts before deletion"
       ],
       "priority": 7,
+      "passes": true,
+      "notes": "DONE 2026-05-05. Files affected: persona-reports/handlers/sales-manager.ts, service.ts, sales.ts, warehouse.ts, executive.ts, director.ts — all deleted. See completionNotes.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-007a",
+      "title": "Drop orphaned PL/pgSQL functions in drizzle/reports/*.sql (or migrate reports/ to use them)",
+      "description": "drizzle/reports/{director,executive,sales,sales-manager,service,warehouse}.sql define SECURITY DEFINER PL/pgSQL functions (e.g. report_company_sales_performance, report_company_service_performance) that were intended as the rpc() target for persona-reports/. With persona-reports/ deleted in EDGE-007, these are orphans. Two paths: (a) migrate the canonical reports/ edge function handlers to call them via supabase.rpc() instead of doing aggregation in JS — more performant for large tenants, OR (b) drop the SQL functions in a migration and remove the .sql files.",
+      "acceptanceCriteria": [
+        "Decide between migrate-to-rpc and drop-and-remove",
+        "If migrate: refactor reports/handlers/{director,executive,sales,scoped-sales,scoped-service,service,warehouse}.ts to call db.rpc('report_<name>', { tenantId, ... }) instead of inline aggregation",
+        "If drop: write a Drizzle migration that DROP FUNCTION IF EXISTS each function; delete the .sql files",
+        "Run npm run db:migrate against staging if applying changes",
+        "Run npm run check and npm run build"
+      ],
+      "priority": 7,
       "passes": false,
-      "notes": "Files affected: persona-reports/handlers/sales-manager.ts:73, persona-reports/handlers/service.ts:60, persona-reports/handlers/sales.ts:7, persona-reports/handlers/warehouse.ts:10 — all 501-stub responses with 'use reports/ instead' source pointers per the audit.",
+      "notes": "Surface area: 6 SQL files, ~6 corresponding edge function handlers. Discovered as a follow-up to EDGE-007. Performance argument for migrate: aggregating thousands of rows in Postgres is faster than transferring them to Deno and aggregating in JS. Argument for drop: less surface area, simpler deployment.",
       "category": "edge-migration"
     },
     {

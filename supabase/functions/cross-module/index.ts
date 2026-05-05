@@ -2,6 +2,7 @@
 // Handles automated data synchronization and workflow triggers between modules
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -41,8 +42,8 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1]; // /cross-module/status, /cross-module/parts-availability, etc.
+    const { parts } = normalizePath(url.pathname, 'cross-module');
+    const endpoint = parts[0]; // 'status', 'parts-availability', 'trigger-service', ...
 
     // GET /cross-module/status - Get integration status
     if (req.method === 'GET' && endpoint === 'status') {
