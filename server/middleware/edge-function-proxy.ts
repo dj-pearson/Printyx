@@ -300,6 +300,21 @@ export function registerEdgeFunctionProxy(app: any) {
     // handler under reports/handlers/scheduled.ts; pathPrefix routes
     // /api/scheduled-reports/* → /reports/scheduled/*.
     '/api/scheduled-reports': { fn: 'reports', pathPrefix: '/scheduled' },
+
+    // EDGE-005d-remainder: security (7 frontend callsites). Platform-admin
+    // gated. New edge function ports server/routes-security-dashboard.ts
+    // with corrected schema (audit_logs.timestamp not .created_at, etc.).
+    '/api/security': 'security',
+
+    // EDGE-005d-remainder: service-products (6 frontend callsites). Distinct
+    // table from products/software-products with service-specific pricing
+    // tiers; standalone edge fn rather than a merge.
+    '/api/service-products': 'service-products',
+
+    // EDGE-005d-remainder: predictive-maintenance (6 frontend callsites).
+    // Dashboard + parts-forecast aggregations are portable; AI analysis paths
+    // return degraded responses (require Claude integration port).
+    '/api/predictive-maintenance': 'predictive-maintenance',
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {
