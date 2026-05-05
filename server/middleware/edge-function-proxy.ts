@@ -281,6 +281,25 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/customer-numbers': 'customer-numbers',
     '/api/customer-success': 'customer-success',
     '/api/company-ids': 'company-ids',
+
+    // EDGE-005: defensive proxy for the search endpoint. Frontend's
+    // command-palette was the only stale /api/universal-search caller;
+    // it was rewritten to /api/search to match the canonical edge function.
+    '/api/search': 'search',
+
+    // EDGE-005d top: sales-rep-assignments (17 frontend callsites; biggest
+    // production 404 in the audit). New edge function ports 9 endpoints from
+    // server/routes-sales-rep-assignments.ts.
+    '/api/sales-rep-assignments': 'sales-rep-assignments',
+
+    // EDGE-005d: saved-views (8 frontend callsites). CRM saved-view CRUD +
+    // pinning. New edge function ports server/routes-saved-views.ts.
+    '/api/saved-views': 'saved-views',
+
+    // EDGE-005d: scheduled-reports (11 frontend callsites). Ported as a new
+    // handler under reports/handlers/scheduled.ts; pathPrefix routes
+    // /api/scheduled-reports/* → /reports/scheduled/*.
+    '/api/scheduled-reports': { fn: 'reports', pathPrefix: '/scheduled' },
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {

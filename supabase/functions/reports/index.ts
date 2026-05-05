@@ -65,6 +65,7 @@ import { handleFrontendStubs, isFrontendStubEndpoint } from './handlers/frontend
 import { handleCustomReports } from './handlers/custom-reports.ts';
 import { handleKpis } from './handlers/kpis.ts';
 import { handleReporting } from './handlers/reporting.ts';
+import { handleScheduledReports } from './handlers/scheduled.ts';
 
 const log = createLogger('reports');
 
@@ -120,6 +121,8 @@ export default async function handler(req: Request) {
       result = await handleKpis(req, ctx);
     } else if (firstSegment === 'reporting') {
       result = await handleReporting(req, ctx);
+    } else if (firstSegment === 'scheduled') {
+      result = await handleScheduledReports(req, ctx);
     } else if (firstSegment && isSecondTierEndpoint(firstSegment, method)) {
       result = await handleSecondTier(req, ctx);
     } else if (firstSegment && isFrontendStubEndpoint(firstSegment, method)) {

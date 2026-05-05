@@ -109,7 +109,8 @@
       "Bash([ -d \"supabase/functions/$d\" ])",
       "Bash(git check-ignore *)",
       "Read(//tmp/**)",
-      "Bash(xargs -n1 basename)"
+      "Bash(xargs -n1 basename)",
+      "Bash(awk '/\"id\": \"EDGE-005d\"/,/\"category\"/' C:/Users/dpearson/Documents/Printyx/prd.json)"
     ],
     "deny": [],
     "ask": []
