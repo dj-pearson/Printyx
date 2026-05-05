@@ -2,6 +2,7 @@
 // Handles user notifications and alerts
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -33,9 +34,9 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const notificationId = pathParts[1];
-    const action = pathParts[2]; // 'mark-read', 'mark-all-read'
+    const { parts } = normalizePath(url.pathname, 'notifications');
+    const notificationId = parts[0]; // resource ID after function-name strip
+    const action = parts[1]; // 'mark-read', 'mark-all-read'
 
     // GET /notifications - List user notifications
     if (req.method === 'GET' && !notificationId) {

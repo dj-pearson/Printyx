@@ -6,20 +6,7 @@ import { handleBookmarks } from './handlers/bookmarks.ts';
 import { handleRatings } from './handlers/ratings.ts';
 import { handleReadingHistory } from './handlers/reading-history.ts';
 import { generateRequestId } from '../_shared/http.ts';
-
-// Tolerant prefix normalizer — matches both `/knowledge-base/foo` and `/foo`
-// so engagement handlers work regardless of whether the router preserves
-// the function prefix. Used only by the engagement dispatch block added in
-// Phase 6 US-025; the rest of this file keeps its original pathParts[1]
-// indexing.
-function engagementPath(pathname: string): string[] {
-  const norm =
-    pathname
-      .replace(/\/+/g, '/')
-      .replace(/^\/knowledge-base(?=\/|$)/, '')
-      .replace(/\/$/, '') || '/';
-  return norm.split('/').filter(Boolean);
-}
+import { normalizePath } from '../_shared/path.ts';
 
 // Helper to generate slug from title
 function generateSlug(title: string): string {
@@ -69,17 +56,14 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    // pathParts: ['knowledge-base', ...rest]
-    const resource = pathParts[1]; // Could be 'categories', 'popular', 'search', or article ID
-    const subResource = pathParts[2]; // Could be 'rate' for articles or category ID
+    const { parts } = normalizePath(url.pathname, 'knowledge-base');
+    // parts: [...rest after function-name strip]
+    const resource = parts[0]; // Could be 'categories', 'popular', 'search', or article ID
+    const subResource = parts[1]; // Could be 'rate' for articles or category ID
 
     // ─── Engagement dispatch (Phase 6 US-025) ────────────────────────────────
     // Routes /bookmarks, /ratings, /votes, /reading-history to their handlers.
-    // Uses tolerant path resolution (prefix-preserved OR stripped) so it works
-    // under both the current router and a corrected dispatcher. Falls through
-    // to the existing resource/subResource logic below if no match.
-    const engagementParts = engagementPath(url.pathname);
+    const engagementParts = parts;
     const engagementFirst = engagementParts[0];
     if (
       engagementFirst === 'bookmarks' ||
