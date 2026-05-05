@@ -115,15 +115,10 @@ export default function TodayDashboard() {
 
   const handleCompleteActivity = async (activityId: string) => {
     try {
-      const response = await fetch(`/api/activities/${activityId}/complete`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status: 'completed', completedAt: new Date().toISOString() }),
+      await apiRequest(`/api/activities/${activityId}/complete`, 'PATCH', {
+        completedAt: new Date().toISOString(),
       });
-      if (response.ok) {
-        queryClient.invalidateQueries({ queryKey: ['/api/dashboards/today'] });
-      }
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboards/today'] });
     } catch {
       // Activity completion endpoint may not be available
     }

@@ -28,6 +28,11 @@ import { handleChurnPredictions } from './handlers/churn-predictions.ts';
 import { handleInterventions } from './handlers/interventions.ts';
 import { handleJourneys } from './handlers/journeys.ts';
 import { handleRenewals } from './handlers/renewals.ts';
+import {
+  handleUsageAnalytics,
+  handleSatisfaction,
+  handleCalculateHealth,
+} from './handlers/analytics-frontend-stubs.ts';
 
 const log = createLogger('customer-success');
 
@@ -74,6 +79,15 @@ export default async function handler(req: Request) {
         break;
       case 'renewals':
         result = await handleRenewals(req, ctx);
+        break;
+      case 'usage-analytics':
+        result = await handleUsageAnalytics(req, ctx);
+        break;
+      case 'satisfaction':
+        result = await handleSatisfaction(req, ctx);
+        break;
+      case 'calculate-health':
+        result = await handleCalculateHealth(req, ctx);
         break;
       default:
         result = null;

@@ -36,6 +36,7 @@ export default async function handler(req: Request) {
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'activities');
     const activityId = parts[0];
+    const action = parts[1]; // /:id/complete
 
     // GET /activities - List activities
     if (req.method === 'GET' && !activityId) {
@@ -146,6 +147,35 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse(activity, 201, req);
+    }
+
+    // PATCH /activities/:id/complete - Mark activity as completed
+    if (req.method === 'PATCH' && activityId && action === 'complete') {
+      let body: { completedAt?: string; outcome?: string } = {};
+      try {
+        body = await req.json();
+      } catch {
+        /* allow empty body */
+      }
+
+      const { data: activity, error } = await admin
+        .from('business_record_activities')
+        .update({
+          completed_date: body.completedAt || new Date().toISOString(),
+          outcome: body.outcome || 'completed',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', activityId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error completing activity:', error);
+        return createCorsResponse({ error: 'Failed to complete activity' }, 500, req);
+      }
+
+      return createCorsResponse(activity, 200, req);
     }
 
     // PATCH /activities/:id - Update activity

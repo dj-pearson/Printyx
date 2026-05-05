@@ -271,6 +271,16 @@ export function registerEdgeFunctionProxy(app: any) {
     // reports edge function (handlers/kpis.ts, handlers/reporting.ts).
     '/api/kpis': { fn: 'reports', pathPrefix: '/kpis' },
     '/api/reporting': { fn: 'reports', pathPrefix: '/reporting' },
+
+    // EDGE-002k: small bundled fixes — activities (+/:id/complete),
+    // customer-numbers (rewrote to match real schema), customer-success
+    // (added usage-analytics/satisfaction/calculate-health stubs), company-ids
+    // (added missing-ids/backfill/preview-slug/generate/:id with proper named-
+    // route precedence).
+    '/api/activities': 'activities',
+    '/api/customer-numbers': 'customer-numbers',
+    '/api/customer-success': 'customer-success',
+    '/api/company-ids': 'company-ids',
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {
