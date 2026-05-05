@@ -2,6 +2,7 @@
 // Handles vehicle fleet tracking and management
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -34,9 +35,9 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1];
-    const vehicleId = pathParts[2];
+    const { parts } = normalizePath(url.pathname, 'fleet');
+    const endpoint = parts[0];
+    const vehicleId = parts[1];
 
     // GET /fleet/vehicles - List vehicles
     if (req.method === 'GET' && endpoint === 'vehicles' && !vehicleId) {

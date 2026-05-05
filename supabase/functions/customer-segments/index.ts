@@ -2,6 +2,7 @@
 // Handles customer segmentation and targeting
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -34,9 +35,9 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const segmentId = pathParts[1];
-    const subResource = pathParts[2];
+    const { parts } = normalizePath(url.pathname, 'customer-segments');
+    const segmentId = parts[0];
+    const subResource = parts[1];
 
     // GET /customer-segments - List segments
     if (req.method === 'GET' && !segmentId) {

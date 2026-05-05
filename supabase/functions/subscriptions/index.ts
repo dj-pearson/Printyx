@@ -2,6 +2,7 @@
 // Handles subscription management for tenants
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -32,20 +33,20 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
+    const { parts } = normalizePath(url.pathname, 'subscriptions');
 
-    // Route parsing:
-    // /subscriptions -> pathParts = ['subscriptions']
-    // /subscriptions/:id -> pathParts = ['subscriptions', ':id']
-    // /subscriptions/:id/cancel -> pathParts = ['subscriptions', ':id', 'cancel']
-    // /subscriptions/plans -> pathParts = ['subscriptions', 'plans']
-    // /subscriptions/usage -> pathParts = ['subscriptions', 'usage']
-    // /subscriptions/invoices -> pathParts = ['subscriptions', 'invoices']
-    // /subscriptions/change-plan -> pathParts = ['subscriptions', 'change-plan']
-    // /subscriptions/features -> pathParts = ['subscriptions', 'features']
+    // Route parsing (after function-name strip):
+    // /subscriptions -> parts = []
+    // /subscriptions/:id -> parts = [':id']
+    // /subscriptions/:id/cancel -> parts = [':id', 'cancel']
+    // /subscriptions/plans -> parts = ['plans']
+    // /subscriptions/usage -> parts = ['usage']
+    // /subscriptions/invoices -> parts = ['invoices']
+    // /subscriptions/change-plan -> parts = ['change-plan']
+    // /subscriptions/features -> parts = ['features']
 
-    const secondSegment = pathParts[1];
-    const thirdSegment = pathParts[2];
+    const secondSegment = parts[0];
+    const thirdSegment = parts[1];
 
     // ========================================================================
     // GET /subscriptions/plans - List available subscription plans

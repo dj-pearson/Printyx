@@ -2,6 +2,7 @@
 // Handles service contracts and tiered billing
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -52,9 +53,9 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const contractId = pathParts[1];
-    const subResource = pathParts[2]; // 'tiered-rates'
+    const { parts } = normalizePath(url.pathname, 'contracts');
+    const contractId = parts[0];
+    const subResource = parts[1]; // 'tiered-rates'
 
     // GET /contracts - List contracts
     if (req.method === 'GET' && !contractId) {
@@ -131,7 +132,9 @@ export default async function handler(req: Request) {
       if (contractData?.customer_id) {
         const { data: customer } = await admin
           .from('business_records')
-          .select('id, company_name, primary_contact_name, primary_contact_email, address_line1, city, state')
+          .select(
+            'id, company_name, primary_contact_name, primary_contact_email, address_line1, city, state',
+          )
           .eq('id', contractData.customer_id)
           .single();
         contract = { ...contractData, customer: customer || null };

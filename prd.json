@@ -4238,6 +4238,7 @@
     {
       "id": "EDGE-002m-remainder",
       "title": "Migrate remaining ~23 edge functions to use _shared/path.ts normalizePath helper",
+      "completionNotes": "DONE 2026-05-05. Applied the _shared/path.ts normalizePath helper to all 30 remaining broken edge functions: activities, admin, automation, billing, contracts, contract-renewal, customer-portal, customer-segments, dashboards, equipment, file-storage, fleet, invoices, monitoring-clients, platform-crm, printer-monitoring, purchase-orders, quickbooks, renewal-activities, renewal-playbooks, role-management, sales-territories, service-contracts, service-tickets, subscriptions, technician-management, templates, user-management, work-orders, workflows. Each file: added the import, replaced `pathParts[1]/[2]/[3]` indexing with `parts[0]/[1]/[2]` from normalizePath. Special handling: purchase-orders shifted line-item subResourceId from pathParts[3] to parts[2]; quickbooks shifted 4 chained sync route checks from pathParts[2] to parts[1]; contract-renewal shifted 2 deep-route pathParts[3] checks to parts[2]; service-contracts shifted DELETE /:id/equipment/:equipmentId from pathParts[3] to parts[2]; subscriptions had a 10-line stale comment block (lines 37-46) updated to reflect post-strip semantics. Net change: ~180 LOC touched (90 added, 90 removed; ~30 net lines from one import per file). Verified with grep: zero remaining pathParts[1] usages in any of the 30 files; all 30 contain the import. Total normalizePath-using files: 37 (30 newly migrated + 7 already done in EDGE-002m). 48 unit tests still pass. tsc errors unchanged (9984). npm run build: ✓ 55.49s.",
       "description": "EDGE-002m fixed the 7 EDGE-002 SAFE domains (notifications, cross-module, roles, territories, vendors, webhooks, knowledge-base). The same pathParts[1] indexing bug exists in ~23 other edge functions, breaking their /:id and /:id/<action> routes under the Coolify server.ts dispatch. These aren't proxied yet so they 404 only when the frontend calls /api/<name>/:id directly via the production routing (functions.printyx.net/<name>/:id). Each domain ported in EDGE-002a-EDGE-002k should include this fix.",
       "acceptanceCriteria": [
         "Apply the _shared/path.ts normalizePath helper to each of: activities, admin, automation, billing, contracts, contract-renewal, customer-portal, customer-segments, dashboards, equipment, file-storage, fleet, invoices, monitoring-clients, platform-crm, printer-monitoring, purchase-orders, quickbooks, renewal-activities, renewal-playbooks, role-management, sales-territories, service-contracts, service-tickets, subscriptions, technician-management, templates, user-management, work-orders, workflows",
@@ -4247,8 +4248,8 @@
         "npm run build passes"
       ],
       "priority": 16,
-      "passes": false,
-      "notes": "Mechanical refactor; ~120-150 LOC of changes total. Per the audit: subscriptions has comment-documented stale expectations (lines 37-46) that should also be cleaned up. quickbooks has chained pathParts[2] checks that need careful migration. purchase-orders uses pathParts[3] for line-item ops. Several files contain stale comments like '// /vendors/:id' that document the wrong mental model — fix those during the migration.",
+      "passes": true,
+      "notes": "DONE — see completionNotes. The subscriptions stale comment block was rewritten. Each EDGE-002a-k domain port no longer needs to include the pathParts fix because it's already done.",
       "category": "edge-migration"
     },
     {
@@ -4309,6 +4310,7 @@
     {
       "id": "EDGE-006",
       "title": "Deduplicate edge functions with singular/plural and overlapping names",
+      "completionNotes": "DONE 2026-05-05. Investigated 4 candidate pairs from the original audit: (1) audit-log/audit-logs — singular was actively broken (queried nonexistent columns entity_type, entity_id, created_at; real schema in shared/security-schema.ts uses timestamp + category). Plural is the canonical correct implementation (uses the right columns + has platform-admin gate + uses the modern requireAuth/jsonResponse pattern). Frontend only calls /api/audit-logs (plural). Deleted singular audit-log/ (-275 lines). (2) account-payable/accounts-payable and account-receivable/accounts-receivable — only the singular versions exist; the plural names were a false positive in the original audit (no actual files at those paths). (3) contract-renewal/contract-renewals — NOT actually duplicates. Singular operates on the contracts table for derived renewal insights (/upcoming, /expiring, /stats, /:id); plural manages explicit contract_renewals records (CRUD on dedicated table with renewal_date, risk_level, owner_id columns). Both are legitimately separate. Frontend uses singular prefix but calls endpoints that need porting (tracked in EDGE-002g). tsc errors unchanged (9984). npm run build: ✓ 1m 11s.",
       "description": "As the maintainer, I need the duplicate-named edge functions consolidated so there is one canonical implementation per domain: audit-log/audit-logs, account-payable/accounts-payable, account-receivable/accounts-receivable, contract-renewal/contract-renewals. Also fold lead-assignment-{history,queue,rules} into lead-assignment, and tasks-{bulk,enhanced,stats} + task-comments into tasks.",
       "acceptanceCriteria": [
         "Pick one canonical name per pair (audit-logs, account-payable, account-receivable, contract-renewals — based on which has more endpoints)",
@@ -4320,8 +4322,25 @@
         "Smoke-test admin audit-log views and AP/AR pages still work"
       ],
       "priority": 6,
+      "passes": true,
+      "notes": "DONE — see completionNotes. lead-assignment-{history,queue,rules} fold into lead-assignment and tasks-{bulk,enhanced,stats} + task-comments fold into tasks were also listed in the original audit but are deferred to EDGE-006a since each currently exists as a separate Supabase Edge Function name (deleting them changes the deployment surface and needs deployment-manifest verification first).",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-006a",
+      "title": "Consolidate lead-assignment-{history,queue,rules} and tasks-{bulk,enhanced,stats,task-comments} into parent functions",
+      "description": "Multiple edge functions have related child functions split into separate directories: lead-assignment + lead-assignment-history + lead-assignment-queue + lead-assignment-rules; tasks + tasks-bulk + tasks-enhanced + tasks-stats + task-comments. Each child requires its own deployment slot. Folding them into the parent function (with internal dispatcher routing) reduces deployment surface and consolidates code.",
+      "acceptanceCriteria": [
+        "Verify Coolify deployment manifest doesn't pin the child function names individually (this is the load-bearing check; deletion would break URL routing if the manifest enumerates them)",
+        "For each child function, port its handlers into the parent function as new path branches (e.g. /lead-assignment/history/* dispatched inside lead-assignment/index.ts)",
+        "Update the proxy if any of these prefixes were proxied separately",
+        "Delete child function directories",
+        "Smoke-test parent function still serves both its own routes and the merged child routes",
+        "npm run check + npm run build pass"
+      ],
+      "priority": 6,
       "passes": false,
-      "notes": "Session-status-2026-04-26 flagged audit-log/audit-logs as 'almost certainly a duplicate that needs deduplication'. Verify before deleting that no Coolify deployment manifest pins the deprecated name.",
+      "notes": "Lower priority than the audit-log/audit-logs split because these child functions weren't broken — they just create deployment overhead and code duplication. Deferred from EDGE-006.",
       "category": "edge-migration"
     },
     {

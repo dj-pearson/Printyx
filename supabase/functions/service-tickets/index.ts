@@ -2,6 +2,7 @@
 // Handles service ticket CRUD and dispatch operations
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -59,9 +60,9 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const ticketId = pathParts[1]; // /service-tickets/:id
-    const subResource = pathParts[2]; // /service-tickets/:id/updates
+    const { parts } = normalizePath(url.pathname, 'service-tickets');
+    const ticketId = parts[0]; // /service-tickets/:id
+    const subResource = parts[1]; // /service-tickets/:id/updates
 
     // GET /service-tickets - List all tickets with filters
     if (req.method === 'GET' && !ticketId) {
@@ -176,7 +177,9 @@ export default async function handler(req: Request) {
       if (ticket?.customer_id) {
         const { data: customer } = await admin
           .from('business_records')
-          .select('id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone')
+          .select(
+            'id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone',
+          )
           .eq('id', ticket.customer_id)
           .single();
         enrichedTicket = { ...ticket, customer: customer || null };

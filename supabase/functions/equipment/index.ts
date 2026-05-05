@@ -2,6 +2,7 @@
 // Handles equipment/assets management
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -52,8 +53,8 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const equipmentId = pathParts[1];
+    const { parts } = normalizePath(url.pathname, 'equipment');
+    const equipmentId = parts[0];
 
     // GET /equipment - List equipment
     if (req.method === 'GET' && !equipmentId) {
@@ -125,7 +126,9 @@ export default async function handler(req: Request) {
       if (equipmentData?.customer_id) {
         const { data: customer } = await admin
           .from('business_records')
-          .select('id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, city, state')
+          .select(
+            'id, company_name, primary_contact_name, primary_contact_email, primary_contact_phone, address_line1, city, state',
+          )
           .eq('id', equipmentData.customer_id)
           .single();
         equipment = { ...equipmentData, customer: customer || null };

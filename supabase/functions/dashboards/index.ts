@@ -2,6 +2,7 @@
 // Provides dashboard data and configurations
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -38,9 +39,9 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const dashboardType = pathParts[1];
-    const subEndpoint = pathParts[2];
+    const { parts } = normalizePath(url.pathname, 'dashboards');
+    const dashboardType = parts[0];
+    const subEndpoint = parts[1];
 
     // GET /dashboards/sales - Sales dashboard data
     if (req.method === 'GET' && dashboardType === 'sales') {

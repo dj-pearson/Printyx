@@ -2,6 +2,7 @@
 // Handles contract renewal management and tracking
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -34,9 +35,9 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1];
-    const contractId = pathParts[2];
+    const { parts } = normalizePath(url.pathname, 'contract-renewal');
+    const endpoint = parts[0];
+    const contractId = parts[1];
 
     // GET /contract-renewal/upcoming - Get upcoming renewals
     if (req.method === 'GET' && endpoint === 'upcoming') {
@@ -136,10 +137,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /contract-renewal/:contractId/renew - Process renewal
-    if (
-      (req.method === 'POST' && endpoint === 'renew') ||
-      (contractId && pathParts[3] === 'renew')
-    ) {
+    if ((req.method === 'POST' && endpoint === 'renew') || (contractId && parts[2] === 'renew')) {
       const targetContractId =
         endpoint === 'renew' ? url.searchParams.get('contractId') : contractId;
       const body = await req.json();
@@ -201,7 +199,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /contract-renewal/:contractId/mark-churned - Mark as churned
-    if (req.method === 'POST' && contractId && pathParts[3] === 'mark-churned') {
+    if (req.method === 'POST' && contractId && parts[2] === 'mark-churned') {
       const body = await req.json();
 
       const { data: contract, error } = await admin
