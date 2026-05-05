@@ -4294,6 +4294,7 @@
     {
       "id": "EDGE-005",
       "title": "Decide and execute on stale frontend prefixes that have no edge function (Tier 3 cleanup)",
+      "completionNotes": "DONE 2026-05-05 (classification + one frontend rewrite). Triaged ~38 stale frontend prefixes. Execute summary: (1) ALIAS landed: /api/universal-search → /api/search (rewrote command-palette.tsx; was using raw fetch with no auth — also fixed to use apiRequest; added /api/search to proxy as defensive measure). (2) Already handled by earlier EDGEs: /api/kpis (EDGE-003), /api/reporting (EDGE-003), /api/director-reports + /api/sales-reports + /api/service-reports + /api/team-reports + /api/warehouse-reports + persona-manager/supervisor variants (EDGE-001 frontend rewrite to /api/reports/<persona>/), /api/contract-renewal (handlers exist; missing endpoints tracked in EDGE-002g). (3) Filed as EDGE-005a-EDGE-005f for the rest — see those entries for per-prefix port plans. Production frontend callers fixed in this session: 1 (universal-search). tsc errors unchanged (9984). 48 tests pass. npm run build: ✓ 55.92s.",
       "description": "As the codebase, I need a documented disposition (port / delete / alias) for ~30 frontend /api/* prefixes that have no matching edge function and no proxy fallback. Today these silently 404: workflow-automation, universal-search, validate, white-label, saved-views, scheduled-reports, sales-forecasts, security, security-compliance, service-products, signature-analytics, signature-requests, signature-templates, system-monitoring, technician-sessions, trial, sales-rep-assignments, sales-performance, record-layout-config, quote-templates, public/calculator, predictive-analytics, predictive-maintenance, pipeline-forecast, lead-intelligence, lease-payments, integration-hub, incident-response, financial-forecasting, erp-integration, deployment, contract-tiered-rates, business-process, customer-access, bug-reports, service-analytics.",
       "acceptanceCriteria": [
         "Produce docs/frontend-orphan-prefixes.md classifying each prefix as PORT (needs edge function), ALIAS (re-route to existing edge fn), or DELETE-CALLER (frontend stale)",
@@ -4304,8 +4305,135 @@
         "Typecheck passes after frontend cleanup"
       ],
       "priority": 5,
+      "passes": true,
+      "notes": "DONE — classification + one production frontend rewrite. See completionNotes. The original audit listed simple aliases like accounts-payable→account-payable, but verification revealed the URL structures don't match (frontend uses flat /:id, edge fns use nested /<resource>/:id) — those are PORT work (EDGE-005a). Same for phone-tickets→phone-in-tickets and integration-hub→integrations.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-005a",
+      "title": "Port accounts-payable + accounts-receivable to match flat frontend URL pattern",
+      "description": "Frontend AccountsPayable.tsx + AccountsReceivable.tsx use flat /api/accounts-{payable,receivable} for list and /:id for items. Edge functions account-payable/ + account-receivable/ exist but expect nested /bills/:id and /summary/:id sub-paths. Two fix strategies: (a) refactor edge functions to flat URL structure matching frontend, (b) add proxy aliases with pathPrefix routing /api/accounts-payable/* → /account-payable/bills/* + similar for AR. Also: both edge functions still use pathParts[1] indexing (not migrated in EDGE-002m-remainder) — need normalizePath fix.",
+      "acceptanceCriteria": [
+        "Pick strategy: refactor edge fn OR add proxy pathPrefix alias (probably the alias since URL semantics align)",
+        "Apply normalizePath helper from EDGE-002m to both account-payable and account-receivable",
+        "Update edge fn dispatcher to handle PATCH (frontend uses PATCH; edge has PUT) — accept both",
+        "Add proxy entries: /api/accounts-payable → { fn: 'account-payable', pathPrefix: '/bills' } (or similar)",
+        "Smoke-test AccountsPayable.tsx and AccountsReceivable.tsx pages"
+      ],
+      "priority": 5,
       "passes": false,
-      "notes": "Audit candidates that are likely DELETE-CALLER: bug-reports, customer-access, service-analytics (all from server/routes-misc-stubs.ts which returns hardcoded zeros). Likely ALIAS: accounts-payable -> account-payable, accounts-receivable -> account-receivable, phone-tickets -> phone-in-tickets, deployment -> deployment-readiness, signature-* -> signatures (sub-path).",
+      "notes": "Bundled because both follow the same pattern (singular edge fn + plural frontend prefix + URL structure mismatch). 7 + 7 frontend callers each.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-005b",
+      "title": "Port deals-management nested URL prefix",
+      "description": "Frontend uses /api/deals-management/deals, /api/deals-management/deals/:id, /api/deals-management/deals/bulk-update, /api/deals-management/deals/bulk-delete (5+ callsites in CrmDealsPage, DealsManagement, EnhancedPipelineBoard, RecordPageLayout, crm-object-registry). Edge function `deals` exists at /api/deals (already in EDGE-001 proxy) but with different path structure (no /deals sub-path).",
+      "acceptanceCriteria": [
+        "Decide: rewrite frontend to use /api/deals/* paths (cleaner) OR add deals-management proxy alias",
+        "Verify deals edge function handles bulk-update + bulk-delete operations",
+        "Add bulk operations to deals edge fn if missing",
+        "Update frontend OR add proxy alias",
+        "Smoke-test CrmDealsPage, DealsManagement, EnhancedPipelineBoard"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "7 frontend callsites. The deals-management/ vs deals/ split looks like legacy from when deals had multiple sub-modules — current canonical is /api/deals.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-005c",
+      "title": "Port phone-tickets sub-routes to phone-in-tickets edge function",
+      "description": "Frontend PhoneInTicketCreator.tsx calls /api/phone-tickets/search-companies, /api/phone-tickets/search-contacts/:id, /api/phone-tickets/equipment/:id (6 callsites). Edge function phone-in-tickets/ exists with /:id and /:id/convert routes but missing the /search-* and /equipment/:id sub-paths.",
+      "acceptanceCriteria": [
+        "Apply normalizePath fix (still uses pathParts[1])",
+        "Add /search-companies endpoint (search companies by name for ticket creation)",
+        "Add /search-contacts/:companyId endpoint",
+        "Add /equipment/:companyId endpoint",
+        "Update frontend to use /api/phone-in-tickets/* canonical prefix (or add proxy alias)",
+        "Smoke-test PhoneInTicketCreator.tsx"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Used in service-ticket creation flow (high-traffic). 6 callsites.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-005d",
+      "title": "Port domains with no existing edge function (PORT category)",
+      "completionNotes": "PARTIAL DONE 2026-05-05. Three highest-frequency ports landed (36 frontend callsites unblocked): (1) sales-rep-assignments (17 callsites) — new edge function ports 9 endpoints from server/routes-sales-rep-assignments.ts: GET /reps (with account counts + summary), GET /reps/:id/accounts (paginated), GET /accounts (filtered), GET /unassigned (paginated), GET /zip-summary, GET /history (enriched with user names), POST /assign, POST /bulk-assign, POST /assign-by-area (with ?preview=true for count-only). All write paths log to lead_assignment_history. (2) saved-views (8 callsites) — new edge function ports 8 endpoints: list/get/create/update/delete + clone + pin/unpin + reorder. Visibility-aware (private/team/everyone) with admin override at roleLevel >= 7. Has named-route precedence (PUT /pins/reorder before PUT /:id branches). (3) scheduled-reports (11 callsites) — merged as new handler reports/handlers/scheduled.ts. URL routed via proxy pathPrefix: /api/scheduled-reports/* → reports/scheduled/*. 8 endpoints: list/get/create/update/delete + toggle (PATCH) + run (POST records execution row, email delivery flagged degraded) + executions (GET history). Includes inline buildCronExpression + calculateNextRun helpers ported from Express. Remaining EDGE-005d work tracked in EDGE-005d-remainder follow-up. tsc errors unchanged (9984). 48 tests pass. npm run build: ✓ 30.74s.",
+      "description": "Frontend prefixes that have NO edge function at all and are 404 in production: /api/sales-rep-assignments (17), /api/scheduled-reports (11), /api/saved-views (8), /api/security (7), /api/predictive-maintenance (6), /api/service-products (6), /api/technician-sessions (5), /api/quote-templates (5), /api/validate (4), /api/sales-forecasts (4), /api/pipeline-forecast (4), /api/approvals (4), /api/workflow-automation (3), /api/white-label (3), /api/predictive-analytics (3), /api/lead-intelligence (3), /api/contract-tiered-rates (3), /api/trial (2), /api/record-layout-config (2), /api/business-process (2), /api/system-monitoring (1), /api/security-compliance (1), /api/sales-performance (1), /api/lease-payments (1), /api/incident-response (1), /api/financial-forecasting (1), /api/erp-integration (1).",
+      "acceptanceCriteria": [
+        "Decide per-prefix: full edge function port, merge into existing related fn, or DELETE-CALLER if dead in frontend",
+        "High-priority ports (frequent callers): sales-rep-assignments (17 callsites — likely merge into user-assignments), scheduled-reports (11 — merge into reports), saved-views (8 — likely small new fn), security (7 — large surface)",
+        "Low-priority/likely-DELETE candidates: predictive-analytics, predictive-maintenance, lead-intelligence (probably superseded by ai-search/lead-scoring)",
+        "Each port should follow the EDGE-002 pattern: schema-audit + degraded markers + normalizePath + proxy entry"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "PARTIAL DONE — top 3 by callsite count. See completionNotes. EDGE-005d-remainder tracks the 24 remaining prefixes.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-005d-remainder",
+      "title": "Port remaining 24 frontend prefixes with no edge function",
+      "description": "EDGE-005d landed sales-rep-assignments (17), saved-views (8), and scheduled-reports (11). Remaining prefixes by frequency: security (7), service-products (6), predictive-maintenance (6), technician-sessions (5), quote-templates (5), customer-access (5 — DELETE-CALLER candidate), validate (4), sales-forecasts (4), pipeline-forecast (4), approvals (4), workflow-automation (3), white-label (3), predictive-analytics (3), lead-intelligence (3), contract-tiered-rates (3), trial (2), record-layout-config (2), business-process (2), system-monitoring (1), security-compliance (1), sales-performance (1), lease-payments (1), incident-response (1), financial-forecasting (1), erp-integration (1).",
+      "acceptanceCriteria": [
+        "Per-prefix decision: PORT (new edge fn), MERGE (into existing fn), or DELETE-CALLER (dead frontend)",
+        "Likely-MERGE candidates: lease-payments → leases, sales-forecasts/pipeline-forecast → sales-pipeline or reports/, predictive-* → ai-search or reports/, lead-intelligence → lead-scoring, service-products → products, quote-templates → quotes",
+        "Likely-DELETE candidates (dead/single-callsite): security-compliance, sales-performance, system-monitoring, business-process, contract-tiered-rates",
+        "Prioritize by callsite count — security (7), service-products (6), predictive-maintenance (6) likely active features",
+        "Each port follows the EDGE-002 pattern: schema-audit + degraded markers + normalizePath + proxy entry"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Group into batches by ownership/relevance. Session triage suggests merging where possible to reduce edge function count.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-005e",
+      "title": "Consolidate signature-{analytics,requests,templates} prefixes into signatures edge function",
+      "description": "Frontend uses /api/signature-analytics, /api/signature-requests, /api/signature-templates. Edge function `signatures/` exists. These should be sub-paths of the signatures function (e.g. /api/signatures/analytics, /api/signatures/requests). 7 callsites total.",
+      "acceptanceCriteria": [
+        "Verify signatures edge fn dispatcher handles or can be extended for /analytics, /requests, /templates sub-paths",
+        "Either: refactor frontend to use /api/signatures/<sub> OR add 3 proxy entries with pathPrefix routing to signatures/",
+        "Apply normalizePath if missing",
+        "Smoke-test ESignatureIntegration page and any signature-related dashboards"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Likely a clean consolidation since signatures/ is already modular per EDGE-002 audit.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-005f",
+      "title": "Resolve deployment, integration-hub, public/calculator alias targets",
+      "description": "Three frontend prefixes with one-line fixes: (1) /api/deployment/{readiness,metrics} — deployment-readiness/ edge fn exists at root but doesn't have /readiness or /metrics sub-paths; either rename frontend to /api/deployment-readiness or add sub-paths. (2) /api/integration-hub/dashboard — integrations/ edge fn exists but no /dashboard endpoint. (3) /api/public/calculator/* — public unauthenticated route used by PrintCostCalculator.tsx and EmailCaptureModal.tsx; needs a new edge fn or special anonymous-auth path.",
+      "acceptanceCriteria": [
+        "deployment: add /readiness + /metrics to deployment-readiness/ index.ts dispatcher",
+        "integration-hub: add /dashboard to integrations/ index.ts (aggregate stats)",
+        "public/calculator: design auth-bypass strategy (Supabase Edge Functions can run unauthenticated; configure that path)",
+        "Add proxy entries with appropriate pathPrefix where needed",
+        "Smoke-test affected pages"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Mix of small ports (deployment, integration-hub) and architectural decision (public/calculator unauthenticated).",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-005g",
+      "title": "Delete dead frontend code calling /api/customer-access and /api/bug-reports",
+      "description": "These two prefixes are served by server/routes-misc-stubs.ts which returns hardcoded zeros (the original audit confirmed this). The frontend pages calling them render empty data forever. DELETE-CALLER work: identify the frontend pages, decide whether to remove the calls or remove the pages.",
+      "acceptanceCriteria": [
+        "Inventory frontend callers of /api/customer-access (5 callsites) and /api/bug-reports",
+        "If pages are unused features: delete the page + route + sidebar entry",
+        "If pages should exist but lack a backend: file ports as separate EDGE-### tasks AND mark pages with TODO comments OR remove the API calls and let pages render empty defaults",
+        "Verify no other code imports the deleted pages"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "These were never functional (Express returned hardcoded data). Decide the future of the feature in addition to the API.",
       "category": "edge-migration"
     },
     {

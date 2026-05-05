@@ -33,6 +33,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Badge } from '@/components/ui/badge';
 
 interface SearchResult {
@@ -212,23 +213,18 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const [, navigate] = useLocation();
   const [searchQuery, setSearchQuery] = React.useState('');
 
-  // Fetch search results from API when query changes
+  // Fetch search results from API when query changes.
+  // Uses canonical /api/search endpoint (the search edge function fuzzy-matches
+  // across customers, leads, contacts, quotes, tickets, equipment, projects, users).
   const { data: searchResults, isLoading } = useQuery({
-    queryKey: ['/api/universal-search', searchQuery],
+    queryKey: ['/api/search', searchQuery],
     queryFn: async () => {
       if (!searchQuery || searchQuery.length < 2) {
         return [];
       }
-
-      const response = await fetch(
-        `/api/universal-search?q=${encodeURIComponent(searchQuery)}&limit=20`,
-      );
-
-      if (!response.ok) {
-        throw new Error('Search failed');
-      }
-
-      return response.json() as Promise<SearchResult[]>;
+      return apiRequest(`/api/search?q=${encodeURIComponent(searchQuery)}&limit=20`) as Promise<
+        SearchResult[]
+      >;
     },
     enabled: searchQuery.length >= 2,
     staleTime: 30000, // Cache for 30 seconds
