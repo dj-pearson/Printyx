@@ -2,6 +2,7 @@
 // Handles purchase order management with approval workflow and line items
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 // Valid PO statuses
 const PO_STATUSES = [
@@ -50,11 +51,11 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    // Path structure: /purchase-orders/:id?/:subResource?/:subResourceId?
-    const poId = pathParts[1];
-    const subResource = pathParts[2]; // 'line-items', 'submit', 'approve', 'reject', 'receive'
-    const subResourceId = pathParts[3]; // For line item operations
+    const { parts } = normalizePath(url.pathname, 'purchase-orders');
+    // Path structure after function-name strip: /:id?/:subResource?/:subResourceId?
+    const poId = parts[0];
+    const subResource = parts[1]; // 'line-items', 'submit', 'approve', 'reject', 'receive'
+    const subResourceId = parts[2]; // For line item operations
 
     // ============================================================
     // LINE ITEMS ENDPOINTS

@@ -2,6 +2,7 @@
 // Handles invoice generation and management
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
@@ -52,8 +53,8 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const invoiceId = pathParts[1];
+    const { parts } = normalizePath(url.pathname, 'invoices');
+    const invoiceId = parts[0];
 
     // GET /invoices - List invoices
     if (req.method === 'GET' && !invoiceId) {

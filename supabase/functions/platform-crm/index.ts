@@ -2,6 +2,7 @@
 // Handles platform-level CRM operations for root admins
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -42,9 +43,9 @@ export default async function handler(req: Request) {
     }
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1];
-    const resourceId = pathParts[2];
+    const { parts } = normalizePath(url.pathname, 'platform-crm');
+    const endpoint = parts[0];
+    const resourceId = parts[1];
 
     // GET /platform-crm/business-records - List all platform business records
     if (req.method === 'GET' && endpoint === 'business-records') {

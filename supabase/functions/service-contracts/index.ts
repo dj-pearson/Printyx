@@ -2,6 +2,7 @@
 // Handles service contract management
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -34,9 +35,9 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const contractId = pathParts[1];
-    const subResource = pathParts[2];
+    const { parts } = normalizePath(url.pathname, 'service-contracts');
+    const contractId = parts[0];
+    const subResource = parts[1];
 
     // GET /service-contracts - List contracts
     if (req.method === 'GET' && !contractId) {
@@ -233,7 +234,7 @@ export default async function handler(req: Request) {
 
     // DELETE /service-contracts/:id/equipment/:equipmentId - Remove equipment
     if (req.method === 'DELETE' && contractId && subResource === 'equipment') {
-      const equipmentId = pathParts[3];
+      const equipmentId = parts[2];
 
       const { error } = await admin
         .from('contract_equipment')

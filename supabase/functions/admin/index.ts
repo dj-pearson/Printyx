@@ -8,6 +8,7 @@
 // - Admin settings
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 // Helper to check if user has admin permissions
 async function checkAdminPermission(
@@ -141,10 +142,10 @@ export default async function handler(req: Request) {
 
     // Parse URL path and query params
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    // Expected paths: /admin/users, /admin/users/:id, /admin/roles, etc.
-    const resource = pathParts[1]; // 'users', 'roles', 'permissions', 'audit-log', 'system-health', 'settings'
-    const resourceId = pathParts[2]; // Optional ID
+    const { parts } = normalizePath(url.pathname, 'admin');
+    // Expected paths after function-name strip: /users, /users/:id, /roles, etc.
+    const resource = parts[0]; // 'users', 'roles', 'permissions', 'audit-log', 'system-health', 'settings'
+    const resourceId = parts[1]; // Optional ID
 
     // Check admin permissions (except for specific endpoints)
     const {

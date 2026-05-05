@@ -2,6 +2,7 @@
 // Handles renewal activity tracking
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -34,8 +35,8 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const activityId = pathParts[1];
+    const { parts } = normalizePath(url.pathname, 'renewal-activities');
+    const activityId = parts[0];
 
     // GET /renewal-activities - List renewal activities
     if (req.method === 'GET' && !activityId) {

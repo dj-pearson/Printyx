@@ -2,6 +2,7 @@
 // Handles printer monitoring client management
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -34,9 +35,9 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const clientId = pathParts[1];
-    const action = pathParts[2];
+    const { parts } = normalizePath(url.pathname, 'monitoring-clients');
+    const clientId = parts[0];
+    const action = parts[1];
 
     // GET /monitoring-clients - List monitoring clients
     if (req.method === 'GET' && !clientId) {

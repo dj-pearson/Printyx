@@ -2,6 +2,7 @@
 // Handles billing analytics, invoices, rules, and invoice generation
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -40,10 +41,10 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    // Path structure: /billing/[resource]/[id]
-    const resource = pathParts[1]; // analytics, invoices, rules, generate-invoices, contract-profitability
-    const resourceId = pathParts[2]; // :id for rules
+    const { parts } = normalizePath(url.pathname, 'billing');
+    // Path structure after function-name strip: /[resource]/[id]
+    const resource = parts[0]; // analytics, invoices, rules, generate-invoices, contract-profitability
+    const resourceId = parts[1]; // :id for rules
 
     // =============================================================================
     // GET /billing/analytics - Get billing analytics

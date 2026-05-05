@@ -2,6 +2,7 @@
 // Handles QuickBooks integration and sync
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -34,8 +35,8 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1];
+    const { parts } = normalizePath(url.pathname, 'quickbooks');
+    const endpoint = parts[0];
 
     // GET /quickbooks/status - Get connection status
     if (req.method === 'GET' && endpoint === 'status') {
@@ -72,7 +73,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /quickbooks/sync/invoices - Sync invoices to QuickBooks
-    if (req.method === 'POST' && endpoint === 'sync' && pathParts[2] === 'invoices') {
+    if (req.method === 'POST' && endpoint === 'sync' && parts[1] === 'invoices') {
       const body = await req.json();
       const { invoiceIds } = body;
 
@@ -104,7 +105,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /quickbooks/sync/customers - Sync customers to QuickBooks
-    if (req.method === 'POST' && endpoint === 'sync' && pathParts[2] === 'customers') {
+    if (req.method === 'POST' && endpoint === 'sync' && parts[1] === 'customers') {
       const body = await req.json();
       const { customerIds } = body;
 
@@ -134,7 +135,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /quickbooks/sync/payments - Sync payments
-    if (req.method === 'POST' && endpoint === 'sync' && pathParts[2] === 'payments') {
+    if (req.method === 'POST' && endpoint === 'sync' && parts[1] === 'payments') {
       const body = await req.json();
 
       const { data: syncLog } = await admin

@@ -2,6 +2,7 @@
 // Handles printer monitoring operations and OID presets
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -10,9 +11,9 @@ export default async function handler(req: Request) {
   try {
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const resource = pathParts[1]; // oid-presets, devices, metrics
-    const resourceId = pathParts[2];
+    const { parts } = normalizePath(url.pathname, 'printer-monitoring');
+    const resource = parts[0]; // oid-presets, devices, metrics
+    const resourceId = parts[1];
 
     // For client-authenticated endpoints
     const apiKey = req.headers.get('x-api-key');
