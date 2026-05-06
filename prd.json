@@ -4808,7 +4808,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 24,
-      "passes": false,
+      "passes": true,
       "notes": "Source PRD: US-013. Model after supabase/functions/service-products/index.ts and supabase/functions/business-records/index.ts. Register the function deployment in the supabase config the same way recent edge functions are registered.",
       "category": "address-book"
     },

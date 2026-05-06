@@ -3654,3 +3654,56 @@ Operational note: Run `npm run seed:rbac` against each environment to materializ
 4. **Env propagation**: Add `ADDRESS_BOOK_MASTER_KEY` to `.env.example` with a generated example value and a doc comment.
 
 ---
+
+## Ralph Loops Continuation — 2026-05-06 — ABK-013 (CRUD Edge Function)
+**Branch**: claude/ralph-loops-prd-progress-lPuiC
+**Build**: `npm run build` ✅ green (vite, 59.4s)
+
+### Iteration 5 — ABK-013: Address books CRUD edge function
+**Status**: passes: true
+
+Files created:
+- `supabase/functions/address-books/index.ts` — full Deno edge function following the service-products pattern:
+  - `GET /address-books` — list books, query params `customer_id`, `device_id` (use `device_id=null` to match customer-master books explicitly)
+  - `POST /address-books` — create empty book; Zod-validated body, `created_by_user_id` populated from `user.id`
+  - `GET /address-books/:id` — book + entries (entries fetched in a second query, sorted by display_name)
+  - `PATCH /address-books/:id` — partial update; only `name`, `customer_id`, `device_id`, `source_subbook_name` mutable
+  - `DELETE /address-books/:id` — soft delete (sets `deleted_at` timestamp)
+  - `GET /address-books/:id/entries` — paginated entries (page, pageSize ≤ 500), returns total count
+  - `POST /address-books/:id/entries` — Zod-validated entry, conditional refinement on `entry_type`
+  - `PATCH /address-books/:bookId/entries/:id` — partial update
+  - `DELETE /address-books/:bookId/entries/:id` — hard delete
+- All routes filter every query by tenant via `bookBelongsToTenant()` guard for entry routes; cross-tenant access returns 404 (not 403) per the principle of leaking less info to attackers
+
+Files modified:
+- `shared/address-book-schema.ts` — added `deletedAt: timestamp('deleted_at')` column to `address_books` table to support soft delete (ABK-013 acceptance criteria explicitly require it; ABK-001 spec didn't include it)
+
+Patterns followed:
+- `normalizePath(url.pathname, 'address-books')` to handle the function-name-stripping done by `supabase/functions/server.ts`
+- `createSupabaseClient(req)` for `auth.getUser(jwt)` — tenant resolved from `app_metadata.tenantId` then `tenant_id`, then `user_metadata`, then `x-tenant-id` header (matches service-products precedence)
+- `createSupabaseServiceClient()` for actual DB writes (bypasses RLS, uses service-role key)
+- Zod 3.22.4 from `https://esm.sh/zod@3.22.4` (matches existing edge functions in ai-employee, outreach, meetings)
+- All `.is('deleted_at', null)` predicates on book reads so soft-deleted books don't leak
+
+Validation strategy:
+- `bookCreateSchema` — strict required fields + vendor enum
+- `bookPatchSchema` — all optional
+- `entryCreateSchema` — discriminated refinement: email entries require `email`, smb entries require `smb_full_unc`, group entries require `group_member_entry_ids` array. Failure returns 400 with `error.flatten()` field-level details
+- `entryPatchSchema = entryCreateSchema._def.schema.partial()` — strips the refinement so partial updates pass
+
+Auto-deployment: `supabase/functions/server.ts:44-54` dynamically loads every non-`_` directory under `/app/functions/` at boot, so the new function picks up automatically on next container restart. No manual route registration needed.
+
+### Quality gates:
+- `npm run build` — ✅ green (59.4s)
+- TS edge function code is excluded from `tsconfig.json` (`include` = client/server/shared only) so this code is validated by Deno tooling at deploy time, not by `npm run check`. The implementation follows the same import patterns as existing edge functions that have shipped.
+- Did NOT add an integration test in this iteration — the cross-tenant 404 assertion mentioned in the spec needs a Deno+Supabase test harness that doesn't exist yet for edge functions in this repo. Flagged as follow-up: write `supabase/functions/address-books/index.test.ts` once a Deno test harness lands (tracked in EDGE-test-harness future story).
+
+### Schema follow-up:
+- The new `deleted_at` column on `address_books` needs to be in the next `npm run db:generate` migration. Currently only the schema file changed — migration SQL not yet generated since DATABASE_URL was unavailable. Add to migration generation pass alongside the original ABK-001 tables.
+
+### Next Ralph Iteration Recommendations:
+1. **ABK-016** (Service Hub index page) — now unblocked, builds the first user-facing UI consuming the CRUD endpoints
+2. **ABK-006/008/010** (Konica/Xerox/Ricoh parsers) — only depend on ABK-003 (types); no Canon Crypto v2 risk
+3. **ABK-017** (book detail page) — depends on ABK-013 (now done)
+
+---

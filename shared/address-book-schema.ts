@@ -33,6 +33,7 @@ export const addressBooks = pgTable(
     lastImportedAt: timestamp('last_imported_at'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
     createdByUserId: uuid('created_by_user_id'),
   },
   (table) => ({
