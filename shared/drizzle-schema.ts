@@ -350,6 +350,8 @@ export {
   platformCohortAnalysis,
 } from './platform-crm-schema';
 
+// address-book-schema: re-exported from schema.ts; tables visible via export * from './schema'
+
 // ─── Server-side schemas (already re-exported via schema.ts) ───
 // server/enhanced-rbac-schema.ts — re-exported via schema.ts
 // server/demo-scheduling-schema.ts — re-exported via schema.ts
