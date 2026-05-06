@@ -4525,6 +4525,7 @@
     {
       "id": "EDGE-009",
       "title": "Migrate remaining cron jobs to pg_cron and remove node-cron",
+      "completionNotes": "INVENTORY DONE 2026-05-05. Audit confirmed: (1) drizzle/cron/ has 10 SQL files with 12 active cron schedules covering bootstrap, billing, contract-renewals, customer-success, email-marketing, leases, mileage, reports, retention, subscriptions. (2) Two of those schedules — subscriptions.sql 'subscription-trial-expiry-check' (target /billing/subscriptions/check-trials) and 'subscription-renewal-charges' (target /billing/subscriptions/process-renewals) — point at edge function endpoints that DON'T EXIST. They're 404'ing every cron tick today. (3) Express-side schedules still running via setInterval (would only matter when Express is actually deployed, which isn't production): SubscriptionJobs.checkUsageLimits (every 6h), createDailySnapshots (daily midnight), recalculateUsage (every 4h); CronService.processTrialEmails (daily). The trial-expiry CHECK is already pg_cron-scheduled (just not implemented); the others have neither pg_cron schedules nor edge function endpoints. (4) package.json still has 'node-cron': '^3.0.3' — but no actual node-cron usage in code, only setInterval. Removable once SubscriptionJobs + CronService can be deleted. Implementation work split into EDGE-009a-d follow-ups.",
       "description": "As production infrastructure, I need every recurring job that references node-cron in the Express server moved to pg_cron in drizzle/cron/*.sql so the Express runtime can be deleted (US-026 in prd-edge-functions-migration.md).",
       "acceptanceCriteria": [
         "grep -rn 'cron.schedule\\|node-cron\\|require..node-cron' server/ produces a definitive inventory list",
@@ -4575,6 +4576,430 @@
       "passes": false,
       "notes": "Gated by EDGE-001 through EDGE-010. Do not start until every domain is confirmed-complete. Premature deletion breaks frontend silently per session-status-2026-04-26.",
       "category": "edge-migration"
+    },
+    {
+      "id": "ABK-001",
+      "title": "Address book canonical schema (books, entries, credentials, audit)",
+      "description": "As a developer building the Multi-Vendor Address Book Manager, I need vendor-neutral Drizzle tables so MFP address books from Canon, Konica Minolta, Xerox, and Ricoh can be stored once and round-tripped between vendors. Customer-master books with per-device override entries (model 2C from PRD).",
+      "acceptanceCriteria": [
+        "New file shared/address-book-schema.ts defines tables: address_books, address_book_entries, address_book_credentials, address_book_imports, address_book_exports",
+        "address_books columns: id, tenant_id, customer_id, device_id (nullable — null = customer-master book), name, source_vendor, source_model, source_subbook_name, last_imported_at, created_at, updated_at, created_by_user_id",
+        "address_book_entries columns: id, book_id, entry_type ('email'|'smb'|'group'), display_name, sort_name, short_name, email, smb_host, smb_share_path, smb_full_unc, smb_username, credential_id (FK nullable), speed_dial_index, group_member_entry_ids (jsonb), source_uuid, source_metadata (jsonb), is_override (boolean), overrides_entry_id (FK self, nullable), created_at, updated_at",
+        "address_book_credentials columns: id, tenant_id, encrypted_blob (bytea, AES-256-GCM with Printyx master key), iv (bytea), auth_tag (bytea), created_at — never store plaintext",
+        "address_book_imports columns: id, book_id, vendor, raw_filename, raw_file_storage_path, password_was_required (boolean), entry_count, error_count, errors_json, imported_at, imported_by_user_id",
+        "address_book_exports columns: id, book_id, target_vendor, target_filename, conversion_report_json, exported_at, exported_by_user_id",
+        "All tenant-scoped tables have tenant_id NOT NULL with index on (tenant_id)",
+        "Schema re-exported from shared/schema.ts so it is visible to drizzle-kit",
+        "npm run db:generate produces a clean migration in drizzle/migrations/",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "Foundation story — every other ABK-### story depends on this. Source PRD: tasks/prd-address-book-manager.md (US-001).",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-002",
+      "title": "Credential vault — AES-256-GCM encryption service for SMB passwords",
+      "description": "As a developer, I need a server-side service to encrypt and decrypt credential blobs with the Printyx master key so source-vendor SMB passwords (decrypted on import) are persisted safely.",
+      "acceptanceCriteria": [
+        "New file supabase/functions/_shared/credential-vault.ts (or server/services/address-book/credential-vault.ts if the implementer reuses Node) exports encryptCredential(plaintext) and decryptCredential(record)",
+        "Algorithm: AES-256-GCM, random 12-byte IV per credential, 32-byte key from env ADDRESS_BOOK_MASTER_KEY (base64-decoded)",
+        "Throws clear error if ADDRESS_BOOK_MASTER_KEY is missing or the wrong length",
+        "Plaintext password is never logged, never returned alongside ciphertext, and is zeroed from buffers after encryption where the language allows",
+        "Unit tests cover: round-trip equality, tamper detection (auth tag verification fails when ciphertext is mutated), missing key throws",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "Source PRD: US-002. Depends on ABK-001 for the credentials table shape.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-003",
+      "title": "Canonical address book TypeScript types shared by all vendor adapters",
+      "description": "As a developer, I need shared types describing canonical entries so vendor parsers and serializers all conform to one shape.",
+      "acceptanceCriteria": [
+        "New file shared/address-book-types.ts exports CanonicalEntry, CanonicalAddressBook, ParseResult, SerializeResult, ConversionReport, FieldMappingIssue",
+        "CanonicalEntry is a discriminated union on entry_type ('email' | 'smb' | 'group')",
+        "Email variant requires display_name + email; SMB variant requires display_name + smb_full_unc; Group variant requires display_name + member_entry_ids",
+        "ConversionReport includes: total_entries, entries_exported, entries_dropped, unmappable_fields (array of { entry_id, vendor_field, reason }), warnings",
+        "Re-exported from shared/schema.ts index so frontend and edge functions can import",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "Source PRD: US-003. Pure types file — no runtime code.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-004",
+      "title": "Canon abook.csv parser with Crypto v2 password decryption",
+      "description": "As a help desk user, I want to upload a Canon abook.csv and have its entries decoded into canonical form, with my source password used to decrypt SMB credentials.",
+      "acceptanceCriteria": [
+        "New file supabase/functions/_shared/address-book/canon/parser.ts exports parseCanon(buffer, password?) → ParseResult",
+        "Reads header comments: # Canon AddressBook CSV version, # CharSet, # Crypto Version, # Crypto Attribute, # SubAddressBookName",
+        "Maps objectclass=email rows to canonical email entries (display_name from cn, email from mailaddress, speed_dial_index from indxid)",
+        "Maps objectclass=remotefilesystem rows with protocol=smb to canonical smb entries (smb_full_unc from url, smb_share_path from path, smb_username from username)",
+        "When '# Crypto Attribute: pwd' is set, decrypts the pwd column using user-supplied password via Canon Crypto v2 KDF (PBKDF2 → AES-256-CBC); algorithm verified against the supplied sample with password '1' and the blob qXiioxBKG3fl7dAwodxTOw==",
+        "Stores all 49 source columns in source_metadata for round-trip fidelity",
+        "Returns parse errors per row without aborting the whole file",
+        "Unit test loads tests/fixtures/address-book/canon-sample.csv (copy of repo-root abook.csv) with password '1' and asserts row count plus a known SMB credential decrypts to a non-empty string",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "Source PRD: US-004. Sample file exists at repo root: abook.csv. Risk: Canon Crypto v2 KDF specifics (iteration count, salt source) are not publicly documented; if reverse-engineering exceeds time budget, document the exact failure and fall back to ABK-004-FALLBACK (parser produces entries with credential_id=null and reports them in errors_json).",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-005",
+      "title": "Canon abook.csv serializer with optional password re-encryption",
+      "description": "As a help desk user, I want to export a canonical address book back to Canon abook.csv format so it can be re-imported on a Canon device.",
+      "acceptanceCriteria": [
+        "New file supabase/functions/_shared/address-book/canon/serializer.ts exports serializeCanon(book, entries, options) → SerializeResult",
+        "Output begins with the Canon header comments using the configured CSV version, charset, and SubAddressBookName",
+        "When options.password is provided, encrypts the pwd column via Canon Crypto v2 KDF and emits '# Crypto Attribute: pwd'",
+        "When options.password is omitted, omits the '# Crypto Attribute: pwd' line and leaves pwd columns empty",
+        "Restores fields from source_metadata when source vendor was Canon (round-trip fidelity)",
+        "Generates fresh uuid values for entries that originated from a different vendor",
+        "Unit test: parse the supplied sample → serialize → parse again → assert canonical equality on every entry",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": "Source PRD: US-005. Depends on ABK-004 for Crypto v2 implementation.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-006",
+      "title": "Konica Minolta address book CSV parser (PageScope export format)",
+      "description": "As a help desk user, I want to upload a Konica Minolta bizhub address book CSV and have its entries decoded into canonical form.",
+      "acceptanceCriteria": [
+        "New file supabase/functions/_shared/address-book/konica/parser.ts exports parseKonica(buffer, password?) → ParseResult",
+        "Detects character encoding: KM exports often use Shift-JIS; falls back to UTF-8 with BOM detection",
+        "Maps email destinations (KM Type=E-mail) to canonical email entries",
+        "Maps SMB destinations (KM Type=SMB) to canonical smb entries",
+        "Stores all source columns in source_metadata for round-trip fidelity",
+        "Unit test against tests/fixtures/address-book/konica-sample.csv (fixture to be created from a real KM PageScope export — placeholder fixture acceptable if no real sample available, with TODO note)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": "Source PRD: US-006. Use iconv-lite (or Deno-equivalent TextDecoder with shift-jis label) for Shift-JIS decoding. Confirm whether modern bizhub i-series exports default to UTF-8 or Shift-JIS — parser should detect both.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-007",
+      "title": "Konica Minolta address book CSV serializer",
+      "description": "As a help desk user, I want to export canonical entries to Konica Minolta CSV format so they can be re-imported on a bizhub device.",
+      "acceptanceCriteria": [
+        "New file supabase/functions/_shared/address-book/konica/serializer.ts exports serializeKonica(book, entries, options) → SerializeResult",
+        "Output uses the correct KM column order, encoding (UTF-8 with BOM), and Type values for email and SMB",
+        "Speed dial / index allocation respects KM index ranges; preserves original index in source_metadata when source was a different vendor",
+        "Fields not representable in KM (e.g., Canon-specific scan resolutions, Xerox-specific scan profiles) are reported in ConversionReport.unmappable_fields, not silently dropped from the report",
+        "Round-trip unit test: parseKonica → serializeKonica → parseKonica produces canonically equal entries",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": "Source PRD: US-007.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-008",
+      "title": "Xerox address book CSV parser (AltaLink/VersaLink EWS export)",
+      "description": "As a help desk user, I want to upload a Xerox address book CSV from the Embedded Web Server and have its entries decoded into canonical form.",
+      "acceptanceCriteria": [
+        "New file supabase/functions/_shared/address-book/xerox/parser.ts exports parseXerox(buffer, password?) → ParseResult",
+        "Maps Xerox email/scan/fax tab schemas (Xerox separates by destination type) into unified canonical entries; v1 only consumes email and scan/SMB tabs",
+        "Stores source columns in source_metadata for round-trip fidelity",
+        "Handles the case where Xerox EWS exports separate files for email vs scan — accepts either single file or multi-file input (concatenated) in v1",
+        "Unit test against tests/fixtures/address-book/xerox-sample.csv (fixture to be created)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": "Source PRD: US-008. Open question from PRD: confirm whether import wizard accepts multiple files in one operation or one per book.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-009",
+      "title": "Xerox address book CSV serializer",
+      "description": "As a help desk user, I want to export canonical entries to Xerox CSV format so they can be re-imported via AltaLink/VersaLink EWS.",
+      "acceptanceCriteria": [
+        "New file supabase/functions/_shared/address-book/xerox/serializer.ts exports serializeXerox(book, entries, options) → SerializeResult",
+        "Output is compatible with AltaLink/VersaLink EWS import (verified format documented in PRD reference)",
+        "Round-trip unit test: parseXerox → serializeXerox → parseXerox canonical equality",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": "Source PRD: US-009.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-010",
+      "title": "Ricoh address book CSV parser (Address Book Import Helper format)",
+      "description": "As a help desk user, I want to upload a Ricoh address book CSV (Address Book Import Helper format) and have its entries decoded into canonical form.",
+      "acceptanceCriteria": [
+        "New file supabase/functions/_shared/address-book/ricoh/parser.ts exports parseRicoh(buffer, password?) → ParseResult",
+        "Compatible with Ricoh Address Book Import Helper CSV schema",
+        "Maps email and SMB destinations to canonical entries",
+        "Stores source columns in source_metadata for round-trip fidelity",
+        "Unit test against tests/fixtures/address-book/ricoh-sample.csv (fixture to be created)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": "Source PRD: US-010.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-011",
+      "title": "Ricoh address book CSV serializer",
+      "description": "As a help desk user, I want to export canonical entries to Ricoh CSV format so they can be re-imported via Address Book Import Helper.",
+      "acceptanceCriteria": [
+        "New file supabase/functions/_shared/address-book/ricoh/serializer.ts exports serializeRicoh(book, entries, options) → SerializeResult",
+        "Output is ingestible by Ricoh Address Book Import Helper",
+        "Round-trip unit test: parseRicoh → serializeRicoh → parseRicoh canonical equality",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": "Source PRD: US-011.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-012",
+      "title": "Cross-vendor conversion engine + field mapping report",
+      "description": "As a developer, I need an orchestration layer that takes a canonical book + target vendor and produces both the export file and a conversion report listing dropped fields, so the UI can warn the user about lossy conversions.",
+      "acceptanceCriteria": [
+        "New file supabase/functions/_shared/address-book/conversion-engine.ts exports convertBook(book, entries, targetVendor, options) → { file, report }",
+        "Iterates entries, calls the target-vendor serializer, aggregates FieldMappingIssue entries from each",
+        "When the book is device-scoped, merges customer-master inherited entries with device overrides (overrides win) before serializing",
+        "Persists the report to address_book_exports.conversion_report_json on every run",
+        "Drops unmappable fields from the output file but ALWAYS reports them in conversion_report_json — never silent data loss",
+        "Unit test: convert a Canon-sourced book to Konica and assert that Canon-specific scan resolution fields appear in unmappable_fields",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": "Source PRD: US-012. Depends on at least 2 vendor parser+serializer pairs being complete (ABK-004/005 + one other).",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-013",
+      "title": "Edge function: address books + entries CRUD",
+      "description": "As a frontend developer, I need REST-style endpoints to list, view, edit, and delete address books and entries, all properly tenant-scoped.",
+      "acceptanceCriteria": [
+        "New edge function at supabase/functions/address-books/index.ts following the service-products pattern (single handler, normalizePath router, supabase.auth.getUser for auth, tenantId from app_metadata)",
+        "GET /address-books — list books filtered by tenant; query params customer_id, device_id",
+        "GET /address-books/:id — fetch a single book including its entries",
+        "POST /address-books — create an empty book",
+        "PATCH /address-books/:id — rename or change scope",
+        "DELETE /address-books/:id — soft delete (set deleted_at)",
+        "GET /address-books/:id/entries — paginated entries (page/pageSize query params)",
+        "POST /address-books/:id/entries — create an entry",
+        "PATCH /address-books/:bookId/entries/:id — edit an entry",
+        "DELETE /address-books/:bookId/entries/:id — delete an entry",
+        "All routes filter every query by tenantId; cross-tenant access attempts return 404 (verified by integration test)",
+        "Zod validation on all POST/PATCH bodies; validation failures return 400 with field-level errors",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": "Source PRD: US-013. Model after supabase/functions/service-products/index.ts and supabase/functions/business-records/index.ts. Register the function deployment in the supabase config the same way recent edge functions are registered.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-014",
+      "title": "Edge function: address book import + export endpoints",
+      "description": "As a frontend developer, I need endpoints to upload a vendor file (with optional password) and download a converted target-vendor file.",
+      "acceptanceCriteria": [
+        "POST /address-books/:id/import — multipart upload with body fields vendor and password (optional). Returns { entry_count, error_count, errors }",
+        "POST /address-books/import — same shape, but creates a new book if no id is supplied yet (used by the import wizard before a book exists)",
+        "POST /address-books/:id/export — body: { target_vendor, target_password (optional) }. Returns { download_url, conversion_report }",
+        "GET /address-books/exports/:exportId/download — streams the generated file with appropriate Content-Disposition",
+        "File uploads capped at 25 MB",
+        "Source files persisted to tenant-scoped storage (Supabase Storage with RLS); never written to public dirs",
+        "Source passwords are NEVER persisted to disk, DB, or logs — verified by code review and a grep-based test",
+        "Multipart parsing follows the same pattern as supabase/functions/service-products/index.ts importCsvDegraded path",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": "Source PRD: US-014. Multipart in edge functions is constrained — see EDGE-002l proxy fix referenced in service-products comments.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-015",
+      "title": "RBAC permissions + seed for address book access",
+      "description": "As a platform admin, I need granular permissions so only the right roles see address book functionality.",
+      "acceptanceCriteria": [
+        "New permissions: service.address_book.view_team, service.address_book.edit_team, service.address_book.import, service.address_book.export, service.address_book.delete",
+        "Default grants: Platform Admin + Company Admin + Service + Help Desk + Sales receive view + edit + import + export; only Platform Admin and Company Admin receive delete",
+        "Seed/migration script updates existing tenants in dev and is safe to run idempotently",
+        "Edge functions in ABK-013 and ABK-014 enforce these permissions at the request level",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 26,
+      "passes": false,
+      "notes": "Source PRD: US-015. Follow the existing seed pattern (likely npm run seed:rbac).",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-016",
+      "title": "Service Hub — Address Books index page",
+      "description": "As a help desk user, I want a top-level page listing every address book in my tenant so I can quickly find one to edit or convert.",
+      "acceptanceCriteria": [
+        "New route /service/address-books registered in client/src/App.tsx using lazy import",
+        "New page client/src/pages/service/AddressBooksIndex.tsx",
+        "New sidebar entry under Service Hub in client/src/components/RoleAwareCollapsibleSidebar.tsx, gated to roles with service.address_book.view_team",
+        "Table columns: Name, Customer, Device (or 'Customer-wide' badge), Source Vendor, Entry Count, Last Imported, Actions (Open / Export / Delete)",
+        "Filter controls: customer (search), vendor (multi-select), scope (Customer-wide vs Device)",
+        "'New Address Book' and 'Import from File' buttons in the page header",
+        "Uses TanStack Query with explicit loading skeleton and error states",
+        "Mobile: table collapses to cards at sm breakpoint; touch targets ≥ 48px",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 27,
+      "passes": false,
+      "notes": "Source PRD: US-016. Sidebar pattern: see existing entries with matchPatterns array for active-route highlighting.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-017",
+      "title": "Address book detail page — entry list with search and per-entry actions",
+      "description": "As a help desk user, I want to view a book's entries in a paginated, searchable table with per-entry actions.",
+      "acceptanceCriteria": [
+        "New route /service/address-books/:id",
+        "New page client/src/pages/service/AddressBookDetail.tsx",
+        "Header shows book name, customer, device scope (or 'Customer-wide'), source vendor, last import time, and 'Export' + 'Import (replace/merge)' buttons",
+        "Entry table columns: type icon (envelope/folder-network/users), display name, email or UNC path, speed dial index, override badge if device-scoped override, edit + delete buttons",
+        "Client-side search box filters entries by name/email/path",
+        "Type filter (All / Email / SMB / Group)",
+        "Empty state with 'Import from File' CTA",
+        "TanStack Query loading + error states explicit",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 28,
+      "passes": false,
+      "notes": "Source PRD: US-017.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-018",
+      "title": "Per-entry create/edit modal form with type-specific validation",
+      "description": "As a help desk user, I want a validated modal form to add or edit individual entries so I do not introduce malformed addresses.",
+      "acceptanceCriteria": [
+        "Modal form opened from 'Add Entry' button and per-row 'Edit' buttons",
+        "Type selector switches the form schema between email, SMB, and group",
+        "Email form fields: display name, sort name, email (RFC 5322 validation), speed dial index (numeric, optional)",
+        "SMB form fields: display name, host, share path, full UNC (auto-derived from host + share, editable), username, password (masked input, optional change), speed dial index",
+        "Group form fields: display name, member picker (multi-select from existing entries in the same book)",
+        "React Hook Form + Zod validation; inline per-field error messages",
+        "On save, optimistic update with rollback on error",
+        "Password change writes a new row to address_book_credentials and swaps the entry's credential_id; old credential row is soft-deleted",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 29,
+      "passes": false,
+      "notes": "Source PRD: US-018. Reuse shadcn/ui Dialog + Form components.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-019",
+      "title": "Import wizard with vendor select, password prompt, preview, and commit",
+      "description": "As a help desk user, I want a guided wizard to upload a vendor file, supply the password if needed, preview parsed entries, and commit them to a new or existing book.",
+      "acceptanceCriteria": [
+        "Multi-step wizard component with steps: (1) select source vendor, (2) upload file, (3) password prompt (only shown if parser detects encrypted credential fields), (4) preview table with parse errors highlighted, (5) choose target — new book (with name + customer + optional device scope) or existing book (replace/append), (6) commit",
+        "If parser detects '# Crypto Attribute: pwd' (Canon) or vendor-equivalent encryption flag and no password supplied yet, the wizard pauses for password input before continuing to preview",
+        "Password is sent over HTTPS, never persisted, never logged, cleared from form state after submission",
+        "Preview shows the first 50 entries with error rows visually flagged",
+        "Final step calls POST /address-books/:id/import (or /address-books/import for new book)",
+        "On success, navigates to the book detail page",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 30,
+      "passes": false,
+      "notes": "Source PRD: US-019.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-020",
+      "title": "Export modal with target-vendor selection and post-export conversion report",
+      "description": "As a help desk user, I want to export a book to any supported vendor format and see a clear report of what didn't translate cleanly.",
+      "acceptanceCriteria": [
+        "'Export' button on detail page opens a modal",
+        "Form fields: target vendor, target password (only enabled for vendors that support encrypted credentials), filename (auto-suggested e.g. abook-acme-corp-canon-2026-05-06.csv)",
+        "Submit calls POST /address-books/:id/export",
+        "After response, modal shows conversion report: total entries, exported count, dropped entries count, table of unmappable fields grouped by entry",
+        "'Download File' button downloads via the returned URL",
+        "Report can be re-viewed later from a per-book history view (links to address_book_exports rows)",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 31,
+      "passes": false,
+      "notes": "Source PRD: US-020.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-021",
+      "title": "Customer record — Address Books tab",
+      "description": "As a help desk user, I want to start from the customer record and see all that customer's address books so I can answer questions like 'what does Acme Corp's scan setup look like' without leaving the page.",
+      "acceptanceCriteria": [
+        "New 'Address Books' tab added to the customer record page (likely client/src/pages/customers/CustomerDetail.tsx or equivalent)",
+        "Shows the customer-master book at the top (or a 'Create Customer-Master Book' CTA if none exists) and a list of device-scoped books below — one per device with overrides",
+        "Each row links to the corresponding /service/address-books/:id detail page",
+        "Inherits page-level customer context — no extra customer selection required",
+        "Tab is hidden from users without service.address_book.view_team permission",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 32,
+      "passes": false,
+      "notes": "Source PRD: US-021.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-022",
+      "title": "Per-device override UX — inherited entries + override entries",
+      "description": "As a help desk user, I want to mark an entry as a device-specific override of the customer-master book so I can model devices that have unique destinations without forking the whole book.",
+      "acceptanceCriteria": [
+        "Device-scoped book detail page splits entries into 'Inherited from customer-master' (read-only) and 'Device overrides' sections",
+        "'Override this entry' action on inherited rows creates a new entry with is_override=true and overrides_entry_id pointing at the inherited entry; subsequent edits affect only the override",
+        "'Revert override' action on override rows deletes the override entry, restoring inherited behavior",
+        "Override entries are clearly badged in the entry table",
+        "Conversion engine (ABK-012) merges inherited entries with overrides (overrides win) before serializing for export",
+        "Unit test for the merge logic covering: pure inherited, pure override, override of inherited (override wins), inherited only present after revert",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 33,
+      "passes": false,
+      "notes": "Source PRD: US-022. Depends on ABK-012 for merge logic and ABK-017 for the detail page.",
+      "category": "address-book"
+    },
+    {
+      "id": "ABK-023",
+      "title": "E2E happy path — Canon import → Konica export round trip",
+      "description": "As a developer, I want a Playwright test covering the full Canon → Konica round trip so regressions are caught before deploy.",
+      "acceptanceCriteria": [
+        "New file tests/e2e/address-books.spec.ts",
+        "Test flow: log in as a help desk user → navigate to /service/address-books → click 'Import from File' → select Canon → upload tests/fixtures/address-book/canon-sample.csv → enter password '1' → preview shows expected entry count → commit to a new book → verify entries appear on the detail page → click Export → select Konica → download file → assert downloaded file parses (via parseKonica) into entries that canonically match the imported set (modulo expected unmappable fields)",
+        "Test runs against the local dev environment via npm run test:e2e",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 34,
+      "passes": false,
+      "notes": "Source PRD: US-023. Depends on ABK-001 through ABK-020.",
+      "category": "address-book"
     }
   ]
 }
