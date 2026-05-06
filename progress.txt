@@ -3464,3 +3464,89 @@ Branch: claude/security-prd-items-eMxFw
 
 ---
 
+## Backlog Update - 2026-05-06 - Address Book Manager (ABK-001..023)
+**Type**: PRD addition (not a story-completion iteration — Ralph should pick this up next)
+**Commit**: de8f6f97 — "feat: add multi-vendor address book manager PRD (ABK-001..023)"
+**Source PRD**: tasks/prd-address-book-manager.md
+
+### What Was Added:
+23 user stories under new `address-book` category in prd.json (priority 12-34, all `passes: false`) for a Multi-Vendor Address Book Manager. v1 imports/edits/exports MFP address books across Canon, Konica Minolta, Xerox, and Ricoh in vendor-neutral canonical form.
+
+### Scope Decisions (Locked):
+- Entry types in v1: **email** + **smb** (scan-to-folder) + **group** only
+- Scoping: **customer-master books with per-device overrides** (model 2C)
+- Editing UX: **per-entry modal form** with Zod validation (no bulk inline edit in v1)
+- Conversion behavior: **drop unmappable fields silently from output, ALWAYS report them in conversion_report_json**
+- RBAC: Platform Admin + Company Admin + Service + Help Desk + Sales (delete = admin only)
+- Architecture: **Edge Functions** at `supabase/functions/address-books/index.ts`, shared parsers under `supabase/functions/_shared/address-book/<vendor>/` — matches recent service-products pattern, NOT Express
+- v1 explicitly excludes live device push, FTP/WebDAV/fax/i-fax, and vendors beyond the big 4
+
+### Recommended Implementation Order:
+1. **ABK-001** (canonical schema) — foundation, blocks every other story
+2. **ABK-002** (credential vault) — needed before any parser can decrypt source passwords
+3. **ABK-003** (shared types) — types used by all parsers/serializers
+4. **ABK-004 + ABK-005** (Canon parser + serializer) — first vendor end-to-end (sample file available)
+5. **ABK-013** (CRUD edge function) — minimal API to test parser through frontend
+6. **ABK-016 + ABK-017 + ABK-018** (index page + detail page + entry form) — first usable UI
+7. **ABK-019 + ABK-020** (import wizard + export modal) — closes the Canon-only round trip
+8. **ABK-006/007** then **ABK-008/009** then **ABK-010/011** (KM, Xerox, Ricoh)
+9. **ABK-012** (conversion engine) — needs ≥2 vendors to be meaningful
+10. **ABK-014** (import/export endpoints) — depends on conversion engine
+11. **ABK-015** (RBAC seed)
+12. **ABK-021 + ABK-022** (customer record tab + override UX)
+13. **ABK-023** (E2E test) — last, depends on full stack
+
+### Required Environment Setup (Before ABK-002):
+- New env var: `ADDRESS_BOOK_MASTER_KEY` — 32-byte base64-encoded AES-256 key
+- Generate once per environment: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
+- Add to .env.example, document in CLAUDE.md, deploy to all environments
+- Rotation is out of v1 scope
+
+### Test Fixtures Required:
+- `tests/fixtures/address-book/canon-sample.csv` — sanitized copy of repo-root abook.csv with PII replaced (file currently at repo root contains real customer data and must NOT be committed as-is)
+- `tests/fixtures/address-book/konica-sample.csv` — to be created from a real KM PageScope export
+- `tests/fixtures/address-book/xerox-sample.csv` — to be created from AltaLink/VersaLink EWS export
+- `tests/fixtures/address-book/ricoh-sample.csv` — to be created from Ricoh Address Book Import Helper export
+
+### Known Risk — Canon Crypto v2 KDF (ABK-004):
+Canon's PBKDF2 iteration count and salt source are not publicly documented. Reverse-engineer using the supplied known-plaintext: password "1" decrypts blob `qXiioxBKG3fl7dAwodxTOw==` (base64) from a `remotefilesystem` row in the sample abook.csv. If reverse-engineering exceeds reasonable time budget:
+- **Fallback for v1**: parser succeeds with credential_id=null on encrypted rows, errors_json reports "credential decryption not supported in v1, re-enter on export side"
+- This degrades UX but does not block v1 ship
+
+### Untracked Sample Files (DO NOT COMMIT):
+- `abook.csv` (repo root) — real Canon export with customer PII — keep local for dev only
+- `iR-ADV C5735_3BN02202_V4125_0003_2026_0506_172518.dcm` (repo root) — encrypted full-device backup, out of v1 scope
+- Recommended: move both to a non-repo location or add to .gitignore before resuming work
+
+### Story Status:
+| Story | Status |
+|-------|--------|
+| ABK-001 — Canonical schema | passes: false — READY |
+| ABK-002 — Credential vault | passes: false — READY (after ABK-001) |
+| ABK-003 — Shared types | passes: false — READY |
+| ABK-004 — Canon parser | passes: false — READY (after ABK-002, ABK-003) |
+| ABK-005 — Canon serializer | passes: false — READY (after ABK-004) |
+| ABK-006 — Konica parser | passes: false — READY (after ABK-003) |
+| ABK-007 — Konica serializer | passes: false — READY (after ABK-006) |
+| ABK-008 — Xerox parser | passes: false — READY (after ABK-003) |
+| ABK-009 — Xerox serializer | passes: false — READY (after ABK-008) |
+| ABK-010 — Ricoh parser | passes: false — READY (after ABK-003) |
+| ABK-011 — Ricoh serializer | passes: false — READY (after ABK-010) |
+| ABK-012 — Conversion engine | passes: false — READY (after ≥2 vendors) |
+| ABK-013 — CRUD edge function | passes: false — READY (after ABK-001, ABK-003) |
+| ABK-014 — Import/export endpoints | passes: false — READY (after ABK-012, ABK-013) |
+| ABK-015 — RBAC seed | passes: false — READY |
+| ABK-016 — Service Hub index page | passes: false — READY (after ABK-013) |
+| ABK-017 — Detail page | passes: false — READY (after ABK-013) |
+| ABK-018 — Entry edit form | passes: false — READY (after ABK-013) |
+| ABK-019 — Import wizard | passes: false — READY (after ABK-014, ABK-017) |
+| ABK-020 — Export modal | passes: false — READY (after ABK-014, ABK-017) |
+| ABK-021 — Customer record tab | passes: false — READY (after ABK-016) |
+| ABK-022 — Override UX | passes: false — READY (after ABK-012, ABK-017) |
+| ABK-023 — E2E test | passes: false — READY (after ABK-019, ABK-020) |
+
+### Next Ralph Iteration:
+Start with **ABK-001** (canonical schema). It is the unblocking foundation — every parser, serializer, edge function, and UI story depends on the tables existing.
+
+---
+
