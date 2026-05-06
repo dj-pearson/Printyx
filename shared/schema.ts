@@ -8705,6 +8705,47 @@ export {
   type InvoiceGenerationLog,
 } from './advanced-billing-schema';
 
+// Re-export Address Book canonical types (ABK-003)
+export type {
+  AddressBookVendor,
+  EntryType,
+  CanonicalEntry,
+  CanonicalEmailEntry,
+  CanonicalSmbEntry,
+  CanonicalGroupEntry,
+  CanonicalAddressBook,
+  ConversionReport,
+  FieldMappingIssue,
+  ParseResult,
+  ParseRowError,
+  SerializeResult,
+} from './address-book-types';
+export { isEmailEntry, isSmbEntry, isGroupEntry } from './address-book-types';
+
+// Re-export Address Book schemas (Multi-Vendor Address Book Manager — ABK-001)
+export {
+  addressBooks,
+  addressBookEntries,
+  addressBookCredentials,
+  addressBookImports,
+  addressBookExports,
+  insertAddressBookSchema,
+  insertAddressBookEntrySchema,
+  insertAddressBookCredentialSchema,
+  insertAddressBookImportSchema,
+  insertAddressBookExportSchema,
+  type AddressBook,
+  type NewAddressBook,
+  type AddressBookEntry,
+  type NewAddressBookEntry,
+  type AddressBookCredential,
+  type NewAddressBookCredential,
+  type AddressBookImport,
+  type NewAddressBookImport,
+  type AddressBookExport,
+  type NewAddressBookExport,
+} from './address-book-schema';
+
 // ============================================================================
 // MOBILE APP LOGS (cross-tenant diagnostic data)
 // ============================================================================

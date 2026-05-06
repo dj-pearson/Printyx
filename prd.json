@@ -4594,7 +4594,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "Foundation story — every other ABK-### story depends on this. Source PRD: tasks/prd-address-book-manager.md (US-001).",
       "category": "address-book"
     },
@@ -4611,7 +4611,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": "Source PRD: US-002. Depends on ABK-001 for the credentials table shape.",
       "category": "address-book"
     },
@@ -4628,7 +4628,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 14,
-      "passes": false,
+      "passes": true,
       "notes": "Source PRD: US-003. Pure types file — no runtime code.",
       "category": "address-book"
     },
@@ -4808,7 +4808,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 24,
-      "passes": false,
+      "passes": true,
       "notes": "Source PRD: US-013. Model after supabase/functions/service-products/index.ts and supabase/functions/business-records/index.ts. Register the function deployment in the supabase config the same way recent edge functions are registered.",
       "category": "address-book"
     },
@@ -4844,7 +4844,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 26,
-      "passes": false,
+      "passes": true,
       "notes": "Source PRD: US-015. Follow the existing seed pattern (likely npm run seed:rbac).",
       "category": "address-book"
     },

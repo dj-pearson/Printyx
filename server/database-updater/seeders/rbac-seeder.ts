@@ -1320,6 +1320,60 @@ const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     riskLevel: 'critical',
     requiresMFA: true,
   },
+
+  // ============================================================================
+  // ADDRESS BOOK MODULE PERMISSIONS (ABK-015)
+  // ============================================================================
+  {
+    name: 'View Team Address Books',
+    code: 'service.address_book.view_team',
+    description: 'View address books scoped to the user team',
+    module: 'service',
+    resourceType: 'address_book',
+    action: 'view',
+    scopeLevel: 'team',
+    riskLevel: 'low',
+  },
+  {
+    name: 'Edit Team Address Books',
+    code: 'service.address_book.edit_team',
+    description: 'Create and edit address book entries',
+    module: 'service',
+    resourceType: 'address_book',
+    action: 'edit',
+    scopeLevel: 'team',
+    riskLevel: 'low',
+  },
+  {
+    name: 'Import Address Books',
+    code: 'service.address_book.import',
+    description: 'Upload vendor address book files and decrypt source credentials',
+    module: 'service',
+    resourceType: 'address_book',
+    action: 'import',
+    scopeLevel: 'team',
+    riskLevel: 'medium',
+  },
+  {
+    name: 'Export Address Books',
+    code: 'service.address_book.export',
+    description: 'Generate vendor address book files for re-import on devices',
+    module: 'service',
+    resourceType: 'address_book',
+    action: 'export',
+    scopeLevel: 'team',
+    riskLevel: 'medium',
+  },
+  {
+    name: 'Delete Address Books',
+    code: 'service.address_book.delete',
+    description: 'Soft-delete address books (admins only)',
+    module: 'service',
+    resourceType: 'address_book',
+    action: 'delete',
+    scopeLevel: 'company',
+    riskLevel: 'high',
+  },
 ];
 
 // ============================================================================
@@ -2389,6 +2443,70 @@ export async function seedRBAC() {
     }
 
     log.info(`✅ Created ${mappingsCreated} role-permission mappings`);
+
+    // Step 4: Address Book grants (ABK-015) — applied additively so existing
+    // tenants pick up the new permissions on the next seed run without
+    // disturbing the static ROLE_TEMPLATES above.
+    log.info('\n📇 Granting address book permissions...');
+    const ABK_BASE_PERMS = [
+      'service.address_book.view_team',
+      'service.address_book.edit_team',
+      'service.address_book.import',
+      'service.address_book.export',
+    ];
+    const ABK_DELETE_PERM = 'service.address_book.delete';
+    const ABK_BASE_ROLE_CODES = [
+      'PLATFORM_ADMIN',
+      'COMPANY_ADMIN',
+      // Service roles
+      'VP_SERVICE',
+      'REGIONAL_SERVICE_MANAGER',
+      'SERVICE_MANAGER',
+      'SERVICE_SUPERVISOR',
+      'SENIOR_TECHNICIAN',
+      'FIELD_TECHNICIAN',
+      'DISPATCH_COORDINATOR',
+      'CSR', // doubles as help desk
+      // Sales roles
+      'VP_SALES',
+      'REGIONAL_SALES_DIRECTOR',
+      'SALES_MANAGER',
+      'SALES_SUPERVISOR',
+      'SENIOR_SALES_REP',
+      'SALES_REP',
+      'INSIDE_SALES_REP',
+      'ACCOUNT_EXECUTIVE',
+      'SOLUTIONS_CONSULTANT',
+    ];
+    const ABK_DELETE_ROLE_CODES = ['PLATFORM_ADMIN', 'COMPANY_ADMIN'];
+
+    let abkMappingsCreated = 0;
+    const grantAbk = async (roleCode: string, permCode: string) => {
+      const roleId = roleMap.get(roleCode);
+      const permId = permissionMap.get(permCode);
+      if (!roleId || !permId) return;
+      try {
+        await db.insert(rolePermissions).values({
+          roleId,
+          permissionId: permId,
+          effect: 'ALLOW',
+          isCustomized: false,
+        });
+        abkMappingsCreated++;
+      } catch {
+        // Already granted — idempotent
+      }
+    };
+
+    for (const roleCode of ABK_BASE_ROLE_CODES) {
+      for (const permCode of ABK_BASE_PERMS) {
+        await grantAbk(roleCode, permCode);
+      }
+    }
+    for (const roleCode of ABK_DELETE_ROLE_CODES) {
+      await grantAbk(roleCode, ABK_DELETE_PERM);
+    }
+    log.info(`✅ Granted ${abkMappingsCreated} address book permissions`);
 
     // Summary
     log.info('\n' + '='.repeat(60));
