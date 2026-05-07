@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { BlogShell } from '@/components/blog/BlogShell';
+import { BlogOnboardingChecklist } from '@/components/blog/BlogOnboardingChecklist';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 /**
@@ -37,6 +38,8 @@ export default function BlogIndex() {
             Posts, etc.
           </p>
         </header>
+
+        <BlogOnboardingChecklist />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <SectionCard

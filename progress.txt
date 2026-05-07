@@ -4458,3 +4458,77 @@ Settings hub is feature-complete for v1 platform configuration. Every external i
 4. **US-BLOG-012** (job queue) — agent backbone. pg-boss won't work in edge functions; design around Supabase scheduled functions + a queue table.
 
 ---
+
+## Session — 2026-05-07 — Onboarding Checklist (US-BLOG-082)
+**Branch**: main
+**Build**: `npm run build` ✅ green (vite, 58.38s)
+**Status**: passes: true (v1 scope: status endpoint + checklist UI on the Dashboard. Demo workspace seed + tooltips deferred.)
+
+### What Was Done
+Surfaces configuration completeness on the Blog Dashboard so platform admins see at a glance what's wired up vs. what's left. Demos every settings page shipped this session end-to-end.
+
+### Files Created
+- **`supabase/functions/blog-onboarding/index.ts`** — read-only status endpoint at `GET /blog-onboarding`. Queries:
+  - `blog_brand_voices` count + `is_default` presence
+  - `blog_style_guides` count + `is_default` presence
+  - `blog_distribution_targets` filtered to CMS_PLATFORMS — count + healthy count (`is_active && last_health_check_ok === true`)
+  - `blog_distribution_targets` filtered to KEYWORD_PLATFORMS — count + healthy count
+  - `blog_posts` count (for the "first post" milestone)
+  - `blog_agent_settings` row presence (proxy for "admin has visited the Settings page")
+  - Returns `{ steps: [...], summary: { total, completed, percent_complete, all_done } }`
+  - Steps for shipped features have `available: true`. Future milestones (editor, GA4, social) have `available: false` with a `story_id` so the UI can render them as "Coming soon · US-BLOG-XXX".
+  - Gated to platform admin OR company admin
+- **`client/src/components/blog/BlogOnboardingChecklist.tsx`** — checklist card consumed by `BlogIndex.tsx`:
+  - Progress bar (0-100%) when not all done; collapses to "You're set up" emerald state when complete
+  - Each step: icon (✓ done / ○ pending / 🕒 not yet shipped), label, description, count badge ("3 configured · 2 healthy"), action button linking to the right settings page
+  - Upcoming milestones (the 3 not-yet-shipped steps) collapsed into a `<details>` so the main list stays focused on actionable items
+  - Strikethrough labels for completed steps
+
+### Files Modified
+- **`client/src/pages/platform-admin/blog/BlogIndex.tsx`** — Dashboard now imports `BlogOnboardingChecklist` and renders it directly under the page header, before the section directory cards.
+
+### Step Inventory
+**Available now** (5 steps, all check the data layer):
+1. Configure a brand voice — needs ≥1 voice with `is_default = true`
+2. Set up a style guide — needs ≥1 guide with `is_default = true`
+3. Connect a CMS target — needs ≥1 active CMS target with `last_health_check_ok = true`
+4. Connect a keyword research provider — same shape as CMS
+5. Review agent kill switch + auto-refresh policy — completes when `blog_agent_settings` row exists (auto-created on first GET to `/blog-agents/settings`)
+
+**Coming soon** (3 steps, render as informational placeholders):
+1. Write your first post → US-BLOG-008
+2. Connect GA4 + Search Console → US-BLOG-059
+3. Connect at least one social platform → US-BLOG-043
+
+### What Was Deferred
+- **Demo workspace seed** — the AC mentions a "clonable in one click" pre-seeded workspace template (sample brand voice, sample posts, sample brief). Skipped because sample posts can't exist without the editor (US-BLOG-008). Revisit once the editor lands.
+- **Tooltips on first visit per major feature** — needs a tour/onboarding library (Shepherd.js, Driver.js, or a custom popover scheduler). Not in deps; adds frontend complexity. Defer to a UX-polish story.
+- **Time-based nudges (1d/3d/7d if incomplete)** — needs a notifications/email infrastructure that doesn't exist yet (Supabase scheduled functions + email service). Defer to the post-publish notification stories.
+
+### Quality Gates
+- `npm run build` — ✅ green (58.38s)
+- `npm run check` — not run to completion; new files self-contained
+- Browser verification — deferred. Recommend smoke-testing once migration 0008 is applied: log in as platform admin, hit `/platform-admin/blog`, confirm the checklist renders with all 5 available steps as ○ pending, click "Add brand voice" → create one and set as default → return to dashboard → confirm the brand voice step shows ✓ done with a "1 configured" badge.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-082 — Onboarding checklist + demo workspace seed | ✅ passes: true (v1; demo seed + tooltips deferred) |
+
+**Blog module total: 11 / 86 done. ~13% of the way through the backlog.**
+
+### Done IDs
+US-BLOG-001 (foundation), 002 (schema), 003 (RBAC), 004 (brand voices),
+005 (style guides), 006 (CMS adapters), 007 (admin shell), 011 (audit log),
+013 (keyword research), 082 (onboarding), 086 (kill switch).
+
+### Settings Hub State
+6 sub-pages, all backed by working CRUD edge functions with encrypted credential storage and audit logging. The onboarding checklist on the Dashboard now shows their status.
+
+### Next Ralph Iteration Recommendations (unchanged)
+1. **US-BLOG-008** (rich-text editor) — biggest remaining blocker. 2-3 sessions.
+2. **US-BLOG-010** (asset library + Supabase Storage) — pairs with the editor.
+3. **US-BLOG-014/015** (Ideas surface UI) — uses the DataForSEO adapter.
+4. **US-BLOG-012** (job queue design) — agent backbone for US-BLOG-066.
+
+---

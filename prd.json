@@ -6341,7 +6341,7 @@
         "Time-to-first-publish tracked as activation metric"
       ],
       "priority": 116,
-      "passes": false,
+      "passes": true,
       "notes": "Time-to-first-publish is the single best activation metric — optimize for it ruthlessly.",
       "category": "blog"
     },
