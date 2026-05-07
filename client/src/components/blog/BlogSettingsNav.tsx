@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter';
-import { History, Mic2, ScrollText, ShieldAlert } from 'lucide-react';
+import { Globe, History, Mic2, ScrollText, ShieldAlert } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +38,12 @@ const SETTINGS_NAV: SettingsNavItem[] = [
     path: '/platform-admin/blog/settings/style-guides',
     icon: ScrollText,
     description: 'Prose rules + built-in rule packs (AP, Chicago, MLA, …)',
+  },
+  {
+    label: 'CMS Targets',
+    path: '/platform-admin/blog/settings/cms-targets',
+    icon: Globe,
+    description: 'WordPress + Ghost endpoints for the publish flow',
   },
   {
     label: 'Audit Log',

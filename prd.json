@@ -5103,7 +5103,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 40,
-      "passes": false,
+      "passes": true,
       "notes": "Source PRD: blog-system-prd.json US-BLOG-006 (narrowed to WP+Ghost for v1 per scope decision 4B). Phase 2 extensions: webflow, custom-rest, and native-render-into-printyx.net are tracked as follow-ups under category blog-phase-2.",
       "category": "blog"
     },

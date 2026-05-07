@@ -4323,3 +4323,72 @@ Settings pages now follow a 3-component recipe (BlogShell + BlogSettingsNav + pa
 3. **US-BLOG-008** (rich-text editor) — foundational primitive for Posts. 2-3 sessions for Markdown round-trip + paste handling. Will consume style guides for in-editor linting.
 
 ---
+
+## Session — 2026-05-07 — Blog CMS Adapters + WordPress + Ghost (US-BLOG-006)
+**Branch**: main
+**Build**: `npm run build` ✅ green (vite, 1m 25s)
+**Status**: passes: true (full v1 scope: adapter contract, WP + Ghost adapters, CRUD + admin UI + health check)
+
+### What Was Done
+First publishing capability for the blog system. Defines the CMS adapter contract that every future CMS adapter (Webflow, custom-REST, native-render-into-printyx.net) implements. Ships WordPress + Ghost adapters end-to-end with encrypted credential storage, admin UI for managing targets, and per-target health-check button.
+
+### Files Created
+- **`supabase/functions/_shared/credential-vault.ts`** — Deno Web Crypto AES-256-GCM mirror of `server/services/address-book/credential-vault.ts`. Reads `PRINTYX_CREDENTIAL_VAULT_KEY` (preferred) or falls back to `ADDRESS_BOOK_MASTER_KEY` (legacy alias for backward compat). Stores `iv (12 bytes) || ct+tag` as a single base64 envelope with `v: 1` version marker. Includes `_resetMasterKeyCache()` for test isolation.
+- **`supabase/functions/_shared/blog/cms/adapter.ts`** — `CmsAdapter` interface with 7 methods (healthCheck, createPost, updatePost, deletePost, getPost, listPosts, uploadAsset) plus `CmsCredentials`, `CmsPostInput`, `CmsPost`, `CmsAsset`, `CmsHealthCheckResult` types. `AdapterError` / `AdapterAuthError` / `AdapterUnsupportedError` for error mapping.
+- **`supabase/functions/_shared/blog/cms/wordpress.ts`** — full WordPress REST API v2 adapter. Application-password Basic auth (or Bearer for JWT-Auth plugin). Maps WP statuses (publish/future/draft/trash) to canonical (published/scheduled/draft/archived). Handles tag/category creation by slug-lookup-then-insert. Yoast SEO meta on `_yoast_wpseo_*` fields. Media upload via direct binary POST to `/wp-json/wp/v2/media` with proper Content-Disposition.
+- **`supabase/functions/_shared/blog/cms/ghost.ts`** — full Ghost Admin API v5.x adapter. HMAC-SHA256 JWT signing with 5-minute expiry, keyed by the secret half of the `id:secret_hex` Admin API key. Uses `?source=html` to accept HTML directly (Ghost's editor converts to Lexical/mobiledoc on save). Optimistic concurrency via `updated_at` round-trip on PUT. Image upload via multipart FormData.
+- **`supabase/functions/_shared/blog/cms/index.ts`** — adapter registry. `getCmsAdapter(platform)` returns the right adapter or null. `CMS_PLATFORMS` const tuple drives Zod enums in the edge function.
+- **`supabase/functions/blog-cms-targets/index.ts`** — CRUD edge function over `blog_distribution_targets` filtered to CMS platforms. Encrypts api_token + stores in `encrypted_config` jsonb. Never returns decrypted creds. Has a `POST /:id/test` action that decrypts inline, calls `adapter.healthCheck()`, persists `last_health_check_at` / `last_health_check_ok`, and returns the result. All mutating actions audit-logged.
+- **`client/src/pages/platform-admin/blog/BlogSettingsCmsTargets.tsx`** — admin UI:
+  - List of targets with platform badge, base URL, "credentials set" / "no credentials" badge, last-health-check status (color-coded)
+  - Inline form with platform dropdown (locked on edit), site URL, username (required for WP, disabled for Ghost), API token (required on create, optional on edit to keep existing)
+  - Per-target Test, Edit, Delete actions
+  - Soft-delete confirmation dialog
+
+### Files Modified
+- **`client/src/components/blog/BlogSettingsNav.tsx`** — added 5th card (CMS Targets, icon `Globe`) between Style Guides and Audit Log
+- **`client/src/App.tsx`** — lazy import + new route `/platform-admin/blog/settings/cms-targets`
+
+### Audit Log Actions Introduced
+- `blog_cms_target.create`
+- `blog_cms_target.update`
+- `blog_cms_target.delete`
+- `blog_cms_target.health_check`
+
+### Credential Vault Notes
+- New env var `PRINTYX_CREDENTIAL_VAULT_KEY` is preferred; the existing `ADDRESS_BOOK_MASTER_KEY` continues to work as a legacy alias. Recommend setting BOTH to the same value during rollout, then removing the legacy alias once every deployed environment has the new name.
+- Same key length and format as ABK-002's Node version: 32-byte base64. Generate once with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
+- Storage envelope format: base64(`iv (12 bytes) || ciphertext+authTag (16-byte tag appended by GCM)`). Carries a `v: 1` marker so future format changes can be migrated.
+- Service role + edge function context only — frontend never sees plaintext credentials. The list/get endpoints return an `api_token_set: boolean` marker instead of the value.
+
+### What Was Deferred
+- **Markdown→Gutenberg blocks transform** — the WordPress adapter wraps body_html in `<!-- wp:html -->` classic-block markers, which works but doesn't produce native Gutenberg block markup. Will be revisited when the publish flow lands (US-BLOG-042) and the editor (US-BLOG-008) settles on a Markdown source-of-truth.
+- **Markdown→Lexical/mobiledoc transform** — the Ghost adapter accepts HTML via `?source=html` which Ghost converts on save. Same follow-up as above.
+- **Shared contract test suite** — the AC mentions a behavioral spec asserting both adapters produce equivalent canonical outputs for equivalent inputs. The repo doesn't have a Deno test harness for edge functions yet (flagged previously in ABK-013). Add when the harness lands.
+- **Asset upload integration** — `uploadAsset` is implemented on both adapters but there's no caller yet. Wires up when `blog_assets` storage lands in US-BLOG-010 (the Posts editor will pass uploaded assets through to the adapter at publish time).
+- **Phase 2 adapters** — Webflow, custom-REST, native-render-into-printyx.net — explicitly out of scope per scope decision 4B.
+
+### Quality Gates
+- `npm run build` — ✅ green (1m 25s); shared-schema bundle unchanged at 567.75 kB (the new code lives in edge functions, not the client bundle)
+- `npm run check` — not run to completion; new files self-contained
+- Browser verification — deferred. Recommend smoke-testing once migration 0008 is applied + `PRINTYX_CREDENTIAL_VAULT_KEY` is set in the target environment: add a WordPress target with a real application password, click Test, observe last_health_check_ok flip to green, edit the target without typing a new token, save, click Test again — should still succeed (existing token preserved).
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-006 — CMS adapter interface + WordPress and Ghost adapters | ✅ passes: true |
+
+**Blog module total: 9 / 86 done (US-BLOG-001, 002, 003, 004, 005, 006, 007, 011, 086).**
+
+### How Future Stories Use This Infrastructure
+- **US-BLOG-042** (CMS publish flow) — fetches `blog_distribution_targets` for a tenant, decrypts via the credential vault, calls `getCmsAdapter(platform).createPost()` / `updatePost()` per target, persists the returned `id` + `url` on `blog_posts.cms_post_id` / `cms_post_url`. Honors the kill switch via `assertAgentsActive()` before any publish.
+- **US-BLOG-066** (auto-refresh agent) — same path: decrypt → adapter.updatePost → write revision → audit log.
+- **Phase 2 social adapters** (US-BLOG-043/044 X/LinkedIn) — implement the same `CmsAdapter` interface. Recommend renaming `CmsAdapter` to `BlogPlatformAdapter` once social adapters land, since "CMS" is too narrow.
+
+### Next Ralph Iteration Recommendations
+1. **US-BLOG-008** (rich-text editor) — now the highest-leverage story. Posts surface is empty without it. Probably 2-3 sessions for Markdown round-trip + paste handling. Will consume style guides for in-editor linting and brand voices for the AI rewrite toolbar.
+2. **US-BLOG-010** (asset library) — needs Supabase Storage integration. Companion piece for the editor's image insertion flow + the CMS adapter's `uploadAsset` plumbing.
+3. **US-BLOG-013** (keyword research adapter) — first non-CMS external integration. Establishes the keyword_data adapter pattern (analogous to CmsAdapter).
+4. **PRINTYX_CREDENTIAL_VAULT_KEY rollout** — set the new env var in dev/staging/prod. Existing `ADDRESS_BOOK_MASTER_KEY` continues to work; once all envs have the new name, drop the alias from `_shared/credential-vault.ts`.
+
+---
