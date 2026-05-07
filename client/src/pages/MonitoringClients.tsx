@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,13 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -30,6 +24,7 @@ import {
   Activity,
   AlertCircle,
   Check,
+  ChevronsUpDown,
   Clock,
   Copy,
   Download,
@@ -40,6 +35,8 @@ import {
   Zap,
   Search,
   Send,
+  Building2,
+  X,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -121,7 +118,12 @@ export default function MonitoringClients() {
   const [newClientName, setNewClientName] = useState('');
   const [newClientLocation, setNewClientLocation] = useState('');
   const [newClientCustomerId, setNewClientCustomerId] = useState<string>('');
+  const [newClientCustomerName, setNewClientCustomerName] = useState<string>('');
   const [newClientAutoOrder, setNewClientAutoOrder] = useState<boolean>(false);
+  const [customerOpen, setCustomerOpen] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerSearchDebounced, setCustomerSearchDebounced] = useState('');
+  const customerSearchInputRef = useRef<HTMLInputElement>(null);
   const [registeredClient, setRegisteredClient] = useState<NewClientResponse['client'] | null>(
     null,
   );
@@ -139,20 +141,68 @@ export default function MonitoringClients() {
   });
 
   // Customers picker (links a monitoring client to its customer / business
-  // record so the bundled installer carries that context).
-  const { data: customers = [] } = useQuery<CustomerOption[]>({
-    queryKey: ['/api/customers'],
+  // record so the bundled installer carries that context). Server-side
+  // searchable combobox — debounced 300ms; queries enabled only while the
+  // popover is open. Mirrors client/src/components/quote-builder/CompanyContactSelector.tsx.
+  useEffect(() => {
+    if (!customerOpen) {
+      setCustomerSearch('');
+      setCustomerSearchDebounced('');
+      return;
+    }
+    const t = setTimeout(() => customerSearchInputRef.current?.focus(), 50);
+    return () => clearTimeout(t);
+  }, [customerOpen]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setCustomerSearchDebounced(customerSearch.trim()), 300);
+    return () => clearTimeout(t);
+  }, [customerSearch]);
+
+  const { data: customerSearchResults = [], isFetching: customersFetching } = useQuery<
+    CustomerOption[]
+  >({
+    queryKey: ['/api/customers', 'monitoring-clients-picker', customerSearchDebounced],
+    enabled: customerOpen,
     queryFn: async () => {
-      const response = await fetch('/api/customers', { credentials: 'include' });
-      if (!response.ok) return [];
-      const raw = await response.json();
+      const params = new URLSearchParams({ limit: '50' });
+      if (customerSearchDebounced) params.set('search', customerSearchDebounced);
+      const raw = await apiRequest(`/api/customers?${params.toString()}`, 'GET');
       const list = Array.isArray(raw) ? raw : raw?.records || raw?.data || [];
       return list.map((c: any) => ({
         id: String(c.id),
-        companyName: c.companyName || c.company_name || c.name || '(unnamed)',
+        companyName: c.companyName || c.company_name || c.business_name || c.name || '(unnamed)',
       }));
     },
+    placeholderData: (prev) => prev,
   });
+
+  // Resolve names for already-attached customers in the table (lookup-by-id).
+  // Hits `/api/customers/:id` as needed; cached by id.
+  const attachedCustomerIds = (clientsData?.clients || [])
+    .map((c) => c.customerId)
+    .filter((v): v is string => !!v);
+  const uniqueAttachedIds = Array.from(new Set(attachedCustomerIds));
+  const attachedCustomerQueries = useQuery<Record<string, string>>({
+    queryKey: ['/api/customers', 'monitoring-name-map', uniqueAttachedIds.sort().join(',')],
+    enabled: uniqueAttachedIds.length > 0,
+    queryFn: async () => {
+      const map: Record<string, string> = {};
+      await Promise.all(
+        uniqueAttachedIds.map(async (id) => {
+          try {
+            const raw: any = await apiRequest(`/api/customers/${id}`, 'GET');
+            map[id] =
+              raw?.companyName || raw?.company_name || raw?.business_name || raw?.name || id;
+          } catch {
+            map[id] = id;
+          }
+        }),
+      );
+      return map;
+    },
+  });
+  const customerNameMap = attachedCustomerQueries.data || {};
 
   // Fetch selected client details
   const { data: clientDetails } = useQuery<ClientDetails>({
@@ -349,6 +399,7 @@ export default function MonitoringClients() {
     setNewClientName('');
     setNewClientLocation('');
     setNewClientCustomerId('');
+    setNewClientCustomerName('');
     setNewClientAutoOrder(false);
     setRegisteredClient(null);
   };
@@ -442,22 +493,107 @@ export default function MonitoringClients() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="customer">Customer (Optional)</Label>
-                    <Select
-                      value={newClientCustomerId || '__none__'}
-                      onValueChange={(v) => setNewClientCustomerId(v === '__none__' ? '' : v)}
-                    >
-                      <SelectTrigger id="customer">
-                        <SelectValue placeholder="Link to a customer" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— None —</SelectItem>
-                        {customers.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.companyName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="customer"
+                            type="button"
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={customerOpen}
+                            className="flex-1 min-h-[44px] justify-between font-normal"
+                          >
+                            {newClientCustomerId ? (
+                              <div className="flex items-center gap-2 truncate">
+                                <Building2 className="h-4 w-4 shrink-0 text-gray-500" />
+                                <span className="truncate">
+                                  {newClientCustomerName || newClientCustomerId}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                Search for a customer...
+                              </span>
+                            )}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-[var(--radix-popover-trigger-width)] p-0"
+                          align="start"
+                          side="bottom"
+                          sideOffset={4}
+                        >
+                          <div className="p-2 border-b">
+                            <div className="relative">
+                              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                ref={customerSearchInputRef}
+                                placeholder="Type to search customers..."
+                                value={customerSearch}
+                                onChange={(e) => setCustomerSearch(e.target.value)}
+                                className="pl-8"
+                              />
+                            </div>
+                          </div>
+                          <div className="max-h-72 overflow-y-auto">
+                            {customersFetching && customerSearchResults.length === 0 ? (
+                              <div className="px-3 py-4 text-sm text-gray-500 text-center">
+                                Searching…
+                              </div>
+                            ) : customerSearchResults.length === 0 ? (
+                              <div className="px-3 py-4 text-sm text-gray-500 text-center">
+                                {customerSearchDebounced
+                                  ? 'No customers match.'
+                                  : 'Start typing to search.'}
+                              </div>
+                            ) : (
+                              <ul className="py-1">
+                                {customerSearchResults.map((c) => {
+                                  const selected = c.id === newClientCustomerId;
+                                  return (
+                                    <li key={c.id}>
+                                      <button
+                                        type="button"
+                                        className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-100 ${
+                                          selected ? 'bg-gray-50' : ''
+                                        }`}
+                                        onClick={() => {
+                                          setNewClientCustomerId(c.id);
+                                          setNewClientCustomerName(c.companyName);
+                                          setCustomerOpen(false);
+                                        }}
+                                      >
+                                        <Building2 className="h-4 w-4 shrink-0 text-gray-500" />
+                                        <span className="truncate flex-1">{c.companyName}</span>
+                                        {selected && (
+                                          <Check className="h-4 w-4 shrink-0 text-green-600" />
+                                        )}
+                                      </button>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      {newClientCustomerId && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setNewClientCustomerId('');
+                            setNewClientCustomerName('');
+                          }}
+                          aria-label="Clear customer"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500">
                       Linking a client to a customer ties the bundled installer and all collected
                       meter data to that account.
@@ -681,8 +817,7 @@ export default function MonitoringClients() {
                 {clients.map((client) => {
                   const lastSeenStatus = getLastSeenStatus(client.lastHeartbeat);
                   const customerName = client.customerId
-                    ? customers.find((c) => c.id === client.customerId)?.companyName ||
-                      client.customerId
+                    ? customerNameMap[client.customerId] || client.customerId
                     : null;
                   return (
                     <TableRow key={client.id}>

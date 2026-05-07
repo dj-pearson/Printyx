@@ -88,13 +88,67 @@ function platformBaseUrl(req: Request): string {
   return `${proto}://${host}`;
 }
 
-function userHasAnyPermission(user: any, perms: string[]): boolean {
+// Permission gate. JWT claims are the fast path; on a miss we fall back to a
+// DB lookup of the user's role (mirrors _shared/rbac.ts loadPermissions).
+// Many tenants' JWTs do not yet carry app_metadata.permissions — the comment
+// in blog-agents/index.ts notes the same — so JWT-only checks return false 403
+// for legitimately authorized admins. Monitoring clients is a tenant-admin
+// feature, so Company Admin (level 7) and above can manage them.
+function flattenRolePerms(obj: unknown): string[] {
+  if (!obj || typeof obj !== 'object') return [];
+  const out: string[] = [];
+  const walk = (node: unknown, prefix: string[]): void => {
+    if (Array.isArray(node)) {
+      for (const v of node) if (typeof v === 'string') out.push([...prefix, v].join('.'));
+      return;
+    }
+    if (node && typeof node === 'object') {
+      for (const [k, v] of Object.entries(node)) {
+        if (v === true) out.push([...prefix, k].join('.'));
+        else walk(v, [...prefix, k]);
+      }
+    }
+  };
+  walk(obj, []);
+  return out;
+}
+
+async function userHasAnyPermission(
+  user: any,
+  perms: string[],
+  admin: ReturnType<typeof createSupabaseServiceClient>,
+): Promise<boolean> {
   const meta = user?.app_metadata || {};
+
+  // Fast path: JWT claims
   if (meta.isPlatformAdmin === true) return true;
-  if (typeof meta.roleLevel === 'number' && meta.roleLevel >= 8) return true;
-  if (typeof meta.role_level === 'number' && meta.role_level >= 8) return true;
-  const userPerms: string[] = Array.isArray(meta.permissions) ? meta.permissions : [];
-  return perms.some((p) => userPerms.includes(p));
+  const jwtLevel =
+    typeof meta.roleLevel === 'number'
+      ? meta.roleLevel
+      : typeof meta.role_level === 'number'
+        ? meta.role_level
+        : null;
+  if (jwtLevel !== null && jwtLevel >= 7) return true;
+  const jwtPerms: string[] = Array.isArray(meta.permissions) ? meta.permissions : [];
+  if (jwtPerms.length > 0 && perms.some((p) => jwtPerms.includes(p))) return true;
+
+  // DB fallback — JWT often doesn't carry roleLevel or permissions.
+  try {
+    const { data } = await admin
+      .from('users')
+      .select('role_id, roles!inner(level, can_access_all_tenants, permissions)')
+      .eq('id', user.id)
+      .maybeSingle();
+    const role = (data as any)?.roles;
+    if (!role) return false;
+    if (role.can_access_all_tenants === true) return true;
+    if (typeof role.level === 'number' && role.level >= 7) return true;
+    const flat = flattenRolePerms(role.permissions);
+    return perms.some((p) => flat.includes(p));
+  } catch (err) {
+    console.error('[monitoring-clients] role lookup failed:', err);
+    return false;
+  }
 }
 
 function publicClient(c: Record<string, any>) {
@@ -205,8 +259,10 @@ export default async function handler(req: Request) {
     return createCorsResponse({ message: 'No tenant ID found for user' }, 400, req);
   }
 
+  const admin = createSupabaseServiceClient();
+
   const isWrite = req.method !== 'GET' && req.method !== 'HEAD';
-  if (!userHasAnyPermission(user, isWrite ? WRITE_PERMS : READ_PERMS)) {
+  if (!(await userHasAnyPermission(user, isWrite ? WRITE_PERMS : READ_PERMS, admin))) {
     return createCorsResponse(
       {
         message: `Missing required permission: ${(isWrite ? WRITE_PERMS : READ_PERMS).join(' OR ')}`,
@@ -215,8 +271,6 @@ export default async function handler(req: Request) {
       req,
     );
   }
-
-  const admin = createSupabaseServiceClient();
 
   try {
     // ── list ──────────────────────────────────────────────────────────
