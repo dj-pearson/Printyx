@@ -8746,6 +8746,10 @@ export {
   type NewAddressBookExport,
 } from './address-book-schema';
 
+// Re-export Blog Module schema barrel (Platform Admin Blog System — US-BLOG-001 foundation;
+// US-BLOG-002 populates the actual Drizzle tables)
+export * from './blog-schema';
+
 // ============================================================================
 // MOBILE APP LOGS (cross-tenant diagnostic data)
 // ============================================================================

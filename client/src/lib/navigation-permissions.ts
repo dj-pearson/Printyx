@@ -41,6 +41,9 @@ export const SECTION_PERMISSIONS: Record<string, NavigationPermissionRule> = {
 
   // Platform Management (merged platform admin sections)
   'platform-management': { platformOnly: true },
+
+  // Blog Module (Platform Admin Blog System — US-BLOG-001 foundation; gated to platform admin)
+  blog: { platformOnly: true },
   // Backwards compat for old section IDs
   'platform-admin-hub': { platformOnly: true },
   'tenant-org-management': { platformOnly: true },

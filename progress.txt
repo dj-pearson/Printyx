@@ -3793,3 +3793,51 @@ The blog and address-book modules are independent — no shared schema, no share
 - **Run both in parallel** if multiple Ralph workers are available — they touch different schema files, different edge functions, and different UI routes. Only conflict point is potentially the credential vault refactor mentioned above; that can be a discrete coordination story.
 
 ---
+
+## Session — 2026-05-07 — Blog Module Foundation (US-BLOG-001)
+**Branch**: main
+**Build**: `npm run build` ✅ green (vite, 2m 28s)
+**Status**: passes: true
+
+### What Was Done
+Foundation slice for the Platform Admin Blog System: directories, schema barrel, placeholder admin page, route, sidebar entry, and CLAUDE.md section. Unblocks every subsequent BLOG-### story.
+
+### Files Created
+- `shared/blog-schema.ts` — empty barrel with header docs noting which tables US-BLOG-002 will populate; `export {}` keeps it a valid module
+- `supabase/functions/_shared/blog/README.md` — describes planned subdirectory layout (cms/, keyword/, serp/, social/, analytics/, agents/, safety/) for downstream stories
+- `supabase/functions/blog/.gitkeep` — placeholder; first entrypoint added by US-BLOG-013
+- `client/src/lib/blog/.gitkeep` — placeholder for frontend helpers
+- `client/src/pages/platform-admin/blog/BlogIndex.tsx` — placeholder admin landing page with module-status cards (Schema, Admin Shell, Autonomous Pipeline) referencing the relevant story IDs
+
+### Files Modified
+- `client/src/App.tsx`:
+  - Added lazy import `BlogPlatformAdmin` from `@/pages/platform-admin/blog/BlogIndex` (renamed from `BlogIndex` to avoid collision with existing public-marketing `BlogIndex` at line 58 importing `@/pages/blog/index`)
+  - Added route `/platform-admin/blog` gated via `<ProtectedRoute component={BlogPlatformAdmin} platformOnly />` near the other platform-admin routes
+- `client/src/components/layout/RoleAwareCollapsibleSidebar.tsx`:
+  - Added `Newspaper` icon to lucide-react imports
+  - Added top-level `blog` section between `platform-management` and `crm` with `path: '/platform-admin/blog'` and `matchPatterns: ['/platform-admin/blog*']`. No children in v1 (full sub-navigation lands in US-BLOG-007.)
+- `client/src/lib/navigation-permissions.ts`:
+  - Added `blog: { platformOnly: true }` under `SECTION_PERMISSIONS` — only platform admin users see the entry
+- `shared/schema.ts`:
+  - Added `export * from './blog-schema';` so the barrel is reachable via `@shared/schema`. Currently re-exports nothing; populated by US-BLOG-002.
+- `CLAUDE.md`:
+  - New "Feature Modules" section documenting both Address Book Manager (ABK-###) and Platform Admin Blog System (US-BLOG-###) layouts and key decisions
+
+### Key Decision — Naming Collision
+The codebase already has a public marketing-site `BlogIndex` at `client/src/pages/blog/index.tsx` (route `/blog`, line 58 in App.tsx). The platform admin blog page is a different concern, so I imported it as `BlogPlatformAdmin` rather than renaming the existing public one. This keeps the public marketing route untouched and the symbol names self-describing.
+
+### Quality Gates
+- `npm run build` — ✅ green (2m 28s; first attempt failed due to the `BlogIndex` collision above, fixed and re-ran clean)
+- `npm run check` — not run to completion (full-codebase TS check OOMs on this repo per memory note); a filtered run looking for `blog|BlogIndex|navigation-permissions|RoleAwareCollapsibleSidebar` errors returned no matches, indicating my new code is clean
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-001 — Blog module foundation in Printyx | ✅ passes: true |
+
+### Next Ralph Iteration Recommendations
+1. **US-BLOG-002** (Drizzle schema with RLS) — now unblocked; populates `shared/blog-schema.ts`. Bring DATABASE_URL so `npm run db:generate` can produce the migration in the same iteration.
+2. **US-BLOG-007** (admin UI shell) — also unblocked; can run in parallel with US-BLOG-002 since the placeholder page already routes correctly.
+3. **US-BLOG-086** (KILL SWITCH — HARD GATE) — small story, worth landing early so subsequent agent stories (US-BLOG-066) inherit the safety check from day 1.
+
+---

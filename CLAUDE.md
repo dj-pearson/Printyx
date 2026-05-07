@@ -178,6 +178,22 @@ DELETE /api/[resource]/:id
 | RBAC | `server/middleware/enhanced-rbac-middleware.ts` |
 | Query scoping | `server/middleware/hierarchical-query-builder.ts` |
 
+## Feature Modules
+
+### Address Book Manager (ABK-###)
+Multi-vendor MFP address book import/edit/export. Source PRD: `tasks/prd-address-book-manager.md`.
+- Schema: `shared/address-book-schema.ts` · Types: `shared/address-book-types.ts`
+- Edge function: `supabase/functions/address-books/index.ts`
+- Credential vault (AES-256-GCM): `server/services/address-book/credential-vault.ts` (env: `ADDRESS_BOOK_MASTER_KEY`)
+
+### Platform Admin Blog System (US-BLOG-###)
+Fully autonomous content marketing platform for Printyx's marketing site. Source PRD: `blog-system-prd.json`. Merge tool: `scripts/merge-blog-prd.mjs`.
+- Layout: `shared/blog/` (schemas), `supabase/functions/_shared/blog/` (helpers + adapters), `supabase/functions/blog/` (edge functions), `client/src/pages/platform-admin/blog/` (admin UI), `client/src/lib/blog/` (frontend helpers)
+- Schema barrel: `shared/blog-schema.ts` (re-exported from `shared/schema.ts`); tables added by US-BLOG-002
+- Route: `/platform-admin/blog` — gated to platform admin via `ProtectedRoute platformOnly` and sidebar `platformOnly: true`
+- v1 CMS adapters: WordPress + Ghost. v1 keyword adapter: DataForSEO. v1 social: X/Twitter + LinkedIn
+- Autonomy: full closed loop with auto-refresh agent (US-BLOG-066) gated behind kill switch (US-BLOG-086)
+
 ## Pre-Flight & Pitfalls
 
 Before committing: `npm run check && npm run build && npm run format:write && npm run lint`.

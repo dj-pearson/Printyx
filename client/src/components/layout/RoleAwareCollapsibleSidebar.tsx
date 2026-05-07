@@ -88,6 +88,7 @@ import {
   ChevronsUpDown,
   Minimize2,
   Maximize2,
+  Newspaper,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -175,6 +176,15 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Social Media Generator', path: '/social-media-generator', icon: Share2 },
       { title: 'GPT-5 AI Dashboard', path: '/gpt5-dashboard', icon: Brain },
     ],
+  },
+
+  // Blog (Platform Admin Blog System — US-BLOG-001 foundation; full nav in US-BLOG-007)
+  {
+    id: 'blog',
+    title: 'Blog',
+    icon: Newspaper,
+    path: '/platform-admin/blog',
+    matchPatterns: ['/platform-admin/blog*'],
   },
 
   // Sales Hub - core CRM and sales operations

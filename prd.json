@@ -5013,7 +5013,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 35,
-      "passes": false,
+      "passes": true,
       "notes": "Foundation story for the blog module — replaces the original PRD's standalone monorepo scaffold (US-BLOG-001 in blog-system-prd.json) since we are integrating into the existing Printyx repo. Source PRD: blog-system-prd.json US-BLOG-001 (adapted).",
       "category": "blog"
     },
