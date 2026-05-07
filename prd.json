@@ -5123,7 +5123,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 41,
-      "passes": false,
+      "passes": true,
       "notes": "Source PRD: blog-system-prd.json US-BLOG-007 (integrated into Printyx admin shell instead of a standalone admin app).",
       "category": "blog"
     },

@@ -27,7 +27,7 @@ interface ShortcutDef {
 }
 
 export function useKeyboardShortcuts() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const [showHelp, setShowHelp] = useState(false);
   const pendingKey = useRef<string | null>(null);
   const pendingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -109,6 +109,13 @@ export function useKeyboardShortcuts() {
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      // Skip on blog routes — BlogShell registers its own scoped shortcuts
+      // (g i = Ideas, g b = Briefs, etc.) that would collide with the global
+      // ones below (g i = Invoices). See US-BLOG-007.
+      if (location.startsWith('/platform-admin/blog')) {
+        return;
+      }
+
       // Skip if user is typing in an input/textarea/contenteditable
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
@@ -152,7 +159,7 @@ export function useKeyboardShortcuts() {
         return;
       }
     },
-    [navigate, shortcuts],
+    [location, navigate, shortcuts],
   );
 
   useEffect(() => {

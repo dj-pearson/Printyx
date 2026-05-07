@@ -309,10 +309,17 @@ const DisposableEmailDomainsAdmin = React.lazy(
   () => import('@/pages/admin/DisposableEmailDomains'),
 );
 
-// Blog Module — Platform Admin (US-BLOG-001 foundation; full shell in US-BLOG-007)
-// Distinct from the public marketing /blog route imported above
+// Blog Module — Platform Admin (US-BLOG-001 foundation, US-BLOG-086 settings,
+// US-BLOG-007 admin shell + sub-section placeholder pages).
+// Distinct from the public marketing /blog route imported above.
 const BlogPlatformAdmin = React.lazy(() => import('@/pages/platform-admin/blog/BlogIndex'));
 const BlogSettings = React.lazy(() => import('@/pages/platform-admin/blog/BlogSettings'));
+const BlogIdeas = React.lazy(() => import('@/pages/platform-admin/blog/BlogIdeas'));
+const BlogBriefs = React.lazy(() => import('@/pages/platform-admin/blog/BlogBriefs'));
+const BlogPosts = React.lazy(() => import('@/pages/platform-admin/blog/BlogPosts'));
+const BlogDistribution = React.lazy(() => import('@/pages/platform-admin/blog/BlogDistribution'));
+const BlogAnalytics = React.lazy(() => import('@/pages/platform-admin/blog/BlogAnalytics'));
+const BlogRefresh = React.lazy(() => import('@/pages/platform-admin/blog/BlogRefresh'));
 
 const LAST_ROUTE_KEY = 'printyx_last_route';
 
@@ -894,9 +901,29 @@ function Router() {
                 <Route path="/admin/tenant-management">
                   {() => <ProtectedRoute component={TenantManagement} platformOnly />}
                 </Route>
-                {/* Blog Module — Platform Admin (US-BLOG-001 foundation, US-BLOG-086 settings) */}
+                {/* Blog Module — Platform Admin (US-BLOG-001 foundation, US-BLOG-086
+                    settings, US-BLOG-007 admin shell + sub-section pages). Order matters:
+                    more-specific paths first; /platform-admin/blog catches the index. */}
                 <Route path="/platform-admin/blog/settings">
                   {() => <ProtectedRoute component={BlogSettings} platformOnly />}
+                </Route>
+                <Route path="/platform-admin/blog/ideas">
+                  {() => <ProtectedRoute component={BlogIdeas} platformOnly />}
+                </Route>
+                <Route path="/platform-admin/blog/briefs">
+                  {() => <ProtectedRoute component={BlogBriefs} platformOnly />}
+                </Route>
+                <Route path="/platform-admin/blog/posts">
+                  {() => <ProtectedRoute component={BlogPosts} platformOnly />}
+                </Route>
+                <Route path="/platform-admin/blog/distribution">
+                  {() => <ProtectedRoute component={BlogDistribution} platformOnly />}
+                </Route>
+                <Route path="/platform-admin/blog/analytics">
+                  {() => <ProtectedRoute component={BlogAnalytics} platformOnly />}
+                </Route>
+                <Route path="/platform-admin/blog/refresh">
+                  {() => <ProtectedRoute component={BlogRefresh} platformOnly />}
                 </Route>
                 <Route path="/platform-admin/blog">
                   {() => <ProtectedRoute component={BlogPlatformAdmin} platformOnly />}

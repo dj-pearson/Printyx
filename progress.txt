@@ -4079,3 +4079,64 @@ Per scope decision 1A (single Printyx workspace per tenant in v1, no customer-fa
 4. **Migration apply** — once `npm run db:migrate` runs against a target environment, also run `psql -f drizzle/rls/blog.sql` and `npm run seed:rbac` to fully bootstrap the blog module. Recommend bundling all three steps into a single deploy script.
 
 ---
+
+## Session — 2026-05-07 — Blog Admin Shell + Sub-Sections (US-BLOG-007)
+**Branch**: main
+**Build**: `npm run build` ✅ green (vite, 27.77s)
+**Status**: passes: true
+
+### What Was Done
+Replaced the placeholder Blog Index page from US-BLOG-001 with a real admin shell. Sub-navigation strip (Ideas, Briefs, Posts, Distribution, Analytics, Refresh, Settings) is now present on every blog page. Six new placeholder section pages, each describing the features that land in their dedicated stories. Scoped keyboard shortcuts (g i / g b / g p / g d / g a / g r / g s) wired up without colliding with the existing global shortcut hook.
+
+### Files Created
+- `client/src/components/blog/BlogShell.tsx` — sub-nav layout component. Renders the 7-tab strip across the top of every blog page. Active state via `useLocation()`. Each tab shows its keyboard shortcut hint (visible at lg+).
+- `client/src/components/blog/BlogSectionPlaceholder.tsx` — generic empty-state component used by all 6 placeholder pages. Takes title, description, icon, story IDs, and an optional capabilities bullet list.
+- `client/src/pages/platform-admin/blog/BlogIdeas.tsx` — placeholder for US-BLOG-013/014/015/016/019
+- `client/src/pages/platform-admin/blog/BlogBriefs.tsx` — placeholder for US-BLOG-023/024/031
+- `client/src/pages/platform-admin/blog/BlogPosts.tsx` — placeholder for US-BLOG-008/009/032/033/034/072
+- `client/src/pages/platform-admin/blog/BlogDistribution.tsx` — placeholder for US-BLOG-043/044/053/054/055
+- `client/src/pages/platform-admin/blog/BlogAnalytics.tsx` — placeholder for US-BLOG-059/060/063/064/079
+- `client/src/pages/platform-admin/blog/BlogRefresh.tsx` — placeholder for US-BLOG-061/066/021
+
+### Files Modified
+- `client/src/pages/platform-admin/blog/BlogIndex.tsx` — replaced US-BLOG-001 placeholder content with a Dashboard inside `<BlogShell>`. Six section cards link to each sub-section, plus a settings card. Will be enriched with summary widgets in US-BLOG-060.
+- `client/src/pages/platform-admin/blog/BlogSettings.tsx` — wrapped existing kill-switch UI in `<BlogShell>` so the sub-nav appears on the Settings page too. Removed the manual "Back to Blog" link (now redundant given the sub-nav).
+- `client/src/App.tsx` — added 6 lazy imports + 6 route registrations under `/platform-admin/blog/*`. All gated via `<ProtectedRoute platformOnly />`. Order matters: more-specific paths first, then `/platform-admin/blog` catches the index.
+- `client/src/hooks/useKeyboardShortcuts.ts` — added an early `return` when `location.startsWith('/platform-admin/blog')`. This prevents the global `g i` (Invoices) shortcut from firing on blog routes where `g i` should mean Ideas. The hook still reads `location` from `useLocation()`; just bails before processing keys on blog routes.
+
+### Keyboard Shortcuts (blog routes only)
+| Combo | Action |
+|-------|--------|
+| `g i` | Ideas |
+| `g b` | Briefs |
+| `g p` | Posts |
+| `g d` | Distribution |
+| `g a` | Analytics |
+| `g r` | Refresh |
+| `g s` | Settings |
+
+Implementation lives in `BlogShell.tsx`. Same skip-when-typing pattern as the global hook (input/textarea/contenteditable bypass; metaKey/ctrlKey/altKey bypass). 1-second timeout on the pending key.
+
+### What Was Deferred (per AC)
+- **`/` (search) shortcut** — the original PRD AC mentions `/` to focus a search input, but blog search itself doesn't exist yet. Skipped in v1; will land alongside whatever search story comes (likely US-BLOG-008 editor or a dedicated search story).
+- **Browser verification via dev-browser skill** — not available in session. Routes, components, and lazy imports all compile cleanly. Recommend a manual smoke test once the migration is applied: log in as platform admin, click each tab, confirm the sub-nav highlights correctly and the keyboard shortcuts work.
+
+### Quality Gates
+- `npm run build` — ✅ green (27.77s)
+- `npm run check` — not run to completion (full-codebase TS OOMs); new files are self-contained and rely only on existing shadcn/ui primitives + lucide-react + wouter
+- 7 new files created, 4 modified
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-007 — Admin UI shell with sub-navigation | ✅ passes: true |
+
+**Blog module total: 5 / 86 done (US-BLOG-001, 002, 003, 007, 086).**
+
+### Next Ralph Iteration Recommendations
+1. **US-BLOG-004** (brand voice CRUD) — first content-side feature. Pure CRUD on `blog_brand_voices`. Page lands at `/platform-admin/blog/settings/brand-voices` or as a section under the existing Settings page. Establishes the audit-log helper pattern.
+2. **US-BLOG-005** (style guide linter — CRUD only in v1) — companion to brand voice. The real-time editor linting waits for US-BLOG-008.
+3. **US-BLOG-008** (rich-text editor) — the foundational content-production primitive. Once it lands, every Posts-related story can layer on top.
+4. **US-BLOG-006** (CMS adapter + WordPress + Ghost) — first publishing capability. Independent of editor stories; can run in parallel.
+
+---

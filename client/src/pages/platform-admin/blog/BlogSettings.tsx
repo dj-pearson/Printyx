@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertOctagon, AlertTriangle, ChevronLeft, Loader2, ShieldCheck } from 'lucide-react';
-import { Link } from 'wouter';
+import { AlertOctagon, AlertTriangle, Loader2, ShieldCheck } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { BlogShell } from '@/components/blog/BlogShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -51,10 +51,6 @@ interface SettingsResponse {
 }
 
 export default function BlogSettings() {
-  useEffect(() => {
-    document.title = 'Blog Settings — Platform Admin · Printyx';
-  }, []);
-
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const settingsKey = ['/api/blog-agents/settings'];
@@ -120,85 +116,81 @@ export default function BlogSettings() {
   });
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-6 max-w-4xl">
-      <header className="space-y-2">
-        <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to="/platform-admin/blog">
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Back to Blog
-          </Link>
-        </Button>
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Blog Settings</h1>
-          <Badge variant="secondary" className="text-xs">
-            US-BLOG-086
-          </Badge>
-        </div>
-        <p className="text-sm text-muted-foreground max-w-2xl">
-          Global agent controls for the Platform Admin Blog System. Use the kill switch to halt
-          every blog agent (auto-refresh, draft pipeline, distribution scheduler, outreach) for this
-          tenant in one click.
-        </p>
-      </header>
+    <BlogShell title="Blog Settings — Platform Admin · Printyx">
+      <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-6 max-w-4xl">
+        <header className="space-y-2">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Blog Settings</h1>
+            <Badge variant="secondary" className="text-xs">
+              US-BLOG-086
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            Global agent controls for the Platform Admin Blog System. Use the kill switch to halt
+            every blog agent (auto-refresh, draft pipeline, distribution scheduler, outreach) for
+            this tenant in one click.
+          </p>
+        </header>
 
-      {isLoading ? (
-        <Card>
-          <CardContent className="py-12 flex items-center justify-center text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            Loading settings…
-          </CardContent>
-        </Card>
-      ) : error ? (
-        <Card>
-          <CardContent className="py-8 text-sm text-destructive">
-            Failed to load settings: {error instanceof Error ? error.message : 'Unknown error'}
-          </CardContent>
-        </Card>
-      ) : settings ? (
-        <>
-          <KillSwitchCard
-            settings={settings}
-            isPausing={pauseMutation.isPending}
-            isResuming={resumeMutation.isPending}
-            onPause={(reason) => pauseMutation.mutate(reason)}
-            onResume={() => resumeMutation.mutate(undefined)}
-          />
-
+        {isLoading ? (
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                Auto-refresh review gate
-              </CardTitle>
-              <CardDescription>
-                When enabled, the auto-refresh agent (US-BLOG-066) creates revisions in a review
-                queue instead of auto-publishing. Default off per scope decision 5D (fully
-                autonomous re-editing on SERP decay).
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center justify-between gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="auto_refresh_requires_review" className="text-sm font-medium">
-                  Require human review for auto-refresh edits
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Hard guardrails (change-magnitude, SEO regression, voice/style violations) will
-                  always route edge cases to the review queue regardless of this setting.
-                </p>
-              </div>
-              <Switch
-                id="auto_refresh_requires_review"
-                checked={settings.auto_refresh_requires_review}
-                disabled={patchMutation.isPending}
-                onCheckedChange={(checked) =>
-                  patchMutation.mutate({ auto_refresh_requires_review: checked })
-                }
-              />
+            <CardContent className="py-12 flex items-center justify-center text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              Loading settings…
             </CardContent>
           </Card>
-        </>
-      ) : null}
-    </div>
+        ) : error ? (
+          <Card>
+            <CardContent className="py-8 text-sm text-destructive">
+              Failed to load settings: {error instanceof Error ? error.message : 'Unknown error'}
+            </CardContent>
+          </Card>
+        ) : settings ? (
+          <>
+            <KillSwitchCard
+              settings={settings}
+              isPausing={pauseMutation.isPending}
+              isResuming={resumeMutation.isPending}
+              onPause={(reason) => pauseMutation.mutate(reason)}
+              onResume={() => resumeMutation.mutate(undefined)}
+            />
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                  Auto-refresh review gate
+                </CardTitle>
+                <CardDescription>
+                  When enabled, the auto-refresh agent (US-BLOG-066) creates revisions in a review
+                  queue instead of auto-publishing. Default off per scope decision 5D (fully
+                  autonomous re-editing on SERP decay).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <Label htmlFor="auto_refresh_requires_review" className="text-sm font-medium">
+                    Require human review for auto-refresh edits
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Hard guardrails (change-magnitude, SEO regression, voice/style violations) will
+                    always route edge cases to the review queue regardless of this setting.
+                  </p>
+                </div>
+                <Switch
+                  id="auto_refresh_requires_review"
+                  checked={settings.auto_refresh_requires_review}
+                  disabled={patchMutation.isPending}
+                  onCheckedChange={(checked) =>
+                    patchMutation.mutate({ auto_refresh_requires_review: checked })
+                  }
+                />
+              </CardContent>
+            </Card>
+          </>
+        ) : null}
+      </div>
+    </BlogShell>
   );
 }
 
