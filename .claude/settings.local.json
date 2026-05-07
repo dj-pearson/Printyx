@@ -110,7 +110,10 @@
       "Bash(git check-ignore *)",
       "Read(//tmp/**)",
       "Bash(xargs -n1 basename)",
-      "Bash(awk '/\"id\": \"EDGE-005d\"/,/\"category\"/' C:/Users/dpearson/Documents/Printyx/prd.json)"
+      "Bash(awk '/\"id\": \"EDGE-005d\"/,/\"category\"/' C:/Users/dpearson/Documents/Printyx/prd.json)",
+      "Bash(git remote *)",
+      "Bash(git fetch *)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npm run build)"
     ],
     "deny": [],
     "ask": []
