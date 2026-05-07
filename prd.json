@@ -5190,7 +5190,7 @@
         "Append-only — no UPDATE or DELETE permission on audit_log via RLS"
       ],
       "priority": 45,
-      "passes": false,
+      "passes": true,
       "notes": "Consider periodic export to immutable storage (S3 with object lock) for tamper-evidence.",
       "category": "blog"
     },

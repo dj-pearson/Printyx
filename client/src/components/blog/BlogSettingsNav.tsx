@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter';
-import { Mic2, ScrollText, ShieldAlert } from 'lucide-react';
+import { History, Mic2, ScrollText, ShieldAlert } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +38,12 @@ const SETTINGS_NAV: SettingsNavItem[] = [
     path: '/platform-admin/blog/settings/style-guides',
     icon: ScrollText,
     description: 'Prose rules + built-in rule packs (AP, Chicago, MLA, …)',
+  },
+  {
+    label: 'Audit Log',
+    path: '/platform-admin/blog/settings/audit-log',
+    icon: History,
+    description: 'Forensic record of every mutating action',
   },
 ];
 

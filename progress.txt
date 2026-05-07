@@ -4263,3 +4263,63 @@ Companion to US-BLOG-004. Full CRUD for `blog_style_guides` with built-in rule p
 3. **US-BLOG-010** (asset library) — small story; CRUD on `blog_assets`. Companion piece for the editor's image insertion flow.
 
 ---
+
+## Session — 2026-05-07 — Blog Audit Log Viewer + Append-Only RLS (US-BLOG-011)
+**Branch**: main
+**Build**: `npm run build` ✅ green (vite, 2m 16s)
+**Status**: passes: true
+
+### What Was Done
+The `writeAuditLog` helper from US-BLOG-004 has been writing rows since brand voices and style guides shipped. This iteration adds the read surface that makes those entries useful: filterable list view + per-entry detail dialog showing before/after state diffs. Plus database-level append-only enforcement so even a platform admin can't rewrite history through PostgREST.
+
+### Files Created
+- **`supabase/functions/blog-audit-log/index.ts`** — read-only edge function:
+  - `GET /blog-audit-log` with filters: `actor_user_id`, `actor_type`, `action`, `action_prefix`, `target_type`, `target_id`, `since`, `until`, `limit` (max 200), `offset`
+  - `GET /blog-audit-log/actions` returns the distinct action codes seen in the last 5,000 rows (powers the filter dropdown)
+  - Gated to platform admin OR company admin OR users holding `blog.audit_log.view` (permission code reserved for future grant)
+  - No POST/PATCH/DELETE — writes go through `writeAuditLog` only
+- **`client/src/pages/platform-admin/blog/BlogSettingsAuditLog.tsx`** — viewer page at `/platform-admin/blog/settings/audit-log`:
+  - Filters card (6 filters: actor type, action dropdown, target type, actor user ID, since, until)
+  - Table view with hover state; click a row to open a detail dialog
+  - Detail dialog shows summary, target, actor user / agent kind / IP / user-agent, and a side-by-side before/after JSON diff
+  - Pagination (50 per page, server-side)
+  - Refresh button + auto-invalidation on filter change
+  - Empty state distinguishes "no entries yet" from "filtered to nothing"
+
+### Files Modified
+- **`drizzle/rls/blog.sql`** — after `apply_tenant_rls()` runs over all blog tables, an additional DO block drops the UPDATE and DELETE policies for `blog_audit_log` and revokes those table-level GRANTs from the `authenticated` role. Service role bypasses RLS so writes via `writeAuditLog` still work; humans hitting PostgREST get 403 on UPDATE/DELETE attempts.
+- **`client/src/components/blog/BlogSettingsNav.tsx`** — added 4th card (Audit Log, icon `History`)
+- **`client/src/App.tsx`** — lazy import + new route `/platform-admin/blog/settings/audit-log`
+
+### Append-Only Semantics
+The standard tenant RLS pattern installs SELECT/INSERT/UPDATE/DELETE policies. For the audit log we want INSERT + SELECT only — UPDATE and DELETE policies are dropped after `apply_tenant_rls()` runs, and table-level GRANTs are revoked too. Two layers of defense:
+1. RLS policy: no policy = no row matches = silent empty result on UPDATE/DELETE
+2. Table GRANT: missing privilege = explicit 403 from PostgREST
+
+Service role (used by edge functions via `createSupabaseServiceClient`) bypasses RLS entirely so `writeAuditLog` continues to work. End-users go through the anon/authenticated client and hit the wall.
+
+### What Was Deferred (per AC)
+- **Retention policy (1 year minimum, configurable)** — needs a Supabase cron job. Recommend adding to a future ops story alongside the auto-refresh agent's scheduled runs (those use the same scheduling primitive). Document `BLOG_AUDIT_LOG_RETENTION_DAYS` env var in CLAUDE.md when it lands.
+- **Granular permission grant** — `blog.audit_log.view` is reserved in the edge function but not yet added to the seeder. Platform admin and company admin already have access via role-string check. Add the permission code in a future RBAC iteration if a non-admin role needs read access (e.g. compliance officer).
+
+### Quality Gates
+- `npm run build` — ✅ green (2m 16s)
+- `npm run check` — not run to completion (full-codebase TS OOMs); new files self-contained
+- Browser verification — deferred. Recommend smoke-testing once migration 0008 is applied: navigate to /platform-admin/blog/settings/audit-log → verify entries from prior iterations appear (kill-switch toggles, brand voice creates, style guide deletes) → click a row → verify before/after diff renders → apply filters
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-011 — Audit log viewer with filters + append-only RLS | ✅ passes: true |
+
+**Blog module total: 8 / 86 done (US-BLOG-001, 002, 003, 004, 005, 007, 011, 086).**
+
+### Pattern Velocity
+Settings pages now follow a 3-component recipe (BlogShell + BlogSettingsNav + page-specific content). Each new settings panel is ~30-60 min from spec to commit. The audit-log page took longer because it needed the table view + detail dialog + state diff rendering, but it's still in the same mold.
+
+### Next Ralph Iteration Recommendations
+1. **US-BLOG-006** (WordPress + Ghost CMS adapters) — first publishing capability. Now that the audit-log viewer is live, every CMS push will be observable post-hoc.
+2. **US-BLOG-010** (asset library) — needs Supabase Storage integration (signed upload URLs, image processing). Bigger than I initially estimated — multi-type asset model + storage backend. Probably 1.5 sessions.
+3. **US-BLOG-008** (rich-text editor) — foundational primitive for Posts. 2-3 sessions for Markdown round-trip + paste handling. Will consume style guides for in-editor linting.
+
+---

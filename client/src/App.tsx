@@ -320,6 +320,9 @@ const BlogSettingsBrandVoices = React.lazy(
 const BlogSettingsStyleGuides = React.lazy(
   () => import('@/pages/platform-admin/blog/BlogSettingsStyleGuides'),
 );
+const BlogSettingsAuditLog = React.lazy(
+  () => import('@/pages/platform-admin/blog/BlogSettingsAuditLog'),
+);
 const BlogIdeas = React.lazy(() => import('@/pages/platform-admin/blog/BlogIdeas'));
 const BlogBriefs = React.lazy(() => import('@/pages/platform-admin/blog/BlogBriefs'));
 const BlogPosts = React.lazy(() => import('@/pages/platform-admin/blog/BlogPosts'));
@@ -915,6 +918,9 @@ function Router() {
                 </Route>
                 <Route path="/platform-admin/blog/settings/style-guides">
                   {() => <ProtectedRoute component={BlogSettingsStyleGuides} platformOnly />}
+                </Route>
+                <Route path="/platform-admin/blog/settings/audit-log">
+                  {() => <ProtectedRoute component={BlogSettingsAuditLog} platformOnly />}
                 </Route>
                 <Route path="/platform-admin/blog/settings">
                   {() => <ProtectedRoute component={BlogSettings} platformOnly />}
