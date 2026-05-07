@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter';
-import { Mic2, ShieldAlert } from 'lucide-react';
+import { Mic2, ScrollText, ShieldAlert } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +32,12 @@ const SETTINGS_NAV: SettingsNavItem[] = [
     path: '/platform-admin/blog/settings/brand-voices',
     icon: Mic2,
     description: 'Voice + persona profiles for AI draft generation',
+  },
+  {
+    label: 'Style Guides',
+    path: '/platform-admin/blog/settings/style-guides',
+    icon: ScrollText,
+    description: 'Prose rules + built-in rule packs (AP, Chicago, MLA, …)',
   },
 ];
 

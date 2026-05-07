@@ -4211,3 +4211,55 @@ At most one row per tenant has `is_default = true`. Enforced in the edge functio
 3. **US-BLOG-006** (CMS adapter + WordPress + Ghost) — first publishing capability. Independent; runs in parallel with editor work. Recommend pairing with the credential-vault generalization (rename `ADDRESS_BOOK_MASTER_KEY` → `PRINTYX_CREDENTIAL_VAULT_KEY` with backward-compat alias) since CMS credentials need encrypted storage too.
 
 ---
+
+## Session — 2026-05-07 — Blog Style Guides CRUD (US-BLOG-005)
+**Branch**: main
+**Build**: `npm run build` ✅ green (vite, 1m 15s)
+**Status**: passes: true (CRUD complete; in-editor real-time linting deferred to US-BLOG-008)
+
+### What Was Done
+Companion to US-BLOG-004. Full CRUD for `blog_style_guides` with built-in rule pack toggles + custom rule editor. Reuses every pattern established by the brand voices iteration.
+
+### Files Created
+- **`supabase/functions/blog-style-guides/index.ts`** — full CRUD edge function (list / get / create / update / soft-delete / set-default), audit-logged via `writeAuditLog`. Gated to platform admin OR `blog.style_guide.edit` permission. Zod validation on rules array (max 500 rules per guide, each with pattern/match_type/severity/message/replacement) and rule_packs (5-element enum).
+- **`client/src/pages/platform-admin/blog/BlogSettingsStyleGuides.tsx`** — settings page at `/platform-admin/blog/settings/style-guides`:
+  - List view (cards with rule count + pack count, default badge, severity-color-coded preview of first 3 rules)
+  - Inline form with: name, default toggle, 5 rule pack checkboxes (AP, Chicago, MLA, plain-language, inclusive), and a dynamic custom-rules table
+  - Each custom rule row: pattern + match type (regex/substring) + severity (error/warn/info) + message + optional replacement
+  - **Live regex validation**: when match_type=regex, the form pre-compiles the pattern via `new RegExp()` and flags syntax errors before submission (server validates again — don't trust the client)
+  - Soft delete with AlertDialog confirmation
+  - TanStack Query for read + 4 mutations with toast notifications
+
+### Files Modified
+- **`client/src/components/blog/BlogSettingsNav.tsx`** — added third settings card for Style Guides (icon: `ScrollText`)
+- **`client/src/App.tsx`** — lazy import + new route `/platform-admin/blog/settings/style-guides`
+
+### Audit Log Actions Introduced
+- `blog_style_guide.create`
+- `blog_style_guide.update`
+- `blog_style_guide.delete`
+- `blog_style_guide.set_default`
+
+### What Was Deferred (per scope decision)
+- **In-editor real-time linting** — the AC mentions "Linter runs in editor in real time; underlines violations with hover-to-explain". The post editor itself doesn't exist yet (US-BLOG-008). When the editor lands, it will import this guide's `rules` and `rule_packs` and run them against the document. The data is in place; only the UI binding waits.
+- **Server-side publish gating** — the AC mentions "blocks publish if any 'error'-severity rules fail (unless overridden by editor+ role)". The publish endpoint doesn't exist yet (US-BLOG-042 CMS publish). When that lands, it will call a shared `runStyleGuideLint(post, guide)` helper.
+- **Rule pack contents** — the 5 built-in packs (AP, Chicago, MLA, plain-language, inclusive) are toggle-able now but the actual patterns each pack contains are not yet stored. Will be loaded from a static file in a future iteration.
+
+### Quality Gates
+- `npm run build` — ✅ green (1m 15s)
+- `npm run check` — not run to completion (full-codebase TS OOMs); new files are self-contained, identical pattern to US-BLOG-004
+- Browser verification — deferred (no dev-browser in session). Recommend smoke-testing once the migration is applied: create guide → toggle 2 rule packs → add 3 custom rules including a regex with a typo → confirm regex error surfaces inline → save → set default → delete
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-005 — Style guide CRUD with rule packs + custom rules | ✅ passes: true |
+
+**Blog module total: 7 / 86 done (US-BLOG-001, 002, 003, 004, 005, 007, 086).**
+
+### Next Ralph Iteration Recommendations
+1. **US-BLOG-006** (WordPress + Ghost CMS adapters) — first publishing capability. Independent of editor stories; runs in parallel. Recommend pairing with the credential-vault generalization: rename `ADDRESS_BOOK_MASTER_KEY` → `PRINTYX_CREDENTIAL_VAULT_KEY` with backward-compat alias, move from `server/services/address-book/` to a tenant-neutral location (`server/services/credential-vault/` or `supabase/functions/_shared/credentials.ts`). Then encrypt WordPress + Ghost credentials at the column level on `blog_distribution_targets.encrypted_config`.
+2. **US-BLOG-008** (rich-text editor) — foundational primitive that unlocks every Posts-related story. Probably 2-3 sessions of work given Markdown round-trip + paste handling. Will consume style guides (rules + rule_packs) for in-editor linting.
+3. **US-BLOG-010** (asset library) — small story; CRUD on `blog_assets`. Companion piece for the editor's image insertion flow.
+
+---

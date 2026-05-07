@@ -317,6 +317,9 @@ const BlogSettings = React.lazy(() => import('@/pages/platform-admin/blog/BlogSe
 const BlogSettingsBrandVoices = React.lazy(
   () => import('@/pages/platform-admin/blog/BlogSettingsBrandVoices'),
 );
+const BlogSettingsStyleGuides = React.lazy(
+  () => import('@/pages/platform-admin/blog/BlogSettingsStyleGuides'),
+);
 const BlogIdeas = React.lazy(() => import('@/pages/platform-admin/blog/BlogIdeas'));
 const BlogBriefs = React.lazy(() => import('@/pages/platform-admin/blog/BlogBriefs'));
 const BlogPosts = React.lazy(() => import('@/pages/platform-admin/blog/BlogPosts'));
@@ -909,6 +912,9 @@ function Router() {
                     more-specific paths first; /platform-admin/blog catches the index. */}
                 <Route path="/platform-admin/blog/settings/brand-voices">
                   {() => <ProtectedRoute component={BlogSettingsBrandVoices} platformOnly />}
+                </Route>
+                <Route path="/platform-admin/blog/settings/style-guides">
+                  {() => <ProtectedRoute component={BlogSettingsStyleGuides} platformOnly />}
                 </Route>
                 <Route path="/platform-admin/blog/settings">
                   {() => <ProtectedRoute component={BlogSettings} platformOnly />}

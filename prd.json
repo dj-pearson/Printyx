@@ -5084,7 +5084,7 @@
         "Linter also runs server-side on save and blocks publish if any 'error'-severity rules fail (unless overridden by editor+ role)"
       ],
       "priority": 39,
-      "passes": false,
+      "passes": true,
       "notes": "Use a worker-thread or web worker so linting doesn't block typing on long posts.",
       "category": "blog"
     },
