@@ -113,41 +113,88 @@ function flattenRolePerms(obj: unknown): string[] {
   return out;
 }
 
+// Result type makes the rejection reason visible to the caller so we can log
+// useful diagnostics on a 403 instead of just "missing permission".
+type PermissionResult =
+  | {
+      allowed: true;
+      via: 'jwt-platform-admin' | 'jwt-level' | 'jwt-perm' | 'db-cat' | 'db-level' | 'db-perm';
+    }
+  | { allowed: false; reason: string; details: Record<string, unknown> };
+
 async function userHasAnyPermission(
   user: any,
   perms: string[],
   admin: ReturnType<typeof createSupabaseServiceClient>,
-): Promise<boolean> {
+): Promise<PermissionResult> {
   const meta = user?.app_metadata || {};
 
   // Fast path: JWT claims
-  if (meta.isPlatformAdmin === true) return true;
+  if (meta.isPlatformAdmin === true) return { allowed: true, via: 'jwt-platform-admin' };
   const jwtLevel =
     typeof meta.roleLevel === 'number'
       ? meta.roleLevel
       : typeof meta.role_level === 'number'
         ? meta.role_level
         : null;
-  if (jwtLevel !== null && jwtLevel >= 7) return true;
+  if (jwtLevel !== null && jwtLevel >= 7) return { allowed: true, via: 'jwt-level' };
   const jwtPerms: string[] = Array.isArray(meta.permissions) ? meta.permissions : [];
-  if (jwtPerms.length > 0 && perms.some((p) => jwtPerms.includes(p))) return true;
+  if (jwtPerms.length > 0 && perms.some((p) => jwtPerms.includes(p)))
+    return { allowed: true, via: 'jwt-perm' };
 
   // DB fallback — JWT often doesn't carry roleLevel or permissions.
   try {
-    const { data } = await admin
+    const { data, error } = await admin
       .from('users')
       .select('role_id, roles!inner(level, can_access_all_tenants, permissions)')
       .eq('id', user.id)
       .maybeSingle();
+    if (error) {
+      return {
+        allowed: false,
+        reason: 'db_lookup_error',
+        details: { error: error.message, userId: user.id },
+      };
+    }
+    if (!data) {
+      return {
+        allowed: false,
+        reason: 'no_users_row',
+        details: { userId: user.id, email: user.email },
+      };
+    }
     const role = (data as any)?.roles;
-    if (!role) return false;
-    if (role.can_access_all_tenants === true) return true;
-    if (typeof role.level === 'number' && role.level >= 7) return true;
+    if (!role || !data.role_id) {
+      return {
+        allowed: false,
+        reason: 'no_role_assigned',
+        details: { userId: user.id, email: user.email },
+      };
+    }
+    if (role.can_access_all_tenants === true) return { allowed: true, via: 'db-cat' };
+    if (typeof role.level === 'number' && role.level >= 7)
+      return { allowed: true, via: 'db-level' };
     const flat = flattenRolePerms(role.permissions);
-    return perms.some((p) => flat.includes(p));
+    if (perms.some((p) => flat.includes(p))) return { allowed: true, via: 'db-perm' };
+    return {
+      allowed: false,
+      reason: 'role_below_required_level_and_no_perm',
+      details: {
+        userId: user.id,
+        email: user.email,
+        roleLevel: role.level,
+        canAccessAllTenants: role.can_access_all_tenants,
+        haveRolePerms: flat.slice(0, 20),
+        neededAnyOf: perms,
+      },
+    };
   } catch (err) {
-    console.error('[monitoring-clients] role lookup failed:', err);
-    return false;
+    console.error('[monitoring-clients] role lookup threw:', err);
+    return {
+      allowed: false,
+      reason: 'db_lookup_exception',
+      details: { error: err instanceof Error ? err.message : String(err) },
+    };
   }
 }
 
@@ -262,10 +309,15 @@ export default async function handler(req: Request) {
   const admin = createSupabaseServiceClient();
 
   const isWrite = req.method !== 'GET' && req.method !== 'HEAD';
-  if (!(await userHasAnyPermission(user, isWrite ? WRITE_PERMS : READ_PERMS, admin))) {
+  const requiredPerms = isWrite ? WRITE_PERMS : READ_PERMS;
+  const permResult = await userHasAnyPermission(user, requiredPerms, admin);
+  if (!permResult.allowed) {
+    console.warn('[monitoring-clients] 403:', permResult.reason, permResult.details);
     return createCorsResponse(
       {
-        message: `Missing required permission: ${(isWrite ? WRITE_PERMS : READ_PERMS).join(' OR ')}`,
+        message: `Missing required permission: ${requiredPerms.join(' OR ')}`,
+        reason: permResult.reason,
+        details: permResult.details,
       },
       403,
       req,
