@@ -188,11 +188,37 @@ Multi-vendor MFP address book import/edit/export. Source PRD: `tasks/prd-address
 
 ### Platform Admin Blog System (US-BLOG-###)
 Fully autonomous content marketing platform for Printyx's marketing site. Source PRD: `blog-system-prd.json`. Merge tool: `scripts/merge-blog-prd.mjs`.
-- Layout: `shared/blog/` (schemas), `supabase/functions/_shared/blog/` (helpers + adapters), `supabase/functions/blog/` (edge functions), `client/src/pages/platform-admin/blog/` (admin UI), `client/src/lib/blog/` (frontend helpers)
-- Schema barrel: `shared/blog-schema.ts` (re-exported from `shared/schema.ts`); tables added by US-BLOG-002
-- Route: `/platform-admin/blog` — gated to platform admin via `ProtectedRoute platformOnly` and sidebar `platformOnly: true`
-- v1 CMS adapters: WordPress + Ghost. v1 keyword adapter: DataForSEO. v1 social: X/Twitter + LinkedIn
-- Autonomy: full closed loop with auto-refresh agent (US-BLOG-066) gated behind kill switch (US-BLOG-086)
+
+**Layout:**
+- `shared/blog-schema.ts` — 15 Drizzle tables; re-exported from `shared/schema.ts`
+- `supabase/functions/_shared/blog/` — adapters + helpers shared across edge functions
+  - `audit-log.ts` — `writeAuditLog(admin, withRequestContext(req, entry))` — every mutating blog endpoint MUST use this
+  - `safety/kill-switch.ts` — `assertAgentsActive(admin, tenantId, agentKind)` — every agent entry point MUST call this before any work
+  - `cms/` — `CmsAdapter` contract + WordPress + Ghost adapters + registry
+  - `keyword/` — `KeywordAdapter` contract + DataForSEO adapter + registry
+- `supabase/functions/_shared/credential-vault.ts` — Deno Web Crypto AES-256-GCM. Env: `PRINTYX_CREDENTIAL_VAULT_KEY` (or legacy `ADDRESS_BOOK_MASTER_KEY`). Used by every edge function that persists a third-party credential.
+- `supabase/functions/blog-*/` — one directory per edge function: `blog-agents` (kill switch), `blog-brand-voices`, `blog-style-guides`, `blog-cms-targets`, `blog-keyword-targets`, `blog-audit-log`, `blog-onboarding`
+- `client/src/pages/platform-admin/blog/` — admin UI pages
+- `client/src/components/blog/` — `BlogShell` (sub-nav), `BlogSettingsNav` (settings sub-nav), `BlogOnboardingChecklist`, `BlogSectionPlaceholder`
+- `client/src/lib/blog/` — frontend helpers (`brand-voice-prompt.ts`)
+
+**Routes:** `/platform-admin/blog` — gated to platform admin via `ProtectedRoute platformOnly` and sidebar `platformOnly: true`. Sub-routes: `/ideas`, `/briefs`, `/posts`, `/distribution`, `/analytics`, `/refresh`, `/settings/*`. Settings hub has 6 sub-pages: agents, brand-voices, style-guides, cms-targets, keyword-targets, audit-log.
+
+**v1 adapters:** WordPress + Ghost (CMS), DataForSEO (keyword), X/Twitter + LinkedIn (social, not yet wired). Phase 2: Webflow, Ahrefs, SEMrush, Meta, TikTok, Pinterest, Reddit, HN/Medium/Substack.
+
+**Autonomy:** Full closed loop with auto-refresh agent (US-BLOG-066) gated behind kill switch (US-BLOG-086). Per scope decision 5D: auto-refresh defaults to fully autonomous (no human review); the per-tenant `auto_refresh_requires_review` flag flips to require review.
+
+**Permissions:** `blog.post.{view,edit,publish,delete}`, `blog.{brand_voice,style_guide}.edit`, `blog.distribution.publish`, `blog.analytics.view`, `blog.refresh.manage`, `blog.agent.toggle`. Granted by default to PLATFORM_ADMIN (all 10) and COMPANY_ADMIN (editorial subset; no destructive or kill-switch perms).
+
+**Patterns established for new blog edge functions:**
+1. Auth: `createSupabaseClient(req)` → `auth.getUser(jwt)`. Permission gate via the role-string + `app_metadata.permissions[]` hybrid (e.g., `'blog.brand_voice.edit'`).
+2. Tenant: read from `app_metadata.tenantId` with fallbacks; never trust query params.
+3. DB writes: use `createSupabaseServiceClient()` (bypasses RLS). Filter every query by `tenant_id`.
+4. Audit: every mutating action calls `writeAuditLog(admin, withRequestContext(req, entry))`. Don't insert directly into `blog_audit_log`.
+5. Soft delete: set `deleted_at`; filter reads with `.is('deleted_at', null)`.
+6. Default-row uniqueness: atomically clear other defaults in the same edge function call.
+7. Encrypted creds: `encryptCredential(plaintext)` → `encrypted_config` jsonb on the row. Never return decrypted creds; return `*_set: boolean` markers instead.
+8. Audit log is append-only at the DB layer (`drizzle/rls/blog.sql` drops UPDATE/DELETE policies on `blog_audit_log`).
 
 ## Pre-Flight & Pitfalls
 
