@@ -4,6 +4,7 @@ import { AlertOctagon, AlertTriangle, Loader2, ShieldCheck } from 'lucide-react'
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { BlogShell } from '@/components/blog/BlogShell';
+import { BlogSettingsNav } from '@/components/blog/BlogSettingsNav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -131,6 +132,8 @@ export default function BlogSettings() {
             this tenant in one click.
           </p>
         </header>
+
+        <BlogSettingsNav />
 
         {isLoading ? (
           <Card>

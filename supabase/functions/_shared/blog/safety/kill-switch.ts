@@ -19,6 +19,7 @@
 // concerned only with the read path used at the start of every agent run.
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { writeAuditLog } from '../audit-log.ts';
 
 export interface AgentSettings {
   id: string;
@@ -101,14 +102,14 @@ export async function assertAgentsActive(
   const settings = await getAgentSettings(admin, tenantId);
 
   if (settings.agents_paused) {
-    await admin.from('blog_audit_log').insert({
-      tenant_id: tenantId,
-      actor_user_id: null,
-      actor_type: 'agent',
-      agent_kind: agentKind,
+    await writeAuditLog(admin, {
+      tenantId,
+      actorUserId: null,
+      actorType: 'agent',
+      agentKind,
       action: 'agent.run.skipped_kill_switch',
-      target_type: 'blog_agent_settings',
-      target_id: settings.id,
+      targetType: 'blog_agent_settings',
+      targetId: settings.id,
       summary:
         `Agent run skipped because the global kill switch is engaged. ` +
         `Paused since ${settings.paused_at ?? 'unknown'}: ${settings.paused_reason ?? 'no reason given'}.` +

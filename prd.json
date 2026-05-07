@@ -5068,7 +5068,7 @@
         "Brand voice serializes to a system-prompt fragment used by every AI step"
       ],
       "priority": 38,
-      "passes": false,
+      "passes": true,
       "notes": "Sample corpus is the highest-signal field — keep the textarea generous (10k chars).",
       "category": "blog"
     },

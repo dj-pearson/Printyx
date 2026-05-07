@@ -314,6 +314,9 @@ const DisposableEmailDomainsAdmin = React.lazy(
 // Distinct from the public marketing /blog route imported above.
 const BlogPlatformAdmin = React.lazy(() => import('@/pages/platform-admin/blog/BlogIndex'));
 const BlogSettings = React.lazy(() => import('@/pages/platform-admin/blog/BlogSettings'));
+const BlogSettingsBrandVoices = React.lazy(
+  () => import('@/pages/platform-admin/blog/BlogSettingsBrandVoices'),
+);
 const BlogIdeas = React.lazy(() => import('@/pages/platform-admin/blog/BlogIdeas'));
 const BlogBriefs = React.lazy(() => import('@/pages/platform-admin/blog/BlogBriefs'));
 const BlogPosts = React.lazy(() => import('@/pages/platform-admin/blog/BlogPosts'));
@@ -904,6 +907,9 @@ function Router() {
                 {/* Blog Module — Platform Admin (US-BLOG-001 foundation, US-BLOG-086
                     settings, US-BLOG-007 admin shell + sub-section pages). Order matters:
                     more-specific paths first; /platform-admin/blog catches the index. */}
+                <Route path="/platform-admin/blog/settings/brand-voices">
+                  {() => <ProtectedRoute component={BlogSettingsBrandVoices} platformOnly />}
+                </Route>
                 <Route path="/platform-admin/blog/settings">
                   {() => <ProtectedRoute component={BlogSettings} platformOnly />}
                 </Route>

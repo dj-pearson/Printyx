@@ -22,6 +22,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { getAgentSettings } from '../_shared/blog/safety/kill-switch.ts';
+import { writeAuditLog, withRequestContext } from '../_shared/blog/audit-log.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -159,17 +160,20 @@ async function patchSettings(admin: Admin, tenantId: string, userId: string, req
     );
   }
 
-  await admin.from('blog_audit_log').insert({
-    tenant_id: tenantId,
-    actor_user_id: userId,
-    actor_type: 'user',
-    action: 'blog_agent_settings.update',
-    target_type: 'blog_agent_settings',
-    target_id: updated.id,
-    before_state: before,
-    after_state: updated,
-    summary: 'Updated blog agent settings',
-  });
+  await writeAuditLog(
+    admin,
+    withRequestContext(req, {
+      tenantId,
+      actorUserId: userId,
+      actorType: 'user',
+      action: 'blog_agent_settings.update',
+      targetType: 'blog_agent_settings',
+      targetId: updated.id,
+      beforeState: before,
+      afterState: updated,
+      summary: 'Updated blog agent settings',
+    }),
+  );
 
   return createCorsResponse({ settings: updated }, 200, req);
 }
@@ -227,17 +231,20 @@ async function pauseAgents(admin: Admin, tenantId: string, userId: string, req: 
     );
   }
 
-  await admin.from('blog_audit_log').insert({
-    tenant_id: tenantId,
-    actor_user_id: userId,
-    actor_type: 'user',
-    action: 'blog_agent_settings.kill_switch_engaged',
-    target_type: 'blog_agent_settings',
-    target_id: updated.id,
-    before_state: before,
-    after_state: updated,
-    summary: `Kill switch ENGAGED. Reason: ${parsed.data.reason}`,
-  });
+  await writeAuditLog(
+    admin,
+    withRequestContext(req, {
+      tenantId,
+      actorUserId: userId,
+      actorType: 'user',
+      action: 'blog_agent_settings.kill_switch_engaged',
+      targetType: 'blog_agent_settings',
+      targetId: updated.id,
+      beforeState: before,
+      afterState: updated,
+      summary: `Kill switch ENGAGED. Reason: ${parsed.data.reason}`,
+    }),
+  );
 
   return createCorsResponse({ settings: updated }, 200, req);
 }
@@ -297,19 +304,22 @@ async function resumeAgents(admin: Admin, tenantId: string, userId: string, req:
     );
   }
 
-  await admin.from('blog_audit_log').insert({
-    tenant_id: tenantId,
-    actor_user_id: userId,
-    actor_type: 'user',
-    action: 'blog_agent_settings.kill_switch_disengaged',
-    target_type: 'blog_agent_settings',
-    target_id: updated.id,
-    before_state: before,
-    after_state: updated,
-    summary: parsed.data.note
-      ? `Kill switch DISENGAGED. Note: ${parsed.data.note}`
-      : 'Kill switch DISENGAGED.',
-  });
+  await writeAuditLog(
+    admin,
+    withRequestContext(req, {
+      tenantId,
+      actorUserId: userId,
+      actorType: 'user',
+      action: 'blog_agent_settings.kill_switch_disengaged',
+      targetType: 'blog_agent_settings',
+      targetId: updated.id,
+      beforeState: before,
+      afterState: updated,
+      summary: parsed.data.note
+        ? `Kill switch DISENGAGED. Note: ${parsed.data.note}`
+        : 'Kill switch DISENGAGED.',
+    }),
+  );
 
   return createCorsResponse({ settings: updated }, 200, req);
 }

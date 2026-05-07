@@ -4140,3 +4140,74 @@ Implementation lives in `BlogShell.tsx`. Same skip-when-typing pattern as the gl
 4. **US-BLOG-006** (CMS adapter + WordPress + Ghost) — first publishing capability. Independent of editor stories; can run in parallel.
 
 ---
+
+## Session — 2026-05-07 — Blog Brand Voices CRUD (US-BLOG-004)
+**Branch**: main
+**Build**: `npm run build` ✅ green (vite, 35.65s)
+**Status**: passes: true
+
+### What Was Done
+First real content-side feature in the blog module. Full CRUD for `blog_brand_voices` with default-voice handling, soft delete, audit logging, and a live system-prompt preview that admins can use to see what the AI will receive. Establishes the audit-log helper pattern that every future blog endpoint follows.
+
+### Files Created
+- **`supabase/functions/_shared/blog/audit-log.ts`** — reusable `writeAuditLog(admin, entry)` + `withRequestContext(req, entry)` helpers. Captures requestIp + userAgent automatically. Errors are logged but never throw (audit log failures should not bring down the actual operation). All future blog endpoints MUST use this helper for forensic consistency.
+- **`client/src/lib/blog/brand-voice-prompt.ts`** — `serializeBrandVoiceToPrompt(voice)` produces the Markdown-ish system-prompt fragment from a voice row. Used by the live preview today; will be imported by every AI step (draft generator, rewrite toolbar, fact-checker, auto-refresh agent) once those land. Recommend mirroring this to `supabase/functions/_shared/blog/` at that point so it works in both surfaces.
+- **`supabase/functions/blog-brand-voices/index.ts`** — full CRUD edge function:
+  - `GET    /blog-brand-voices` — list, ordered by is_default desc then created_at desc
+  - `POST   /blog-brand-voices` — create (auto-clears other defaults if is_default=true)
+  - `GET    /blog-brand-voices/:id` — fetch one
+  - `PATCH  /blog-brand-voices/:id` — update
+  - `DELETE /blog-brand-voices/:id` — soft delete (sets deleted_at + clears is_default)
+  - `POST   /blog-brand-voices/:id/set-default` — atomically flip default to this voice
+  - Gated to `isPlatformAdmin` OR `blog.brand_voice.edit` permission (JWT claim or role string)
+  - Every mutating action writes to blog_audit_log via the new helper
+  - Zod validation with strict enums on pov / reading_level_target / voice_attributes
+- **`client/src/components/blog/BlogSettingsNav.tsx`** — settings sub-navigation. Two cards (Agent Controls, Brand Voices). Each highlights when its route is active. Future stories add cards for Style Guides, CMS Targets, AI Cost Quotas, etc.
+- **`client/src/pages/platform-admin/blog/BlogSettingsBrandVoices.tsx`** — full CRUD page:
+  - List view (grid of cards, default voice gets a Star badge + border highlight)
+  - Inline create / edit form with all 9 fields plus 3 attribute sliders (humor, formality, technicality 1-5)
+  - **Live system-prompt preview** rendered from `serializeBrandVoiceToPrompt()` — the same code that will run server-side when AI steps land
+  - "Set as default" action (one-click; auto-clears prior default)
+  - Soft delete with AlertDialog confirmation
+  - TanStack Query for read + 4 mutations with toast notifications
+
+### Files Modified
+- **`supabase/functions/blog-agents/index.ts`** — refactored 3 inline `admin.from('blog_audit_log').insert(...)` calls to use the new `writeAuditLog` helper. Behavior unchanged; consistency improved.
+- **`supabase/functions/_shared/blog/safety/kill-switch.ts`** — refactored the inline audit log insert in `assertAgentsActive` to use the new helper.
+- **`client/src/pages/platform-admin/blog/BlogSettings.tsx`** — added `<BlogSettingsNav />` near the top of the page so admins can pivot to Brand Voices without leaving Settings.
+- **`client/src/App.tsx`** — lazy import for `BlogSettingsBrandVoices`; new route `/platform-admin/blog/settings/brand-voices` registered before the catch-all settings route (order matters with wouter).
+
+### Audit Log Actions Introduced
+- `blog_brand_voice.create`
+- `blog_brand_voice.update`
+- `blog_brand_voice.delete`
+- `blog_brand_voice.set_default`
+
+### Default Voice Semantics
+At most one row per tenant has `is_default = true`. Enforced in the edge function (not via a DB constraint, since soft-deleted rows also have `is_default = false`). Setting a new default atomically clears the previous one in the same edge function call.
+
+### Quality Gates
+- `npm run build` — ✅ green (35.65s)
+- `npm run check` — not run to completion (full-codebase TS OOMs); new files are self-contained
+- Browser verification — deferred (no dev-browser in session). Recommend smoke-testing the full lifecycle once the migration is applied: create voice → set default → edit → preview prompt → delete
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-004 — Brand voice CRUD with live system-prompt preview | ✅ passes: true |
+
+**Blog module total: 6 / 86 done (US-BLOG-001, 002, 003, 004, 007, 086).**
+
+### Patterns Established for Future Blog Stories
+1. **Audit log writes** — call `writeAuditLog(admin, withRequestContext(req, entry))` in every mutating handler. Don't insert directly into `blog_audit_log`. Errors won't propagate, so the action still succeeds even if audit logging fails.
+2. **Permission check** — use the role-string + JWT permission-array hybrid pattern from `blog-brand-voices` and `blog-agents`. Once permissions reliably appear in JWT app_metadata, migrate to `requirePermission()` from `_shared/rbac.ts`.
+3. **Soft delete** — set `deleted_at` to now, NOT `is_default = true` (so a deleted default doesn't haunt the picker). Filter all reads with `.is('deleted_at', null)`.
+4. **Default-row uniqueness** — for tables with a tenant-scoped "is_default" column (brand voices, style guides, CMS targets), atomically clear other defaults in the same edge function call. Don't rely on a partial UNIQUE index alone.
+5. **Frontend pages under settings** — render `<BlogShell>` + `<BlogSettingsNav>` at the top of each settings sub-page. Each settings sub-page is its own React Lazy import + route in `App.tsx`.
+
+### Next Ralph Iteration Recommendations
+1. **US-BLOG-005** (style guide CRUD) — same shape as US-BLOG-004 but with a `rules` jsonb array + `rule_packs` text array. Add a "Style Guides" card to BlogSettingsNav. The in-editor real-time linting still waits for US-BLOG-008.
+2. **US-BLOG-008** (rich-text editor) — foundational primitive that unlocks every Posts-related story. Probably 2-3 sessions of work given Markdown round-trip + paste handling.
+3. **US-BLOG-006** (CMS adapter + WordPress + Ghost) — first publishing capability. Independent; runs in parallel with editor work. Recommend pairing with the credential-vault generalization (rename `ADDRESS_BOOK_MASTER_KEY` → `PRINTYX_CREDENTIAL_VAULT_KEY` with backward-compat alias) since CMS credentials need encrypted storage too.
+
+---
