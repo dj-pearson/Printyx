@@ -28,7 +28,8 @@ DECLARE
     'blog_distributions',
     'blog_performance_metrics',
     'blog_refresh_queue',
-    'blog_audit_log'
+    'blog_audit_log',
+    'blog_agent_settings'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP

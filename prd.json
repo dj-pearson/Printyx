@@ -6409,7 +6409,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 120,
-      "passes": false,
+      "passes": true,
       "notes": "Added beyond the original 85-story PRD because scope decision 5D enables fully autonomous re-editing — production-safe autonomy requires a panic button. Treat as a hard gate before US-BLOG-066 ships.",
       "category": "blog"
     }

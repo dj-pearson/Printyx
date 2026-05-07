@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
+import { Link } from 'wouter';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Sparkles, Wrench } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FileText, Settings, Sparkles, Wrench } from 'lucide-react';
 
 /**
  * Blog Module — Platform Admin Index Page
@@ -20,18 +22,26 @@ export default function BlogIndex() {
 
   return (
     <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-      <header className="space-y-2">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Blog</h1>
-          <Badge variant="secondary" className="text-xs">
-            Foundation · US-BLOG-001
-          </Badge>
+      <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Blog</h1>
+            <Badge variant="secondary" className="text-xs">
+              Foundation · US-BLOG-001
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            Platform Admin blog system. Foundation directories and routes are in place; the full
+            admin shell, content production pipeline, and autonomous publishing flow land in
+            subsequent BLOG-### stories.
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground max-w-2xl">
-          Platform Admin blog system. Foundation directories and routes are in place; the full admin
-          shell, content production pipeline, and autonomous publishing flow land in subsequent
-          BLOG-### stories.
-        </p>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/platform-admin/blog/settings">
+            <Settings className="h-4 w-4 mr-2" />
+            Agent Settings
+          </Link>
+        </Button>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

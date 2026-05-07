@@ -457,6 +457,28 @@ export const blogRefreshQueue = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// blog_agent_settings — kill switch + agent-mode flags (US-BLOG-086)
+// One row per tenant; auto-created with defaults on first read.
+// ---------------------------------------------------------------------------
+export const blogAgentSettings = pgTable(
+  'blog_agent_settings',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull().unique(), // exactly one row per tenant
+    agentsPaused: boolean('agents_paused').notNull().default(false),
+    pausedAt: timestamp('paused_at'),
+    pausedByUserId: varchar('paused_by_user_id'),
+    pausedReason: text('paused_reason'),
+    autoRefreshRequiresReview: boolean('auto_refresh_requires_review').notNull().default(false),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index('blog_agent_settings_tenant_idx').on(table.tenantId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // blog_audit_log — every mutating action (US-BLOG-011, 086)
 // ---------------------------------------------------------------------------
 export const blogAuditLog = pgTable(
@@ -599,6 +621,12 @@ export const insertBlogAuditLogSchema = createInsertSchema(blogAuditLog, {
   createdAt: true,
 });
 
+export const insertBlogAgentSettingsSchema = createInsertSchema(blogAgentSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // ---------------------------------------------------------------------------
 // Inferred Drizzle types — Select / Insert per table
 // ---------------------------------------------------------------------------
@@ -631,6 +659,8 @@ export type BlogRefreshQueueItem = typeof blogRefreshQueue.$inferSelect;
 export type NewBlogRefreshQueueItem = typeof blogRefreshQueue.$inferInsert;
 export type BlogAuditLogEntry = typeof blogAuditLog.$inferSelect;
 export type NewBlogAuditLogEntry = typeof blogAuditLog.$inferInsert;
+export type BlogAgentSettings = typeof blogAgentSettings.$inferSelect;
+export type NewBlogAgentSettings = typeof blogAgentSettings.$inferInsert;
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;

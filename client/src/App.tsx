@@ -312,6 +312,7 @@ const DisposableEmailDomainsAdmin = React.lazy(
 // Blog Module — Platform Admin (US-BLOG-001 foundation; full shell in US-BLOG-007)
 // Distinct from the public marketing /blog route imported above
 const BlogPlatformAdmin = React.lazy(() => import('@/pages/platform-admin/blog/BlogIndex'));
+const BlogSettings = React.lazy(() => import('@/pages/platform-admin/blog/BlogSettings'));
 
 const LAST_ROUTE_KEY = 'printyx_last_route';
 
@@ -893,7 +894,10 @@ function Router() {
                 <Route path="/admin/tenant-management">
                   {() => <ProtectedRoute component={TenantManagement} platformOnly />}
                 </Route>
-                {/* Blog Module — Platform Admin (US-BLOG-001 foundation) */}
+                {/* Blog Module — Platform Admin (US-BLOG-001 foundation, US-BLOG-086 settings) */}
+                <Route path="/platform-admin/blog/settings">
+                  {() => <ProtectedRoute component={BlogSettings} platformOnly />}
+                </Route>
                 <Route path="/platform-admin/blog">
                   {() => <ProtectedRoute component={BlogPlatformAdmin} platformOnly />}
                 </Route>

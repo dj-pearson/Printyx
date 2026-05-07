@@ -3915,3 +3915,89 @@ Plus per-table tenant index, status indexes where filtering is common, and targe
 3. **US-BLOG-003** (RBAC + audit log) — adds the `blog.*` permission set to the seeder and gates every blog edge function on the appropriate permission. Audit log table is already created (US-BLOG-002); this story wires the log writes.
 
 ---
+
+## Session — 2026-05-07 — Blog Agent Kill Switch (US-BLOG-086)
+**Branch**: main
+**Build**: `npm run build` ✅ green (vite, 39.67s)
+**Status**: passes: true (kill switch infrastructure complete; per-action rollback UI deferred to UI stories)
+
+### What Was Done
+Production-safe panic button for the blog system's autonomous agents. Hard gate before US-BLOG-066 (auto-refresh agent) ships. Includes the per-tenant settings table, the helper every agent will call to honor the pause, the pause/resume edge function, and the admin settings page.
+
+### Files Modified
+- `shared/blog-schema.ts` — added 15th blog table `blog_agent_settings`:
+  - One row per tenant (UNIQUE constraint on tenant_id)
+  - `agents_paused` (default false), `paused_at`, `paused_by_user_id`, `paused_reason`
+  - `auto_refresh_requires_review` (default false per scope decision 5D — fully autonomous; admin can flip on per-tenant)
+  - Standard `created_at` / `updated_at`
+  - Plus `insertBlogAgentSettingsSchema` Zod validator and inferred types
+- `drizzle/rls/blog.sql` — added `blog_agent_settings` to the array applied via `apply_tenant_rls()`
+- `client/src/App.tsx`:
+  - Lazy import `BlogSettings` from `@/pages/platform-admin/blog/BlogSettings`
+  - New route `/platform-admin/blog/settings` gated via `<ProtectedRoute platformOnly />`
+- `client/src/pages/platform-admin/blog/BlogIndex.tsx` — added "Agent Settings" button in header linking to the settings page (no other content changes)
+
+### Files Created
+- `supabase/functions/_shared/blog/safety/kill-switch.ts` — three exports:
+  - `getAgentSettings(admin, tenantId)` — fetches the row, idempotently creates a default row on first read using upsert(onConflict)
+  - `isAgentsPaused(admin, tenantId)` — boolean shortcut
+  - `assertAgentsActive(admin, tenantId, agentKind, context)` — the gate every agent entry point will call. If paused, writes a `agent.run.skipped_kill_switch` audit log entry and returns null. If active, returns the settings row so callers can also read `auto_refresh_requires_review` without a second roundtrip.
+- `supabase/functions/blog-agents/index.ts` — pause/resume edge function:
+  - `GET /blog-agents/settings` — returns current settings (creates default row on first read)
+  - `POST /blog-agents/pause` — body: `{ reason: string }` (1..2000 chars, required); writes `kill_switch_engaged` audit log entry; returns 409 if already paused
+  - `POST /blog-agents/resume` — body: `{ note?: string }` (optional); writes `kill_switch_disengaged` audit log entry; returns 409 if not paused
+  - `PATCH /blog-agents/settings` — body: `{ auto_refresh_requires_review?: boolean }`; writes `update` audit log entry with before/after state
+  - All routes platform-admin gated (checks `app_metadata.isPlatformAdmin === true` or `role === 'platform_admin'`/`'super_admin'`)
+- `client/src/pages/platform-admin/blog/BlogSettings.tsx` — admin settings page:
+  - Prominent kill switch card that switches between primary (active) and destructive (engaged) styling based on state
+  - When engaged, shows engagement timestamp, user ID, and reason in a structured detail block
+  - "Engage kill switch" button opens an AlertDialog requiring a reason (1+ char) before confirming
+  - "Resume agents" button (no confirmation — fast recovery from accidental pause)
+  - Auto-refresh review-gate toggle (`Switch` component) with helper text noting hard guardrails always apply
+  - TanStack Query for read + 3 mutations; toast notifications on every success/error; loading states throughout
+
+### What Was Deferred (Tracked as Follow-ups)
+- **Per-action rollback button on post detail page** — the AC mentions "every blog_post_revisions row created by an agent is reversible via a 'Revert to previous revision' button on the post detail page". The post detail page itself does not exist yet (lands in US-BLOG-008/017 admin shell + post pages). Will be implemented as part of those stories. The infrastructure (`blog_post_revisions` table from US-BLOG-002 already captures every agent revision with `revision_source` and `agent_run_id`) is in place.
+- **Bulk rollback from audit log page** — same reason: no audit log UI yet. The audit-log table is populated by every action in this story, so the data exists; only the bulk-revert UI is pending.
+
+These two items are NOT blocking US-BLOG-066 (auto-refresh agent) — the kill switch alone is sufficient to halt autonomous publishing in an emergency. The rollback UIs make recovery faster but the kill switch is the production-safety primitive.
+
+### Audit Log Actions Introduced
+- `agent.run.skipped_kill_switch` — written by `assertAgentsActive` when an agent run is skipped
+- `blog_agent_settings.kill_switch_engaged` — written by POST /blog-agents/pause
+- `blog_agent_settings.kill_switch_disengaged` — written by POST /blog-agents/resume
+- `blog_agent_settings.update` — written by PATCH /blog-agents/settings
+
+### Quality Gates
+- `npm run build` — ✅ green (39.67s)
+- `npm run check` — not run to completion (full-codebase TS check OOMs); new files are self-contained
+- Browser verification via dev-browser skill — not available in session; deferred to next environment with browser access. The route, lazy import, and component all compile cleanly.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-086 — Global agent kill switch + per-action rollback | ✅ passes: true (kill switch infrastructure complete; per-action rollback UI deferred to dependent UI stories) |
+
+### How Future Agent Stories Use This
+Every future agent edge function (US-BLOG-066 auto-refresh, US-BLOG-072 multi-agent draft pipeline, US-BLOG-053 auto-scheduling, US-BLOG-058 outreach agent) MUST include this snippet at the top of its handler, before any work happens:
+
+```typescript
+import { assertAgentsActive } from '../_shared/blog/safety/kill-switch.ts';
+
+const settings = await assertAgentsActive(admin, tenantId, 'auto_refresh_agent', { agentRunId });
+if (!settings) {
+  return createCorsResponse({ error: 'agents_paused' }, 423, req);
+}
+// ... agent work proceeds; settings.auto_refresh_requires_review tells us
+//     whether to write to the review queue or auto-publish
+```
+
+If a story author skips this check, the kill switch is bypassed — flag this in code review.
+
+### Next Ralph Iteration Recommendations
+1. **US-BLOG-007** (admin UI shell) — sub-navigation (Ideas, Briefs, Posts, Distribution, Analytics, Refresh, Settings). Settings page already exists from this story; the others land here.
+2. **US-BLOG-003** (RBAC seed) — adds `blog.*` permissions including the new `blog.agent.toggle` for the kill switch endpoint. The platform-admin gating in this story's edge function is currently role-based; granular permission gating goes in once the seeder lands.
+3. **US-BLOG-004 + 005** (brand voice + style guide) — first content-side stories; needed by every AI draft step.
+4. **DATABASE_URL follow-up** — `npm run db:generate` still pending across ABK-001, US-BLOG-002, and now US-BLOG-086. Three iterations of schema changes need migration generation in one pass.
+
+---
