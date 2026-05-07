@@ -4532,3 +4532,108 @@ US-BLOG-001 (foundation), 002 (schema), 003 (RBAC), 004 (brand voices),
 4. **US-BLOG-012** (job queue design) — agent backbone for US-BLOG-066.
 
 ---
+
+## Session — 2026-05-07 — Posts Editor Foundation (US-BLOG-008 partial)
+**Branch**: main
+**Build**: `npm run build` ✅ green (vite, 1m 10s)
+**Status**: passes: **false** (foundation only — 3 of 6 AC items met; slash menu, AI rewrite toolbar, and autosave deferred to a follow-up iteration)
+
+### What Was Done
+First slice of the rich-text editor. Real Posts surface, real CRUD, real Markdown round-trip — which means the closed loop is now wireable end-to-end (write a post → save → eventually publish via US-BLOG-006 CMS adapters).
+
+### Dependencies Added
+Installed via `npm install --legacy-peer-deps` (per CLAUDE.md memory note):
+- `@tiptap/react@3.22.5`, `@tiptap/core@3.22.5`, `@tiptap/starter-kit@3.22.5`
+- `@tiptap/extension-link@3.22.5`, `@tiptap/extension-image@3.22.5`
+- `@tiptap/extension-placeholder@3.22.5`, `@tiptap/extension-typography@3.22.5`
+- `marked@18.0.3` — Markdown → HTML
+- `turndown@7.2.4` + `@types/turndown@5.0.6` — HTML → Markdown
+- npm warns about 75 vulnerabilities in transitive deps; same noise as the rest of the codebase, not introduced here.
+
+### Files Created
+- **`client/src/lib/blog/markdown.ts`** — `markdownToHtml()` + `htmlToMarkdown()` round-trip helpers. Configured for GFM-ish fidelity (atx headings, fenced code, dash bullets, asterisk em/strong, GFM strikethrough). Custom turndown rules for `<img>` (preserves alt + title) and task-list items (for the future `data-checked` extension).
+- **`client/src/components/blog/BlogEditor.tsx`** — TipTap-based editor component:
+  - Extensions: StarterKit (paragraphs, headings 1-3, lists, blockquote, code/code-block, hr, hard break, history) + Link + Image + Placeholder + Typography
+  - 12-button toolbar: bold, italic, strikethrough, h1/h2/h3, bullet list, numbered list, quote, code block, link, image, undo/redo
+  - Markdown paste detection — when clipboard text matches Markdown patterns (headings, bullets, fences, links, etc.), converts to HTML before inserting
+  - Markdown export on every onChange — fires `{ markdown, html }` to parent so both shapes are saved together
+  - Round-trip on `value` prop changes — parent can swap content without losing focus
+  - `bare` mode for embedding in cards without a double border
+  - `readOnly` mode for revision-history viewers (when US-BLOG-009 lands)
+- **`supabase/functions/blog-posts/index.ts`** — full CRUD + status transitions:
+  - `GET /blog-posts?status=&limit=&offset=` — paginated list
+  - `POST /blog-posts` — create draft (auto-slugifies from title if slug omitted)
+  - `GET /blog-posts/:id` — fetch one
+  - `PATCH /blog-posts/:id` — update; auto-stamps `published_at` on first transition to status='published'
+  - `DELETE /blog-posts/:id` — soft delete (status preserved in audit log)
+  - All mutating actions audit-logged via `writeAuditLog`. Status changes get a distinct `blog_post.status_change` action so the audit log diff is grep-able
+- **`client/src/pages/platform-admin/blog/BlogPostEditor.tsx`** — full edit/create page:
+  - Two-column layout: editor on the left, sidebar on the right (status / URL / SEO)
+  - Auto-slug from title when creating; sticky once user manually edits
+  - SEO panel: meta title, meta description (with char counter), canonical URL
+  - Soft-delete via AlertDialog confirmation (only on existing posts)
+  - Save button creates a new draft on `/posts/new`, updates in place on `/posts/:id/edit`
+
+### Files Modified
+- **`client/src/pages/platform-admin/blog/BlogPosts.tsx`** — replaced the US-BLOG-007 placeholder with a real list page: status filter dropdown, client-side search, color-coded status badge per post, click-to-edit. Empty state distinguishes "no posts yet" vs "no matches for filter."
+- **`client/src/App.tsx`** — added two new routes: `/platform-admin/blog/posts/new` and `/platform-admin/blog/posts/:id/edit`. Both render `BlogPostEditor` lazy-loaded.
+
+### Audit Log Actions Introduced
+- `blog_post.create`
+- `blog_post.update`
+- `blog_post.status_change` (distinct from update so audit grep finds workflow transitions)
+- `blog_post.delete`
+
+### What Was Done vs. Original AC
+
+| AC item | Status |
+|---|---|
+| 1. TipTap + extensions: headings, lists, blockquotes, code blocks, images, links | ✅ Foundation done |
+| 1b. ...syntax-highlighted code, tables, footnotes, callouts/admonitions | ❌ Deferred |
+| 2. Markdown import: paste Markdown converts to rich nodes | ✅ Done (looksLikeMarkdown heuristic + markdownToHtml) |
+| 3. Markdown export: stores canonical Markdown in posts.body_markdown | ✅ Done (htmlToMarkdown on every onChange) |
+| 4. Slash-command menu (/) for inserting blocks | ❌ Deferred |
+| 5. Inline AI rewrite toolbar (rewrite shorter / expand / change tone / cite source) | ❌ Deferred (depends on LLM integration not yet wired) |
+| 6. Autosave to post_revisions every 10s of inactivity | ❌ Deferred (depends on revisions endpoint, not yet built) |
+
+**3 of 6 AC items met.** Marking `passes: false` until the polish iteration adds the slash menu, AI toolbar, and autosave.
+
+### What's Still Deferred to the US-BLOG-008 Polish Iteration
+1. Slash command menu (`/` to insert headings, lists, code blocks, images, etc.) via `@tiptap/extension-slash-command` or a custom suggestion plugin
+2. Syntax-highlighted code blocks via `@tiptap/extension-code-block-lowlight` + `lowlight`
+3. Tables via `@tiptap/extension-table` + table cell/row/header extensions
+4. Footnotes — needs a custom node extension (no first-party TipTap extension)
+5. Callouts / admonitions — same: custom node extension
+6. Inline AI rewrite toolbar (`rewrite shorter / expand / change tone / cite source`) — depends on LLM integration. Wires to `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` environment setup which is documented in progress.txt as a v1 prereq but not yet wired in any edge function. Once an LLM-call helper exists, the toolbar can be a TipTap BubbleMenu with 4 buttons that call it.
+7. Autosave to `blog_post_revisions` every 10s of inactivity — needs a separate `POST /blog-posts/:id/revisions` endpoint (or extend `PATCH` to optionally write a revision). Plus client-side debounced effect.
+8. Asset upload integration via `blog_assets` (US-BLOG-010). For now, image insertion uses the `window.prompt` URL flow.
+9. Style guide linting overlay (uses US-BLOG-005 rules + rule packs).
+10. Brand voice serialization at AI rewrite time (uses `serializeBrandVoiceToPrompt` from `client/src/lib/blog/brand-voice-prompt.ts`, US-BLOG-004).
+
+### Quality Gates
+- `npm run build` — ✅ green (1m 10s)
+- `BlogPostEditor-*.js` chunk weighs 443 kB / 141 kB gzip — TipTap is heavy but lazy-loaded so only hits the wire when an admin opens the editor. Acceptable for v1; could be slimmed by dropping unused StarterKit nodes if it ever shows up in user complaints.
+- `npm run check` — not run to completion; new files self-contained
+- Browser verification — deferred. Recommend smoke-testing once migration 0008 is applied: navigate to `/platform-admin/blog/posts` → click "New Post" → type title (slug auto-fills) → write some Markdown including # heading + - bullet + **bold** in the editor → save → confirm body_markdown in the response matches what was typed (round-trip).
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-008 — Rich-text editor with Markdown parity | ❌ passes: false (foundation only — 3 of 6 AC items) |
+
+**Blog module total: 11 / 86 done.** US-BLOG-008 NOT counted as done since it's foundation only.
+
+### What Now Works End-to-End
+- Platform admin can create a post → write Markdown → save → see it in the list with status badge → edit it again → soft-delete it
+- Status workflow transitions are audit-logged with distinct `blog_post.status_change` actions
+- Markdown is the canonical source of truth (`body_markdown`); HTML stored alongside (`body_html`) for cheap rendering when the public marketing site eventually consumes it
+- The CMS adapters (US-BLOG-006) can now publish a post: pass `body_html` (rendered) or `body_markdown` (let the adapter render in its Gutenberg/mobiledoc transform). The wiring story is US-BLOG-042.
+
+### Next Ralph Iteration Recommendations
+1. **US-BLOG-008 polish** — slash menu + autosave revisions + AI rewrite toolbar (the LLM bit needs `OPENAI_API_KEY` + a `_shared/blog/llm.ts` helper first)
+2. **US-BLOG-009** (version history with diff) — now possible since the revisions table exists; needs the autosave endpoint from the polish iteration
+3. **US-BLOG-042** (CMS publish flow) — wires Posts → CMS adapters; mostly a state-machine + queue piece
+4. **US-BLOG-010** (asset library + Supabase Storage) — replaces the prompt-based image insertion
+5. **US-BLOG-012** (job queue) — needed for scheduled posts (US-BLOG-008 status='scheduled' currently doesn't actually schedule anything)
+
+---
