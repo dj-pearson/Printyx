@@ -770,7 +770,14 @@ function Router() {
                 <Route path="/tenant-setup" component={TenantSetup} />
                 <Route path="/settings" component={Settings} />
                 <Route path="/settings/api-keys" component={ApiKeyManagement} />
-                <Route path="/monitoring-clients" component={MonitoringClients} />
+                <Route path="/monitoring-clients">
+                  {() => (
+                    <ProtectedRoute
+                      permissions={['service.equipment.view', 'service.equipment.configure']}
+                      component={MonitoringClients}
+                    />
+                  )}
+                </Route>
                 <Route path="/device-monitoring" component={DeviceMonitoring} />
                 <Route path="/supply-runway" component={SupplyRunway} />
                 <Route path="/supply-orders" component={SupplyOrders} />

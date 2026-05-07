@@ -58,6 +58,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import MainLayout from '@/components/layout/main-layout';
+import { apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/lib/config';
+import { getAccessToken } from '@/lib/supabase';
 
 interface MonitoringClient {
   id: number;
@@ -131,7 +135,7 @@ export default function MonitoringClients() {
 
   // Fetch all clients
   const { data: clientsData, isLoading } = useQuery<{ clients: MonitoringClient[] }>({
-    queryKey: ['/api/client-metrics/clients'],
+    queryKey: ['/api/monitoring-clients'],
   });
 
   // Customers picker (links a monitoring client to its customer / business
@@ -152,7 +156,7 @@ export default function MonitoringClients() {
 
   // Fetch selected client details
   const { data: clientDetails } = useQuery<ClientDetails>({
-    queryKey: [`/api/client-metrics/clients/${selectedClientId}`],
+    queryKey: [`/api/monitoring-clients/${selectedClientId}`],
     enabled: !!selectedClientId,
   });
 
@@ -164,23 +168,11 @@ export default function MonitoringClients() {
       customerId?: string;
       autoOrderEnabled?: boolean;
     }) => {
-      const response = await fetch('/api/client-metrics/clients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to register client');
-      }
-
-      return response.json() as Promise<NewClientResponse>;
+      return (await apiRequest('/api/monitoring-clients', 'POST', data)) as NewClientResponse;
     },
     onSuccess: (data) => {
       setRegisteredClient(data.client);
-      queryClient.invalidateQueries({ queryKey: ['/api/client-metrics/clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/monitoring-clients'] });
       toast({
         title: 'Client Registered',
         description: `Successfully registered ${data.client.clientName}`,
@@ -198,23 +190,17 @@ export default function MonitoringClients() {
   // Generate enrollment token mutation
   const generateTokenMutation = useMutation({
     mutationFn: async (clientId: string) => {
-      const response = await fetch(`/api/client-metrics/clients/${clientId}/enrollment-token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.message || 'Failed to generate token');
-      }
-      return response.json() as Promise<{
+      return (await apiRequest(
+        `/api/monitoring-clients/${clientId}/enrollment-token`,
+        'POST',
+        {},
+      )) as {
         token: string;
         expiresAt: string;
         endpoint: string;
         clientId: string;
         installCommand: string;
-      }>;
+      };
     },
     onSuccess: (data) => {
       setEnrollmentResult({
@@ -236,26 +222,18 @@ export default function MonitoringClients() {
   // Send a remote-control command to a client (rescan / reload / force-submit / rotate)
   const sendCommandMutation = useMutation({
     mutationFn: async ({ clientId, command }: { clientId: string; command: string }) => {
-      const response = await fetch(`/api/client-metrics/clients/${clientId}/commands`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command }),
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.message || 'Failed to send command');
-      }
-      return response.json() as Promise<{
+      return (await apiRequest(`/api/monitoring-clients/${clientId}/commands`, 'POST', {
+        command,
+      })) as {
         command: { id: string; command: string; status: string };
-      }>;
+      };
     },
     onSuccess: (_data, { command }) => {
       toast({
         title: 'Command queued',
         description: `'${command}' will run on the next heartbeat (within 5 minutes).`,
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/client-metrics/clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/monitoring-clients'] });
     },
     onError: (error: Error) => {
       toast({
@@ -266,39 +244,78 @@ export default function MonitoringClients() {
     },
   });
 
-  // Download bundled installer (zip)
-  const downloadInstaller = (clientId: string) => {
-    // Anchor + click pattern preserves the browser's session cookies for auth.
-    const a = document.createElement('a');
-    a.href = `/api/client-metrics/clients/${clientId}/installer.zip`;
-    a.download = `printyx-client-${clientId}.zip`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    toast({ title: 'Installer downloading', description: 'Run on the target Windows server.' });
+  // Download bundled installer (zip). The endpoint requires the same Bearer
+  // JWT as every other admin call, so an anchor + click won't work in
+  // production — we have to fetch the bytes ourselves and trigger a Blob
+  // download. Mirrors the auth header building done by `apiRequest`.
+  const downloadInstaller = async (clientId: string) => {
+    try {
+      const accessToken = await getAccessToken();
+      const headers: Record<string, string> = {};
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+      const tenantId =
+        localStorage.getItem('tenant-id') ||
+        localStorage.getItem('printyx-tenant-id') ||
+        localStorage.getItem('x-tenant-id') ||
+        '';
+      if (tenantId) headers['x-tenant-id'] = tenantId;
+
+      const res = await fetch(getApiUrl(`/api/monitoring-clients/${clientId}/installer.zip`), {
+        method: 'GET',
+        headers,
+        credentials: 'omit',
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        let message = `Download failed (${res.status})`;
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed?.message) message = parsed.message;
+        } catch {
+          /* not JSON */
+        }
+        throw new Error(message);
+      }
+
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `printyx-client-${clientId}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+
+      toast({
+        title: 'Installer downloading',
+        description: 'Run on the target Windows server.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Download failed',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Regenerate API key mutation
   const regenerateKeyMutation = useMutation({
     mutationFn: async (clientId: string) => {
-      const response = await fetch(`/api/client-metrics/clients/${clientId}/regenerate-key`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to regenerate key');
-      }
-
-      return response.json() as Promise<{ message: string; apiKey: string }>;
+      return (await apiRequest(`/api/monitoring-clients/${clientId}/regenerate-key`, 'POST')) as {
+        message: string;
+        apiKey: string;
+      };
     },
-    onSuccess: (data, clientId) => {
+    onSuccess: (_data, clientId) => {
       toast({
         title: 'API Key Regenerated',
         description: 'New API key has been generated',
       });
-      queryClient.invalidateQueries({ queryKey: [`/api/client-metrics/clients/${clientId}`] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/monitoring-clients/${clientId}`],
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -375,7 +392,10 @@ export default function MonitoringClients() {
   const clients = clientsData?.clients || [];
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <MainLayout
+      title="Monitoring Clients"
+      description="Manage on-premises printer monitoring clients"
+    >
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -935,7 +955,7 @@ export default function MonitoringClients() {
           </DialogContent>
         </Dialog>
       )}
-    </div>
+    </MainLayout>
   );
 }
 
@@ -963,7 +983,7 @@ function CommandsPanel({
   onSend: (command: string) => void;
 }) {
   const { data, isLoading } = useQuery<{ commands: ClientCommand[] }>({
-    queryKey: [`/api/client-metrics/clients/${clientId}/commands`],
+    queryKey: [`/api/monitoring-clients/${clientId}/commands`],
     refetchInterval: 10_000, // refresh while dialog is open
   });
 

@@ -12,6 +12,11 @@ WORKDIR /app
 # Copy edge functions
 COPY supabase/functions ./functions
 
+# Ship the Windows installer scripts so the monitoring-clients edge function
+# can stream them as part of the bundled installer.zip download. Read at
+# runtime from /app/printyx-client/scripts (override with PRINTYX_INSTALLER_DIR).
+COPY printyx-client/scripts ./printyx-client/scripts
+
 # Set environment variables (will be overridden by Coolify)
 ENV SUPABASE_URL=""
 ENV SUPABASE_ANON_KEY=""

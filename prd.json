@@ -6412,6 +6412,340 @@
       "passes": true,
       "notes": "Added beyond the original 85-story PRD because scope decision 5D enables fully autonomous re-editing — production-safe autonomy requires a panic button. Treat as a hard gate before US-BLOG-066 ships.",
       "category": "blog"
+    },
+    {
+      "id": "US-SUPER-001",
+      "title": "Predictive failure dispatch agent for MFP fleet",
+      "description": "As a service manager, I need the platform to predict imminent MFP failures (7-14 days out) from meter trends, error code history, machine age, and last service date so I can dispatch a tech before the customer calls. This flips service from reactive to proactive and is a primary renewal differentiator that competitors (e-automate, Printanista) do not offer.",
+      "acceptanceCriteria": [
+        "New table equipment_failure_predictions in shared/intelligent-alerts-schema.ts: tenant_id, machine_id, predicted_window_start, predicted_window_end, confidence (0-1), signals jsonb, status (pending|approved|dismissed|expired), generated_at",
+        "Daily edge function predictive-failure-agent scores every active machine per tenant; signals include meter delta acceleration, error code frequency from existing service ticket history, days since last service, model age, toner cycle anomalies",
+        "Predictions above confidence threshold (configurable per tenant, default 0.7) auto-create draft service tickets in pending_review status with linked prediction_id",
+        "New page /service/predictions lists predictions sorted by confidence × contract value with signals breakdown, suggested parts, and approve & dispatch / snooze / dismiss actions",
+        "Approval creates a dispatched ticket via the existing enhanced-service flow and updates prediction.status",
+        "Per-tenant kill switch in settings (mirrors blog kill-switch pattern from US-BLOG-086)",
+        "Track precision/recall: tickets closed with same root cause as prediction within 30 days = true positive; expose accuracy stats per machine model",
+        "Audit log every approval/dismissal with user + timestamp",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 121,
+      "passes": false,
+      "notes": "Start with rules-based scoring (interpretable, fast to ship). Move to ML once 6+ months of approval/dismissal feedback exists. Builds on shared/equipment-schema.ts, shared/enhanced-service-schema.ts, shared/intelligent-alerts-schema.ts. Borrow kill-switch pattern from supabase/functions/_shared/safety/kill-switch.ts.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-002",
+      "title": "SMS/photo meter reads with vision extraction",
+      "description": "As a billing operator, I need customers to text or email a phone photo of the MFP meter panel and have the system auto-extract counters, validate against trend, and create a billable meter read so we eliminate the monthly meter-chasing workflow.",
+      "acceptanceCriteria": [
+        "Twilio inbound SMS webhook routes attached image to edge function meter-read-vision; supports MMS and email-to-SMS gateways",
+        "Vision call (Claude Sonnet vision via Anthropic SDK) extracts black total, color total, scan, fax counters as structured JSON",
+        "Validation: reject if delta < 0 or > 3x rolling 90-day average; flagged reads land in review queue not auto-billed",
+        "Caller phone matched against business_records.phone to identify tenant + customer; ambiguous matches reply asking for site/machine ID",
+        "Outbound SMS confirms read or asks for clarification; templates editable per tenant",
+        "New table meter_read_submissions: id, tenant_id, source ('sms'|'email'|'web'|'manual'), raw_image_url (Supabase storage), extracted_values jsonb, validation_status, machine_id, submitted_at, reviewed_by_user_id",
+        "Admin review UI at /service/meter-reads/review for flagged submissions: side-by-side image + extracted values + edit & approve",
+        "Twilio credentials encrypted via existing supabase/functions/_shared/credential-vault.ts (AES-256-GCM)",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 122,
+      "passes": false,
+      "notes": "Single biggest billing-ops time-saver. Cost-control: cache identical images by hash. Customer texts a number → vision → bill. The 'why didn't we do this sooner' winner. Reuse credential vault pattern; do not roll a new one.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-003",
+      "title": "Contract P&L X-ray (live margin per active service contract)",
+      "description": "As a dealer owner, I need real-time per-contract margin (CPC revenue minus parts, labor, supplies, financing) so I know which contracts are profitable, which are bleeding, and where to focus renewal negotiation.",
+      "acceptanceCriteria": [
+        "New materialized view contract_pnl_v aggregates: revenue from meter_reads × CPC tier, parts cost from service_tickets.parts_used, labor cost from service_tickets.labor_minutes × tech burdened rate, supplies cost from auto_supply_orders, financing fees from contract terms",
+        "Refresh nightly via cron edge function refresh-contract-pnl; on-demand refresh button on the page (rate-limited)",
+        "New page /contracts/profitability shows table sortable by margin %: contract, customer, monthly revenue, monthly cost, GP%, 12-month trend sparkline, status badge",
+        "Per-contract detail page /contracts/:id/pnl breaks down 12-month cost lines by category with stacked bar chart",
+        "Threshold alerts: contracts dropping below 20% GP trigger weekly digest email to OWNER role; threshold configurable per tenant",
+        "Filters: location, sales rep, machine model, contract age, customer industry",
+        "Export to CSV (margin report) for owner review",
+        "Reconciliation check: total contract revenue from view matches GL revenue within 2% over a 30-day window (test fixture)",
+        "Permission gated: requires finance.contract.view_pnl permission (new); default-granted to OWNER and PLATFORM_ADMIN",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 123,
+      "passes": false,
+      "notes": "Most dealers literally don't know which contracts lose money until year-end. Builds on existing shared/contract-renewal-schema.ts, shared/print-cost-calculator-schema.ts, and existing meter_reads + service_tickets tables. Tech: Postgres materialized view, refreshed nightly. Add tenant_id index on the view.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-004",
+      "title": "Auto-generated quarterly business review (QBR) decks per customer",
+      "description": "As a sales rep covering 50+ accounts, I need overnight-generated QBR decks per customer (usage trends, downtime, savings, upgrade pitch) so I can run quarterly reviews without spending a day per account building slides.",
+      "acceptanceCriteria": [
+        "Edge function qbr-generator runs first Monday of each quarter per tenant, iterating active customers with contracts",
+        "Generates per-customer QBR as HTML + PDF with sections: cover, fleet inventory, 4-quarter usage trend (B&W + color volume), downtime/uptime by machine, top 5 service issues, supply cost summary, AI-generated recommendations (consolidation, upgrade, color-shift), next-quarter forecast",
+        "Recommendations generated by Claude with structured prompt incorporating fleet snapshot + usage history + service ticket summary; rep can edit before sending",
+        "New table qbr_reports: tenant_id, customer_id, quarter (YYYY-Q#), status ('draft'|'reviewed'|'sent'), content_jsonb, pdf_url, generated_at, sent_at, sent_by_user_id",
+        "PDF rendered server-side via Playwright (already a project dep) into Supabase storage",
+        "UI page /customers/:id/qbrs lists generated QBRs with status pills; 'Review & send' opens editor with rich-text section overrides",
+        "Send via existing email infrastructure with branded template; track open + click via UTM",
+        "Per-customer suppress flag (some customers don't want QBRs)",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 124,
+      "passes": false,
+      "notes": "Sales reps love anything that removes deck-building. Reuses Playwright (already in stack for E2E). Recommendations should cite specific data points ('your color volume is up 22% Q-over-Q') to feel real, not generic.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-005",
+      "title": "Voice-first field tech ticket close on mobile",
+      "description": "As a field tech, I need to close a service ticket by speaking on my phone (actions taken, parts used, labor time) so I do not have to type on a laptop in the van. The system transcribes, extracts structured fields, deducts parts, and drafts the invoice.",
+      "acceptanceCriteria": [
+        "New mobile route /m/service/:ticketId/close-voice with prominent record button (touch target ≥48px per CLAUDE.md mobile-first guidance)",
+        "Audio recorded via browser MediaRecorder, uploaded to edge function voice-ticket-close",
+        "Transcription via Whisper API (or Deepgram) → Claude extracts structured JSON: actions_taken, parts_used (with SKU resolution), labor_minutes, follow_up_needed (boolean), customer_signature_collected (boolean), customer_satisfaction_note",
+        "Unknown SKUs trigger inline disambiguation (top 3 fuzzy matches from inventory) before save",
+        "Tech reviews extracted fields, edits inline, confirms close",
+        "On confirm: ticket closed, parts deducted from truck inventory, invoice line items drafted (status: pending_approval), labor logged",
+        "Offline support: audio queued in IndexedDB if no signal; syncs on reconnect with retry + dedupe",
+        "Privacy: audio purged 30 days after ticket close; transcript retained on ticket as 'tech_voice_note'",
+        "Typecheck passes: npm run check",
+        "Verify on mobile viewport using dev-browser skill"
+      ],
+      "priority": 125,
+      "passes": false,
+      "notes": "Builds on shared/mobile-service-schema.ts. Use OpenAI Whisper (cheaper) for v1; revisit if accuracy on tech jargon is poor. Inventory deduct must be transactional with ticket close.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-006",
+      "title": "Tech knowledge graph: RAG over every historical service ticket",
+      "description": "As a field tech encountering an unfamiliar error, I need to search 'E-225 on iR-ADV C5560' and get the top historical fixes for that exact symptom on that model so I do not waste time diagnosing a problem we have already solved 50 times. This proprietary data is Printyx's competitive moat.",
+      "acceptanceCriteria": [
+        "pgvector extension enabled on Supabase Postgres",
+        "New column embedding vector(1536) on service_tickets (or sidecar table service_ticket_embeddings if migration is risky)",
+        "Pipeline: every closed service ticket embedded via OpenAI text-embedding-3-small from concatenated resolution_notes + parts_used + machine_model + error_codes",
+        "Backfill job embeds the last 24 months of closed tickets on first deploy; subsequent updates re-embed via DB trigger or webhook",
+        "New endpoint POST /api/service/knowledge-search { query, machine_model?, error_code? } returns top 10 ranked tickets with relevance score, summary, parts swapped, mean resolution time, fix-success rate",
+        "Mobile-friendly UI: search bar above ticket detail page, results show 'this fix worked X% of the time on this model'",
+        "Multi-tenant scoped by default; platform admin can opt tenants into a federated cross-tenant pool with PII redaction (customer name, address, contact removed) — explicit consent required, not default",
+        "Permission: requires service.knowledge.search permission; default-granted to all tech roles",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 126,
+      "passes": false,
+      "notes": "This is the competitive moat — proprietary failure-and-fix data nobody else has. Federated cross-tenant pool is enormous value but needs careful PII redaction + opt-in. v1 should ship single-tenant; federated pool as v2 once redaction is bulletproof.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-007",
+      "title": "Predictive parts truck stocking optimizer",
+      "description": "As a service manager, I need the system to recommend optimal parts to stock on each tech's truck based on their territory's fleet composition and 90-day failure patterns so techs do not return to base for parts and we eliminate the 'I had to come back' callback.",
+      "acceptanceCriteria": [
+        "Edge function truck-stock-optimizer runs Sunday nights",
+        "Inputs per tech: assigned territories, machines on contract within those territories, last-90-day parts-used distribution by model + part SKU, current truck inventory, part cost + size",
+        "Output: recommended truck stock list with quantities, deltas vs current, expected fill rate (% of jobs in next 90 days expected to be completable from truck stock alone)",
+        "New table truck_inventory: tenant_id, tech_user_id, part_sku, quantity_on_truck, last_audited_at, capacity_constraint",
+        "New page /service/truck-stocking shows per-tech recommendation: 'stock these 8 additional parts to improve fill rate from 78% → 92%' with restock CSV/print",
+        "Restock workflow: warehouse staff marks pick list complete; tech confirms received → updates truck_inventory",
+        "Track callback root cause when missing-part is the reason; feed into model accuracy stats",
+        "Capacity constraint per tech (max parts × volume); optimizer respects it",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 127,
+      "passes": false,
+      "notes": "Pairs with US-SUPER-001 (predictive failure) — once we know what is failing, we know what parts to load. Validate that parts inventory + service_tickets.parts_used schemas exist before sprint planning.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-008",
+      "title": "Deal desk copilot sidebar in quote/order builder",
+      "description": "As a sales rep building a quote, I need a context sidebar with account history, similar deals, live margin, and likely objections so I close faster, price correctly, and never get blindsided by an open service ticket on the account I am quoting.",
+      "acceptanceCriteria": [
+        "Right sidebar component <DealDeskCopilot quoteId={...} /> rendered on quote edit page",
+        "Account snapshot panel: open service tickets count + severity, AR aging buckets, last 3 quote outcomes (won/lost/expired), churn-risk score (links to US-SUPER-009)",
+        "Similar deals panel: top 5 historical closed deals matched on machine class + customer headcount range + region with close rate, avg discount, avg deal size",
+        "Live margin panel: quote total revenue vs cost (parts + service-cost-modeling estimate + financing), GP$, GP%, threshold warning if below tenant-configured floor (default 30%)",
+        "Likely objections panel: Claude generates 3-5 likely objections with suggested responses based on account history + quote contents + similar-deal patterns",
+        "Sub-second initial render: account snapshot from Postgres in <200ms; AI panels stream in",
+        "Caching: similar-deals query memoized 1h per machine-class+region key",
+        "Permission gated: viewing margin requires sales.quote.view_margin permission; default-granted to MANAGER and OWNER",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 128,
+      "passes": false,
+      "notes": "Builds on shared/deal-desk-schema.ts and shared/quote-proposal-schema.ts. Use TanStack Query for streaming AI panels — show skeletons. Treat the AI panels as advisory, not blocking.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-009",
+      "title": "Customer churn-risk weekly scoring + Monday digest",
+      "description": "As a dealer owner, I need a weekly score per customer based on ticket frequency, AR aging, declining meter trend, and email sentiment so I get a Monday list of 10 accounts to call personally before they churn.",
+      "acceptanceCriteria": [
+        "Cron edge function churn-risk-scorer runs every Sunday night per tenant",
+        "Inputs: 90-day ticket count delta vs 12-month baseline, days-past-due AR, meter trend (3-month rolling avg vs 12-month avg), inbound email sentiment scored by Claude, contract days-to-renewal",
+        "Score 0-100 with thresholds: 0-30 healthy, 31-60 watch, 61-100 at-risk; weights configurable per tenant",
+        "New table customer_churn_scores: customer_id, tenant_id, score, signals jsonb (per-input contribution), calculated_at",
+        "Owner-role dashboard /customers/risk lists at-risk customers sorted by contract value × score with reason chips",
+        "Each row links to 'create save plan' wizard that drafts an outreach email + suggests retention offer based on signals",
+        "Score history chart per customer (52-week sparkline)",
+        "Email digest: Monday 7am tenant-local to OWNER role with top 10 at-risk customers + week-over-week deltas",
+        "Per-user opt-out + frequency control",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 129,
+      "passes": false,
+      "notes": "Builds on shared/customer-success-schema.ts. Email sentiment requires inbound email sync — confirm shared/email-parser-schema.ts coverage or scope sentiment as v2 if email sync is incomplete.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-010",
+      "title": "Renewal auto-quote 90 days out at correct CPC tier",
+      "description": "As a sales manager, I need the system to auto-generate a renewal quote 90 days before contract end at the right CPC tier based on actual 12-month usage so the rep just clicks send and we stop losing money on contracts customers under-tiered at signing.",
+      "acceptanceCriteria": [
+        "Daily edge function contract-renewal-generator finds active contracts with end_date within 90-100 days",
+        "Computes 12-month actuals: total black pages, total color pages, monthly average, peak month, machine-by-machine breakdown",
+        "Re-tiers CPC: pulls current tiers from product_pricing, finds the tier matching actual usage + 10% growth buffer; flags underage contracts where actual >> contracted",
+        "Generates a renewal quote in quotes table: status 'renewal_draft', parent_contract_id set, line items prefilled, expiration date set",
+        "Notification to assigned sales rep + dashboard widget '5 renewals ready for review'",
+        "Rep adjusts and sends via existing quote send flow; tracked through normal pipeline",
+        "Track win rate of auto-generated renewals vs manual baseline; expose stat on renewal dashboard",
+        "Suppression list: customers flagged as 'manual renewal only'",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 130,
+      "passes": false,
+      "notes": "Builds on shared/contract-renewal-schema.ts, shared/renewal-management-schema.ts, shared/product-pricing-schema.ts, shared/quote-proposal-schema.ts. Sales rep keeps approval gate — never auto-send. Many dealers leave money on the table by not re-tiering.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-011",
+      "title": "Customer self-service portal with natural-language service requests",
+      "description": "As a customer with copiers in 3 locations, I need a portal where I can describe a problem in plain English ('the third floor copier is making a grinding noise') and have a tech dispatched with the right parts and an ETA — like Uber for copier service.",
+      "acceptanceCriteria": [
+        "Public portal at /portal authenticated via existing customer-portal auth (shared/customer-portal-schema.ts)",
+        "Fleet view: every machine on contract with status (online | offline | alert), last service, current meter, toner levels",
+        "Request service form: free-text 'what is wrong?' + optional photo upload + machine selector",
+        "On submit: edge function classifies issue using Claude → matches to service playbook → recommends likely parts → creates service ticket with priority + suggested tech assignment",
+        "Customer sees ticket status with timeline: queued → dispatched → en-route (with map if tech opts into GPS share) → on-site → resolved",
+        "Push notification or SMS on each status transition",
+        "Customer rates service post-resolution (5-star + comments); rating feeds into churn-risk model (US-SUPER-009)",
+        "Multi-location support: customer admin can see all locations, location-user sees only their location",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 131,
+      "passes": false,
+      "notes": "Extends existing customer portal scaffolding (shared/customer-portal-schema.ts). GPS share leverages shared/gps-tracking-schema.ts. The 'Uber-like' status timeline is the differentiating UX.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-012",
+      "title": "Multi-vendor toner auto-replenish across address-book-integrated MFPs",
+      "description": "As a customer, I want toner to ship before I notice it is low on any of my MFPs regardless of vendor (Canon, Konica, Ricoh, Xerox) so I never have to log in to a portal to order supplies — and as a dealer, I want this to work for the entire fleet via the address book integration we already have.",
+      "acceptanceCriteria": [
+        "Daily job per tenant queries each MFP via the address book module's vendor adapters (existing ABK-001 work) for toner level + page-life-remaining",
+        "Capture toner percent + page count in machine_supply_levels: machine_id, color (k|c|m|y), percent_remaining, page_count_remaining, captured_at",
+        "Predict depletion date via linear regression on last 14 days of captured levels",
+        "Trigger: when predicted_depletion_date < today + lead_time_days + safety_buffer_days, create supply_orders row (status 'pending_approval' if cost > tenant threshold else 'auto_ship')",
+        "Customer-facing setting in portal: 'auto-ship enabled per machine' with cost ceiling and emergency-override toggle",
+        "Notification email + SMS to customer on dispatch with tracking number; calendar event for expected arrival",
+        "Manual 'ship now' button per machine for emergencies",
+        "Suppression: machines marked 'customer-managed supplies' opt out",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 132,
+      "passes": false,
+      "notes": "Builds directly on existing shared/auto-supply-replenishment-schema.ts AND shared/address-book-schema.ts (multi-vendor adapter pattern from ABK-001). HP has this for HP-only — Printyx has it for ALL major vendors. That is the pitch.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-013",
+      "title": "Voice phone agent for inbound after-hours service intake",
+      "description": "As a dealer owner, I lose 20% of after-hours service calls today because no one picks up. I need a voice AI agent on a Twilio number that picks up, takes the ticket, dispatches the on-call tech for P1, and creates a queued ticket otherwise.",
+      "acceptanceCriteria": [
+        "Twilio number provisioned per tenant; inbound calls route to media stream",
+        "Edge function voice-service-agent orchestrates real-time call with Claude streaming + ElevenLabs (or OpenAI realtime) voice synthesis: greet, identify caller via ANI lookup against business_records.phone, ask machine ID or location, ask issue, confirm callback number",
+        "Service ticket created on call end with priority based on keywords (down/critical = P1, broken = P2, slow/error = P3)",
+        "P1 escalation: agent pages on-call tech via SMS in addition to creating ticket; on-call rotation read from existing team-alerts schema",
+        "Multi-language: English + Spanish v1; detect language from first 5 seconds",
+        "Per-tenant kill switch + business-hours-only toggle (after-hours-only is the v1 default)",
+        "Recording stored in Supabase storage with 90-day retention; PII redaction option masks card numbers from transcript",
+        "Cost metering: track per-call cost (Twilio + AI); expose monthly tally on the Voice Agent settings page",
+        "Twilio + ElevenLabs credentials encrypted via supabase/functions/_shared/credential-vault.ts",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 133,
+      "passes": false,
+      "notes": "Builds on shared/team-alerts-schema.ts for on-call rotation. Significant per-minute cost — explicit metering required. Twilio Media Streams + Claude streaming + ElevenLabs is the proven stack as of 2026.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-014",
+      "title": "Slack/Teams natural-language Printyx bot (read-only v1)",
+      "description": "As a dealer manager living in Slack, I need to ask 'what happened with Acme Corp this week?' or 'show me reps below quota with no activity in 5 days' from chat and get the answer with links back to Printyx — without opening the app.",
+      "acceptanceCriteria": [
+        "Slack app (and Microsoft Teams equivalent) installed per tenant via OAuth",
+        "Slash command /printyx <question> and @mention triggers route to edge function chat-query-agent",
+        "Agent uses Claude with tool-use to call Printyx read-only APIs: customers, deals, tickets, quotes, contracts, churn scores",
+        "Per-user permission scoping: bot only returns data the user is allowed to see (uses existing RBAC via the user's mapped Printyx account)",
+        "Common queries supported with optimized templates: account summary, rep activity, pipeline status, this-week deltas, at-risk customers, predicted failures",
+        "Response includes citations: deep links back to the relevant Printyx pages",
+        "Audit log every query: actor, channel, question, tools called, response (truncated)",
+        "Bot replies in thread, not channel, to reduce noise",
+        "Slack/Teams OAuth tokens stored via credential-vault",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 134,
+      "passes": false,
+      "notes": "Read-only v1 — no writes. v2 (separate story) adds 'create ticket' / 'log activity' / 'send quote'. Maps Slack user to Printyx user via verified email.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-015",
+      "title": "Daily role-based morning briefings (owner, service manager, sales rep)",
+      "description": "As any role with a Printyx login, I want a 6am tenant-local email summarizing what matters for me today (revenue alerts for owners, ticket SLA risks for service managers, next-best-actions for reps) so I start the day informed without wading through dashboards.",
+      "acceptanceCriteria": [
+        "Cron edge function daily-briefing runs 6am tenant-local time (uses tenant timezone setting)",
+        "Owner briefing: revenue vs target MTD, margin alerts (contracts dropping below GP floor), at-risk contracts count, top 3 deals closing this week, any P1 service incidents from last 24h",
+        "Service manager briefing: open tickets > SLA, predicted failures next 7d (links to US-SUPER-001), tech utilization snapshot, parts shortages, callbacks attributable to missing parts",
+        "Sales rep briefing: top 5 next-best-actions ranked by deal value × probability, deals stuck >7 days with no activity, prospects engaged in last 24h, renewals coming due",
+        "Each briefing generated by Claude with structured input from existing dashboards; concise (<400 words), bulleted, with links",
+        "Sent via existing email infrastructure; also surfaced as in-app notification badge",
+        "Per-user opt-out + frequency control (daily / weekly / off)",
+        "A/B variant testable: subject lines, lead-with-numbers vs lead-with-narrative",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 135,
+      "passes": false,
+      "notes": "Reuses existing data layers (no new tables required for v1). The new layer is the role-aware AI summarization + delivery. Subject line + open rate is the success metric.",
+      "category": "super-app"
+    },
+    {
+      "id": "US-SUPER-016",
+      "title": "Sales rep email autopilot (draft mode, never auto-send)",
+      "description": "As a sales rep with 30 emails to triage every morning, I need the system to read my inbox + CRM + calendar overnight and draft replies in my voice for me to review and send so I respond faster without losing personal touch — drafts only, never auto-send.",
+      "acceptanceCriteria": [
+        "Per-rep Gmail or Outlook OAuth integration (read + create-draft scope only; no send scope ever in v1)",
+        "Daily scan classifies inbound emails using Claude: needs_reply, fyi, spam/automated; logs classification confidence",
+        "For each needs_reply: Claude drafts reply using rep's last 50 sent emails as voice samples (style fingerprint cached) + CRM context (recent activity with that contact + open opportunities)",
+        "Drafts saved as Gmail/Outlook drafts (visible in rep's normal mail UI) AND surfaced in Printyx dashboard '12 drafts ready for review'",
+        "Per-thread context: includes prior thread history, links to related Printyx records",
+        "Tone-mirroring quality bar: track rep's edit-distance on accept; flag drafts where rep edits >50% (likely tone miss)",
+        "Per-user opt-in only; OAuth tokens encrypted via credential-vault",
+        "Per-thread suppression: rep can mark 'never auto-draft for this contact' (e.g. spouse, key client they always handle personally)",
+        "Audit log every draft created with prompt + draft snippet + accepted/rejected outcome",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 136,
+      "passes": false,
+      "notes": "Builds on shared/outreach-schema.ts. NEVER auto-send in v1 — trust requirement is enormous. Voice mirroring quality is the make-or-break: ship behind a feature flag, beta with 5 friendly reps, measure edit-distance, expand only when it is consistently <30%.",
+      "category": "super-app"
     }
   ]
 }
