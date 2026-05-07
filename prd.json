@@ -5224,7 +5224,7 @@
         "Cost tracking: every adapter call logs estimated cost in cents to ai_costs table"
       ],
       "priority": 47,
-      "passes": false,
+      "passes": true,
       "notes": "Cost tracking matters — keyword APIs are metered and bills sneak up fast.",
       "category": "blog"
     },

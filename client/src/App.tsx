@@ -326,6 +326,9 @@ const BlogSettingsAuditLog = React.lazy(
 const BlogSettingsCmsTargets = React.lazy(
   () => import('@/pages/platform-admin/blog/BlogSettingsCmsTargets'),
 );
+const BlogSettingsKeywordTargets = React.lazy(
+  () => import('@/pages/platform-admin/blog/BlogSettingsKeywordTargets'),
+);
 const BlogIdeas = React.lazy(() => import('@/pages/platform-admin/blog/BlogIdeas'));
 const BlogBriefs = React.lazy(() => import('@/pages/platform-admin/blog/BlogBriefs'));
 const BlogPosts = React.lazy(() => import('@/pages/platform-admin/blog/BlogPosts'));
@@ -927,6 +930,9 @@ function Router() {
                 </Route>
                 <Route path="/platform-admin/blog/settings/cms-targets">
                   {() => <ProtectedRoute component={BlogSettingsCmsTargets} platformOnly />}
+                </Route>
+                <Route path="/platform-admin/blog/settings/keyword-targets">
+                  {() => <ProtectedRoute component={BlogSettingsKeywordTargets} platformOnly />}
                 </Route>
                 <Route path="/platform-admin/blog/settings">
                   {() => <ProtectedRoute component={BlogSettings} platformOnly />}

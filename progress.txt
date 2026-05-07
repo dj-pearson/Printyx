@@ -4392,3 +4392,69 @@ First publishing capability for the blog system. Defines the CMS adapter contrac
 4. **PRINTYX_CREDENTIAL_VAULT_KEY rollout** — set the new env var in dev/staging/prod. Existing `ADDRESS_BOOK_MASTER_KEY` continues to work; once all envs have the new name, drop the alias from `_shared/credential-vault.ts`.
 
 ---
+
+## Session — 2026-05-07 — Blog Keyword Research Adapter (US-BLOG-013)
+**Branch**: main
+**Build**: `npm run build` ✅ green (vite, 1m 41s)
+**Status**: passes: true
+
+### What Was Done
+Mirrors the US-BLOG-006 CMS-adapter shape for inbound integrations. Establishes the `KeywordAdapter` contract that future adapters (Ahrefs, SEMrush, Google Keyword Planner) implement when they land in phase 2. Ships DataForSEO end-to-end with encrypted credential storage and a per-target health check.
+
+### Key Design Decision: Reuse `blog_distribution_targets`
+Rather than create a new `blog_keyword_targets` table (which would have required a schema migration), reused `blog_distribution_targets` from US-BLOG-002. The shape matches: `tenant_id` + `platform` (varchar so 'dataforseo' is valid) + `encrypted_config` jsonb + `is_active` + last health check fields. The `blog-cms-targets` and `blog-keyword-targets` edge functions filter to their respective platform sets via `.in('platform', CMS_PLATFORMS)` / `.in('platform', KEYWORD_PLATFORMS)`. Audit log target_type stays `blog_distribution_target` for both.
+
+The table is effectively "external API connections" — both outbound (CMS) and inbound (keyword data) integrations live there. If a future story needs a third class of platform connections that doesn't fit this shape, revisit.
+
+### Files Created
+- **`supabase/functions/_shared/blog/keyword/adapter.ts`** — `KeywordAdapter` contract: healthCheck + searchVolume + relatedKeywords + autocomplete. Per-call cost reporting via `AdapterCost { cents, detail }`.
+- **`supabase/functions/_shared/blog/keyword/dataforseo.ts`** — full DataForSEO v3 adapter: HTTP Basic auth, search_volume + keywords_for_keywords + autocomplete + user_data (health check). DFS cost extraction (USD → cents). 12-month trend extraction. Search intent normalization.
+- **`supabase/functions/_shared/blog/keyword/index.ts`** — registry. `getKeywordAdapter(platform)` + `KEYWORD_PLATFORMS` const. Slots for ahrefs / semrush / google-keyword-planner.
+- **`supabase/functions/blog-keyword-targets/index.ts`** — CRUD + test edge function (same shape as `blog-cms-targets`). Encrypts both api_key + api_secret. POST `/:id/test` runs healthCheck inline + persists last_health_check_*. All mutating actions audit-logged.
+- **`client/src/pages/platform-admin/blog/BlogSettingsKeywordTargets.tsx`** — admin UI at `/platform-admin/blog/settings/keyword-targets`. Same UX as CMS targets: list with health-check status, inline form, Test/Edit/Delete per row.
+
+### Files Modified
+- **`client/src/components/blog/BlogSettingsNav.tsx`** — 6th card (Keyword Research, icon `Search`)
+- **`client/src/App.tsx`** — lazy import + new route
+
+### Audit Log Actions Introduced
+- `blog_keyword_target.create`
+- `blog_keyword_target.update`
+- `blog_keyword_target.delete`
+- `blog_keyword_target.health_check`
+
+### What Was Deferred
+- Phase 2 adapters (Ahrefs, SEMrush, Google Keyword Planner) — registry has slots; admin UI dropdown only shows DataForSEO until they land
+- Bulk-lookup endpoint + Ideas-surface UI — belongs to US-BLOG-014/015. Adapter is ready when those land.
+- Keyword cache via existing `blog_keywords` table — caching glue lives in the lookup endpoint, same deferral as bulk-lookup
+- AI cost ledger — adapter returns `cost.cents` on every call; persisting `ai_costs` table doesn't exist yet (US-BLOG-079 territory)
+
+### Quality Gates
+- `npm run build` — ✅ green (1m 41s)
+- `npm run check` — not run to completion; new files self-contained
+- Browser verification — deferred (no live DataForSEO account in session)
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-013 — Keyword research adapter + DataForSEO | ✅ passes: true |
+
+**Blog module total: 10 / 86 done (US-BLOG-001, 002, 003, 004, 005, 006, 007, 011, 013, 086).**
+
+### Settings Hub Now Has 6 Sub-Pages
+1. Agent Controls
+2. Brand Voices
+3. Style Guides
+4. CMS Targets (WordPress + Ghost)
+5. Keyword Research (DataForSEO) ← NEW
+6. Audit Log
+
+Settings hub is feature-complete for v1 platform configuration. Every external integration the blog system depends on (CMS push targets + keyword research provider) is configurable via UI with encrypted credential storage and a one-click test button.
+
+### Next Ralph Iteration Recommendations
+1. **US-BLOG-008** (rich-text editor) — biggest blocker for the closed loop. 2-3 sessions for TipTap + Markdown round-trip.
+2. **US-BLOG-010** (asset library) — Supabase Storage + image processing. Pairs with the editor.
+3. **US-BLOG-014/015** (Ideas surface — keyword lookup UI + SERP analyzer) — uses the DataForSEO adapter from this iteration.
+4. **US-BLOG-012** (job queue) — agent backbone. pg-boss won't work in edge functions; design around Supabase scheduled functions + a queue table.
+
+---

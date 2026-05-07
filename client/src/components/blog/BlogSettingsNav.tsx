@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter';
-import { Globe, History, Mic2, ScrollText, ShieldAlert } from 'lucide-react';
+import { Globe, History, Mic2, ScrollText, Search, ShieldAlert } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -44,6 +44,12 @@ const SETTINGS_NAV: SettingsNavItem[] = [
     path: '/platform-admin/blog/settings/cms-targets',
     icon: Globe,
     description: 'WordPress + Ghost endpoints for the publish flow',
+  },
+  {
+    label: 'Keyword Research',
+    path: '/platform-admin/blog/settings/keyword-targets',
+    icon: Search,
+    description: 'DataForSEO API credentials for the Ideas surface',
   },
   {
     label: 'Audit Log',
