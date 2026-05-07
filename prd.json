@@ -5052,7 +5052,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 37,
-      "passes": false,
+      "passes": true,
       "notes": "Source PRD: blog-system-prd.json US-BLOG-003 (adapted to Printyx auth). The original PRD's pluggable auth + invite flow is replaced by Printyx's existing Supabase Auth + tenant role assignment.",
       "category": "blog"
     },

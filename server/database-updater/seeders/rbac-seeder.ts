@@ -1374,6 +1374,111 @@ const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     scopeLevel: 'company',
     riskLevel: 'high',
   },
+
+  // ============================================================================
+  // BLOG MODULE PERMISSIONS (US-BLOG-003)
+  // Platform Admin Blog System — single workspace per tenant in v1.
+  // ============================================================================
+  {
+    name: 'View Blog Posts',
+    code: 'blog.post.view',
+    description: 'View blog posts, drafts, and revision history',
+    module: 'blog',
+    resourceType: 'post',
+    action: 'view',
+    scopeLevel: 'company',
+    riskLevel: 'low',
+  },
+  {
+    name: 'Edit Blog Posts',
+    code: 'blog.post.edit',
+    description: 'Create, edit, and update blog posts and briefs',
+    module: 'blog',
+    resourceType: 'post',
+    action: 'edit',
+    scopeLevel: 'company',
+    riskLevel: 'low',
+  },
+  {
+    name: 'Publish Blog Posts',
+    code: 'blog.post.publish',
+    description: 'Publish blog posts to the configured CMS targets',
+    module: 'blog',
+    resourceType: 'post',
+    action: 'publish',
+    scopeLevel: 'company',
+    riskLevel: 'medium',
+  },
+  {
+    name: 'Delete Blog Posts',
+    code: 'blog.post.delete',
+    description: 'Soft-delete blog posts and archive distributions (admins only)',
+    module: 'blog',
+    resourceType: 'post',
+    action: 'delete',
+    scopeLevel: 'company',
+    riskLevel: 'high',
+  },
+  {
+    name: 'Edit Brand Voice',
+    code: 'blog.brand_voice.edit',
+    description: 'Manage brand voice profiles used by AI draft generation',
+    module: 'blog',
+    resourceType: 'brand_voice',
+    action: 'edit',
+    scopeLevel: 'company',
+    riskLevel: 'low',
+  },
+  {
+    name: 'Edit Style Guide',
+    code: 'blog.style_guide.edit',
+    description: 'Manage prose-level style guide rules and rule packs',
+    module: 'blog',
+    resourceType: 'style_guide',
+    action: 'edit',
+    scopeLevel: 'company',
+    riskLevel: 'low',
+  },
+  {
+    name: 'Publish Distribution',
+    code: 'blog.distribution.publish',
+    description: 'Schedule and publish per-platform distribution variants',
+    module: 'blog',
+    resourceType: 'distribution',
+    action: 'publish',
+    scopeLevel: 'company',
+    riskLevel: 'medium',
+  },
+  {
+    name: 'View Blog Analytics',
+    code: 'blog.analytics.view',
+    description: 'View performance metrics, cohort analysis, and refresh queue',
+    module: 'blog',
+    resourceType: 'analytics',
+    action: 'view',
+    scopeLevel: 'company',
+    riskLevel: 'low',
+  },
+  {
+    name: 'Manage Refresh Queue',
+    code: 'blog.refresh.manage',
+    description: 'Manually queue posts for refresh and review auto-refresh edits',
+    module: 'blog',
+    resourceType: 'refresh',
+    action: 'manage',
+    scopeLevel: 'company',
+    riskLevel: 'medium',
+  },
+  {
+    name: 'Toggle Blog Agents',
+    code: 'blog.agent.toggle',
+    description: 'Engage / disengage the blog agent kill switch (US-BLOG-086)',
+    module: 'blog',
+    resourceType: 'agent',
+    action: 'toggle',
+    scopeLevel: 'company',
+    riskLevel: 'critical',
+  },
 ];
 
 // ============================================================================
@@ -2507,6 +2612,63 @@ export async function seedRBAC() {
       await grantAbk(roleCode, ABK_DELETE_PERM);
     }
     log.info(`✅ Granted ${abkMappingsCreated} address book permissions`);
+
+    // Step 5: Blog grants (US-BLOG-003) — Platform Admin gets every blog.*
+    // permission; Company Admin gets the editorial subset (view/edit/publish/
+    // analytics). All other roles get nothing in v1 — the blog is a Platform
+    // Admin tool per scope decision 1A. Applied additively, idempotent across
+    // re-runs.
+    log.info('\n📝 Granting blog permissions...');
+    const BLOG_PLATFORM_ADMIN_PERMS = [
+      'blog.post.view',
+      'blog.post.edit',
+      'blog.post.publish',
+      'blog.post.delete',
+      'blog.brand_voice.edit',
+      'blog.style_guide.edit',
+      'blog.distribution.publish',
+      'blog.analytics.view',
+      'blog.refresh.manage',
+      'blog.agent.toggle',
+    ];
+    const BLOG_COMPANY_ADMIN_PERMS = [
+      'blog.post.view',
+      'blog.post.edit',
+      'blog.post.publish',
+      'blog.brand_voice.edit',
+      'blog.style_guide.edit',
+      'blog.distribution.publish',
+      'blog.analytics.view',
+      'blog.refresh.manage',
+      // intentionally NOT: blog.post.delete, blog.agent.toggle
+      // — destructive + kill switch are platform-admin-only in v1
+    ];
+
+    let blogMappingsCreated = 0;
+    const grantBlog = async (roleCode: string, permCode: string) => {
+      const roleId = roleMap.get(roleCode);
+      const permId = permissionMap.get(permCode);
+      if (!roleId || !permId) return;
+      try {
+        await db.insert(rolePermissions).values({
+          roleId,
+          permissionId: permId,
+          effect: 'ALLOW',
+          isCustomized: false,
+        });
+        blogMappingsCreated++;
+      } catch {
+        // Already granted — idempotent
+      }
+    };
+
+    for (const permCode of BLOG_PLATFORM_ADMIN_PERMS) {
+      await grantBlog('PLATFORM_ADMIN', permCode);
+    }
+    for (const permCode of BLOG_COMPANY_ADMIN_PERMS) {
+      await grantBlog('COMPANY_ADMIN', permCode);
+    }
+    log.info(`✅ Granted ${blogMappingsCreated} blog permissions`);
 
     // Summary
     log.info('\n' + '='.repeat(60));

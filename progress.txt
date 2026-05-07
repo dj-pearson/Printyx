@@ -4001,3 +4001,81 @@ If a story author skips this check, the kill switch is bypassed — flag this in
 4. **DATABASE_URL follow-up** — `npm run db:generate` still pending across ABK-001, US-BLOG-002, and now US-BLOG-086. Three iterations of schema changes need migration generation in one pass.
 
 ---
+
+## Out-of-band Migration Generation — 2026-05-07 — Commit 942a718e
+**Author**: dj-pearson (user, while I was working on US-BLOG-086)
+
+The user ran `npm run db:generate` and committed migration `0008_pretty_rocket_raccoon.sql` (470 lines, plus a 101k-line snapshot.json) which captures the full schema state across:
+- ABK-001 tables: `address_books`, `address_book_entries`, `address_book_credentials`, `address_book_imports`, `address_book_exports`
+- US-BLOG-002 tables: 14 blog_* tables
+- US-BLOG-086 table: `blog_agent_settings`
+- Plus a few service tables that were also pending: `device_alerts`, `device_supply_orders`, `client_commands`, `client_enrollment_tokens`
+
+This collapses three separate migration follow-ups into one clean migration. **The DATABASE_URL follow-up is now closed for current schema work.**
+
+### Required Manual Steps (Once Per Environment)
+1. `npm run db:migrate` — applies 0008_pretty_rocket_raccoon.sql
+2. `psql "$DATABASE_URL" -f drizzle/rls/apply-rls.sql` (only if not previously installed; idempotent)
+3. `psql "$DATABASE_URL" -f drizzle/rls/blog.sql` — enables RLS on the 15 blog tables
+
+After step 3, the blog backend infrastructure is fully live and the kill switch endpoint can flip the `blog_agent_settings` row immediately.
+
+### Repo Hygiene Notes
+- Local `main` lost its upstream tracking after the earlier PII history rewrite (filter-repo strips it as a safety measure). Restored with `git branch --set-upstream-to=origin/main main`. VS Code's "Publish Branch" indicator should now disappear.
+- Backup tag `pre-pii-scrub-2026-05-07-backup` remains local-only as the PII-scrub recovery anchor.
+
+---
+
+## Session — 2026-05-07 — Blog RBAC Seed (US-BLOG-003)
+**Branch**: main
+**Build**: `npm run build` ✅ green (vite, 1m)
+**Status**: passes: true
+
+### What Was Done
+Adds the blog module's RBAC permission set to the seeder so future blog stories have proper permission codes to gate against. Platform Admin gets all 10 blog permissions; Company Admin gets the editorial subset (no destructive or kill-switch perms).
+
+### Files Modified
+- `server/database-updater/seeders/rbac-seeder.ts`:
+  - Added 10 entries to `PERMISSION_DEFINITIONS` under a new `BLOG MODULE PERMISSIONS (US-BLOG-003)` section, mirroring the ABK-015 pattern
+  - Added Step 5 grants pass at the end of `seedRBAC()`, applied additively (idempotent across re-runs) so existing tenants pick up the new perms on the next `npm run seed:rbac`
+- `supabase/functions/blog-agents/index.ts`:
+  - Updated `isPlatformAdmin()` helper with a header comment naming the canonical permission code (`blog.agent.toggle`) and a fast-path that checks `app_metadata.permissions` array first when present, before falling back to role-string matching
+
+### Permissions Added
+| Code | Risk | Default Grants |
+|------|------|----------------|
+| `blog.post.view` | low | Platform Admin, Company Admin |
+| `blog.post.edit` | low | Platform Admin, Company Admin |
+| `blog.post.publish` | medium | Platform Admin, Company Admin |
+| `blog.post.delete` | high | Platform Admin only |
+| `blog.brand_voice.edit` | low | Platform Admin, Company Admin |
+| `blog.style_guide.edit` | low | Platform Admin, Company Admin |
+| `blog.distribution.publish` | medium | Platform Admin, Company Admin |
+| `blog.analytics.view` | low | Platform Admin, Company Admin |
+| `blog.refresh.manage` | medium | Platform Admin, Company Admin |
+| `blog.agent.toggle` | **critical** | **Platform Admin only** |
+
+Per scope decision 1A (single Printyx workspace per tenant in v1, no customer-facing blog), only PLATFORM_ADMIN and COMPANY_ADMIN get blog perms in v1. All other roles get nothing. The kill switch (`blog.agent.toggle`) is restricted to PLATFORM_ADMIN — matches the existing role-string gate in the kill switch endpoint, so behavior is unchanged when this seed runs.
+
+### Quality Gates
+- `npm run build` — ✅ green (1m)
+- `tsc --noEmit` on the seeder file — pre-existing Drizzle type-inference noise on the ABK-015 grants block at lines 2491/2537/2594 (errors about `description` and `effect` columns not existing in the inferred type, despite working fine at runtime); my new code at line 2653 hits the same well-known noise. NOT introduced by this iteration.
+- Seeder execution against a live DB — NOT run (DATABASE_URL not in session env). Run `npm run seed:rbac` after migration 0008 is applied to materialize the new permissions and grants.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-003 — Blog RBAC + audit log | ✅ passes: true |
+
+### Notes for Future Stories
+- **Audit log wiring** is partially complete: blog-agents already writes to `blog_audit_log` for every mutating action (US-BLOG-086). Future blog endpoints (US-BLOG-013 CRUD for posts, US-BLOG-014 brand voice CRUD, etc.) MUST follow the same pattern — write a row to `blog_audit_log` with `actor_type`, `action`, `target_type`, `target_id`, `before_state`, `after_state`, `summary`. Consider extracting a `_shared/blog/audit-log.ts` helper once 3+ endpoints are doing it.
+- **Permission gating in edge functions**: the `blog.*` codes are in the seeder. Future blog endpoints should check via `requirePermission()` from `_shared/rbac.ts` once permissions reliably appear in JWT `app_metadata.permissions`. Until then, the role-level + permission-claim hybrid in `blog-agents/index.ts` is a good template — it works whether or not perms are surfaced via JWT.
+- **Cross-tenant access**: every blog endpoint must filter by `tenant_id` at the application layer. RLS policies in `drizzle/rls/blog.sql` are defense in depth, not the primary gate.
+
+### Next Ralph Iteration Recommendations
+1. **US-BLOG-007** (admin UI shell) — sub-navigation (Ideas, Briefs, Posts, Distribution, Analytics, Refresh, Settings). Settings page already exists from US-BLOG-086; this fills in the rest.
+2. **US-BLOG-004** (brand voice CRUD) — first content-side feature; pure CRUD on `blog_brand_voices`. Establishes the audit-log helper pattern for downstream stories.
+3. **US-BLOG-005** (style guide linter) — second content-side feature; small if scoped to CRUD + rule packs initially (the in-editor real-time linting comes when the editor lands in US-BLOG-008).
+4. **Migration apply** — once `npm run db:migrate` runs against a target environment, also run `psql -f drizzle/rls/blog.sql` and `npm run seed:rbac` to fully bootstrap the blog module. Recommend bundling all three steps into a single deploy script.
+
+---

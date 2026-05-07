@@ -37,9 +37,17 @@ const settingsPatchSchema = z.object({
   auto_refresh_requires_review: z.boolean().optional(),
 });
 
+// Canonical RBAC code: `blog.agent.toggle` (granted only to PLATFORM_ADMIN by
+// the rbac-seeder per US-BLOG-003). Once permissions are reliably embedded in
+// the JWT app_metadata.permissions array, prefer requirePermission() from
+// _shared/rbac.ts. Until then, the role-level gate below is equivalent: only
+// PLATFORM_ADMIN holds blog.agent.toggle in v1.
 function isPlatformAdmin(user: { app_metadata?: Record<string, unknown> }): boolean {
   const meta = user.app_metadata ?? {};
   if (meta.isPlatformAdmin === true) return true;
+  // Prefer JWT permission claim when present (no DB roundtrip)
+  const perms = meta.permissions;
+  if (Array.isArray(perms) && perms.includes('blog.agent.toggle')) return true;
   const role = String(meta.role ?? '').toLowerCase();
   return role === 'platform_admin' || role === 'super_admin';
 }
