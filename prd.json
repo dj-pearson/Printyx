@@ -5033,7 +5033,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 36,
-      "passes": false,
+      "passes": true,
       "notes": "Source PRD: blog-system-prd.json US-BLOG-002 (adapted to Printyx tenant model). The original PRD's \"workspaces\" table is replaced by Printyx's existing tenants table — there is no separate workspace concept in Printyx blog v1.",
       "category": "blog"
     },

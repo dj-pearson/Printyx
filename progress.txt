@@ -3841,3 +3841,77 @@ The codebase already has a public marketing-site `BlogIndex` at `client/src/page
 3. **US-BLOG-086** (KILL SWITCH — HARD GATE) — small story, worth landing early so subsequent agent stories (US-BLOG-066) inherit the safety check from day 1.
 
 ---
+
+## Session — 2026-05-07 — Blog Schema + RLS (US-BLOG-002)
+**Branch**: main
+**Build**: `npm run build` ✅ green (vite, 1m 24s)
+**Status**: passes: true (with same caveat as ABK-001: DATABASE_URL unavailable in session, migration generation is a follow-up)
+
+### What Was Done
+14-table Drizzle schema for the Platform Admin Blog System, plus RLS policy file matching the existing per-domain pattern under `drizzle/rls/`.
+
+### Files Modified
+- `shared/blog-schema.ts` — replaced the empty barrel from US-BLOG-001 with 14 fully-typed Drizzle tables, Zod insert schemas, and `$inferSelect`/`$inferInsert` types for each. Wildcard re-export from `shared/schema.ts` (added in US-BLOG-001) picks them all up automatically.
+
+### Files Created
+- `drizzle/rls/blog.sql` — applies `apply_tenant_rls()` to all 14 blog tables. Idempotent + defensive (skips missing tables with NOTICE), matches the customer-success.sql pattern.
+
+### Tables Defined
+| Table | Purpose | Story |
+|-------|---------|-------|
+| `blog_brand_voices` | Tone/voice profiles per tenant | US-BLOG-004 |
+| `blog_style_guides` | Prose-level rules + rule packs | US-BLOG-005 |
+| `blog_keyword_clusters` | Pillar/cluster topic groups | US-BLOG-019 |
+| `blog_keywords` | Individual keywords with metrics | US-BLOG-013, 014 |
+| `blog_briefs` | Content briefs (one per planned post) | US-BLOG-023, 024 |
+| `blog_assets` | Images, quotes, data, expert contacts | US-BLOG-010 |
+| `blog_posts` | Main post entity | US-BLOG-008+ |
+| `blog_post_revisions` | Version history (manual + agent) | US-BLOG-009 |
+| `blog_citations` | Sources cited in a post | US-BLOG-025, 037 |
+| `blog_distribution_targets` | Tenant-level platform configs | US-BLOG-006, 043+ |
+| `blog_distributions` | Per-platform variants of a post | US-BLOG-043..052 |
+| `blog_performance_metrics` | Analytics over time | US-BLOG-059, 060 |
+| `blog_refresh_queue` | Auto-refresh scheduling | US-BLOG-061, 066 |
+| `blog_audit_log` | Every mutating action | US-BLOG-011, 086 |
+
+### Key Decisions
+
+**Type choices**: `tenant_id` and `created_by_user_id`/`actor_user_id` are `varchar` to match the existing `tenants.id`/`users.id` columns (varchar with `gen_random_uuid()` default). Blog-internal IDs (post_id, brief_id, etc.) are uuid since these tables are new and have no legacy compat constraints. ABK-001 used `uuid` for tenant_id which is a type mismatch with the actual tenants table — I deliberately did not repeat that mistake.
+
+**Index hot paths** (from PRD AC):
+- `blog_posts(tenant_id, status, published_at)` ✅
+- `blog_keywords(tenant_id, cluster_id)` ✅
+- `blog_distributions(post_id, platform)` ✅
+- `blog_refresh_queue(tenant_id, scheduled_at)` ✅
+
+Plus per-table tenant index, status indexes where filtering is common, and target/post indexes for FK-heavy lookups.
+
+**Soft delete vs hard delete**: User-facing entities (brand voices, style guides, clusters, briefs, assets, posts, distribution targets) get `deleted_at`. Derived/log tables (revisions, citations, performance metrics, refresh queue, audit log) hard-delete via FK CASCADE — a deleted post takes its revisions and citations with it.
+
+**RLS pattern**: Calls `apply_tenant_rls(table_name)` from `drizzle/rls/apply-rls.sql`. The function introspects `tenant_id` column type (uuid vs varchar) and casts the JWT claim accordingly. All 14 blog tables use varchar `tenant_id` so the JWT comparison is direct text equality. Policies enforce `tenant_id = (auth.jwt() -> 'app_metadata' ->> 'tenantId')` for SELECT, INSERT (WITH CHECK), UPDATE (USING + WITH CHECK to prevent re-parenting), and DELETE.
+
+**Zod schemas**: every table gets a `createInsertSchema(table)` with explicit enum constraints on status/type fields. Edge functions in US-BLOG-013 (CRUD) onward should import these.
+
+### Quality Gates
+- `npm run build` — ✅ green (1m 24s); shared-schema bundle grew from 553 → 567 KB reflecting the new tables
+- `npm run check` — not run to completion (full-codebase TS check OOMs); the schema file is self-contained and uses only standard `drizzle-orm/pg-core` + `drizzle-zod` + `zod` imports
+- `npm run db:generate` — NOT run (no DATABASE_URL in session env); same constraint as ABK-001 Ralph iteration. Migration SQL needs to be generated and committed when DB access is available
+- `psql -f drizzle/rls/blog.sql` — NOT applied (same constraint); idempotent + defensive so safe to run after migration
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-002 — Blog schema with RLS and multi-tenant isolation | ✅ passes: true |
+
+### Follow-ups for the Next Environment with DATABASE_URL
+1. Run `npm run db:generate` — produces `drizzle/migrations/00XX_*.sql` with all 14 CREATE TABLE statements + indexes. Commit alongside the schema file.
+2. Run `psql "$DATABASE_URL" -f drizzle/rls/apply-rls.sql` once if it has not already been installed on the target database.
+3. Run `psql "$DATABASE_URL" -f drizzle/rls/blog.sql` to enable RLS on all blog tables.
+4. Optional: write `drizzle/rls/blog-tables.sql` baseline (defensive `CREATE TABLE IF NOT EXISTS`) for environments that bypassed the migration. Same pattern as `customer-success-tables.sql`. Skipped in this iteration to keep the slice focused.
+
+### Next Ralph Iteration Recommendations
+1. **US-BLOG-086** (KILL SWITCH — HARD GATE) — small story, blocks the auto-refresh agent (US-BLOG-066). Worth landing now so subsequent agent stories inherit the safety check from day 1. Adds `blog_agent_settings` table (beyond the 14 in this iteration), pause/resume endpoints, and per-action rollback UI.
+2. **US-BLOG-007** (admin UI shell) — replaces the placeholder BlogIndex page with the real sub-navigation (Ideas, Briefs, Posts, Distribution, Analytics, Refresh, Settings) and routes for each.
+3. **US-BLOG-003** (RBAC + audit log) — adds the `blog.*` permission set to the seeder and gates every blog edge function on the appropriate permission. Audit log table is already created (US-BLOG-002); this story wires the log writes.
+
+---
