@@ -5000,6 +5000,1418 @@
       "passes": false,
       "notes": "Source PRD: US-023. Depends on ABK-001 through ABK-020.",
       "category": "address-book"
+    },
+    {
+      "id": "US-BLOG-001",
+      "title": "Blog module foundation in Printyx (directory structure + sidebar entry)",
+      "description": "As a developer, I need the blog module's file/folder layout established within the existing Printyx repo so subsequent BLOG-### stories have a consistent home and the Platform Admin sidebar entry exists.",
+      "acceptanceCriteria": [
+        "Create directories: shared/blog/ (drizzle schemas), supabase/functions/_shared/blog/ (parser/generator helpers + adapter interfaces), supabase/functions/blog/ (edge function entrypoints), client/src/pages/platform-admin/blog/ (admin UI pages), client/src/lib/blog/ (frontend helpers)",
+        "New shared/blog-schema.ts as a barrel for blog-related drizzle schemas; re-exported from shared/schema.ts",
+        "New sidebar entry \"Blog\" under Platform Admin in client/src/components/RoleAwareCollapsibleSidebar.tsx, gated to platform admin role only — placeholder route /platform-admin/blog renders an empty page in this story",
+        "New section in CLAUDE.md describing blog module layout, RBAC scope, and that BLOG-### stories build on this foundation",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 35,
+      "passes": false,
+      "notes": "Foundation story for the blog module — replaces the original PRD's standalone monorepo scaffold (US-BLOG-001 in blog-system-prd.json) since we are integrating into the existing Printyx repo. Source PRD: blog-system-prd.json US-BLOG-001 (adapted).",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-002",
+      "title": "Define core Postgres schema with RLS and multi-tenant isolation",
+      "description": "As a platform operator, I need a clean Drizzle schema for the blog module that integrates with the existing Printyx tenant model so the blog system inherits Printyx's multi-tenant isolation guarantees.",
+      "acceptanceCriteria": [
+        "New file shared/blog-schema.ts (or split across shared/blog/*.ts files) defines Drizzle tables: blog_brand_voices, blog_style_guides, blog_keyword_clusters, blog_keywords, blog_briefs, blog_posts, blog_post_revisions, blog_assets, blog_citations, blog_distributions, blog_distribution_targets, blog_performance_metrics, blog_refresh_queue, blog_audit_log",
+        "Every blog_* table has tenant_id NOT NULL with FK to tenants and an index on (tenant_id) — single Printyx blog workspace per tenant in v1, but the column is enforced for future multi-tenant work",
+        "Each table also has created_at, updated_at (timestamptz), created_by_user_id (FK users)",
+        "Indices on hot paths: blog_posts(tenant_id, status, published_at), blog_keywords(tenant_id, cluster_id), blog_distributions(post_id, platform), blog_refresh_queue(tenant_id, scheduled_at)",
+        "RLS policies on every blog_* table enforce tenant_id matches the JWT app_metadata.tenantId claim — matches existing Printyx RLS pattern",
+        "Schema re-exported from shared/schema.ts so drizzle-kit picks it up",
+        "npm run db:generate produces a clean migration in drizzle/migrations/",
+        "Migration applies cleanly with npm run db:migrate against a clean dev DB",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 36,
+      "passes": false,
+      "notes": "Source PRD: blog-system-prd.json US-BLOG-002 (adapted to Printyx tenant model). The original PRD's \"workspaces\" table is replaced by Printyx's existing tenants table — there is no separate workspace concept in Printyx blog v1.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-003",
+      "title": "Auth + RBAC: gate blog access via Printyx Supabase auth and platform roles",
+      "description": "As a platform admin, I need every blog endpoint and UI route gated to the right Printyx role so editorial workflow respects existing permissions without inventing a parallel auth system.",
+      "acceptanceCriteria": [
+        "New blog permissions added to RBAC seed: blog.post.view, blog.post.edit, blog.post.publish, blog.post.delete, blog.brand_voice.edit, blog.style_guide.edit, blog.distribution.publish, blog.analytics.view, blog.refresh.manage, blog.agent.toggle",
+        "Default grants — Platform Admin: all blog.* permissions; Company Admin: view + edit + publish + analytics within their tenant; all other roles: none in v1",
+        "Every blog edge function authenticates via supabase.auth.getUser(jwt), pulls tenantId from app_metadata, and checks the relevant blog.* permission before performing any work",
+        "Permission checks are server-side; UI gating in client/src/pages/platform-admin/blog/* is convenience only",
+        "Every mutating action writes a row to blog_audit_log (action, actor_user_id, target_type, target_id, before_jsonb, after_jsonb, tenant_id, created_at)",
+        "No invite flow is needed in v1 — workspace membership maps 1:1 to existing Printyx role assignment",
+        "Integration test: a non-platform-admin user calling a blog endpoint receives 403",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 37,
+      "passes": false,
+      "notes": "Source PRD: blog-system-prd.json US-BLOG-003 (adapted to Printyx auth). The original PRD's pluggable auth + invite flow is replaced by Printyx's existing Supabase Auth + tenant role assignment.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-004",
+      "title": "Workspace settings: brand voice profile",
+      "description": "As an editor, I want a per-workspace brand voice so every AI-generated draft matches our tone without re-prompting each time.",
+      "acceptanceCriteria": [
+        "brand_voices table fields: workspace_id, name, tone (free text), banned_phrases (text[]), preferred_phrases (text[]), reading_level_target (enum: grade-6 to grade-14), persona_description, sample_corpus (text — paste-in examples), pov (first/second/third person), voice_attributes (jsonb: humor, formality, technicality on 1-5 scale)",
+        "Admin UI form to create/edit brand voice with live preview using a fixed sample paragraph rewritten in the configured voice",
+        "Brand voice ID can be attached to posts, briefs, and distribution variants",
+        "Default brand voice per workspace; multiple voices supported (e.g., 'corporate blog' vs 'founder POV')",
+        "Brand voice serializes to a system-prompt fragment used by every AI step"
+      ],
+      "priority": 38,
+      "passes": false,
+      "notes": "Sample corpus is the highest-signal field — keep the textarea generous (10k chars).",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-005",
+      "title": "Style guide linter (prose-level rules)",
+      "description": "As an editor, I want a style guide that flags violations during writing so authors stay on-brand without manual review of every comma.",
+      "acceptanceCriteria": [
+        "style_guides table per workspace: rules (jsonb array of {pattern, severity, message, replacement?})",
+        "Built-in rule packs: AP, Chicago, MLA, plain-language, inclusive-language",
+        "Custom rules: regex or substring with severity (error/warn/info)",
+        "Linter runs in editor in real time; underlines violations with hover-to-explain",
+        "Linter also runs server-side on save and blocks publish if any 'error'-severity rules fail (unless overridden by editor+ role)"
+      ],
+      "priority": 39,
+      "passes": false,
+      "notes": "Use a worker-thread or web worker so linting doesn't block typing on long posts.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-006",
+      "title": "CMS adapter interface + WordPress and Ghost adapters (v1 set)",
+      "description": "As a developer publishing blog posts to Printyx's marketing site (and later to other CMS targets), I want a stable adapter interface so v1 can ship WordPress + Ghost and phase 2 can add Webflow + custom-REST + native-render without changing call sites.",
+      "acceptanceCriteria": [
+        "New file supabase/functions/_shared/blog/cms-adapter.ts defines the adapter contract: createPost, updatePost, deletePost, getPost, listPosts, uploadAsset, healthCheck",
+        "v1 adapters implemented: wordpress (REST API + JWT/application-password auth), ghost (Admin API + JWT)",
+        "Adapter selection per tenant via cms_adapter (enum: wordpress|ghost) and cms_config (jsonb, encrypted at column level via Printyx credential vault) on a new blog_cms_targets table",
+        "Markdown-to-CMS transform layer normalizes output for each CMS's quirks (Gutenberg blocks for WP, mobiledoc/Lexical for Ghost)",
+        "Shared contract test suite asserts every adapter satisfies the same behavioral spec",
+        "Phase 2 adapters (Webflow, custom-REST, native-render) are explicitly out of scope for this story — capture in notes as follow-up",
+        "Never log decrypted CMS credentials",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 40,
+      "passes": false,
+      "notes": "Source PRD: blog-system-prd.json US-BLOG-006 (narrowed to WP+Ghost for v1 per scope decision 4B). Phase 2 extensions: webflow, custom-rest, and native-render-into-printyx.net are tracked as follow-ups under category blog-phase-2.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-007",
+      "title": "Platform Admin → Blog admin shell integrated into existing Printyx UI",
+      "description": "As a platform admin, I want the blog admin UI to feel like part of Printyx (same header, sidebar, theming) so I never context-switch out of the product to manage content.",
+      "acceptanceCriteria": [
+        "New route prefix /platform-admin/blog/* registered in client/src/App.tsx with lazy imports",
+        "Reuses existing Printyx layout (header, RoleAwareCollapsibleSidebar, theming) — no separate shell",
+        "Sub-navigation inside the blog module rendered as a secondary nav: Ideas, Briefs, Posts, Distribution, Analytics, Refresh, Settings",
+        "Tailwind + shadcn/ui (already in Printyx) — no new dependencies",
+        "No workspace switcher needed in v1 (single workspace per tenant)",
+        "Each section has an empty state with helpful CTA",
+        "Keyboard shortcuts within the blog module: g+i (Ideas), g+b (Briefs), g+p (Posts), / (search) — registered only when the user is on a /platform-admin/blog/* route",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 41,
+      "passes": false,
+      "notes": "Source PRD: blog-system-prd.json US-BLOG-007 (integrated into Printyx admin shell instead of a standalone admin app).",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-008",
+      "title": "Rich-text editor with Markdown parity",
+      "description": "As a writer, I want a powerful editor that round-trips between Markdown and rich text so I can paste, draft fast, and preserve structure.",
+      "acceptanceCriteria": [
+        "TipTap (or Lexical) with extensions: headings, lists, blockquotes, code blocks (syntax highlighted), tables, images with alt text, links with title, footnotes, callouts/admonitions",
+        "Markdown import: paste Markdown and it converts to rich nodes",
+        "Markdown export: every post stores canonical Markdown in posts.body_markdown alongside posts.body_html",
+        "Slash-command menu (/) for inserting blocks",
+        "Inline AI toolbar: highlight text → 'rewrite shorter / expand / change tone / cite source'",
+        "Autosave to post_revisions every 10s of inactivity"
+      ],
+      "priority": 42,
+      "passes": false,
+      "notes": "Markdown as source of truth simplifies migrations and avoids editor-lock-in.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-009",
+      "title": "Version history with diff and restore",
+      "description": "As an editor, I want to see every revision of a post so I can recover from mistakes and review changes.",
+      "acceptanceCriteria": [
+        "post_revisions table: post_id, author_id, body_markdown, title, meta_title, meta_description, created_at",
+        "Admin UI history panel shows revision list with author + timestamp",
+        "Side-by-side diff view (markdown-aware) between any two revisions",
+        "One-click restore creates a new revision rather than overwriting",
+        "Revisions retained for 90 days minimum; configurable per workspace"
+      ],
+      "priority": 43,
+      "passes": false,
+      "notes": "Diff at the markdown level; HTML diffs are noisy.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-010",
+      "title": "Asset library: images, quotes, data, expert contacts",
+      "description": "As an editor, I want a single place to manage reusable assets so research and visuals are findable across posts.",
+      "acceptanceCriteria": [
+        "Assets table with type enum: image, quote, data_table, expert_contact, link, file",
+        "Upload to S3-compatible storage (Cloudflare R2 / Supabase Storage adapter)",
+        "Image assets: auto-generate thumbnails, extract EXIF, store dimensions, original filename, alt text, license/source",
+        "Quote assets: text, attributed_to, source_url, retrieved_at, license",
+        "Data table assets: csv upload → preview, column types, optional chart preview",
+        "Expert contact assets: name, expertise tags, email/contact, prior quotes given, response rate",
+        "Search across assets by tag, type, text"
+      ],
+      "priority": 44,
+      "passes": false,
+      "notes": "License/source on every asset is non-negotiable for E-E-A-T and legal safety.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-011",
+      "title": "Audit log for every mutating action",
+      "description": "As a workspace owner, I want a tamper-evident audit log so I can investigate incidents and prove compliance.",
+      "acceptanceCriteria": [
+        "audit_log table: workspace_id, actor_user_id, action (string), target_type, target_id, before (jsonb), after (jsonb), ip, user_agent, created_at",
+        "Middleware logs every POST/PATCH/DELETE on the API",
+        "Admin UI: audit log viewer with filters (actor, action, date range)",
+        "Logs retained 1 year minimum; configurable",
+        "Append-only — no UPDATE or DELETE permission on audit_log via RLS"
+      ],
+      "priority": 45,
+      "passes": false,
+      "notes": "Consider periodic export to immutable storage (S3 with object lock) for tamper-evidence.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-012",
+      "title": "Background job queue with retries and observability",
+      "description": "As a developer, I want a reliable job system so AI calls, syndication, and analytics ingest can run async with backoff.",
+      "acceptanceCriteria": [
+        "pg-boss (preferred — uses Postgres) or BullMQ adapter",
+        "Job types defined as TypeScript discriminated unions; handlers in apps/worker",
+        "Default policy: exponential backoff (1m, 5m, 30m, 2h), max 5 attempts",
+        "Job dashboard in admin UI: pending, active, failed, completed counts; retry / cancel buttons",
+        "Failed jobs surface in audit_log with full error stack",
+        "Idempotency keys on every job to prevent duplicate work"
+      ],
+      "priority": 46,
+      "passes": false,
+      "notes": "pg-boss avoids a Redis dependency for small deployments.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-013",
+      "title": "Keyword research adapter interface + DataForSEO reference adapter",
+      "description": "As a strategist, I want keyword data (volume, difficulty, CPC, trend) so I can prioritize topics with measurable demand.",
+      "acceptanceCriteria": [
+        "packages/core/keyword-adapter.ts: searchVolume, keywordDifficulty, relatedKeywords, autocomplete, trend12mo",
+        "Adapters: dataforseo (reference), ahrefs, semrush, google-keyword-planner — all implementing the same interface",
+        "Workspace setting: which adapter + API credentials (encrypted)",
+        "Keyword cache table to avoid re-querying within TTL (default 30 days)",
+        "Bulk lookup endpoint: paste a list of seed keywords → returns enriched data",
+        "Cost tracking: every adapter call logs estimated cost in cents to ai_costs table"
+      ],
+      "priority": 47,
+      "passes": false,
+      "notes": "Cost tracking matters — keyword APIs are metered and bills sneak up fast.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-014",
+      "title": "Search intent classifier",
+      "description": "As a strategist, I want every keyword classified by intent so I plan the right content format.",
+      "acceptanceCriteria": [
+        "Classifier tags each keyword: informational, commercial-investigation, transactional, navigational, with confidence score",
+        "Implementation: LLM prompt that takes keyword + top 10 SERP titles/snippets and returns intent + reasoning",
+        "Bulk classify on keyword import; cached on keywords.intent column",
+        "Admin UI: filter keyword list by intent; intent shown as colored chip"
+      ],
+      "priority": 48,
+      "passes": false,
+      "notes": "Classification quality jumps dramatically when SERP context is included in the prompt.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-015",
+      "title": "SERP analyzer for any keyword",
+      "description": "As a strategist, I want to see what currently ranks so I can match or exceed the bar.",
+      "acceptanceCriteria": [
+        "SERP fetcher (DataForSEO or scraping adapter) returns top 20 organic results + SERP features (PAA, featured snippet, knowledge panel, video, image pack, local pack)",
+        "For each result: URL, title, meta description, domain, estimated DA, word count (fetched + parsed), heading structure (H2/H3)",
+        "Aggregated metrics: median word count, common headings, common entities, dominant content type (listicle/guide/comparison/etc.)",
+        "Stored in serp_snapshots table with fetched_at timestamp; re-fetch on demand or weekly",
+        "Admin UI: SERP analyzer view with sortable table + aggregate summary card"
+      ],
+      "priority": 49,
+      "passes": false,
+      "notes": "Word count parsing must handle paywalls and JS-rendered content gracefully — fall back to meta description length when blocked.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-016",
+      "title": "People Also Ask + autocomplete miner",
+      "description": "As a strategist, I want every related question surfaced so my content covers the actual user journey.",
+      "acceptanceCriteria": [
+        "Recursive PAA crawler: fetch PAA for seed keyword, then for each PAA result, fetch its PAA (depth 2 default, configurable up to 4)",
+        "Google autocomplete fetcher: A-Z + 0-9 prefix expansion for seed keyword",
+        "Results stored in keywords table with source = 'paa' or 'autocomplete' and parent keyword reference",
+        "Deduplication and grouping by lexical similarity",
+        "Admin UI: tree view of PAA chains; click to add to brief"
+      ],
+      "priority": 50,
+      "passes": false,
+      "notes": "Respect rate limits — back off aggressively on 429s.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-017",
+      "title": "Forum / community question miner (Reddit, Quora, Stack Exchange)",
+      "description": "As a strategist, I want real questions from real users so my content addresses authentic pain rather than synthetic SEO phrases.",
+      "acceptanceCriteria": [
+        "Reddit: search across configured subreddits via Reddit API; extract question titles + top comments",
+        "Quora: scrape (within ToS) or use Bright Data adapter for question + top answer snippets",
+        "Stack Exchange: API integration for relevant sites (StackOverflow, SuperUser, etc.)",
+        "Each question stored as a 'community_question' row with source, url, score/upvotes, captured_at",
+        "LLM clusters questions by theme; clusters surface in the brief generator",
+        "Configurable seed list per workspace (subreddits, Quora topics, SE sites)"
+      ],
+      "priority": 51,
+      "passes": false,
+      "notes": "Always store source URL — citations from real questions strengthen E-E-A-T.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-018",
+      "title": "Competitor content gap analysis",
+      "description": "As a strategist, I want to see keywords competitors rank for that we don't so I can prioritize quick wins.",
+      "acceptanceCriteria": [
+        "Workspace setting: competitor_domains (text[])",
+        "Job fetches each competitor's ranked keywords from the keyword adapter",
+        "Diff view: keywords competitors rank in top 10 for, where our domain ranks >20 or not at all",
+        "Filter by intent, volume, difficulty",
+        "One-click 'Create cluster from gap' adds the keyword group to keyword_clusters with source = 'gap_analysis'",
+        "Re-run on schedule (weekly default)"
+      ],
+      "priority": 52,
+      "passes": false,
+      "notes": "Surface 'easy wins' first: keywords where competitors rank but their content is shallow.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-019",
+      "title": "Topic clustering with pillar-cluster model",
+      "description": "As a strategist, I want keywords grouped into pillars and supporting clusters so my site builds topical authority deliberately.",
+      "acceptanceCriteria": [
+        "Embedding-based clustering (OpenAI/Voyage embeddings) on keyword text + intent",
+        "Each cluster has: name (LLM-generated), pillar_keyword (highest volume + matches informational intent), supporting_keywords[], suggested_post_type per supporting keyword",
+        "Cluster visualizer: force-directed graph with pillar at center, supporting nodes connected, edge thickness = semantic similarity",
+        "Cluster status: planned, in-progress, published, decaying",
+        "Manual override: drag keyword between clusters or split/merge clusters"
+      ],
+      "priority": 53,
+      "passes": false,
+      "notes": "Embeddings + a recluster job (weekly) keeps clusters fresh as new keywords arrive.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-020",
+      "title": "Internal link opportunity finder",
+      "description": "As an editor, I want to know which existing posts should link to a new post (and vice versa) so internal linking happens by default rather than as an afterthought.",
+      "acceptanceCriteria": [
+        "On post creation/update, embed full body and store in posts.embedding (pgvector)",
+        "Find candidate links: top-N posts by cosine similarity, filtered to same workspace",
+        "Suggest anchor text using LLM (extract phrase from source post matching target post's primary keyword)",
+        "Admin UI panel on post editor: 'Suggested internal links' with [Insert] buttons",
+        "Reverse view: for each existing post, suggest new content that should link back",
+        "One-click 'Backfill links' opens a PR-style review of all proposed link inserts before applying"
+      ],
+      "priority": 54,
+      "passes": false,
+      "notes": "Anchor text variety matters — don't propose the same phrase 10 times.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-021",
+      "title": "Content decay detector",
+      "description": "As a content manager, I want to be alerted when published posts lose rankings or traffic so I can refresh them before the decay accelerates.",
+      "acceptanceCriteria": [
+        "Daily job pulls Search Console + GA4 metrics for every published post",
+        "Decay detection: 28-day rolling window vs prior 28-day window — flag if clicks down >20%, impressions down >25%, or position dropped >3",
+        "Decaying posts auto-add to refresh_queue with priority = severity",
+        "Admin UI dashboard: 'Decaying posts' card with sparkline per post",
+        "Email/Slack notification (configurable) when a post crosses decay threshold"
+      ],
+      "priority": 55,
+      "passes": false,
+      "notes": "Tune thresholds per workspace — high-volume sites need different sensitivity than long-tail blogs.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-022",
+      "title": "Topical authority scorer per cluster",
+      "description": "As a strategist, I want a single number per cluster that says how dominant we are so I can decide where to invest next.",
+      "acceptanceCriteria": [
+        "Score formula combines: % of cluster keywords ranking top 10, % of cluster keywords with our content published, average rank across cluster, total cluster impressions captured",
+        "Score normalized 0-100 per cluster; recomputed daily",
+        "Admin UI: cluster heatmap (rows = clusters, color = authority score)",
+        "Trend line per cluster (90-day) so improvement is visible",
+        "API endpoint: GET /api/clusters/:id/authority returns full breakdown"
+      ],
+      "priority": 56,
+      "passes": false,
+      "notes": "Authority is comparative — also surface 'authority vs top competitor' alongside the absolute score.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-023",
+      "title": "Auto-brief generator from keyword + SERP",
+      "description": "As a writer, I want a thorough brief auto-generated so I can focus on writing instead of research compilation.",
+      "acceptanceCriteria": [
+        "Input: target keyword (or cluster + pillar role) + workspace context",
+        "Brief sections: target keyword, secondary keywords, search intent, target audience persona, target word count (median of SERP +20%), target reading level, suggested H2/H3 outline (synthesized from top SERP), entities/NLP terms to include (extracted from top SERP via NER), FAQs (from PAA + community questions), schema markup plan, internal link opportunities, source list (top SERP + cited research), originality angle (what this post will say that nobody else does), CTA placement plan",
+        "Brief is editable Markdown; saved to briefs table with status = draft|approved|in-writing|done",
+        "Approve workflow: writer claims brief → status = in-writing; editor approval gate before status = approved",
+        "One-click 'Start writing' creates a post draft prefilled with brief outline as H2 placeholders"
+      ],
+      "priority": 57,
+      "passes": false,
+      "notes": "The 'originality angle' field is what separates a great brief from a good one. Force the LLM to identify a contrarian or novel angle before writing.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-024",
+      "title": "Editorial calendar with assignments and deadlines",
+      "description": "As an editor, I want a calendar view of upcoming and published content so the team has a shared schedule.",
+      "acceptanceCriteria": [
+        "Calendar view (month/week) showing every post with status color-coded",
+        "Drag posts to reschedule publish_date; respects status (can't schedule a post still in 'idea' state)",
+        "Assignee per post (writer, reviewer); appears as avatar on the calendar tile",
+        "Filter by author, cluster, status",
+        "Export calendar to .ics so it shows up in Google Calendar / Outlook",
+        "Slack/Discord bot posts daily 'today's editorial' summary if integration enabled"
+      ],
+      "priority": 58,
+      "passes": false,
+      "notes": "Drag-to-reschedule is the highest-ROI interaction; don't skimp on it.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-025",
+      "title": "Source aggregator with citation capture",
+      "description": "As a writer, I want to capture and cite sources inline so the post is verifiable and E-E-A-T compliant.",
+      "acceptanceCriteria": [
+        "Citation toolbar in editor: paste URL → fetcher pulls title, author, publish date, OG image, excerpt; saves to citations table",
+        "Inline reference: [^citation-id] syntax in markdown; rendered as superscript link",
+        "Citations panel on post editor: list, reorder, edit attribution",
+        "Auto-generate references section at post bottom on render",
+        "Schema.org Citation markup emitted for each reference",
+        "Browser extension (optional) sends current tab to the active draft as a citation"
+      ],
+      "priority": 59,
+      "passes": false,
+      "notes": "Storing the excerpt + retrieved_at protects against link rot — you can show the original quote even if the source 404s later.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-026",
+      "title": "Reading-level and persona targeter",
+      "description": "As an editor, I want every draft scored for reading level and audience match so we don't accidentally write for the wrong persona.",
+      "acceptanceCriteria": [
+        "Flesch-Kincaid grade level computed live; shown as gauge in editor",
+        "Persona match score: LLM compares draft tone/vocabulary to brief's persona description; returns 0-100",
+        "Sentence-level highlighting: sentences above target grade level highlighted yellow, far above red",
+        "Suggestions: click highlighted sentence → 'Simplify' button replaces with LLM-rewritten version",
+        "Pre-publish gate: warns if persona match <70 or grade level diverges >2 from target"
+      ],
+      "priority": 60,
+      "passes": false,
+      "notes": "Hemingway-style highlighting is well-loved for a reason — keep it visual and fast.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-027",
+      "title": "Schema markup planner and generator",
+      "description": "As an SEO, I want every post to ship with appropriate JSON-LD so it's eligible for rich results and AI Overviews.",
+      "acceptanceCriteria": [
+        "Per-post schema_type field: Article, BlogPosting, NewsArticle, HowTo, Recipe, Review, Product, FAQPage, Event",
+        "Generator builds JSON-LD from post fields + workspace's Organization data",
+        "FAQ blocks in editor auto-emit FAQPage schema",
+        "HowTo blocks (steps with images) auto-emit HowTo schema",
+        "Schema validator runs on save; blocks publish on errors (warnings allowed)",
+        "Preview pane shows the JSON-LD that will be emitted"
+      ],
+      "priority": 61,
+      "passes": false,
+      "notes": "Don't fake aggregateRating or other reviewable signals — Google penalizes.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-028",
+      "title": "E-E-A-T plan: author bio, expertise, original research",
+      "description": "As an editor, I want every post to have a credible author and original-data signal so we maximize E-E-A-T.",
+      "acceptanceCriteria": [
+        "Authors table: name, slug, bio, headshot, credentials, expertise tags, social links, schema.org Person fields",
+        "Author page generated per author with all their posts + structured data",
+        "Per-post field: original_research_signal (enum: survey, internal-data, expert-interview, case-study, none) — 'none' triggers a soft warning",
+        "Author byline rendered with credentials inline",
+        "Reviewed-by field: optional second author who reviewed for accuracy"
+      ],
+      "priority": 62,
+      "passes": false,
+      "notes": "The original_research_signal field is a forcing function — it surfaces shallow content during planning, not after publish.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-029",
+      "title": "Original data integration: surveys, internal data, public datasets",
+      "description": "As a writer, I want to embed and chart original data so my post has unique value SEO can't easily commoditize.",
+      "acceptanceCriteria": [
+        "Data sources: CSV upload, Google Sheets, internal Postgres views (via configured read-only credentials per workspace), public APIs",
+        "Chart builder: select dataset → choose chart type (bar/line/pie/scatter) → configure axes → embed as block in post",
+        "Charts render server-side to PNG (for AMP/email compatibility) AND client-side as interactive SVG",
+        "Data source URL stored as citation; alt text auto-generated from chart description",
+        "Re-render on data refresh (e.g., monthly survey) without changing post URL"
+      ],
+      "priority": 63,
+      "passes": false,
+      "notes": "Recharts (interactive) + a server-side renderer like resvg or @napi-rs/canvas (static fallback) covers both needs.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-030",
+      "title": "Outline A/B variations scored against SERP",
+      "description": "As an editor, I want multiple outline candidates so I can pick the strongest before committing a writer's time.",
+      "acceptanceCriteria": [
+        "Brief generator produces 3 outline variants (different angles: how-to vs comparison vs deep-dive)",
+        "Each variant gets a predicted SERP-fit score (LLM compares variant to top SERP outlines)",
+        "Each variant gets a 'differentiation score' (how distinct from existing top SERP)",
+        "Editor picks one to proceed; rejected variants archived with brief for future reference",
+        "A/B test mode: write two posts on the same keyword cluster targeting different intents"
+      ],
+      "priority": 64,
+      "passes": false,
+      "notes": "Differentiation score is more important than fit score after a topic is saturated.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-031",
+      "title": "AI draft generator with citations preserved inline",
+      "description": "As a writer, I want a first draft generated from the brief that already cites its sources so I'm editing rather than from scratch.",
+      "acceptanceCriteria": [
+        "Generator takes: approved brief + brand voice + style guide + author persona",
+        "Streams draft to editor section by section (H2 by H2) with progress indicator",
+        "Every factual claim must include an inline citation reference; if model can't ground a claim, it inserts [needs-citation] tag",
+        "Output structured: title, meta_title, meta_description, body (markdown with citation refs), suggested_image_prompts, faq_block",
+        "User can regenerate any section independently without re-running the whole draft",
+        "Token/cost logged per generation to ai_costs"
+      ],
+      "priority": 65,
+      "passes": false,
+      "notes": "The [needs-citation] tag is a safety valve — better an honest gap than a hallucinated source.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-032",
+      "title": "Inline AI rewrite toolbar (shorter, longer, tone, simplify)",
+      "description": "As a writer, I want quick AI assists on selected text so I can refine prose without leaving the editor.",
+      "acceptanceCriteria": [
+        "Highlight any text → toolbar appears with: Shorten, Expand, Simplify, Make formal, Make casual, Add example, Add citation, Fix grammar",
+        "Each action sends the selection + workspace brand voice to LLM and replaces inline (with undo)",
+        "Custom prompt option: free-text instruction applied to selection",
+        "Diff view before applying: original vs proposed, accept/reject per-paragraph"
+      ],
+      "priority": 66,
+      "passes": false,
+      "notes": "Per-paragraph diff acceptance prevents big regenerations from clobbering edits the writer just made.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-033",
+      "title": "SEO scoring engine with on-page checklist",
+      "description": "As a writer, I want a live SEO score so I can hit on-page best practices without memorizing them.",
+      "acceptanceCriteria": [
+        "Live checklist on editor sidebar with pass/warn/fail icons",
+        "Checks: target keyword in title, in H1, in first 100 words, in URL slug, density 0.5-2%, title length 50-60, meta description 140-160, H1 unique, alt text on every image, ≥1 internal link, ≥1 external link, all links not broken, schema markup valid, OG image set, canonical set",
+        "Total score 0-100; below 70 blocks publish (overrideable by editor+)",
+        "Per-check explanation on hover with 'why this matters' link to docs"
+      ],
+      "priority": 67,
+      "passes": false,
+      "notes": "Don't be dogmatic about keyword density — flag extreme values (>3% or 0%) only.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-034",
+      "title": "Plagiarism and AI-content detection",
+      "description": "As an editor, I want to verify originality before publish so we don't ship duplicate or detectable AI text.",
+      "acceptanceCriteria": [
+        "Plagiarism check via Copyscape API (or Originality.ai) adapter; returns originality % + matched URLs",
+        "AI detection via Originality.ai or GPTZero adapter; returns AI-likelihood score",
+        "Pre-publish gate: configurable thresholds per workspace (default plagiarism <5%, AI-likelihood <50%)",
+        "Match URLs surfaced inline so writer can rephrase the matched section",
+        "Cost logged per scan"
+      ],
+      "priority": 68,
+      "passes": false,
+      "notes": "AI detectors are imperfect — treat scores as advisory, don't hard-block on them.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-035",
+      "title": "Image generation and stock integration with auto alt text",
+      "description": "As a writer, I want hero images and inline visuals without leaving the editor so visual content isn't a bottleneck.",
+      "acceptanceCriteria": [
+        "Image generator adapters: DALL-E, Stable Diffusion, Ideogram, Midjourney (via proxy)",
+        "Stock adapters: Unsplash, Pexels, Pixabay (with attribution baked in)",
+        "Editor: 'Generate image' or 'Search stock' opens modal; insert chosen image into post",
+        "Auto-generated alt text via vision LLM; editable",
+        "Image optimization on upload: resize to multiple breakpoints (320, 768, 1200, 1920), generate WebP + AVIF, store originals separately",
+        "Hero/OG image required before publish"
+      ],
+      "priority": 69,
+      "passes": false,
+      "notes": "Stock attribution must auto-render somewhere visible to comply with most stock licenses.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-036",
+      "title": "Meta title and description with CTR prediction",
+      "description": "As an SEO, I want predicted CTR for title/meta variants so I can pick the strongest before publishing.",
+      "acceptanceCriteria": [
+        "Generate 5 title + meta variants from post body via LLM",
+        "Score each variant: length compliance, keyword presence, emotional value (LLM rubric), question/number/bracket signals, predicted CTR (LLM heuristic + power words list)",
+        "SERP preview shows each variant as Google would render it",
+        "One-click pick + save",
+        "Post-publish: pull actual CTR from Search Console and feed back into the predictor over time"
+      ],
+      "priority": 70,
+      "passes": false,
+      "notes": "Closing the feedback loop with real CTR data is what makes the predictor better than a generic LLM.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-037",
+      "title": "Inline fact-checker against captured sources",
+      "description": "As an editor, I want every factual claim verified against the post's cited sources so we don't ship hallucinations.",
+      "acceptanceCriteria": [
+        "On-demand 'Fact-check' button runs claim extraction across the draft",
+        "For each claim: identify supporting citation (or [needs-citation]), call LLM with claim + cited source excerpt, return verdict (supported / contradicts / not-found / needs-human)",
+        "Inline highlights with verdict color; click for explanation",
+        "Confidence score per verdict; <70% confidence flagged for human review",
+        "Batch fact-check runs server-side as a job for long posts"
+      ],
+      "priority": 71,
+      "passes": false,
+      "notes": "False confidence is the failure mode — bias toward 'needs-human' when uncertain.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-038",
+      "title": "Diagram and chart generator from data",
+      "description": "As a writer, I want to insert clean diagrams without leaving the editor so visuals enhance rather than slow me down.",
+      "acceptanceCriteria": [
+        "Mermaid diagram block: live preview, syntax errors highlighted",
+        "Chart block (extends US-BLOG-029): pick from saved data assets or paste CSV inline",
+        "Excalidraw embed: open Excalidraw in modal, save SVG to assets, insert as image block",
+        "Each diagram stored in assets table with type='diagram' and source (mermaid_text, csv, or excalidraw_json) for editing later",
+        "Server-side renders all diagrams to PNG fallback for email/AMP"
+      ],
+      "priority": 72,
+      "passes": false,
+      "notes": "Mermaid covers 80% of needs cheaply — Excalidraw is the escape hatch.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-039",
+      "title": "Self-critiquing agent loop for draft quality",
+      "description": "As an editor, I want a draft that's been critiqued and revised by an AI critic before I see it so my time goes to high-value edits.",
+      "acceptanceCriteria": [
+        "Pipeline: generator → critic (separate prompt with critique rubric) → reviser → critic → reviser, max 3 iterations",
+        "Critic rubric: clarity, originality, evidence, voice match, SEO compliance, factual grounding, structural balance",
+        "Each iteration recorded in post_revisions for transparency",
+        "Pipeline stops early if critic returns 'no significant issues'",
+        "User can view the critic's feedback log alongside the final draft",
+        "Per-workspace toggle: 'critique loop on/off' (it costs more tokens)"
+      ],
+      "priority": 73,
+      "passes": false,
+      "notes": "The critic prompt is the highest-leverage piece — invest time tuning it per workspace.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-040",
+      "title": "Pre-publish QA pass: links, mobile preview, OG cards, accessibility",
+      "description": "As an editor, I want a single QA panel that runs all pre-publish checks so nothing slips through.",
+      "acceptanceCriteria": [
+        "Link checker: HEAD all internal + external links, flag 4xx/5xx/redirects",
+        "Mobile preview iframe at 375px width",
+        "OG/Twitter card preview as Slack, Twitter, LinkedIn, iMessage would render",
+        "Accessibility audit: axe-core run on rendered HTML; flag violations with severity",
+        "Schema validator (re-run from US-BLOG-027)",
+        "All checks must pass (or be explicitly overridden) before publish button enables"
+      ],
+      "priority": 74,
+      "passes": false,
+      "notes": "Cache link-check results for 1h to avoid hammering the same URLs on every save.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-041",
+      "title": "Predicted ranking and traffic forecast pre-publish",
+      "description": "As a strategist, I want a ranking and traffic forecast before publishing so I can decide if a post is worth shipping or needs more work.",
+      "acceptanceCriteria": [
+        "Inputs: target keyword volume + difficulty, our domain authority, post quality score (composite of SEO/readability/originality), SERP competitiveness",
+        "Output: predicted rank range (e.g., 8-15), predicted clicks/month, confidence band",
+        "Comparison vs similar posts we've published (calibration over time)",
+        "Recommendation: 'publish now' / 'invest in originality' / 'build internal links first' / 'too competitive — pivot angle'",
+        "Stored on post; updated post-publish with actuals"
+      ],
+      "priority": 75,
+      "passes": false,
+      "notes": "Predictions get reliable only after 50+ published posts feed the calibration model.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-042",
+      "title": "CMS publish flow via adapter",
+      "description": "As an editor, I want one button to publish to our connected CMS so the blog system fits inside my existing site.",
+      "acceptanceCriteria": [
+        "'Publish' button respects status workflow: draft → in-review → approved → published",
+        "Calls cms-adapter.createPost or updatePost depending on whether external_id exists",
+        "Image assets uploaded to CMS first; URLs rewritten in body before post body is sent",
+        "Canonical URL stored in posts.canonical_url after publish",
+        "Failure surfaces inline with retry button; partial-publish state visible (e.g., images uploaded, post creation failed)",
+        "Webhook fires on successful publish for downstream consumers"
+      ],
+      "priority": 76,
+      "passes": false,
+      "notes": "Idempotency on the adapter calls — retries shouldn't create duplicates.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-043",
+      "title": "Email newsletter generator from post",
+      "description": "As an editor, I want an email version of every post auto-drafted so newsletter is part of the publish flow, not a separate effort.",
+      "acceptanceCriteria": [
+        "Generator takes published post → produces: subject line variants (3), preheader, body (shorter than post: TLDR + 3-5 key points + CTA back to full post), plain-text fallback",
+        "Adapter pattern: ConvertKit, Mailchimp, Resend, Beehiiv, Substack — implementing send/schedule",
+        "Preview in inbox-style mockup",
+        "Schedule for date/time or send now",
+        "UTM params auto-applied to all links pointing back to the post"
+      ],
+      "priority": 77,
+      "passes": false,
+      "notes": "Subject line and preheader carry 80% of open-rate weight — generate 3 variants and let the editor pick.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-044",
+      "title": "Per-platform syndication: X/Twitter thread generator",
+      "description": "As a marketer, I want a Twitter thread tailored from each post so distribution is one click rather than a separate writing task.",
+      "acceptanceCriteria": [
+        "Generator: hook (first tweet) optimized for engagement, 6-12 tweet thread, CTA tweet linking back to post, optional media slot (chart screenshot or hero image) per tweet",
+        "Per-tweet character count visible, auto-truncate with ellipsis warning",
+        "Brand voice + workspace X handle's recent style (if posts pulled in via API) factored into generation",
+        "Schedule via Twitter API or copy-to-clipboard fallback",
+        "Stored as a Distribution row with platform='x', status, scheduled_at, sent_at, post_url"
+      ],
+      "priority": 78,
+      "passes": false,
+      "notes": "The hook (first tweet) is the only one most people read — generate 5 hook variants and let the user pick.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-045",
+      "title": "Per-platform syndication: LinkedIn long-form post",
+      "description": "As a marketer, I want a LinkedIn-native version of each post that performs better than just a link share.",
+      "acceptanceCriteria": [
+        "Generator: hook (first 2 lines visible before 'see more'), body 800-1500 chars (LinkedIn-optimal), bullet structure with line breaks, soft CTA, link in first comment (not in body)",
+        "Tone toggle: founder voice / company voice / thought leadership",
+        "Schedule via LinkedIn API or copy with explicit 'paste this in first comment' instruction for the link",
+        "Hashtag suggestions (3-5 relevant)",
+        "Distribution row tracks engagement post-publish"
+      ],
+      "priority": 79,
+      "passes": false,
+      "notes": "LinkedIn deprioritizes posts with outbound links in body — link-in-comment is the workaround.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-046",
+      "title": "Per-platform syndication: Facebook + Instagram (post + carousel + Reel script)",
+      "description": "As a marketer, I want Meta-platform variants without designing each one from scratch.",
+      "acceptanceCriteria": [
+        "Facebook post: short copy + image + link",
+        "Instagram carousel: 6-10 slides with title + body per slide; image generation per slide (template-based, brand colors); export as PNG set",
+        "Instagram Reel script: hook (first 3 seconds), beat-by-beat 30s script, on-screen text, suggested b-roll, CTA",
+        "Schedule via Meta Graph API where available; manual export fallback",
+        "Distribution rows per platform"
+      ],
+      "priority": 80,
+      "passes": false,
+      "notes": "Carousel templates should be configurable per workspace (brand colors, fonts, logo placement).",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-047",
+      "title": "Per-platform syndication: TikTok / YouTube Shorts script",
+      "description": "As a marketer, I want a short-video script with hook, beats, and on-screen text so any team member can record without writing scripts from scratch.",
+      "acceptanceCriteria": [
+        "Script generator: hook (first 3 sec), 3-act structure (problem → insight → CTA), on-screen captions per beat, suggested camera angles, runtime target 30-60s",
+        "Trend-aware: optional flag pulls trending audio/format hashtags via TikTok/Apify adapter",
+        "Export as PDF storyboard",
+        "Track which posts have video variants in distributions"
+      ],
+      "priority": 81,
+      "passes": false,
+      "notes": "Don't try to auto-generate the video itself for v1 — script + storyboard is high value, generation quality isn't there yet for brand work.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-048",
+      "title": "Per-platform syndication: Pinterest pins (multiple variations)",
+      "description": "As a marketer, I want multiple Pinterest pin variants per post so I can A/B test designs that drive durable traffic.",
+      "acceptanceCriteria": [
+        "Pin generator: 3-5 variants per post with different headlines, color schemes, layouts (text-heavy / image-heavy / quote-style)",
+        "Vertical 1000x1500 output; brand colors and fonts from workspace settings",
+        "Pin description auto-generated with target keyword and natural language",
+        "Schedule via Pinterest API; fallback to bulk PNG export",
+        "Distribution row per pin variant for performance comparison"
+      ],
+      "priority": 82,
+      "passes": false,
+      "notes": "Pinterest is a long-tail traffic source — invest in templating early so pins are cheap to produce.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-049",
+      "title": "Per-platform syndication: Reddit-friendly version (rule-aware)",
+      "description": "As a marketer, I want a Reddit version that respects each subreddit's rules so I can share without getting banned.",
+      "acceptanceCriteria": [
+        "Workspace setting: target subreddits with self-promotion ratio (e.g., 9:1) and rules summary",
+        "Generator produces: title (curiosity-driven, not clickbait), self-post body (value-first, link as secondary reference), or link-post format with comment-thread starter",
+        "Rule check: LLM compares draft against pasted-in rules per subreddit, flags violations",
+        "Self-promotion tracker: dashboard shows ratio of value posts to promo posts per subreddit",
+        "Manual post (no auto-submit) — copy to clipboard with 'Open subreddit' button"
+      ],
+      "priority": 83,
+      "passes": false,
+      "notes": "Auto-posting to Reddit is a fast track to a shadowban — keep it copy-paste only.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-050",
+      "title": "Per-platform syndication: Hacker News, Medium, Substack",
+      "description": "As a marketer, I want one-click syndication to long-form platforms with proper canonical handling.",
+      "acceptanceCriteria": [
+        "Hacker News: title rewriter (no clickbait, declarative), submission timing recommender (peak HN hours), discussion-seed comment draft",
+        "Medium: full repost via Medium API with canonical_url set to original post URL; tags suggested",
+        "Substack: cross-publish to a connected Substack newsletter with canonical preserved",
+        "Distribution row per platform; surface engagement (HN upvotes, Medium claps, Substack opens) where APIs allow"
+      ],
+      "priority": 84,
+      "passes": false,
+      "notes": "Canonical tag must point to the workspace's primary CMS URL or you'll cannibalize your own SEO.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-051",
+      "title": "Per-platform syndication: Slack / Discord community snippets",
+      "description": "As a community manager, I want to share new posts in Slack/Discord with formatting that drives clicks rather than getting ignored.",
+      "acceptanceCriteria": [
+        "Slack snippet: rich attachment with title, image, 1-line summary, button-style CTA",
+        "Discord snippet: embed with same fields, role mention if configured",
+        "Per-channel templates (e.g., #general gets summary, #content gets full announcement)",
+        "Schedule via incoming webhooks; manual post fallback",
+        "Click-through tracked via UTM params"
+      ],
+      "priority": 85,
+      "passes": false,
+      "notes": "One workspace can have multiple Slack/Discord targets — keep config plural from day one.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-052",
+      "title": "Auto-scheduling with optimal-time prediction per audience",
+      "description": "As a marketer, I want each platform variant scheduled at the time most likely to perform so I'm not guessing.",
+      "acceptanceCriteria": [
+        "Per-platform optimal-time model: pulls historical engagement from this workspace's distributions, finds best day-of-week × hour buckets",
+        "First-time platforms use industry defaults (configurable per workspace)",
+        "'Smart schedule' button picks the next optimal slot per platform",
+        "Conflict avoidance: don't schedule 2 posts on the same platform within 2h",
+        "Manual override always available"
+      ],
+      "priority": 86,
+      "passes": false,
+      "notes": "Don't trust generic 'best time to post' charts — your audience's optimal times will diverge from averages.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-053",
+      "title": "UTM strategy and per-channel link tracking",
+      "description": "As an analyst, I want consistent UTM params on every shared link so attribution works correctly.",
+      "acceptanceCriteria": [
+        "UTM template per workspace: utm_source = platform, utm_medium = social/email/community, utm_campaign = post_slug",
+        "Every distribution row stores the UTM-tagged URL it sent",
+        "Bulk link-rewriter: paste post URL → returns tagged URL per platform",
+        "Short-link adapter (optional): Bitly, Rebrandly — for character-tight platforms",
+        "Verifier: GA4 integration confirms UTM-tagged sessions are arriving"
+      ],
+      "priority": 87,
+      "passes": false,
+      "notes": "Lowercase everything in UTM values to avoid GA4 splitting Twitter and twitter into two sources.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-054",
+      "title": "Re-share cadence engine",
+      "description": "As a marketer, I want each post to be re-shared on a schedule that surfaces value without spamming so evergreen content gets full lifetime traffic.",
+      "acceptanceCriteria": [
+        "Default cadence: T+0 (publish day all platforms), T+3 (re-hook on X), T+7 (LinkedIn fresh angle), T+30 (community resurface), T+90, T+180",
+        "Each scheduled re-share generates a new variant (different hook) automatically",
+        "Stops auto-scheduling if engagement on prior re-shares is below threshold",
+        "Editor can pause/resume cadence per post",
+        "Distribution timeline view per post shows past + scheduled future shares"
+      ],
+      "priority": 88,
+      "passes": false,
+      "notes": "Re-shares fail when they're identical to the original — variation is mandatory, not optional.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-055",
+      "title": "Internal-link auto-injection on publish",
+      "description": "As an editor, I want existing posts auto-linked to a newly published pillar so internal linking compounds without manual backfill.",
+      "acceptanceCriteria": [
+        "On publish of a post tagged as pillar, find top-N existing posts with high semantic similarity AND no link to the new pillar",
+        "Generate proposed anchor + sentence-level edits to insert the link naturally",
+        "Editor reviews proposed edits in PR-style diff view; accept all / reject all / per-change accept",
+        "Accepted edits create new revisions on those posts and re-publish via CMS adapter",
+        "Backlink count surfaced on the new pillar's stats card"
+      ],
+      "priority": 89,
+      "passes": false,
+      "notes": "Keep human-in-the-loop on auto-injection — silent edits to published posts are a trust killer.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-056",
+      "title": "Backlink monitoring and lost-link recovery",
+      "description": "As an SEO, I want to know when backlinks appear or disappear so I can capitalize on momentum and recover lost links.",
+      "acceptanceCriteria": [
+        "Backlink adapter: Ahrefs, SEMrush, Majestic — implementing newBacklinks, lostBacklinks per domain",
+        "Daily job pulls deltas; new backlinks logged, lost backlinks added to recovery queue with last-seen URL",
+        "Recovery workflow: draft outreach email to the lost-link domain explaining the broken link and suggesting our updated URL",
+        "Notifications on high-DA new links (configurable threshold) so the marketing team can amplify",
+        "Backlink trend chart per post"
+      ],
+      "priority": 90,
+      "passes": false,
+      "notes": "Lost-link recovery converts ~15-25% on a good day — well worth the automation.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-057",
+      "title": "Unlinked brand-mention monitor → outreach",
+      "description": "As an SEO, I want unlinked mentions of our brand surfaced so I can convert them to backlinks.",
+      "acceptanceCriteria": [
+        "Mention monitor: Google Alerts API alternative (Brand24, Mention.com, or scrape) — finds mentions of brand name across web",
+        "Filter: pages where brand is mentioned but no link to our domain",
+        "Per mention: propose outreach email contextualizing the mention and politely requesting a link",
+        "Outreach status tracker: sent, replied, link-added, declined, ghosted",
+        "Auto-detect when link is added (re-crawl mentioned URLs weekly) and update status"
+      ],
+      "priority": 91,
+      "passes": false,
+      "notes": "Personalize the outreach with the actual mention quote — generic templates get ignored.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-058",
+      "title": "Outreach list generator (sites that linked to similar content)",
+      "description": "As an SEO, I want a list of sites likely to link to my new post so outreach has high hit rates.",
+      "acceptanceCriteria": [
+        "Input: published post + 3-5 similar competitor URLs",
+        "Pull backlink lists for competitor URLs via backlink adapter",
+        "Filter: high DA, content site (not directories), niche relevance score (LLM evaluates target site)",
+        "Find contact: hunter.io / clearbit / scrape contact pages",
+        "Output: prioritized outreach list with email, role, suggested angle per recipient"
+      ],
+      "priority": 92,
+      "passes": false,
+      "notes": "Niche relevance score filter is what separates this from generic backlink scraping.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-059",
+      "title": "HARO / Help-A-B2B-Writer pitch generator",
+      "description": "As a brand authority builder, I want to respond to HARO-style queries faster than the field so we get cited in major publications.",
+      "acceptanceCriteria": [
+        "Inbound: HARO email parser (forward HARO emails to a workspace inbox; parse into queries)",
+        "For each query: match against author expertise tags, draft a pitch using author's bio + relevant past posts as evidence",
+        "Pitch format follows HARO conventions (bio, response, contact info)",
+        "Editor reviews pitch → approves → sends from workspace email",
+        "Track pitch status: sent, replied, included, ignored — feeds calibration of which queries are worth pursuing"
+      ],
+      "priority": 93,
+      "passes": false,
+      "notes": "Speed wins HARO — be ready to send within 1h of the email landing.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-060",
+      "title": "Outreach agent: research + draft + track replies",
+      "description": "As a marketer, I want an agent that handles the cold-email cycle so I'm reviewing relationships, not drafting templates.",
+      "acceptanceCriteria": [
+        "Per outreach target: agent researches recipient (recent posts, social, mutual connections), drafts personalized email, queues for human approval",
+        "Approved emails sent via SMTP/SendGrid/Resend adapter from workspace domain",
+        "Reply detection via IMAP or webhook; agent classifies reply (interested / decline / question / out-of-office) and proposes next action",
+        "Cadence: follow-up 1 at +5d, follow-up 2 at +10d, then close as no-response",
+        "Engagement metrics per template/angle so the system learns what works"
+      ],
+      "priority": 94,
+      "passes": false,
+      "notes": "Sending from a marketing subdomain (not the primary domain) protects deliverability if the cadence is too aggressive.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-061",
+      "title": "GA4 + Search Console integration",
+      "description": "As an analyst, I want every post's performance pulled in automatically so I don't switch tabs to check numbers.",
+      "acceptanceCriteria": [
+        "GA4 Data API: pull sessions, users, engagement_time, conversions per post URL daily",
+        "Search Console API: pull clicks, impressions, CTR, average position per post URL daily",
+        "Backfill 16 months on initial connect (Search Console max), 90 days for GA4",
+        "Per-workspace OAuth flow to connect properties",
+        "Metrics stored in performance_metrics table; surfaced on post detail page",
+        "Trend charts (28-day, 90-day, all-time) per post"
+      ],
+      "priority": 95,
+      "passes": false,
+      "notes": "Search Console rate limits are tight — batch requests by date range, not by URL.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-062",
+      "title": "Performance dashboard: posts, clusters, channels",
+      "description": "As an editor, I want a unified dashboard so I can answer 'how is content doing?' in one glance.",
+      "acceptanceCriteria": [
+        "Top-level cards: total organic clicks (28d), top-performing posts, declining posts, conversions attributed",
+        "Per-cluster table: clicks, impressions, average position, # posts, authority score",
+        "Per-channel table (from distributions): clicks, sessions, conversions",
+        "Date range selector with comparison (vs prior period)",
+        "Export CSV per view"
+      ],
+      "priority": 96,
+      "passes": false,
+      "notes": "Default the dashboard to 'last 28 days vs prior 28' — that's the comparison most editors want.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-063",
+      "title": "Content refresh queue with auto-flagged decay candidates",
+      "description": "As a content manager, I want a prioritized refresh queue so the most decay-prone posts get attention first.",
+      "acceptanceCriteria": [
+        "Queue auto-populated by US-BLOG-021 (decay detector) + manual additions",
+        "Each queue item: post, decay severity, suggested edits (LLM diffs current SERP vs current post), estimated effort",
+        "Click 'Start refresh' opens the post editor with suggested edits as inline annotations",
+        "Refresh updates posts.last_refreshed_at; tracked separately from publish_date",
+        "After refresh, monitor for ranking recovery; auto-close queue item on recovery"
+      ],
+      "priority": 97,
+      "passes": false,
+      "notes": "Refreshing the title + intro + adding new sections recovers most decay; full rewrites are rarely needed.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-064",
+      "title": "A/B testing for titles, meta descriptions, CTAs",
+      "description": "As an SEO, I want to test on-page elements so improvements are measured, not assumed.",
+      "acceptanceCriteria": [
+        "Per-post experiments: variant A (current) vs variant B (proposed)",
+        "Title/meta tests: split-test by alternating variants weekly; compare CTR from Search Console",
+        "CTA tests: client-side variant assignment (cookie-based) with conversion tracking",
+        "Statistical significance calculator surfaces winner when n is sufficient",
+        "Winner auto-promoted (with editor approval) after threshold reached"
+      ],
+      "priority": 98,
+      "passes": false,
+      "notes": "Search Console attribution lags 2-3 days — bake that into significance calc.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-065",
+      "title": "Cohort analysis: topic → revenue / signups",
+      "description": "As a strategist, I want to know which topics drive business outcomes so investment shifts toward what works.",
+      "acceptanceCriteria": [
+        "Conversion definition per workspace (signup, purchase, demo request) configured via GA4 conversion event",
+        "Attribution model: last-non-direct-click default; configurable to first-touch or linear",
+        "Cohort table: cluster → sessions → conversions → revenue (or signup count)",
+        "Time-to-conversion histogram per cluster",
+        "ROI per cluster: cost (writing + tools) vs revenue"
+      ],
+      "priority": 99,
+      "passes": false,
+      "notes": "Most teams discover ~20% of clusters drive ~80% of revenue — cohort analysis makes the cut decision obvious.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-066",
+      "title": "Auto-refresh agent — fully autonomous SERP-decay-triggered re-editing",
+      "description": "As a platform admin, I want the auto-refresh agent to detect SERP decay and re-edit posts WITHOUT human review (per scope decision 5D), with every change captured in the audit log and revertable, so content stays competitive without operator overhead.",
+      "acceptanceCriteria": [
+        "Auto-refresh agent runs on a schedule (cron via Supabase scheduled functions) and via blog_refresh_queue triggers",
+        "For each candidate post, the agent: (1) re-runs SERP analysis, (2) diffs against the prior SERP snapshot, (3) generates revised sections, (4) commits a new revision to blog_post_revisions with revision_source=\"auto_refresh_agent\", (5) re-publishes via the configured CMS adapter, (6) writes a blog_audit_log entry summarizing what changed and why",
+        "No human-approval step in the default path; admin can opt back into manual review per-tenant via a flag on a new blog_agent_settings row (auto_refresh_requires_review boolean, default false)",
+        "Hard guardrails: agent will NOT auto-publish if (a) the predicted change exceeds N% of the post body (configurable, default 40%), (b) the SEO score would drop, or (c) brand-voice or style-guide violations are introduced — these cases land in a review queue surfaced on the Refresh page",
+        "Every auto-refresh run respects the global agent kill switch (US-BLOG-086) — if paused, run is skipped and a blog_audit_log entry records the skip",
+        "Cost-per-run captured in the AI cost dashboard (US-BLOG-079)",
+        "Integration test: simulate SERP decay → assert revision created → assert CMS adapter called → assert audit log entry exists",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 100,
+      "passes": false,
+      "notes": "Source PRD: blog-system-prd.json US-BLOG-066 (elevated from \"proposed edits\" to \"autonomous re-editing\" per scope decision 5D). Full autonomy in production requires the kill switch in US-BLOG-086 to land first.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-067",
+      "title": "LLM citation graph analyzer (ChatGPT, Perplexity, Google AI Overviews)",
+      "description": "As a strategist, I want to know which of our posts get cited by AI systems and which competitor posts dominate the citation graph for our keywords.",
+      "acceptanceCriteria": [
+        "Adapter pattern: chatgpt-search, perplexity, google-ai-overview probes — each takes a query, returns the cited URLs",
+        "For each tracked keyword cluster, run probes weekly; log citations to llm_citations table",
+        "Dashboard: 'AI citation share of voice' per cluster — % of probes citing our domain vs competitors",
+        "Diff view: queries where we appear in classic SERP top 10 but NOT in AI citations — hot opportunity list",
+        "Per-post AI citation count surfaced alongside organic metrics"
+      ],
+      "priority": 101,
+      "passes": false,
+      "notes": "Probing has cost — sample queries, don't probe every keyword every day. Weekly per cluster is plenty.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-068",
+      "title": "Answer-Engine Optimization (AEO) chunk structuring",
+      "description": "As an SEO, I want every post structured for LLM citation so AI engines can extract clean answers from our content.",
+      "acceptanceCriteria": [
+        "Pre-publish AEO score: checks for self-contained paragraphs (each answers a discrete question), question-shaped H3s, explicit definitions, factual statements with dates and named entities, original-data callouts",
+        "Auto-suggest: rewrite vague paragraphs into self-contained answer chunks",
+        "Append a 'Quick answers' section at post top with bullet-form direct answers to top PAA questions",
+        "Schema.org QAPage / FAQPage applied to those sections",
+        "AEO score visible alongside SEO score"
+      ],
+      "priority": 102,
+      "passes": false,
+      "notes": "AI Overviews citations correlate with self-contained, well-attributed paragraphs. Optimize for chunk-level quality, not just article-level.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-069",
+      "title": "Domain knowledge graph of entities and relationships",
+      "description": "As a strategist, I want a knowledge graph of our domain so I can see entity coverage gaps and plan content accordingly.",
+      "acceptanceCriteria": [
+        "NER pipeline extracts entities (people, organizations, products, concepts, locations, dates) from every published post",
+        "Entities stored with type, frequency, first/last seen, related posts",
+        "Co-occurrence graph: entities mentioned together get edges weighted by co-mention frequency",
+        "Visualizer: force-directed graph with cluster-based coloring",
+        "Gap detector: entities competitors cover that we don't — added to keyword cluster planning"
+      ],
+      "priority": 103,
+      "passes": false,
+      "notes": "Use a small NER model (spaCy or a fine-tuned small LLM) — calling GPT-4 for NER on every post is overkill and expensive.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-070",
+      "title": "Real-time SERP monitor with auto-refresh triggers",
+      "description": "As an SEO, I want immediate alerts on SERP volatility for our top keywords so I can react before competitors capitalize.",
+      "acceptanceCriteria": [
+        "Hourly SERP polling for tier-1 keywords (configurable list, default top 50 by traffic)",
+        "Volatility detection: rank change >3 positions, new SERP feature appearing, new competitor entering top 10",
+        "Alert channels: email, Slack, in-app notification — configurable per workspace",
+        "Auto-trigger: significant volatility on a published post adds it to refresh_queue with high priority",
+        "Volatility timeline per keyword for retrospective analysis"
+      ],
+      "priority": 104,
+      "passes": false,
+      "notes": "Hourly polling is expensive — limit to tier-1 keywords. Daily for everything else.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-071",
+      "title": "Competitor publishing alerts with response brief",
+      "description": "As a strategist, I want to be alerted when a key competitor publishes on a topic we own so I can respond fast.",
+      "acceptanceCriteria": [
+        "Competitor RSS/sitemap monitoring per workspace (add competitor blog URLs)",
+        "New posts detected within 24h; LLM summarizes and tags with relevant keyword cluster",
+        "Alert if new competitor post targets a keyword we rank for",
+        "Auto-generate response brief: what they covered, what we should add or counter, suggested response post angle",
+        "One-click 'Create brief from response' adds to brief queue"
+      ],
+      "priority": 105,
+      "passes": false,
+      "notes": "Most competitors update their sitemap.xml in real time — that's faster and lower-friction than scraping.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-072",
+      "title": "Audience-specific personalized variants from one master doc",
+      "description": "As a strategist, I want one master article with multiple audience variants so we serve different ICPs without writing 3 articles.",
+      "acceptanceCriteria": [
+        "Per post: define audience variants (e.g., 'engineer', 'manager', 'executive')",
+        "Each variant: different intro, different examples, different CTA, but shares the core body",
+        "Variant rendering: server-side personalization based on URL param, cookie segment, or referrer",
+        "Schema-aware: only one canonical URL; variants don't get separate URLs (avoid dup content)",
+        "Performance per variant tracked separately"
+      ],
+      "priority": 106,
+      "passes": false,
+      "notes": "Server-side rendering with edge personalization (Cloudflare Workers, Vercel edge) is the right delivery mechanism. Don't index variant URLs.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-073",
+      "title": "Multi-agent draft pipeline: research → outline → draft → fact-check → critic → polish",
+      "description": "As an editor, I want a chained agent pipeline that produces near-final drafts so human review focuses on judgment, not basics.",
+      "acceptanceCriteria": [
+        "Pipeline stages as separate prompts/agents: researcher (gathers sources), outliner (structures from sources), drafter (writes from outline), fact-checker (verifies claims), critic (rubric-based critique), polisher (final pass)",
+        "Each stage's output stored as an artifact for transparency",
+        "Failures at any stage halt pipeline with explanation; resume from failed stage after fix",
+        "Cost + latency logged per stage",
+        "Per-workspace toggle: which stages to run (cost vs quality tradeoff)"
+      ],
+      "priority": 107,
+      "passes": false,
+      "notes": "Pipeline output should always be reviewable as artifacts — opaque agent chains are debugging nightmares.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-074",
+      "title": "Programmatic SEO: templated pages from data",
+      "description": "As a growth marketer, I want to generate hundreds of templated pages from a dataset so we capture long-tail traffic systematically.",
+      "acceptanceCriteria": [
+        "Template engine: Markdown template with {{variables}}; data source = CSV upload, Google Sheet, internal Postgres view",
+        "Variables: any field from data row (e.g., {{city}}, {{product}}, {{stat}})",
+        "Per-template: SEO config (title pattern, meta pattern, schema type), brand voice, output destination (CMS adapter)",
+        "Quality gate: template + data row run through SEO scorer; rows scoring <70 flagged for manual review or skipped",
+        "Bulk publish job with rate limiting (e.g., 50/hour) to avoid CMS overload",
+        "Bulk update / unpublish workflows when data changes"
+      ],
+      "priority": 108,
+      "passes": false,
+      "notes": "Programmatic SEO without quality gates = doorway pages = manual penalty. Always gate on uniqueness + value per page.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-075",
+      "title": "Interactive content blocks: calculators, quizzes, tools",
+      "description": "As a marketer, I want to embed interactive tools in posts so we generate utility-driven backlinks.",
+      "acceptanceCriteria": [
+        "Block types: calculator (formula + input fields → output), quiz (question + answer scoring → result), comparison tool, ROI estimator",
+        "No-code builder: drag inputs, define formula, configure result text",
+        "Embedded as iframe (or inline component if same domain) with tracking",
+        "Lead capture (optional): email gate before showing result",
+        "Engagement metrics: completion rate, share rate, conversion rate per tool"
+      ],
+      "priority": 109,
+      "passes": false,
+      "notes": "Calculators are the highest-ROI interactive content for B2B — they earn backlinks for years.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-076",
+      "title": "Multimodal output: podcast TTS + video script + social clips",
+      "description": "As a marketer, I want every post repurposed into audio/video automatically so content reaches non-readers.",
+      "acceptanceCriteria": [
+        "Podcast: ElevenLabs/PlayHT TTS adapter; full post narrated with brand voice clone (if licensed); chapter markers from H2s",
+        "Output to MP3 + RSS feed (per workspace) for podcast distribution",
+        "Video script: structured beats from post; integrate with HeyGen/Synthesia adapter for avatar video (optional)",
+        "Social clips: 30-60s audio clips of key insights for IG audiograms / LinkedIn audio posts",
+        "Each output stored as asset linked to source post"
+      ],
+      "priority": 110,
+      "passes": false,
+      "notes": "Voice cloning requires explicit consent + license — gate behind a 'voice license uploaded' flag per author.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-077",
+      "title": "Localization and translation pipeline",
+      "description": "As an international team, I want every post translatable into target locales with proper SEO so we capture global search.",
+      "acceptanceCriteria": [
+        "Locale enum per workspace (e.g., en-US, es-MX, de-DE)",
+        "Translation adapter: DeepL, Google Translate, GPT-4 — implementing translate(text, source, target, glossary)",
+        "Per-locale brand voice variant (different tone for different markets)",
+        "Glossary: workspace-specific terms not to translate (brand names, product names)",
+        "Hreflang tags emitted on every post; sitemap split per locale",
+        "Locale-specific publish flow: each translation has its own status, reviewer, publish_date"
+      ],
+      "priority": 111,
+      "passes": false,
+      "notes": "Don't auto-publish translations without native review — machine translation is good for v1 drafts, never for ship.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-078",
+      "title": "AI cost dashboard with per-workspace quotas",
+      "description": "As a platform operator, I want full visibility into AI spend per workspace so I can bill / cap accurately.",
+      "acceptanceCriteria": [
+        "Every adapter call logs to ai_costs: workspace_id, provider, model, prompt_tokens, completion_tokens, cost_cents, request_id, feature (which feature called it)",
+        "Dashboard: cost by workspace, by feature, by model — daily / monthly views",
+        "Per-workspace monthly quota; warn at 80%, hard-stop at 100% (overrideable)",
+        "Forecasted spend based on rolling 7-day average",
+        "Alerts: anomaly detection (sudden 3x spike) → email/Slack"
+      ],
+      "priority": 112,
+      "passes": false,
+      "notes": "Anomaly detection catches infinite-loop bugs and rogue jobs before they consume the monthly budget.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-079",
+      "title": "Webhook event bus for downstream consumers",
+      "description": "As a developer integrating the blog system, I want webhook events for every meaningful state change so I can sync with external systems.",
+      "acceptanceCriteria": [
+        "Events: post.created, post.updated, post.published, post.refreshed, distribution.sent, distribution.failed, brief.approved, refresh_queue.added",
+        "Per-workspace webhook config: URL, secret (HMAC signing), event filter, retry policy",
+        "Delivery: at-least-once with exponential backoff, dead-letter queue after max attempts",
+        "Webhook log viewer: payload, response, timestamp, attempt count",
+        "HMAC signature verification documented for consumers"
+      ],
+      "priority": 113,
+      "passes": false,
+      "notes": "Always sign webhook payloads — unsigned webhooks are an attack surface.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-080",
+      "title": "Public REST API with OpenAPI spec and SDK",
+      "description": "As a developer, I want a clean public API so I can build custom workflows and integrations on top of the blog system.",
+      "acceptanceCriteria": [
+        "OpenAPI 3.1 spec auto-generated from route handlers (zod-to-openapi or similar)",
+        "Endpoints for every domain object: keywords, briefs, posts, distributions, performance",
+        "Auth: API keys per workspace with scoped permissions",
+        "Rate limits per API key; documented",
+        "Generated TypeScript SDK published to npm; Python SDK as stretch",
+        "API docs site (Scalar / Redocly) auto-deployed"
+      ],
+      "priority": 114,
+      "passes": false,
+      "notes": "OpenAPI-first means SDKs and docs stay in sync — never hand-write either.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-081",
+      "title": "Backup, export, and import per workspace",
+      "description": "As a workspace owner, I want full data portability so I can back up, migrate, or comply with deletion requests.",
+      "acceptanceCriteria": [
+        "Export: full workspace data as ZIP (posts as Markdown + frontmatter, assets as files, briefs as Markdown, settings as JSON)",
+        "Import: ZIP from another workspace replays into target workspace; collision resolution (skip / overwrite / suffix)",
+        "Scheduled backups: daily ZIP to S3-compatible storage per workspace",
+        "Retention: 30 days default, configurable",
+        "Right-to-delete: full workspace purge job (audit_log preserved with anonymized actor IDs)"
+      ],
+      "priority": 115,
+      "passes": false,
+      "notes": "Markdown + frontmatter as the canonical export means consumers can fork to any system without lock-in.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-082",
+      "title": "Onboarding checklist and demo workspace seed",
+      "description": "As a new workspace owner, I want a guided setup so I'm productive in 30 minutes rather than 3 days.",
+      "acceptanceCriteria": [
+        "Onboarding checklist: connect CMS, set brand voice, connect GA4 + Search Console, connect keyword adapter, connect at least one social platform, write first brief",
+        "Demo workspace template: pre-seeded brand voice, sample posts, sample brief — clonable in one click",
+        "Tooltips on first-visit per major feature",
+        "Progress bar shows % complete; nudges at 1d / 3d / 7d if incomplete",
+        "Time-to-first-publish tracked as activation metric"
+      ],
+      "priority": 116,
+      "passes": false,
+      "notes": "Time-to-first-publish is the single best activation metric — optimize for it ruthlessly.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-083",
+      "title": "Embeddable widget: 'Powered by Blog System' for white-label use",
+      "description": "As a host product (Daily OK, etc.), I want to embed the blog admin UI inside my own admin so editors don't context-switch.",
+      "acceptanceCriteria": [
+        "Iframe-able admin UI with postMessage bridge for auth",
+        "White-label config: hide 'Blog System' branding, set workspace logo + colors",
+        "Single sign-on: parent app issues a signed token; blog system trusts it for the duration",
+        "Theming inherits from parent (CSS variables exposed)",
+        "Documentation for host app integration"
+      ],
+      "priority": 117,
+      "passes": false,
+      "notes": "This is what makes the system reusable across your platforms — without it, every host needs to swap in its own admin.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-084",
+      "title": "Compliance: GDPR, CCPA, SOC2-friendly logging",
+      "description": "As a platform operator, I want compliance-ready primitives so the system can serve enterprise customers.",
+      "acceptanceCriteria": [
+        "PII inventory: which tables hold PII, what fields, retention policy",
+        "Data subject access: export all data for a given user (across workspaces they're a member of)",
+        "Right to erasure: anonymize user data while preserving aggregate metrics",
+        "Audit log immutability (from US-BLOG-011) and encryption at rest",
+        "Data processing addendum (DPA) template",
+        "Security overview doc for prospects"
+      ],
+      "priority": 118,
+      "passes": false,
+      "notes": "Don't promise SOC2 without an actual audit — but build the foundations now so the audit is cheap later.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-085",
+      "title": "End-to-end smoke test: idea → published → distributed → measured",
+      "description": "As a developer, I want a single test that exercises the whole pipeline so regressions are caught before they ship.",
+      "acceptanceCriteria": [
+        "E2E test: create workspace → run keyword research → generate brief → generate draft → run QA → publish to test CMS → syndicate to 2 mock platforms → ingest mock metrics",
+        "Runs against ephemeral test database + mocked external adapters",
+        "Total runtime <5 minutes",
+        "CI gate: PRs blocked if E2E fails",
+        "Failure mode: each stage screenshots / logs artifact for debugging"
+      ],
+      "priority": 119,
+      "passes": false,
+      "notes": "This is the single highest-value test in the system — it catches integration regressions that unit tests miss.",
+      "category": "blog"
+    },
+    {
+      "id": "US-BLOG-086",
+      "title": "Global agent kill switch + per-action rollback",
+      "description": "As a platform admin running the blog system in fully autonomous mode (per scope decision 5D), I need a single \"pause all agents\" toggle and per-action rollback so any AI-driven publish or re-edit can be halted or reverted in seconds when something goes wrong.",
+      "acceptanceCriteria": [
+        "New blog_agent_settings table per tenant: agents_paused (boolean, default false), paused_at, paused_by_user_id, paused_reason",
+        "New endpoint POST /blog/agents/pause and POST /blog/agents/resume (platform admin only) — flips agents_paused atomically",
+        "Every agent entry point (auto-refresh, draft pipeline, distribution scheduler, outreach agent, etc.) checks agents_paused at the start of each run; paused state short-circuits with a blog_audit_log entry",
+        "Settings page in /platform-admin/blog/settings shows the kill switch as a prominent toggle with last-paused-at + reason",
+        "Per-action rollback: every blog_post_revisions row created by an agent is reversible via a \"Revert to previous revision\" button on the post detail page; revert re-publishes via CMS adapter and writes an audit log entry",
+        "Bulk rollback: from the Audit Log page, an admin can select a time range and an agent type and revert every change in that window in one click; confirmation dialog requires typing the tenant name",
+        "Typecheck passes: npm run check",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 120,
+      "passes": false,
+      "notes": "Added beyond the original 85-story PRD because scope decision 5D enables fully autonomous re-editing — production-safe autonomy requires a panic button. Treat as a hard gate before US-BLOG-066 ships.",
+      "category": "blog"
     }
   ]
 }

@@ -3707,3 +3707,89 @@ Auto-deployment: `supabase/functions/server.ts:44-54` dynamically loads every no
 3. **ABK-017** (book detail page) — depends on ABK-013 (now done)
 
 ---
+
+## Backlog Update - 2026-05-07 - Platform Admin Blog System (US-BLOG-001..086)
+**Type**: PRD merge (not a story-completion iteration — Ralph should pick this up after current ABK work or in parallel; the blog and address-book modules are independent)
+**Source PRD**: blog-system-prd.json (85 stories, "Universal Blog System") merged into prd.json with Printyx adaptations
+**Merge tool**: scripts/merge-blog-prd.mjs (re-runnable; preserves `passes: true` on any prior BLOG-* entries)
+
+### What Was Added:
+86 user stories under new `blog` category in prd.json (priority 35-120, all `passes: false`) for a fully autonomous Platform Admin Blog System integrated into Printyx. v1 covers the closed loop from keyword research → AI draft → publish → distribute → measure → auto-refresh, with a global agent kill switch.
+
+### Scope Decisions (Locked):
+- **1A — Workspace model**: single Printyx workspace per tenant; no customer-facing blog system in v1 (deferred). The original PRD's "workspaces" table is replaced by the existing Printyx `tenants` table.
+- **2A — Architecture**: fully integrated into Printyx. Drizzle schemas under shared/blog/, edge functions at supabase/functions/blog/*, admin UI at /platform-admin/blog/*. No standalone monorepo.
+- **3A — Publish target**: Printyx's marketing site (and customer sites in phase 2).
+- **4B then C — Adapter scope v1**: WordPress + Ghost CMS adapters, DataForSEO for keywords, GA4 + Search Console for analytics, X/Twitter + LinkedIn for social. Phase 2 expands to Webflow, custom-REST, Meta, TikTok, Pinterest, Reddit, HN/Medium/Substack, Slack/Discord.
+- **5D — Autonomy level**: end-to-end autonomous including auto-refresh agent re-editing posts on SERP decay WITHOUT human review. Hard guardrails (change-magnitude threshold, SEO regression check, brand-voice/style-guide guardrails) route edge cases to a review queue. Global kill switch (US-BLOG-086, NEW) added beyond the original 85-story PRD because production-safe autonomy requires a panic button.
+
+### Stories Adapted from blog-system-prd.json:
+| ID | Adaptation |
+|----|------------|
+| US-BLOG-001 | REPLACED — original was monorepo scaffold; rewritten as "Blog module foundation in Printyx" (directory structure + sidebar entry) |
+| US-BLOG-002 | Schema rewritten for Drizzle + Printyx tenant model; tables renamed blog_* with tenant_id NOT NULL; RLS matches existing Printyx pattern |
+| US-BLOG-003 | Auth/RBAC rewritten to use existing Supabase auth + new blog.* permissions; no invite flow (workspace = tenant) |
+| US-BLOG-006 | CMS adapter scope narrowed to WordPress + Ghost in v1; Webflow + custom-REST deferred |
+| US-BLOG-007 | Admin UI shell integrated into existing Printyx layout (no separate React app); routes under /platform-admin/blog/* |
+| US-BLOG-066 | Auto-refresh agent elevated from "proposed edits" to "fully autonomous re-editing" per 5D; guardrails + kill-switch dependency added |
+| US-BLOG-086 | NEW — Global agent kill switch + per-action rollback. Hard gate before US-BLOG-066. |
+| US-BLOG-008..085 | Imported as-is, only adding `category: "blog"` and adjusting priority. References to "workspace" should be read as "tenant" during implementation. |
+
+### Required Environment Setup (Before US-BLOG-002 / US-BLOG-006):
+- LLM provider keys (one or both):
+  - `OPENAI_API_KEY` — for GPT-based draft generation, rewrite, fact-check, critique
+  - `ANTHROPIC_API_KEY` — recommended for higher-stakes critique steps
+- Keyword research:
+  - `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD` — v1 default keyword adapter
+- CMS targets (configured per tenant via blog_cms_targets.cms_config jsonb, encrypted):
+  - WordPress: site URL + application password OR JWT
+  - Ghost: site URL + Admin API key
+- Analytics:
+  - `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` for GA4 + Search Console OAuth flow
+- Social v1:
+  - X/Twitter API v2 credentials per tenant
+  - LinkedIn OAuth per tenant
+- Cron / scheduling:
+  - Supabase scheduled functions enabled for the auto-refresh agent and re-share cadence engine
+
+### Recommended Implementation Order:
+1. **US-BLOG-001** (foundation: directories + sidebar entry) — unblocks everything
+2. **US-BLOG-002** (Drizzle schema + RLS) — needed before any data-bearing story
+3. **US-BLOG-003** (RBAC + audit log)
+4. **US-BLOG-007** (admin UI shell) — needed before any UI story can render
+5. **US-BLOG-086** (KILL SWITCH — HARD GATE) — must land before any agent that auto-publishes
+6. **US-BLOG-012** (job queue) + **US-BLOG-011** (audit log details) — operational backbone
+7. **US-BLOG-004** (brand voice) + **US-BLOG-005** (style guide) — needed by every AI draft step
+8. **US-BLOG-006** (CMS adapter + WP/Ghost) — unlocks publishing
+9. **US-BLOG-008** through **US-BLOG-010** (editor, version history, asset library)
+10. Keyword + planning block: **US-BLOG-013** through **US-BLOG-023**
+11. Production block: **US-BLOG-024** through **US-BLOG-040** (drafting, scoring, QA)
+12. Publish + distribution block: **US-BLOG-041** through **US-BLOG-054**
+13. Backlinks + outreach block: **US-BLOG-055** through **US-BLOG-058**
+14. Analytics + optimization block: **US-BLOG-059** through **US-BLOG-066** (auto-refresh agent goes last; depends on kill switch)
+15. Advanced block: **US-BLOG-067** through **US-BLOG-079**
+16. Operations + compliance: **US-BLOG-080** through **US-BLOG-085**
+
+### Hard Gates (Do Not Ship Without):
+- **US-BLOG-086 (kill switch) MUST land before US-BLOG-066 (auto-refresh agent)** — autonomous re-editing in production without a pause toggle is a production hazard.
+- **US-BLOG-002 RLS policies MUST be tested with explicit pgTAP or integration tests** — silent RLS misconfiguration would leak content across tenants.
+- **CMS credentials in blog_cms_targets.cms_config MUST be encrypted at column level** via the address-book credential vault (see ABK-002, now passes: true) or equivalent — never store plaintext.
+
+### Cross-Module Reuse:
+- **Credential vault from ABK-002 already exists** (`server/services/address-book/credential-vault.ts`) — reuse it for blog CMS credentials. Recommend the implementer of US-BLOG-006 either (a) import that module directly, or (b) move it to `server/services/credential-vault.ts` (or `supabase/functions/_shared/credential-vault.ts` for edge-function reuse) and rename env var to `PRINTYX_CREDENTIAL_VAULT_KEY` with a backward-compat alias to `ADDRESS_BOOK_MASTER_KEY`.
+- Existing `tenants` table is the workspace; no new workspace table.
+- Audit-log pattern from blog_audit_log should match the address_book audit pattern.
+
+### Story Status Summary:
+86 stories, all `passes: false`, priority 35-120. Query via:
+```
+node -e "const d=require('./prd.json'); console.log(d.userStories.filter(s=>s.category==='blog').map(s=>s.id+' '+s.priority+' '+(s.passes?'DONE':'pending')+' — '+s.title).join('\n'))"
+```
+
+### Next Ralph Iteration:
+The blog and address-book modules are independent — no shared schema, no shared edge functions. Ralph can:
+- **Continue the ABK track**: ABK-016 / ABK-006/008/010 / ABK-017 (per the ABK iteration's own recommendations above)
+- **Start the BLOG track**: US-BLOG-001 (foundation) → US-BLOG-002 (schema) → US-BLOG-003 (RBAC)
+- **Run both in parallel** if multiple Ralph workers are available — they touch different schema files, different edge functions, and different UI routes. Only conflict point is potentially the credential vault refactor mentioned above; that can be a discrete coordination story.
+
+---
