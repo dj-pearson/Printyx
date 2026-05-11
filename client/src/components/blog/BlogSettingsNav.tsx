@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter';
-import { Globe, History, Mic2, ScrollText, Search, ShieldAlert } from 'lucide-react';
+import { Globe, History, ListChecks, Mic2, ScrollText, Search, ShieldAlert } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -56,6 +56,12 @@ const SETTINGS_NAV: SettingsNavItem[] = [
     path: '/platform-admin/blog/settings/audit-log',
     icon: History,
     description: 'Forensic record of every mutating action',
+  },
+  {
+    label: 'Background Jobs',
+    path: '/platform-admin/blog/settings/jobs',
+    icon: ListChecks,
+    description: 'Queue dashboard: retries, failures, manual run-due',
   },
 ];
 

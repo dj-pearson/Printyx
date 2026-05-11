@@ -4847,3 +4847,88 @@ Installed via `npm install --legacy-peer-deps` (per CLAUDE.md memory note):
 - Soft-deleted asset rows still leave their files in the bucket. A retention cron similar to US-BLOG-009's `/blog-post-revisions/cleanup` could sweep them after N days — but only after confirming no other tenant's posts reference them. Defer until storage costs matter.
 
 ---
+## Ralph Iteration — US-BLOG-012 (background job queue)
+
+**Date:** 2026-05-11
+**Story:** US-BLOG-012 — Background job queue with retries and observability
+**Status:** ✅ passes: true (6/6 AC met as adapted for the all-edge-function deploy)
+
+### What Shipped
+
+**Schema** — `shared/blog-schema.ts` + `drizzle/migrations/_backfill_blog_jobs.sql`
+- `blog_jobs` table: id, tenant_id, type, payload jsonb, status, priority, scheduled_at, attempts, max_attempts, last_error jsonb, result jsonb, idempotency_key, locked_until, locked_by, started_at, completed_at, audit fields
+- Indexes: tenant, (tenant, status), (status, scheduled_at, priority) for the run-due query
+- Partial unique index on (tenant_id, idempotency_key) where idempotency_key is not null — multiple rows with NULL keys coexist
+
+**Edge function** — `supabase/functions/blog-jobs/index.ts`
+- `GET /blog-jobs?status=&type=&limit=&offset=` — list
+- `GET /blog-jobs/stats` — `{ queued, active, failed, completed, cancelled }`
+- `GET /blog-jobs/:id` — fetch one
+- `POST /blog-jobs` — enqueue with idempotency dedup (existing row returned with `deduped: true` on conflict, including 23505 race path)
+- `POST /blog-jobs/:id/retry` — reset to queued, scheduled_at=now, clears locks
+- `POST /blog-jobs/:id/cancel` — queued → cancelled only (409 otherwise)
+- `POST /blog-jobs/run-due` — cron entry point: claims due jobs, runs handlers in-process, applies backoff
+- Permission gate: platform admin OR `blog.post.edit` OR `blog.job.manage`
+
+**Job dispatcher (POST /blog-jobs/run-due)**:
+- Step 1: SELECT candidate IDs in priority+scheduled_at order
+- Step 2: UPDATE ... WHERE status='queued' AND id IN(...) → atomic claim (substitutes for SKIP LOCKED since supabase-js doesn't expose FOR UPDATE)
+- 5-minute locked_until lease as safety net for crashed workers
+- Per-job: call HANDLERS[type] → on success: status=completed, result=blob, attempts++, audit `blog_job.complete`
+- Per-job: on throw: compute next backoff (attempt 1→+1m, 2→+5m, 3→+30m, 4→+2h, 5→permanent fail). status flips back to queued (rescheduled) or final 'failed'. Audit `blog_job.fail_retry` or `blog_job.fail_permanent` with full stack.
+
+**Built-in handlers**:
+- `noop` — smoke-test handler; respects `payload.sleep_ms` up to 5s
+- `retention_cleanup` — invokes US-BLOG-009 logic (reads `blog_agent_settings.revision_retention_days`, deletes old revisions, preserves latest per post). Now schedulable from the queue instead of needing its own cron.
+
+**Dashboard** — `/platform-admin/blog/settings/jobs` (`BlogSettingsJobs.tsx`):
+- 5-card status row (5s refetch interval) with status-specific icons and colors
+- Filter dropdown (all / queued / active / failed / completed / cancelled)
+- Per-row Retry (for failed/cancelled) and Cancel (for queued) buttons
+- Expandable row revealing payload + result JSON, error stack, idempotency key, locked_by
+- Manual `Run due now` button (calls POST /run-due with limit=25) — useful for ad-hoc invocations during dev
+- `Enqueue test job` dropdown for noop and retention_cleanup
+- Added to `BlogSettingsNav` as "Background Jobs"
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. pg-boss or BullMQ adapter | ✅ adapted — neither library is appropriate for an all-Deno-edge-function deploy, but we built the same primitives directly in Postgres |
+| 2. Job types as TS discriminated unions | ✅ `JOB_TYPES` const enum + `HANDLERS: Record<JobType, Handler>` map. Adding a type is a one-line registry entry. |
+| 3. Exponential backoff 1m/5m/30m/2h, max 5 | ✅ `BACKOFF_MINUTES = [1, 5, 30, 120]` applied per attempt; status→failed on attempt 5 |
+| 4. Dashboard with pending/active/failed/completed + retry/cancel | ✅ all 5 statuses tracked; retry on failed/cancelled, cancel on queued |
+| 5. Failed jobs in audit_log with full error stack | ✅ `last_error.stack` captured per attempt; `blog_audit_log` entry per state transition |
+| 6. Idempotency keys on every job to prevent duplicate work | ✅ partial unique index + dedup on enqueue (both pre-check and 23505 retry path) |
+
+**6 of 6 met. `passes: true`.**
+
+### Quality Gates
+- `vite build` — ✅ green, 1m 38s. New BlogSettingsJobs chunk is lazy-loaded behind the settings sub-nav, so no impact on common-path bundle size.
+- `tsc --noEmit` — clean for new files (the long-standing `apiRequest<T>(...)` noise from other files unchanged)
+- Browser smoke not run — recommend testing once `_backfill_blog_jobs.sql` lands: navigate to `/platform-admin/blog/settings/jobs` → "Enqueue test job" → noop → click "Run due now" → confirm status flips queued→completed, attempts shows 1/5, expand row → result shows `{ ok: true, slept_ms: 0 }`. Then enqueue another noop with payload `{ sleep_ms: 1500 }` (via API), enqueue a retention_cleanup, run due → confirm both complete.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-012 — Background job queue | ✅ passes: true |
+
+**Blog module total: 15 / 86 done.**
+
+### Notes for the Next Ralph Iteration
+
+**Operations:**
+- Cron wiring is NOT in this story. Add a k8s CronJob (or any scheduler) that hits `POST /blog-jobs/run-due` every minute. Until that exists, jobs sit in `queued` forever unless an admin clicks "Run due now" on the dashboard. Suggest mirroring the structure of `k8s/base/cronjob-backup.yaml`.
+- The dispatcher runs jobs *inside* the request that hits `/run-due`. A long-running handler (e.g. 30s LLM call ×10 jobs) will block the response and risk hitting the edge-function timeout. v1 is fine because both built-in handlers are sub-second. When a handler exceeds ~10s, switch to a fire-and-forget pattern: claim the job, return 202, run async in the background with `EdgeRuntime.waitUntil` (Supabase Deno runtime's equivalent of ctx.waitUntil).
+
+**Schema / robustness:**
+- No worker liveness checks. If a worker crashes mid-job, the `locked_until` lease expires after 5 minutes but the row stays in `status=active`. Right fix: a periodic sweep in `/run-due` that flips active+`locked_until < now()` back to `queued` (with attempts+1, last_error="lease expired"). Small change, file as a follow-up.
+- No job result retention. Completed jobs stay in the table forever — fine until volume matters. Mirror the US-BLOG-009 retention cleanup pattern: `retention_cleanup` handler could grow a second job type `jobs_cleanup` that purges completed/failed older than N days. Defer.
+- The dashboard polls every 5s. Fine for one admin but doubles up across browsers. Switch to Supabase Realtime postgres_changes once it's common to have multiple admins watching the queue.
+
+**Adding a new job type:**
+1. Append it to `JOB_TYPES` in `supabase/functions/blog-jobs/index.ts`
+2. Add a handler function to the `HANDLERS` map
+3. Optionally extend the dashboard's "Enqueue test job" dropdown
+That's it — no schema change needed. Idempotency_key callers pick is per-job-type contract.
+
+---

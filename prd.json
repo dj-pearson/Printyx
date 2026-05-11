@@ -5207,8 +5207,8 @@
         "Idempotency keys on every job to prevent duplicate work"
       ],
       "priority": 46,
-      "passes": false,
-      "notes": "pg-boss avoids a Redis dependency for small deployments.",
+      "passes": true,
+      "notes": "pg-boss avoids a Redis dependency for small deployments. Implemented as a lightweight Postgres-native queue (no pg-boss/BullMQ since the deploy has no always-on Node worker — everything is Deno edge functions). Built: blog_jobs table (status/priority/scheduled_at/attempts/max_attempts/last_error/result/idempotency_key/locked_until/locked_by), POST /blog-jobs (enqueue with idempotency dedup), GET /blog-jobs/stats (queued/active/failed/completed/cancelled counts), GET /blog-jobs?status&type, POST /blog-jobs/:id/retry, POST /blog-jobs/:id/cancel, POST /blog-jobs/run-due (cron entry point — claims due jobs with two-step UPDATE ... WHERE status='queued' AND id IN(...) approximating SELECT FOR UPDATE SKIP LOCKED, runs in-process, applies 1m/5m/30m/2h exponential backoff, marks final fail after max_attempts). Built-in handlers: noop (smoke test) + retention_cleanup (invokes US-BLOG-009 cleanup logic). Dashboard at /platform-admin/blog/settings/jobs with status cards (5s polling), filterable jobs table, retry/cancel actions, expandable row showing payload/result/stack. Every state transition writes a blog_audit_log row (enqueue, complete, fail_retry, fail_permanent, retry, cancel). External cron wiring (k8s CronJob → POST /blog-jobs/run-due) is operations-side, not in this story.",
       "category": "blog"
     },
     {

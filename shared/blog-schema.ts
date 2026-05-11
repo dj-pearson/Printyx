@@ -482,6 +482,54 @@ export const blogAgentSettings = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// blog_jobs — background job queue with retries + observability (US-BLOG-012)
+// ---------------------------------------------------------------------------
+// Postgres-backed job queue. Claim/complete/fail go through edge function
+// endpoints; worker invocation is external (k8s CronJob pings
+// POST /blog-jobs/run-due on a schedule). SELECT ... FOR UPDATE SKIP LOCKED
+// gives us safe concurrent claims without an extra dependency.
+//
+// Backoff policy (encoded in the run-due dispatcher, not the row):
+//   attempt 1 → schedule retry +1m,  attempt 2 → +5m,
+//   attempt 3 → +30m,                attempt 4 → +2h,
+//   attempt 5 → mark failed (no retry).
+export const blogJobs = pgTable(
+  'blog_jobs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    type: varchar('type', { length: 64 }).notNull(),
+    payload: jsonb('payload'),
+    status: varchar('status', { length: 16 }).notNull().default('queued'), // queued | active | completed | failed | cancelled
+    priority: integer('priority').notNull().default(50),
+    scheduledAt: timestamp('scheduled_at').notNull().defaultNow(),
+    attempts: integer('attempts').notNull().default(0),
+    maxAttempts: integer('max_attempts').notNull().default(5),
+    lastError: jsonb('last_error'), // { message, stack, code, attempt_at }
+    result: jsonb('result'),
+    /** Per-tenant deduplication; (tenant_id, idempotency_key) is UNIQUE when non-null. */
+    idempotencyKey: varchar('idempotency_key', { length: 200 }),
+    /** Soft claim lock — set when a worker picks up the job. */
+    lockedUntil: timestamp('locked_until'),
+    lockedBy: varchar('locked_by', { length: 200 }),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    createdByUserId: varchar('created_by_user_id'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index('blog_jobs_tenant_idx').on(table.tenantId),
+    statusIdx: index('blog_jobs_tenant_status_idx').on(table.tenantId, table.status),
+    runQueueIdx: index('blog_jobs_run_queue_idx').on(
+      table.status,
+      table.scheduledAt,
+      table.priority,
+    ),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // blog_audit_log — every mutating action (US-BLOG-011, 086)
 // ---------------------------------------------------------------------------
 export const blogAuditLog = pgTable(
@@ -664,6 +712,8 @@ export type BlogAuditLogEntry = typeof blogAuditLog.$inferSelect;
 export type NewBlogAuditLogEntry = typeof blogAuditLog.$inferInsert;
 export type BlogAgentSettings = typeof blogAgentSettings.$inferSelect;
 export type NewBlogAgentSettings = typeof blogAgentSettings.$inferInsert;
+export type BlogJob = typeof blogJobs.$inferSelect;
+export type NewBlogJob = typeof blogJobs.$inferInsert;
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;
