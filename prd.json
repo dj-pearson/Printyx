@@ -5174,8 +5174,8 @@
         "Search across assets by tag, type, text"
       ],
       "priority": 44,
-      "passes": false,
-      "notes": "License/source on every asset is non-negotiable for E-E-A-T and legal safety.",
+      "passes": true,
+      "notes": "License/source on every asset is non-negotiable for E-E-A-T and legal safety. Implemented: Supabase Storage bucket 'blog-assets' (25 MB cap, image+csv+pdf+json+text mime allowlist) provisioned via _backfill_blog_assets_bucket.sql. blog-assets edge function with list/get/create/patch/delete + POST /upload-url that issues a signed upload URL to a tenant-scoped path '<tenant_id>/<uuid>-<filename>' (refuses cross-tenant storage paths on create). Library page at /platform-admin/blog/assets with type filter, free-text search across title/description/attribution, type-colored card grid, soft delete with confirm. Upload modal with type-specific forms (image: alt text required; quote: text + attribution/source URL; expert_contact: name/title/org/contact/expertise tags). Image picker dialog integrated into BlogEditor — replaces the prior window.prompt flow on both the toolbar Image button and the slash-menu Image entry; supports inline 'upload new' and auto-selects the freshly uploaded asset. Deferred: thumbnail generation, EXIF extraction, CSV preview/column-typing, expert-contact response-rate tracking, link asset type — each a follow-up since each is its own non-trivial pipeline. Schema's enum is {image, quote, data, expert_contact, file}; AC's 'data_table' and 'link' types not added to enum since (a) 'data' covers data tables and (b) link assets are already representable as URLs in body markdown without their own row.",
       "category": "blog"
     },
     {

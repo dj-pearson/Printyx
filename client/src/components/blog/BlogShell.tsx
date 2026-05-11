@@ -4,6 +4,7 @@ import {
   Lightbulb,
   ClipboardList,
   FileText,
+  Image as ImageIcon,
   Share2,
   BarChart3,
   RefreshCcw,
@@ -47,6 +48,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Ideas', path: '/platform-admin/blog/ideas', icon: Lightbulb, shortcut: 'g i' },
   { label: 'Briefs', path: '/platform-admin/blog/briefs', icon: ClipboardList, shortcut: 'g b' },
   { label: 'Posts', path: '/platform-admin/blog/posts', icon: FileText, shortcut: 'g p' },
+  { label: 'Assets', path: '/platform-admin/blog/assets', icon: ImageIcon, shortcut: 'g m' },
   {
     label: 'Distribution',
     path: '/platform-admin/blog/distribution',

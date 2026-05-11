@@ -114,14 +114,15 @@ const COMMANDS: SlashCommandItem[] = [
   },
   {
     title: 'Image',
-    description: 'Insert image from URL',
+    description: 'Pick from library or upload',
     keywords: ['img', 'image', 'picture'],
     icon: ImageIcon,
     command: ({ editor, range }) => {
-      const url = window.prompt('Image URL');
-      if (!url) return;
-      const alt = window.prompt('Alt text (for accessibility + SEO)') ?? '';
-      editor.chain().focus().deleteRange(range).setImage({ src: url, alt }).run();
+      // Clear the slash trigger first, then ask BlogEditor to open its
+      // AssetImagePickerDialog via a window event. BlogEditor is the only
+      // listener for this event so no risk of double-open.
+      editor.chain().focus().deleteRange(range).run();
+      window.dispatchEvent(new CustomEvent('blog-editor:open-image-picker'));
     },
   },
 ];

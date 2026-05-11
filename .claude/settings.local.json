@@ -116,7 +116,9 @@
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npm run build)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npx vite build)",
       "Bash(awk '/\"id\": \"US-BLOG-/{id=$0} /\"passes\": false/{print id}' /c/Users/dpearson/Documents/Printyx/prd.json)",
-      "Bash(awk '/\"id\": \"US-BLOG-/{id=$0; getline title; getline desc; getline ac} /passes.*false/{print id, title}' /c/Users/dpearson/Documents/Printyx/prd.json)"
+      "Bash(awk '/\"id\": \"US-BLOG-/{id=$0; getline title; getline desc; getline ac} /passes.*false/{print id, title}' /c/Users/dpearson/Documents/Printyx/prd.json)",
+      "Bash(python -c ' *)",
+      "Bash(sort -k3 -n)"
     ],
     "deny": [],
     "ask": []

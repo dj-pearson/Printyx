@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/blog/markdown';
 import { SlashCommand } from './SlashCommand';
+import { AssetImagePickerDialog } from './AssetImagePickerDialog';
 import 'tippy.js/dist/tippy.css';
 import 'highlight.js/styles/github-dark.css';
 
@@ -196,13 +197,24 @@ export function BlogEditor({
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }, [editor]);
 
+  const [showImagePicker, setShowImagePicker] = useState(false);
   const insertImage = useCallback(() => {
     if (!editor) return;
-    const url = window.prompt('Image URL');
-    if (!url) return;
-    const alt = window.prompt('Alt text (for accessibility + SEO)') ?? '';
-    editor.chain().focus().setImage({ src: url, alt }).run();
+    setShowImagePicker(true);
   }, [editor]);
+  // The slash menu's Image entry fires a window event to avoid threading a
+  // setter through TipTap's Extension API. Listen for it here.
+  useEffect(() => {
+    const open = () => setShowImagePicker(true);
+    window.addEventListener('blog-editor:open-image-picker', open);
+    return () => window.removeEventListener('blog-editor:open-image-picker', open);
+  }, []);
+  const handleImageSelected = useCallback(
+    ({ url, alt }: { url: string; alt: string }) => {
+      editor?.chain().focus().setImage({ src: url, alt }).run();
+    },
+    [editor],
+  );
 
   if (!editor) {
     return (
@@ -227,6 +239,11 @@ export function BlogEditor({
           block commands (headings, lists, tables, code, divider, image)
         </div>
       ) : null}
+      <AssetImagePickerDialog
+        open={showImagePicker}
+        onOpenChange={setShowImagePicker}
+        onSelect={handleImageSelected}
+      />
     </div>
   );
 }
