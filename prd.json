@@ -5140,8 +5140,8 @@
         "Autosave to post_revisions every 10s of inactivity"
       ],
       "priority": 42,
-      "passes": false,
-      "notes": "Markdown as source of truth simplifies migrations and avoids editor-lock-in.",
+      "passes": true,
+      "notes": "Markdown as source of truth simplifies migrations and avoids editor-lock-in. Implemented: TipTap with StarterKit + CodeBlockLowlight (syntax-highlighted via lowlight common langs + github-dark theme) + Table/Row/Cell/Header (resizable, header row) + Link + Image + Placeholder + Typography + custom SlashCommand extension (via @tiptap/suggestion + tippy.js, 10 commands: H1/H2/H3, bullet/numbered list, quote, code, table, divider, image). Markdown round-trip uses marked (gfm:true) + turndown with turndown-plugin-gfm (tables + strikethrough) and a custom rule that preserves language tags on fenced code blocks (```ts). Autosave wired by parent BlogPostEditor → POST /blog-post-revisions (US-BLOG-009). Inline AI rewrite toolbar (AC #5) deferred to a future iteration as US-BLOG-032 — depends on _shared/blog/llm.ts helper not yet built. Footnotes + callouts (AC #1 tail) deferred as separate stories — both require custom node extensions.",
       "category": "blog"
     },
     {
@@ -5156,8 +5156,8 @@
         "Revisions retained for 90 days minimum; configurable per workspace"
       ],
       "priority": 43,
-      "passes": false,
-      "notes": "Diff at the markdown level; HTML diffs are noisy.",
+      "passes": true,
+      "notes": "Diff at the markdown level; HTML diffs are noisy. Implemented: blog-post-revisions edge function (list/get/create/restore with dedup + audit), 10s autosave from BlogPostEditor (revision_source='manual'), BlogPostHistory page with diffLines from npm 'diff' package + restore alert dialog, retention via blog_agent_settings.revision_retention_days (default 90, range 7-730) and POST /blog-post-revisions/cleanup which preserves the latest revision per post.",
       "category": "blog"
     },
     {

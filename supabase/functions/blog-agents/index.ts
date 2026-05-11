@@ -8,7 +8,7 @@
 //   GET   /blog-agents/settings        fetch current agent_settings row
 //   POST  /blog-agents/pause           body: { reason: string } — engages kill switch
 //   POST  /blog-agents/resume          body: { note?: string } — disengages
-//   PATCH /blog-agents/settings        body: { auto_refresh_requires_review?: boolean }
+//   PATCH /blog-agents/settings        body: { auto_refresh_requires_review?: boolean, revision_retention_days?: number }
 //
 // Every action writes a row to blog_audit_log so we have a forensic trail
 // of who paused, when, and why.
@@ -36,6 +36,9 @@ const resumeSchema = z.object({
 
 const settingsPatchSchema = z.object({
   auto_refresh_requires_review: z.boolean().optional(),
+  // US-BLOG-009: clamp to a sensible range — 7 days minimum (avoid wiping
+  // everyone's history on a typo) and 730 days (2 years) maximum.
+  revision_retention_days: z.number().int().min(7).max(730).optional(),
 });
 
 // Canonical RBAC code: `blog.agent.toggle` (granted only to PLATFORM_ADMIN by

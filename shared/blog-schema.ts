@@ -470,6 +470,9 @@ export const blogAgentSettings = pgTable(
     pausedByUserId: varchar('paused_by_user_id'),
     pausedReason: text('paused_reason'),
     autoRefreshRequiresReview: boolean('auto_refresh_requires_review').notNull().default(false),
+    // Per-tenant blog_post_revisions retention. Default 90 days per US-BLOG-009 AC.
+    // Enforced by POST /blog-post-revisions/cleanup (cron-friendly).
+    revisionRetentionDays: integer('revision_retention_days').notNull().default(90),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },

@@ -5,6 +5,12 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import Typography from '@tiptap/extension-typography';
+import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
+import { createLowlight, common } from 'lowlight';
 import {
   Bold,
   Code,
@@ -19,32 +25,35 @@ import {
   Quote,
   Redo,
   Strikethrough,
+  Table as TableIcon,
   Undo,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { htmlToMarkdown, markdownToHtml } from '@/lib/blog/markdown';
+import { SlashCommand } from './SlashCommand';
+import 'tippy.js/dist/tippy.css';
+import 'highlight.js/styles/github-dark.css';
+
+const lowlight = createLowlight(common);
 
 /**
  * BlogEditor — TipTap-based rich-text editor for the Posts surface (US-BLOG-008).
  *
- * v1 foundation:
- *  - StarterKit (paragraphs, headings, lists, blockquote, code/code-block,
- *    horizontal rule, hard break, history)
+ * Polished editor (post US-BLOG-009 autosave + US-BLOG-008 polish):
+ *  - StarterKit (paragraphs, headings, lists, blockquote, horizontal rule)
+ *  - CodeBlockLowlight (syntax-highlighted code, common langs preloaded)
+ *  - Tables (resizable, header row, GFM round-trip)
+ *  - Slash command menu (/ for headings, lists, tables, code, divider, image)
  *  - Link, Image, Placeholder, Typography
- *  - Markdown round-trip on the value boundary: input is Markdown, onChange
- *    receives Markdown
- *  - Plain toolbar with the 12 most-used controls
+ *  - Markdown round-trip with GFM tables + strikethrough
+ *  - Autosave wired by parent (BlogPostEditor → POST /blog-post-revisions)
  *
- * Deferred to follow-up iterations:
- *  - Slash-command menu (US-BLOG-008 AC #4)
- *  - Inline AI rewrite toolbar (US-BLOG-008 AC #5)
- *  - Autosave to blog_post_revisions every 10s (US-BLOG-008 AC #6)
- *  - Syntax-highlighted code blocks (lowlight extension)
- *  - Tables, footnotes, callouts/admonitions
- *  - Image upload integration with blog_assets (US-BLOG-010)
+ * Still deferred:
+ *  - Inline AI rewrite toolbar (needs _shared/blog/llm.ts helper first)
+ *  - Footnotes + callouts/admonitions (custom node extensions)
+ *  - Image upload via blog_assets (US-BLOG-010)
  *  - Style guide linting overlay (US-BLOG-005 + editor wiring)
- *  - Brand voice prompt fragment in the AI rewrite toolbar
  */
 
 interface BlogEditorProps {
@@ -76,7 +85,32 @@ export function BlogEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
-        // codeBlock is included by default; hooking up lowlight is a follow-up
+        // We bring our own code block (lowlight-wrapped) below.
+        codeBlock: false,
+      }),
+      CodeBlockLowlight.configure({
+        lowlight,
+        defaultLanguage: 'plaintext',
+        HTMLAttributes: {
+          class: 'rounded-md bg-zinc-900 dark:bg-zinc-950 text-zinc-100 p-3 overflow-x-auto',
+        },
+      }),
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: {
+          class: 'border-collapse table-auto w-full my-3 border border-border text-sm',
+        },
+      }),
+      TableRow,
+      TableHeader.configure({
+        HTMLAttributes: {
+          class: 'border border-border bg-muted/50 px-2 py-1 text-left font-semibold',
+        },
+      }),
+      TableCell.configure({
+        HTMLAttributes: {
+          class: 'border border-border px-2 py-1 align-top',
+        },
       }),
       Link.configure({
         openOnClick: false,
@@ -96,6 +130,7 @@ export function BlogEditor({
       }),
       Placeholder.configure({ placeholder }),
       Typography,
+      SlashCommand,
     ],
     content: initialHtml,
     editable: !readOnly,
@@ -186,6 +221,12 @@ export function BlogEditor({
       <div className="flex-1" style={{ minHeight }}>
         <EditorContent editor={editor} />
       </div>
+      {!readOnly ? (
+        <div className="px-3 py-1.5 border-t bg-muted/20 text-[11px] text-muted-foreground">
+          Tip: type <kbd className="px-1 py-0.5 rounded border bg-background font-mono">/</kbd> for
+          block commands (headings, lists, tables, code, divider, image)
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -262,6 +303,14 @@ function EditorToolbar({ editor, onSetLink, onInsertImage }: EditorToolbarProps)
         icon={Code}
         active={isActive('codeBlock')}
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+      />
+      <ToolbarBtn
+        label="Table (3×3)"
+        icon={TableIcon}
+        active={isActive('table')}
+        onClick={() =>
+          editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+        }
       />
       <ToolbarSeparator />
       <ToolbarBtn label="Link" icon={LinkIcon} active={isActive('link')} onClick={onSetLink} />

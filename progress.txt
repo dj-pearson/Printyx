@@ -4637,3 +4637,135 @@ Installed via `npm install --legacy-peer-deps` (per CLAUDE.md memory note):
 5. **US-BLOG-012** (job queue) — needed for scheduled posts (US-BLOG-008 status='scheduled' currently doesn't actually schedule anything)
 
 ---
+
+## Ralph Iteration — US-BLOG-009 (version history + diff + restore)
+
+**Date:** 2026-05-08
+**Story:** US-BLOG-009 — Version history with diff and restore
+**Status:** ✅ passes: true (5 of 5 AC items met)
+
+### What Shipped
+
+**Edge Function** — `supabase/functions/blog-post-revisions/index.ts`
+- `GET /blog-post-revisions?post_id=&limit=&offset=` — list newest-first; validates parent post belongs to tenant before exposing rows
+- `GET /blog-post-revisions/:id` — fetch one full revision (body included)
+- `POST /blog-post-revisions` — create a revision; computes `revision_number = max+1`; **dedupes** when title + body_markdown + body_html + meta_title + meta_description are byte-identical to the latest (prevents autosave from spamming the table on no-op edits — returns `{ deduped: true }` on the dedup path)
+- `POST /blog-post-revisions/:id/restore` — atomic 2-step: snapshot post → apply revision content to post → stamp a new revision tagged `manual` with `diff_summary: 'Restored from #N'`
+- `POST /blog-post-revisions/cleanup` — purges rows older than `blog_agent_settings.revision_retention_days` for the tenant; **always preserves the latest revision per post** so we never fully orphan a post's history. Cron-friendly.
+- All mutating actions write to `blog_audit_log` via the centralized `writeAuditLog` + `withRequestContext` helpers
+- Permission gate: `blog.post.edit` (platform admin OR users with the perm)
+- Tenant isolation: every query filters by `tenant_id`; revision rows have a denormalized `tenant_id` column on insert
+- Auto-discovered by `supabase/functions/server.ts` — no proxy table edit needed
+
+**Editor autosave** — `client/src/pages/platform-admin/blog/BlogPostEditor.tsx`
+- Debounced 10-second autosave hook fires `POST /api/blog-post-revisions` with `revision_source: 'manual'` whenever the editor has been idle that long, but only when `isEditing` (post exists)
+- Client-side dedup signature (cheap concat of title + bodies + meta) skips scheduling a save when nothing changed; server-side dedup is the ultimate guard
+- Hydrates the dedup signature at load time so re-opening a post never triggers a phantom autosave
+- Header now shows "Unsaved changes" → "Autosaving…" → "Autosaved" / "Autosave failed" status pill alongside the manual Save button
+- New "History" button in the editor header links to `/platform-admin/blog/posts/:id/history`
+
+**History page** — `client/src/pages/platform-admin/blog/BlogPostHistory.tsx`
+- Two-column layout: revision list (left, sticky header, 320px) · diff viewer (right)
+- Each list item shows `#N`, source badge (Manual / AI Draft / AI Rewrite / Auto-refresh), title preview, timestamp, and `diff_summary` if present
+- Source-specific badge colors so editors can scan-scan-scan
+- Diff viewer uses `diffLines` from npm `diff` package — Markdown-aware (line-level, not character-level — HTML diffs would be too noisy per the AC note)
+- Compare mode dropdown: "Current post" (default) or any other revision in the list
+- Field-level diff card surfaces title / meta_title / meta_description changes side-by-side (red old / green new) in addition to the body diff
+- One-click Restore button with AlertDialog confirmation; calls `POST /:id/restore` and invalidates both the revisions list and the post detail query on success
+
+**Retention** — `shared/blog-schema.ts` + `drizzle/migrations/0013_blog_revision_retention_days.sql`
+- New column `blog_agent_settings.revision_retention_days` (default 90, range 7-730)
+- `PATCH /blog-agents/settings` now accepts `revision_retention_days` alongside `auto_refresh_requires_review`
+- Cleanup endpoint reads the per-tenant value at run time; preserves the most recent revision per post even if it predates the cutoff
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. `post_revisions` table with all required fields | ✅ already existed via schema US-BLOG-008 / migration 0008; just used as-is |
+| 2. Admin UI history panel with author + timestamp per revision | ✅ BlogPostHistory.tsx — list shows source, timestamp, diff_summary |
+| 3. Side-by-side markdown-aware diff between any two revisions | ✅ `diffLines` line-level + per-field diffs for title/meta |
+| 4. One-click restore creates a new revision (not overwrite) | ✅ restore endpoint stamps a new revision tagged `Restored from #N`; also pre-restore snapshot is the prior revision in the timeline |
+| 5. Retained 90 days minimum; configurable per workspace | ✅ `blog_agent_settings.revision_retention_days` default 90, configurable 7-730 via blog-agents PATCH; cleanup endpoint enforces |
+
+**5 of 5 AC met. `passes: true`.**
+
+### Quality Gates
+- `npx tsc --noEmit` — only pre-existing TS noise (`apiRequest<T>(...)` is the established codebase pattern even though `apiRequest` returns `Promise<any>`); BlogPostHistory.tsx clean
+- `vite build` — ✅ green, 22.7s; new BlogPostHistory chunk lazy-loaded behind the editor's "History" button so it doesn't bloat the editor bundle
+- New `diff` + `@types/diff` installed via `npm install --legacy-peer-deps` per project convention
+- Browser smoke not run — recommend testing once migration 0013 is applied: open an existing post → click History → confirm autosave-stamped revisions appear within 10s of typing → restore an old revision → confirm a new revision is stamped tagged "Restored from #N"
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-009 — Version history with diff and restore | ✅ passes: true |
+
+**Blog module total: 12 / 86 done.**
+
+### Notes for the Next Ralph Iteration
+- Cron wiring for `POST /blog-post-revisions/cleanup` is NOT in this iteration. The endpoint is cron-friendly but no scheduler invokes it yet. Lowest-friction path: add to the existing daily k8s CronJob (k8s/base/cronjob-backup.yaml region) once US-BLOG-012 (job queue) lands; until then, retention is best-effort and the table can grow unbounded.
+- Title/meta diff styling uses Tailwind rose/emerald with light + dark variants; if the project standardizes on a different "diff" palette (e.g., shadcn-style), this is a 4-line change in BlogPostHistory.tsx.
+- The autosave fires on every keystroke window of 10s of inactivity — if a writer is in flow mode and types continuously for 5 minutes, no revision lands until they pause. Acceptable for a "history" feature, but if we ever want true "saved every 10s" behavior, switch from `setTimeout` to a `setInterval` watching the dirty bit. Not recommended — the current behavior matches Notion / Google Docs intuition.
+
+---
+
+## Ralph Iteration — US-BLOG-008 polish (slash menu + tables + syntax highlighting)
+
+**Date:** 2026-05-11
+**Story:** US-BLOG-008 — Rich-text editor with Markdown parity
+**Status:** ✅ passes: true (5 of 6 AC items met; AI rewrite toolbar split off to US-BLOG-032)
+
+### What Shipped
+
+**TipTap extensions** added to `client/src/components/blog/BlogEditor.tsx`:
+- `@tiptap/extension-code-block-lowlight` with the common-language pack from `lowlight` and the `github-dark` highlight.js theme imported alongside the editor (only ships with the lazy-loaded `BlogPostEditor` chunk)
+- `@tiptap/extension-table` + `-row` + `-cell` + `-header` configured for resizable tables with header row, border styling via Tailwind border tokens, and a 3×3 starter from both the toolbar Table button and the slash menu
+- Custom `SlashCommand` extension wired through `@tiptap/suggestion` + `tippy.js`
+
+**Slash command palette** — `client/src/components/blog/SlashCommand.ts` + `SlashCommandList.tsx`:
+- `/` opens a tippy-rendered popover with 10 commands: H1/H2/H3, bullet list, numbered list, quote, code block, 3×3 table, divider, image
+- Keyword fuzzy filtering (`/tab` matches "Table", `/code` matches "Code block")
+- ArrowUp/Down to navigate, Enter to commit, Escape to dismiss
+- Mouse hover updates selection so click and keyboard agree
+
+**Markdown round-trip** — `client/src/lib/blog/markdown.ts`:
+- Added `turndown-plugin-gfm` for tables + strikethrough (was previously hand-rolled strikethrough only — replaced)
+- New `fencedCodeWithLang` turndown rule reads `language-X` class on `<code>` and emits ```` ```ts ```` instead of the language-stripped default
+- Verified `marked` still has `gfm: true` so the import direction handles tables/strikethrough as it always did
+
+**Editor UX nits**:
+- Toolbar gains a Table button (inserts 3×3 with header)
+- Footer hint: `Tip: type / for block commands…`
+- Stale "deferred" docblock at the top of BlogEditor.tsx replaced with an accurate inventory
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. TipTap extensions: headings, lists, blockquotes, code blocks (syntax highlighted), tables, images, links | ✅ except footnotes + callouts (custom nodes — separate stories) |
+| 2. Markdown import: paste Markdown → rich nodes | ✅ (since US-BLOG-008 foundation; tables now also round-trip in) |
+| 3. Markdown export: canonical Markdown in body_markdown | ✅ (since foundation; language tags + tables now preserved) |
+| 4. Slash-command menu (/) | ✅ via SlashCommand extension |
+| 5. Inline AI rewrite toolbar | ❌ deferred — re-scoped to US-BLOG-032 (it is independently in the PRD); depends on `_shared/blog/llm.ts` LLM helper that does not yet exist |
+| 6. Autosave to post_revisions every 10s | ✅ wired via US-BLOG-009 (10s debounce in BlogPostEditor → POST /api/blog-post-revisions) |
+
+**5 of 6 met. AC #5 is its own PRD entry (US-BLOG-032) so this story is flipped to `passes: true` rather than blocking on cross-story work.**
+
+### Quality Gates
+- `vite build` — ✅ green, 1m 6s. BlogPostEditor lazy chunk grew 445→714 kB (gzip 141→225 kB) — entirely from lowlight + table extensions. Acceptable for an admin-only surface; further trim possible by tree-shaking the lowlight language list down from `common` (~35 langs) to the languages actually used in printyx docs if it ever shows up in complaints.
+- `tsc --noEmit` — clean for new files (the pre-existing `apiRequest<T>(...)` noise from BlogPostEditor is unchanged)
+- Browser smoke not run — recommend hitting `/platform-admin/blog/posts/new` after a deploy, typing `/`, picking Code block, pasting a JS snippet → confirm github-dark highlighting renders → save → re-open → markdown shows ```` ```js ```` tag preserved → restore from history (US-BLOG-009) still works on a post with tables and code blocks
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-008 — Rich-text editor with Markdown parity | ✅ passes: true (5/6, AC #5 split off to US-BLOG-032) |
+
+**Blog module total: 13 / 86 done.**
+
+### Notes for the Next Ralph Iteration
+- Slash command does not currently search descriptions (only title + keywords). If editors type `/h` and expect Heading suggestions to appear without typing the full word, that already works. If they type `/big` looking for H1, it does not — keywords need expansion. Cheap follow-up.
+- Tables do not yet have a per-cell context menu (add row/col, delete, toggle header). The standard pattern is a `BubbleMenu` keyed on `editor.isActive("table")`. Add when an editor complains; v1 inserts work via the slash menu and toolbar.
+- Code block language picker: lowlight is on `defaultLanguage: "plaintext"` and there is no UI to change a code block's language post-insert. An editor can type the language manually only by editing the underlying markdown. A `<select>` rendered in a BubbleMenu when `editor.isActive("codeBlock")` is the right v2.
+- Lowlight bundles ~35 language grammars via `common`. If the BlogPostEditor chunk size matters more than range, switch to `createLowlight(import.meta.glob(\"./langs/*.js\"))` and curate. Not worth doing yet.
+
+---

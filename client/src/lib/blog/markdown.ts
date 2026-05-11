@@ -16,6 +16,8 @@
 
 import { marked, type MarkedOptions } from 'marked';
 import TurndownService from 'turndown';
+// @ts-expect-error — turndown-plugin-gfm ships without bundled types
+import { tables, strikethrough } from 'turndown-plugin-gfm';
 
 const MARKED_OPTIONS: MarkedOptions = {
   // GFM (tables, fenced code, autolinks)
@@ -51,10 +53,27 @@ function getTurndown(): TurndownService {
     linkStyle: 'inlined',
   });
 
-  // GFM strikethrough
-  turndown.addRule('strikethrough', {
-    filter: ['del', 's'],
-    replacement: (content) => `~~${content}~~`,
+  // GFM tables + strikethrough (US-BLOG-008 polish: tables round-trip)
+  turndown.use(tables);
+  turndown.use(strikethrough);
+
+  // Preserve language tag on fenced code blocks emitted by CodeBlockLowlight.
+  // TipTap serializes them as <pre><code class="language-ts">...</code></pre>
+  // and the default turndown rule drops the class. Replace with a stricter
+  // version that reads the language and emits ```ts ... ``` accordingly.
+  turndown.addRule('fencedCodeWithLang', {
+    filter: (node) =>
+      node.nodeName === 'PRE' && !!node.firstChild && node.firstChild.nodeName === 'CODE',
+    replacement: (_content, node) => {
+      const codeEl = (node as HTMLElement).firstChild as HTMLElement | null;
+      const text = codeEl?.textContent ?? '';
+      const classAttr = codeEl?.getAttribute('class') ?? '';
+      const langMatch = classAttr.match(/language-([\w-]+)/);
+      const lang = langMatch && langMatch[1] !== 'plaintext' ? langMatch[1] : '';
+      // Trim trailing newline so the closing fence sits on its own line.
+      const body = text.replace(/\n$/, '');
+      return `\n\n\`\`\`${lang}\n${body}\n\`\`\`\n\n`;
+    },
   });
 
   // Preserve inline images with alt + title

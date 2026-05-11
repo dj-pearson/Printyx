@@ -1,7 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useRoute } from 'wouter';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Loader2, Save, Trash2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  Cloud,
+  CloudOff,
+  History as HistoryIcon,
+  Loader2,
+  Save,
+  Trash2,
+} from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { BlogShell } from '@/components/blog/BlogShell';
@@ -99,6 +107,18 @@ function postToForm(post: Post): FormState {
   };
 }
 
+function computeAutosaveSig(form: FormState): string {
+  // Cheap signature of the fields we'd send to the revisions endpoint.
+  // Used only to skip scheduling an autosave when nothing changed.
+  return [
+    form.title,
+    form.body_markdown,
+    form.body_html,
+    form.meta_title,
+    form.meta_description,
+  ].join('');
+}
+
 function slugify(title: string): string {
   return title
     .toLowerCase()
@@ -123,6 +143,13 @@ export default function BlogPostEditor() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [showDelete, setShowDelete] = useState(false);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState<
+    'idle' | 'pending' | 'saving' | 'saved' | 'error'
+  >('idle');
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastAutosavedSigRef = useRef<string | null>(null);
+  const formRef = useRef<FormState>(EMPTY_FORM);
+  formRef.current = form;
 
   const { data: postData, isLoading } = useQuery<PostResponse>({
     queryKey: [`/api/blog-posts/${postId}`],
@@ -133,8 +160,11 @@ export default function BlogPostEditor() {
   // Hydrate form once on load
   useEffect(() => {
     if (postData?.post && isEditing) {
-      setForm(postToForm(postData.post));
+      const hydrated = postToForm(postData.post);
+      setForm(hydrated);
       setSlugManuallyEdited(true); // existing posts have a slug; don't auto-update
+      // Seed the autosave dedup signature so hydration alone doesn't trigger an autosave.
+      lastAutosavedSigRef.current = computeAutosaveSig(hydrated);
     }
   }, [postData?.post, isEditing]);
 
@@ -148,6 +178,60 @@ export default function BlogPostEditor() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.title, isNew, slugManuallyEdited]);
+
+  // Autosave to blog-post-revisions after 10s of inactivity (US-BLOG-009).
+  // Only runs when editing an existing post and something has changed since
+  // the last successful autosave/hydration. Server-side dedup is the ultimate
+  // guard, but this avoids a network round-trip when nothing changed.
+  useEffect(() => {
+    if (!isEditing || !postId) return;
+    const sig = computeAutosaveSig(form);
+    if (lastAutosavedSigRef.current === sig) return;
+    setAutosaveStatus('pending');
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(async () => {
+      const snapshot = formRef.current;
+      const snapshotSig = computeAutosaveSig(snapshot);
+      if (lastAutosavedSigRef.current === snapshotSig) {
+        setAutosaveStatus('saved');
+        return;
+      }
+      setAutosaveStatus('saving');
+      try {
+        const res = await apiRequest<{ deduped?: boolean }>('/api/blog-post-revisions', 'POST', {
+          post_id: postId,
+          revision_source: 'manual',
+          title: snapshot.title,
+          body_markdown: snapshot.body_markdown || null,
+          body_html: snapshot.body_html || null,
+          meta_title: snapshot.meta_title || null,
+          meta_description: snapshot.meta_description || null,
+        });
+        lastAutosavedSigRef.current = snapshotSig;
+        setAutosaveStatus('saved');
+        if (!res?.deduped) {
+          queryClient.invalidateQueries({
+            queryKey: [`/api/blog-post-revisions`, postId],
+          });
+        }
+      } catch (err) {
+        console.error('Autosave failed', err);
+        setAutosaveStatus('error');
+      }
+    }, 10_000);
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isEditing,
+    postId,
+    form.title,
+    form.body_markdown,
+    form.body_html,
+    form.meta_title,
+    form.meta_description,
+  ]);
 
   const createMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
@@ -256,6 +340,15 @@ export default function BlogPostEditor() {
             </Link>
           </Button>
           <div className="flex items-center gap-2">
+            {isEditing ? <AutosaveIndicator status={autosaveStatus} /> : null}
+            {isEditing && postId ? (
+              <Button asChild variant="ghost" size="sm">
+                <Link to={`/platform-admin/blog/posts/${postId}/history`}>
+                  <HistoryIcon className="h-4 w-4 mr-1" />
+                  History
+                </Link>
+              </Button>
+            ) : null}
             {isEditing ? (
               <Button
                 variant="ghost"
@@ -438,6 +531,7 @@ export default function BlogPostEditor() {
         </div>
       </div>
 
+      {/* AlertDialog below */}
       <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -459,5 +553,43 @@ export default function BlogPostEditor() {
         </AlertDialogContent>
       </AlertDialog>
     </BlogShell>
+  );
+}
+
+function AutosaveIndicator({
+  status,
+}: {
+  status: 'idle' | 'pending' | 'saving' | 'saved' | 'error';
+}) {
+  if (status === 'idle') return null;
+  if (status === 'pending') {
+    return (
+      <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+        <Cloud className="h-3 w-3" />
+        Unsaved changes
+      </span>
+    );
+  }
+  if (status === 'saving') {
+    return (
+      <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Autosaving…
+      </span>
+    );
+  }
+  if (status === 'saved') {
+    return (
+      <span className="text-xs text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1">
+        <Cloud className="h-3 w-3" />
+        Autosaved
+      </span>
+    );
+  }
+  return (
+    <span className="text-xs text-destructive inline-flex items-center gap-1">
+      <CloudOff className="h-3 w-3" />
+      Autosave failed
+    </span>
   );
 }
