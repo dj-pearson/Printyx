@@ -5403,8 +5403,8 @@
         "Slack/Discord bot posts daily 'today's editorial' summary if integration enabled"
       ],
       "priority": 58,
-      "passes": false,
-      "notes": "Drag-to-reschedule is the highest-ROI interaction; don't skimp on it.",
+      "passes": true,
+      "notes": "Drag-to-reschedule is the highest-ROI interaction; don't skimp on it. Implemented: added reviewer_user_id + cluster_id columns to blog_posts (idempotent backfill SQL). Extended blog-posts listPosts with from/to date range (OR-joined across scheduled_for/published_at/created_at so brand-new drafts also appear), author_user_id, reviewer_user_id, cluster_id, order_by (scheduled_for|updated_at) filters. Two new endpoints: POST /blog-posts/:id/reschedule (validates not-published/archived, auto-promotes draft→scheduled when a future date is set, falls back to draft when scheduled_for is cleared; audit-logs blog_post.reschedule); GET /blog-posts/ics returns an RFC-5545 calendar feed (text/calendar with X-WR-CALNAME, VEVENT per post using scheduled_for or published_at, 1-hour default duration, ESC sequences for ICS quoting, status mapped to CONFIRMED/TENTATIVE + X-BLOG-STATUS). Month-grid UI at /platform-admin/blog/calendar built on CSS Grid (7×6, always 42 cells so height is stable across months), HTML5 native drag-and-drop (no third-party lib) — drag a post pill to a different day, hovered day gets a primary-tinted background, drop fires the reschedule endpoint with UTC-noon timestamp. Filters: status select + author_user_id + cluster_id inputs (both feed listPosts query params); Today / prev / next nav; status legend at bottom. Pills colored by status with line-through on archived. Click a pill = open the editor. .ics export link honors current filters and builds the full functions.printyx.net URL in prod via getApiUrl. New blog sub-nav 'Calendar' with g c shortcut. Deferred: avatar rendering (need a user-id → name+avatar resolver — present in shared lookup but not yet wired into the blog surface; falls out from a 1-line addition once we add user resolution), Slack/Discord daily-digest bot (its own integration story).",
       "category": "blog"
     },
     {

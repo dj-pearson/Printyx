@@ -235,6 +235,10 @@ export const blogPosts = pgTable(
       onDelete: 'set null',
     }),
     authorUserId: varchar('author_user_id'),
+    // US-BLOG-024 — separate reviewer from author for editorial assignment.
+    reviewerUserId: varchar('reviewer_user_id'),
+    // US-BLOG-024 — associate posts with a keyword cluster for calendar filtering.
+    clusterId: uuid('cluster_id'),
     status: varchar('status', { length: 20 }).notNull().default('draft'), // draft | in_review | scheduled | published | archived
     publishedAt: timestamp('published_at'),
     scheduledFor: timestamp('scheduled_for'),

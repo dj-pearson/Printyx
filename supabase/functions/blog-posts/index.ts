@@ -8,11 +8,13 @@
 //   - SEO scoring on save (US-BLOG-033)
 //
 // Routes (gated to platform admin OR users holding blog.post.edit):
-//   GET    /blog-posts              list posts (?status, ?limit, ?offset)
+//   GET    /blog-posts              list posts (?status, ?author_user_id, ?reviewer_user_id, ?cluster_id, ?from, ?to, ?order_by, ?limit, ?offset)
 //   POST   /blog-posts              create new post (status defaults to draft)
 //   GET    /blog-posts/:id          fetch one
 //   PATCH  /blog-posts/:id          update (any field; status transitions allowed)
 //   DELETE /blog-posts/:id          soft delete
+//   POST   /blog-posts/:id/reschedule    body: { scheduled_for: string|null } — US-BLOG-024 drag-to-reschedule
+//   GET    /blog-posts/ics          RFC-5545 calendar feed (text/calendar) — US-BLOG-024 export
 //
 // Audit log: every mutating action writes via writeAuditLog().
 
@@ -45,6 +47,8 @@ const postCreateSchema = z.object({
   style_guide_id: z.string().uuid().nullable().optional(),
   featured_image_asset_id: z.string().uuid().nullable().optional(),
   author_user_id: z.string().nullable().optional(),
+  reviewer_user_id: z.string().nullable().optional(),
+  cluster_id: z.string().uuid().nullable().optional(),
   status: z.enum(STATUSES).optional(),
   scheduled_for: z.string().datetime().nullable().optional(),
 });
@@ -114,6 +118,16 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Method not allowed' }, 405, req);
     }
 
+    // /:action endpoints (no resource ID): ics export
+    if (id === 'ics' && req.method === 'GET') {
+      return await exportIcs(admin, tenantId, url, req);
+    }
+
+    const subAction = parts[1];
+    if (subAction === 'reschedule' && req.method === 'POST') {
+      return await reschedulePost(admin, tenantId, user.id, id, req);
+    }
+
     if (req.method === 'GET') return await getPost(admin, tenantId, id, req);
     if (req.method === 'PATCH') return await updatePost(admin, tenantId, user.id, id, req);
     if (req.method === 'DELETE') return await deletePost(admin, tenantId, user.id, id, req);
@@ -132,7 +146,13 @@ export default async function handler(req: Request) {
 async function listPosts(admin: Admin, tenantId: string, url: URL, req: Request) {
   const params = url.searchParams;
   const status = params.get('status');
-  const limit = Math.min(parseInt(params.get('limit') ?? '50', 10) || 50, 200);
+  const author = params.get('author_user_id');
+  const reviewer = params.get('reviewer_user_id');
+  const clusterId = params.get('cluster_id');
+  const from = params.get('from'); // ISO date — inclusive
+  const to = params.get('to'); // ISO date — exclusive
+  const orderBy = params.get('order_by') === 'scheduled_for' ? 'scheduled_for' : 'updated_at';
+  const limit = Math.min(parseInt(params.get('limit') ?? '50', 10) || 50, 500);
   const offset = Math.max(parseInt(params.get('offset') ?? '0', 10) || 0, 0);
 
   let query = admin
@@ -140,11 +160,28 @@ async function listPosts(admin: Admin, tenantId: string, url: URL, req: Request)
     .select('*', { count: 'exact' })
     .eq('tenant_id', tenantId)
     .is('deleted_at', null)
-    .order('updated_at', { ascending: false })
+    .order(orderBy, { ascending: orderBy === 'scheduled_for' })
     .range(offset, offset + limit - 1);
 
   if (status && (STATUSES as readonly string[]).includes(status)) {
     query = query.eq('status', status);
+  }
+  if (author) query = query.eq('author_user_id', author);
+  if (reviewer) query = query.eq('reviewer_user_id', reviewer);
+  if (clusterId) query = query.eq('cluster_id', clusterId);
+  if (from || to) {
+    // Date range applies to the post's effective calendar date:
+    //   - if scheduled_for is set, that
+    //   - else if published_at is set, that
+    //   - else fall back to created_at (so brand-new drafts show on the day they were started)
+    // Single column filter is the only thing supabase-js supports cleanly, so
+    // we OR-join across the three columns.
+    const fromClause = from
+      ? `scheduled_for.gte.${from},published_at.gte.${from},created_at.gte.${from}`
+      : null;
+    const toClause = to ? `scheduled_for.lt.${to},published_at.lt.${to},created_at.lt.${to}` : null;
+    if (fromClause) query = query.or(fromClause);
+    if (toClause) query = query.or(toClause);
   }
 
   const { data, error, count } = await query;
@@ -214,6 +251,8 @@ async function createPost(admin: Admin, tenantId: string, userId: string, req: R
       style_guide_id: parsed.data.style_guide_id ?? null,
       featured_image_asset_id: parsed.data.featured_image_asset_id ?? null,
       author_user_id: parsed.data.author_user_id ?? userId,
+      reviewer_user_id: parsed.data.reviewer_user_id ?? null,
+      cluster_id: parsed.data.cluster_id ?? null,
       status: parsed.data.status ?? 'draft',
       scheduled_for: parsed.data.scheduled_for ?? null,
       created_by_user_id: userId,
@@ -365,4 +404,182 @@ async function deletePost(
   );
 
   return createCorsResponse({ post: deleted }, 200, req);
+}
+
+// US-BLOG-024 — drag-to-reschedule. Updates scheduled_for; enforces that the
+// post is in a status that can carry a publish date (draft/in_review/scheduled
+// only — published posts use the publish flow, archived posts don't show).
+async function reschedulePost(
+  admin: Admin,
+  tenantId: string,
+  userId: string,
+  id: string,
+  req: Request,
+) {
+  let body: { scheduled_for?: string | null } = {};
+  try {
+    body = (await req.json().catch(() => ({}))) ?? {};
+  } catch {
+    body = {};
+  }
+  const scheduledFor =
+    body.scheduled_for === null
+      ? null
+      : typeof body.scheduled_for === 'string' && body.scheduled_for
+        ? body.scheduled_for
+        : null;
+
+  const { data: existing } = await admin
+    .from('blog_posts')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('id', id)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (!existing) return createCorsResponse({ error: 'Post not found' }, 404, req);
+
+  if (existing.status === 'published' || existing.status === 'archived') {
+    return createCorsResponse({ error: `Cannot reschedule a ${existing.status} post` }, 409, req);
+  }
+
+  const patch: Record<string, unknown> = {
+    scheduled_for: scheduledFor,
+    updated_at: new Date().toISOString(),
+  };
+  // If a future date was set and status is draft, bump to scheduled so the
+  // calendar pill colors update accordingly. If scheduled_for is cleared on
+  // a 'scheduled' post, fall back to draft.
+  if (scheduledFor && existing.status === 'draft') patch.status = 'scheduled';
+  if (!scheduledFor && existing.status === 'scheduled') patch.status = 'draft';
+
+  const { data: updated, error } = await admin
+    .from('blog_posts')
+    .update(patch)
+    .eq('tenant_id', tenantId)
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error || !updated) {
+    return createCorsResponse({ error: error?.message ?? 'Reschedule failed' }, 500, req);
+  }
+
+  await writeAuditLog(
+    admin,
+    withRequestContext(req, {
+      tenantId,
+      actorUserId: userId,
+      actorType: 'user',
+      action: 'blog_post.reschedule',
+      targetType: 'blog_post',
+      targetId: id,
+      beforeState: { scheduled_for: existing.scheduled_for, status: existing.status },
+      afterState: { scheduled_for: scheduledFor, status: updated.status },
+      summary: `Rescheduled "${existing.title}" to ${scheduledFor ?? '∅'}`,
+    }),
+  );
+
+  return createCorsResponse({ post: updated }, 200, req);
+}
+
+// US-BLOG-024 — RFC 5545 .ics feed of the editorial calendar.
+// Filters mirror listPosts: ?author_user_id, ?cluster_id, ?status, ?from, ?to.
+// Each event uses the post's scheduled_for (or published_at) as DTSTART; the
+// title is the event SUMMARY; status code drives the X-BLOG-STATUS x-prop.
+async function exportIcs(admin: Admin, tenantId: string, url: URL, req: Request) {
+  const params = url.searchParams;
+  const status = params.get('status');
+  const author = params.get('author_user_id');
+  const reviewer = params.get('reviewer_user_id');
+  const clusterId = params.get('cluster_id');
+
+  let query = admin
+    .from('blog_posts')
+    .select(
+      'id, title, status, scheduled_for, published_at, slug, author_user_id, reviewer_user_id, updated_at',
+    )
+    .eq('tenant_id', tenantId)
+    .is('deleted_at', null)
+    .not('scheduled_for', 'is', null)
+    .limit(2000);
+
+  if (status && (STATUSES as readonly string[]).includes(status)) {
+    query = query.eq('status', status);
+  }
+  if (author) query = query.eq('author_user_id', author);
+  if (reviewer) query = query.eq('reviewer_user_id', reviewer);
+  if (clusterId) query = query.eq('cluster_id', clusterId);
+
+  const { data: posts, error } = await query;
+  if (error) {
+    return createCorsResponse({ error: error.message }, 500, req);
+  }
+
+  const ics = buildIcs(posts ?? [], tenantId);
+  return new Response(ics, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/calendar; charset=utf-8',
+      'Content-Disposition': `attachment; filename="printyx-blog-calendar.ics"`,
+      'Cache-Control': 'no-store',
+      'Access-Control-Allow-Origin': req.headers.get('Origin') ?? '*',
+    },
+  });
+}
+
+function buildIcs(
+  posts: Array<{
+    id: string;
+    title: string;
+    status: string;
+    scheduled_for: string | null;
+    published_at: string | null;
+    slug: string | null;
+    author_user_id: string | null;
+    reviewer_user_id: string | null;
+    updated_at: string;
+  }>,
+  tenantId: string,
+): string {
+  const lines: string[] = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Printyx//Blog Calendar//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    `X-WR-CALNAME:Printyx Blog Editorial`,
+  ];
+  for (const p of posts) {
+    const start = p.scheduled_for ?? p.published_at;
+    if (!start) continue;
+    const startUtc = toIcsDate(start);
+    // 1-hour event default. ICS events with the same start+end behave oddly in some clients.
+    const endUtc = toIcsDate(new Date(new Date(start).getTime() + 60 * 60 * 1000).toISOString());
+    const dtStamp = toIcsDate(p.updated_at);
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:${p.id}@blog.printyx.${tenantId}`,
+      `DTSTAMP:${dtStamp}`,
+      `DTSTART:${startUtc}`,
+      `DTEND:${endUtc}`,
+      `SUMMARY:${icsEscape(p.title)}`,
+      `DESCRIPTION:${icsEscape(`Status: ${p.status}${p.author_user_id ? `\nAuthor: ${p.author_user_id}` : ''}${p.reviewer_user_id ? `\nReviewer: ${p.reviewer_user_id}` : ''}${p.slug ? `\nSlug: /${p.slug}` : ''}`)}`,
+      `STATUS:${p.status === 'published' ? 'CONFIRMED' : p.status === 'scheduled' ? 'TENTATIVE' : 'TENTATIVE'}`,
+      `X-BLOG-STATUS:${p.status}`,
+      'END:VEVENT',
+    );
+  }
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
+}
+
+function toIcsDate(iso: string): string {
+  // RFC 5545 basic format, UTC: YYYYMMDDTHHMMSSZ
+  return new Date(iso)
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}Z$/, 'Z');
+}
+
+function icsEscape(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 }

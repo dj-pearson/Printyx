@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Link, useLocation } from 'wouter';
 import {
   Lightbulb,
+  CalendarDays,
   ClipboardList,
   FileText,
   Image as ImageIcon,
@@ -54,6 +55,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Gaps', path: '/platform-admin/blog/competitor-gap', icon: Swords, shortcut: 'g g' },
   { label: 'Briefs', path: '/platform-admin/blog/briefs', icon: ClipboardList, shortcut: 'g b' },
   { label: 'Posts', path: '/platform-admin/blog/posts', icon: FileText, shortcut: 'g p' },
+  { label: 'Calendar', path: '/platform-admin/blog/calendar', icon: CalendarDays, shortcut: 'g c' },
   { label: 'Assets', path: '/platform-admin/blog/assets', icon: ImageIcon, shortcut: 'g m' },
   {
     label: 'Distribution',
