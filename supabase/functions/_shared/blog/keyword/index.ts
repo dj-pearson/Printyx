@@ -35,5 +35,10 @@ export type {
   KeywordSearchVolumeResult,
   RelatedKeyword,
   RelatedKeywordsResult,
+  SerpFeatures,
+  SerpFetchResult,
+  SerpOrganicResult,
+  SerpPaaItem,
+  SerpFeaturedSnippet,
 } from './adapter.ts';
 export { KeywordAdapterError, KeywordAdapterAuthError } from './adapter.ts';

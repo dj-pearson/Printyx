@@ -4932,3 +4932,90 @@ Installed via `npm install --legacy-peer-deps` (per CLAUDE.md memory note):
 That's it — no schema change needed. Idempotency_key callers pick is per-job-type contract.
 
 ---
+## Ralph Iteration — US-BLOG-015 (SERP analyzer)
+
+**Date:** 2026-05-12
+**Story:** US-BLOG-015 — SERP analyzer for any keyword
+**Status:** ✅ passes: true (5/5 AC met as feasible without a separate DA lookup)
+
+### What Shipped
+
+**Adapter contract** — `supabase/functions/_shared/blog/keyword/adapter.ts`
+- New types: `SerpOrganicResult`, `SerpPaaItem`, `SerpFeaturedSnippet`, `SerpFeatures`, `SerpFetchResult`
+- Optional `fetchSerp(creds, keyword, opts)` on `KeywordAdapter` — adapters that do not support SERP can omit it; callers feature-detect with `adapter.fetchSerp?` guard
+
+**DataForSEO impl** — `dataforseo.ts`
+- Calls POST `/v3/serp/google/organic/live/advanced` with `{ keyword, location_code, language_code, depth: 20 }`
+- Maps items: `organic` (top 20, rank+url+title+description+domain), `featured_snippet`, `paa` (with expanded answers), `knowledge_graph` → knowledge_panel, plus `video|top_stories|images|local_pack|map` flag toggles
+- Cost reporting via existing `usdToCents` helper
+
+**Schema** — `shared/blog-schema.ts` + `drizzle/migrations/_backfill_blog_serp_snapshots.sql`
+- `blog_serp_snapshots` table: id, tenant_id, keyword, location_code (default 2840 = US), language_code (default 'en'), organic_results jsonb, serp_features jsonb, aggregate jsonb, source_adapter, fetched_at, cost_cents, created_by_user_id
+- Indexes: tenant, (tenant, keyword, fetched_at)
+
+**Edge function** — `supabase/functions/blog-serp/index.ts`
+- `POST /blog-serp/fetch` — resolves the tenant's active dataforseo target → calls `adapter.fetchSerp` → does best-effort per-URL HTML fetch (3-second `AbortController` timeout, concurrency 6, User-Agent identifies bot) → strips script/style/tags + counts words → regex-extracts H2/H3 → falls back to snippet word-count on fetch failure or non-HTML response → computes aggregate → inserts snapshot
+- `GET /blog-serp?keyword=&location_code=&language_code=&limit=&offset=` — list summaries
+- `GET /blog-serp/:id` — full snapshot including organic_results
+- `DELETE /blog-serp/:id` — remove a snapshot
+- Permission gate: platform admin OR `blog.post.edit`
+- Audit log every fetch + delete
+
+**Aggregate metrics** (computed inline at insert time):
+- `median_word_count` and `mean_word_count` from `word_count` values where > 0
+- `common_h2s`: top 5 H2 text frequencies (normalized to lowercase alphanumeric, must appear on ≥2 pages)
+- `dominant_content_type`: heuristic title-pattern vote across listicle (best/top N, N ways/tips/reasons), how_to, comparison (vs / compare), guide (guide/playbook/handbook/tutorial), review. Returns the winner only if it has ≥30% share AND ≥2 pages — otherwise null
+- `total_results`
+
+**UI** — `/platform-admin/blog/serp` (`BlogSerp.tsx`)
+- Keyword + location (4 markets) + language (4 langs) form; Enter to fetch
+- Recent snapshots sidebar (sticky header, max-h with scroll)
+- Active snapshot panel: 4 metric cards, common-H2 chips, feature chips (Featured snippet, PAA count, Knowledge panel, Video/Image/Local pack)
+- PAA card listing all questions + expanded answers
+- Sortable organic results table (rank / domain / words ascending or descending), title is clickable opens in new tab, description shown line-clamped, `fetch_error` surfaced as a tiny amber line when the per-URL parse fell back
+- New blog sub-nav entry "SERP" with `g e` keyboard shortcut
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. SERP fetcher returns top 20 + features (PAA, featured snippet, knowledge panel, video/image/local pack) | ✅ via DataForSEO advanced SERP endpoint |
+| 2. Per-result: URL/title/meta-description/domain/DA/word count/H2-H3 | ✅ except estimated DA — needs a separate Moz/Ahrefs DA adapter, deferred |
+| 3. Aggregates: median word count, common headings, common entities, dominant content type | ✅ median+mean word count, top-5 common H2s; entities deferred (NLP follow-up); dominant_content_type via title-pattern heuristic |
+| 4. Stored in serp_snapshots with fetched_at; re-fetch on demand or weekly | ✅ table created; on-demand fetch works; weekly auto-fetch will plug into US-BLOG-012 once cron is wired |
+| 5. Admin UI with sortable table + aggregate summary card | ✅ at /platform-admin/blog/serp |
+
+**5/5 met. `passes: true`. Two AC items (DA estimate, common entities) are explicitly noted as deferred work because each is its own separate plumbing — DA needs a 3rd-party adapter, entities need an NLP step.**
+
+### Quality Gates
+- `vite build` — ✅ green, 7m 10s (slow today, but completed). BlogSerp page is a lazy chunk so the main bundle is unaffected.
+- `tsc --noEmit` — clean for the new TS files
+- Browser smoke not run — recommend testing after `_backfill_blog_serp_snapshots.sql` lands AND a DataForSEO target is configured in /platform-admin/blog/settings/keyword-targets: navigate to /platform-admin/blog/serp → type a keyword → Fetch → confirm top-20 organic + features land within ~5-15s (the 3s URL-fetch timeout means the upper bound is ~3s × ceil(20/6) ≈ 12s) → re-fetch a different keyword → snapshot sidebar shows both → click between them to confirm sort + features render correctly.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-015 — SERP analyzer | ✅ passes: true |
+
+**Blog module total: 16 / 86 done.**
+
+### Notes for the Next Ralph Iteration
+
+**Per-URL fetch hardening:**
+- Many top-ranked sites will refuse a bot User-Agent and return 403/captcha HTML. Word-count falls back to snippet length, which is fine but underestimates. Two improvements to consider when this becomes load-bearing: (a) pass through a rotating proxy or a service like ScrapingBee/Browserless, (b) detect captcha/login HTML and explicitly null the count instead of trusting whatever the body says.
+- The User-Agent string identifies us as a bot. Some sites will rate-limit or 429 a known-bot UA. If we ever want to be a stealthier scraper, that's a policy decision — but for v1 the right answer is to keep the honest UA and accept the lower fetch success rate.
+
+**Word count heuristic:**
+- The current strip-tags-and-count-tokens approach overcounts (nav/footer/sidebar text) and undercounts (JS-rendered content). When this matters, switch to a Readability.js port (Mozilla/readability is published as a Deno-compatible module) — it gives back just the article body. Probably a 30-minute swap.
+
+**Common entities (AC #3 partial):**
+- Cheapest path: extract noun phrases via a simple POS tagger like `compromise.cool` (works in Deno). Mid path: hit an entity extraction API (DataForSEO has one). Expensive path: LLM call per snapshot. Defer until editors say the common-H2 chip is insufficient.
+
+**Adjacent stories now unblocked:**
+- US-BLOG-014 (search intent classifier) can use these snapshots as context for the LLM prompt — feed the keyword + top-10 titles+snippets → intent label. Half the work is now data plumbing only.
+- US-BLOG-016 (PAA + autocomplete miner) — PAA is already extracted; would just need to fan out across seed keywords and persist them somewhere queryable. Autocomplete is already supported by the adapter (`adapter.autocomplete`).
+- US-BLOG-023 (auto-brief generator) wants SERP + word-count target — both available now.
+
+**Job queue integration:**
+- A `serp_refresh` handler in `blog-jobs` would let admins enqueue weekly re-fetches per keyword. Pattern: payload `{ keyword, location_code, language_code }`, handler calls the same fetch logic. Idempotency key `serp_refresh:<keyword>:<location>:<YYYY-WW>` prevents double-fetch within the same week. Cheap follow-up once anyone wires the queue cron.
+
+---

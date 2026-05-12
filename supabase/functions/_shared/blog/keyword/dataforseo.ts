@@ -27,6 +27,10 @@ import {
   type KeywordSearchVolumeResult,
   type RelatedKeyword,
   type RelatedKeywordsResult,
+  type SerpFeatures,
+  type SerpFetchResult,
+  type SerpOrganicResult,
+  type SerpPaaItem,
   KeywordAdapterAuthError,
   KeywordAdapterError,
 } from './adapter.ts';
@@ -66,6 +70,28 @@ interface DfsAutocompleteResult {
     rank_group: number;
     rank_absolute: number;
   }>;
+}
+
+interface DfsSerpItem {
+  type: string;
+  rank_group?: number;
+  rank_absolute?: number;
+  url?: string;
+  domain?: string;
+  title?: string;
+  description?: string;
+  /** PAA expanded answers. */
+  expanded_element?: Array<{ url?: string; description?: string }>;
+  /** Nested PAA items. */
+  items?: Array<{
+    title?: string;
+    description?: string;
+    expanded_element?: Array<{ url?: string; description?: string }>;
+  }>;
+}
+
+interface DfsSerpResult {
+  items: DfsSerpItem[];
 }
 
 const INTENT_MAP: Record<string, KeywordMetric['intent']> = {
@@ -209,6 +235,96 @@ export const dataforseoAdapter: KeywordAdapter = {
       cost: usdToCents(env.cost, `DataForSEO autocomplete: "${seed}"`),
     };
   },
+
+  async fetchSerp(creds, keyword, opts) {
+    const depth = opts?.depth ?? 20;
+    const body = [
+      {
+        keyword,
+        location_code: opts?.location_code ?? 2840,
+        language_code: opts?.language_code ?? 'en',
+        depth,
+      },
+    ];
+
+    const env = await dfsRpc<DfsSerpResult>(creds, '/v3/serp/google/organic/live/advanced', body);
+
+    const organic: SerpOrganicResult[] = [];
+    const features: SerpFeatures = {
+      paa: [],
+      featured_snippet: null,
+      knowledge_panel: null,
+      has_video_pack: false,
+      has_image_pack: false,
+      has_local_pack: false,
+    };
+
+    for (const task of env.tasks) {
+      for (const r of task.result ?? []) {
+        for (const item of r.items ?? []) {
+          switch (item.type) {
+            case 'organic': {
+              if (organic.length >= depth) break;
+              organic.push({
+                rank: item.rank_absolute ?? organic.length + 1,
+                url: item.url ?? '',
+                title: item.title ?? '',
+                description: item.description ?? null,
+                domain: item.domain ?? extractDomain(item.url ?? ''),
+              });
+              break;
+            }
+            case 'featured_snippet': {
+              features.featured_snippet = {
+                url: item.url ?? '',
+                title: item.title ?? '',
+                text: item.description ?? null,
+              };
+              break;
+            }
+            case 'people_also_ask': {
+              const expanded = item.items ?? [];
+              for (const paa of expanded) {
+                const seed: SerpPaaItem = {
+                  question: paa.title ?? '',
+                  answer: paa.description ?? paa.expanded_element?.[0]?.description ?? null,
+                  url: paa.expanded_element?.[0]?.url ?? null,
+                };
+                if (seed.question) features.paa.push(seed);
+              }
+              break;
+            }
+            case 'knowledge_graph': {
+              features.knowledge_panel = {
+                title: item.title ?? '',
+                description: item.description ?? null,
+              };
+              break;
+            }
+            case 'video':
+            case 'top_stories':
+              features.has_video_pack = true;
+              break;
+            case 'images':
+              features.has_image_pack = true;
+              break;
+            case 'local_pack':
+            case 'map':
+              features.has_local_pack = true;
+              break;
+          }
+        }
+      }
+    }
+
+    organic.sort((a, b) => a.rank - b.rank);
+
+    return {
+      organic,
+      features,
+      cost: usdToCents(env.cost, `DataForSEO SERP: "${keyword}"`),
+    };
+  },
 };
 
 // ─── helpers ───
@@ -305,4 +421,12 @@ function usdToCents(usd: number, detail?: string): AdapterCost | null {
     cents: Math.ceil(usd * 100),
     detail,
   };
+}
+
+function extractDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
 }

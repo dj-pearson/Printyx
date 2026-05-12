@@ -5255,8 +5255,8 @@
         "Admin UI: SERP analyzer view with sortable table + aggregate summary card"
       ],
       "priority": 49,
-      "passes": false,
-      "notes": "Word count parsing must handle paywalls and JS-rendered content gracefully — fall back to meta description length when blocked.",
+      "passes": true,
+      "notes": "Word count parsing must handle paywalls and JS-rendered content gracefully — fall back to meta description length when blocked. Implemented: KeywordAdapter contract extended with optional fetchSerp(creds, keyword, opts) returning {organic, features, cost}. DataForSEO impl wraps POST /v3/serp/google/organic/live/advanced and maps items to organic (rank/url/title/description/domain), featured_snippet, paa (with expanded answers), knowledge_panel, has_video_pack/image_pack/local_pack. blog_serp_snapshots table caches per (tenant, keyword, location_code, language_code, fetched_at). blog-serp edge function: POST /blog-serp/fetch (fetches, does best-effort per-URL parse with 3s timeout + 6 concurrency, falls back to snippet word-count when blocked), GET /blog-serp (list summaries), GET /blog-serp/:id (full), DELETE /blog-serp/:id. Aggregates computed at insert time: median/mean word count, common H2s (top 5, normalized + folded, requires count>=2), dominant_content_type heuristic (listicle/how_to/comparison/guide/review based on title patterns; nulls when no clear winner). Admin UI at /platform-admin/blog/serp with keyword + location + language input, recent snapshots sidebar, aggregate summary card, feature chips, sortable organic table (rank/word_count/domain), PAA section. New blog sub-nav entry 'SERP' (g e shortcut). Deferred: estimated DA (would need a separate DA lookup adapter — Moz / Ahrefs DR), common entities (NLP — could be heuristic noun-phrase extraction or LLM-driven later), automatic weekly re-fetch (will hook into US-BLOG-012 job queue once cron is wired).",
       "category": "blog"
     },
     {

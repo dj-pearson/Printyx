@@ -5,6 +5,7 @@ import {
   ClipboardList,
   FileText,
   Image as ImageIcon,
+  Search as SearchIcon,
   Share2,
   BarChart3,
   RefreshCcw,
@@ -46,6 +47,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Ideas', path: '/platform-admin/blog/ideas', icon: Lightbulb, shortcut: 'g i' },
+  { label: 'SERP', path: '/platform-admin/blog/serp', icon: SearchIcon, shortcut: 'g e' },
   { label: 'Briefs', path: '/platform-admin/blog/briefs', icon: ClipboardList, shortcut: 'g b' },
   { label: 'Posts', path: '/platform-admin/blog/posts', icon: FileText, shortcut: 'g p' },
   { label: 'Assets', path: '/platform-admin/blog/assets', icon: ImageIcon, shortcut: 'g m' },

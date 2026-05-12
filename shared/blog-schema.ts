@@ -127,6 +127,15 @@ export const blogKeywords = pgTable(
       onDelete: 'set null',
     }),
     sourceAdapter: varchar('source_adapter', { length: 32 }), // e.g. 'dataforseo'
+    // How this keyword was added (US-BLOG-016): 'manual' | 'paa' | 'autocomplete' | 'related' | 'imported'.
+    sourceType: varchar('source_type', { length: 20 }),
+    // Self-FK: for PAA chains, the parent is the question that surfaced this one.
+    // For autocomplete, parent is the seed keyword. NULL for top-level / manual.
+    parentKeywordId: uuid('parent_keyword_id'),
+    // For PAA rows, the literal upstream question text (deduped, kept for tree rendering).
+    parentQuestion: text('parent_question'),
+    // 0 for seeds; 1+ for mined descendants.
+    miningDepth: integer('mining_depth'),
     lastRefreshedAt: timestamp('last_refreshed_at'),
     rawData: jsonb('raw_data'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -136,6 +145,8 @@ export const blogKeywords = pgTable(
   (table) => ({
     tenantIdx: index('blog_keywords_tenant_idx').on(table.tenantId),
     clusterIdx: index('blog_keywords_tenant_cluster_idx').on(table.tenantId, table.clusterId),
+    parentIdx: index('blog_keywords_parent_idx').on(table.parentKeywordId),
+    sourceIdx: index('blog_keywords_tenant_source_idx').on(table.tenantId, table.sourceType),
   }),
 );
 
@@ -530,6 +541,41 @@ export const blogJobs = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// blog_serp_snapshots — cached SERP fetches for strategy work (US-BLOG-015)
+// ---------------------------------------------------------------------------
+// One row per (keyword, location_code, language_code, fetched_at). Editors
+// re-fetch on demand; older snapshots stay around for trend comparison.
+export const blogSerpSnapshots = pgTable(
+  'blog_serp_snapshots',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    keyword: varchar('keyword', { length: 500 }).notNull(),
+    locationCode: integer('location_code').notNull().default(2840), // 2840 = United States in DFS
+    languageCode: varchar('language_code', { length: 16 }).notNull().default('en'),
+    /** Array of organic results, top 20: { rank, url, title, description, domain, word_count, headings: { h2: string[], h3: string[] } }. */
+    organicResults: jsonb('organic_results').notNull(),
+    /** Map of feature presence: { paa: [{q,a}], featured_snippet: {url,title,text}, knowledge_panel: {...}, video_pack: [], image_pack: [], local_pack: [] }. */
+    serpFeatures: jsonb('serp_features'),
+    /** Pre-computed aggregates: { median_word_count, mean_word_count, common_h2s: [{text, count}], dominant_content_type, total_results }. */
+    aggregate: jsonb('aggregate'),
+    sourceAdapter: varchar('source_adapter', { length: 32 }).notNull().default('dataforseo'),
+    fetchedAt: timestamp('fetched_at').notNull().defaultNow(),
+    /** Adapter-reported call cost in cents (0 if free / unknown). */
+    costCents: integer('cost_cents').notNull().default(0),
+    createdByUserId: varchar('created_by_user_id'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_serp_snapshots_tenant_idx').on(table.tenantId),
+    keywordIdx: index('blog_serp_snapshots_tenant_keyword_idx').on(
+      table.tenantId,
+      table.keyword,
+      table.fetchedAt,
+    ),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // blog_audit_log — every mutating action (US-BLOG-011, 086)
 // ---------------------------------------------------------------------------
 export const blogAuditLog = pgTable(
@@ -714,6 +760,8 @@ export type BlogAgentSettings = typeof blogAgentSettings.$inferSelect;
 export type NewBlogAgentSettings = typeof blogAgentSettings.$inferInsert;
 export type BlogJob = typeof blogJobs.$inferSelect;
 export type NewBlogJob = typeof blogJobs.$inferInsert;
+export type BlogSerpSnapshot = typeof blogSerpSnapshots.$inferSelect;
+export type NewBlogSerpSnapshot = typeof blogSerpSnapshots.$inferInsert;
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;

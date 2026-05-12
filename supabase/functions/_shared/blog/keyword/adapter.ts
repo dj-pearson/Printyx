@@ -81,6 +81,46 @@ export interface AutocompleteResult {
   cost: AdapterCost | null;
 }
 
+// SERP types (US-BLOG-015) ---------------------------------------------------
+export interface SerpOrganicResult {
+  rank: number;
+  url: string;
+  title: string;
+  description: string | null;
+  domain: string;
+}
+
+export interface SerpPaaItem {
+  question: string;
+  answer: string | null;
+  url: string | null;
+}
+
+export interface SerpFeaturedSnippet {
+  url: string;
+  title: string;
+  text: string | null;
+}
+
+export interface SerpFeatures {
+  /** Top "People also ask" questions when present. */
+  paa: SerpPaaItem[];
+  featured_snippet: SerpFeaturedSnippet | null;
+  knowledge_panel: { title: string; description: string | null } | null;
+  /** Whether a video pack appeared in the SERP. */
+  has_video_pack: boolean;
+  /** Whether an image pack appeared in the SERP. */
+  has_image_pack: boolean;
+  /** Whether a local pack appeared in the SERP. */
+  has_local_pack: boolean;
+}
+
+export interface SerpFetchResult {
+  organic: SerpOrganicResult[];
+  features: SerpFeatures;
+  cost: AdapterCost | null;
+}
+
 export interface KeywordAdapter {
   readonly platform: string;
 
@@ -113,6 +153,19 @@ export interface KeywordAdapter {
     seed: string,
     opts?: { location_code?: number; language_code?: string },
   ): Promise<AutocompleteResult>;
+
+  /**
+   * Fetch the full SERP for a keyword: top organic results + SERP features.
+   * Returns top 20 organic results when available. The adapter does NOT fetch
+   * per-URL HTML for word-count parsing — that's the caller's responsibility.
+   * Optional: an adapter that doesn't support SERP fetching can omit this
+   * method; callers should feature-detect.
+   */
+  fetchSerp?(
+    creds: KeywordCredentials,
+    keyword: string,
+    opts?: { location_code?: number; language_code?: string; depth?: number },
+  ): Promise<SerpFetchResult>;
 }
 
 export class KeywordAdapterError extends Error {

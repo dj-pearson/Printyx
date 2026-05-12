@@ -335,6 +335,7 @@ const BlogPosts = React.lazy(() => import('@/pages/platform-admin/blog/BlogPosts
 const BlogPostEditor = React.lazy(() => import('@/pages/platform-admin/blog/BlogPostEditor'));
 const BlogPostHistory = React.lazy(() => import('@/pages/platform-admin/blog/BlogPostHistory'));
 const BlogAssets = React.lazy(() => import('@/pages/platform-admin/blog/BlogAssets'));
+const BlogSerp = React.lazy(() => import('@/pages/platform-admin/blog/BlogSerp'));
 const BlogSettingsJobs = React.lazy(() => import('@/pages/platform-admin/blog/BlogSettingsJobs'));
 const BlogDistribution = React.lazy(() => import('@/pages/platform-admin/blog/BlogDistribution'));
 const BlogAnalytics = React.lazy(() => import('@/pages/platform-admin/blog/BlogAnalytics'));
@@ -968,6 +969,9 @@ function Router() {
                 </Route>
                 <Route path="/platform-admin/blog/assets">
                   {() => <ProtectedRoute component={BlogAssets} platformOnly />}
+                </Route>
+                <Route path="/platform-admin/blog/serp">
+                  {() => <ProtectedRoute component={BlogSerp} platformOnly />}
                 </Route>
                 <Route path="/platform-admin/blog/posts">
                   {() => <ProtectedRoute component={BlogPosts} platformOnly />}
