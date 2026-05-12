@@ -33,6 +33,8 @@ export type {
   KeywordHealthCheckResult,
   KeywordMetric,
   KeywordSearchVolumeResult,
+  RankedKeyword,
+  RankedKeywordsForDomainResult,
   RelatedKeyword,
   RelatedKeywordsResult,
   SerpFeatures,

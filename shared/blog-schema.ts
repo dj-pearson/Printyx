@@ -484,6 +484,11 @@ export const blogAgentSettings = pgTable(
     // Per-tenant blog_post_revisions retention. Default 90 days per US-BLOG-009 AC.
     // Enforced by POST /blog-post-revisions/cleanup (cron-friendly).
     revisionRetentionDays: integer('revision_retention_days').notNull().default(90),
+    // US-BLOG-018: competitor gap analysis settings.
+    /** Workspace's own domain (e.g. "printyx.net") — used as the baseline for gap diffs. */
+    ownDomain: varchar('own_domain', { length: 255 }),
+    /** Domains to compare against. Stored as Postgres text[]. Default empty. */
+    competitorDomains: text('competitor_domains').array(),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
@@ -571,6 +576,43 @@ export const blogSerpSnapshots = pgTable(
       table.tenantId,
       table.keyword,
       table.fetchedAt,
+    ),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_competitor_keywords — per-domain ranking snapshots (US-BLOG-018)
+// ---------------------------------------------------------------------------
+// One row per (tenant, domain, keyword) — latest snapshot. Replaced (not
+// appended) on each scan so the table stays bounded. Trend tracking lives
+// in raw jsonb if needed later.
+export const blogCompetitorKeywords = pgTable(
+  'blog_competitor_keywords',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    domain: varchar('domain', { length: 255 }).notNull(),
+    /** True for the workspace's own_domain; false for competitor_domains. */
+    isOwn: boolean('is_own').notNull().default(false),
+    keyword: varchar('keyword', { length: 500 }).notNull(),
+    rank: integer('rank'),
+    searchVolume: integer('search_volume'),
+    keywordDifficulty: integer('keyword_difficulty'),
+    cpc: numeric('cpc', { precision: 10, scale: 2 }),
+    intent: varchar('intent', { length: 20 }),
+    sourceAdapter: varchar('source_adapter', { length: 32 }).notNull().default('dataforseo'),
+    rawData: jsonb('raw_data'),
+    fetchedAt: timestamp('fetched_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index('blog_competitor_keywords_tenant_idx').on(table.tenantId),
+    tenantDomainIdx: index('blog_competitor_keywords_tenant_domain_idx').on(
+      table.tenantId,
+      table.domain,
+    ),
+    tenantKeywordIdx: index('blog_competitor_keywords_tenant_keyword_idx').on(
+      table.tenantId,
+      table.keyword,
     ),
   }),
 );
@@ -762,6 +804,8 @@ export type BlogJob = typeof blogJobs.$inferSelect;
 export type NewBlogJob = typeof blogJobs.$inferInsert;
 export type BlogSerpSnapshot = typeof blogSerpSnapshots.$inferSelect;
 export type NewBlogSerpSnapshot = typeof blogSerpSnapshots.$inferInsert;
+export type BlogCompetitorKeyword = typeof blogCompetitorKeywords.$inferSelect;
+export type NewBlogCompetitorKeyword = typeof blogCompetitorKeywords.$inferInsert;
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;

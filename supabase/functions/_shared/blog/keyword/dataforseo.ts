@@ -25,6 +25,8 @@ import {
   type KeywordHealthCheckResult,
   type KeywordMetric,
   type KeywordSearchVolumeResult,
+  type RankedKeyword,
+  type RankedKeywordsForDomainResult,
   type RelatedKeyword,
   type RelatedKeywordsResult,
   type SerpFeatures,
@@ -92,6 +94,30 @@ interface DfsSerpItem {
 
 interface DfsSerpResult {
   items: DfsSerpItem[];
+}
+
+interface DfsRankedKeywordItem {
+  keyword_data?: {
+    keyword?: string;
+    keyword_info?: {
+      search_volume?: number | null;
+      cpc?: number | null;
+      competition_index?: number | null;
+    };
+    keyword_properties?: { keyword_difficulty?: number | null };
+    search_intent_info?: { main_intent?: string };
+  };
+  ranked_serp_element?: {
+    serp_item?: {
+      rank_absolute?: number;
+      url?: string;
+      title?: string;
+    };
+  };
+}
+
+interface DfsRankedKeywordsResult {
+  items: DfsRankedKeywordItem[];
 }
 
 const INTENT_MAP: Record<string, KeywordMetric['intent']> = {
@@ -325,6 +351,61 @@ export const dataforseoAdapter: KeywordAdapter = {
       cost: usdToCents(env.cost, `DataForSEO SERP: "${keyword}"`),
     };
   },
+
+  async rankedKeywords(creds, domain, opts) {
+    const limit = Math.min(opts?.limit ?? 1000, 1000);
+    const body = [
+      {
+        target: cleanDomain(domain),
+        location_code: opts?.location_code ?? 2840,
+        language_code: opts?.language_code ?? 'en',
+        limit,
+        ignore_synonyms: true,
+        // Server-side filter: prune anything past max_rank when supplied.
+        filters: opts?.max_rank
+          ? [['ranked_serp_element.serp_item.rank_absolute', '<=', opts.max_rank]]
+          : undefined,
+      },
+    ];
+
+    const env = await dfsRpc<DfsRankedKeywordsResult>(
+      creds,
+      '/v3/dataforseo_labs/google/ranked_keywords/live',
+      body,
+    );
+
+    const keywords: RankedKeyword[] = [];
+    for (const task of env.tasks) {
+      for (const r of task.result ?? []) {
+        for (const item of r.items ?? []) {
+          const kd = item.keyword_data ?? {};
+          const serp = item.ranked_serp_element?.serp_item ?? {};
+          const intentRaw = kd.search_intent_info?.main_intent?.toLowerCase();
+          const intent = intentRaw && INTENT_MAP[intentRaw] ? INTENT_MAP[intentRaw] : null;
+          const cpcVal = kd.keyword_info?.cpc;
+          keywords.push({
+            keyword: kd.keyword ?? serp.title ?? '',
+            search_volume: kd.keyword_info?.search_volume ?? null,
+            keyword_difficulty:
+              kd.keyword_properties?.keyword_difficulty ??
+              kd.keyword_info?.competition_index ??
+              null,
+            cpc: typeof cpcVal === 'number' ? cpcVal : null,
+            intent,
+            relevance: null,
+            rank: serp.rank_absolute ?? null,
+            url: serp.url ?? null,
+          });
+        }
+      }
+    }
+
+    return {
+      domain,
+      keywords,
+      cost: usdToCents(env.cost, `DataForSEO ranked_keywords: "${domain}"`),
+    };
+  },
 };
 
 // ─── helpers ───
@@ -429,4 +510,16 @@ function extractDomain(url: string): string {
   } catch {
     return '';
   }
+}
+
+/**
+ * Strip protocol + path + www prefix so DataForSEO accepts the bare host.
+ * `https://www.printyx.net/blog` → `printyx.net`.
+ */
+function cleanDomain(input: string): string {
+  let s = input.trim().toLowerCase();
+  s = s.replace(/^https?:\/\//, '');
+  s = s.split('/')[0];
+  s = s.replace(/^www\./, '');
+  return s;
 }

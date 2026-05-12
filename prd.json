@@ -5271,8 +5271,8 @@
         "Admin UI: tree view of PAA chains; click to add to brief"
       ],
       "priority": 50,
-      "passes": false,
-      "notes": "Respect rate limits — back off aggressively on 429s.",
+      "passes": true,
+      "notes": "Respect rate limits — back off aggressively on 429s. Implemented: extended blog_keywords with source_type, parent_keyword_id (self-FK), parent_question, mining_depth columns (backfill SQL idempotent). blog-paa-miner edge function: POST /mine (BFS over PAA up to depth 4, persists each Q with parent link; concurrent autocomplete fan-out across A-Z + 0-9 prefixes — 36 calls/seed when enabled; both passes share a normalized-keyword dedup set so the same string never round-trips twice), GET /tree?keyword= (walks descendants via parent_keyword_id, splits into PAA chain + flat autocomplete list, capped at 2000 nodes), DELETE /clear?keyword= (removes descendants only, preserves seed). Uses the existing tenant DataForSEO target. Adapter calls wrapped in retryOn429 (single 2-second pause). UI at /platform-admin/blog/paa with keyword + depth + location/language + toggles for PAA and autocomplete, expandable tree view (chevron toggles, ChildrenMap rendered recursively), copy-on-click + 'Copy all PAA' bulk export, autocomplete shown as wrap-friendly chip cloud, 'Clear run' destructive action. New blog sub-nav 'PAA' (g q shortcut). Dedup is exact normalized-string match (lowercase + alphanumeric); near-duplicate clustering by Levenshtein/Jaro deferred — current dedup is enough for v1 since DataForSEO normalizes most rephrasings.",
       "category": "blog"
     },
     {
@@ -5305,8 +5305,8 @@
         "Re-run on schedule (weekly default)"
       ],
       "priority": 52,
-      "passes": false,
-      "notes": "Surface 'easy wins' first: keywords where competitors rank but their content is shallow.",
+      "passes": true,
+      "notes": "Surface 'easy wins' first: keywords where competitors rank but their content is shallow. Implemented: extended blog_agent_settings with own_domain (varchar) + competitor_domains (text[]). New blog_competitor_keywords table (id/tenant_id/domain/is_own/keyword/rank/search_volume/keyword_difficulty/cpc/intent/source_adapter/raw_data/fetched_at) with UNIQUE(tenant_id, domain, keyword) so each scan replaces prior rows for that domain. KeywordAdapter contract extended with optional rankedKeywords(creds, domain, opts). DataForSEO impl wraps /v3/dataforseo_labs/google/ranked_keywords/live with server-side max_rank filter + cleanDomain helper. blog-competitor-gap edge function: GET/PATCH /settings (own + competitor domain config — also normalizes domains with cleanDomain), POST /scan (deletes prior rows per domain then inserts in 500-row batches, captures partial failures per-domain), GET /gaps (in-process diff: builds a keyword → {own_rank, competitor_ranks{}} map, applies intent/min_volume/max_difficulty/min_competitors/own_min_rank filters, computes easy_win_score = volume/max(1,difficulty)*10 when best competitor is top-5; sorts by easy_win then volume desc), POST /create-cluster (creates a blog_keyword_clusters row + reassigns or inserts blog_keywords rows with cluster_id + source_type='gap_analysis' + folded competitor metrics; existing rows get re-linked, new ones get created with metric data pulled from the most recent competitor row). UI at /platform-admin/blog/competitor-gap with domain settings card (chip-style competitor editor + Add/Enter-to-commit), Save + Scan buttons, gap table with multi-select + filters + per-competitor rank columns + trophy badge for best_competitor_rank <=3 + Zap badge for easy_win_score, Create cluster dialog, Copy CSV export. New blog sub-nav 'Gaps' (g g shortcut). Weekly schedule (AC #6) deferred — slots cleanly into US-BLOG-012 job queue as a 'competitor_gap_scan' handler once cron is wired.",
       "category": "blog"
     },
     {

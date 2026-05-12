@@ -336,6 +336,8 @@ const BlogPostEditor = React.lazy(() => import('@/pages/platform-admin/blog/Blog
 const BlogPostHistory = React.lazy(() => import('@/pages/platform-admin/blog/BlogPostHistory'));
 const BlogAssets = React.lazy(() => import('@/pages/platform-admin/blog/BlogAssets'));
 const BlogSerp = React.lazy(() => import('@/pages/platform-admin/blog/BlogSerp'));
+const BlogPaaMiner = React.lazy(() => import('@/pages/platform-admin/blog/BlogPaaMiner'));
+const BlogCompetitorGap = React.lazy(() => import('@/pages/platform-admin/blog/BlogCompetitorGap'));
 const BlogSettingsJobs = React.lazy(() => import('@/pages/platform-admin/blog/BlogSettingsJobs'));
 const BlogDistribution = React.lazy(() => import('@/pages/platform-admin/blog/BlogDistribution'));
 const BlogAnalytics = React.lazy(() => import('@/pages/platform-admin/blog/BlogAnalytics'));
@@ -972,6 +974,12 @@ function Router() {
                 </Route>
                 <Route path="/platform-admin/blog/serp">
                   {() => <ProtectedRoute component={BlogSerp} platformOnly />}
+                </Route>
+                <Route path="/platform-admin/blog/paa">
+                  {() => <ProtectedRoute component={BlogPaaMiner} platformOnly />}
+                </Route>
+                <Route path="/platform-admin/blog/competitor-gap">
+                  {() => <ProtectedRoute component={BlogCompetitorGap} platformOnly />}
                 </Route>
                 <Route path="/platform-admin/blog/posts">
                   {() => <ProtectedRoute component={BlogPosts} platformOnly />}

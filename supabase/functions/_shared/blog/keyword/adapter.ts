@@ -121,6 +121,20 @@ export interface SerpFetchResult {
   cost: AdapterCost | null;
 }
 
+// Ranked-keywords (US-BLOG-018) -------------------------------------------
+export interface RankedKeyword extends KeywordMetric {
+  /** SERP rank for the domain on this keyword (1 = top). */
+  rank: number | null;
+  /** The exact URL on the target domain that ranks. */
+  url: string | null;
+}
+
+export interface RankedKeywordsForDomainResult {
+  domain: string;
+  keywords: RankedKeyword[];
+  cost: AdapterCost | null;
+}
+
 export interface KeywordAdapter {
   readonly platform: string;
 
@@ -166,6 +180,23 @@ export interface KeywordAdapter {
     keyword: string,
     opts?: { location_code?: number; language_code?: string; depth?: number },
   ): Promise<SerpFetchResult>;
+
+  /**
+   * Pull keywords a domain currently ranks for. Used by gap analysis
+   * (US-BLOG-018): scan competitors + own domain, then diff the keyword sets.
+   * Optional: adapters that lack a domain-ranking lookup omit this method.
+   */
+  rankedKeywords?(
+    creds: KeywordCredentials,
+    domain: string,
+    opts?: {
+      location_code?: number;
+      language_code?: string;
+      limit?: number;
+      /** Optional rank ceiling — only return keywords where rank <= maxRank. */
+      max_rank?: number;
+    },
+  ): Promise<RankedKeywordsForDomainResult>;
 }
 
 export class KeywordAdapterError extends Error {
