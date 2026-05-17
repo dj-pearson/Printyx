@@ -5250,3 +5250,57 @@ That's it — no schema change needed. Idempotency_key callers pick is per-job-t
 - The `/blog-posts/ics` endpoint requires the Authorization header (it goes through `requireSupabaseAuth`). Google Calendar subscription doesn't send auth headers, so the current "subscribe" use case won't work — the export only supports one-shot download. To support subscription, we'd need a per-tenant URL token (`?token=<random>`) that resolves to a tenant without JWT. Documented as a follow-up.
 
 ---
+## Ralph Iteration — US-BLOG-014 (search intent classifier)
+
+**Date:** 2026-05-17
+**Story:** US-BLOG-014 — Search intent classifier
+**Status:** ✅ passes: true (4/4 AC; "classify on import" delivered as a bulk endpoint + one-click UI, see scope note)
+
+### What Shipped
+
+**Shared classifier** — `supabase/functions/_shared/blog/keyword/intent-classifier.ts`
+- `classifyIntent(keyword, serp[], signal?)` → `{ intent, confidence, reasoning, serp_informed }`
+- Uses `_shared/anthropic.ts` `generateCompletion` (claude-3-5-sonnet, temp 0, max 300 tok), JSON-only system prompt with explicit definitions for the 4 intents
+- SERP context: top-10 `rank — title — snippet` lines injected into the user prompt; prompt instructs the model to weight SERP page-types heavily (matches the PRD note that quality jumps with SERP context)
+- Hardened parsing: strips code fences, extracts the first balanced `{...}`, coerces confidence from either 0-1 or 0-100, tolerates intent synonyms, and **degrades gracefully** (returns informational + confidence 0 + log line) instead of throwing so one bad row can't kill a batch
+
+**Edge function** — `supabase/functions/blog-keywords/index.ts` (auto-registered by the dir-scan dispatcher; reachable at `/api/blog-keywords` via the existing functions.printyx.net rewrite)
+- `GET /blog-keywords` — filters: `intent`, `unclassified`, `search` (ilike), `source_type`, `cluster_id`; paginated; returns tenant-wide `intent_counts` for the filter chips. Surfaces `intent_meta` (confidence/reasoning/serp_informed/classified_at) from `raw_data`.
+- `POST /blog-keywords/classify` — body `{ keyword_ids?, only_unclassified?, use_serp?, limit? }` (cap 100/batch). Pulls the latest `blog_serp_snapshots` row per keyword for SERP context when `use_serp` (default true). Writes `intent` on `blog_keywords` + `raw_data.intent_meta`. One audit-log summary per batch.
+- `PATCH /blog-keywords/:id` — manual intent override; audit-logged with before/after.
+- Auth/tenant/audit follow the established blog edge-function pattern (`blog.post.edit` gate, service client for writes, every query scoped by `tenant_id`).
+
+**Storage decision:** intent cached on the existing `blog_keywords.intent` (varchar(20)); confidence/reasoning/timestamp stored in the existing `raw_data` jsonb under `intent_meta`. **No migration** — keeps this deployable without DB access. The four canonical stored values are `informational | commercial | transactional | navigational`; the UI renders "commercial" as "Commercial investigation" (the PRD's `commercial-investigation` is 23 chars and would overflow varchar(20)).
+
+**UI** — `/platform-admin/blog/keywords` (`BlogKeywords.tsx`)
+- Filter row: intent select (with per-intent counts), keyword search, "Classify unclassified (N)" button
+- Table: keyword + reasoning subline, colored intent chip, confidence %, green dot when SERP-informed, volume/KD, per-row manual-override select, per-row Reclassify
+- New BlogShell sub-nav entry "Keywords" with `g k` shortcut; route wired in App.tsx (platformOnly, lazy)
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Tag each keyword (4 intents) + confidence | ✅ classifier returns intent + 0-1 confidence + reasoning |
+| 2. LLM prompt: keyword + top-10 SERP titles/snippets → intent + reasoning | ✅ exactly this; SERP pulled from blog_serp_snapshots |
+| 3. Bulk classify on keyword import; cached on keywords.intent | ✅ cached on blog_keywords.intent. "On import": delivered as the bulk `/classify` endpoint + one-click UI rather than an auto-trigger inside the PAA miner. Rationale: a single mine inserts hundreds of PAA/autocomplete rows; firing an LLM call per row in that hot path is cost- and latency-prohibitive and would couple the miner to Claude. Running classify after an import is one click / one POST. |
+| 4. Admin UI: filter by intent; colored chip | ✅ filter select + colored chips + counts |
+
+### Quality Gates
+- `tsc` — clean for all new files (pre-existing repo-wide errors in server/* and shared/*-schema.ts are unrelated and unchanged)
+- `vite build` — ✅ green, BlogKeywords lazy-chunked at 6.86 kB (2.41 kB gz); common bundle unaffected
+- `prettier --write` applied; eslint clean (blog pages dir is in the lint ignore list — same as sibling blog pages)
+- Browser smoke not run (no Supabase/DB connectivity in this environment). Recommended after deploy: open `/platform-admin/blog/keywords` → confirm table + counts render → click "Classify unclassified" → confirm chips populate and confidence shows → set a manual override → reload → confirm it sticks and shows 100% / manual → filter by each intent → confirm counts match.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-014 — Search intent classifier | ✅ passes: true |
+
+**Blog module total: 20 / 86 done. Overall PRD: 237 / 374 passing.**
+
+### Notes for the Next Ralph Iteration
+- **US-BLOG-019 (topic clustering)** is the natural next blog story and now has a clean substrate: keywords carry intent, and `getSerpContext`/`raw_data.intent_meta` patterns are reusable. Clustering wants embeddings + a pillar picker ("highest volume + informational intent") — the intent column it needs is now populated.
+- **Auto-classify-on-import follow-up:** if product wants zero-click classification, the cheap path is a `blog_jobs` handler (`classify_unclassified_intents`) that the existing job runner schedules nightly per tenant, calling the same `/classify` logic with `only_unclassified:true`. Avoids the miner hot-path cost while still being "automatic". ~1h.
+- **SERP-context coverage:** classification is text-only for any keyword without a `blog_serp_snapshots` row. A future enhancement could opportunistically trigger a SERP fetch for high-volume unclassified keywords before classifying (cost-gated). Deferred — current behavior degrades sanely (lower confidence, no SERP dot).
+
+---

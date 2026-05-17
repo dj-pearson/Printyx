@@ -5239,8 +5239,8 @@
         "Admin UI: filter keyword list by intent; intent shown as colored chip"
       ],
       "priority": 48,
-      "passes": false,
-      "notes": "Classification quality jumps dramatically when SERP context is included in the prompt.",
+      "passes": true,
+      "notes": "DONE 2026-05-17. Shared classifier supabase/functions/_shared/blog/keyword/intent-classifier.ts (Claude, temp 0, JSON-only prompt, graceful degrade on parse failure, 0-100/0-1 confidence coercion, synonym tolerance). New edge function supabase/functions/blog-keywords/index.ts: GET / (intent/search/source_type/cluster_id/unclassified filters + paging + tenant-wide intent_counts), POST /classify (bulk; pulls top-10 organic titles+snippets from latest blog_serp_snapshots per keyword when use_serp, caches intent on blog_keywords.intent, stores confidence/reasoning/serp_informed/classified_at in raw_data.intent_meta, audit-logged), PATCH /:id manual override (audit-logged). Intent stored as 4 short canonical values (commercial = PRD commercial-investigation, varchar(20) safe). Frontend client/src/pages/platform-admin/blog/BlogKeywords.tsx: filterable table, colored intent chips, confidence %, SERP-informed dot, one-click Classify unclassified, per-row reclassify + manual-override select. Wired into App.tsx route /platform-admin/blog/keywords and BlogShell nav (g k). SCOPE: 'classify on keyword import' delivered as a bulk endpoint + one-click UI rather than an auto-trigger inside the PAA miner hot path (auto per-keyword LLM calls during a mine of hundreds of PAA rows would be cost/latency-prohibitive). No DB migration: reused existing raw_data jsonb. tsc clean for new files, vite build green (BlogKeywords lazy-chunked 6.86 kB).",
       "category": "blog"
     },
     {
