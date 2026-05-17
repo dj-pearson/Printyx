@@ -9,6 +9,10 @@ import {
   Loader2,
   Save,
   Trash2,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  MinusCircle,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +24,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { computeSeoScore, type CheckStatus } from '@/lib/blog/seo-score';
+import { cn } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -129,6 +136,16 @@ function slugify(title: string): string {
     .slice(0, 200);
 }
 
+function SeoCheckIcon({ status }: { status: CheckStatus }) {
+  if (status === 'pass')
+    return <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0 text-emerald-600" />;
+  if (status === 'warn')
+    return <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-600" />;
+  if (status === 'fail')
+    return <XCircle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-destructive" />;
+  return <MinusCircle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />;
+}
+
 export default function BlogPostEditor() {
   const [, navigate] = useLocation();
   const [editMatch, editParams] = useRoute('/platform-admin/blog/posts/:id/edit');
@@ -146,6 +163,17 @@ export default function BlogPostEditor() {
   const [autosaveStatus, setAutosaveStatus] = useState<
     'idle' | 'pending' | 'saving' | 'saved' | 'error'
   >('idle');
+  const seoKwStorageKey = `blog:seo-target-kw:${postId ?? 'new'}`;
+  const [targetKeyword, setTargetKeyword] = useState<string>(() => {
+    if (typeof window === 'undefined') return '';
+    return window.localStorage.getItem(seoKwStorageKey) ?? '';
+  });
+  const [allowLowScorePublish, setAllowLowScorePublish] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (targetKeyword) window.localStorage.setItem(seoKwStorageKey, targetKeyword);
+    else window.localStorage.removeItem(seoKwStorageKey);
+  }, [targetKeyword, seoKwStorageKey]);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastAutosavedSigRef = useRef<string | null>(null);
   const formRef = useRef<FormState>(EMPTY_FORM);
@@ -170,6 +198,30 @@ export default function BlogPostEditor() {
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const seo = useMemo(
+    () =>
+      computeSeoScore({
+        title: form.title,
+        slug: form.slug,
+        bodyMarkdown: form.body_markdown,
+        bodyHtml: form.body_html,
+        metaTitle: form.meta_title,
+        metaDescription: form.meta_description,
+        canonicalUrl: form.canonical_url,
+        targetKeyword,
+      }),
+    [
+      form.title,
+      form.slug,
+      form.body_markdown,
+      form.body_html,
+      form.meta_title,
+      form.meta_description,
+      form.canonical_url,
+      targetKeyword,
+    ],
+  );
 
   // Auto-slug from title when creating and slug hasn't been touched
   useEffect(() => {
@@ -288,6 +340,15 @@ export default function BlogPostEditor() {
   function handleSave() {
     if (!form.title.trim()) {
       toast({ title: 'Title is required', variant: 'destructive' });
+      return;
+    }
+    if (form.status === 'published' && seo.score < 70 && !allowLowScorePublish) {
+      toast({
+        title: `SEO score ${seo.score}/100 — below the 70 publish threshold`,
+        description:
+          'Fix the failing on-page checks, or tick "Publish anyway" in the SEO panel to override.',
+        variant: 'destructive',
+      });
       return;
     }
     const payload = {
@@ -525,6 +586,83 @@ export default function BlogPostEditor() {
                     {form.meta_description.length} / 500
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-sm">SEO score</CardTitle>
+                  <span
+                    className={cn(
+                      'text-sm font-semibold tabular-nums',
+                      seo.score >= 70
+                        ? 'text-emerald-600'
+                        : seo.score >= 50
+                          ? 'text-amber-600'
+                          : 'text-destructive',
+                    )}
+                  >
+                    {seo.score}/100
+                  </span>
+                </div>
+                <CardDescription className="text-xs">
+                  US-BLOG-033 · {seo.passCount} pass · {seo.warnCount} warn · {seo.failCount} fail
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="seo-target-kw" className="text-xs">
+                    Target keyword
+                  </Label>
+                  <Input
+                    id="seo-target-kw"
+                    value={targetKeyword}
+                    onChange={(e) => setTargetKeyword(e.target.value)}
+                    placeholder="e.g. managed print services"
+                  />
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={cn(
+                      'h-full transition-all',
+                      seo.score >= 70
+                        ? 'bg-emerald-500'
+                        : seo.score >= 50
+                          ? 'bg-amber-500'
+                          : 'bg-destructive',
+                    )}
+                    style={{ width: `${seo.score}%` }}
+                  />
+                </div>
+                <ul className="space-y-1.5">
+                  {seo.checks.map((c) => (
+                    <li
+                      key={c.id}
+                      className="flex items-start gap-2 text-xs"
+                      title={`${c.detail}\n\nWhy: ${c.why}`}
+                    >
+                      <SeoCheckIcon status={c.status} />
+                      <span
+                        className={cn(
+                          'leading-tight',
+                          c.status === 'na' && 'text-muted-foreground',
+                        )}
+                      >
+                        {c.label}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {seo.score < 70 ? (
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                    <Checkbox
+                      checked={allowLowScorePublish}
+                      onCheckedChange={(v) => setAllowLowScorePublish(v === true)}
+                    />
+                    Publish anyway (override the {seo.score}/100 gate)
+                  </label>
+                ) : null}
               </CardContent>
             </Card>
           </div>

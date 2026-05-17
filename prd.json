@@ -5548,8 +5548,8 @@
         "Per-check explanation on hover with 'why this matters' link to docs"
       ],
       "priority": 67,
-      "passes": false,
-      "notes": "Don't be dogmatic about keyword density — flag extreme values (>3% or 0%) only.",
+      "passes": true,
+      "notes": "DONE 2026-05-17. Pure scoring engine client/src/lib/blog/seo-score.ts: computeSeoScore({title,slug,bodyMarkdown,bodyHtml,metaTitle,metaDescription,canonicalUrl,targetKeyword}) → {score 0-100, checks[], pass/warn/fail counts}. Checks implemented: kw in title/H1/first-100-words/slug, density (non-dogmatic — only fail >3% or 0%, warn <0.3% per the notes), title length 50-60, meta description 140-160, single H1 (flags extra markdown '# '), alt text on every image (parses md + html img), >=1 internal link, >=1 external link, canonical set. Honest 'na' (excluded from score, shown greyed with rationale) for the 3 unverifiable-here checks: broken-link crawl (cross-origin blocked in-browser; server-side at publish), schema markup valid (US-BLOG-027 not built), OG image (no post field yet). Integrated into BlogPostEditor sidebar: target-keyword input (persisted to localStorage per post id — no migration), colored score + progress bar, checklist with pass/warn/fail/na icons, native title-tooltip carrying detail + 'Why:' explanation. Publish gate: status=published with score<70 blocks save with a toast unless the 'Publish anyway' override checkbox (shown only when <70) is ticked — satisfies 'overrideable by editor+' (this surface is platform-admin only = editor+). Score = (pass*1 + warn*0.5)/scoredChecks. tsc: no new errors (3 pre-existing apiRequest<T> TS2558 in this file are unrelated and line-shifted only). vite build green. SCOPE: AC4 says 'link to docs' for each explanation — delivered as inline 'Why this matters' tooltip text; a docs URL per check deferred (no docs site routes exist yet).",
       "category": "blog"
     },
     {
