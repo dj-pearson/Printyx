@@ -5352,3 +5352,63 @@ That's it — no schema change needed. Idempotency_key callers pick is per-job-t
 - The SEO engine is a clean dependency for **US-BLOG-036** (meta/title CTR) — title-length / keyword-presence sub-scores can be reused there rather than reimplemented.
 
 ---
+
+## Ralph Iteration — US-BLOG-027 (schema markup planner + generator)
+
+**Date:** 2026-05-17
+**Story:** US-BLOG-027 — Schema markup planner and generator
+**Status:** ✅ passes: true (all 6 AC; Review/Product/Recipe/Event modeled minimally with an honest warning instead of faked fields)
+
+### What Shipped
+
+**Schema** — `shared/blog-schema.ts` + `drizzle/migrations/_backfill_blog_schema_markup.sql` (idempotent hand-run, US-BLOG-024 precedent — no DB connectivity needed at build time)
+- `blog_posts.schema_type` varchar(20), NULL ⇒ treated as BlogPosting
+- `blog_agent_settings.organization_name / organization_url / organization_logo_url` — workspace Organization data for JSON-LD publisher/author
+
+**Pure generator** — `client/src/lib/blog/schema-jsonld.ts`
+- `buildJsonLd(post, org) → { graph[], errors[], warnings[], faqDetected, howToDetected }`. Dependency-free, runs live in the editor.
+- Article/BlogPosting/NewsArticle fully modeled: headline, mainEntityOfPage, url, description, image (first body image), datePublished/dateModified, author (post author or org), publisher (Organization + logo ImageObject).
+- `FAQPage` built from `### Question?` headings + following answer (≥2 pairs). `HowTo` built from numbered list steps, capturing per-step images.
+- **Auto-emit**: FAQ pairs emit an FAQPage block and step+image lists emit a HowTo block *even when they aren't the primary type* (AC3/AC4).
+- Review/Product/Recipe/Event: selectable, emit a minimal valid object **plus a warning** that type-specific fields (price, eventDate, ingredients…) aren't modeled — deliberately does **not** fabricate aggregateRating/review per the PRD note.
+- Validator: hard errors (FAQPage w/ no Q&A, HowTo <2 steps, missing title) vs. warnings (no image/description/publisher, unpublished datePublished). Errors block publish; warnings allowed.
+
+**Edge functions**
+- `blog-posts`: `schema_type` added to create/patch zod enum + create insert mapping (patch already spreads `parsed.data`); `select('*')` returns it.
+- `blog-agents` `/settings`: 3 org fields added to `settingsPatchSchema`; persisted/returned via the existing spread + `select('*')`.
+
+**UI**
+- `BlogPostEditor` sidebar — new "Structured data" card: schema-type select (Auto = BlogPosting), FAQ/HowTo detection badges, error list (red) + warning list (amber), collapsible JSON-LD preview pane. Publish gate: `status=published` with a chosen `schema_type` and ≥1 error → Save blocked with a toast (warnings allowed).
+- `BlogSettings` — new "Organization (structured data)" card editing name/url/logo via the existing settings PATCH.
+
+**Loop closed with US-BLOG-033:** `seo-score.ts` `schema-valid` check now takes `{errors,warnings}` and becomes a real pass/warn/fail when a schema type is set (was honest `na`). The two stories now reinforce each other in the editor.
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Per-post schema_type field (9 types) | ✅ column + select; all 9 types selectable |
+| 2. Generator builds JSON-LD from post + workspace Org data | ✅ Article family fully modeled w/ publisher/author from blog_agent_settings |
+| 3. FAQ blocks auto-emit FAQPage | ✅ auto-emitted even when not primary type |
+| 4. HowTo blocks (steps w/ images) auto-emit HowTo | ✅ numbered steps + per-step images |
+| 5. Validator on save; blocks publish on errors (warnings allowed) | ✅ publish gate on errors only |
+| 6. Preview pane shows the JSON-LD that will be emitted | ✅ collapsible `<pre>` via jsonLdToScriptString |
+
+### Quality Gates
+- `tsc` — no new errors. The 3 `apiRequest<T>` TS2558 in BlogPostEditor are pre-existing (line-shifted by the new org query/memo, verified earlier via git stash). The BlogSettingsBrandVoices/CmsTargets/Jobs/KeywordTargets errors are pre-existing and in files this iteration never touched.
+- `vite build` — ✅ green (27.8s). BlogPostEditor +~2.6 kB, BlogSettings +~3 kB.
+- `prettier --write` applied (the .sql file has no prettier parser — expected). eslint clean.
+- Browser smoke not run (no DB connectivity). After deploy + running `_backfill_blog_schema_markup.sql`: set Organization in Blog Settings → open a post → pick schema type → confirm preview JSON-LD + publisher → write a `### Q?` FAQ section → confirm FAQ badge + FAQPage block → set type FAQPage with no Q&A → confirm error + publish blocked → fix → publish succeeds.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-027 — Schema markup planner and generator | ✅ passes: true |
+
+**Blog module total: 22 / 86 done. Overall PRD: 239 / 374 passing.**
+
+### Notes for the Next Ralph Iteration
+- The generated JSON-LD is computed client-side for preview/validation. To actually emit it on the public post page, the published-page renderer (or the CMS publish adapter) should call `buildJsonLd` server-side and inject a `<script type="application/ld+json">`. Wire this when the public blog rendering path is built — the function is isomorphic (pure, no DOM) so it can move to an edge function unchanged.
+- Review/Product/Recipe/Event remain base-only. If product wants full Product/Event rich results, add the type-specific fields to `blog_posts` (price/availability, startDate/endDate) and extend `buildJsonLd` — the warning already tells editors this is pending.
+- Author resolution: `author` currently falls back to the Organization name when no per-post author display name is available (post.author_user_id is a UUID, not a name). A `useUserResolver` hook (also flagged in the US-BLOG-024 notes) would let `buildJsonLd` receive a real author name — pass it via `SchemaPostInput.authorName`.
+
+---

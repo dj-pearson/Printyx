@@ -49,6 +49,20 @@ const postCreateSchema = z.object({
   author_user_id: z.string().nullable().optional(),
   reviewer_user_id: z.string().nullable().optional(),
   cluster_id: z.string().uuid().nullable().optional(),
+  schema_type: z
+    .enum([
+      'Article',
+      'BlogPosting',
+      'NewsArticle',
+      'HowTo',
+      'Recipe',
+      'Review',
+      'Product',
+      'FAQPage',
+      'Event',
+    ])
+    .nullable()
+    .optional(),
   status: z.enum(STATUSES).optional(),
   scheduled_for: z.string().datetime().nullable().optional(),
 });
@@ -253,6 +267,7 @@ async function createPost(admin: Admin, tenantId: string, userId: string, req: R
       author_user_id: parsed.data.author_user_id ?? userId,
       reviewer_user_id: parsed.data.reviewer_user_id ?? null,
       cluster_id: parsed.data.cluster_id ?? null,
+      schema_type: parsed.data.schema_type ?? null,
       status: parsed.data.status ?? 'draft',
       scheduled_for: parsed.data.scheduled_for ?? null,
       created_by_user_id: userId,

@@ -39,6 +39,10 @@ const settingsPatchSchema = z.object({
   // US-BLOG-009: clamp to a sensible range — 7 days minimum (avoid wiping
   // everyone's history on a typo) and 730 days (2 years) maximum.
   revision_retention_days: z.number().int().min(7).max(730).optional(),
+  // US-BLOG-027: workspace Organization data for JSON-LD publisher/author.
+  organization_name: z.string().max(255).nullable().optional(),
+  organization_url: z.string().url().max(500).nullable().optional(),
+  organization_logo_url: z.string().url().max(1000).nullable().optional(),
 });
 
 // Canonical RBAC code: `blog.agent.toggle` (granted only to PLATFORM_ADMIN by

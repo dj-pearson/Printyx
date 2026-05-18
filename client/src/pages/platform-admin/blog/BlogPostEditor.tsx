@@ -26,6 +26,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { computeSeoScore, type CheckStatus } from '@/lib/blog/seo-score';
+import {
+  buildJsonLd,
+  jsonLdToScriptString,
+  SCHEMA_TYPES,
+  type SchemaType,
+} from '@/lib/blog/schema-jsonld';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -57,6 +63,7 @@ interface Post {
   meta_title: string | null;
   meta_description: string | null;
   canonical_url: string | null;
+  schema_type: SchemaType | null;
   status: PostStatus;
   published_at: string | null;
   scheduled_for: string | null;
@@ -77,6 +84,7 @@ interface FormState {
   meta_title: string;
   meta_description: string;
   canonical_url: string;
+  schema_type: SchemaType | '';
   status: PostStatus;
 }
 
@@ -89,6 +97,7 @@ const EMPTY_FORM: FormState = {
   meta_title: '',
   meta_description: '',
   canonical_url: '',
+  schema_type: '',
   status: 'draft',
 };
 
@@ -110,6 +119,7 @@ function postToForm(post: Post): FormState {
     meta_title: post.meta_title ?? '',
     meta_description: post.meta_description ?? '',
     canonical_url: post.canonical_url ?? '',
+    schema_type: post.schema_type ?? '',
     status: post.status,
   };
 }
@@ -169,6 +179,7 @@ export default function BlogPostEditor() {
     return window.localStorage.getItem(seoKwStorageKey) ?? '';
   });
   const [allowLowScorePublish, setAllowLowScorePublish] = useState(false);
+  const [showJsonLd, setShowJsonLd] = useState(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (targetKeyword) window.localStorage.setItem(seoKwStorageKey, targetKeyword);
@@ -199,6 +210,55 @@ export default function BlogPostEditor() {
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  const { data: orgSettings } = useQuery<{
+    settings: {
+      organization_name: string | null;
+      organization_url: string | null;
+      organization_logo_url: string | null;
+    };
+  }>({
+    queryKey: ['/api/blog-agents/settings'],
+    queryFn: () => apiRequest('/api/blog-agents/settings'),
+  });
+
+  const jsonLd = useMemo(
+    () =>
+      buildJsonLd(
+        {
+          title: form.title,
+          slug: form.slug,
+          excerpt: form.excerpt,
+          bodyMarkdown: form.body_markdown,
+          bodyHtml: form.body_html,
+          metaDescription: form.meta_description,
+          canonicalUrl: form.canonical_url,
+          schemaType: form.schema_type || null,
+          publishedAt: postData?.post?.published_at ?? null,
+          updatedAt: postData?.post?.updated_at ?? null,
+        },
+        {
+          name: orgSettings?.settings?.organization_name ?? '',
+          url: orgSettings?.settings?.organization_url ?? '',
+          logoUrl: orgSettings?.settings?.organization_logo_url ?? '',
+        },
+      ),
+    [
+      form.title,
+      form.slug,
+      form.excerpt,
+      form.body_markdown,
+      form.body_html,
+      form.meta_description,
+      form.canonical_url,
+      form.schema_type,
+      postData?.post?.published_at,
+      postData?.post?.updated_at,
+      orgSettings?.settings?.organization_name,
+      orgSettings?.settings?.organization_url,
+      orgSettings?.settings?.organization_logo_url,
+    ],
+  );
+
   const seo = useMemo(
     () =>
       computeSeoScore({
@@ -210,6 +270,9 @@ export default function BlogPostEditor() {
         metaDescription: form.meta_description,
         canonicalUrl: form.canonical_url,
         targetKeyword,
+        schema: form.schema_type
+          ? { errors: jsonLd.errors.length, warnings: jsonLd.warnings.length }
+          : undefined,
       }),
     [
       form.title,
@@ -219,7 +282,10 @@ export default function BlogPostEditor() {
       form.meta_title,
       form.meta_description,
       form.canonical_url,
+      form.schema_type,
       targetKeyword,
+      jsonLd.errors.length,
+      jsonLd.warnings.length,
     ],
   );
 
@@ -351,6 +417,14 @@ export default function BlogPostEditor() {
       });
       return;
     }
+    if (form.status === 'published' && form.schema_type && jsonLd.errors.length > 0) {
+      toast({
+        title: 'Invalid structured data blocks publish',
+        description: `${jsonLd.errors.length} JSON-LD error(s). Fix them in the Structured data panel (warnings are allowed).`,
+        variant: 'destructive',
+      });
+      return;
+    }
     const payload = {
       title: form.title.trim(),
       slug: form.slug.trim() || undefined,
@@ -360,6 +434,7 @@ export default function BlogPostEditor() {
       meta_title: form.meta_title.trim() || null,
       meta_description: form.meta_description.trim() || null,
       canonical_url: form.canonical_url.trim() || null,
+      schema_type: form.schema_type || null,
       status: form.status,
     };
     if (isEditing) {
@@ -662,6 +737,99 @@ export default function BlogPostEditor() {
                     />
                     Publish anyway (override the {seo.score}/100 gate)
                   </label>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Structured data</CardTitle>
+                <CardDescription className="text-xs">
+                  US-BLOG-027 · JSON-LD emitted on the published page.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="schema-type" className="text-xs">
+                    Schema type
+                  </Label>
+                  <Select
+                    value={form.schema_type || '__auto'}
+                    onValueChange={(v) =>
+                      set('schema_type', v === '__auto' ? '' : (v as SchemaType))
+                    }
+                  >
+                    <SelectTrigger id="schema-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__auto">Auto (BlogPosting)</SelectItem>
+                      {SCHEMA_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {jsonLd.faqDetected ? (
+                    <Badge variant="secondary" className="text-[10px]">
+                      FAQ detected → FAQPage
+                    </Badge>
+                  ) : null}
+                  {jsonLd.howToDetected ? (
+                    <Badge variant="secondary" className="text-[10px]">
+                      Steps detected → HowTo
+                    </Badge>
+                  ) : null}
+                </div>
+
+                {jsonLd.errors.length > 0 ? (
+                  <ul className="space-y-1">
+                    {jsonLd.errors.map((e, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-destructive">
+                        <XCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                        <span className="leading-tight">{e}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="flex items-center gap-2 text-xs text-emerald-600">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    Valid — {jsonLd.graph.length} JSON-LD object(s) will be emitted.
+                  </p>
+                )}
+
+                {jsonLd.warnings.length > 0 ? (
+                  <ul className="space-y-1">
+                    {jsonLd.warnings.map((w, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-amber-600">
+                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                        <span className="leading-tight">{w}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                {jsonLd.graph.length > 0 ? (
+                  <div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => setShowJsonLd((s) => !s)}
+                    >
+                      {showJsonLd ? 'Hide' : 'Preview'} JSON-LD
+                    </Button>
+                    {showJsonLd ? (
+                      <pre className="mt-2 max-h-72 overflow-auto rounded bg-muted p-2 text-[10px] leading-tight">
+                        {jsonLdToScriptString(jsonLd.graph)}
+                      </pre>
+                    ) : null}
+                  </div>
                 ) : null}
               </CardContent>
             </Card>

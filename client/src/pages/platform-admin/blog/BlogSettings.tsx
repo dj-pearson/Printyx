@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertOctagon, AlertTriangle, Loader2, ShieldCheck } from 'lucide-react';
+import { AlertOctagon, AlertTriangle, Building2, Loader2, ShieldCheck } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { BlogShell } from '@/components/blog/BlogShell';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog,
@@ -43,6 +44,9 @@ interface AgentSettings {
   paused_by_user_id: string | null;
   paused_reason: string | null;
   auto_refresh_requires_review: boolean;
+  organization_name: string | null;
+  organization_url: string | null;
+  organization_logo_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -101,8 +105,12 @@ export default function BlogSettings() {
   });
 
   const patchMutation = useMutation({
-    mutationFn: (patch: { auto_refresh_requires_review?: boolean }) =>
-      apiRequest('/api/blog-agents/settings', 'PATCH', patch),
+    mutationFn: (patch: {
+      auto_refresh_requires_review?: boolean;
+      organization_name?: string | null;
+      organization_url?: string | null;
+      organization_logo_url?: string | null;
+    }) => apiRequest('/api/blog-agents/settings', 'PATCH', patch),
     onSuccess: () => {
       toast({ title: 'Settings saved' });
       queryClient.invalidateQueries({ queryKey: settingsKey });
@@ -190,10 +198,108 @@ export default function BlogSettings() {
                 />
               </CardContent>
             </Card>
+
+            <OrganizationCard
+              settings={settings}
+              isSaving={patchMutation.isPending}
+              onSave={(patch) => patchMutation.mutate(patch)}
+            />
           </>
         ) : null}
       </div>
     </BlogShell>
+  );
+}
+
+interface OrganizationCardProps {
+  settings: AgentSettings;
+  isSaving: boolean;
+  onSave: (patch: {
+    organization_name: string | null;
+    organization_url: string | null;
+    organization_logo_url: string | null;
+  }) => void;
+}
+
+function OrganizationCard({ settings, isSaving, onSave }: OrganizationCardProps) {
+  const [name, setName] = useState(settings.organization_name ?? '');
+  const [url, setUrl] = useState(settings.organization_url ?? '');
+  const [logo, setLogo] = useState(settings.organization_logo_url ?? '');
+
+  const dirty =
+    name !== (settings.organization_name ?? '') ||
+    url !== (settings.organization_url ?? '') ||
+    logo !== (settings.organization_logo_url ?? '');
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Building2 className="h-4 w-4 text-muted-foreground" />
+          Organization (structured data)
+        </CardTitle>
+        <CardDescription>
+          Used as the publisher/author in every post's JSON-LD schema markup (US-BLOG-027). Leave
+          blank to omit the publisher block.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-1">
+          <Label htmlFor="org-name" className="text-sm">
+            Organization name
+          </Label>
+          <Input
+            id="org-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Printyx"
+            maxLength={255}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="org-url" className="text-sm">
+            Website URL
+          </Label>
+          <Input
+            id="org-url"
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://printyx.net"
+            maxLength={500}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="org-logo" className="text-sm">
+            Logo URL
+          </Label>
+          <Input
+            id="org-logo"
+            type="url"
+            value={logo}
+            onChange={(e) => setLogo(e.target.value)}
+            placeholder="https://printyx.net/logo.png"
+            maxLength={1000}
+          />
+        </div>
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            disabled={!dirty || isSaving}
+            onClick={() =>
+              onSave({
+                organization_name: name.trim() || null,
+                organization_url: url.trim() || null,
+                organization_logo_url: logo.trim() || null,
+              })
+            }
+          >
+            {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+            Save organization
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

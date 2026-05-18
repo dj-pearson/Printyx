@@ -30,6 +30,11 @@ export interface SeoScoreInput {
   metaDescription: string;
   canonicalUrl: string;
   targetKeyword: string;
+  /**
+   * Optional JSON-LD validation result (US-BLOG-027). When supplied, the
+   * "Schema markup valid" check becomes a real pass/warn/fail instead of 'na'.
+   */
+  schema?: { errors: number; warnings: number };
 }
 
 export interface SeoScoreResult {
@@ -307,13 +312,29 @@ export function computeSeoScore(input: SeoScoreInput): SeoScoreResult {
       'Link-health crawl runs server-side, not in the editor (cross-origin blocked in-browser).',
     why: 'Broken links waste crawl budget and frustrate readers — checked at publish time.',
   });
-  checks.push({
-    id: 'schema-valid',
-    label: 'Schema markup valid',
-    status: 'na',
-    detail: 'JSON-LD generation is US-BLOG-027 (not yet built).',
-    why: 'Valid schema makes the post eligible for rich results and AI Overviews.',
-  });
+  if (input.schema) {
+    const { errors, warnings } = input.schema;
+    checks.push({
+      id: 'schema-valid',
+      label: 'Schema markup valid',
+      status: errors > 0 ? 'fail' : warnings > 0 ? 'warn' : 'pass',
+      detail:
+        errors > 0
+          ? `${errors} JSON-LD error(s) — see the Structured data panel.`
+          : warnings > 0
+            ? `Valid, with ${warnings} warning(s).`
+            : 'Valid JSON-LD will be emitted.',
+      why: 'Valid schema makes the post eligible for rich results and AI Overviews.',
+    });
+  } else {
+    checks.push({
+      id: 'schema-valid',
+      label: 'Schema markup valid',
+      status: 'na',
+      detail: 'Set a schema type in the Structured data panel to enable this check.',
+      why: 'Valid schema makes the post eligible for rich results and AI Overviews.',
+    });
+  }
   checks.push({
     id: 'og-image',
     label: 'OG image set',
