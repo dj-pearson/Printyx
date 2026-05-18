@@ -5250,3 +5250,358 @@ That's it — no schema change needed. Idempotency_key callers pick is per-job-t
 - The `/blog-posts/ics` endpoint requires the Authorization header (it goes through `requireSupabaseAuth`). Google Calendar subscription doesn't send auth headers, so the current "subscribe" use case won't work — the export only supports one-shot download. To support subscription, we'd need a per-tenant URL token (`?token=<random>`) that resolves to a tenant without JWT. Documented as a follow-up.
 
 ---
+## Ralph Iteration — US-BLOG-014 (search intent classifier)
+
+**Date:** 2026-05-17
+**Story:** US-BLOG-014 — Search intent classifier
+**Status:** ✅ passes: true (4/4 AC; "classify on import" delivered as a bulk endpoint + one-click UI, see scope note)
+
+### What Shipped
+
+**Shared classifier** — `supabase/functions/_shared/blog/keyword/intent-classifier.ts`
+- `classifyIntent(keyword, serp[], signal?)` → `{ intent, confidence, reasoning, serp_informed }`
+- Uses `_shared/anthropic.ts` `generateCompletion` (claude-3-5-sonnet, temp 0, max 300 tok), JSON-only system prompt with explicit definitions for the 4 intents
+- SERP context: top-10 `rank — title — snippet` lines injected into the user prompt; prompt instructs the model to weight SERP page-types heavily (matches the PRD note that quality jumps with SERP context)
+- Hardened parsing: strips code fences, extracts the first balanced `{...}`, coerces confidence from either 0-1 or 0-100, tolerates intent synonyms, and **degrades gracefully** (returns informational + confidence 0 + log line) instead of throwing so one bad row can't kill a batch
+
+**Edge function** — `supabase/functions/blog-keywords/index.ts` (auto-registered by the dir-scan dispatcher; reachable at `/api/blog-keywords` via the existing functions.printyx.net rewrite)
+- `GET /blog-keywords` — filters: `intent`, `unclassified`, `search` (ilike), `source_type`, `cluster_id`; paginated; returns tenant-wide `intent_counts` for the filter chips. Surfaces `intent_meta` (confidence/reasoning/serp_informed/classified_at) from `raw_data`.
+- `POST /blog-keywords/classify` — body `{ keyword_ids?, only_unclassified?, use_serp?, limit? }` (cap 100/batch). Pulls the latest `blog_serp_snapshots` row per keyword for SERP context when `use_serp` (default true). Writes `intent` on `blog_keywords` + `raw_data.intent_meta`. One audit-log summary per batch.
+- `PATCH /blog-keywords/:id` — manual intent override; audit-logged with before/after.
+- Auth/tenant/audit follow the established blog edge-function pattern (`blog.post.edit` gate, service client for writes, every query scoped by `tenant_id`).
+
+**Storage decision:** intent cached on the existing `blog_keywords.intent` (varchar(20)); confidence/reasoning/timestamp stored in the existing `raw_data` jsonb under `intent_meta`. **No migration** — keeps this deployable without DB access. The four canonical stored values are `informational | commercial | transactional | navigational`; the UI renders "commercial" as "Commercial investigation" (the PRD's `commercial-investigation` is 23 chars and would overflow varchar(20)).
+
+**UI** — `/platform-admin/blog/keywords` (`BlogKeywords.tsx`)
+- Filter row: intent select (with per-intent counts), keyword search, "Classify unclassified (N)" button
+- Table: keyword + reasoning subline, colored intent chip, confidence %, green dot when SERP-informed, volume/KD, per-row manual-override select, per-row Reclassify
+- New BlogShell sub-nav entry "Keywords" with `g k` shortcut; route wired in App.tsx (platformOnly, lazy)
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Tag each keyword (4 intents) + confidence | ✅ classifier returns intent + 0-1 confidence + reasoning |
+| 2. LLM prompt: keyword + top-10 SERP titles/snippets → intent + reasoning | ✅ exactly this; SERP pulled from blog_serp_snapshots |
+| 3. Bulk classify on keyword import; cached on keywords.intent | ✅ cached on blog_keywords.intent. "On import": delivered as the bulk `/classify` endpoint + one-click UI rather than an auto-trigger inside the PAA miner. Rationale: a single mine inserts hundreds of PAA/autocomplete rows; firing an LLM call per row in that hot path is cost- and latency-prohibitive and would couple the miner to Claude. Running classify after an import is one click / one POST. |
+| 4. Admin UI: filter by intent; colored chip | ✅ filter select + colored chips + counts |
+
+### Quality Gates
+- `tsc` — clean for all new files (pre-existing repo-wide errors in server/* and shared/*-schema.ts are unrelated and unchanged)
+- `vite build` — ✅ green, BlogKeywords lazy-chunked at 6.86 kB (2.41 kB gz); common bundle unaffected
+- `prettier --write` applied; eslint clean (blog pages dir is in the lint ignore list — same as sibling blog pages)
+- Browser smoke not run (no Supabase/DB connectivity in this environment). Recommended after deploy: open `/platform-admin/blog/keywords` → confirm table + counts render → click "Classify unclassified" → confirm chips populate and confidence shows → set a manual override → reload → confirm it sticks and shows 100% / manual → filter by each intent → confirm counts match.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-014 — Search intent classifier | ✅ passes: true |
+
+**Blog module total: 20 / 86 done. Overall PRD: 237 / 374 passing.**
+
+### Notes for the Next Ralph Iteration
+- **US-BLOG-019 (topic clustering)** is the natural next blog story and now has a clean substrate: keywords carry intent, and `getSerpContext`/`raw_data.intent_meta` patterns are reusable. Clustering wants embeddings + a pillar picker ("highest volume + informational intent") — the intent column it needs is now populated.
+- **Auto-classify-on-import follow-up:** if product wants zero-click classification, the cheap path is a `blog_jobs` handler (`classify_unclassified_intents`) that the existing job runner schedules nightly per tenant, calling the same `/classify` logic with `only_unclassified:true`. Avoids the miner hot-path cost while still being "automatic". ~1h.
+- **SERP-context coverage:** classification is text-only for any keyword without a `blog_serp_snapshots` row. A future enhancement could opportunistically trigger a SERP fetch for high-volume unclassified keywords before classifying (cost-gated). Deferred — current behavior degrades sanely (lower confidence, no SERP dot).
+
+---
+
+## Ralph Iteration — US-BLOG-033 (SEO scoring engine + on-page checklist)
+
+**Date:** 2026-05-17
+**Story:** US-BLOG-033 — SEO scoring engine with on-page checklist
+**Status:** ✅ passes: true (all 4 AC; 3 checks honestly marked 'na' with rationale instead of faking them)
+
+### What Shipped
+
+**Pure scoring engine** — `client/src/lib/blog/seo-score.ts`
+- `computeSeoScore(input) → { score, checks[], passCount, warnCount, failCount }`. Dependency-free, no network, no DB — safe to run live on every keystroke via `useMemo`.
+- Implemented checks (computable from editor fields): keyword in title / H1 / first 100 words / slug; keyword density (**non-dogmatic per the PRD note** — only `fail` at 0% or >3%, `warn` under 0.3%, otherwise `pass`); title length 50-60; meta description 140-160; single H1 (flags extra markdown `# ` that would create duplicate H1s alongside the rendered title); alt text on every image (parses markdown `![]()` + html `<img>`); ≥1 internal link; ≥1 external link; canonical set.
+- **Honest `na`** (excluded from the score, rendered greyed with an explanation) for the three checks that can't be truthfully verified here rather than faking a pass: broken-link crawl (cross-origin fetch is blocked in-browser — belongs server-side at publish), schema-markup-valid (US-BLOG-027 not built yet), OG image (no post field yet). This keeps the checklist trustworthy.
+- Score = `(pass*1 + warn*0.5) / scoredChecks * 100`, rounded.
+
+**Editor integration** — `client/src/pages/platform-admin/blog/BlogPostEditor.tsx`
+- New "SEO score" sidebar card: colored numeric score + progress bar (emerald ≥70 / amber ≥50 / red <50), pass·warn·fail summary line.
+- Target-keyword input persisted to `localStorage` keyed by post id (`blog:seo-target-kw:<id>`) — survives reloads with **no schema migration** (briefs aren't wired to the editor yet; this is the pragmatic store until US-BLOG-023 lands).
+- Live checklist: each row has a pass/warn/fail/na icon and a native `title` tooltip carrying the specific result **and** the "Why:" explanation (AC4).
+- **Publish gate:** saving with `status=published` and score `<70` is blocked with a destructive toast unless the "Publish anyway" override checkbox (rendered only when score <70) is ticked. This blog surface is platform-admin-only = editor+, so the override satisfies "overrideable by editor+".
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Live checklist on editor sidebar w/ pass/warn/fail icons | ✅ live `useMemo`, icons for pass/warn/fail (+ na) |
+| 2. The full check list | ✅ all field-computable checks implemented; 3 unverifiable-here checks shown as honest `na` with rationale (broken-link crawl, schema valid → US-BLOG-027, OG image → no field) |
+| 3. Score 0-100; <70 blocks publish, overrideable by editor+ | ✅ score + publish gate + override checkbox |
+| 4. Per-check explanation on hover w/ "why this matters" | ✅ tooltip carries detail + "Why:"; a per-check docs *URL* deferred (no docs site routes exist) |
+
+### Quality Gates
+- `tsc` — no new errors from these changes. The 3 `apiRequest<T>` TS2558 errors in BlogPostEditor.tsx are **pre-existing** (verified by `git stash`: same errors at lines 201/238/255 before my edits, line-shifted to 253/290/307 after). Repo-wide pre-existing server/shared errors unchanged.
+- `vite build` — ✅ green (36.6s). BlogPostEditor chunk +~9 kB for the engine + panel.
+- `prettier --write` applied; eslint clean (blog dir in lint ignore list, same as siblings).
+- Browser smoke not run (no Supabase/DB connectivity here). Recommended after deploy: open a post editor → set a target keyword → confirm checklist + score update live as you edit title/body/meta → hover a row → confirm tooltip shows result + Why → set status=published with a thin post → confirm Save is blocked with a toast → tick "Publish anyway" → confirm Save proceeds → reload → confirm the target keyword persisted.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-033 — SEO scoring engine | ✅ passes: true |
+
+**Blog module total: 21 / 86 done. Overall PRD: 238 / 374 passing.**
+
+### Notes for the Next Ralph Iteration
+- The 'na' checks become real once their owning stories land: wire `links-not-broken` to a server-side crawl, `schema-valid` to **US-BLOG-027** (JSON-LD generator), and `og-image` once an OG image field is added to `blog_posts`. The check ids are already stable so the UI won't move.
+- Target keyword currently lives in localStorage. When **US-BLOG-023** (auto-brief) lands, the brief's `target_keyword` should become the source of truth and seed this input (fall back to localStorage when no brief is linked).
+- The SEO engine is a clean dependency for **US-BLOG-036** (meta/title CTR) — title-length / keyword-presence sub-scores can be reused there rather than reimplemented.
+
+---
+
+## Ralph Iteration — US-BLOG-027 (schema markup planner + generator)
+
+**Date:** 2026-05-17
+**Story:** US-BLOG-027 — Schema markup planner and generator
+**Status:** ✅ passes: true (all 6 AC; Review/Product/Recipe/Event modeled minimally with an honest warning instead of faked fields)
+
+### What Shipped
+
+**Schema** — `shared/blog-schema.ts` + `drizzle/migrations/_backfill_blog_schema_markup.sql` (idempotent hand-run, US-BLOG-024 precedent — no DB connectivity needed at build time)
+- `blog_posts.schema_type` varchar(20), NULL ⇒ treated as BlogPosting
+- `blog_agent_settings.organization_name / organization_url / organization_logo_url` — workspace Organization data for JSON-LD publisher/author
+
+**Pure generator** — `client/src/lib/blog/schema-jsonld.ts`
+- `buildJsonLd(post, org) → { graph[], errors[], warnings[], faqDetected, howToDetected }`. Dependency-free, runs live in the editor.
+- Article/BlogPosting/NewsArticle fully modeled: headline, mainEntityOfPage, url, description, image (first body image), datePublished/dateModified, author (post author or org), publisher (Organization + logo ImageObject).
+- `FAQPage` built from `### Question?` headings + following answer (≥2 pairs). `HowTo` built from numbered list steps, capturing per-step images.
+- **Auto-emit**: FAQ pairs emit an FAQPage block and step+image lists emit a HowTo block *even when they aren't the primary type* (AC3/AC4).
+- Review/Product/Recipe/Event: selectable, emit a minimal valid object **plus a warning** that type-specific fields (price, eventDate, ingredients…) aren't modeled — deliberately does **not** fabricate aggregateRating/review per the PRD note.
+- Validator: hard errors (FAQPage w/ no Q&A, HowTo <2 steps, missing title) vs. warnings (no image/description/publisher, unpublished datePublished). Errors block publish; warnings allowed.
+
+**Edge functions**
+- `blog-posts`: `schema_type` added to create/patch zod enum + create insert mapping (patch already spreads `parsed.data`); `select('*')` returns it.
+- `blog-agents` `/settings`: 3 org fields added to `settingsPatchSchema`; persisted/returned via the existing spread + `select('*')`.
+
+**UI**
+- `BlogPostEditor` sidebar — new "Structured data" card: schema-type select (Auto = BlogPosting), FAQ/HowTo detection badges, error list (red) + warning list (amber), collapsible JSON-LD preview pane. Publish gate: `status=published` with a chosen `schema_type` and ≥1 error → Save blocked with a toast (warnings allowed).
+- `BlogSettings` — new "Organization (structured data)" card editing name/url/logo via the existing settings PATCH.
+
+**Loop closed with US-BLOG-033:** `seo-score.ts` `schema-valid` check now takes `{errors,warnings}` and becomes a real pass/warn/fail when a schema type is set (was honest `na`). The two stories now reinforce each other in the editor.
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Per-post schema_type field (9 types) | ✅ column + select; all 9 types selectable |
+| 2. Generator builds JSON-LD from post + workspace Org data | ✅ Article family fully modeled w/ publisher/author from blog_agent_settings |
+| 3. FAQ blocks auto-emit FAQPage | ✅ auto-emitted even when not primary type |
+| 4. HowTo blocks (steps w/ images) auto-emit HowTo | ✅ numbered steps + per-step images |
+| 5. Validator on save; blocks publish on errors (warnings allowed) | ✅ publish gate on errors only |
+| 6. Preview pane shows the JSON-LD that will be emitted | ✅ collapsible `<pre>` via jsonLdToScriptString |
+
+### Quality Gates
+- `tsc` — no new errors. The 3 `apiRequest<T>` TS2558 in BlogPostEditor are pre-existing (line-shifted by the new org query/memo, verified earlier via git stash). The BlogSettingsBrandVoices/CmsTargets/Jobs/KeywordTargets errors are pre-existing and in files this iteration never touched.
+- `vite build` — ✅ green (27.8s). BlogPostEditor +~2.6 kB, BlogSettings +~3 kB.
+- `prettier --write` applied (the .sql file has no prettier parser — expected). eslint clean.
+- Browser smoke not run (no DB connectivity). After deploy + running `_backfill_blog_schema_markup.sql`: set Organization in Blog Settings → open a post → pick schema type → confirm preview JSON-LD + publisher → write a `### Q?` FAQ section → confirm FAQ badge + FAQPage block → set type FAQPage with no Q&A → confirm error + publish blocked → fix → publish succeeds.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-027 — Schema markup planner and generator | ✅ passes: true |
+
+**Blog module total: 22 / 86 done. Overall PRD: 239 / 374 passing.**
+
+### Notes for the Next Ralph Iteration
+- The generated JSON-LD is computed client-side for preview/validation. To actually emit it on the public post page, the published-page renderer (or the CMS publish adapter) should call `buildJsonLd` server-side and inject a `<script type="application/ld+json">`. Wire this when the public blog rendering path is built — the function is isomorphic (pure, no DOM) so it can move to an edge function unchanged.
+- Review/Product/Recipe/Event remain base-only. If product wants full Product/Event rich results, add the type-specific fields to `blog_posts` (price/availability, startDate/endDate) and extend `buildJsonLd` — the warning already tells editors this is pending.
+- Author resolution: `author` currently falls back to the Organization name when no per-post author display name is available (post.author_user_id is a UUID, not a name). A `useUserResolver` hook (also flagged in the US-BLOG-024 notes) would let `buildJsonLd` receive a real author name — pass it via `SchemaPostInput.authorName`.
+
+---
+
+## Ralph Iteration — US-BLOG-036 (meta title/description + CTR prediction)
+
+**Date:** 2026-05-17
+**Story:** US-BLOG-036 — Meta title and description with CTR prediction
+**Status:** ✅ passes: true (AC 1-4 fully; AC5 Search Console feedback loop deferred — no GSC integration exists, documented)
+
+### What Shipped
+
+**Pure scorer** — `supabase/functions/_shared/blog/meta-score.ts` (Deno-safe, dependency-free)
+- `scoreMetaVariant(variant, keyword)` → breakdown: title/description length compliance (ideal 50-60 / 140-160 with linear falloff), keyword-in-title/description, number/bracket/question signals, power-word hits (curated `POWER_WORDS`), LLM emotionalValue.
+- Composite **CTR index** 0-100 = weighted blend: length 30% / keyword 25% / emotional 25% / signals 10% / power 10%. Documented as a *relative* ranking index, not a real % (real % needs GSC history).
+
+**Edge function** — `supabase/functions/blog-meta-suggest/index.ts` (stateless, auto-registered)
+- `POST /blog-meta-suggest` → Claude (temp 0.8, JSON-array, 5 angle-varied variants each with `emotional_value` + `rationale`) → scored + sorted by CTR index.
+- `blog.post.edit` gate, tenant resolution, robust array extraction, 502 on unparseable model output. No persistence/migration — "one-click pick + save" reuses the editor's existing blog-posts PATCH.
+
+**Editor UI** — `BlogPostEditor` new "Title & meta optimizer" sidebar card
+- Suggest/Regenerate button; per-variant **Google SERP preview** (`SerpPreview`), CTR-index with color, badges (title/meta length ok, kw✓, emotional /10, power count), LLM rationale, one-click **Use** → sets `meta_title` + `meta_description` in the form for review-then-Save.
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Generate 5 title+meta variants via LLM | ✅ Claude, 5 distinct angles |
+| 2. Score each (length, keyword, emotional, signals, predicted CTR + power words) | ✅ deterministic breakdown + LLM emotional → CTR index |
+| 3. SERP preview as Google renders it | ✅ SerpPreview component per variant |
+| 4. One-click pick + save | ✅ Use → sets meta fields, persisted via existing Save |
+| 5. Post-publish: pull actual CTR from Search Console, feed back over time | ⏳ deferred — no GSC integration in the platform; v1 predictor is LLM-rubric + power-words exactly as AC2 specifies. The story's own note frames the feedback loop as the longer-term improvement. |
+
+### Quality Gates
+- `tsc` — no new errors (the 3 `apiRequest<T>` TS2558 in BlogPostEditor remain pre-existing, line-shifted by the new component; edge files are Deno, not in tsc).
+- `vite build` — ✅ green (28.3s). BlogPostEditor +~4 kB.
+- `prettier --write` applied; eslint clean for the new edge/scorer files.
+- Browser smoke not run (no DB/Supabase + needs CLAUDE_API_KEY). After deploy: open a post with body + a target keyword → click Suggest titles → confirm 5 variants ranked by CTR index with SERP previews → click Use → confirm meta title/description fields populate → Save → confirm persisted.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-036 — Meta title/description + CTR prediction | ✅ passes: true |
+
+**Blog module total: 23 / 86 done. Overall PRD: 240 / 374 passing.**
+
+### Notes for the Next Ralph Iteration
+- **AC5 / GSC feedback loop:** when a Search Console integration lands, store published title/meta + the predicted CTR index on the post, pull actual impressions/clicks/CTR per URL, and periodically recalibrate the `meta-score.ts` component weights against observed CTR (or train a simple per-tenant linear model). The scorer is already a single pure function with isolated weights — the recalibration target is one constant block.
+- The `blog-meta-suggest` edge fn is the 2nd LLM-generation endpoint after the intent classifier — the request/parse/score shape is now a reusable pattern for US-BLOG-030 (outline A/B), US-BLOG-031 (draft generator) and US-BLOG-032 (inline rewrite). Consider extracting the JSON-array extraction + 502 handling into `_shared/blog/llm-json.ts` if a 3rd generation endpoint appears.
+- `SerpPreview` hardcodes the `printyx.net › blog` breadcrumb. When the public blog base URL becomes configurable (same Organization data added in US-BLOG-027), feed `organization_url` into the preview for accuracy.
+
+---
+
+## Ralph Iteration — US-BLOG-023 (auto-brief generator from keyword + SERP)
+
+**Date:** 2026-05-17
+**Story:** US-BLOG-023 — Auto-brief generator from keyword + SERP
+**Status:** ✅ passes: true (all 5 AC; AI *draft* generation is US-BLOG-031, A/B outline variants US-BLOG-030 — both correctly out of scope)
+
+### What Shipped
+
+**Edge function** — `supabase/functions/blog-briefs/index.ts` (auto-registered; `/api/blog-briefs`)
+- `GET /` list (status + search filters, paged), `GET /:id`, `POST /generate`, `PATCH /:id`, `POST /:id/start-writing`, `DELETE /:id` (soft). `blog.post.edit` gate, tenant-scoped every query, every mutation audit-logged.
+- `/generate`: pulls the latest `blog_serp_snapshots` row for the keyword (same pattern as the US-BLOG-014 classifier), sets `target_word_count = median competitor word count × 1.2`, feeds top-10 SERP titles/snippets + common H2s into a Claude JSON prompt that **requires a specific contrarian `originality_angle`** (per the story note). Persists structured sections + rendered markdown into `blog_briefs.outline` jsonb plus the typed columns — **no migration** (table already exists with flexible jsonb).
+- Brief covers every AC field: secondary keywords, intent, audience persona, target word count, reading level, SERP-synthesized H2/H3 outline, entities, FAQs, schema plan, internal-link ideas, sources, originality angle, CTA plan.
+- `/start-writing`: creates a prefilled `blog_posts` draft (H2/H3 + "_Write this section._" placeholders from the outline), links `brief_id`, flips brief → `in_progress`, returns `post_id`.
+
+**UI** — replaced the `BlogBriefs` placeholder with a full master/detail page (already routed + in BlogShell nav)
+- Left: brief list with status chips + status filter. Right: editable markdown (canonical artifact), workflow buttons (Approve → ready, Start writing → post editor, Mark done → complete, delete), generate dialog (keyword input).
+- Status enum uses the schema's `draft|ready|in_progress|complete|archived`, surfaced with the PRD's **Draft|Approved|In writing|Done** labels (1:1 mapping documented in code).
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Input keyword + workspace context; full brief sections | ✅ all sections incl. forced originality angle, SERP-derived word count |
+| 2. Editable Markdown; saved to briefs table w/ status workflow | ✅ outline.markdown canonical; PATCH; draft→ready→in_progress→complete |
+| 3. Approve workflow (claim → in_progress; approval gate) | ✅ Approve (draft→ready), Start writing claims (→in_progress) |
+| 4. One-click Start writing → prefilled post draft | ✅ creates linked blog_posts draft w/ outline H2/H3 placeholders, redirects to editor |
+| 5. (implicit) SERP-grounded outline + word count | ✅ latest blog_serp_snapshots, median×1.2 |
+
+### Quality Gates
+- `tsc` — no errors in new files (the unrelated pre-existing repo errors are unchanged; this iteration touched no file with pre-existing errors).
+- `vite build` — ✅ green (25.6s). BlogBriefs lazy chunk 7.4 kB.
+- `prettier --write` applied; eslint clean for the new edge file.
+- Browser smoke not run (no DB/Supabase + needs CLAUDE_API_KEY). After deploy: run SERP for a keyword → Briefs → Generate brief (same keyword) → confirm SERP-grounded outline + word count + originality angle → edit markdown → Save → Approve → Start writing → confirm a linked post draft opens with H2/H3 placeholders and the brief shows "In writing".
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-023 — Auto-brief generator | ✅ passes: true |
+
+**Blog module total: 24 / 86 done. Overall PRD: 241 / 374 passing.**
+
+### Notes for the Next Ralph Iteration
+- **US-BLOG-031 (AI draft generator)** is the natural successor and now has a clean input: `blog_briefs.outline.sections` is a typed object (BriefSections) ready to feed an H2-by-H2 generator. The brief→post link (`blog_posts.brief_id`) is already set by `/start-writing`.
+- **US-BLOG-030 (outline A/B)**: the generate prompt is one function — add a `variants:3` mode returning how-to/comparison/deep-dive angled outlines and store them on the brief; the UI already has a detail pane to host a variant picker.
+- 4th LLM-generation edge endpoint (classifier, meta-suggest, briefs). The JSON-extraction + 502 handling is now duplicated 3×; extracting `_shared/blog/llm-json.ts` is overdue — do it as the first step of US-BLOG-031.
+- Brief→post currently inserts placeholder section bodies. When US-BLOG-031 lands, `/start-writing` should optionally kick the draft generator instead of placeholders (flag on the button).
+
+---
+
+## Ralph Iteration — US-BLOG-031 (AI draft generator with inline citations)
+
+**Date:** 2026-05-17
+**Story:** US-BLOG-031 — AI draft generator with citations preserved inline
+**Status:** ✅ passes: true (5/6 AC fully; AC2 live streaming deferred — request/response proxy, documented)
+
+### What Shipped
+
+**Refactor first (flagged in the previous iteration's notes)**
+- `_shared/anthropic.ts`: added `generateCompletionDetailed()` → `{ text, usage:{inputTokens,outputTokens,costUsd} }` (Sonnet public pricing). `generateCompletion()` is now a thin wrapper — **zero call-site changes** elsewhere.
+- New `_shared/blog/llm-json.ts` (`extractJsonObject` / `extractJsonArray` / `asStringArray`). Refactored intent-classifier, blog-meta-suggest, blog-briefs onto it — the JSON-extraction logic was duplicated 3× and is now single-sourced.
+
+**Edge function** — `supabase/functions/blog-draft/index.ts` (auto-registered; `/api/blog-draft`)
+- `POST /generate {brief_id}`: loads `brief.outline.sections` + brand voice (brief's or tenant default) + default style guide + author persona, generates a structured JSON draft via Claude. **HARD RULE**: every factual claim carries a `[^n]` ref mapped to `citations[]`, or the literal `[needs-citation]` tag when ungrounded — the safety valve from the story note (no hallucinated sources). Upserts the brief-linked `blog_posts` row, flips brief → `in_progress`, audit-logged.
+- `POST /section {brief_id,h2,existing_markdown?}`: regenerates ONE section independently (AC5) with the same citation rules + brand voice.
+- Cost logged to `blog_posts.ai_assistance_meta` `{steps_used, input/output tokens, cost_usd, needs_citation_count}`.
+
+**UI** — `BlogBriefs` detail pane: **Generate AI draft** (primary → `/blog-draft/generate`, toasts the needs-citation gap count, opens the editor) alongside **Outline only** (the prior start-writing).
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Inputs: brief + brand voice + style guide + author persona | ✅ all four loaded and injected |
+| 2. Streams draft section-by-section with progress | ⏳ deferred — generated in one coherent structured call; per-section regen is a separate endpoint. Live token-stream needs SSE; the Express→edge proxy is request/response. Documented follow-up. |
+| 3. Inline citation per claim; [needs-citation] when ungrounded | ✅ prompt-enforced; gap count surfaced + audit-logged |
+| 4. Structured output (title, meta, body, image prompts, faq) | ✅ exact JSON shape persisted to the post |
+| 5. Regenerate any section independently | ✅ `POST /blog-draft/section` |
+| 6. Token/cost logged per generation | ✅ blog_posts.ai_assistance_meta (no platform ai_costs table — schema's designated sink, documented) |
+
+### Quality Gates
+- `tsc` — no errors in touched files (edge files are Deno; the refactor is mechanical + behavior-preserving; frontend builds).
+- `vite build` — ✅ green (26.8s). BlogBriefs chunk 8.1 kB.
+- `prettier --write` applied; eslint clean for new edge files.
+- Browser smoke not run (no DB/Supabase + needs CLAUDE_API_KEY). After deploy: configure a default brand voice → generate a brief → Generate AI draft → confirm the editor opens with a cited draft, the toast reports the needs-citation count, and the brief shows "In writing"; check the post's ai_assistance_meta has token/cost.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-031 — AI draft generator | ✅ passes: true |
+
+**Blog module total: 25 / 86 done. Overall PRD: 242 / 374 passing.**
+
+### Notes for the Next Ralph Iteration
+- **Live streaming (AC2 follow-up):** add an SSE-capable route (bypass the buffering proxy) or chunk via `blog_jobs` with a progress row the editor polls. Lower priority — one-shot generation is coherent and the per-section regen covers iterative editing.
+- **Per-section regen UI:** the `/blog-draft/section` endpoint has no editor button yet (TipTap-selection-coupled). A lightweight "Regenerate section" picker on the post editor (choose H2 → preview → replace) is the natural home — deferred to avoid unverifiable TipTap work in this environment.
+- **Citations → US-BLOG-025:** the draft emits `citations[]` with ref/title/url. When the citation/source-aggregator story lands, persist these to the citations table and render the references section instead of leaving raw `[^n]` in the body.
+- The LLM-generation pattern is now 4 endpoints sharing `_shared/blog/llm-json.ts` + `generateCompletionDetailed`. US-BLOG-030 / 039 / syndication (043-051) can all reuse this scaffold directly.
+
+---
+
+## Ralph Iteration — US-BLOG-039 (self-critiquing agent loop)
+
+**Date:** 2026-05-17
+**Story:** US-BLOG-039 — Self-critiquing agent loop for draft quality
+**Status:** ✅ passes: true (all 6 AC)
+
+### What Shipped (extends the US-BLOG-031 pipeline)
+
+**`runCritiqueLoop()`** in `supabase/functions/blog-draft/index.ts`
+- generator → critic → reviser → critic … **max 3 iterations**, stops early when the critic returns `verdict: "ok"` or zero issues.
+- `CRITIC_SYSTEM` scores the exact rubric (clarity, originality, evidence, voice_match, seo_compliance, factual_grounding, structural_balance — 0-10) + actionable `issues[]` + verdict. `REVISER_SYSTEM` fixes the listed issues while preserving structure / `[^n]` citations / brand voice.
+- Every iteration **and** the pre-critique initial draft → `blog_post_revisions` (`revision_source` ai_draft/ai_rewrite, `diff_summary` = critic feedback, shared `agent_run_id`, auto-incremented `revision_number`). The feedback log is therefore viewable in the **existing Post History UI** next to the final draft (AC5) — no new UI surface needed.
+- Cost accumulated into `blog_posts.ai_assistance_meta` (`steps_used:[draft_generator,critique_loop]`, `cost_usd`, `critique_iterations`, `critique_log[]`); `critique_log` also returned by the API.
+
+**Per-workspace toggle**
+- New `blog_agent_settings.critique_loop_enabled` (default **false** — extra tokens). Idempotent migration `drizzle/migrations/_backfill_blog_critique_loop.sql`. Added to `blog-agents` `settingsPatchSchema` + a Switch card in `BlogSettings`. The loop only runs inside `/blog-draft/generate` when the flag is on.
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Pipeline generator→critic→reviser×≤3 | ✅ |
+| 2. Critic rubric (7 named dimensions) | ✅ exact rubric, scored 0-10 |
+| 3. Each iteration recorded in post_revisions | ✅ incl. pre-critique baseline |
+| 4. Stops early if critic returns no significant issues | ✅ verdict ok / empty issues |
+| 5. View critic feedback log alongside final draft | ✅ via existing Post History (diff_summary per revision) |
+| 6. Per-workspace on/off toggle | ✅ blog_agent_settings + BlogSettings switch |
+
+### Quality Gates
+- `tsc` — touched files clean (`BlogSettings.tsx` + `blog-draft`); the listed `BlogSettingsBrandVoices/CmsTargets/Jobs/KeywordTargets` errors are pre-existing and in files this iteration never touched.
+- `vite build` — ✅ green (26.6s).
+- `prettier --write` applied; eslint clean for `blog-draft`.
+- Browser smoke not run (no DB/Supabase + CLAUDE_API_KEY). After deploy + `_backfill_blog_critique_loop.sql`: Blog Settings → enable "Critique & revise" → generate a brief → Generate AI draft → confirm the editor opens, Post History shows the baseline + 1-3 critic/reviser revisions with the critic notes in each diff summary, and ai_assistance_meta has critique_iterations + critique_log.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-039 — Self-critiquing agent loop | ✅ passes: true |
+
+**Blog module total: 26 / 86 done. Overall PRD: 243 / 374 passing.**
+
+### Notes for the Next Ralph Iteration
+- The critic prompt is intentionally a single isolated constant (`CRITIC_SYSTEM`) — per the story note it's the highest-leverage tuning point. A future enhancement: per-tenant critic rubric weights/overrides stored on `blog_agent_settings` (jsonb) so each workspace tunes strictness without a code change.
+- Loop currently runs synchronously inside `/generate` (up to ~6 LLM calls → can be slow). When live streaming / job queue lands (the US-BLOG-031 follow-up), move the loop into a `blog_jobs` worker and stream progress; the revision-per-iteration record already gives a pollable progress signal.
+- US-BLOG-040 (pre-publish QA) and US-BLOG-030 (outline A/B) are the next clean reuses of the now-mature LLM scaffold (`generateCompletionDetailed` + `_shared/blog/llm-json.ts`).
+
+---

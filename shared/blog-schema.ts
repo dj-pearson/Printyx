@@ -239,6 +239,9 @@ export const blogPosts = pgTable(
     reviewerUserId: varchar('reviewer_user_id'),
     // US-BLOG-024 — associate posts with a keyword cluster for calendar filtering.
     clusterId: uuid('cluster_id'),
+    // US-BLOG-027 — JSON-LD schema type. NULL is treated as 'BlogPosting'.
+    // Article | BlogPosting | NewsArticle | HowTo | Recipe | Review | Product | FAQPage | Event
+    schemaType: varchar('schema_type', { length: 20 }),
     status: varchar('status', { length: 20 }).notNull().default('draft'), // draft | in_review | scheduled | published | archived
     publishedAt: timestamp('published_at'),
     scheduledFor: timestamp('scheduled_for'),
@@ -493,6 +496,13 @@ export const blogAgentSettings = pgTable(
     ownDomain: varchar('own_domain', { length: 255 }),
     /** Domains to compare against. Stored as Postgres text[]. Default empty. */
     competitorDomains: text('competitor_domains').array(),
+    // US-BLOG-027 — workspace Organization data for JSON-LD publisher/author.
+    organizationName: varchar('organization_name', { length: 255 }),
+    organizationUrl: varchar('organization_url', { length: 500 }),
+    organizationLogoUrl: varchar('organization_logo_url', { length: 1000 }),
+    // US-BLOG-039 — run the critic→reviser loop after draft generation.
+    // Off by default (costs extra tokens).
+    critiqueLoopEnabled: boolean('critique_loop_enabled').notNull().default(false),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
