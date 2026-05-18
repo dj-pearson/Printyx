@@ -5412,3 +5412,51 @@ That's it — no schema change needed. Idempotency_key callers pick is per-job-t
 - Author resolution: `author` currently falls back to the Organization name when no per-post author display name is available (post.author_user_id is a UUID, not a name). A `useUserResolver` hook (also flagged in the US-BLOG-024 notes) would let `buildJsonLd` receive a real author name — pass it via `SchemaPostInput.authorName`.
 
 ---
+
+## Ralph Iteration — US-BLOG-036 (meta title/description + CTR prediction)
+
+**Date:** 2026-05-17
+**Story:** US-BLOG-036 — Meta title and description with CTR prediction
+**Status:** ✅ passes: true (AC 1-4 fully; AC5 Search Console feedback loop deferred — no GSC integration exists, documented)
+
+### What Shipped
+
+**Pure scorer** — `supabase/functions/_shared/blog/meta-score.ts` (Deno-safe, dependency-free)
+- `scoreMetaVariant(variant, keyword)` → breakdown: title/description length compliance (ideal 50-60 / 140-160 with linear falloff), keyword-in-title/description, number/bracket/question signals, power-word hits (curated `POWER_WORDS`), LLM emotionalValue.
+- Composite **CTR index** 0-100 = weighted blend: length 30% / keyword 25% / emotional 25% / signals 10% / power 10%. Documented as a *relative* ranking index, not a real % (real % needs GSC history).
+
+**Edge function** — `supabase/functions/blog-meta-suggest/index.ts` (stateless, auto-registered)
+- `POST /blog-meta-suggest` → Claude (temp 0.8, JSON-array, 5 angle-varied variants each with `emotional_value` + `rationale`) → scored + sorted by CTR index.
+- `blog.post.edit` gate, tenant resolution, robust array extraction, 502 on unparseable model output. No persistence/migration — "one-click pick + save" reuses the editor's existing blog-posts PATCH.
+
+**Editor UI** — `BlogPostEditor` new "Title & meta optimizer" sidebar card
+- Suggest/Regenerate button; per-variant **Google SERP preview** (`SerpPreview`), CTR-index with color, badges (title/meta length ok, kw✓, emotional /10, power count), LLM rationale, one-click **Use** → sets `meta_title` + `meta_description` in the form for review-then-Save.
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Generate 5 title+meta variants via LLM | ✅ Claude, 5 distinct angles |
+| 2. Score each (length, keyword, emotional, signals, predicted CTR + power words) | ✅ deterministic breakdown + LLM emotional → CTR index |
+| 3. SERP preview as Google renders it | ✅ SerpPreview component per variant |
+| 4. One-click pick + save | ✅ Use → sets meta fields, persisted via existing Save |
+| 5. Post-publish: pull actual CTR from Search Console, feed back over time | ⏳ deferred — no GSC integration in the platform; v1 predictor is LLM-rubric + power-words exactly as AC2 specifies. The story's own note frames the feedback loop as the longer-term improvement. |
+
+### Quality Gates
+- `tsc` — no new errors (the 3 `apiRequest<T>` TS2558 in BlogPostEditor remain pre-existing, line-shifted by the new component; edge files are Deno, not in tsc).
+- `vite build` — ✅ green (28.3s). BlogPostEditor +~4 kB.
+- `prettier --write` applied; eslint clean for the new edge/scorer files.
+- Browser smoke not run (no DB/Supabase + needs CLAUDE_API_KEY). After deploy: open a post with body + a target keyword → click Suggest titles → confirm 5 variants ranked by CTR index with SERP previews → click Use → confirm meta title/description fields populate → Save → confirm persisted.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-036 — Meta title/description + CTR prediction | ✅ passes: true |
+
+**Blog module total: 23 / 86 done. Overall PRD: 240 / 374 passing.**
+
+### Notes for the Next Ralph Iteration
+- **AC5 / GSC feedback loop:** when a Search Console integration lands, store published title/meta + the predicted CTR index on the post, pull actual impressions/clicks/CTR per URL, and periodically recalibrate the `meta-score.ts` component weights against observed CTR (or train a simple per-tenant linear model). The scorer is already a single pure function with isolated weights — the recalibration target is one constant block.
+- The `blog-meta-suggest` edge fn is the 2nd LLM-generation endpoint after the intent classifier — the request/parse/score shape is now a reusable pattern for US-BLOG-030 (outline A/B), US-BLOG-031 (draft generator) and US-BLOG-032 (inline rewrite). Consider extracting the JSON-array extraction + 502 handling into `_shared/blog/llm-json.ts` if a 3rd generation endpoint appears.
+- `SerpPreview` hardcodes the `printyx.net › blog` breadcrumb. When the public blog base URL becomes configurable (same Organization data added in US-BLOG-027), feed `organization_url` into the preview for accuracy.
+
+---

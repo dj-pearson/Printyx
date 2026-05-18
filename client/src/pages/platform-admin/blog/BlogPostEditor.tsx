@@ -156,6 +156,154 @@ function SeoCheckIcon({ status }: { status: CheckStatus }) {
   return <MinusCircle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />;
 }
 
+interface MetaBreakdown {
+  titleLength: { value: number; score: number; ok: boolean };
+  descriptionLength: { value: number; score: number; ok: boolean };
+  keywordInTitle: boolean;
+  keywordInDescription: boolean;
+  hasNumber: boolean;
+  hasBracket: boolean;
+  hasQuestion: boolean;
+  powerWords: string[];
+  emotionalValue: number;
+  ctrIndex: number;
+}
+interface MetaVariant {
+  title: string;
+  description: string;
+  rationale: string;
+  breakdown: MetaBreakdown;
+}
+
+function SerpPreview({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded border bg-background p-2">
+      <div className="text-[11px] text-muted-foreground truncate">https://printyx.net › blog</div>
+      <div className="text-[#1a0dab] text-sm leading-tight truncate">{title || 'Untitled'}</div>
+      <div className="text-[12px] text-muted-foreground leading-snug line-clamp-2">
+        {description || 'No description set — Google will generate one.'}
+      </div>
+    </div>
+  );
+}
+
+function MetaOptimizerCard({
+  title,
+  bodyMarkdown,
+  metaTitle,
+  metaDescription,
+  targetKeyword,
+  onApply,
+}: {
+  title: string;
+  bodyMarkdown: string;
+  metaTitle: string;
+  metaDescription: string;
+  targetKeyword: string;
+  onApply: (metaTitle: string, metaDescription: string) => void;
+}) {
+  const { toast } = useToast();
+  const [variants, setVariants] = useState<MetaVariant[]>([]);
+
+  const suggest = useMutation({
+    mutationFn: () =>
+      apiRequest('/api/blog-meta-suggest', 'POST', {
+        title,
+        body_markdown: bodyMarkdown,
+        target_keyword: targetKeyword || undefined,
+        current_meta_title: metaTitle || undefined,
+        current_meta_description: metaDescription || undefined,
+      }),
+    onSuccess: (resp: { variants: MetaVariant[] }) => {
+      setVariants(resp.variants ?? []);
+      if (!resp.variants?.length) {
+        toast({ title: 'No variants returned', variant: 'destructive' });
+      }
+    },
+    onError: (err: Error) =>
+      toast({ title: 'Suggestion failed', description: err.message, variant: 'destructive' }),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm">Title &amp; meta optimizer</CardTitle>
+        <CardDescription className="text-xs">
+          US-BLOG-036 · 5 LLM variants ranked by CTR index.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Button
+          type="button"
+          size="sm"
+          disabled={suggest.isPending || (!title.trim() && !bodyMarkdown.trim())}
+          onClick={() => suggest.mutate()}
+        >
+          {suggest.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+          {variants.length ? 'Regenerate' : 'Suggest titles'}
+        </Button>
+
+        {variants.map((v, i) => (
+          <div key={i} className="rounded-md border p-2 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span
+                className={cn(
+                  'text-xs font-semibold tabular-nums',
+                  v.breakdown.ctrIndex >= 70
+                    ? 'text-emerald-600'
+                    : v.breakdown.ctrIndex >= 50
+                      ? 'text-amber-600'
+                      : 'text-muted-foreground',
+                )}
+              >
+                CTR index {v.breakdown.ctrIndex}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => onApply(v.title, v.description)}
+              >
+                Use
+              </Button>
+            </div>
+            <SerpPreview title={v.title} description={v.description} />
+            <div className="flex flex-wrap gap-1">
+              <Badge
+                variant={v.breakdown.titleLength.ok ? 'secondary' : 'outline'}
+                className="text-[10px]"
+              >
+                title {v.breakdown.titleLength.value}c
+              </Badge>
+              <Badge
+                variant={v.breakdown.descriptionLength.ok ? 'secondary' : 'outline'}
+                className="text-[10px]"
+              >
+                meta {v.breakdown.descriptionLength.value}c
+              </Badge>
+              {v.breakdown.keywordInTitle ? (
+                <Badge variant="secondary" className="text-[10px]">
+                  kw✓
+                </Badge>
+              ) : null}
+              <Badge variant="outline" className="text-[10px]">
+                emo {v.breakdown.emotionalValue}/10
+              </Badge>
+              {v.breakdown.powerWords.length ? (
+                <Badge variant="outline" className="text-[10px]">
+                  {v.breakdown.powerWords.length} power
+                </Badge>
+              ) : null}
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-tight">{v.rationale}</p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function BlogPostEditor() {
   const [, navigate] = useLocation();
   const [editMatch, editParams] = useRoute('/platform-admin/blog/posts/:id/edit');
@@ -833,6 +981,19 @@ export default function BlogPostEditor() {
                 ) : null}
               </CardContent>
             </Card>
+
+            <MetaOptimizerCard
+              title={form.title}
+              bodyMarkdown={form.body_markdown}
+              metaTitle={form.meta_title}
+              metaDescription={form.meta_description}
+              targetKeyword={targetKeyword}
+              onApply={(mt, md) => {
+                set('meta_title', mt);
+                set('meta_description', md);
+                toast({ title: 'Applied — review then Save' });
+              }}
+            />
           </div>
         </div>
       </div>
