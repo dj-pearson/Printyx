@@ -5460,3 +5460,51 @@ That's it — no schema change needed. Idempotency_key callers pick is per-job-t
 - `SerpPreview` hardcodes the `printyx.net › blog` breadcrumb. When the public blog base URL becomes configurable (same Organization data added in US-BLOG-027), feed `organization_url` into the preview for accuracy.
 
 ---
+
+## Ralph Iteration — US-BLOG-023 (auto-brief generator from keyword + SERP)
+
+**Date:** 2026-05-17
+**Story:** US-BLOG-023 — Auto-brief generator from keyword + SERP
+**Status:** ✅ passes: true (all 5 AC; AI *draft* generation is US-BLOG-031, A/B outline variants US-BLOG-030 — both correctly out of scope)
+
+### What Shipped
+
+**Edge function** — `supabase/functions/blog-briefs/index.ts` (auto-registered; `/api/blog-briefs`)
+- `GET /` list (status + search filters, paged), `GET /:id`, `POST /generate`, `PATCH /:id`, `POST /:id/start-writing`, `DELETE /:id` (soft). `blog.post.edit` gate, tenant-scoped every query, every mutation audit-logged.
+- `/generate`: pulls the latest `blog_serp_snapshots` row for the keyword (same pattern as the US-BLOG-014 classifier), sets `target_word_count = median competitor word count × 1.2`, feeds top-10 SERP titles/snippets + common H2s into a Claude JSON prompt that **requires a specific contrarian `originality_angle`** (per the story note). Persists structured sections + rendered markdown into `blog_briefs.outline` jsonb plus the typed columns — **no migration** (table already exists with flexible jsonb).
+- Brief covers every AC field: secondary keywords, intent, audience persona, target word count, reading level, SERP-synthesized H2/H3 outline, entities, FAQs, schema plan, internal-link ideas, sources, originality angle, CTA plan.
+- `/start-writing`: creates a prefilled `blog_posts` draft (H2/H3 + "_Write this section._" placeholders from the outline), links `brief_id`, flips brief → `in_progress`, returns `post_id`.
+
+**UI** — replaced the `BlogBriefs` placeholder with a full master/detail page (already routed + in BlogShell nav)
+- Left: brief list with status chips + status filter. Right: editable markdown (canonical artifact), workflow buttons (Approve → ready, Start writing → post editor, Mark done → complete, delete), generate dialog (keyword input).
+- Status enum uses the schema's `draft|ready|in_progress|complete|archived`, surfaced with the PRD's **Draft|Approved|In writing|Done** labels (1:1 mapping documented in code).
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Input keyword + workspace context; full brief sections | ✅ all sections incl. forced originality angle, SERP-derived word count |
+| 2. Editable Markdown; saved to briefs table w/ status workflow | ✅ outline.markdown canonical; PATCH; draft→ready→in_progress→complete |
+| 3. Approve workflow (claim → in_progress; approval gate) | ✅ Approve (draft→ready), Start writing claims (→in_progress) |
+| 4. One-click Start writing → prefilled post draft | ✅ creates linked blog_posts draft w/ outline H2/H3 placeholders, redirects to editor |
+| 5. (implicit) SERP-grounded outline + word count | ✅ latest blog_serp_snapshots, median×1.2 |
+
+### Quality Gates
+- `tsc` — no errors in new files (the unrelated pre-existing repo errors are unchanged; this iteration touched no file with pre-existing errors).
+- `vite build` — ✅ green (25.6s). BlogBriefs lazy chunk 7.4 kB.
+- `prettier --write` applied; eslint clean for the new edge file.
+- Browser smoke not run (no DB/Supabase + needs CLAUDE_API_KEY). After deploy: run SERP for a keyword → Briefs → Generate brief (same keyword) → confirm SERP-grounded outline + word count + originality angle → edit markdown → Save → Approve → Start writing → confirm a linked post draft opens with H2/H3 placeholders and the brief shows "In writing".
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-023 — Auto-brief generator | ✅ passes: true |
+
+**Blog module total: 24 / 86 done. Overall PRD: 241 / 374 passing.**
+
+### Notes for the Next Ralph Iteration
+- **US-BLOG-031 (AI draft generator)** is the natural successor and now has a clean input: `blog_briefs.outline.sections` is a typed object (BriefSections) ready to feed an H2-by-H2 generator. The brief→post link (`blog_posts.brief_id`) is already set by `/start-writing`.
+- **US-BLOG-030 (outline A/B)**: the generate prompt is one function — add a `variants:3` mode returning how-to/comparison/deep-dive angled outlines and store them on the brief; the UI already has a detail pane to host a variant picker.
+- 4th LLM-generation edge endpoint (classifier, meta-suggest, briefs). The JSON-extraction + 502 handling is now duplicated 3×; extracting `_shared/blog/llm-json.ts` is overdue — do it as the first step of US-BLOG-031.
+- Brief→post currently inserts placeholder section bodies. When US-BLOG-031 lands, `/start-writing` should optionally kick the draft generator instead of placeholders (flag on the button).
+
+---
