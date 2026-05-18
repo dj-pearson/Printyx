@@ -11,6 +11,7 @@
 
 import { generateCompletion } from '../../anthropic.ts';
 import { createLogger } from '../../logger.ts';
+import { extractJsonObject } from '../llm-json.ts';
 
 const log = createLogger('intent-classifier');
 
@@ -59,24 +60,6 @@ function buildUserPrompt(keyword: string, serp: SerpContextItem[]): string {
     lines.push('', 'No SERP context available — classify from the keyword text alone.');
   }
   return lines.join('\n');
-}
-
-/**
- * Extract the first balanced JSON object from a model response, tolerating
- * code fences and leading/trailing prose.
- */
-function extractJsonObject(text: string): unknown {
-  const trimmed = text
-    .trim()
-    .replace(/^```(?:json)?/i, '')
-    .replace(/```$/i, '')
-    .trim();
-  const start = trimmed.indexOf('{');
-  const end = trimmed.lastIndexOf('}');
-  if (start === -1 || end === -1 || end < start) {
-    throw new Error('No JSON object found in model response');
-  }
-  return JSON.parse(trimmed.slice(start, end + 1));
 }
 
 function coerceIntent(value: unknown): SearchIntent {

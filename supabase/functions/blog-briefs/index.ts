@@ -25,6 +25,7 @@ import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { writeAuditLog, withRequestContext } from '../_shared/blog/audit-log.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
+import { extractJsonObject, asStringArray } from '../_shared/blog/llm-json.ts';
 
 type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
@@ -89,27 +90,6 @@ Return ONLY a JSON object (no markdown, no prose) with EXACTLY these keys:
 }
 
 The originality_angle must be specific and non-obvious — it is the most important field.`;
-
-function extractJsonObject(text: string): Record<string, unknown> {
-  const t = text
-    .trim()
-    .replace(/^```(?:json)?/i, '')
-    .replace(/```$/i, '')
-    .trim();
-  const s = t.indexOf('{');
-  const e = t.lastIndexOf('}');
-  if (s === -1 || e === -1 || e < s) throw new Error('No JSON object in model response');
-  return JSON.parse(t.slice(s, e + 1)) as Record<string, unknown>;
-}
-
-function asStringArray(v: unknown): string[] {
-  return Array.isArray(v)
-    ? v
-        .map((x) => String(x))
-        .filter(Boolean)
-        .slice(0, 30)
-    : [];
-}
 
 function renderMarkdown(s: BriefSections): string {
   const lines: string[] = [];

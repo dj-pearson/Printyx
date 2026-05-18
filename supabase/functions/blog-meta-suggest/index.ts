@@ -21,6 +21,7 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 import { generateCompletion } from '../_shared/anthropic.ts';
+import { extractJsonArray } from '../_shared/blog/llm-json.ts';
 import { scoreMetaVariant, type MetaVariantInput } from '../_shared/blog/meta-score.ts';
 
 const reqSchema = z.object({
@@ -50,20 +51,6 @@ Generate EXACTLY 5 distinct variants. Vary the angle (benefit-led, curiosity, nu
 
 Respond with ONLY a JSON array of 5 objects, no markdown, no prose:
 [{"title":"...","description":"...","emotional_value":7,"rationale":"..."}]`;
-
-function extractJsonArray(text: string): unknown {
-  const trimmed = text
-    .trim()
-    .replace(/^```(?:json)?/i, '')
-    .replace(/```$/i, '')
-    .trim();
-  const start = trimmed.indexOf('[');
-  const end = trimmed.lastIndexOf(']');
-  if (start === -1 || end === -1 || end < start) {
-    throw new Error('No JSON array found in model response');
-  }
-  return JSON.parse(trimmed.slice(start, end + 1));
-}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);

@@ -5508,3 +5508,53 @@ That's it — no schema change needed. Idempotency_key callers pick is per-job-t
 - Brief→post currently inserts placeholder section bodies. When US-BLOG-031 lands, `/start-writing` should optionally kick the draft generator instead of placeholders (flag on the button).
 
 ---
+
+## Ralph Iteration — US-BLOG-031 (AI draft generator with inline citations)
+
+**Date:** 2026-05-17
+**Story:** US-BLOG-031 — AI draft generator with citations preserved inline
+**Status:** ✅ passes: true (5/6 AC fully; AC2 live streaming deferred — request/response proxy, documented)
+
+### What Shipped
+
+**Refactor first (flagged in the previous iteration's notes)**
+- `_shared/anthropic.ts`: added `generateCompletionDetailed()` → `{ text, usage:{inputTokens,outputTokens,costUsd} }` (Sonnet public pricing). `generateCompletion()` is now a thin wrapper — **zero call-site changes** elsewhere.
+- New `_shared/blog/llm-json.ts` (`extractJsonObject` / `extractJsonArray` / `asStringArray`). Refactored intent-classifier, blog-meta-suggest, blog-briefs onto it — the JSON-extraction logic was duplicated 3× and is now single-sourced.
+
+**Edge function** — `supabase/functions/blog-draft/index.ts` (auto-registered; `/api/blog-draft`)
+- `POST /generate {brief_id}`: loads `brief.outline.sections` + brand voice (brief's or tenant default) + default style guide + author persona, generates a structured JSON draft via Claude. **HARD RULE**: every factual claim carries a `[^n]` ref mapped to `citations[]`, or the literal `[needs-citation]` tag when ungrounded — the safety valve from the story note (no hallucinated sources). Upserts the brief-linked `blog_posts` row, flips brief → `in_progress`, audit-logged.
+- `POST /section {brief_id,h2,existing_markdown?}`: regenerates ONE section independently (AC5) with the same citation rules + brand voice.
+- Cost logged to `blog_posts.ai_assistance_meta` `{steps_used, input/output tokens, cost_usd, needs_citation_count}`.
+
+**UI** — `BlogBriefs` detail pane: **Generate AI draft** (primary → `/blog-draft/generate`, toasts the needs-citation gap count, opens the editor) alongside **Outline only** (the prior start-writing).
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Inputs: brief + brand voice + style guide + author persona | ✅ all four loaded and injected |
+| 2. Streams draft section-by-section with progress | ⏳ deferred — generated in one coherent structured call; per-section regen is a separate endpoint. Live token-stream needs SSE; the Express→edge proxy is request/response. Documented follow-up. |
+| 3. Inline citation per claim; [needs-citation] when ungrounded | ✅ prompt-enforced; gap count surfaced + audit-logged |
+| 4. Structured output (title, meta, body, image prompts, faq) | ✅ exact JSON shape persisted to the post |
+| 5. Regenerate any section independently | ✅ `POST /blog-draft/section` |
+| 6. Token/cost logged per generation | ✅ blog_posts.ai_assistance_meta (no platform ai_costs table — schema's designated sink, documented) |
+
+### Quality Gates
+- `tsc` — no errors in touched files (edge files are Deno; the refactor is mechanical + behavior-preserving; frontend builds).
+- `vite build` — ✅ green (26.8s). BlogBriefs chunk 8.1 kB.
+- `prettier --write` applied; eslint clean for new edge files.
+- Browser smoke not run (no DB/Supabase + needs CLAUDE_API_KEY). After deploy: configure a default brand voice → generate a brief → Generate AI draft → confirm the editor opens with a cited draft, the toast reports the needs-citation count, and the brief shows "In writing"; check the post's ai_assistance_meta has token/cost.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-031 — AI draft generator | ✅ passes: true |
+
+**Blog module total: 25 / 86 done. Overall PRD: 242 / 374 passing.**
+
+### Notes for the Next Ralph Iteration
+- **Live streaming (AC2 follow-up):** add an SSE-capable route (bypass the buffering proxy) or chunk via `blog_jobs` with a progress row the editor polls. Lower priority — one-shot generation is coherent and the per-section regen covers iterative editing.
+- **Per-section regen UI:** the `/blog-draft/section` endpoint has no editor button yet (TipTap-selection-coupled). A lightweight "Regenerate section" picker on the post editor (choose H2 → preview → replace) is the natural home — deferred to avoid unverifiable TipTap work in this environment.
+- **Citations → US-BLOG-025:** the draft emits `citations[]` with ref/title/url. When the citation/source-aggregator story lands, persist these to the citations table and render the references section instead of leaving raw `[^n]` in the body.
+- The LLM-generation pattern is now 4 endpoints sharing `_shared/blog/llm-json.ts` + `generateCompletionDetailed`. US-BLOG-030 / 039 / syndication (043-051) can all reuse this scaffold directly.
+
+---

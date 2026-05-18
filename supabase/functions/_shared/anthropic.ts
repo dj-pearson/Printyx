@@ -57,7 +57,29 @@ function getApiKey(): string {
   return key;
 }
 
-export async function generateCompletion(options: GenerateCompletionOptions): Promise<string> {
+export interface CompletionUsage {
+  inputTokens: number;
+  outputTokens: number;
+  /** Best-effort USD estimate (Claude 3.5 Sonnet public pricing). */
+  costUsd: number;
+}
+
+export interface DetailedCompletion {
+  text: string;
+  usage: CompletionUsage;
+}
+
+// Claude 3.5 Sonnet public pricing per million tokens (USD).
+const SONNET_INPUT_PER_MTOK = 3;
+const SONNET_OUTPUT_PER_MTOK = 15;
+
+/**
+ * Like generateCompletion but also returns token usage + a cost estimate so
+ * callers can persist per-generation cost (US-BLOG-031).
+ */
+export async function generateCompletionDetailed(
+  options: GenerateCompletionOptions,
+): Promise<DetailedCompletion> {
   const apiKey = getApiKey();
 
   const body = {
@@ -92,17 +114,27 @@ export async function generateCompletion(options: GenerateCompletionOptions): Pr
 
   const json = (await res.json()) as ClaudeResponse;
   const text = json.content[0]?.text ?? '';
+  const inputTokens = json.usage?.input_tokens ?? 0;
+  const outputTokens = json.usage?.output_tokens ?? 0;
+  const costUsd =
+    (inputTokens / 1_000_000) * SONNET_INPUT_PER_MTOK +
+    (outputTokens / 1_000_000) * SONNET_OUTPUT_PER_MTOK;
 
   log.info(
     {
       model: body.model,
-      inputTokens: json.usage?.input_tokens,
-      outputTokens: json.usage?.output_tokens,
+      inputTokens,
+      outputTokens,
       stopReason: json.stop_reason,
       durationMs: Date.now() - t0,
     },
     'claude_completion',
   );
 
+  return { text, usage: { inputTokens, outputTokens, costUsd } };
+}
+
+export async function generateCompletion(options: GenerateCompletionOptions): Promise<string> {
+  const { text } = await generateCompletionDetailed(options);
   return text;
 }

@@ -142,6 +142,27 @@ export default function BlogBriefs() {
       }),
   });
 
+  const generateDraft = useMutation({
+    mutationFn: (id: string) => apiRequest('/api/blog-draft/generate', 'POST', { brief_id: id }),
+    onSuccess: (resp: { post_id: string; ai_meta?: { needs_citation_count?: number } }) => {
+      const gaps = resp.ai_meta?.needs_citation_count ?? 0;
+      toast({
+        title: 'AI draft generated',
+        description: gaps
+          ? `${gaps} claim(s) tagged [needs-citation] — review before publish.`
+          : 'All claims carry citations.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/blog-briefs'] });
+      navigate(`/platform-admin/blog/posts/${resp.post_id}/edit`);
+    },
+    onError: (err: Error) =>
+      toast({
+        title: 'Draft generation failed',
+        description: err.message,
+        variant: 'destructive',
+      }),
+  });
+
   function openBrief(b: Brief) {
     setSelectedId(b.id);
     setDraftMarkdown(b.outline?.markdown ?? '');
@@ -244,18 +265,33 @@ export default function BlogBriefs() {
                         </Button>
                       ) : null}
                       {selected.status !== 'complete' && selected.status !== 'archived' ? (
-                        <Button
-                          size="sm"
-                          disabled={startWriting.isPending}
-                          onClick={() => startWriting.mutate(selected.id)}
-                        >
-                          {startWriting.isPending ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <PenLine className="h-4 w-4 mr-2" />
-                          )}
-                          Start writing
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            disabled={generateDraft.isPending}
+                            onClick={() => generateDraft.mutate(selected.id)}
+                          >
+                            {generateDraft.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-4 w-4 mr-2" />
+                            )}
+                            Generate AI draft
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={startWriting.isPending}
+                            onClick={() => startWriting.mutate(selected.id)}
+                          >
+                            {startWriting.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <PenLine className="h-4 w-4 mr-2" />
+                            )}
+                            Outline only
+                          </Button>
+                        </>
                       ) : null}
                       {selected.status === 'in_progress' ? (
                         <Button
