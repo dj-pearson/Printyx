@@ -500,6 +500,9 @@ export const blogAgentSettings = pgTable(
     organizationName: varchar('organization_name', { length: 255 }),
     organizationUrl: varchar('organization_url', { length: 500 }),
     organizationLogoUrl: varchar('organization_logo_url', { length: 1000 }),
+    // US-BLOG-039 — run the critic→reviser loop after draft generation.
+    // Off by default (costs extra tokens).
+    critiqueLoopEnabled: boolean('critique_loop_enabled').notNull().default(false),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },

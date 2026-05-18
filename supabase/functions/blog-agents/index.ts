@@ -43,6 +43,8 @@ const settingsPatchSchema = z.object({
   organization_name: z.string().max(255).nullable().optional(),
   organization_url: z.string().url().max(500).nullable().optional(),
   organization_logo_url: z.string().url().max(1000).nullable().optional(),
+  // US-BLOG-039: self-critique loop toggle.
+  critique_loop_enabled: z.boolean().optional(),
 });
 
 // Canonical RBAC code: `blog.agent.toggle` (granted only to PLATFORM_ADMIN by

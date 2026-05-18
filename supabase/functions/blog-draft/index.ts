@@ -174,6 +174,152 @@ function briefPrompt(s: BriefSections): string {
     .join('\n');
 }
 
+const CRITIC_SYSTEM = `You are a ruthless content editor. Critique the draft against this rubric, scoring each 0-10:
+clarity, originality, evidence, voice_match, seo_compliance, factual_grounding, structural_balance.
+
+Return ONLY JSON:
+{"scores":{"clarity":n,"originality":n,"evidence":n,"voice_match":n,"seo_compliance":n,"factual_grounding":n,"structural_balance":n},
+ "issues":["specific, actionable problem", ...],
+ "verdict":"ok" | "revise"}
+
+Return verdict "ok" (and an empty issues array) only when there are NO significant issues. Be strict but do not invent problems.`;
+
+const REVISER_SYSTEM = `You are revising an article to fix a critic's specific issues while preserving its structure, citations ([^n] / [needs-citation]) and brand voice. Output ONLY the full revised body markdown — no JSON, no commentary.`;
+
+interface CritiqueIteration {
+  iteration: number;
+  scores: Record<string, number>;
+  issues: string[];
+  verdict: string;
+  cost_usd: number;
+}
+
+async function nextRevisionNumber(admin: Admin, tenantId: string, postId: string): Promise<number> {
+  const { data } = await admin
+    .from('blog_post_revisions')
+    .select('revision_number')
+    .eq('tenant_id', tenantId)
+    .eq('post_id', postId)
+    .order('revision_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return ((data?.revision_number as number | undefined) ?? 0) + 1;
+}
+
+async function recordRevision(
+  admin: Admin,
+  tenantId: string,
+  postId: string,
+  source: string,
+  bodyMarkdown: string,
+  title: string,
+  diffSummary: string,
+  agentRunId: string,
+): Promise<void> {
+  const revisionNumber = await nextRevisionNumber(admin, tenantId, postId);
+  await admin.from('blog_post_revisions').insert({
+    post_id: postId,
+    tenant_id: tenantId,
+    revision_number: revisionNumber,
+    title,
+    body_markdown: bodyMarkdown,
+    revision_source: source,
+    diff_summary: diffSummary.slice(0, 2000),
+    agent_run_id: agentRunId,
+  });
+}
+
+/**
+ * generator → critic → reviser → critic … (max 3 iterations). Stops early
+ * when the critic returns verdict "ok". Every iteration is persisted to
+ * blog_post_revisions so the feedback log is visible in Post History.
+ */
+async function runCritiqueLoop(
+  admin: Admin,
+  tenantId: string,
+  postId: string,
+  title: string,
+  initialBody: string,
+  voiceText: string,
+  agentRunId: string,
+): Promise<{ body: string; log: CritiqueIteration[]; costUsd: number }> {
+  let body = initialBody;
+  const log: CritiqueIteration[] = [];
+  let costUsd = 0;
+  const MAX = 3;
+
+  for (let i = 1; i <= MAX; i++) {
+    const critic = await generateCompletionDetailed({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1500,
+      temperature: 0,
+      system: CRITIC_SYSTEM,
+      messages: [{ role: 'user', content: body.slice(0, 30_000) }],
+    });
+    costUsd += critic.usage.costUsd;
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = extractJsonObject(critic.text);
+    } catch {
+      break; // unparseable critic — stop the loop rather than spin
+    }
+    const issues = asStringArray(parsed.issues, 20);
+    const verdict = String(parsed.verdict ?? (issues.length ? 'revise' : 'ok'));
+    const scores = (parsed.scores ?? {}) as Record<string, number>;
+    const iter: CritiqueIteration = {
+      iteration: i,
+      scores,
+      issues,
+      verdict,
+      cost_usd: Number(critic.usage.costUsd.toFixed(4)),
+    };
+    log.push(iter);
+
+    if (verdict === 'ok' || issues.length === 0) {
+      await recordRevision(
+        admin,
+        tenantId,
+        postId,
+        'ai_rewrite',
+        body,
+        title,
+        `Critic iteration ${i}: no significant issues (verdict ok).`,
+        agentRunId,
+      );
+      break;
+    }
+
+    const reviser = await generateCompletionDetailed({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 8000,
+      temperature: 0.5,
+      system: `${REVISER_SYSTEM}\n\nBRAND VOICE:\n${voiceText}`,
+      messages: [
+        {
+          role: 'user',
+          content: `Fix these issues:\n- ${issues.join('\n- ')}\n\nCurrent draft:\n${body.slice(0, 30_000)}`,
+        },
+      ],
+    });
+    costUsd += reviser.usage.costUsd;
+    body = reviser.text.trim() || body;
+
+    await recordRevision(
+      admin,
+      tenantId,
+      postId,
+      'ai_rewrite',
+      body,
+      title,
+      `Critic iteration ${i}: ${issues.length} issue(s) fixed — ${issues.slice(0, 3).join('; ')}`,
+      agentRunId,
+    );
+  }
+
+  return { body, log, costUsd };
+}
+
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -361,6 +507,52 @@ async function generateDraft(admin: Admin, tenantId: string, userId: string, req
     .eq('tenant_id', tenantId)
     .eq('id', brief.id);
 
+  // US-BLOG-039: optional self-critique loop (per-tenant toggle, costs more).
+  let critiqueLog: CritiqueIteration[] = [];
+  const { data: settings } = await admin
+    .from('blog_agent_settings')
+    .select('critique_loop_enabled')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+
+  if (settings?.critique_loop_enabled) {
+    const agentRunId = crypto.randomUUID();
+    await recordRevision(
+      admin,
+      tenantId,
+      postId,
+      'ai_draft',
+      draft.body_markdown,
+      draft.title,
+      'Initial AI draft (pre-critique).',
+      agentRunId,
+    );
+    const looped = await runCritiqueLoop(
+      admin,
+      tenantId,
+      postId,
+      draft.title,
+      draft.body_markdown,
+      voiceBlock(voice),
+      agentRunId,
+    );
+    critiqueLog = looped.log;
+    draft.body_markdown = looped.body;
+    aiMeta.steps_used = ['draft_generator', 'critique_loop'];
+    aiMeta.cost_usd = Number((aiMeta.cost_usd + looped.costUsd).toFixed(4));
+    (aiMeta as Record<string, unknown>).critique_log = critiqueLog;
+    (aiMeta as Record<string, unknown>).critique_iterations = critiqueLog.length;
+    await admin
+      .from('blog_posts')
+      .update({
+        body_markdown: looped.body,
+        ai_assistance_meta: aiMeta,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('tenant_id', tenantId)
+      .eq('id', postId);
+  }
+
   await writeAuditLog(
     admin,
     withRequestContext(req, {
@@ -370,11 +562,17 @@ async function generateDraft(admin: Admin, tenantId: string, userId: string, req
       action: 'blog_draft.generate',
       targetType: 'blog_posts',
       targetId: postId,
-      summary: `AI draft from brief "${brief.title}" — ${usage.outputTokens} out tokens, $${aiMeta.cost_usd}, ${needsCitationCount} needs-citation gap(s)`,
+      summary: `AI draft from brief "${brief.title}" — $${aiMeta.cost_usd}, ${needsCitationCount} needs-citation gap(s)${
+        critiqueLog.length ? `, ${critiqueLog.length} critique iteration(s)` : ''
+      }`,
     }),
   );
 
-  return createCorsResponse({ post_id: postId, draft, ai_meta: aiMeta }, 201, req);
+  return createCorsResponse(
+    { post_id: postId, draft, ai_meta: aiMeta, critique_log: critiqueLog },
+    201,
+    req,
+  );
 }
 
 async function regenerateSection(admin: Admin, tenantId: string, req: Request) {

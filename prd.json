@@ -5646,8 +5646,8 @@
         "Per-workspace toggle: 'critique loop on/off' (it costs more tokens)"
       ],
       "priority": 73,
-      "passes": false,
-      "notes": "The critic prompt is the highest-leverage piece — invest time tuning it per workspace.",
+      "passes": true,
+      "notes": "DONE 2026-05-17. Built on the US-BLOG-031 draft pipeline. runCritiqueLoop() in supabase/functions/blog-draft/index.ts: generator → critic → reviser → critic … max 3 iterations, stops early when the critic returns verdict 'ok' or zero issues. CRITIC_SYSTEM scores the exact rubric (clarity, originality, evidence, voice_match, seo_compliance, factual_grounding, structural_balance, 0-10) + actionable issues[] + verdict; REVISER_SYSTEM fixes the listed issues while preserving structure/citations/brand voice. Every iteration (incl. the pre-critique initial draft) is persisted to blog_post_revisions (revision_source ai_draft/ai_rewrite, diff_summary = critic feedback, shared agent_run_id, auto-incremented revision_number) so the feedback log is viewable in the existing Post History UI alongside the final draft (AC5). Per-tenant toggle: new blog_agent_settings.critique_loop_enabled (default false — costs more tokens), idempotent migration drizzle/migrations/_backfill_blog_critique_loop.sql, exposed in blog-agents settingsPatchSchema and as a Switch card in BlogSettings. Loop is gated on that flag, only runs inside /blog-draft/generate. Cost accumulated into blog_posts.ai_assistance_meta {steps_used:[draft_generator,critique_loop], cost_usd, critique_iterations, critique_log[]}; critique_log also returned in the API response. tsc clean for touched files (unrelated pre-existing BlogSettings* sibling errors untouched), vite build green. All 6 AC met. Note honored: the critic prompt is isolated + the single highest-leverage tuning point.",
       "category": "blog"
     },
     {

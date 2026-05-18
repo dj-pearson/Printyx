@@ -5558,3 +5558,50 @@ That's it — no schema change needed. Idempotency_key callers pick is per-job-t
 - The LLM-generation pattern is now 4 endpoints sharing `_shared/blog/llm-json.ts` + `generateCompletionDetailed`. US-BLOG-030 / 039 / syndication (043-051) can all reuse this scaffold directly.
 
 ---
+
+## Ralph Iteration — US-BLOG-039 (self-critiquing agent loop)
+
+**Date:** 2026-05-17
+**Story:** US-BLOG-039 — Self-critiquing agent loop for draft quality
+**Status:** ✅ passes: true (all 6 AC)
+
+### What Shipped (extends the US-BLOG-031 pipeline)
+
+**`runCritiqueLoop()`** in `supabase/functions/blog-draft/index.ts`
+- generator → critic → reviser → critic … **max 3 iterations**, stops early when the critic returns `verdict: "ok"` or zero issues.
+- `CRITIC_SYSTEM` scores the exact rubric (clarity, originality, evidence, voice_match, seo_compliance, factual_grounding, structural_balance — 0-10) + actionable `issues[]` + verdict. `REVISER_SYSTEM` fixes the listed issues while preserving structure / `[^n]` citations / brand voice.
+- Every iteration **and** the pre-critique initial draft → `blog_post_revisions` (`revision_source` ai_draft/ai_rewrite, `diff_summary` = critic feedback, shared `agent_run_id`, auto-incremented `revision_number`). The feedback log is therefore viewable in the **existing Post History UI** next to the final draft (AC5) — no new UI surface needed.
+- Cost accumulated into `blog_posts.ai_assistance_meta` (`steps_used:[draft_generator,critique_loop]`, `cost_usd`, `critique_iterations`, `critique_log[]`); `critique_log` also returned by the API.
+
+**Per-workspace toggle**
+- New `blog_agent_settings.critique_loop_enabled` (default **false** — extra tokens). Idempotent migration `drizzle/migrations/_backfill_blog_critique_loop.sql`. Added to `blog-agents` `settingsPatchSchema` + a Switch card in `BlogSettings`. The loop only runs inside `/blog-draft/generate` when the flag is on.
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Pipeline generator→critic→reviser×≤3 | ✅ |
+| 2. Critic rubric (7 named dimensions) | ✅ exact rubric, scored 0-10 |
+| 3. Each iteration recorded in post_revisions | ✅ incl. pre-critique baseline |
+| 4. Stops early if critic returns no significant issues | ✅ verdict ok / empty issues |
+| 5. View critic feedback log alongside final draft | ✅ via existing Post History (diff_summary per revision) |
+| 6. Per-workspace on/off toggle | ✅ blog_agent_settings + BlogSettings switch |
+
+### Quality Gates
+- `tsc` — touched files clean (`BlogSettings.tsx` + `blog-draft`); the listed `BlogSettingsBrandVoices/CmsTargets/Jobs/KeywordTargets` errors are pre-existing and in files this iteration never touched.
+- `vite build` — ✅ green (26.6s).
+- `prettier --write` applied; eslint clean for `blog-draft`.
+- Browser smoke not run (no DB/Supabase + CLAUDE_API_KEY). After deploy + `_backfill_blog_critique_loop.sql`: Blog Settings → enable "Critique & revise" → generate a brief → Generate AI draft → confirm the editor opens, Post History shows the baseline + 1-3 critic/reviser revisions with the critic notes in each diff summary, and ai_assistance_meta has critique_iterations + critique_log.
+
+### Story Status Update
+| Story | Status |
+|-------|--------|
+| US-BLOG-039 — Self-critiquing agent loop | ✅ passes: true |
+
+**Blog module total: 26 / 86 done. Overall PRD: 243 / 374 passing.**
+
+### Notes for the Next Ralph Iteration
+- The critic prompt is intentionally a single isolated constant (`CRITIC_SYSTEM`) — per the story note it's the highest-leverage tuning point. A future enhancement: per-tenant critic rubric weights/overrides stored on `blog_agent_settings` (jsonb) so each workspace tunes strictness without a code change.
+- Loop currently runs synchronously inside `/generate` (up to ~6 LLM calls → can be slow). When live streaming / job queue lands (the US-BLOG-031 follow-up), move the loop into a `blog_jobs` worker and stream progress; the revision-per-iteration record already gives a pollable progress signal.
+- US-BLOG-040 (pre-publish QA) and US-BLOG-030 (outline A/B) are the next clean reuses of the now-mature LLM scaffold (`generateCompletionDetailed` + `_shared/blog/llm-json.ts`).
+
+---

@@ -44,6 +44,7 @@ interface AgentSettings {
   paused_by_user_id: string | null;
   paused_reason: string | null;
   auto_refresh_requires_review: boolean;
+  critique_loop_enabled: boolean;
   organization_name: string | null;
   organization_url: string | null;
   organization_logo_url: string | null;
@@ -107,6 +108,7 @@ export default function BlogSettings() {
   const patchMutation = useMutation({
     mutationFn: (patch: {
       auto_refresh_requires_review?: boolean;
+      critique_loop_enabled?: boolean;
       organization_name?: string | null;
       organization_url?: string | null;
       organization_logo_url?: string | null;
@@ -194,6 +196,33 @@ export default function BlogSettings() {
                   disabled={patchMutation.isPending}
                   onCheckedChange={(checked) =>
                     patchMutation.mutate({ auto_refresh_requires_review: checked })
+                  }
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                  Self-critique loop
+                </CardTitle>
+                <CardDescription>
+                  When on, AI draft generation (US-BLOG-031) runs a critic → reviser loop (max 3
+                  iterations) against a quality rubric before you see the draft. Each iteration is
+                  saved to Post History. Costs extra tokens — off by default.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between gap-4">
+                <Label htmlFor="critique_loop_enabled" className="text-sm font-medium">
+                  Critique &amp; revise drafts before review
+                </Label>
+                <Switch
+                  id="critique_loop_enabled"
+                  checked={settings.critique_loop_enabled}
+                  disabled={patchMutation.isPending}
+                  onCheckedChange={(checked) =>
+                    patchMutation.mutate({ critique_loop_enabled: checked })
                   }
                 />
               </CardContent>
