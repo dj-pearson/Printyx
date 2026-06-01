@@ -7,10 +7,15 @@ FROM denoland/deno:1.38.5
 RUN apt-get update && apt-get install -y --no-install-recommends curl wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Install the Infisical CLI (used at startup to pull secrets from env.dpearsonmedia.com)
-RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
-    && apt-get update && apt-get install -y --no-install-recommends infisical \
-    && rm -rf /var/lib/apt/lists/*
+# Install the Infisical CLI (used at startup to pull secrets from env.dpearsonmedia.com).
+# `set -eux` echoes each step and aborts on any failure; the final `infisical --version`
+# is a build-time assertion so the image CANNOT ship without a working CLI.
+RUN set -eux; \
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends infisical; \
+    rm -rf /var/lib/apt/lists/*; \
+    infisical --version
 
 WORKDIR /app
 
