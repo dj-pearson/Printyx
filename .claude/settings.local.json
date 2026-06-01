@@ -118,7 +118,10 @@
       "Bash(awk '/\"id\": \"US-BLOG-/{id=$0} /\"passes\": false/{print id}' /c/Users/dpearson/Documents/Printyx/prd.json)",
       "Bash(awk '/\"id\": \"US-BLOG-/{id=$0; getline title; getline desc; getline ac} /passes.*false/{print id, title}' /c/Users/dpearson/Documents/Printyx/prd.json)",
       "Bash(python -c ' *)",
-      "Bash(sort -k3 -n)"
+      "Bash(sort -k3 -n)",
+      "Bash(Get-ChildItem -Directory client/src -Depth 2)",
+      "Bash(Select-Object FullName)",
+      "Bash(ConvertTo-Json)"
     ],
     "deny": [],
     "ask": []

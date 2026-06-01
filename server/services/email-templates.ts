@@ -469,6 +469,96 @@ Continue exploring: ${dashboardUrl}
   }
 
   /**
+   * Task Workflow — Step Assigned
+   *
+   * Sent to the assignee of a step when their stage becomes active (i.e. the
+   * previous stage completed). Includes the step title, details, the workflow
+   * name, and a deep link to the step.
+   */
+  static taskWorkflowStepAssigned(data: {
+    assigneeName?: string;
+    workflowName: string;
+    stepTitle: string;
+    stepDetails?: string;
+    dueDate?: string;
+    assignedByName?: string;
+    stepUrl: string;
+    userEmail?: string;
+  }): { subject: string; html: string; text: string } {
+    return {
+      subject: `New task assigned: ${String(data.stepTitle).replace(/[<>"'&]/g, '')}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          ${EMAIL_BASE_STYLES}
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">📋 You've Been Assigned a Task</h1>
+            </div>
+            <div class="content">
+              <p>Hello${data.assigneeName ? ` ${escapeHtml(data.assigneeName)}` : ''},</p>
+
+              <p>You have a new task to complete in the workflow
+                <strong>${escapeHtml(data.workflowName)}</strong>${
+                  data.assignedByName ? `, assigned by ${escapeHtml(data.assignedByName)}` : ''
+                }.</p>
+
+              <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h2 style="margin: 0 0 8px 0; color: #1e40af; font-size: 18px;">${escapeHtml(data.stepTitle)}</h2>
+                ${
+                  data.stepDetails
+                    ? `<p style="margin: 0; color: #334155; white-space: pre-wrap;">${escapeHtml(data.stepDetails)}</p>`
+                    : ''
+                }
+                ${
+                  data.dueDate
+                    ? `<p style="margin: 12px 0 0 0; color: #92400e;"><strong>Due:</strong> ${escapeHtml(data.dueDate)}</p>`
+                    : ''
+                }
+              </div>
+
+              <p style="text-align: center;">
+                <a href="${escapeHtml(data.stepUrl)}" class="button">Open Task</a>
+              </p>
+
+              <p>Or copy and paste this link into your browser:</p>
+              <p style="word-break: break-all; color: #2563eb; font-size: 14px;">${escapeHtml(data.stepUrl)}</p>
+
+              <p>When you finish, mark the step complete to hand off to the next person automatically.</p>
+            </div>
+            <div class="footer">
+              <p>© 2025 Printyx. All rights reserved.</p>
+              ${data.userEmail ? `<p>This email was sent to ${escapeHtml(data.userEmail)}</p>` : ''}
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+You've Been Assigned a Task
+
+Hello${data.assigneeName ? ` ${data.assigneeName}` : ''},
+
+You have a new task to complete in the workflow "${data.workflowName}"${
+        data.assignedByName ? `, assigned by ${data.assignedByName}` : ''
+      }.
+
+TASK: ${data.stepTitle}
+${data.stepDetails ? `\n${data.stepDetails}\n` : ''}${data.dueDate ? `\nDue: ${data.dueDate}\n` : ''}
+Open the task: ${data.stepUrl}
+
+When you finish, mark the step complete to hand off to the next person automatically.
+
+© 2025 Printyx
+${data.userEmail ? `This email was sent to ${data.userEmail}` : ''}
+      `.trim(),
+    };
+  }
+
+  /**
    * Trial Ending Soon
    */
   static trialEndingSoon(data: EmailTemplateData): { subject: string; html: string; text: string } {

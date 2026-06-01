@@ -7,6 +7,11 @@ FROM denoland/deno:1.38.5
 RUN apt-get update && apt-get install -y --no-install-recommends curl wget \
     && rm -rf /var/lib/apt/lists/*
 
+# Install the Infisical CLI (used at startup to pull secrets from env.dpearsonmedia.com)
+RUN curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash \
+    && apt-get update && apt-get install -y --no-install-recommends infisical \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy edge functions
@@ -29,24 +34,11 @@ RUN deno cache --reload functions/**/*.ts
 # Coolify's healthcheck is pinned at localhost:8000, so default to 8000.
 EXPOSE 8000
 
-# Create start script with process info
-RUN echo '#!/bin/sh\n\
-set -e\n\
-echo "======================================"\n\
-echo "Container ID: $(hostname)"\n\
-echo "Process ID: $$"\n\
-echo "Port: ${PORT:-8000}"\n\
-echo "Starting Supabase Edge Functions Server..."\n\
-echo "Available functions:"\n\
-ls -la /app/functions/\n\
-echo ""\n\
-echo "Starting Deno server on port ${PORT:-8000}..."\n\
-echo "======================================"\n\
-exec deno run --allow-all /app/server.ts\n\
-' > /app/start.sh && chmod +x /app/start.sh
+# Copy the start script (wraps the Deno server with Infisical secret injection)
+COPY start-edge-functions.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 # Copy the server router (with CORS support) from the functions folder
-# This avoids escaping issues with the echo command
 RUN cp /app/functions/server.ts /app/server.ts
 
 # Run the start script

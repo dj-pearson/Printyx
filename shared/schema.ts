@@ -8522,6 +8522,31 @@ export type {
   InsertExpansionOpportunity,
 } from './renewal-management-schema';
 
+// Re-export Task Workflow schemas (TWF-### — human-centric customizable workflows)
+export {
+  taskWorkflows,
+  taskWorkflowSteps,
+  taskWorkflowEvents,
+  taskWorkflowStatusEnum,
+  taskWorkflowStepStatusEnum,
+  taskWorkflowSourceEnum,
+  taskWorkflowEventTypeEnum,
+  insertTaskWorkflowSchema,
+  insertTaskWorkflowStepSchema,
+  insertTaskWorkflowEventSchema,
+} from './task-workflow-schema';
+
+export type {
+  TaskWorkflow,
+  InsertTaskWorkflow,
+  TaskWorkflowStep,
+  InsertTaskWorkflowStep,
+  TaskWorkflowEvent,
+  InsertTaskWorkflowEvent,
+  ParsedWorkflowStep,
+  ParsedWorkflowDraft,
+} from './task-workflow-schema';
+
 // Re-export Document Automation schemas
 export {
   documentTemplates,

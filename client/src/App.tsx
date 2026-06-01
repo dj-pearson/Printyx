@@ -139,6 +139,10 @@ const PerformanceMonitoring = React.lazy(() => import('@/pages/PerformanceMonito
 const SystemIntegrations = React.lazy(() => import('@/pages/SystemIntegrations'));
 const DeploymentReadiness = React.lazy(() => import('@/pages/DeploymentReadiness'));
 const TaskHub = React.lazy(() => import('@/pages/TaskHub'));
+const WorkflowsListPage = React.lazy(() => import('@/pages/workflows/WorkflowsListPage'));
+const WorkflowBuilderPage = React.lazy(() => import('@/pages/workflows/WorkflowBuilderPage'));
+const WorkflowDetailPage = React.lazy(() => import('@/pages/workflows/WorkflowDetailPage'));
+const WorkflowStepPage = React.lazy(() => import('@/pages/workflows/WorkflowStepPage'));
 const CrmDealsPage = React.lazy(() => import('@/pages/CrmDealsPage'));
 const CrmLeadsPage = React.lazy(() => import('@/pages/CrmLeadsPage'));
 const CrmContactsPage = React.lazy(() => import('@/pages/CrmContactsPage'));
@@ -773,6 +777,12 @@ function Router() {
                 <Route path="/task-management" component={TaskHub} />
                 <Route path="/basic-tasks" component={TaskHub} />
                 <Route path="/my-tasks" component={TaskHub} />
+                {/* Task Workflows — order matters: specific routes before /:id */}
+                <Route path="/workflows" component={WorkflowsListPage} />
+                <Route path="/workflows/new" component={WorkflowBuilderPage} />
+                <Route path="/workflows/:id/edit" component={WorkflowBuilderPage} />
+                <Route path="/workflows/:id/steps/:stepId" component={WorkflowStepPage} />
+                <Route path="/workflows/:id" component={WorkflowDetailPage} />
                 <Route path="/customer-success-management" component={CustomerSuccessManagement} />
                 <Route path="/pricing-management" component={PricingManagement} />
                 <Route path="/tenant-setup" component={TenantSetup} />

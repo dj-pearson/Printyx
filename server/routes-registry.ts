@@ -161,6 +161,7 @@ import {
   registerEnhancedTaskRoutes,
   registerTemplateRoutes,
   registerAutomationRoutes,
+  registerTaskWorkflowRoutes,
 } from './domains/tasks';
 
 import {
@@ -349,6 +350,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerTaskRoutes(app);
   registerEnhancedTaskRoutes(app);
   registerTemplateRoutes(app);
+  registerTaskWorkflowRoutes(app);
 
   // ─── Warehouse & Purchase Orders ──────────────────────────────────
   registerPurchaseOrderRoutes(app);
