@@ -3,8 +3,11 @@
 
 FROM denoland/deno:1.38.5
 
-# Install curl and wget for healthcheck (required by Coolify)
-RUN apt-get update && apt-get install -y --no-install-recommends curl wget \
+# Install curl and wget for healthcheck (required by Coolify).
+# ca-certificates is required so curl has a trust store — the slim Deno base
+# ships without it, which makes HTTPS fetches fail with curl error 77.
+RUN apt-get update && apt-get install -y --no-install-recommends curl wget ca-certificates \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Install the Infisical CLI from the official GitHub release (static binary).
