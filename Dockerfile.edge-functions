@@ -7,14 +7,18 @@ FROM denoland/deno:1.38.5
 RUN apt-get update && apt-get install -y --no-install-recommends curl wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Install the Infisical CLI (used at startup to pull secrets from env.dpearsonmedia.com).
-# `set -eux` echoes each step and aborts on any failure; the final `infisical --version`
-# is a build-time assertion so the image CANNOT ship without a working CLI.
+# Install the Infisical CLI from the official GitHub release (static binary).
+# We deliberately AVOID the apt/cloudsmith repo (artifacts-cli.infisical.com): it is
+# unreachable from this build host, which silently left the package missing and
+# failed the build. Pinned + self-verifying — the final `infisical --version` makes
+# the build fail loudly if the binary didn't land. Bump INFISICAL_VERSION to upgrade.
+ARG INFISICAL_VERSION=0.43.90
 RUN set -eux; \
-    curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends infisical; \
-    rm -rf /var/lib/apt/lists/*; \
+    arch="$(dpkg --print-architecture)"; \
+    curl -fsSL -o /tmp/infisical.tar.gz \
+      "https://github.com/Infisical/cli/releases/download/v${INFISICAL_VERSION}/cli_${INFISICAL_VERSION}_linux_${arch}.tar.gz"; \
+    tar -xzf /tmp/infisical.tar.gz -C /usr/local/bin infisical; \
+    rm /tmp/infisical.tar.gz; \
     infisical --version
 
 WORKDIR /app
