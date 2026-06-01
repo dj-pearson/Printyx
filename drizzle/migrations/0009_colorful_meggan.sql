@@ -1,8 +1,21 @@
-CREATE TYPE "public"."task_workflow_event_type" AS ENUM('created', 'started', 'step_completed', 'step_reopened', 'step_assigned', 'advanced', 'regressed', 'reassigned', 'commented', 'published', 'archived', 'notified');--> statement-breakpoint
-CREATE TYPE "public"."task_workflow_source" AS ENUM('manual', 'image', 'csv', 'xlsx', 'template');--> statement-breakpoint
-CREATE TYPE "public"."task_workflow_status" AS ENUM('draft', 'active', 'completed', 'archived', 'cancelled');--> statement-breakpoint
-CREATE TYPE "public"."task_workflow_step_status" AS ENUM('pending', 'active', 'in_progress', 'completed', 'blocked', 'skipped');--> statement-breakpoint
-CREATE TABLE "task_workflow_events" (
+-- Idempotent: this migration introduces the task_workflow_* objects AND records
+-- pre-existing blog_* drift that was previously applied via db:push (so those
+-- objects already exist in some environments). Every statement is guarded with
+-- IF NOT EXISTS / duplicate_object handling so it is safe to (re-)run.
+
+DO $$ BEGIN
+ CREATE TYPE "public"."task_workflow_event_type" AS ENUM('created', 'started', 'step_completed', 'step_reopened', 'step_assigned', 'advanced', 'regressed', 'reassigned', 'commented', 'published', 'archived', 'notified');
+EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."task_workflow_source" AS ENUM('manual', 'image', 'csv', 'xlsx', 'template');
+EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."task_workflow_status" AS ENUM('draft', 'active', 'completed', 'archived', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."task_workflow_step_status" AS ENUM('pending', 'active', 'in_progress', 'completed', 'blocked', 'skipped');
+EXCEPTION WHEN duplicate_object THEN null; END $$;--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "task_workflow_events" (
 	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"tenant_id" varchar NOT NULL,
 	"workflow_id" varchar NOT NULL,
@@ -16,7 +29,7 @@ CREATE TABLE "task_workflow_events" (
 	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "task_workflow_steps" (
+CREATE TABLE IF NOT EXISTS "task_workflow_steps" (
 	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"tenant_id" varchar NOT NULL,
 	"workflow_id" varchar NOT NULL,
@@ -38,7 +51,7 @@ CREATE TABLE "task_workflow_steps" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE "task_workflows" (
+CREATE TABLE IF NOT EXISTS "task_workflows" (
 	"id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"tenant_id" varchar NOT NULL,
 	"name" varchar(255) NOT NULL,
@@ -61,7 +74,7 @@ CREATE TABLE "task_workflows" (
 	"deleted_at" timestamp
 );
 --> statement-breakpoint
-CREATE TABLE "blog_competitor_keywords" (
+CREATE TABLE IF NOT EXISTS "blog_competitor_keywords" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"tenant_id" varchar NOT NULL,
 	"domain" varchar(255) NOT NULL,
@@ -77,7 +90,7 @@ CREATE TABLE "blog_competitor_keywords" (
 	"fetched_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "blog_jobs" (
+CREATE TABLE IF NOT EXISTS "blog_jobs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"tenant_id" varchar NOT NULL,
 	"type" varchar(64) NOT NULL,
@@ -99,7 +112,7 @@ CREATE TABLE "blog_jobs" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "blog_serp_snapshots" (
+CREATE TABLE IF NOT EXISTS "blog_serp_snapshots" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"tenant_id" varchar NOT NULL,
 	"keyword" varchar(500) NOT NULL,
@@ -114,32 +127,32 @@ CREATE TABLE "blog_serp_snapshots" (
 	"created_by_user_id" varchar
 );
 --> statement-breakpoint
-ALTER TABLE "blog_agent_settings" ADD COLUMN "revision_retention_days" integer DEFAULT 90 NOT NULL;--> statement-breakpoint
-ALTER TABLE "blog_agent_settings" ADD COLUMN "own_domain" varchar(255);--> statement-breakpoint
-ALTER TABLE "blog_agent_settings" ADD COLUMN "competitor_domains" text[];--> statement-breakpoint
-ALTER TABLE "blog_agent_settings" ADD COLUMN "organization_name" varchar(255);--> statement-breakpoint
-ALTER TABLE "blog_agent_settings" ADD COLUMN "organization_url" varchar(500);--> statement-breakpoint
-ALTER TABLE "blog_agent_settings" ADD COLUMN "organization_logo_url" varchar(1000);--> statement-breakpoint
-ALTER TABLE "blog_agent_settings" ADD COLUMN "critique_loop_enabled" boolean DEFAULT false NOT NULL;--> statement-breakpoint
-ALTER TABLE "blog_keywords" ADD COLUMN "source_type" varchar(20);--> statement-breakpoint
-ALTER TABLE "blog_keywords" ADD COLUMN "parent_keyword_id" uuid;--> statement-breakpoint
-ALTER TABLE "blog_keywords" ADD COLUMN "parent_question" text;--> statement-breakpoint
-ALTER TABLE "blog_keywords" ADD COLUMN "mining_depth" integer;--> statement-breakpoint
-CREATE INDEX "task_workflow_events_workflow_idx" ON "task_workflow_events" USING btree ("tenant_id","workflow_id");--> statement-breakpoint
-CREATE INDEX "task_workflow_events_created_idx" ON "task_workflow_events" USING btree ("workflow_id","created_at");--> statement-breakpoint
-CREATE INDEX "task_workflow_steps_workflow_idx" ON "task_workflow_steps" USING btree ("tenant_id","workflow_id");--> statement-breakpoint
-CREATE INDEX "task_workflow_steps_assignee_idx" ON "task_workflow_steps" USING btree ("tenant_id","assignee_user_id");--> statement-breakpoint
-CREATE INDEX "task_workflow_steps_stage_idx" ON "task_workflow_steps" USING btree ("workflow_id","stage_index");--> statement-breakpoint
-CREATE INDEX "task_workflows_tenant_idx" ON "task_workflows" USING btree ("tenant_id");--> statement-breakpoint
-CREATE INDEX "task_workflows_tenant_status_idx" ON "task_workflows" USING btree ("tenant_id","status");--> statement-breakpoint
-CREATE INDEX "task_workflows_template_idx" ON "task_workflows" USING btree ("tenant_id","is_template");--> statement-breakpoint
-CREATE INDEX "blog_competitor_keywords_tenant_idx" ON "blog_competitor_keywords" USING btree ("tenant_id");--> statement-breakpoint
-CREATE INDEX "blog_competitor_keywords_tenant_domain_idx" ON "blog_competitor_keywords" USING btree ("tenant_id","domain");--> statement-breakpoint
-CREATE INDEX "blog_competitor_keywords_tenant_keyword_idx" ON "blog_competitor_keywords" USING btree ("tenant_id","keyword");--> statement-breakpoint
-CREATE INDEX "blog_jobs_tenant_idx" ON "blog_jobs" USING btree ("tenant_id");--> statement-breakpoint
-CREATE INDEX "blog_jobs_tenant_status_idx" ON "blog_jobs" USING btree ("tenant_id","status");--> statement-breakpoint
-CREATE INDEX "blog_jobs_run_queue_idx" ON "blog_jobs" USING btree ("status","scheduled_at","priority");--> statement-breakpoint
-CREATE INDEX "blog_serp_snapshots_tenant_idx" ON "blog_serp_snapshots" USING btree ("tenant_id");--> statement-breakpoint
-CREATE INDEX "blog_serp_snapshots_tenant_keyword_idx" ON "blog_serp_snapshots" USING btree ("tenant_id","keyword","fetched_at");--> statement-breakpoint
-CREATE INDEX "blog_keywords_parent_idx" ON "blog_keywords" USING btree ("parent_keyword_id");--> statement-breakpoint
-CREATE INDEX "blog_keywords_tenant_source_idx" ON "blog_keywords" USING btree ("tenant_id","source_type");
+ALTER TABLE "blog_agent_settings" ADD COLUMN IF NOT EXISTS "revision_retention_days" integer DEFAULT 90 NOT NULL;--> statement-breakpoint
+ALTER TABLE "blog_agent_settings" ADD COLUMN IF NOT EXISTS "own_domain" varchar(255);--> statement-breakpoint
+ALTER TABLE "blog_agent_settings" ADD COLUMN IF NOT EXISTS "competitor_domains" text[];--> statement-breakpoint
+ALTER TABLE "blog_agent_settings" ADD COLUMN IF NOT EXISTS "organization_name" varchar(255);--> statement-breakpoint
+ALTER TABLE "blog_agent_settings" ADD COLUMN IF NOT EXISTS "organization_url" varchar(500);--> statement-breakpoint
+ALTER TABLE "blog_agent_settings" ADD COLUMN IF NOT EXISTS "organization_logo_url" varchar(1000);--> statement-breakpoint
+ALTER TABLE "blog_agent_settings" ADD COLUMN IF NOT EXISTS "critique_loop_enabled" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "blog_keywords" ADD COLUMN IF NOT EXISTS "source_type" varchar(20);--> statement-breakpoint
+ALTER TABLE "blog_keywords" ADD COLUMN IF NOT EXISTS "parent_keyword_id" uuid;--> statement-breakpoint
+ALTER TABLE "blog_keywords" ADD COLUMN IF NOT EXISTS "parent_question" text;--> statement-breakpoint
+ALTER TABLE "blog_keywords" ADD COLUMN IF NOT EXISTS "mining_depth" integer;--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "task_workflow_events_workflow_idx" ON "task_workflow_events" USING btree ("tenant_id","workflow_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "task_workflow_events_created_idx" ON "task_workflow_events" USING btree ("workflow_id","created_at");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "task_workflow_steps_workflow_idx" ON "task_workflow_steps" USING btree ("tenant_id","workflow_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "task_workflow_steps_assignee_idx" ON "task_workflow_steps" USING btree ("tenant_id","assignee_user_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "task_workflow_steps_stage_idx" ON "task_workflow_steps" USING btree ("workflow_id","stage_index");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "task_workflows_tenant_idx" ON "task_workflows" USING btree ("tenant_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "task_workflows_tenant_status_idx" ON "task_workflows" USING btree ("tenant_id","status");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "task_workflows_template_idx" ON "task_workflows" USING btree ("tenant_id","is_template");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "blog_competitor_keywords_tenant_idx" ON "blog_competitor_keywords" USING btree ("tenant_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "blog_competitor_keywords_tenant_domain_idx" ON "blog_competitor_keywords" USING btree ("tenant_id","domain");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "blog_competitor_keywords_tenant_keyword_idx" ON "blog_competitor_keywords" USING btree ("tenant_id","keyword");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "blog_jobs_tenant_idx" ON "blog_jobs" USING btree ("tenant_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "blog_jobs_tenant_status_idx" ON "blog_jobs" USING btree ("tenant_id","status");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "blog_jobs_run_queue_idx" ON "blog_jobs" USING btree ("status","scheduled_at","priority");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "blog_serp_snapshots_tenant_idx" ON "blog_serp_snapshots" USING btree ("tenant_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "blog_serp_snapshots_tenant_keyword_idx" ON "blog_serp_snapshots" USING btree ("tenant_id","keyword","fetched_at");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "blog_keywords_parent_idx" ON "blog_keywords" USING btree ("parent_keyword_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "blog_keywords_tenant_source_idx" ON "blog_keywords" USING btree ("tenant_id","source_type");
