@@ -137,7 +137,6 @@ export default async function handler(req: Request) {
       .join('\n');
 
     const raw = await generateCompletion({
-      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 1200,
       temperature: 0.8,
       system: SYSTEM_PROMPT,

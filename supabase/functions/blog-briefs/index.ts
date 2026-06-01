@@ -296,7 +296,6 @@ async function generateBrief(admin: Admin, tenantId: string, userId: string, req
     .join('\n');
 
   const raw = await generateCompletion({
-    model: 'claude-3-5-sonnet-20241022',
     max_tokens: 3000,
     temperature: 0.5,
     system: SYSTEM_PROMPT,

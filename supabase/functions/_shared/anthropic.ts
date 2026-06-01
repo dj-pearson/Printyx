@@ -12,7 +12,11 @@ import { createLogger } from './logger.ts';
 
 const log = createLogger('anthropic');
 
-const DEFAULT_MODEL = 'claude-3-5-sonnet-20241022';
+// Model is configurable via the CLAUDE_MODEL env var (set in Infisical) so it can
+// be changed without a redeploy — e.g. when Anthropic retires a snapshot, as
+// happened with claude-3-5-sonnet-20241022. Falls back to the current Sonnet.
+// Callers should omit `model` to inherit this; pass model only to override.
+const DEFAULT_MODEL = Deno.env.get('CLAUDE_MODEL') ?? 'claude-sonnet-4-6';
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
 

@@ -250,7 +250,6 @@ async function runCritiqueLoop(
 
   for (let i = 1; i <= MAX; i++) {
     const critic = await generateCompletionDetailed({
-      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 1500,
       temperature: 0,
       system: CRITIC_SYSTEM,
@@ -291,7 +290,6 @@ async function runCritiqueLoop(
     }
 
     const reviser = await generateCompletionDetailed({
-      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 8000,
       temperature: 0.5,
       system: `${REVISER_SYSTEM}\n\nBRAND VOICE:\n${voiceText}`,
@@ -407,7 +405,6 @@ async function generateDraft(admin: Admin, tenantId: string, userId: string, req
   const voice = await loadVoice(admin, tenantId, (brief.brand_voice_id as string) ?? null);
 
   const { text, usage } = await generateCompletionDetailed({
-    model: 'claude-3-5-sonnet-20241022',
     max_tokens: 8000,
     temperature: 0.6,
     system: `${DRAFT_SYSTEM}\n\nBRAND VOICE:\n${voiceBlock(voice)}`,
@@ -594,7 +591,6 @@ async function regenerateSection(admin: Admin, tenantId: string, req: Request) {
 
   const text = (
     await generateCompletionDetailed({
-      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 2500,
       temperature: 0.6,
       system: `You rewrite a single article section. Same citation rules as a full draft: [^n] refs for claims, [needs-citation] when ungrounded. Output ONLY the markdown for this section starting with its "## " heading. No JSON, no prose around it.\n\nBRAND VOICE:\n${voiceBlock(voice)}`,

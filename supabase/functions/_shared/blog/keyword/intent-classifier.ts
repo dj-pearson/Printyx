@@ -92,7 +92,6 @@ export async function classifyIntent(
   signal?: AbortSignal,
 ): Promise<IntentClassification> {
   const raw = await generateCompletion({
-    model: 'claude-3-5-sonnet-20241022',
     max_tokens: 300,
     temperature: 0,
     system: SYSTEM_PROMPT,
