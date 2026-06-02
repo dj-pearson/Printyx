@@ -37,6 +37,7 @@ import {
   Send,
   Building2,
   X,
+  ArrowUpCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -84,6 +85,8 @@ interface MonitoringClient {
   activeAlertsCount?: number;
   configuration?: {
     lastInstallReport?: InstallSelfTestReport;
+    autoUpdate?: boolean;
+    autoOrderEnabled?: boolean;
     [k: string]: unknown;
   };
 }
@@ -384,6 +387,32 @@ export default function MonitoringClients() {
     onError: (error: Error) => {
       toast({
         title: 'Failed to Regenerate Key',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Toggle per-client auto-update. The agent self-updates from the platform
+  // bundle on heartbeat unless this is off (default on).
+  const toggleAutoUpdateMutation = useMutation({
+    mutationFn: async ({ clientId, enabled }: { clientId: string; enabled: boolean }) => {
+      return (await apiRequest(`/api/monitoring-clients/${clientId}`, 'PATCH', {
+        autoUpdate: enabled,
+      })) as { client: MonitoringClient };
+    },
+    onSuccess: (_data, { enabled }) => {
+      toast({
+        title: `Auto-update ${enabled ? 'enabled' : 'disabled'}`,
+        description: enabled
+          ? 'This agent will self-update when a newer version is published.'
+          : 'This agent will stay on its current version until you re-enable.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/monitoring-clients'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Could not change auto-update',
         description: error.message,
         variant: 'destructive',
       });
@@ -896,6 +925,14 @@ export default function MonitoringClients() {
                         <span className="text-xs text-gray-500">
                           {client.clientVersion || 'Unknown'}
                         </span>
+                        {client.configuration?.autoUpdate === false && (
+                          <span
+                            className="block text-[10px] text-amber-600"
+                            title="This agent will not self-update"
+                          >
+                            auto-update off
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -964,6 +1001,22 @@ export default function MonitoringClients() {
                               <RefreshCw className="h-4 w-4 mr-2" />
                               Regenerate API Key
                             </DropdownMenuItem>
+                            {(() => {
+                              const enabled = client.configuration?.autoUpdate !== false;
+                              return (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    toggleAutoUpdateMutation.mutate({
+                                      clientId: client.clientId,
+                                      enabled: !enabled,
+                                    })
+                                  }
+                                >
+                                  <ArrowUpCircle className="h-4 w-4 mr-2" />
+                                  {enabled ? 'Disable auto-update' : 'Enable auto-update'}
+                                </DropdownMenuItem>
+                              );
+                            })()}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-red-600">
                               <Trash2 className="h-4 w-4 mr-2" />

@@ -599,6 +599,71 @@ export function registerClientMonitoringRoutes(app: Express) {
     }
   });
 
+  // Partial update — toggles/edits that merge into the JSON config blob
+  // (autoUpdate, autoOrderEnabled) plus a few top-level columns. Unlike PUT,
+  // this never clobbers the rest of `configuration`.
+  app.patch('/api/monitoring-clients/:id', async (req: any, res) => {
+    try {
+      const tenantId = req.user?.tenantId || req.tenantId;
+      const { id } = req.params;
+      if (!tenantId) return res.status(400).json({ message: 'Tenant ID is required' });
+
+      // The UI may pass either the UUID primary key or the human-readable
+      // client_id slug — accept both.
+      const idMatch = or(eq(monitoringClients.id, id), eq(monitoringClients.clientId, id));
+      const existing = await db
+        .select()
+        .from(monitoringClients)
+        .where(and(eq(monitoringClients.tenantId, tenantId), idMatch))
+        .limit(1);
+      if (!existing[0]) {
+        return res.status(404).json({ message: 'Monitoring client not found' });
+      }
+
+      const { autoUpdate, autoOrderEnabled, customerId, location, clientName } = req.body || {};
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (typeof customerId === 'string' || customerId === null) {
+        updates.customerId = customerId || null;
+      }
+      if (typeof location === 'string') updates.location = location;
+      if (typeof clientName === 'string' && clientName.trim()) {
+        updates.clientName = clientName.trim();
+      }
+      if (typeof autoUpdate === 'boolean' || typeof autoOrderEnabled === 'boolean') {
+        const cfg = (existing[0].configuration as Record<string, any>) || {};
+        updates.configuration = {
+          ...cfg,
+          ...(typeof autoUpdate === 'boolean' ? { autoUpdate } : {}),
+          ...(typeof autoOrderEnabled === 'boolean' ? { autoOrderEnabled } : {}),
+        };
+      }
+
+      const [updated] = await db
+        .update(monitoringClients)
+        .set(updates)
+        .where(
+          and(eq(monitoringClients.tenantId, tenantId), eq(monitoringClients.id, existing[0].id)),
+        )
+        .returning();
+
+      if (typeof autoUpdate === 'boolean') {
+        await db.insert(clientActivityLogs).values({
+          tenantId,
+          clientId: existing[0].id,
+          activity: 'config_update',
+          status: 'success',
+          message: `Auto-update ${autoUpdate ? 'enabled' : 'disabled'}`,
+          details: { by: req.user?.id, autoUpdate },
+        });
+      }
+
+      res.json({ client: updated });
+    } catch (error) {
+      log.error('Error patching monitoring client:', error);
+      res.status(500).json({ message: 'Failed to update monitoring client' });
+    }
+  });
+
   // Rotate API key for a monitoring client
   app.post('/api/monitoring-clients/:id/rotate-key', async (req: any, res) => {
     try {

@@ -11,6 +11,7 @@
     "build:strict": "npm run validate && vite build",
     "build:fullstack": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "build:client-agent": "cd printyx-client && npm install --no-audit --no-fund && npm run bundle",
+    "audit:routes": "node scripts/audit-route-parity.mjs",
     "validate": "npm run validate:types && npm run validate:lint",
     "validate:types": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" tsc --noEmit",
     "validate:lint": "eslint . --ext .ts,.tsx --max-warnings 0",

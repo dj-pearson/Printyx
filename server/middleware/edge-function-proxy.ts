@@ -39,6 +39,14 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH']);
 
 /**
+ * Segment names (e.g. 'monitoring-clients') that Express forwards to an edge
+ * function in dev. Populated during registerEdgeFunctionProxy. The dev
+ * divergence detector reads this to know which "both-divergent" domains have
+ * already been folded in (so it stops warning about them).
+ */
+export const PROXIED_PREFIXES = new Set<string>();
+
+/**
  * True if the response Content-Type is safe to read as text.
  * Anything else (PDFs, ZIPs, images, octet-stream) is treated as binary.
  */
@@ -225,14 +233,23 @@ export function registerEdgeFunctionProxy(app: any) {
 
   // /api/<prefix> → forward to matching edge function.
   //
-  // Adding an entry here makes Express stop serving that prefix; every
-  // request is forwarded to the edge function (and on a network error,
-  // falls through to next() so any remaining Express handler can pick up).
+  // IMPORTANT — this map only affects DEV. In production the frontend calls
+  // functions.printyx.net/<route> DIRECTLY (client/src/lib/config.ts getApiUrl
+  // strips /api/ and targets the functions host), so prod never touches
+  // Express for /api/* except the agent ingest path (/api/client-metrics/*)
+  // and /install/*. Adding an entry here makes DEV forward that prefix to the
+  // same edge function prod already uses — i.e. it makes dev match prod. It
+  // CANNOT affect prod. (See EDGE-013 + docs/route-parity-matrix.md.)
   //
-  // Only add a domain here AFTER verifying the edge function dispatcher
-  // covers every URL path the frontend (`client/src`) calls. Otherwise
-  // requests get a 404 from the edge function (proxy fall-through only
-  // triggers on network failure, not on 404 responses).
+  // Adding an entry makes Express stop serving that prefix in dev; the request
+  // is forwarded to the edge function (and on a network error, falls through
+  // to next() so any remaining Express handler can pick up).
+  //
+  // Still: only add a domain AFTER verifying the edge function dispatcher
+  // covers every URL path the frontend (`client/src`) calls — otherwise dev
+  // requests get a 404 from the edge function (fall-through only triggers on
+  // network failure, not on 404s). The win is that a parity gap now fails
+  // loudly in dev instead of silently in prod.
   //
   // Tracked exceptions (edge function exists but NOT safe to proxy yet):
   //   - billing, catalog, customer-portal, etc. (35 RISKY domains tracked
@@ -315,11 +332,26 @@ export function registerEdgeFunctionProxy(app: any) {
     // Dashboard + parts-forecast aggregations are portable; AI analysis paths
     // return degraded responses (require Claude integration port).
     '/api/predictive-maintenance': 'predictive-maintenance',
+
+    // EDGE-013: monitoring-clients. Verified parity — the edge function
+    // (supabase/functions/monitoring-clients/) handles every path the
+    // Monitoring Clients UI calls: list/detail/create/PATCH/delete,
+    // regenerate-key, enrollment-token, installer.zip, commands. Folding it in
+    // makes dev match prod (prod already hits this edge fn directly) and fixes
+    // real dev bugs: Express returned a bare array for the list (UI expects
+    // {clients}) and lacked /regenerate-key + PATCH. NOTE: this only forwards
+    // the /api/monitoring-clients prefix — the agent ingest path
+    // /api/client-metrics/* stays on Express (routes-client-monitoring.ts).
+    '/api/monitoring-clients': 'monitoring-clients',
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {
+    PROXIED_PREFIXES.add(prefix.replace(/^\/api\//, ''));
     app.use(prefix, createProxyHandler(functionName));
   }
+  // Special-cased forwards below that aren't in crmProxies but are still
+  // edge-served in dev (keep PROXIED_PREFIXES in sync for the divergence check).
+  PROXIED_PREFIXES.add('customers');
 
   // Special case: GET /api/customers → companies edge function with recordType=Customer
   // The old mobile app calls /api/customers but there's no "customers" edge function.

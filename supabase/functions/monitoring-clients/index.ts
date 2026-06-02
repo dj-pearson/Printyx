@@ -79,9 +79,24 @@ function newEnrollmentToken(): string {
   return 'et_' + base64UrlEncode(bytes);
 }
 
+// Base URL handed to installers (enrollment command, bootstrap-config.json)
+// and agents. CRITICAL: this MUST resolve to the host that serves /install/*
+// and /api/client-metrics/* — i.e. the Express server (api/app host), NOT the
+// edge-function host. In production the request host here is
+// functions.printyx.net, which serves NEITHER, so the request-host fallback
+// below produces installers/agents that point at a dead host.
+//   => PUBLIC_API_BASE_URL MUST be set in this edge function's environment.
+// Tracked by EDGE-015. See printyx-client/AUDIT.md (Distribution topology).
 function platformBaseUrl(req: Request): string {
   const configured = Deno.env.get('PUBLIC_API_BASE_URL');
   if (configured) return configured.replace(/\/$/, '');
+  // Fallback only safe in dev/single-host setups. Logs so a misconfigured
+  // prod deploy is visible rather than silently shipping broken installers.
+  console.warn(
+    '[monitoring-clients] PUBLIC_API_BASE_URL is not set — falling back to the request host. ' +
+      'Installer/agent URLs will point at this edge host, which does not serve /install or /api/client-metrics. ' +
+      'Set PUBLIC_API_BASE_URL to the Express host (see EDGE-015).',
+  );
   const url = new URL(req.url);
   const proto = req.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
   const host = req.headers.get('x-forwarded-host') || url.host;
@@ -688,6 +703,66 @@ export default async function handler(req: Request) {
         expiresAt: r.expires_at,
       }));
       return createCorsResponse({ commands }, 200, req);
+    }
+
+    // ── update (partial) ─────────────────────────────────────────────
+    // Toggles/edits on an existing client. autoUpdate + autoOrderEnabled live
+    // in the JSON config blob (read-modify-write); customerId/location/
+    // clientName are top-level columns.
+    if ((req.method === 'PATCH' || req.method === 'PUT') && clientId && !action) {
+      const client = await findClientForTenant(admin, clientId, tenantId);
+      if (!client) return createCorsResponse({ message: 'Client not found' }, 404, req);
+
+      const body = await req.json().catch(() => ({}));
+      const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+
+      if (typeof body.customerId === 'string' || body.customerId === null) {
+        updates.customer_id = body.customerId || null;
+      }
+      if (typeof body.location === 'string') updates.location = body.location;
+      if (typeof body.clientName === 'string' && body.clientName.trim()) {
+        updates.client_name = body.clientName.trim();
+      }
+
+      const cfg = (client.configuration as Record<string, any>) || {};
+      const nextCfg = { ...cfg };
+      let cfgChanged = false;
+      if (typeof body.autoUpdate === 'boolean') {
+        nextCfg.autoUpdate = body.autoUpdate;
+        cfgChanged = true;
+      }
+      if (typeof body.autoOrderEnabled === 'boolean') {
+        nextCfg.autoOrderEnabled = body.autoOrderEnabled;
+        cfgChanged = true;
+      }
+      if (cfgChanged) updates.configuration = nextCfg;
+
+      const { data: updated, error } = await admin
+        .from('monitoring_clients')
+        .update(updates)
+        .eq('id', client.id)
+        .select()
+        .single();
+      if (error) {
+        return createCorsResponse(
+          { message: 'Failed to update client', detail: error.message },
+          500,
+          req,
+        );
+      }
+
+      if (typeof body.autoUpdate === 'boolean') {
+        await admin.from('client_activity_logs').insert({
+          tenant_id: tenantId,
+          client_id: client.id,
+          activity: 'config_update',
+          status: 'success',
+          message: `Auto-update ${body.autoUpdate ? 'enabled' : 'disabled'}`,
+          details: { by: user.id, autoUpdate: body.autoUpdate },
+        });
+      }
+
+      return createCorsResponse({ client: publicClient(updated) }, 200, req);
     }
 
     // ── delete ───────────────────────────────────────────────────────

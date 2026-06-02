@@ -6746,6 +6746,97 @@
       "passes": false,
       "notes": "Builds on shared/outreach-schema.ts. NEVER auto-send in v1 — trust requirement is enormous. Voice mirroring quality is the make-or-break: ship behind a feature flag, beta with 5 friendly reps, measure edit-distance, expand only when it is consistently <30%.",
       "category": "super-app"
+    },
+    {
+      "id": "EDGE-012",
+      "title": "Build authoritative route-parity matrix (frontend ↔ edge ↔ Express ↔ proxy map)",
+      "description": "As a platform engineer, I need a single re-runnable source of truth that shows, for every /api/* route, which backend actually serves it in prod vs dev, so we can find every loose end where dev (Express) and prod (edge functions) diverge before they cause environment-specific bugs.",
+      "acceptanceCriteria": [
+        "Script (scripts/audit-route-parity.mjs) enumerates: (a) every /api/* path the frontend calls (grep client/src for apiRequest/getApiUrl/useQuery keys), (b) every supabase/functions/* directory, (c) every Express route registration (server/routes*, routes-registry), (d) every entry in edge-function-proxy crmProxies",
+        "Emits docs/route-parity-matrix.md classifying each route: prod-live-edge (frontend→functions host), dev-express-only, both-divergent (Express + edge exist, not proxied), missing-edge (frontend calls it, no edge fn = prod blocker), dead-express (Express handler with no frontend ref and an edge equivalent)",
+        "Documents the architecture fact at top: prod frontend → functions.printyx.net via getApiUrl for ALL /api/*; Express proxy map (33 prefixes) only affects dev; Express stays canonical for /api/client-metrics/* (agent) and /install/*",
+        "Matrix is committed and the script wired into CI as a report (non-blocking initially)",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 40,
+      "passes": false,
+      "notes": "Foundation for EDGE-013..EDGE-017. Today only 33 of ~205 edge functions are in the proxy map; getApiUrl (client/src/lib/config.ts) sends prod traffic straight to functions.printyx.net, so the proxy map only governs dev. The matrix turns 'we think it's migrated' into evidence.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-013",
+      "title": "Make dev route resolution match production (close the proxy-map gap)",
+      "description": "As a developer, I need dev to hit the same handler prod does, so I stop fixing/testing stale Express code for routes that are edge-served in production.",
+      "acceptanceCriteria": [
+        "For every route classified 'both-divergent' in the EDGE-012 matrix, choose and apply one resolution: add the prefix to the edge-function-proxy map (dev forwards to the same edge code) OR retire the Express handler, OR document why Express must stay",
+        "Add a dev-only divergence detector: when Express serves a locally-handled /api/* route that ALSO has a matching edge function and is not in the proxy map, log a warning at startup listing the ambiguous routes",
+        "No route the frontend calls resolves to different code in dev vs prod (verified against the matrix)",
+        "edge-function-proxy.ts comment block updated to state the prod=edge-direct reality explicitly"
+      ],
+      "priority": 41,
+      "passes": false,
+      "notes": "PARTIAL (2026-06): divergence detector built (server/middleware/route-divergence-detector.ts, dev-only, logs at startup from docs/route-divergence.json), audit emits that JSON, edge-function-proxy.ts comment block updated to state prod=edge-direct + exports PROXIED_PREFIXES, and monitoring-clients folded into the proxy map (verified parity — fixes real dev bugs: bare-array list + missing /regenerate-key + PATCH). Remaining: per-domain verify+fold the other ~63 both-divergent domains (proxy falls through to Express on edge network error, so folding is dev-safe). Concrete trigger was /api/monitoring-clients. Depends on EDGE-012.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-014",
+      "title": "Close Bucket C blockers — frontend calls with missing or partial edge parity",
+      "description": "As a platform operator, I need every /api/* the frontend calls to have a complete edge function, because in production those calls go straight to functions.printyx.net and a missing/partial function is a hard production failure (not a dev one).",
+      "acceptanceCriteria": [
+        "From the EDGE-012 matrix, produce the list of 'missing-edge' and partial routes the frontend calls",
+        "For each: port the missing endpoints to the edge function (with tenant scoping + RBAC parity to the Express version) OR confirm-and-remove the dead frontend call",
+        "Update docs/sunset-route-inventory.md Bucket C with resolution per domain",
+        "Smoke-test each ported domain against functions.printyx.net (or local edge runtime) and record in a session-status note"
+      ],
+      "priority": 42,
+      "passes": false,
+      "notes": "These are the dangerous loose ends: they fail in PROD, not dev, because dev silently falls back to an Express handler that prod never reaches. Prioritise above cosmetic migration work.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-015",
+      "title": "Enforce PUBLIC_API_BASE_URL for platform-URL-emitting edge functions",
+      "description": "As a platform operator, I need edge functions that emit installer/enrollment/agent URLs to point at the Express host that serves /install/* and /api/client-metrics/*, so on-prem monitoring-client installs and agent reporting don't break in production.",
+      "acceptanceCriteria": [
+        "Inventory every edge function that emits a platform base URL (monitoring-clients platformBaseUrl, and any others found via grep for x-forwarded-host / install command / enrollment)",
+        "When PUBLIC_API_BASE_URL is unset, these functions warn loudly (already added to monitoring-clients) — extend to all and consider failing the installer/enrollment endpoints rather than emitting a dead-host URL",
+        "Document the required env (PUBLIC_API_BASE_URL = the Express/app host, NOT functions.printyx.net) in the deployment checklist and printyx-client/AUDIT.md",
+        "Add a deployment-readiness check that asserts PUBLIC_API_BASE_URL is set and resolves to a host serving GET /install/printyx-client.cjs (200)"
+      ],
+      "priority": 39,
+      "passes": false,
+      "notes": "platformBaseUrl falls back to the request host = functions.printyx.net in prod, which serves neither /install nor agent ingest. Without this env, every UI-generated installer/enrollment command and bootstrap-config.json points at a dead host. Partial: warning added to monitoring-clients edge fn.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-016",
+      "title": "Monitoring-clients Express↔edge convergence + dead-handler retirement",
+      "description": "As a maintainer, I need one canonical handler for the monitoring-clients admin surface so feature work (self-test, auto-update, .exe) isn't silently applied to the wrong backend.",
+      "acceptanceCriteria": [
+        "Confirm via EDGE-012 matrix that prod-live admin handler is the monitoring-clients edge function (frontend → functions host)",
+        "Edge parity for everything the UI uses: list returns configuration incl. lastInstallReport (self-test badge) done, PATCH autoUpdate toggle done, autoOrderEnabled, installer.zip (installer self-downloads bundle from /install — verify end-to-end with PUBLIC_API_BASE_URL set), enrollment-token, commands",
+        "Retire or guard the superseded Express /api/monitoring-clients admin CRUD (GET/POST/PUT/PATCH/DELETE/:id/* in routes-client-monitoring.ts) — keep agent ingest /api/client-metrics/* on Express (the edge client-metrics fn is deprecated)",
+        "Add a test asserting Express monitoring-clients admin handlers and the edge function don't silently diverge (or that Express ones are removed)"
+      ],
+      "priority": 43,
+      "passes": false,
+      "notes": "Context: 2026-06 work added install self-test (Express install-report + UI badge), agent auto-update (Express heartbeat update signal + client UpdateManager), and an experimental Node-SEA .exe. The auto-update toggle PATCH was added to BOTH the edge fn (prod-live) and Express (dev/fallback). This story removes the ambiguity for good.",
+      "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-017",
+      "title": "Execute sunset Bucket A deletions + CI guard against ambiguous route ownership",
+      "description": "As a maintainer, I need migrated Express handlers actually removed (after soak) and a guard that prevents new ambiguous-ownership routes, so the codebase stops carrying dead handlers that mislead the next change.",
+      "acceptanceCriteria": [
+        "Work docs/sunset-route-inventory.md Bucket A: for each migrated domain, unregister from route-registry, soak 48h, then delete the Express file(s) per the sunset PRD process",
+        "Add a CI check (extends EDGE-012 script) that FAILS when a frontend-referenced /api/* route resolves to BOTH an Express handler and an edge function with no proxy-map entry (ambiguous ownership)",
+        "Update docs/sunset-route-inventory.md headline counts after each batch",
+        "No regression: npm run check && npm run build pass after each deletion batch"
+      ],
+      "priority": 44,
+      "passes": false,
+      "notes": "Turns the audit (EDGE-012) into enforcement so the divergence can't silently come back. Sequenced last — only delete Express handlers once EDGE-013/014 prove the edge side has parity.",
+      "category": "edge-migration"
     }
   ]
 }

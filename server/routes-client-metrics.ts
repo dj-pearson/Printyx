@@ -210,7 +210,7 @@ router.patch(
       const client = await loadClientForTenant(req.params.clientId, tenantId);
       if (!client) return res.status(404).json({ message: 'Client not found' });
 
-      const { customerId, autoOrderEnabled, location, clientName } = req.body || {};
+      const { customerId, autoOrderEnabled, autoUpdate, location, clientName } = req.body || {};
       const updates: Record<string, any> = { updatedAt: new Date() };
       if (typeof customerId === 'string' || customerId === null) {
         updates.customerId = customerId || null;
@@ -219,10 +219,15 @@ router.patch(
       if (typeof clientName === 'string' && clientName.trim())
         updates.clientName = clientName.trim();
 
-      // autoOrderEnabled lives in the JSON config blob — read-modify-write.
-      if (typeof autoOrderEnabled === 'boolean') {
+      // autoOrderEnabled + autoUpdate live in the JSON config blob — one
+      // read-modify-write covers both.
+      if (typeof autoOrderEnabled === 'boolean' || typeof autoUpdate === 'boolean') {
         const cfg = (client.configuration as any) || {};
-        updates.configuration = { ...cfg, autoOrderEnabled };
+        updates.configuration = {
+          ...cfg,
+          ...(typeof autoOrderEnabled === 'boolean' ? { autoOrderEnabled } : {}),
+          ...(typeof autoUpdate === 'boolean' ? { autoUpdate } : {}),
+        };
       }
 
       await db.update(monitoringClients).set(updates).where(eq(monitoringClients.id, client.id));

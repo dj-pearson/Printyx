@@ -196,6 +196,7 @@ import { registerHealthRoutes } from './routes/health-routes';
 import apiKeyRoutes from './routes/api-key-routes';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
+import { logRouteDivergence } from './middleware/route-divergence-detector';
 import { createModuleLogger } from './lib/logger';
 
 const log = createModuleLogger('routes-registry');
@@ -719,4 +720,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
       timestamp: new Date().toISOString(),
     });
   }
+
+  // ─── Dev route-divergence check (no-op in prod) ────────────────────
+  // Warns when dev serves an Express handler for a route prod serves via an
+  // edge function (EDGE-013). Runs last so the proxy map is fully populated.
+  logRouteDivergence();
 }
