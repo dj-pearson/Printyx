@@ -44,6 +44,24 @@ export interface HeartbeatResponse {
     command: string;
     payload?: Record<string, unknown>;
   }>;
+  // Auto-update signal. The platform advertises the version it currently
+  // serves at /install/printyx-client.cjs; the agent self-updates when
+  // `available` is true (server already factored in the per-client toggle).
+  update?: {
+    latestVersion: string;
+    available: boolean;
+    enabled: boolean;
+    url: string;
+  };
+}
+
+export interface InstallSelfTestReport {
+  agentVersion: string;
+  printersFound: number;
+  printersReporting: number;
+  errors: string[];
+  durationMs: number;
+  ok: boolean;
 }
 
 export interface CommandAckBody {
@@ -266,6 +284,35 @@ export class PrintyxAPIClient {
       this.logger.error('Failed to ack command', { commandId, error });
       throw error;
     }
+  }
+
+  /**
+   * Report the result of a post-install self-test so the platform can show
+   * the operator (and the dealer) that the agent is wired up and seeing
+   * printers — without anyone reading a log file.
+   */
+  async submitInstallReport(report: InstallSelfTestReport): Promise<void> {
+    try {
+      await this.client.post('/api/client-metrics/install-report', report);
+      this.logger.info('Install self-test report submitted');
+    } catch (error) {
+      this.logger.error('Failed to submit install self-test report', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Download the latest agent bundle (printyx-client.cjs) for self-update.
+   * Uses the same secure TLS agent as every other call. The /install path is
+   * public, but sending our bearer token is harmless.
+   */
+  async downloadBundle(url: string): Promise<Buffer> {
+    const response = await this.client.get(url, {
+      baseURL: undefined, // url is absolute (platform root, not /api)
+      responseType: 'arraybuffer',
+      headers: { Accept: 'application/javascript' },
+    });
+    return Buffer.from(response.data as ArrayBuffer);
   }
 
   /**

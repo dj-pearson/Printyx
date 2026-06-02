@@ -54,10 +54,12 @@ The Printyx Client is designed for secure enterprise deployments including healt
 
 ## Requirements
 
-- Node.js 18.0 or higher
 - Network access to printers (SNMP port 161 or HTTP/HTTPS)
-- API credentials from your Printyx platform
+- An enrollment token (or API key) from your Printyx platform
 - **HTTPS endpoint** (HTTP not supported for security)
+- Node.js 18+ — **only if you install from source**. The platform installer
+  ships a prebuilt, self-contained agent and auto-installs Node LTS if it's
+  missing, so a fresh Windows server needs nothing pre-installed.
 
 ## Installation
 
@@ -133,14 +135,16 @@ There are three install paths, in order of operator effort:
 #### A. Tenant-scoped bundle from the platform
 
 In the Printyx UI: **Monitoring → Monitoring Clients → Add Client →
-Download Windows Installer**. You get back a zip pre-wired to that tenant
-and customer:
+Download Windows Installer**. You get back a fully self-contained zip,
+pre-wired to that tenant and customer:
 
 ```
 printyx-client-<clientid>.zip
 ├── install-windows.ps1
 ├── uninstall-windows.ps1
-└── bootstrap-config.json   ← endpoint + one-time enrollment token
+├── printyx-client.cjs       ← prebuilt agent (all deps inlined)
+├── bundle-manifest.json     ← version metadata
+└── bootstrap-config.json    ← endpoint + one-time enrollment token
 ```
 
 On the target server (elevated PowerShell):
@@ -152,14 +156,18 @@ Set-ExecutionPolicy -Scope Process Bypass -Force
 .\install-windows.ps1 -ConfigBundle .\bootstrap-config.json
 ```
 
-The installer redeems the bundle's enrollment token at install time (over
-HTTPS/443), receives a permanent API key, writes `config.json`, and starts
-the Windows service. **No API key ever touches the zip** — just a
-short-lived token that becomes useless after redemption.
+Because the agent is prebuilt, there is **no `npm install` and no compile**
+on the target — install is seconds, not minutes. If Node.js is missing the
+installer installs Node LTS automatically. It then redeems the bundle's
+enrollment token over HTTPS/443, receives a permanent API key, writes
+`config.json`, and starts the Windows service. **No API key ever touches the
+zip** — just a short-lived token that becomes useless after redemption.
 
-#### B. Generic installer + enrollment token
+#### B. One-line web install + enrollment token
 
-Hand out one PowerShell command per server:
+Hand out one PowerShell command per server. The bootstrap it downloads pulls
+the prebuilt agent and the installer from the platform, so there's no repo
+checkout and no build:
 
 ```powershell
 # In the platform UI: Monitoring → Monitoring Clients → Generate Token
@@ -170,6 +178,11 @@ iwr -UseBasicParsing https://app.printyx.net/install/printyx-client.ps1 `
     -EnrollmentToken 'et_xxxxxxxxxxxxxxxx' `
     -Endpoint        'https://app.printyx.net'
 ```
+
+The platform serves three public files behind this: `/install/printyx-client.ps1`
+(the bootstrap), `/install/install-windows.ps1` (the installer), and
+`/install/printyx-client.cjs` (the agent). None contains a secret — the API
+key only materialises after the enrollment token is redeemed over HTTPS.
 
 #### C. Local checkout (developer install)
 
@@ -197,13 +210,15 @@ What the installer does:
 
 | Step | Result |
 | --- | --- |
-| Verifies Node.js >= 18 | aborts otherwise |
+| Ensures Node.js >= 18 | auto-installs Node LTS (winget → MSI) if missing |
+| Picks bundle mode when `printyx-client.cjs` is present | skips npm install + TypeScript build entirely |
 | Validates the endpoint over TCP/443 before writing config | catches DNS/firewall errors early |
-| Copies the built client to `C:\Program Files\Printyx\Client` | |
+| Copies the agent to `C:\Program Files\Printyx\Client` | single `.cjs` in bundle mode; `dist/` + `node_modules` in source mode |
 | Writes `C:\ProgramData\Printyx\config.json` | NTFS ACL: Administrators + SYSTEM only |
 | Downloads NSSM (https://nssm.cc) and registers `PrintyxClient` service | runs as `NetworkService`, auto-start, auto-restart, 10 MB log rotation |
-| Adds outbound firewall rule | `node.exe` → TCP/443 only |
+| Adds outbound firewall rule | agent → TCP/443 only |
 | Starts the service and confirms it is `Running` | |
+| Runs a post-install self-test | one discovery+collect cycle; reports "N/M printers reporting" to the platform UI |
 
 After install:
 
@@ -221,15 +236,17 @@ To remove:
 
 ### Windows: one-line bootstrap
 
-If you want to install on a fresh server with no local repo checkout, host
-`Install-FromWeb.ps1` somewhere reachable and run:
+The recommended fresh-server path is option **B** above — the platform's own
+`/install/printyx-client.ps1` bootstrap pulls the prebuilt agent and runs the
+installer with no repo checkout and no build.
+
+`Install-FromWeb.ps1` is an alternative that clones the **full source**
+archive and builds it on the target (source mode). Prefer it only when you
+explicitly want to build from a specific git ref:
 
 ```powershell
 irm https://your-printyx.example/install.ps1 | iex
 ```
-
-It downloads the printyx-client release archive, extracts it to a temp
-directory, and hands off to `install-windows.ps1`.
 
 ## Configuration
 
@@ -424,8 +441,14 @@ npm install
 # Run in development mode
 npm run dev
 
-# Build
+# Build (TypeScript → dist/, for source-mode installs)
 npm run build
+
+# Bundle (single self-contained dist/printyx-client.cjs the platform ships)
+npm run bundle
+
+# Build a zero-dependency Windows .exe (Node SEA — experimental, opt-in)
+npm run build:exe
 
 # Run tests
 npm test

@@ -40,6 +40,11 @@ ENV APP_VERSION=${APP_VERSION}
 # Build the application
 RUN npm run build
 
+# Build the self-contained monitoring-client agent bundle
+# (printyx-client/dist/printyx-client.cjs). The server streams this to
+# customers via /install and the installer zip, so it must exist in the image.
+RUN npm run build:client-agent
+
 # Prune dev dependencies
 RUN npm prune --production --legacy-peer-deps
 
@@ -71,6 +76,14 @@ COPY --from=builder --chown=printyx:nodejs /app/package*.json ./
 
 # Copy static assets if they exist
 COPY --from=builder --chown=printyx:nodejs /app/client/dist ./client/dist
+
+# Copy the monitoring-client install assets the server serves at runtime:
+#   - printyx-client/scripts/*.ps1   (installer + bootstrap + uninstaller)
+#   - printyx-client/dist/printyx-client.cjs  (the prebuilt agent bundle)
+# These back GET /install/* and GET /api/monitoring-clients/:id/installer.zip.
+COPY --from=builder --chown=printyx:nodejs /app/printyx-client/scripts ./printyx-client/scripts
+COPY --from=builder --chown=printyx:nodejs /app/printyx-client/dist ./printyx-client/dist
+COPY --from=builder --chown=printyx:nodejs /app/printyx-client/package.json ./printyx-client/package.json
 
 # Create logs directory
 RUN mkdir -p /app/logs && chown -R printyx:nodejs /app/logs

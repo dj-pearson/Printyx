@@ -8,6 +8,7 @@ import { NetworkScanner } from '../discovery/network-scanner';
 import { DataBuffer } from './data-buffer';
 import { MeterTracker } from './meter-tracker';
 import { CommandProcessor } from './command-processor';
+import { UpdateManager } from './update-manager';
 import { getLogger } from '../utils/logger';
 
 export class MetricsScheduler {
@@ -20,6 +21,7 @@ export class MetricsScheduler {
   private dataBuffer: DataBuffer;
   private meterTracker: MeterTracker;
   private commandProcessor: CommandProcessor;
+  private updateManager: UpdateManager;
 
   private collectionTask: cron.ScheduledTask | null = null;
   private heartbeatTask: cron.ScheduledTask | null = null;
@@ -37,6 +39,7 @@ export class MetricsScheduler {
       rescan: () => this.handleRescan(),
       reloadConfig: () => this.handleReloadConfig(),
     });
+    this.updateManager = new UpdateManager(apiClient, configManager);
   }
 
   /**
@@ -220,6 +223,55 @@ export class MetricsScheduler {
   }
 
   /**
+   * One-shot post-install verification. Runs discovery + a single collect
+   * cycle, submits whatever it found (so the dashboard populates right away),
+   * and returns counts the installer/platform can show the operator. Does NOT
+   * touch the cron schedule — safe to call before start() or standalone.
+   */
+  async runSelfTest(): Promise<{
+    printersFound: number;
+    printersReporting: number;
+    errors: string[];
+  }> {
+    const errors: string[] = [];
+    const devices = await this.getDevicesToMonitor();
+    if (devices.length === 0) {
+      return {
+        printersFound: 0,
+        printersReporting: 0,
+        errors: ['No printers discovered or configured on this network.'],
+      };
+    }
+
+    const results = await Promise.allSettled(devices.map((d) => this.collectDeviceMetrics(d)));
+    const collected: DeviceMetrics[] = [];
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') {
+        collected.push(r.value);
+      } else {
+        const reason = r.reason instanceof Error ? r.reason.message : String(r.reason);
+        errors.push(`${devices[i].ipAddress}: ${reason}`);
+      }
+    });
+
+    if (collected.length > 0) {
+      const config = this.configManager.getConfig();
+      const processed = collected.map((m) => this.meterTracker.processMetrics(m));
+      try {
+        await this.apiClient.submitMetrics(config.client.id, config.client.version, processed);
+      } catch (e) {
+        errors.push(`submit: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+
+    return {
+      printersFound: devices.length,
+      printersReporting: collected.length,
+      errors,
+    };
+  }
+
+  /**
    * Retry buffered submissions with exponential backoff
    */
   private async retryBufferedSubmissions(): Promise<void> {
@@ -376,6 +428,11 @@ export class MetricsScheduler {
           this.logger.error('Command batch processing crashed', { err });
         });
       }
+      // Self-update if the platform advertises a newer bundle. This may
+      // process.exit(0) to let the service manager restart us — intentional.
+      this.updateManager.maybeUpdate(response.update).catch((err) => {
+        this.logger.error('Auto-update check crashed', { err });
+      });
     } catch (error) {
       this.logger.error('Failed to send heartbeat', { error });
     }

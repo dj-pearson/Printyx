@@ -121,7 +121,8 @@
       "Bash(sort -k3 -n)",
       "Bash(Get-ChildItem -Directory client/src -Depth 2)",
       "Bash(Select-Object FullName)",
-      "Bash(ConvertTo-Json)"
+      "Bash(ConvertTo-Json)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

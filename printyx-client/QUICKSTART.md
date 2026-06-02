@@ -222,9 +222,10 @@ Set-ExecutionPolicy -Scope Process Bypass -Force
 .\scripts\install-windows.ps1
 ```
 
-It builds the client, hardens config-file ACLs, installs the
-`PrintyxClient` Windows service via NSSM, adds an outbound firewall rule
-restricted to TCP/443, and starts the service. See
+From a source checkout it builds the client; from the platform zip it uses
+the prebuilt bundle (no build). Either way it hardens config-file ACLs,
+installs the `PrintyxClient` Windows service via NSSM, adds an outbound
+firewall rule restricted to TCP/443, and starts the service. See
 [README.md](README.md#windows-installation-recommended) for parameter usage
 and unattended install.
 

@@ -59,7 +59,9 @@ truth: the `monitoring_clients` table with SHA-256 hashed API keys.
 | `POST /api/client-metrics/clients/:id/enrollment-token` | `routes-client-metrics.ts`  | user session + tenant |
 | `GET  /api/client-metrics/clients/:id/installer.zip`  | `routes-client-metrics.ts`    | user session + tenant |
 | `POST /api/client-metrics/enroll`                     | `routes-client-metrics.ts`    | one-time token        |
-| `GET  /install/printyx-client.ps1`                    | `routes-registry.ts`          | none (script only)    |
+| `GET  /install/printyx-client.ps1`                    | `routes-registry.ts`          | none (bootstrap)      |
+| `GET  /install/install-windows.ps1`                   | `routes-registry.ts`          | none (script only)    |
+| `GET  /install/printyx-client.cjs`                    | `routes-registry.ts`          | none (agent, no secrets) |
 
 The previously-divergent `client_registrations` table is no longer written
 to. The Supabase edge function in
@@ -321,11 +323,84 @@ Wired through `snmp.createV3Session()`:
 
 CLI test command takes the same flags — see `docs/SNMP-TESTING.md`.
 
+## Distribution topology (prebuilt bundle)
+
+The agent ships as a single self-contained file, **not** as a source tree the
+target compiles.
+
+- `npm run bundle` (esbuild, `esbuild.config.mjs`) emits
+  `dist/printyx-client.cjs` with every dependency inlined — no `node_modules`
+  needed at runtime. All deps are pure JS (net-snmp, bonjour-service, winston,
+  axios, commander, node-cron, ip-range-check, dotenv), so single-file
+  bundling is safe.
+- The platform build runs this via the root `build:client-agent` script
+  (wired into the Dockerfile builder stage). The runtime image carries
+  `printyx-client/dist/printyx-client.cjs` + `printyx-client/scripts/*.ps1`.
+- The server exposes the agent three ways, all backed by that one artifact:
+  - `GET /install/printyx-client.cjs` — raw agent (public; no secrets).
+  - `GET /install/install-windows.ps1` — installer (public).
+  - `GET /install/printyx-client.ps1` — `Install-Bootstrap.ps1`, which fetches
+    the two above into a temp dir and runs the installer in bundle mode.
+  - `GET /api/monitoring-clients/:id/installer.zip` — the agent + scripts +
+    `bootstrap-config.json` zipped together.
+- Path overrides: `PRINTYX_CLIENT_BUNDLE_PATH`, `PRINTYX_CLIENT_SCRIPTS_DIR`.
+- If the bundle is absent (deploy skipped `build:client-agent`), the zip and
+  `/install/printyx-client.cjs` endpoints return 503 with a fix hint rather
+  than shipping a non-installable artifact.
+
+`install-windows.ps1` auto-detects the bundle (next to the script or in
+`..\dist`) and installs in **bundle mode**: no `npm install`, no `tsc`. It
+falls back to **source mode** (compile from a checkout) only when no bundle is
+found. Node.js ≥18 is auto-installed (winget → official MSI) when missing,
+unless `-SkipNodeAutoInstall` is set.
+
+## Install self-test
+
+After the service starts, the installer runs `printyx-client selftest -c
+config.json`, which performs one discovery + collection cycle, submits what it
+found, and POSTs the outcome to `POST /api/client-metrics/install-report`
+(API-key auth). The server stores it on `monitoring_clients.configuration
+.lastInstallReport` (no migration) and writes an `install_selftest` activity
+row; a reporting agent is flipped to `status='active'`. The Monitoring Clients
+list shows a green/amber "N/M reporting" badge. Exit codes: 0 = at least one
+printer reported, 2 = installed but nothing reported yet, 1 = error.
+
+## Agent auto-update
+
+Each heartbeat response carries an `update` block built by `buildUpdateSignal`
+in `routes-client-monitoring.ts` (backed by `services/client-agent-assets.ts`,
+which reads the served bundle's `bundle-manifest.json` version, cached 60s).
+When the served version is newer than the client's reported `version` and the
+per-client `configuration.autoUpdate` flag isn't `false`, `available` is true.
+
+Client side, `services/update-manager.ts` (wired into the scheduler heartbeat)
+downloads `<endpoint>/install/printyx-client.cjs`, sanity-checks it (size +
+header), backs up the running bundle to `.bak`, swaps it in, and `process
+.exit(0)` so NSSM/systemd restart on the new code. Guards: only runs as a
+single `.cjs` bundle (not source/dist or .exe installs); attempts each target
+version at most once per process; local `config.update.enabled=false` opts out.
+
+## Zero-dependency .exe (Node SEA) — experimental
+
+`npm run build:exe` (`build-exe.mjs`) wraps `dist/printyx-client.cjs` in a Node
+Single Executable Application: it generates the SEA blob from the bundle, pulls
+a matching win-x64 `node.exe`, and injects the blob via `postject` →
+`dist/printyx-client.exe`. The binary embeds Node, so the target needs nothing.
+
+Opt-in only — NOT in the default build/Docker pipeline. `install-windows.ps1
+-UseExe` (or a `printyx-client.exe` shipped next to the script) installs in
+**exe mode**: Node is not installed, the service runs the binary directly, the
+firewall rule is scoped to the binary. The server serves it at
+`/install/printyx-client.exe` (env override `PRINTYX_CLIENT_EXE_PATH`).
+Caveats: auto-update is disabled for exe installs (a SEA can't self-replace),
+and the binary is unsigned (sign with `signtool` before wide distribution).
+
 ## Windows install
 
 `scripts/install-windows.ps1` performs the full setup:
 
-- builds the client
+- installs a prebuilt bundle (or builds from source if no bundle is present;
+  or the self-contained .exe with `-UseExe`)
 - copies it to `%ProgramFiles%\Printyx\Client`
 - writes config to `%ProgramData%\Printyx\config.json` with NTFS ACL
   restricted to **Administrators + SYSTEM** (and read-only for

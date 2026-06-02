@@ -76,6 +76,16 @@ export interface ClientConfig {
   encryption?: {
     enabled: boolean; // Encrypt sensitive fields in config
   };
+  /**
+   * Self-update behaviour. When enabled, the agent compares its version to
+   * the platform's published bundle on each heartbeat and, if the platform
+   * advertises a newer version (and the platform's per-client toggle is on),
+   * downloads the new bundle, swaps it in, and restarts. Only ever acts in
+   * bundle mode (a single printyx-client.cjs). Default: enabled.
+   */
+  update?: {
+    enabled?: boolean;
+  };
 }
 
 export class ConfigManager {

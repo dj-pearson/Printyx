@@ -40,6 +40,32 @@ import {
 } from './middleware/rbac-route-helper';
 
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { getPublishedAgentVersion, compareVersions } from './services/client-agent-assets';
+
+/**
+ * Build the auto-update signal returned on each heartbeat. The agent uses
+ * this to self-update: when `available` is true it downloads `url`, swaps the
+ * running bundle, and restarts. Returns undefined when the platform isn't
+ * serving a bundle (no version to compare against).
+ */
+function buildUpdateSignal(req: any, client: any) {
+  const latestVersion = getPublishedAgentVersion();
+  if (!latestVersion) return undefined;
+  const clientVersion = client.version || '0.0.0';
+  const cfg = (client.configuration as Record<string, any>) || {};
+  const enabled = cfg.autoUpdate !== false; // default ON; per-client opt-out
+  const newer = compareVersions(latestVersion, clientVersion) > 0;
+  const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
+  const host = (req.headers['x-forwarded-host'] as string) || req.get('host') || '';
+  const baseUrl = (process.env.PUBLIC_API_BASE_URL || `${proto}://${host}`).replace(/\/$/, '');
+  return {
+    latestVersion,
+    available: newer && enabled,
+    enabled,
+    url: `${baseUrl}/install/printyx-client.cjs`,
+  };
+}
+
 // Middleware to authenticate monitoring clients via API key
 async function authenticateClient(req: any, res: any, next: any) {
   try {
@@ -1001,6 +1027,7 @@ export function registerClientMonitoringRoutes(app: Express) {
           command: c.command,
           payload: c.payload || {},
         })),
+        update: buildUpdateSignal(req, client),
       });
     } catch (error) {
       log.error('Error processing heartbeat:', error);
@@ -1072,6 +1099,58 @@ export function registerClientMonitoringRoutes(app: Express) {
     } catch (error) {
       log.error('Error fetching client config:', error);
       res.status(500).json({ message: 'Failed to fetch configuration' });
+    }
+  });
+
+  // Post-install self-test report. The agent runs one discovery+collect cycle
+  // right after install and POSTs the outcome here so the operator sees a
+  // green/amber status in the UI instead of grepping logs. Stored on the
+  // client's configuration blob (no migration needed) and surfaced by the
+  // /api/monitoring-clients list.
+  app.post('/api/client-metrics/install-report', authenticateClient, async (req: any, res) => {
+    try {
+      const client = req.monitoringClient;
+      const tenantId = req.tenantId;
+      const body = req.body || {};
+
+      const report = {
+        agentVersion: typeof body.agentVersion === 'string' ? body.agentVersion : client.version,
+        printersFound: Number(body.printersFound) || 0,
+        printersReporting: Number(body.printersReporting) || 0,
+        errors: Array.isArray(body.errors) ? body.errors.slice(0, 20).map(String) : [],
+        durationMs: Number(body.durationMs) || 0,
+        ok: body.ok === true,
+        receivedAt: new Date().toISOString(),
+      };
+
+      const cfg = (client.configuration as Record<string, unknown>) || {};
+      await db
+        .update(monitoringClients)
+        .set({
+          configuration: { ...cfg, lastInstallReport: report },
+          // A reporting agent is unambiguously active.
+          status: report.printersReporting > 0 ? 'active' : client.status,
+          lastHeartbeat: new Date(),
+          version: report.agentVersion || client.version,
+          updatedAt: new Date(),
+        })
+        .where(eq(monitoringClients.id, client.id));
+
+      await db.insert(clientActivityLogs).values({
+        tenantId,
+        clientId: client.id,
+        activity: 'install_selftest',
+        status: report.ok ? 'success' : 'warning',
+        message: report.ok
+          ? `Install self-test passed — ${report.printersReporting}/${report.printersFound} printers reporting`
+          : `Install self-test — ${report.printersReporting}/${report.printersFound} printers reporting`,
+        details: { installSelfTest: report },
+      });
+
+      res.json({ message: 'Install report recorded' });
+    } catch (error) {
+      log.error('Error recording install report:', error);
+      res.status(500).json({ message: 'Failed to record install report' });
     }
   });
 

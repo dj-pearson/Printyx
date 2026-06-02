@@ -578,6 +578,21 @@ router.get(
         });
       }
 
+      // The prebuilt, self-contained client bundle. Including it makes the zip
+      // fully turn-key: no source checkout, no `npm install`, no TypeScript
+      // build on the target. If it's missing the deploy didn't run
+      // `npm run bundle` for printyx-client — fail loudly rather than ship a
+      // zip that can't install.
+      const bundleFile = resolveBundleFile();
+      if (!bundleFile) {
+        return res.status(503).json({
+          message:
+            'Prebuilt client bundle (printyx-client.cjs) not found on the server. ' +
+            'Build it with `npm run bundle` in printyx-client/ and ensure dist/ ships in the deploy ' +
+            '(or set PRINTYX_CLIENT_BUNDLE_PATH).',
+        });
+      }
+
       const bootstrap = {
         endpoint: resolvePlatformBaseUrl(req),
         tenantId,
@@ -604,6 +619,13 @@ router.get(
       archive.file(installPs1, { name: 'install-windows.ps1' });
       if (fs.existsSync(uninstallPs1)) {
         archive.file(uninstallPs1, { name: 'uninstall-windows.ps1' });
+      }
+      // The self-contained agent. install-windows.ps1 auto-detects it next to
+      // itself and installs in "bundle mode" (no build step).
+      archive.file(bundleFile, { name: 'printyx-client.cjs' });
+      const manifestFile = path.join(path.dirname(bundleFile), 'bundle-manifest.json');
+      if (fs.existsSync(manifestFile)) {
+        archive.file(manifestFile, { name: 'bundle-manifest.json' });
       }
       archive.append(JSON.stringify(bootstrap, null, 2), { name: 'bootstrap-config.json' });
       archive.append(README_FOR_BUNDLE, { name: 'README.txt' });
@@ -640,18 +662,35 @@ function resolveInstallerDir(): string {
   return path.resolve(process.cwd(), 'printyx-client', 'scripts');
 }
 
+/**
+ * Locate the prebuilt, self-contained client bundle (printyx-client.cjs).
+ * Produced by `npm run bundle` in printyx-client/. Returns the absolute path
+ * or null if it can't be found — callers decide how to handle absence.
+ */
+function resolveBundleFile(): string | null {
+  const candidates = [
+    process.env.PRINTYX_CLIENT_BUNDLE_PATH,
+    path.resolve(process.cwd(), 'printyx-client', 'dist', 'printyx-client.cjs'),
+  ].filter((p): p is string => !!p);
+  return candidates.find((p) => fs.existsSync(p)) || null;
+}
+
 const README_FOR_BUNDLE = `Printyx Monitoring Client — install bundle
 ================================================
 
-This zip contains everything needed to install the monitoring client on a
-Windows Server. Run from an elevated PowerShell:
+This zip is fully self-contained — it carries the prebuilt agent
+(printyx-client.cjs), so there is NO build step, NO npm install, and NO
+source checkout needed on the target. If Node.js is missing, the installer
+installs Node LTS for you automatically.
+
+Run from an elevated PowerShell on the print server:
 
     Set-ExecutionPolicy -Scope Process Bypass -Force
     .\\install-windows.ps1 -ConfigBundle .\\bootstrap-config.json
 
 The bundled config includes a one-time enrollment token (NOT an API key).
-The installer will redeem the token at install time over HTTPS/443 to
-receive its permanent API key. The token expires per the timestamp inside
+The installer redeems the token at install time over HTTPS/443 to receive
+its permanent API key. The token expires per the timestamp inside
 bootstrap-config.json — generate a new bundle from the platform if it
 expires before you install.
 

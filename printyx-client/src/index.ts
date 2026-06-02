@@ -87,6 +87,78 @@ program
     }
   });
 
+// Selftest command — post-install verification. Runs one discovery+collect
+// cycle, submits what it found, reports the result to the platform, and
+// prints a pass/fail summary. The Windows installer runs this right after
+// starting the service so the operator gets immediate confirmation.
+program
+  .command('selftest')
+  .description('Verify the install: discover + collect once, report result to the platform')
+  .option('-c, --config <path>', 'Path to configuration file', 'config.json')
+  .action(async (options) => {
+    initLogger('info');
+    const logger = getLogger();
+    const start = Date.now();
+    try {
+      const configManager = new ConfigManager(path.resolve(options.config));
+      const config = configManager.loadConfig();
+
+      const apiClient = new PrintyxAPIClient({
+        endpoint: config.api.endpoint,
+        apiKey: config.api.apiKey,
+        tenantId: config.api.tenantId,
+        timeout: config.api.timeout,
+        clientVersion: packageJson.version,
+        security: config.api.security,
+      });
+
+      logger.info('Running install self-test (discovery + one collection cycle)...');
+      const scheduler = new MetricsScheduler(configManager, apiClient);
+      const result = await scheduler.runSelfTest();
+      const durationMs = Date.now() - start;
+      const ok = result.printersReporting > 0;
+
+      // Report to the platform (best-effort — a failed report shouldn't mask
+      // the local result the operator can already see).
+      try {
+        await apiClient.submitInstallReport({
+          agentVersion: packageJson.version,
+          printersFound: result.printersFound,
+          printersReporting: result.printersReporting,
+          errors: result.errors,
+          durationMs,
+          ok,
+        });
+      } catch {
+        logger.warn('Could not report self-test result to the platform (will still run normally).');
+      }
+
+      console.log('');
+      console.log('  Install self-test');
+      console.log('  -----------------');
+      console.log(`  Printers found     : ${result.printersFound}`);
+      console.log(`  Printers reporting : ${result.printersReporting}`);
+      console.log(`  Duration           : ${(durationMs / 1000).toFixed(1)}s`);
+      if (result.errors.length > 0) {
+        console.log('  Notes:');
+        for (const e of result.errors.slice(0, 10)) console.log(`    - ${e}`);
+      }
+      console.log('');
+      if (ok) {
+        console.log('  RESULT: PASS — data is flowing to the platform.');
+      } else {
+        console.log('  RESULT: NO DATA YET — service is installed but no printer reported.');
+        console.log('  Check SNMP is enabled on the printers and the network range is correct.');
+      }
+      console.log('');
+      // Exit 0 only when at least one printer reported; 2 = installed-but-no-data.
+      process.exit(ok ? 0 : 2);
+    } catch (error) {
+      logger.error('Self-test failed', { error: errorMessage(error) });
+      process.exit(1);
+    }
+  });
+
 // Init command - Generate sample configuration
 program
   .command('init')

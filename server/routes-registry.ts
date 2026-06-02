@@ -223,34 +223,83 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   // ─── Mobile Remote Logging (no auth required, must be early) ──────
   app.use('/api/mobile-logs', mobileLogsRoutes);
 
-  // ─── Public Installer Script (no auth — script itself contains no secrets) ──
-  // Serves the printyx-client Windows installer at /install/printyx-client.ps1
-  // so admins can run `irm <base>/install/printyx-client.ps1 | iex`. The
-  // script does nothing useful without an enrollment token, which the admin
-  // generates separately in the platform UI.
-  app.get('/install/printyx-client.ps1', async (req, res) => {
-    try {
-      const fs = await import('fs');
-      const path = await import('path');
-      const scriptsDir =
-        process.env.PRINTYX_CLIENT_SCRIPTS_DIR ||
-        path.resolve(process.cwd(), 'printyx-client', 'scripts');
-      const file = path.join(scriptsDir, 'install-windows.ps1');
+  // ─── Public Installer Artifacts (no auth — none of these contain secrets) ──
+  // Three public files power the one-line web install. None carries a
+  // credential; the API key only ever materialises after an enrollment token
+  // (generated separately in the UI) is redeemed over HTTPS.
+  //
+  //   GET /install/printyx-client.ps1   → bootstrap; the entry point for
+  //                                        `irm <base>/install/printyx-client.ps1`.
+  //   GET /install/install-windows.ps1  → the real installer (bundle mode).
+  //   GET /install/printyx-client.cjs   → the prebuilt, self-contained agent.
+  //
+  // The bootstrap downloads the latter two next to each other in a temp dir,
+  // so install-windows.ps1 installs without any source checkout or build.
+  {
+    const fs = await import('fs');
+    const path = await import('path');
+    const scriptsDir = () =>
+      process.env.PRINTYX_CLIENT_SCRIPTS_DIR ||
+      path.resolve(process.cwd(), 'printyx-client', 'scripts');
+    const bundlePath = () =>
+      process.env.PRINTYX_CLIENT_BUNDLE_PATH ||
+      path.resolve(process.cwd(), 'printyx-client', 'dist', 'printyx-client.cjs');
+    const exePath = () =>
+      process.env.PRINTYX_CLIENT_EXE_PATH ||
+      path.resolve(process.cwd(), 'printyx-client', 'dist', 'printyx-client.exe');
+
+    const sendFile = (
+      res: import('express').Response,
+      file: string,
+      contentType: string,
+      missingMsg: string,
+    ) => {
       if (!fs.existsSync(file)) {
-        return res
-          .status(503)
-          .type('text/plain')
-          .send(
-            '# Printyx installer script not available. Re-deploy the platform with printyx-client/scripts.',
-          );
+        return res.status(503).type('text/plain').send(missingMsg);
       }
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'no-cache');
       fs.createReadStream(file).pipe(res);
-    } catch (e) {
-      res.status(500).type('text/plain').send('# Installer fetch failed.');
-    }
-  });
+    };
+
+    app.get('/install/printyx-client.ps1', (_req, res) => {
+      sendFile(
+        res,
+        path.join(scriptsDir(), 'Install-Bootstrap.ps1'),
+        'text/plain; charset=utf-8',
+        '# Printyx bootstrap not available. Re-deploy the platform with printyx-client/scripts.',
+      );
+    });
+
+    app.get('/install/install-windows.ps1', (_req, res) => {
+      sendFile(
+        res,
+        path.join(scriptsDir(), 'install-windows.ps1'),
+        'text/plain; charset=utf-8',
+        '# Printyx installer script not available. Re-deploy the platform with printyx-client/scripts.',
+      );
+    });
+
+    app.get('/install/printyx-client.cjs', (_req, res) => {
+      sendFile(
+        res,
+        bundlePath(),
+        'application/javascript; charset=utf-8',
+        '# Printyx client bundle not available. Run `npm run bundle` in printyx-client and re-deploy.',
+      );
+    });
+
+    // Optional zero-dependency Windows binary (Node SEA). Only present when a
+    // deploy ran `npm run build:exe`. Used by `install-windows.ps1 -UseExe`.
+    app.get('/install/printyx-client.exe', (_req, res) => {
+      sendFile(
+        res,
+        exePath(),
+        'application/octet-stream',
+        '# Printyx client .exe not built. Run `npm run build:exe` in printyx-client and re-deploy.',
+      );
+    });
+  }
 
   // ─── Client Error Logging (accepts errors from PageErrorBoundary / SectionErrorBoundary) ──
   app.post('/api/client-errors', (req, res) => {

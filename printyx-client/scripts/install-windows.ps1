@@ -6,7 +6,10 @@
 
 .DESCRIPTION
     Performs a turn-key install:
-      - Verifies Node.js >= 18 (downloads LTS if missing, with consent)
+      - Ensures Node.js >= 18 (auto-installs Node LTS via winget/MSI if missing)
+      - Uses a prebuilt, self-contained printyx-client.cjs when present (no
+        npm install, no TypeScript build) — falls back to building from a
+        source checkout only when no bundle is found
       - Installs the client to %ProgramFiles%\Printyx\Client
       - Creates %ProgramData%\Printyx with locked-down NTFS ACL (Administrators + SYSTEM only)
       - Generates config.json from prompts (endpoint, API key, tenant, network range)
@@ -40,6 +43,15 @@
     `-ConfigBundle` and `-EnrollmentToken` are given, the explicit token
     wins.
 
+.PARAMETER BundlePath
+    Explicit path to a prebuilt printyx-client.cjs. When omitted, the
+    installer looks for one next to this script or in ..\dist. If none is
+    found and a source checkout is present, it builds from TypeScript.
+
+.PARAMETER SkipNodeAutoInstall
+    Do not auto-install Node.js — fail if Node >= 18 is missing. Useful on
+    locked-down hosts that manage Node through their own packaging.
+
 .PARAMETER NonInteractive
     Fail instead of prompting when a parameter is missing.
 
@@ -69,9 +81,20 @@ param(
     [string]$ClientName = "$env:COMPUTERNAME",
     [string]$EnrollmentToken,
     [string]$ConfigBundle,
+    # Explicit path to a prebuilt printyx-client.cjs. When omitted, the
+    # installer auto-detects one next to this script or in ..\dist.
+    [string]$BundlePath,
+    # Install the self-contained printyx-client.exe (Node SEA) instead of the
+    # JS bundle. Needs no Node on the host. Downloaded from the platform if not
+    # shipped locally. Note: auto-update is disabled for .exe installs.
+    [switch]$UseExe,
     [switch]$NonInteractive,
     [switch]$SkipFirewallRule,
     [switch]$SkipNodeCheck,
+    # By default, if Node.js >=18 is missing the installer installs Node LTS
+    # automatically (winget, falling back to the official MSI). Set this to
+    # fail instead — useful on locked-down hosts with their own packaging.
+    [switch]$SkipNodeAutoInstall,
     # When set, add inbound firewall rules for mDNS (UDP 5353) and WSD
     # (UDP 3702) scoped to the local subnet so the agent can do
     # zero-config printer discovery. Off by default — only relevant if
@@ -92,6 +115,8 @@ $NssmDir      = Join-Path $InstallDir       'nssm'
 $NssmExe      = Join-Path $NssmDir          'nssm.exe'
 $ServiceName  = 'PrintyxClient'
 $NodeMinMajor = 18
+# LTS pinned for the MSI fallback path (winget tracks LTS on its own).
+$NodeLtsVersion = '20.18.1'
 $NssmUrl      = 'https://nssm.cc/release/nssm-2.24.zip'
 $NssmSha256   = 'be7b3577c6e3a280e5106a9e9db5b3775931cefc7c3b9b82d3cd4c8a5b5e1d31' # nssm-2.24 release
 
@@ -131,6 +156,60 @@ function Read-Required([string]$Prompt, [string]$Existing, [scriptblock]$Validat
     }
 }
 
+function Install-NodeLts {
+    # Prefer winget (present on Windows Server 2025 / recent Win10+). Fall
+    # back to the official MSI from nodejs.org over HTTPS/TLS1.2.
+    $winget = Get-Command winget -ErrorAction SilentlyContinue
+    if ($winget) {
+        Write-Step "Installing Node.js LTS via winget"
+        & winget install --id OpenJS.NodeJS.LTS -e --silent `
+            --accept-package-agreements --accept-source-agreements 2>&1 | Out-Host
+        if ($LASTEXITCODE -eq 0) { return }
+        Write-Warn2 "winget install failed (exit $LASTEXITCODE) — falling back to MSI."
+    }
+
+    $arch = if ([Environment]::Is64BitOperatingSystem) {
+        if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
+    } else { 'x86' }
+    $msiUrl = "https://nodejs.org/dist/v$NodeLtsVersion/node-v$NodeLtsVersion-$arch.msi"
+    $msi    = Join-Path $env:TEMP "node-v$NodeLtsVersion-$arch.msi"
+    Write-Step "Downloading Node.js LTS MSI ($arch) from nodejs.org"
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest -UseBasicParsing -Uri $msiUrl -OutFile $msi
+    Write-Step "Installing Node.js (silent MSI)"
+    $p = Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn /norestart" -Wait -PassThru
+    Remove-Item $msi -ErrorAction SilentlyContinue
+    if ($p.ExitCode -ne 0) { Fail "Node.js MSI install failed (exit $($p.ExitCode))." }
+}
+
+function Ensure-Node {
+    $node = Get-Command node -ErrorAction SilentlyContinue
+    if ($node) {
+        $nodeVersion = (& node --version).TrimStart('v')
+        $major = [int]($nodeVersion.Split('.')[0])
+        if ($major -ge $NodeMinMajor) {
+            Write-Ok "Node.js $nodeVersion detected"
+            return
+        }
+        Write-Warn2 "Node.js $nodeVersion is older than $NodeMinMajor.x — upgrading."
+    } else {
+        Write-Warn2 "Node.js not found — installing Node $NodeMinMajor LTS automatically."
+    }
+    if ($SkipNodeAutoInstall) {
+        Fail "Node.js $NodeMinMajor+ required and auto-install is disabled (-SkipNodeAutoInstall). Install from https://nodejs.org and retry."
+    }
+    Install-NodeLts
+    # Refresh PATH for this process so the freshly-installed node resolves.
+    $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' +
+                [Environment]::GetEnvironmentVariable('Path', 'User')
+    $node = Get-Command node -ErrorAction SilentlyContinue
+    if (-not $node) {
+        Fail "Node.js installed but 'node' is still not on PATH. Open a new elevated PowerShell and re-run, or reboot."
+    }
+    $nodeVersion = (& node --version).TrimStart('v')
+    Write-Ok "Node.js $nodeVersion ready"
+}
+
 # -- Pre-flight checks -----------------------------------------------------
 Write-Step "Pre-flight checks"
 
@@ -141,24 +220,64 @@ if (-not [Security.Principal.WindowsPrincipal]::new(
 }
 Write-Ok "Running as Administrator"
 
-# Ensure script is invoked from inside the printyx-client directory (it expects ../package.json)
-$RepoRoot = Split-Path -Parent $PSScriptRoot
-if (-not (Test-Path (Join-Path $RepoRoot 'package.json'))) {
-    Fail "Could not locate package.json at $RepoRoot. Run this script from printyx-client\scripts\."
-}
-Write-Ok "Source tree: $RepoRoot"
+# Resolve where our payload lives. Three supported layouts:
+#   exe     — a self-contained printyx-client.exe (Node SEA). Zero
+#             prerequisites — Node is embedded. Opt-in via -UseExe or by
+#             shipping the .exe next to this script. Auto-update is disabled
+#             for exe installs (a SEA can't self-replace).
+#   bundle  — a prebuilt printyx-client.cjs sits next to this script (this is
+#             what the platform ships in the installer zip). Zero build, no
+#             node_modules, no devDependencies. Needs Node (auto-installed).
+#   source  — a full source checkout (../package.json + ../src). We compile
+#             from TypeScript. Legacy path, used for developer installs.
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
+$RepoRoot  = Split-Path -Parent $ScriptDir
 
-if (-not $SkipNodeCheck) {
-    $node = Get-Command node -ErrorAction SilentlyContinue
-    if (-not $node) {
-        Fail "Node.js is not installed. Install Node.js $NodeMinMajor LTS or newer from https://nodejs.org and retry."
+$exeCandidates = @(
+    (Join-Path $ScriptDir 'printyx-client.exe'),
+    (Join-Path $ScriptDir 'dist\printyx-client.exe'),
+    (Join-Path $RepoRoot  'dist\printyx-client.exe')
+) | Where-Object { $_ }
+$ExeFile = $exeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+$bundleCandidates = @(
+    $BundlePath,
+    (Join-Path $ScriptDir 'printyx-client.cjs'),
+    (Join-Path $ScriptDir 'dist\printyx-client.cjs'),
+    (Join-Path $RepoRoot  'dist\printyx-client.cjs')
+) | Where-Object { $_ }
+$BundleFile = $bundleCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+$HasSource  = Test-Path (Join-Path $RepoRoot 'package.json')
+
+$NeedsBundleDownload = $false
+$NeedsExeDownload     = $false
+if ($UseExe -or $ExeFile) {
+    $InstallMode = 'exe'
+    if ($ExeFile) {
+        Write-Ok "Self-contained binary: $ExeFile (no Node required)"
+    } else {
+        $NeedsExeDownload = $true
+        Write-Ok "No local binary — will download printyx-client.exe from the platform (no Node required)"
     }
-    $nodeVersion = (& node --version).TrimStart('v')
-    $major = [int]($nodeVersion.Split('.')[0])
-    if ($major -lt $NodeMinMajor) {
-        Fail "Node.js $nodeVersion detected. Version $NodeMinMajor.x or newer required."
-    }
-    Write-Ok "Node.js $nodeVersion detected"
+} elseif ($BundleFile) {
+    $InstallMode = 'bundle'
+    Write-Ok "Prebuilt bundle: $BundleFile (no build required)"
+} elseif ($HasSource) {
+    $InstallMode = 'source'
+    Write-Ok "Source checkout: $RepoRoot (will compile from TypeScript)"
+} else {
+    # No bundle in the payload and no source — fetch the prebuilt agent from
+    # the platform later (after the endpoint is known + validated). This is
+    # the path the UI "Download Installer" zip takes: it ships only the
+    # scripts, and the agent is pulled from <Endpoint>/install/printyx-client.cjs.
+    $InstallMode = 'bundle'
+    $NeedsBundleDownload = $true
+    Write-Ok "No local agent — will download the prebuilt bundle from the platform"
+}
+
+# The .exe embeds Node; only the JS paths need a Node runtime on the host.
+if (-not $SkipNodeCheck -and $InstallMode -ne 'exe') {
+    Ensure-Node
 }
 
 # -- Collect configuration -------------------------------------------------
@@ -214,25 +333,29 @@ try {
     Fail "Endpoint validation failed: $($_.Exception.Message)"
 }
 
-# -- Build the client ------------------------------------------------------
-Write-Step "Building client (npm install + npm run build)"
-Push-Location $RepoRoot
-try {
-    if (-not (Test-Path (Join-Path $RepoRoot 'node_modules'))) {
-        & npm install --omit=dev --no-audit --no-fund 2>&1 | Out-Host
-        if ($LASTEXITCODE -ne 0) { Fail "npm install failed" }
+# -- Build the client (source mode only) -----------------------------------
+# In bundle mode there is nothing to build — printyx-client.cjs already has
+# every dependency inlined. This is the common path for platform installs.
+if ($InstallMode -eq 'source') {
+    Write-Step "Building client (npm install + npm run build)"
+    Push-Location $RepoRoot
+    try {
+        if (-not (Test-Path (Join-Path $RepoRoot 'node_modules'))) {
+            & npm install --omit=dev --no-audit --no-fund 2>&1 | Out-Host
+            if ($LASTEXITCODE -ne 0) { Fail "npm install failed" }
+        }
+        # We need devDependencies for the TypeScript compile step. Install them just for the build.
+        if (-not (Test-Path (Join-Path $RepoRoot 'node_modules\typescript'))) {
+            & npm install --no-audit --no-fund 2>&1 | Out-Host
+            if ($LASTEXITCODE -ne 0) { Fail "npm install (with devDependencies) failed" }
+        }
+        & npm run build 2>&1 | Out-Host
+        if ($LASTEXITCODE -ne 0) { Fail "npm run build failed" }
+    } finally {
+        Pop-Location
     }
-    # We need devDependencies for the TypeScript compile step. Install them just for the build.
-    if (-not (Test-Path (Join-Path $RepoRoot 'node_modules\typescript'))) {
-        & npm install --no-audit --no-fund 2>&1 | Out-Host
-        if ($LASTEXITCODE -ne 0) { Fail "npm install (with devDependencies) failed" }
-    }
-    & npm run build 2>&1 | Out-Host
-    if ($LASTEXITCODE -ne 0) { Fail "npm run build failed" }
-} finally {
-    Pop-Location
+    Write-Ok "Build complete"
 }
-Write-Ok "Build complete"
 
 # -- Lay down install dirs -------------------------------------------------
 Write-Step "Creating $InstallDir and $ConfigDir"
@@ -240,11 +363,60 @@ foreach ($d in @($InstallDir, $ConfigDir, $LogDir, $NssmDir)) {
     if (-not (Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
 }
 
-# Copy built artifacts.
-Copy-Item (Join-Path $RepoRoot 'dist')          $InstallDir -Recurse -Force
-Copy-Item (Join-Path $RepoRoot 'node_modules')  $InstallDir -Recurse -Force
-Copy-Item (Join-Path $RepoRoot 'package.json')  $InstallDir -Force
-Write-Ok "Files copied to $InstallDir"
+# Copy artifacts. exe mode lays down a single self-contained .exe; bundle mode
+# a single .cjs; source mode the compiled dist/ plus node_modules. $entryJs is
+# the JS the service runs (node modes); $ServiceExe is set for exe mode.
+$ServiceExe = $null
+if ($InstallMode -eq 'exe') {
+    $destExe = Join-Path $InstallDir 'printyx-client.exe'
+    if ($NeedsExeDownload) {
+        Write-Step "Downloading self-contained binary from $Endpoint"
+        $exeUrl = "$($Endpoint.TrimEnd('/'))/install/printyx-client.exe"
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        try {
+            Invoke-WebRequest -UseBasicParsing -Uri $exeUrl -OutFile $destExe
+        } catch {
+            Fail "Could not download printyx-client.exe from $exeUrl : $($_.Exception.Message)"
+        }
+        if (-not (Test-Path $destExe) -or (Get-Item $destExe).Length -lt 1MB) {
+            Fail "Downloaded binary is missing or too small — aborting."
+        }
+        Write-Ok ("Binary downloaded ({0} MB)" -f [math]::Round((Get-Item $destExe).Length / 1MB, 2))
+    } else {
+        Copy-Item $ExeFile $destExe -Force
+        Write-Ok "Binary copied to $InstallDir (Node embedded — no runtime needed)"
+    }
+    $ServiceExe = $destExe
+} elseif ($InstallMode -eq 'bundle') {
+    $destBundle = Join-Path $InstallDir 'printyx-client.cjs'
+    if ($NeedsBundleDownload) {
+        Write-Step "Downloading agent bundle from $Endpoint"
+        $bundleUrl = "$($Endpoint.TrimEnd('/'))/install/printyx-client.cjs"
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        try {
+            Invoke-WebRequest -UseBasicParsing -Uri $bundleUrl -OutFile $destBundle
+        } catch {
+            Fail "Could not download the agent bundle from $bundleUrl : $($_.Exception.Message)"
+        }
+        if (-not (Test-Path $destBundle) -or (Get-Item $destBundle).Length -lt 100KB) {
+            Fail "Downloaded agent bundle is missing or too small — aborting."
+        }
+        Write-Ok ("Agent bundle downloaded ({0} MB)" -f [math]::Round((Get-Item $destBundle).Length / 1MB, 2))
+    } else {
+        Copy-Item $BundleFile $destBundle -Force
+        $manifest = Join-Path (Split-Path $BundleFile) 'bundle-manifest.json'
+        if (Test-Path $manifest) { Copy-Item $manifest $InstallDir -Force }
+        if ($HasSource) { Copy-Item (Join-Path $RepoRoot 'package.json') $InstallDir -Force }
+        Write-Ok "Bundle copied to $InstallDir (no node_modules required)"
+    }
+    $entryJs = $destBundle
+} else {
+    Copy-Item (Join-Path $RepoRoot 'dist')          $InstallDir -Recurse -Force
+    Copy-Item (Join-Path $RepoRoot 'node_modules')  $InstallDir -Recurse -Force
+    Copy-Item (Join-Path $RepoRoot 'package.json')  $InstallDir -Force
+    $entryJs = Join-Path $InstallDir 'dist\index.js'
+    Write-Ok "Files copied to $InstallDir"
+}
 
 # Restrict NTFS permissions on ConfigDir to Administrators + SYSTEM.
 $acl = New-Object System.Security.AccessControl.DirectorySecurity
@@ -356,8 +528,17 @@ Write-Ok "NSSM at $NssmExe"
 
 # -- Register service ------------------------------------------------------
 Write-Step "Registering Windows service '$ServiceName'"
-$nodeExe = (Get-Command node).Source
-$entryJs = Join-Path $InstallDir 'dist\index.js'
+# Resolve the binary the service launches + its argument list. In exe mode the
+# SEA binary runs directly; otherwise node runs the JS entry point. $RunBinary
+# is also what the outbound firewall rule is scoped to.
+if ($InstallMode -eq 'exe') {
+    $RunBinary  = $ServiceExe
+    $RunAppArgs = @('start', '-c', "`"$ConfigPath`"")
+    # $SelfTestCmd invokes the same binary for the post-install check.
+} else {
+    $RunBinary  = (Get-Command node).Source
+    $RunAppArgs = @("`"$entryJs`"", 'start', '-c', "`"$ConfigPath`"")
+}
 
 $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
 if ($existing) {
@@ -366,7 +547,7 @@ if ($existing) {
     & $NssmExe remove $ServiceName confirm | Out-Null
 }
 
-& $NssmExe install $ServiceName "`"$nodeExe`"" "`"$entryJs`"" 'start' '-c' "`"$ConfigPath`"" | Out-Null
+& $NssmExe install $ServiceName "`"$RunBinary`"" @RunAppArgs | Out-Null
 & $NssmExe set $ServiceName AppDirectory  "`"$InstallDir`""           | Out-Null
 & $NssmExe set $ServiceName DisplayName    'Printyx Monitoring Client' | Out-Null
 & $NssmExe set $ServiceName Description    'Collects printer meter and toner data and reports to the Printyx platform over HTTPS (TCP/443).' | Out-Null
@@ -406,7 +587,7 @@ if (-not $SkipFirewallRule) {
     New-NetFirewallRule `
         -DisplayName $ruleName `
         -Direction Outbound -Action Allow `
-        -Program $nodeExe -Protocol TCP -RemotePort 443 `
+        -Program $RunBinary -Protocol TCP -RemotePort 443 `
         -Profile Any | Out-Null
     Write-Ok "Firewall rule added"
 }
@@ -429,7 +610,7 @@ if ($EnableDiscoveryFirewall) {
             DisplayName = $rule.Name
             Direction   = $rule.Direction
             Action      = 'Allow'
-            Program     = $nodeExe
+            Program     = $RunBinary
             Protocol    = 'UDP'
             Profile     = 'Domain,Private'
         }
@@ -452,6 +633,31 @@ if ($svc.Status -ne 'Running') {
     Write-Warn2 "Service status: $($svc.Status). Tail $LogPath for details."
 } else {
     Write-Ok "Service running"
+}
+
+# -- Post-install self-test ------------------------------------------------
+# Runs one discovery + collection cycle and reports the result to the
+# platform, so the operator gets immediate confirmation (and the dealer sees
+# a green status in the UI) instead of having to read logs. Non-fatal: the
+# service keeps running regardless.
+Write-Step "Running install self-test (discovery + one collection cycle)"
+$selftestExit = 1
+try {
+    if ($InstallMode -eq 'exe') {
+        & $RunBinary selftest -c $ConfigPath 2>&1 | Out-Host
+    } else {
+        & $RunBinary $entryJs selftest -c $ConfigPath 2>&1 | Out-Host
+    }
+    $selftestExit = $LASTEXITCODE
+} catch {
+    Write-Warn2 "Self-test could not run: $($_.Exception.Message)"
+}
+if ($selftestExit -eq 0) {
+    Write-Ok "Self-test passed — printers are reporting to the platform."
+} elseif ($selftestExit -eq 2) {
+    Write-Warn2 "Service installed, but no printer reported yet. The agent keeps polling — verify SNMP is enabled and the network range is correct."
+} else {
+    Write-Warn2 "Self-test did not complete cleanly. The service is still running and will keep trying."
 }
 
 # -- Summary ---------------------------------------------------------------

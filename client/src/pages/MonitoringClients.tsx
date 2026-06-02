@@ -60,6 +60,15 @@ import { apiRequest } from '@/lib/queryClient';
 import { getApiUrl } from '@/lib/config';
 import { getAccessToken } from '@/lib/supabase';
 
+interface InstallSelfTestReport {
+  agentVersion?: string;
+  printersFound: number;
+  printersReporting: number;
+  ok: boolean;
+  errors?: string[];
+  receivedAt?: string;
+}
+
 interface MonitoringClient {
   id: number;
   clientId: string;
@@ -69,9 +78,14 @@ interface MonitoringClient {
   status: 'active' | 'inactive' | 'disabled';
   lastHeartbeat?: string;
   clientVersion?: string;
+  version?: string;
   createdAt: string;
   deviceCount?: number;
   activeAlertsCount?: number;
+  configuration?: {
+    lastInstallReport?: InstallSelfTestReport;
+    [k: string]: unknown;
+  };
 }
 
 interface CustomerOption {
@@ -440,6 +454,28 @@ export default function MonitoringClients() {
     }
   };
 
+  const renderSelfTest = (report?: InstallSelfTestReport) => {
+    if (!report) return <span className="text-gray-400 text-sm">—</span>;
+    const { printersFound, printersReporting, ok, receivedAt } = report;
+    const title = receivedAt
+      ? `Last self-test ${formatDistanceToNow(new Date(receivedAt), { addSuffix: true })}`
+      : 'Last install self-test';
+    return (
+      <Badge
+        variant="outline"
+        title={title}
+        className={`flex items-center gap-1 w-fit ${
+          ok
+            ? 'border-green-200 bg-green-50 text-green-700'
+            : 'border-amber-200 bg-amber-50 text-amber-700'
+        }`}
+      >
+        {ok ? <Check className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
+        {printersReporting}/{printersFound} reporting
+      </Badge>
+    );
+  };
+
   const clients = clientsData?.clients || [];
 
   return (
@@ -806,6 +842,7 @@ export default function MonitoringClients() {
                   <TableHead>Customer</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Self-test</TableHead>
                   <TableHead>Last Seen</TableHead>
                   <TableHead>Devices</TableHead>
                   <TableHead>Alerts</TableHead>
@@ -837,6 +874,9 @@ export default function MonitoringClients() {
                           />
                           {client.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {renderSelfTest(client.configuration?.lastInstallReport)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
