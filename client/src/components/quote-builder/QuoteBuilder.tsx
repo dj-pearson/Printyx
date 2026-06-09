@@ -23,23 +23,20 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Building2,
-  User,
-  Plus,
-  Trash2,
   Calculator,
   Save,
   Send,
-  MapPin,
   FileText,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import CompanyContactSelector from './CompanyContactSelector';
-import ProductTypeSelector from './ProductTypeSelector';
 import LineItemManager from './LineItemManager';
 import PricingCalculator from './PricingCalculator';
+import { QuoteWizardProgress, DEFAULT_QUOTE_STEPS } from '@/components/quotes/QuoteWizardProgress';
 
 // Quote form schema
 const quoteSchema = z.object({
@@ -117,6 +114,7 @@ export default function QuoteBuilder({
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [discountPercentage, setDiscountPercentage] = useState<number>(0);
   const [taxAmount, setTaxAmount] = useState<number>(0);
+  const [currentStep, setCurrentStep] = useState<number>(0); // 0=Customer 1=Products 2=Pricing 3=Review
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -533,6 +531,46 @@ export default function QuoteBuilder({
     total: lineItems.reduce((sum, item) => sum + item.totalPrice, 0) - discountAmount + taxAmount,
   };
 
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
+
+  // ─── Wizard navigation + step gating ──────────────────────────────────────
+  const businessRecordId = form.watch('businessRecordId');
+  const stepValid = (step: number): boolean => {
+    if (step === 0) return !!businessRecordId;
+    if (step === 1) return lineItems.length > 0;
+    return true;
+  };
+  const stepBlockedMessage = (step: number): string =>
+    step === 0 ? 'Select a customer to continue' : 'Add at least one line item to continue';
+
+  const goToStep = (step: number) => {
+    // Allow jumping backwards freely; forward only if all prior steps are valid.
+    if (step <= currentStep) {
+      setCurrentStep(step);
+      return;
+    }
+    for (let s = currentStep; s < step; s++) {
+      if (!stepValid(s)) {
+        toast({ title: 'Incomplete', description: stepBlockedMessage(s), variant: 'destructive' });
+        return;
+      }
+    }
+    setCurrentStep(step);
+  };
+  const handleNext = () => {
+    if (!stepValid(currentStep)) {
+      toast({
+        title: 'Incomplete',
+        description: stepBlockedMessage(currentStep),
+        variant: 'destructive',
+      });
+      return;
+    }
+    setCurrentStep((s) => Math.min(DEFAULT_QUOTE_STEPS.length - 1, s + 1));
+  };
+  const handleBack = () => setCurrentStep((s) => Math.max(0, s - 1));
+
   if (quoteLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -541,33 +579,146 @@ export default function QuoteBuilder({
     );
   }
 
+  const customerName =
+    selectedCompany?.companyName || selectedCompany?.business_name || selectedCompany?.company_name;
+
   return (
     <div className="space-y-4 sm:space-y-6 touch-manipulation">
       <Card>
-        <CardHeader className="p-4 sm:p-6">
+        <CardHeader className="p-4 sm:p-6 pb-0">
           <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
             <Calculator className="h-5 w-5" />
-            {initialQuoteId ? 'Edit Quote' : 'New Quote Builder'}
+            {initialQuoteId ? 'Edit Quote' : 'New Quote'}
           </CardTitle>
           <CardDescription className="text-sm">
-            Build a comprehensive quote with line-by-line product selection
+            {DEFAULT_QUOTE_STEPS[currentStep]?.description}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
-              {/* Quote Header */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <QuoteWizardProgress
+            steps={DEFAULT_QUOTE_STEPS}
+            currentStep={currentStep}
+            onStepClick={goToStep}
+          />
+        </CardContent>
+      </Card>
+
+      {/* ── Step 0: Customer & setup ───────────────────────────────────────── */}
+      {currentStep === 0 && (
+        <Card>
+          <CardContent className="p-4 sm:p-6">
+            <Form {...form}>
+              <div className="space-y-4 sm:space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Quote Title</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Equipment Quote - Company Name"
+                            className="min-h-[44px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="pricingType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Pricing Type</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="min-h-[44px]">
+                              <SelectValue placeholder="Select pricing type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="new">New Customer Pricing</SelectItem>
+                            <SelectItem value="upgrade">Upgrade Pricing</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <CompanyContactSelector
+                  selectedCompany={selectedCompany}
+                  selectedContact={selectedContact}
+                  onCompanySelect={handleCompanySelect}
+                  onContactSelect={handleContactSelect}
+                />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="validUntil"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Valid Until</FormLabel>
+                        <FormControl>
+                          <Input type="date" className="min-h-[44px]" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            </Form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Step 1: Products ───────────────────────────────────────────────── */}
+      {currentStep === 1 && (
+        <LineItemManager
+          lineItems={lineItems}
+          pricingType={form.watch('pricingType')}
+          onAddItem={handleAddLineItem}
+          onUpdateItem={handleUpdateLineItem}
+          onDeleteItem={handleDeleteLineItem}
+        />
+      )}
+
+      {/* ── Step 2: Pricing & notes ────────────────────────────────────────── */}
+      {currentStep === 2 && (
+        <>
+          <PricingCalculator
+            lineItems={lineItems}
+            subtotal={totals.subtotal}
+            total={totals.total}
+            initialDiscountAmount={discountAmount}
+            initialDiscountPercentage={discountPercentage}
+            initialTaxAmount={taxAmount}
+            onDiscountChange={handleDiscountChange}
+            onTaxChange={handleTaxChange}
+          />
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-lg">Notes</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 space-y-4">
+              <Form {...form}>
                 <FormField
                   control={form.control}
-                  name="title"
+                  name="customerNotes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Quote Title</FormLabel>
+                      <FormLabel className="text-sm font-medium">Customer Notes</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Equipment Quote - Company Name"
-                          className="min-h-[44px]"
+                        <Textarea
+                          placeholder="Notes visible to customer..."
+                          className="min-h-[44px] resize-y"
+                          rows={3}
                           {...field}
                         />
                       </FormControl>
@@ -577,166 +728,148 @@ export default function QuoteBuilder({
                 />
                 <FormField
                   control={form.control}
-                  name="pricingType"
+                  name="internalNotes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium">Pricing Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="min-h-[44px]">
-                            <SelectValue placeholder="Select pricing type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="new">New Customer Pricing</SelectItem>
-                          <SelectItem value="upgrade">Upgrade Pricing</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Company and Contact Selection */}
-              <CompanyContactSelector
-                selectedCompany={selectedCompany}
-                selectedContact={selectedContact}
-                onCompanySelect={handleCompanySelect}
-                onContactSelect={handleContactSelect}
-              />
-
-              {/* Valid Until Date */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="validUntil"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">Valid Until</FormLabel>
+                      <FormLabel className="text-sm font-medium">Internal Notes</FormLabel>
                       <FormControl>
-                        <Input type="date" className="min-h-[44px]" {...field} />
+                        <Textarea
+                          placeholder="Internal notes (not visible to customer)..."
+                          className="min-h-[44px] resize-y"
+                          rows={3}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </Form>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {/* ── Step 3: Review & process ───────────────────────────────────────── */}
+      {currentStep === 3 && (
+        <Card>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-lg">Review</CardTitle>
+            <CardDescription className="text-sm">
+              Confirm the details, then save, submit, or convert to a proposal.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="flex justify-between sm:block">
+                <span className="text-muted-foreground">Customer</span>
+                <div className="font-medium">{customerName || 'Not selected'}</div>
               </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-
-      {/* Line Items Management */}
-      <LineItemManager
-        lineItems={lineItems}
-        pricingType={form.watch('pricingType')}
-        onAddItem={handleAddLineItem}
-        onUpdateItem={handleUpdateLineItem}
-        onDeleteItem={handleDeleteLineItem}
-      />
-
-      {/* Pricing Calculator */}
-      <PricingCalculator
-        lineItems={lineItems}
-        subtotal={totals.subtotal}
-        total={totals.total}
-        initialDiscountAmount={discountAmount}
-        initialDiscountPercentage={discountPercentage}
-        initialTaxAmount={taxAmount}
-        onDiscountChange={handleDiscountChange}
-        onTaxChange={handleTaxChange}
-      />
-
-      {/* Notes Section */}
-      <Card>
-        <CardHeader className="p-4 sm:p-6">
-          <CardTitle className="text-lg">Notes</CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6 space-y-4">
-          <Form {...form}>
-            <FormField
-              control={form.control}
-              name="customerNotes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-medium">Customer Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Notes visible to customer..."
-                      className="min-h-[44px] resize-y"
-                      rows={3}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+              <div className="flex justify-between sm:block">
+                <span className="text-muted-foreground">Contact</span>
+                <div className="font-medium">
+                  {selectedContact
+                    ? `${selectedContact.firstName || ''} ${selectedContact.lastName || ''}`.trim() ||
+                      '—'
+                    : '—'}
+                </div>
+              </div>
+              <div className="flex justify-between sm:block">
+                <span className="text-muted-foreground">Line items</span>
+                <div className="font-medium">{lineItems.length}</div>
+              </div>
+              <div className="flex justify-between sm:block">
+                <span className="text-muted-foreground">Title</span>
+                <div className="font-medium">{form.watch('title') || '—'}</div>
+              </div>
+            </div>
+            <div className="rounded-lg border p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Subtotal</span>
+                <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
+              </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-sm text-red-600">
+                  <span>Discount</span>
+                  <span>-{formatCurrency(discountAmount)}</span>
+                </div>
               )}
-            />
-            <FormField
-              control={form.control}
-              name="internalNotes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-medium">Internal Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Internal notes (not visible to customer)..."
-                      className="min-h-[44px] resize-y"
-                      rows={3}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+              {taxAmount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span>Tax</span>
+                  <span>{formatCurrency(taxAmount)}</span>
+                </div>
               )}
-            />
-          </Form>
-        </CardContent>
-      </Card>
+              <div className="flex justify-between text-base font-bold border-t pt-2">
+                <span>Total</span>
+                <span className="text-primary">{formatCurrency(totals.total)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Action Buttons */}
+      {/* ── Wizard navigation + actions ────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-2 sticky bottom-0 bg-background p-4 sm:p-0 border-t sm:border-0 -mx-4 sm:mx-0">
         <div className="flex gap-2 order-2 sm:order-1">
           {onCancel && (
-            <Button
-              variant="outline"
-              onClick={onCancel}
-              className="flex-1 sm:flex-none min-h-[44px] active:scale-[0.98] transition-transform"
-            >
+            <Button variant="ghost" onClick={onCancel} className="flex-1 sm:flex-none min-h-[44px]">
               Cancel
             </Button>
           )}
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2 order-1 sm:order-2">
-          <Button
-            variant="outline"
-            onClick={form.handleSubmit(onSubmit)}
-            disabled={saveQuoteMutation.isPending}
-            className="min-h-[44px] active:scale-[0.98] transition-transform"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {saveQuoteMutation.isPending ? 'Saving...' : 'Save Draft'}
-          </Button>
-          <Button
-            onClick={handleSubmitQuote}
-            disabled={saveQuoteMutation.isPending || submitQuoteMutation.isPending}
-            className="min-h-[44px] active:scale-[0.98] transition-transform"
-          >
-            <Send className="h-4 w-4 mr-2" />
-            {submitQuoteMutation.isPending ? 'Submitting...' : 'Submit Quote'}
-          </Button>
-          {onCreateProposal && (
+          {currentStep > 0 && (
             <Button
-              onClick={handleCreateProposal}
-              disabled={saveQuoteMutation.isPending}
-              className="bg-green-600 hover:bg-green-700 min-h-[44px] active:scale-[0.98] transition-transform"
+              variant="outline"
+              onClick={handleBack}
+              className="flex-1 sm:flex-none min-h-[44px] active:scale-[0.98] transition-transform"
             >
-              <FileText className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Create Proposal</span>
-              <span className="sm:hidden">Proposal</span>
-              <ArrowRight className="h-4 w-4 ml-2" />
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Back
             </Button>
+          )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2 order-1 sm:order-2">
+          {currentStep < DEFAULT_QUOTE_STEPS.length - 1 ? (
+            <Button
+              onClick={handleNext}
+              className="min-h-[44px] active:scale-[0.98] transition-transform"
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                onClick={form.handleSubmit(onSubmit)}
+                disabled={saveQuoteMutation.isPending}
+                className="min-h-[44px] active:scale-[0.98] transition-transform"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {saveQuoteMutation.isPending ? 'Saving...' : 'Save Draft'}
+              </Button>
+              <Button
+                onClick={handleSubmitQuote}
+                disabled={saveQuoteMutation.isPending || submitQuoteMutation.isPending}
+                className="min-h-[44px] active:scale-[0.98] transition-transform"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {submitQuoteMutation.isPending ? 'Submitting...' : 'Submit Quote'}
+              </Button>
+              {onCreateProposal && (
+                <Button
+                  onClick={handleCreateProposal}
+                  disabled={saveQuoteMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700 min-h-[44px] active:scale-[0.98] transition-transform"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Create Proposal</span>
+                  <span className="sm:hidden">Proposal</span>
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
