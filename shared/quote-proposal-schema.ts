@@ -167,6 +167,12 @@ export const proposals = pgTable('proposals', {
   taxAmount: decimal('tax_amount', { precision: 10, scale: 2 }).default('0'),
   totalAmount: decimal('total_amount', { precision: 10, scale: 2 }),
 
+  // Cost & Margin rollup (QUOTE-003) — computed server-side from line items
+  totalDealerCost: decimal('total_dealer_cost', { precision: 10, scale: 2 }).default('0'),
+  totalMarginPercentage: decimal('total_margin_percentage', { precision: 5, scale: 2 }).default(
+    '0',
+  ),
+
   // Contract Terms
   paymentTerms: varchar('payment_terms'), // net_30, net_60, upfront, financing
   deliveryTerms: varchar('delivery_terms'),
@@ -231,6 +237,9 @@ export const proposalLineItems = pgTable('proposal_line_items', {
   // Discounts and Margins
   discount: decimal('discount', { precision: 10, scale: 2 }).default('0'),
   margin: decimal('margin', { precision: 5, scale: 2 }), // Profit margin percentage
+
+  // Free-form per-line note (QUOTE-003)
+  notes: text('notes'),
 
   // Service-Specific Fields
   isRecurring: boolean('is_recurring').default(false),

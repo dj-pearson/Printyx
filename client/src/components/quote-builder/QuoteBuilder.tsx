@@ -74,6 +74,7 @@ type ProductType =
   | 'product_accessories'
   | 'professional_services'
   | 'service_products'
+  | 'software_products'
   | 'supplies'
   | 'managed_services';
 
@@ -261,16 +262,16 @@ export default function QuoteBuilder({
           isSubline: false,
           productType: (item.itemType as ProductType) || 'product_models',
           productId: item.productId || '',
-          productCode: '',
-          productName: item.productName || '',
+          productCode: item.productCode || item.product_code || '',
+          productName: item.productName || item.product_name || '',
           description: item.description || '',
           quantity: item.quantity || 1,
           msrp: 0,
-          listPrice: 0,
-          unitPrice: parseFloat(item.unitPrice || '0'),
-          totalPrice: parseFloat(item.totalPrice || '0'),
-          unitCost: 0,
-          margin: item.margin || 0,
+          listPrice: parseFloat(item.unitPrice || item.unit_price || '0'),
+          unitPrice: parseFloat(item.unitPrice || item.unit_price || '0'),
+          totalPrice: parseFloat(item.totalPrice || item.total_price || '0'),
+          unitCost: parseFloat(item.unitCost || item.unit_cost || '0'),
+          margin: parseFloat(item.margin || '0') || 0,
           notes: item.notes || '',
         }));
         setLineItems(transformedLineItems);
@@ -296,9 +297,11 @@ export default function QuoteBuilder({
           lineNumber: index + 1,
           itemType: item.productType || 'equipment', // Map productType to itemType
           productId: item.productId,
+          productCode: item.productCode,
           productName: item.productName,
           description: item.description || item.productName,
           quantity: item.quantity,
+          unitCost: item.unitCost ?? 0, // dealer/hard cost — required for margin
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice,
           margin: item.margin,

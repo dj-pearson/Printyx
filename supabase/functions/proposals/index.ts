@@ -79,6 +79,104 @@ async function generateProposalNumber(db: SB, tenantId: string): Promise<string>
   return `${prefix}${String(next).padStart(4, '0')}`;
 }
 
+function toNum(v: unknown): number {
+  if (v === null || v === undefined || v === '') return 0;
+  const n = typeof v === 'number' ? v : parseFloat(String(v));
+  return Number.isFinite(n) ? n : 0;
+}
+
+// Real columns on proposal_line_items (snake_case). Anything else is dropped so a
+// stray camelCase key or a UI-only field can never fail the whole insert.
+const LINE_ITEM_COLUMNS = [
+  'line_number',
+  'item_type',
+  'product_id',
+  'product_code',
+  'product_name',
+  'description',
+  'quantity',
+  'unit_cost',
+  'unit_price',
+  'total_price',
+  'discount',
+  'margin',
+  'notes',
+  'is_recurring',
+  'recurring_frequency',
+  'recurring_duration',
+  'lead_time',
+  'warranty_period',
+  'service_level',
+  'is_optional',
+  'is_customizable',
+  'configuration_options',
+  'alternative_options',
+];
+
+// camelCase (what the UI sends) → snake_case column. `productType` is the UI's
+// name for item_type.
+const LINE_ITEM_FIELD_MAP: Record<string, string> = {
+  lineNumber: 'line_number',
+  itemType: 'item_type',
+  productType: 'item_type',
+  productId: 'product_id',
+  productCode: 'product_code',
+  productName: 'product_name',
+  unitCost: 'unit_cost',
+  unitPrice: 'unit_price',
+  totalPrice: 'total_price',
+  isRecurring: 'is_recurring',
+  recurringFrequency: 'recurring_frequency',
+  recurringDuration: 'recurring_duration',
+  leadTime: 'lead_time',
+  warrantyPeriod: 'warranty_period',
+  serviceLevel: 'service_level',
+  isOptional: 'is_optional',
+  isCustomizable: 'is_customizable',
+  configurationOptions: 'configuration_options',
+  alternativeOptions: 'alternative_options',
+};
+
+// Normalize an inbound line item (camelCase OR snake_case) into a clean insert row.
+// Computes total_price and margin when the caller omits them so cost/margin are
+// always authoritative server-side.
+function normalizeLineItem(
+  raw: Record<string, unknown>,
+  tenantId: string,
+  proposalId: string,
+  index: number,
+): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  // Pass 1: snake_case columns as-is (snake wins).
+  for (const col of LINE_ITEM_COLUMNS) {
+    if (raw[col] !== undefined) row[col] = raw[col];
+  }
+  // Pass 2: camelCase fallbacks.
+  for (const [camel, col] of Object.entries(LINE_ITEM_FIELD_MAP)) {
+    if (raw[camel] !== undefined && row[col] === undefined) row[col] = raw[camel];
+  }
+
+  row.tenant_id = tenantId;
+  row.proposal_id = proposalId;
+  row.line_number = toNum(row.line_number) || index + 1;
+  row.item_type = row.item_type || 'equipment';
+  row.product_name = row.product_name || 'Item';
+
+  const qty = toNum(row.quantity) || 1;
+  row.quantity = qty;
+  const unitPrice = toNum(row.unit_price);
+  row.unit_price = unitPrice;
+  row.unit_cost = toNum(row.unit_cost);
+  row.total_price = toNum(row.total_price) || unitPrice * qty;
+  if (row.margin === undefined || row.margin === null || row.margin === '') {
+    row.margin =
+      unitPrice > 0
+        ? Number((((unitPrice - toNum(row.unit_cost)) / unitPrice) * 100).toFixed(2))
+        : 0;
+  }
+  return row;
+}
+
 async function recalculateProposalTotals(
   db: SB,
   proposalId: string,
@@ -86,15 +184,16 @@ async function recalculateProposalTotals(
 ): Promise<void> {
   const { data: items } = await db
     .from('proposal_line_items')
-    .select('total_price')
+    .select('total_price, unit_cost, quantity')
     .eq('proposal_id', proposalId)
     .eq('tenant_id', tenantId);
 
-  const subtotal = (items ?? []).reduce(
-    (sum: number, item: { total_price?: string | number | null }) =>
-      sum + parseFloat(String(item.total_price ?? '0')),
-    0,
-  );
+  let subtotal = 0;
+  let totalCost = 0;
+  for (const item of items ?? []) {
+    subtotal += toNum(item.total_price);
+    totalCost += toNum(item.unit_cost) * (toNum(item.quantity) || 1);
+  }
 
   const { data: proposal } = await db
     .from('proposals')
@@ -105,15 +204,20 @@ async function recalculateProposalTotals(
 
   if (!proposal) return;
 
-  const discount = parseFloat(String(proposal.discount_amount ?? '0'));
-  const tax = parseFloat(String(proposal.tax_amount ?? '0'));
+  const discount = toNum(proposal.discount_amount);
+  const tax = toNum(proposal.tax_amount);
   const totalAmount = subtotal - discount + tax;
+  // Gross-profit margin on pre-tax revenue (matches PricingCalculator + _pdf.ts).
+  const revenue = subtotal - discount;
+  const marginPct = revenue > 0 ? Number((((revenue - totalCost) / revenue) * 100).toFixed(2)) : 0;
 
   await db
     .from('proposals')
     .update({
       subtotal: String(subtotal),
       total_amount: String(totalAmount),
+      total_dealer_cost: String(totalCost),
+      total_margin_percentage: String(marginPct),
       updated_at: new Date().toISOString(),
     })
     .eq('id', proposalId)
@@ -623,13 +727,9 @@ export default async function handler(req: Request) {
       // Optional inline line items
       const lineItems = Array.isArray(body.lineItems) ? body.lineItems : [];
       if (lineItems.length > 0) {
-        const rows = lineItems.map((item: Record<string, unknown>, index: number) => ({
-          ...item,
-          tenant_id: ctx.tenantId,
-          proposal_id: (proposal as { id: string }).id,
-          line_number: (item.lineNumber as number | undefined) || index + 1,
-          item_type: item.itemType || 'equipment',
-        }));
+        const rows = lineItems.map((item: Record<string, unknown>, index: number) =>
+          normalizeLineItem(item, ctx.tenantId, (proposal as { id: string }).id, index),
+        );
         const insertItems = await db.from('proposal_line_items').insert(rows);
         if (insertItems.error) {
           log.warn(
@@ -722,19 +822,17 @@ export default async function handler(req: Request) {
           .eq('proposal_id', id)
           .eq('tenant_id', ctx.tenantId);
 
-        const rows = lineItemsToUpdate.map((item: Record<string, unknown>, index: number) => ({
-          ...item,
-          tenant_id: ctx.tenantId,
-          proposal_id: id,
-          line_number: (item.lineNumber as number | undefined) || index + 1,
-          item_type: item.itemType || 'equipment',
-        }));
+        const rows = lineItemsToUpdate.map((item: Record<string, unknown>, index: number) =>
+          normalizeLineItem(item, ctx.tenantId, id, index),
+        );
         const insertItems = await db.from('proposal_line_items').insert(rows);
         if (insertItems.error) {
           log.warn(
             { requestId, err: insertItems.error },
             'Proposal updated but line-item replace failed',
           );
+        } else {
+          await recalculateProposalTotals(db, id, ctx.tenantId);
         }
       }
 
@@ -977,13 +1075,8 @@ export default async function handler(req: Request) {
         .maybeSingle();
       const nextLineNumber = ((existing.data?.line_number as number | null) ?? 0) + 1;
 
-      const insertRow = {
-        ...body,
-        tenant_id: ctx.tenantId,
-        proposal_id: proposalId,
-        line_number: nextLineNumber,
-        item_type: body.itemType || body.item_type || 'equipment',
-      };
+      const insertRow = normalizeLineItem(body, ctx.tenantId, proposalId, nextLineNumber - 1);
+      insertRow.line_number = nextLineNumber;
 
       const { data, error } = await db
         .from('proposal_line_items')

@@ -62,7 +62,7 @@ import {
   MoveUp,
   Minus,
 } from 'lucide-react';
-import ProductTypeSelector from './ProductTypeSelector';
+import ProductTypeSelector, { normalizeProduct } from './ProductTypeSelector';
 
 type ProductType =
   | 'product_models'
@@ -133,11 +133,29 @@ export default function LineItemManager({
   const [editingItem, setEditingItem] = useState<LineItem | null>(null);
   const [parentProductForAccessory, setParentProductForAccessory] = useState<string | undefined>();
 
+  // Resolve customer (selling) price for a normalized product by pricing tier.
+  const resolveSellingPrice = (p: any, pricing: 'new' | 'upgrade'): number => {
+    if (pricing === 'upgrade' && p.sellingPriceUpgrade) return p.sellingPriceUpgrade;
+    return p.sellingPriceNew || p.msrp || 0;
+  };
+  const resolveDealerCost = (p: any, pricing: 'new' | 'upgrade'): number => {
+    if (pricing === 'upgrade' && p.dealerCostUpgrade) return p.dealerCostUpgrade;
+    return p.dealerCostNew || 0;
+  };
+
   const handleProductSelect = async (product: any) => {
-    // Ensure product name is not empty or undefined
-    const productName =
-      product.productName || product.name || product.description || 'Unnamed Product';
+    const productName = product.productName || product.name || 'Unnamed Product';
     const productCode = product.productCode || product.code || product.sku || '';
+    // ProductTypeSelector resolves unitPrice/unitCost for the active tier; fall
+    // back to local resolution if a raw product slips through.
+    const unitPrice =
+      typeof product.unitPrice === 'number'
+        ? product.unitPrice
+        : resolveSellingPrice(product, pricingType);
+    const unitCost =
+      typeof product.unitCost === 'number'
+        ? product.unitCost
+        : resolveDealerCost(product, pricingType);
 
     const newItem: Omit<LineItem, 'lineNumber'> = {
       isSubline: !!parentProductForAccessory,
@@ -149,11 +167,11 @@ export default function LineItemManager({
       description: product.description || '',
       quantity: 1,
       msrp: product.msrp || 0,
-      listPrice: getProductPrice(product, pricingType),
-      unitPrice: getProductPrice(product, pricingType),
-      totalPrice: parseFloat(getProductPrice(product, pricingType).toString()),
-      unitCost: product.unitCost || 0,
-      margin: calculateMargin(getProductPrice(product, pricingType), product.unitCost || 0),
+      listPrice: unitPrice,
+      unitPrice: unitPrice,
+      totalPrice: unitPrice,
+      unitCost: unitCost,
+      margin: calculateMargin(unitPrice, unitCost),
     };
 
     // Add the main product
@@ -172,24 +190,30 @@ export default function LineItemManager({
         try {
           const response = await fetch(`/api/product-accessories?codes=${requiredCodes.join(',')}`);
           if (response.ok) {
-            const requiredAccessories = await response.json();
+            const payload = await response.json();
+            const rawAccessories = Array.isArray(payload)
+              ? payload
+              : payload?.data || payload?.records || [];
 
-            // Add each required accessory as a line item
-            requiredAccessories.forEach((accessory: any) => {
+            // Add each required accessory as a line item (normalized for cost/price)
+            rawAccessories.forEach((raw: any) => {
+              const accessory = normalizeProduct(raw);
+              const accPrice = resolveSellingPrice(accessory, pricingType);
+              const accCost = resolveDealerCost(accessory, pricingType);
               const accessoryItem: Omit<LineItem, 'lineNumber'> = {
                 isSubline: false,
                 productType: 'product_accessories',
                 productId: accessory.id,
-                productCode: accessory.accessoryCode,
-                productName: `${accessory.accessoryName} (Required for ${productName})`,
+                productCode: accessory.productCode,
+                productName: `${accessory.productName} (Required for ${productName})`,
                 description: `Required accessory for ${productName}`,
                 quantity: 1,
-                msrp: accessory.standardRepPrice || 0,
-                listPrice: getProductPrice(accessory, pricingType),
-                unitPrice: getProductPrice(accessory, pricingType),
-                totalPrice: parseFloat(getProductPrice(accessory, pricingType).toString()),
-                unitCost: 0,
-                margin: 0,
+                msrp: accessory.msrp || 0,
+                listPrice: accPrice,
+                unitPrice: accPrice,
+                totalPrice: accPrice,
+                unitCost: accCost,
+                margin: calculateMargin(accPrice, accCost),
                 notes: `Auto-added required accessory for ${productName}`,
               };
               onAddItem(accessoryItem);
@@ -203,12 +227,6 @@ export default function LineItemManager({
 
     setShowProductSelector(false);
     setParentProductForAccessory(undefined);
-  };
-
-  const getProductPrice = (product: any, pricing: 'new' | 'upgrade'): number => {
-    if (pricing === 'new' && product.newRepPrice) return product.newRepPrice;
-    if (pricing === 'upgrade' && product.upgradeRepPrice) return product.upgradeRepPrice;
-    return product.msrp || 0;
   };
 
   const calculateMargin = (price: number, cost: number): number => {
@@ -788,7 +806,7 @@ export default function LineItemManager({
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <MoveDown className="h-4 w-4" />
                                 {getProductTypeIcon(subItem.productType)}
-                                <Badge variant="outline" size="sm">
+                                <Badge variant="outline" className="text-xs">
                                   {productTypeLabels[subItem.productType]}
                                 </Badge>
                               </div>

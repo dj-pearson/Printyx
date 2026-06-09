@@ -60,23 +60,126 @@ interface ProductTypeOption {
   endpoint: string;
 }
 
+// Normalized product shape. Source rows come from edge functions (PostgREST,
+// snake_case) in prod and from Express/Drizzle (camelCase) in dev, so we read
+// both. See normalizeProduct().
 interface Product {
   id: string;
   productCode: string;
   productName: string;
   description?: string;
-  msrp?: number;
-  newRepPrice?: number;
-  upgradeRepPrice?: number;
   category?: string;
   manufacturer?: string;
   isActive?: boolean;
+  requiredAccessories?: string;
+  msrp?: number; // list price
+  sellingPriceNew?: number; // customer price (new)
+  sellingPriceUpgrade?: number; // customer price (upgrade)
+  dealerCostNew?: number; // hard cost (new)
+  dealerCostUpgrade?: number; // hard cost (upgrade)
+}
+
+// What we hand back to the line-item manager: the normalized product plus the
+// pricing-type-resolved unitPrice (customer price) and unitCost (dealer cost).
+export interface SelectedProduct extends Product {
+  type: ProductType;
+  unitPrice: number;
+  unitCost: number;
 }
 
 interface ProductTypeSelectorProps {
-  onProductSelect: (product: Product & { type: ProductType }) => void;
+  onProductSelect: (product: SelectedProduct) => void;
   pricingType: 'new' | 'upgrade';
   parentProductId?: string; // For selecting accessories for a specific product
+}
+
+function num(v: unknown): number | undefined {
+  if (v === null || v === undefined || v === '') return undefined;
+  const n = typeof v === 'number' ? v : parseFloat(String(v));
+  return Number.isFinite(n) ? n : undefined;
+}
+
+// Read the first defined value across a list of camel/snake field names.
+function pick(raw: Record<string, any>, ...keys: string[]): unknown {
+  for (const k of keys) {
+    if (raw[k] !== undefined && raw[k] !== null && raw[k] !== '') return raw[k];
+  }
+  return undefined;
+}
+
+// Map a raw catalog row (any product type, camel or snake) to the normalized shape.
+export function normalizeProduct(raw: Record<string, any>): Product {
+  return {
+    id: String(raw.id ?? ''),
+    productCode: String(
+      pick(raw, 'productCode', 'product_code', 'accessoryCode', 'accessory_code', 'code', 'sku') ??
+        '',
+    ),
+    productName: String(
+      pick(
+        raw,
+        'productName',
+        'product_name',
+        'accessoryName',
+        'accessory_name',
+        'name',
+        'modelName',
+        'model_name',
+        'displayName',
+        'display_name',
+      ) ?? 'Unnamed Product',
+    ),
+    description: (pick(raw, 'description') as string) ?? undefined,
+    category: (pick(raw, 'category') as string) ?? undefined,
+    manufacturer: (pick(raw, 'manufacturer') as string) ?? undefined,
+    isActive: pick(raw, 'isActive', 'is_active') !== false && raw.status !== 'inactive',
+    requiredAccessories:
+      (pick(raw, 'requiredAccessories', 'required_accessories') as string) ?? undefined,
+    msrp: num(pick(raw, 'msrp')),
+    sellingPriceNew: num(
+      pick(
+        raw,
+        'newRepPrice',
+        'new_rep_price',
+        'newRepCost',
+        'new_rep_cost',
+        'standardRepPrice',
+        'standard_rep_price',
+        'newSuggestedRetail',
+        'new_suggested_retail',
+        'price',
+        'unitPrice',
+        'unit_price',
+        'rate',
+      ),
+    ),
+    sellingPriceUpgrade: num(
+      pick(
+        raw,
+        'upgradeRepPrice',
+        'upgrade_rep_price',
+        'upgradeRepCost',
+        'upgrade_rep_cost',
+        'upgradeSuggestedRetail',
+        'upgrade_suggested_retail',
+      ),
+    ),
+    dealerCostNew: num(
+      pick(
+        raw,
+        'newDealerCost',
+        'new_dealer_cost',
+        'standardDealerCost',
+        'standard_dealer_cost',
+        'dealerCost',
+        'dealer_cost',
+        'cost',
+        'unitCost',
+        'unit_cost',
+      ),
+    ),
+    dealerCostUpgrade: num(pick(raw, 'upgradeDealerCost', 'upgrade_dealer_cost')),
+  };
 }
 
 const productTypes: ProductTypeOption[] = [
@@ -158,10 +261,10 @@ export default function ProductTypeSelector({
       }
 
       const response = await apiRequest(url, 'GET');
-      console.log('API Response for', url, ':', response);
       // Ensure response is always an array - handle { data: [...] }, { records: [...] }, or direct array
       const data = response?.data || response?.records || (Array.isArray(response) ? response : []);
-      return Array.isArray(data) ? data : [];
+      const rows = Array.isArray(data) ? data : [];
+      return rows.map((row: Record<string, any>) => normalizeProduct(row));
     },
     enabled: !!selectedTypeOption,
   });
@@ -170,27 +273,23 @@ export default function ProductTypeSelector({
   const productsArray = Array.isArray(products) ? products : [];
 
   // Get unique categories and manufacturers for filtering
-  const categories = Array.from(new Set(productsArray.map((p) => p.category).filter(Boolean)));
+  const categories = Array.from(
+    new Set(productsArray.map((p) => p.category).filter((c): c is string => Boolean(c))),
+  );
   const manufacturers = Array.from(
-    new Set(productsArray.map((p) => p.manufacturer).filter(Boolean)),
+    new Set(productsArray.map((p) => p.manufacturer).filter((m): m is string => Boolean(m))),
   );
 
-  // Filter products
+  // Filter products (products are already normalized)
   const filteredProducts = productsArray.filter((product) => {
-    // Check for active status - handle both field names
-    const isActive = product.isActive !== false && product.status !== 'inactive';
-    if (!isActive) return false;
+    if (product.isActive === false) return false;
 
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
-      (product.productName &&
-        product.productName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (product.modelName && product.modelName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (product.displayName &&
-        product.displayName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (product.productCode &&
-        product.productCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (product.modelCode && product.modelCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      !term ||
+      (product.productName && product.productName.toLowerCase().includes(term)) ||
+      (product.productCode && product.productCode.toLowerCase().includes(term)) ||
+      (product.description && product.description.toLowerCase().includes(term));
 
     const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
     const matchesManufacturer =
@@ -199,20 +298,26 @@ export default function ProductTypeSelector({
     return matchesSearch && matchesCategory && matchesManufacturer;
   });
 
-  const getPrice = (product: Product) => {
-    if (pricingType === 'new' && product.newRepPrice) {
-      return product.newRepPrice;
-    }
-    if (pricingType === 'upgrade' && product.upgradeRepPrice) {
-      return product.upgradeRepPrice;
-    }
+  // Customer (selling) price for the active pricing tier, falling back to MSRP.
+  const getPrice = (product: Product): number => {
+    if (pricingType === 'upgrade' && product.sellingPriceUpgrade)
+      return product.sellingPriceUpgrade;
+    if (product.sellingPriceNew) return product.sellingPriceNew;
     return product.msrp || 0;
+  };
+
+  // Dealer (hard) cost for the active pricing tier. 0 when the catalog has no cost.
+  const getCost = (product: Product): number => {
+    if (pricingType === 'upgrade' && product.dealerCostUpgrade) return product.dealerCostUpgrade;
+    return product.dealerCostNew || 0;
   };
 
   const handleProductSelect = (product: Product) => {
     onProductSelect({
       ...product,
       type: selectedType,
+      unitPrice: getPrice(product),
+      unitCost: getCost(product),
     });
   };
 

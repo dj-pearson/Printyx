@@ -79,9 +79,11 @@ export default function PricingCalculator({
   const taxValue = taxAmount > 0 ? taxAmount : (afterDiscountTotal * taxRate) / 100;
   const finalTotal = afterDiscountTotal + taxValue;
 
-  // Calculate overall margin
+  // Calculate overall margin on pre-tax revenue (after discount) — matches the
+  // server recompute and the manager PDF. Tax is not revenue.
   const totalCost = lineItems.reduce((sum, item) => sum + (item.unitCost || 0) * item.quantity, 0);
-  const overallMargin = totalCost > 0 ? ((finalTotal - totalCost) / finalTotal) * 100 : 0;
+  const overallMargin =
+    afterDiscountTotal > 0 ? ((afterDiscountTotal - totalCost) / afterDiscountTotal) * 100 : 0;
 
   const handleDiscountAmountChange = (value: number) => {
     setDiscountAmount(value);
@@ -403,9 +405,9 @@ export default function PricingCalculator({
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Total Revenue</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Revenue (pre-tax)</div>
                   <div className="text-sm sm:text-lg font-semibold text-blue-600">
-                    {formatCurrency(finalTotal)}
+                    {formatCurrency(afterDiscountTotal)}
                   </div>
                 </div>
                 <div>
