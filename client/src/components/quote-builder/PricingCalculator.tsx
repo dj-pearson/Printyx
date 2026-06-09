@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Calculator, DollarSign, Percent, TrendingUp, Info } from 'lucide-react';
+import { quoteMarginPct } from '@shared/quote-math';
 
 interface LineItem {
   id?: string;
@@ -87,8 +88,11 @@ export default function PricingCalculator({
   // Calculate overall margin on pre-tax revenue (after discount) — matches the
   // server recompute and the manager PDF. Tax is not revenue.
   const totalCost = lineItems.reduce((sum, item) => sum + (item.unitCost || 0) * item.quantity, 0);
-  const overallMargin =
-    afterDiscountTotal > 0 ? ((afterDiscountTotal - totalCost) / afterDiscountTotal) * 100 : 0;
+  const overallMargin = quoteMarginPct({
+    subtotal: itemsSubtotal,
+    discount: discountValue,
+    totalCost,
+  });
 
   // Pricing policy violations (QUOTE-006)
   const belowMinMargin =

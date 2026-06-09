@@ -80,12 +80,26 @@ is_optional, is_customizable, configuration_options, alternative_options`
 
 ### Margin formula (must match in UI and server)
 
+Canonical definition lives in `shared/quote-math.ts` (unit-tested in
+`server/tests/unit/quote-math.test.ts`):
+
 ```
-lineMargin% = unitPrice > 0 ? ((unitPrice - unitCost) / unitPrice) * 100 : 0
+lineMargin%  = unitPrice > 0 ? ((unitPrice - unitCost) / unitPrice) * 100 : 0
+quoteMargin% = revenue > 0   ? ((revenue   - totalCost) / revenue)   * 100 : 0
+               where revenue = subtotal − discount   (tax excluded — not revenue)
 ```
 
-Used by `client/src/components/quote-builder/PricingCalculator.tsx`, the proposals edge
-function recompute, and `supabase/functions/proposals/_pdf.ts` (manager export).
+`PricingCalculator.tsx` imports `quoteMarginPct` directly. The proposals edge function
+recompute and `_pdf.ts` (Deno — cannot import the Node module) replicate the same
+arithmetic inline; the parity test in `quote-math.test.ts` locks them against drift.
+
+## 5. Verification (QUOTE-010)
+
+- Unit: `npm run test -- server/tests/unit/quote-math.test.ts` (margin parity).
+- E2E: `npm run test:e2e:chromium -- tests/quote-flow.spec.ts` (wizard + gating).
+- Manual checklist: see the bottom of `tests/quote-flow.spec.ts` — covers billing
+  autofill, cost→margin, manager PDF vs cost-free customer PDF, the min-margin send
+  gate, and email.
 
 ## 4. Manager quote
 
