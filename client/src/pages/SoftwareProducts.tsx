@@ -658,7 +658,18 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                 <span className="text-xs font-medium">Standard</span>
               </div>
               <p className="text-sm sm:text-base font-bold">
-                {product.standardActive ? formatCurrency(product.standardRepPrice) : 'Not Set'}
+                {product.standardRepPrice != null ? (
+                  <>
+                    {formatCurrency(product.standardRepPrice)}
+                    {!product.standardActive && (
+                      <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                        (inactive)
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  'Not Set'
+                )}
               </p>
             </div>
 
@@ -668,7 +679,18 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                 <span className="text-xs font-medium">New</span>
               </div>
               <p className="text-sm sm:text-base font-bold text-green-600">
-                {product.newActive ? formatCurrency(product.newRepPrice) : 'Not Set'}
+                {product.newRepPrice != null ? (
+                  <>
+                    {formatCurrency(product.newRepPrice)}
+                    {!product.newActive && (
+                      <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                        (inactive)
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  'Not Set'
+                )}
               </p>
             </div>
 
@@ -678,7 +700,18 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                 <span className="text-xs font-medium">Upgrade</span>
               </div>
               <p className="text-sm sm:text-base font-bold text-blue-600">
-                {product.upgradeActive ? formatCurrency(product.upgradeRepPrice) : 'Not Set'}
+                {product.upgradeRepPrice != null ? (
+                  <>
+                    {formatCurrency(product.upgradeRepPrice)}
+                    {!product.upgradeActive && (
+                      <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                        (inactive)
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  'Not Set'
+                )}
               </p>
             </div>
           </div>
@@ -1997,6 +2030,60 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                                 type="number"
                                 step="0.01"
                                 placeholder="549.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Upgrade Pricing */}
+                  <div className="space-y-2">
+                    <FormField
+                      control={editForm.control}
+                      name="upgradeActive"
+                      render={({ field }) => (
+                        <div className="flex items-center space-x-2">
+                          <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                          <label className="text-sm font-medium">Upgrade Active</label>
+                        </div>
+                      )}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={editForm.control}
+                        name="upgradeCost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Upgrade Cost</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="400.00"
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={editForm.control}
+                        name="upgradeRepPrice"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Upgrade Rep Price</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="499.00"
                                 value={field.value || ''}
                                 onChange={field.onChange}
                               />
