@@ -43,6 +43,9 @@ interface PricingCalculatorProps {
   initialTaxAmount?: number;
   onDiscountChange?: (discountAmount: number, discountPercentage: number) => void;
   onTaxChange?: (taxAmount: number) => void;
+  // Pricing policy (QUOTE-006)
+  minMarginPercentage?: number;
+  maxDiscountPercentage?: number;
 }
 
 export default function PricingCalculator({
@@ -54,6 +57,8 @@ export default function PricingCalculator({
   initialTaxAmount = 0,
   onDiscountChange,
   onTaxChange,
+  minMarginPercentage,
+  maxDiscountPercentage,
 }: PricingCalculatorProps) {
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('percentage');
   const [discountAmount, setDiscountAmount] = useState(initialDiscountAmount);
@@ -84,6 +89,17 @@ export default function PricingCalculator({
   const totalCost = lineItems.reduce((sum, item) => sum + (item.unitCost || 0) * item.quantity, 0);
   const overallMargin =
     afterDiscountTotal > 0 ? ((afterDiscountTotal - totalCost) / afterDiscountTotal) * 100 : 0;
+
+  // Pricing policy violations (QUOTE-006)
+  const belowMinMargin =
+    totalCost > 0 &&
+    minMarginPercentage !== undefined &&
+    minMarginPercentage > 0 &&
+    overallMargin < minMarginPercentage;
+  const overMaxDiscount =
+    maxDiscountPercentage !== undefined &&
+    maxDiscountPercentage > 0 &&
+    discountPercentage > maxDiscountPercentage;
 
   const handleDiscountAmountChange = (value: number) => {
     setDiscountAmount(value);
@@ -388,6 +404,30 @@ export default function PricingCalculator({
             <span className="text-xl font-bold text-primary">{formatCurrency(finalTotal)}</span>
           </div>
         </div>
+
+        {/* Pricing Policy Warnings (QUOTE-006) */}
+        {(belowMinMargin || overMaxDiscount) && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-800">
+            <div className="flex items-start gap-2 text-xs sm:text-sm">
+              <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <div className="space-y-1">
+                <div className="font-medium">Manager approval required to send</div>
+                {belowMinMargin && (
+                  <div>
+                    Margin {formatPercentage(overallMargin)} is below the minimum{' '}
+                    {formatPercentage(minMarginPercentage!)}.
+                  </div>
+                )}
+                {overMaxDiscount && (
+                  <div>
+                    Discount {formatPercentage(Math.abs(discountPercentage))} exceeds the maximum{' '}
+                    {formatPercentage(maxDiscountPercentage!)}.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Margin Analysis */}
         {totalCost > 0 && (

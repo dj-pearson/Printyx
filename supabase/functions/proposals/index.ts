@@ -243,6 +243,31 @@ async function fetchCustomerMap(
   return map;
 }
 
+// ─── Pricing policy (QUOTE-006) ─────────────────────────────────────────────
+// Sales-only roles cannot send a quote whose margin is below the tenant minimum
+// (pricing_settings.require_approval_below_margin) — that needs manager approval.
+// Managers (anything not sales-only) bypass.
+
+function isSalesOnlyRole(ctx: SB): boolean {
+  const rawRole = String(
+    (ctx.supabaseUser as any)?.app_metadata?.role ??
+      (ctx.supabaseUser as any)?.user_metadata?.role ??
+      '',
+  ).toLowerCase();
+  const salesOnly = ['sales_rep', 'salesperson', 'sales'];
+  return salesOnly.some((r) => rawRole === r || rawRole.endsWith(r));
+}
+
+async function getMinMarginPolicy(db: SB, tenantId: string): Promise<number> {
+  const { data } = await db
+    .from('pricing_settings')
+    .select('require_approval_below_margin')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  const v = toNum(data?.require_approval_below_margin);
+  return v > 0 ? v : 15; // default 15%
+}
+
 async function recalculateProposalTotals(
   db: SB,
   proposalId: string,
@@ -1038,6 +1063,36 @@ export default async function handler(req: Request) {
         });
       }
       const status = String(body.status);
+
+      // QUOTE-006: a sales-only rep cannot send a below-minimum-margin quote
+      // without manager approval (body.approved bypasses, for an approval flow).
+      if (status === 'sent' && isSalesOnlyRole(ctx) && !body.approved) {
+        const { data: cur } = await db
+          .from('proposals')
+          .select('subtotal, discount_amount, total_dealer_cost')
+          .eq('id', subMatch[1])
+          .eq('tenant_id', ctx.tenantId)
+          .maybeSingle();
+        if (cur) {
+          const revenue = toNum(cur.subtotal) - toNum(cur.discount_amount);
+          const cost = toNum(cur.total_dealer_cost);
+          const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;
+          const minMargin = await getMinMarginPolicy(db, ctx.tenantId);
+          if (cost > 0 && margin < minMargin) {
+            return errorResponse(
+              409,
+              `Margin ${margin.toFixed(1)}% is below the ${minMargin}% minimum and requires manager approval.`,
+              req,
+              {
+                code: 'PRICING_APPROVAL_REQUIRED',
+                details: { margin, minMargin },
+                requestId,
+              },
+            );
+          }
+        }
+      }
+
       const nowIso = new Date().toISOString();
       const updateData: Record<string, unknown> = {
         status,
@@ -1301,20 +1356,11 @@ export default async function handler(req: Request) {
       // Manager-PDF requires manager-level access. Mirror the Express role
       // check: default-allow unless the user's role matches a sales-only
       // pattern.
-      if (isManager) {
-        const rawRole = String(
-          (ctx.supabaseUser as any)?.app_metadata?.role ??
-            (ctx.supabaseUser as any)?.user_metadata?.role ??
-            '',
-        ).toLowerCase();
-        const salesOnlyRoles = ['sales_rep', 'salesperson', 'sales'];
-        const isSalesOnly = salesOnlyRoles.some((r) => rawRole === r || rawRole.endsWith(r));
-        if (isSalesOnly) {
-          return errorResponse(403, 'Manager-level access required', req, {
-            code: 'FORBIDDEN',
-            requestId,
-          });
-        }
+      if (isManager && isSalesOnlyRole(ctx)) {
+        return errorResponse(403, 'Manager-level access required', req, {
+          code: 'FORBIDDEN',
+          requestId,
+        });
       }
 
       const { data: proposal, error: pErr } = await db

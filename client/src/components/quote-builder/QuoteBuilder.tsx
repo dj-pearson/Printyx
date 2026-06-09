@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 import CompanyContactSelector from './CompanyContactSelector';
 import LineItemManager from './LineItemManager';
 import PricingCalculator from './PricingCalculator';
@@ -117,6 +118,12 @@ export default function QuoteBuilder({
   const [currentStep, setCurrentStep] = useState<number>(0); // 0=Customer 1=Products 2=Pricing 3=Review
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Pricing policy + role (QUOTE-006). Managers (can see dealer cost) may override.
+  const { data: pricingVisibility } = usePricingVisibility();
+  const minMargin = pricingVisibility?.minMarginPercentage;
+  const maxDiscount = pricingVisibility?.maxDiscountPercentage;
+  const isManager = pricingVisibility?.showDealerCost === true;
 
   const form = useForm<QuoteFormData>({
     resolver: zodResolver(quoteSchema),
@@ -347,6 +354,7 @@ export default function QuoteBuilder({
     mutationFn: async (quoteId: string) => {
       return await apiRequest(`/api/proposals/${quoteId}/status`, 'PATCH', {
         status: 'sent',
+        approved: isManager, // managers bypass the below-margin gate
       });
     },
     onSuccess: () => {
@@ -471,6 +479,25 @@ export default function QuoteBuilder({
       toast({
         title: 'Error',
         description: 'Please add at least one line item',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // QUOTE-006: enforce pricing policy on send. Managers may override.
+    const totalCost = lineItems.reduce((sum, i) => sum + (i.unitCost || 0) * i.quantity, 0);
+    const revenue = totals.subtotal - discountAmount;
+    const overallMargin = revenue > 0 ? ((revenue - totalCost) / revenue) * 100 : 0;
+    const belowMinMargin =
+      totalCost > 0 && minMargin != null && minMargin > 0 && overallMargin < minMargin;
+    const overMaxDiscount =
+      maxDiscount != null && maxDiscount > 0 && discountPercentage > maxDiscount;
+    if ((belowMinMargin || overMaxDiscount) && !isManager) {
+      toast({
+        title: 'Manager approval required',
+        description: belowMinMargin
+          ? `Margin ${overallMargin.toFixed(1)}% is below the ${minMargin}% minimum. Save as draft and request manager approval.`
+          : `Discount ${discountPercentage.toFixed(1)}% exceeds the ${maxDiscount}% maximum. Save as draft and request manager approval.`,
         variant: 'destructive',
       });
       return;
@@ -701,6 +728,8 @@ export default function QuoteBuilder({
             initialTaxAmount={taxAmount}
             onDiscountChange={handleDiscountChange}
             onTaxChange={handleTaxChange}
+            minMarginPercentage={minMargin}
+            maxDiscountPercentage={maxDiscount}
           />
           <Card>
             <CardHeader className="p-4 sm:p-6">
