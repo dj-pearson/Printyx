@@ -312,6 +312,10 @@ export default function ProductTypeSelector({
     return product.dealerCostNew || 0;
   };
 
+  // QUOTE-009: flag products with no dealer cost so reps/managers know margin will
+  // be unavailable for them.
+  const hasCost = (product: Product): boolean => getCost(product) > 0;
+
   const handleProductSelect = (product: Product) => {
     onProductSelect({
       ...product,
@@ -492,6 +496,11 @@ export default function ProductTypeSelector({
                         <div className="font-medium truncate">
                           Your Price: {formatPrice(getPrice(product))}
                         </div>
+                        {!hasCost(product) && (
+                          <span className="inline-block mt-1 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                            No cost — margin unavailable
+                          </span>
+                        )}
                       </div>
                       <Button
                         size="sm"
@@ -567,6 +576,14 @@ export default function ProductTypeSelector({
                           <span className="font-medium text-sm">
                             {formatPrice(getPrice(product))}
                           </span>
+                          {!hasCost(product) && (
+                            <div
+                              className="text-[10px] text-amber-700"
+                              title="No dealer cost in catalog — margin unavailable"
+                            >
+                              no cost
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="py-2">
                           <Button
