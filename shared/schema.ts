@@ -6225,6 +6225,9 @@ export const productPricing = pgTable('product_pricing', {
 });
 
 // Quote Pricing - Salesperson pricing at quote level
+// ⚠️ DEPRECATED (QUOTE-001): parallel quote-document tables not used by the quote UI.
+// Canonical quote model is `proposals` / `proposalLineItems` (shared/quote-proposal-schema.ts).
+// See docs/quote-module-architecture.md. Kept until a verified soak; do not extend.
 export const quotePricing = pgTable('quote_pricing', {
   id: varchar('id')
     .primaryKey()

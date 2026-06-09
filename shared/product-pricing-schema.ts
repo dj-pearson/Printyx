@@ -171,6 +171,10 @@ export const productAccessoryPricingExtension = {
 };
 
 // Quote Pricing with Approval Workflow
+// ⚠️ DEPRECATED (QUOTE-001): parallel quote-document tables not used by the quote UI.
+// Canonical quote model is `proposals` / `proposalLineItems`. The pricing POLICY table
+// `companyPricingSettings` (above) IS retained and used for guardrails (QUOTE-006).
+// See docs/quote-module-architecture.md.
 export const enhancedQuotePricing = pgTable('enhanced_quote_pricing', {
   id: varchar('id')
     .primaryKey()

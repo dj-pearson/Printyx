@@ -1,5 +1,9 @@
 // Quote Line Items Edge Function
 // Handles quote line items
+//
+// ⚠️ DEPRECATED (QUOTE-001): Canonical line items live in `proposal_line_items`
+// via supabase/functions/proposals/. The UI does NOT call this function. See
+// docs/quote-module-architecture.md.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 

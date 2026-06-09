@@ -1,5 +1,11 @@
 // Quotes Edge Function
 // Handles quote/proposal management with line items
+//
+// ⚠️ DEPRECATED (QUOTE-001): The canonical quote system is `proposals` /
+// `proposal_line_items` served by supabase/functions/proposals/. The UI does NOT
+// call this function. Do not build new features here — see
+// docs/quote-module-architecture.md. Retained only until a verified soak proves
+// nothing depends on it.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 
@@ -34,7 +40,12 @@ export default async function handler(req: Request) {
 
     if (!tenantId) {
       const admin2 = createSupabaseServiceClient();
-      const { data: dbUser } = await admin2.from('users').select('tenant_id').eq('id', user.id).limit(1).maybeSingle();
+      const { data: dbUser } = await admin2
+        .from('users')
+        .select('tenant_id')
+        .eq('id', user.id)
+        .limit(1)
+        .maybeSingle();
       tenantId = dbUser?.tenant_id;
     }
 
@@ -151,7 +162,9 @@ export default async function handler(req: Request) {
       if (quote.customer_id) {
         const { data: company } = await admin
           .from('companies')
-          .select('id, business_name, phone, email, billing_address, billing_city, billing_state, billing_zip')
+          .select(
+            'id, business_name, phone, email, billing_address, billing_city, billing_state, billing_zip',
+          )
           .eq('id', quote.customer_id)
           .eq('tenant_id', tenantId)
           .maybeSingle();
@@ -188,7 +201,11 @@ export default async function handler(req: Request) {
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: true });
 
-      return createCorsResponse({ ...quote, customer, created_by_user: createdByUser, lineItems: lineItems || [] }, 200, req);
+      return createCorsResponse(
+        { ...quote, customer, created_by_user: createdByUser, lineItems: lineItems || [] },
+        200,
+        req,
+      );
     }
 
     // POST /quotes - Create new quote
