@@ -46,8 +46,19 @@ import { getDb } from '../_shared/db.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { renderProposalPDF } from './_pdf.ts';
+import { sendEmail } from '../email-marketing/_sendgrid.ts';
 
 const log = createLogger('proposals');
+
+// Uint8Array -> base64 (chunked to avoid call-stack limits on large PDFs).
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
 
 function stripPrefix(path: string): string {
   return path.replace(/^\/+/, '/').replace(/^\/proposals/, '') || '/';
@@ -79,6 +90,195 @@ async function generateProposalNumber(db: SB, tenantId: string): Promise<string>
   return `${prefix}${String(next).padStart(4, '0')}`;
 }
 
+function toNum(v: unknown): number {
+  if (v === null || v === undefined || v === '') return 0;
+  const n = typeof v === 'number' ? v : parseFloat(String(v));
+  return Number.isFinite(n) ? n : 0;
+}
+
+// Real columns on proposal_line_items (snake_case). Anything else is dropped so a
+// stray camelCase key or a UI-only field can never fail the whole insert.
+const LINE_ITEM_COLUMNS = [
+  'line_number',
+  'item_type',
+  'product_id',
+  'product_code',
+  'product_name',
+  'description',
+  'quantity',
+  'unit_cost',
+  'unit_price',
+  'total_price',
+  'discount',
+  'margin',
+  'notes',
+  'is_recurring',
+  'recurring_frequency',
+  'recurring_duration',
+  'lead_time',
+  'warranty_period',
+  'service_level',
+  'is_optional',
+  'is_customizable',
+  'configuration_options',
+  'alternative_options',
+];
+
+// camelCase (what the UI sends) → snake_case column. `productType` is the UI's
+// name for item_type.
+const LINE_ITEM_FIELD_MAP: Record<string, string> = {
+  lineNumber: 'line_number',
+  itemType: 'item_type',
+  productType: 'item_type',
+  productId: 'product_id',
+  productCode: 'product_code',
+  productName: 'product_name',
+  unitCost: 'unit_cost',
+  unitPrice: 'unit_price',
+  totalPrice: 'total_price',
+  isRecurring: 'is_recurring',
+  recurringFrequency: 'recurring_frequency',
+  recurringDuration: 'recurring_duration',
+  leadTime: 'lead_time',
+  warrantyPeriod: 'warranty_period',
+  serviceLevel: 'service_level',
+  isOptional: 'is_optional',
+  isCustomizable: 'is_customizable',
+  configurationOptions: 'configuration_options',
+  alternativeOptions: 'alternative_options',
+};
+
+// Normalize an inbound line item (camelCase OR snake_case) into a clean insert row.
+// Computes total_price and margin when the caller omits them so cost/margin are
+// always authoritative server-side.
+function normalizeLineItem(
+  raw: Record<string, unknown>,
+  tenantId: string,
+  proposalId: string,
+  index: number,
+): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  // Pass 1: snake_case columns as-is (snake wins).
+  for (const col of LINE_ITEM_COLUMNS) {
+    if (raw[col] !== undefined) row[col] = raw[col];
+  }
+  // Pass 2: camelCase fallbacks.
+  for (const [camel, col] of Object.entries(LINE_ITEM_FIELD_MAP)) {
+    if (raw[camel] !== undefined && row[col] === undefined) row[col] = raw[camel];
+  }
+
+  row.tenant_id = tenantId;
+  row.proposal_id = proposalId;
+  row.line_number = toNum(row.line_number) || index + 1;
+  row.item_type = row.item_type || 'equipment';
+  row.product_name = row.product_name || 'Item';
+
+  const qty = toNum(row.quantity) || 1;
+  row.quantity = qty;
+  const unitPrice = toNum(row.unit_price);
+  row.unit_price = unitPrice;
+  row.unit_cost = toNum(row.unit_cost);
+  row.total_price = toNum(row.total_price) || unitPrice * qty;
+  if (row.margin === undefined || row.margin === null || row.margin === '') {
+    row.margin =
+      unitPrice > 0
+        ? Number((((unitPrice - toNum(row.unit_cost)) / unitPrice) * 100).toFixed(2))
+        : 0;
+  }
+  return row;
+}
+
+// ─── Customer resolution ────────────────────────────────────────────────────
+// proposals.business_record_id holds the customer id. The current customer source
+// of truth is the `companies` table; legacy/lead customers live in
+// `business_records`. Resolve from companies first, then business_records, and
+// normalize to one shape for the UI + PDF.
+
+function mapCustomerRow(row: Record<string, any> | null | undefined) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    company_name:
+      row.business_name ||
+      row.company_name ||
+      [row.first_name, row.last_name].filter(Boolean).join(' ') ||
+      null,
+    email: row.email || row.primary_contact_email || null,
+    phone: row.phone || row.primary_contact_phone || null,
+    address_line1: row.billing_address || row.address_line1 || null,
+    city: row.billing_city || row.city || null,
+    state: row.billing_state || row.state || null,
+    postal_code: row.billing_zip || row.postal_code || null,
+  };
+}
+
+async function fetchCustomer(db: SB, tenantId: string, customerId: string | null | undefined) {
+  if (!customerId) return null;
+  const c = await db
+    .from('companies')
+    .select('*')
+    .eq('id', customerId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  if (c.data) return mapCustomerRow(c.data);
+  const b = await db
+    .from('business_records')
+    .select('*')
+    .eq('id', customerId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  return b.data ? mapCustomerRow(b.data) : null;
+}
+
+async function fetchCustomerMap(
+  db: SB,
+  tenantId: string,
+  ids: Array<string | null | undefined>,
+): Promise<Record<string, ReturnType<typeof mapCustomerRow>>> {
+  const map: Record<string, ReturnType<typeof mapCustomerRow>> = {};
+  const unique = Array.from(new Set(ids.filter((x): x is string => Boolean(x))));
+  if (unique.length === 0) return map;
+
+  const c = await db.from('companies').select('*').eq('tenant_id', tenantId).in('id', unique);
+  for (const row of c.data ?? []) map[row.id] = mapCustomerRow(row);
+
+  const missing = unique.filter((id) => !map[id]);
+  if (missing.length > 0) {
+    const b = await db
+      .from('business_records')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .in('id', missing);
+    for (const row of b.data ?? []) map[row.id] = mapCustomerRow(row);
+  }
+  return map;
+}
+
+// ─── Pricing policy (QUOTE-006) ─────────────────────────────────────────────
+// Sales-only roles cannot send a quote whose margin is below the tenant minimum
+// (pricing_settings.require_approval_below_margin) — that needs manager approval.
+// Managers (anything not sales-only) bypass.
+
+function isSalesOnlyRole(ctx: SB): boolean {
+  const rawRole = String(
+    (ctx.supabaseUser as any)?.app_metadata?.role ??
+      (ctx.supabaseUser as any)?.user_metadata?.role ??
+      '',
+  ).toLowerCase();
+  const salesOnly = ['sales_rep', 'salesperson', 'sales'];
+  return salesOnly.some((r) => rawRole === r || rawRole.endsWith(r));
+}
+
+async function getMinMarginPolicy(db: SB, tenantId: string): Promise<number> {
+  const { data } = await db
+    .from('pricing_settings')
+    .select('require_approval_below_margin')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  const v = toNum(data?.require_approval_below_margin);
+  return v > 0 ? v : 15; // default 15%
+}
+
 async function recalculateProposalTotals(
   db: SB,
   proposalId: string,
@@ -86,15 +286,16 @@ async function recalculateProposalTotals(
 ): Promise<void> {
   const { data: items } = await db
     .from('proposal_line_items')
-    .select('total_price')
+    .select('total_price, unit_cost, quantity')
     .eq('proposal_id', proposalId)
     .eq('tenant_id', tenantId);
 
-  const subtotal = (items ?? []).reduce(
-    (sum: number, item: { total_price?: string | number | null }) =>
-      sum + parseFloat(String(item.total_price ?? '0')),
-    0,
-  );
+  let subtotal = 0;
+  let totalCost = 0;
+  for (const item of items ?? []) {
+    subtotal += toNum(item.total_price);
+    totalCost += toNum(item.unit_cost) * (toNum(item.quantity) || 1);
+  }
 
   const { data: proposal } = await db
     .from('proposals')
@@ -105,15 +306,20 @@ async function recalculateProposalTotals(
 
   if (!proposal) return;
 
-  const discount = parseFloat(String(proposal.discount_amount ?? '0'));
-  const tax = parseFloat(String(proposal.tax_amount ?? '0'));
+  const discount = toNum(proposal.discount_amount);
+  const tax = toNum(proposal.tax_amount);
   const totalAmount = subtotal - discount + tax;
+  // Gross-profit margin on pre-tax revenue (matches PricingCalculator + _pdf.ts).
+  const revenue = subtotal - discount;
+  const marginPct = revenue > 0 ? Number((((revenue - totalCost) / revenue) * 100).toFixed(2)) : 0;
 
   await db
     .from('proposals')
     .update({
       subtotal: String(subtotal),
       total_amount: String(totalAmount),
+      total_dealer_cost: String(totalCost),
+      total_margin_percentage: String(marginPct),
       updated_at: new Date().toISOString(),
     })
     .eq('id', proposalId)
@@ -533,7 +739,18 @@ export default async function handler(req: Request) {
           requestId,
         });
       }
-      return jsonResponse(data ?? [], 200, req, requestId);
+
+      // Enrich each proposal with its customer (name shown in QuotesManagement).
+      const custMap = await fetchCustomerMap(
+        db,
+        ctx.tenantId,
+        (data ?? []).map((p: { business_record_id?: string }) => p.business_record_id),
+      );
+      const enriched = (data ?? []).map((p: { business_record_id?: string }) => {
+        const customer = p.business_record_id ? custMap[p.business_record_id] : null;
+        return { ...p, customer, customer_name: customer?.company_name ?? null };
+      });
+      return jsonResponse(enriched, 200, req, requestId);
     }
 
     // GET /proposals/new - blank form template
@@ -623,13 +840,9 @@ export default async function handler(req: Request) {
       // Optional inline line items
       const lineItems = Array.isArray(body.lineItems) ? body.lineItems : [];
       if (lineItems.length > 0) {
-        const rows = lineItems.map((item: Record<string, unknown>, index: number) => ({
-          ...item,
-          tenant_id: ctx.tenantId,
-          proposal_id: (proposal as { id: string }).id,
-          line_number: (item.lineNumber as number | undefined) || index + 1,
-          item_type: item.itemType || 'equipment',
-        }));
+        const rows = lineItems.map((item: Record<string, unknown>, index: number) =>
+          normalizeLineItem(item, ctx.tenantId, (proposal as { id: string }).id, index),
+        );
         const insertItems = await db.from('proposal_line_items').insert(rows);
         if (insertItems.error) {
           log.warn(
@@ -678,7 +891,19 @@ export default async function handler(req: Request) {
         .eq('tenant_id', ctx.tenantId)
         .order('line_number', { ascending: true });
 
-      return jsonResponse({ ...proposal.data, lineItems: items.data ?? [] }, 200, req, requestId);
+      const customer = await fetchCustomer(db, ctx.tenantId, proposal.data.business_record_id);
+
+      return jsonResponse(
+        {
+          ...proposal.data,
+          customer,
+          customer_name: customer?.company_name ?? null,
+          lineItems: items.data ?? [],
+        },
+        200,
+        req,
+        requestId,
+      );
     }
 
     // PUT/PATCH /proposals/:id
@@ -722,19 +947,17 @@ export default async function handler(req: Request) {
           .eq('proposal_id', id)
           .eq('tenant_id', ctx.tenantId);
 
-        const rows = lineItemsToUpdate.map((item: Record<string, unknown>, index: number) => ({
-          ...item,
-          tenant_id: ctx.tenantId,
-          proposal_id: id,
-          line_number: (item.lineNumber as number | undefined) || index + 1,
-          item_type: item.itemType || 'equipment',
-        }));
+        const rows = lineItemsToUpdate.map((item: Record<string, unknown>, index: number) =>
+          normalizeLineItem(item, ctx.tenantId, id, index),
+        );
         const insertItems = await db.from('proposal_line_items').insert(rows);
         if (insertItems.error) {
           log.warn(
             { requestId, err: insertItems.error },
             'Proposal updated but line-item replace failed',
           );
+        } else {
+          await recalculateProposalTotals(db, id, ctx.tenantId);
         }
       }
 
@@ -851,6 +1074,36 @@ export default async function handler(req: Request) {
         });
       }
       const status = String(body.status);
+
+      // QUOTE-006: a sales-only rep cannot send a below-minimum-margin quote
+      // without manager approval (body.approved bypasses, for an approval flow).
+      if (status === 'sent' && isSalesOnlyRole(ctx) && !body.approved) {
+        const { data: cur } = await db
+          .from('proposals')
+          .select('subtotal, discount_amount, total_dealer_cost')
+          .eq('id', subMatch[1])
+          .eq('tenant_id', ctx.tenantId)
+          .maybeSingle();
+        if (cur) {
+          const revenue = toNum(cur.subtotal) - toNum(cur.discount_amount);
+          const cost = toNum(cur.total_dealer_cost);
+          const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0;
+          const minMargin = await getMinMarginPolicy(db, ctx.tenantId);
+          if (cost > 0 && margin < minMargin) {
+            return errorResponse(
+              409,
+              `Margin ${margin.toFixed(1)}% is below the ${minMargin}% minimum and requires manager approval.`,
+              req,
+              {
+                code: 'PRICING_APPROVAL_REQUIRED',
+                details: { margin, minMargin },
+                requestId,
+              },
+            );
+          }
+        }
+      }
+
       const nowIso = new Date().toISOString();
       const updateData: Record<string, unknown> = {
         status,
@@ -955,6 +1208,128 @@ export default async function handler(req: Request) {
       return jsonResponse({ success: true, openCount }, 200, req, requestId);
     }
 
+    // POST /proposals/:id/email — email the customer-facing PDF to a contact
+    if (subMatch && method === 'POST' && subMatch[2] === 'email') {
+      const id = subMatch[1];
+      const body = (await req.json().catch(() => ({}))) as Record<string, any>;
+
+      const { data: proposal } = await db
+        .from('proposals')
+        .select('*')
+        .eq('id', id)
+        .eq('tenant_id', ctx.tenantId)
+        .maybeSingle();
+      if (!proposal) {
+        return errorResponse(404, 'Proposal not found', req, { code: 'NOT_FOUND', requestId });
+      }
+
+      const customer = await fetchCustomer(db, ctx.tenantId, proposal.business_record_id);
+
+      let contact: any = null;
+      if (proposal.contact_id) {
+        const r = await db
+          .from('company_contacts')
+          .select('first_name, last_name, email')
+          .eq('id', proposal.contact_id)
+          .eq('tenant_id', ctx.tenantId)
+          .maybeSingle();
+        contact = r.data;
+      }
+
+      const recipient: string | null =
+        body.to || contact?.email || (customer as any)?.email || null;
+      if (!recipient) {
+        return errorResponse(400, 'No recipient email available for this quote', req, {
+          code: 'NO_RECIPIENT',
+          requestId,
+        });
+      }
+
+      const { data: lineItems } = await db
+        .from('proposal_line_items')
+        .select('*')
+        .eq('proposal_id', id)
+        .eq('tenant_id', ctx.tenantId)
+        .order('line_number', { ascending: true });
+
+      let pdfBase64: string;
+      try {
+        const pdfBytes = await renderProposalPDF({
+          proposal,
+          lineItems: lineItems ?? [],
+          company: customer,
+          contact,
+          isManager: false,
+        });
+        pdfBase64 = bytesToBase64(pdfBytes);
+      } catch (renderErr) {
+        log.error({ requestId, err: String(renderErr) }, 'email_pdf_render_failed');
+        return errorResponse(500, 'Failed to render quote PDF', req, {
+          code: 'PDF_RENDER_ERROR',
+          requestId,
+        });
+      }
+
+      const fromEmail =
+        Deno.env.get('QUOTE_FROM_EMAIL') ||
+        Deno.env.get('DEFAULT_FROM_EMAIL') ||
+        'quotes@printyx.net';
+      const customerName = (customer as any)?.company_name || 'there';
+      const message: string =
+        body.message ||
+        `Hello ${customerName},\n\nPlease find your quote ${proposal.proposal_number} attached.`;
+      const safeHtml = `<p>${String(message).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br/>')}</p>`;
+
+      let result;
+      try {
+        result = await sendEmail({
+          to: recipient,
+          from: fromEmail,
+          fromName: 'Printyx',
+          subject: body.subject || `Quote ${proposal.proposal_number}`,
+          html: safeHtml,
+          text: String(message),
+          attachments: [
+            {
+              content: pdfBase64,
+              filename: `Quote-${proposal.proposal_number}.pdf`,
+              type: 'application/pdf',
+            },
+          ],
+        });
+      } catch (sendErr) {
+        log.error({ requestId, err: String(sendErr) }, 'email_send_failed');
+        return errorResponse(502, 'Failed to send email', req, {
+          code: 'EMAIL_SEND_FAILED',
+          requestId,
+        });
+      }
+
+      // Best-effort analytics event
+      await db.from('proposal_analytics').insert({
+        tenant_id: ctx.tenantId,
+        proposal_id: id,
+        event_type: 'emailed',
+        event_details: {
+          to: recipient,
+          messageId: result.messageId,
+          simulated: !!result.simulated,
+        },
+      });
+
+      return jsonResponse(
+        {
+          success: true,
+          to: recipient,
+          messageId: result.messageId,
+          simulated: !!result.simulated,
+        },
+        200,
+        req,
+        requestId,
+      );
+    }
+
     // POST /proposals/:proposalId/line-items
     if (subMatch && method === 'POST' && subMatch[2] === 'line-items') {
       const proposalId = subMatch[1];
@@ -977,13 +1352,8 @@ export default async function handler(req: Request) {
         .maybeSingle();
       const nextLineNumber = ((existing.data?.line_number as number | null) ?? 0) + 1;
 
-      const insertRow = {
-        ...body,
-        tenant_id: ctx.tenantId,
-        proposal_id: proposalId,
-        line_number: nextLineNumber,
-        item_type: body.itemType || body.item_type || 'equipment',
-      };
+      const insertRow = normalizeLineItem(body, ctx.tenantId, proposalId, nextLineNumber - 1);
+      insertRow.line_number = nextLineNumber;
 
       const { data, error } = await db
         .from('proposal_line_items')
@@ -1119,20 +1489,11 @@ export default async function handler(req: Request) {
       // Manager-PDF requires manager-level access. Mirror the Express role
       // check: default-allow unless the user's role matches a sales-only
       // pattern.
-      if (isManager) {
-        const rawRole = String(
-          (ctx.supabaseUser as any)?.app_metadata?.role ??
-            (ctx.supabaseUser as any)?.user_metadata?.role ??
-            '',
-        ).toLowerCase();
-        const salesOnlyRoles = ['sales_rep', 'salesperson', 'sales'];
-        const isSalesOnly = salesOnlyRoles.some((r) => rawRole === r || rawRole.endsWith(r));
-        if (isSalesOnly) {
-          return errorResponse(403, 'Manager-level access required', req, {
-            code: 'FORBIDDEN',
-            requestId,
-          });
-        }
+      if (isManager && isSalesOnlyRole(ctx)) {
+        return errorResponse(403, 'Manager-level access required', req, {
+          code: 'FORBIDDEN',
+          requestId,
+        });
       }
 
       const { data: proposal, error: pErr } = await db
@@ -1159,16 +1520,7 @@ export default async function handler(req: Request) {
         .eq('tenant_id', ctx.tenantId)
         .order('line_number', { ascending: true });
 
-      let company: any = null;
-      if (proposal.business_record_id) {
-        const r = await db
-          .from('business_records')
-          .select('company_name, email, phone, first_name, last_name')
-          .eq('id', proposal.business_record_id)
-          .eq('tenant_id', ctx.tenantId)
-          .maybeSingle();
-        company = r.data;
-      }
+      const company = await fetchCustomer(db, ctx.tenantId, proposal.business_record_id);
 
       let contact: any = null;
       if (proposal.contact_id) {

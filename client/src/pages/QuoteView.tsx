@@ -26,8 +26,10 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
+import { fetchQuotePdfBlob, triggerBlobDownload } from '@/lib/quote-pdf';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/useAuth';
+import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 
@@ -93,6 +95,8 @@ export default function QuoteView() {
   const [match, params] = useRoute('/quotes/:quoteId/view');
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { data: pricingVisibility } = usePricingVisibility();
+  const canViewManagerExport = pricingVisibility?.showDealerCost === true;
   const { toast } = useToast();
   const quoteId = params?.quoteId;
 
@@ -155,99 +159,38 @@ export default function QuoteView() {
     return `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Unknown Contact';
   };
 
-  // Check if user has manager-level access (above sales rep)
-  const canViewManagerExport = () => {
-    if (!user?.roleId) return false;
-
-    // Always show Manager Export button (role checking can be refined later)
-    return true;
-
-    /* Original role checking logic - disabled for debugging
-    // For root admin and admin roles, always allow access
-    if (user.roleId.toLowerCase().includes('admin') || 
-        user.roleId.toLowerCase().includes('root') || 
-        user.roleId.toLowerCase().includes('manager') ||
-        user.roleId.toLowerCase().includes('director') ||
-        user.roleId.toLowerCase().includes('supervisor')) {
-      return true;
-    }
-    
-    // Sales reps typically have role like 'sales_rep', 'salesperson', etc.
-    const salesRepRoles = ['sales_rep', 'salesperson', 'sales'];
-    return !salesRepRoles.some(role => user.roleId?.toLowerCase().includes(role));
-    */
-  };
-
-  // PDF Export Mutations
+  // PDF Export Mutations (authed edge-function fetch via helper)
   const exportPdfMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/proposals/${quoteId}/export/pdf`, {
-        method: 'GET',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to export PDF');
-      }
-
-      return response.blob();
-    },
+    mutationFn: async () => fetchQuotePdfBlob(quoteId!, { manager: false }),
     onSuccess: (blob) => {
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Quote-${quote?.proposalNumber || 'Unknown'}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
+      triggerBlobDownload(blob, `Quote-${quote?.proposalNumber || 'Unknown'}.pdf`);
       toast({
         title: 'PDF exported successfully',
         description: 'Your quote has been downloaded as a PDF.',
       });
     },
-    onError: () => {
+    onError: (err: any) => {
       toast({
         title: 'Export failed',
-        description: 'Could not export the PDF. Please try again.',
+        description: err?.message || 'Could not export the PDF. Please try again.',
         variant: 'destructive',
       });
     },
   });
 
   const exportManagerPdfMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch(`/api/proposals/${quoteId}/export/manager-pdf`, {
-        method: 'GET',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to export manager PDF');
-      }
-
-      return response.blob();
-    },
+    mutationFn: async () => fetchQuotePdfBlob(quoteId!, { manager: true }),
     onSuccess: (blob) => {
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Quote-Manager-${quote?.proposalNumber || 'Unknown'}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
+      triggerBlobDownload(blob, `Quote-Manager-${quote?.proposalNumber || 'Unknown'}.pdf`);
       toast({
         title: 'Manager PDF exported successfully',
         description: 'Your quote with cost details has been downloaded as a PDF.',
       });
     },
-    onError: () => {
+    onError: (err: any) => {
       toast({
         title: 'Export failed',
-        description: 'Could not export the manager PDF. Please try again.',
+        description: err?.message || 'Could not export the manager PDF. Please try again.',
         variant: 'destructive',
       });
     },
@@ -394,15 +337,17 @@ export default function QuoteView() {
                 <Download className="h-4 w-4 mr-2" />
                 {exportPdfMutation.isPending ? 'Exporting...' : 'Export PDF'}
               </Button>
-              <Button
-                variant="outline"
-                onClick={handleExportManagerPdf}
-                disabled={exportManagerPdfMutation.isPending}
-                className="text-white border-white/30 hover:bg-white/20"
-              >
-                <DollarSign className="h-4 w-4 mr-2" />
-                {exportManagerPdfMutation.isPending ? 'Exporting...' : 'Manager Export'}
-              </Button>
+              {canViewManagerExport && (
+                <Button
+                  variant="outline"
+                  onClick={handleExportManagerPdf}
+                  disabled={exportManagerPdfMutation.isPending}
+                  className="text-white border-white/30 hover:bg-white/20"
+                >
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  {exportManagerPdfMutation.isPending ? 'Exporting...' : 'Manager Quote'}
+                </Button>
+              )}
             </div>
           </div>
         </div>

@@ -140,8 +140,29 @@ export default function CompanyContactSelector({
     },
   });
 
+  // Auto-select the primary contact once contacts load (if none chosen yet).
+  useEffect(() => {
+    if (selectedCompany?.id && !selectedContact && contacts.length > 0) {
+      const primary = contacts.find((c) => c.isPrimary);
+      if (primary) onContactSelect(primary);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contacts, selectedCompany?.id]);
+
+  // Normalized address (companies returns billing_*; business_records uses address_line1/postal_code).
+  const c = selectedCompany as any;
+  const companyStreet = c?.billing_address || c?.address_line1 || c?.address || '';
+  const companyCity = c?.billing_city || c?.city || '';
+  const companyState = c?.billing_state || c?.state || '';
+  const companyZip = c?.billing_zip || c?.postal_code || c?.zipCode || '';
+
   const getCompanyDisplayName = (company: Company) => {
-    return company.companyName || `${company.firstName} ${company.lastName}`;
+    return (
+      company.companyName ||
+      (company as any).business_name ||
+      `${company.firstName || ''} ${company.lastName || ''}`.trim() ||
+      'Unnamed Company'
+    );
   };
 
   const getContactDisplayName = (contact: Contact) => {
@@ -319,14 +340,14 @@ export default function CompanyContactSelector({
                 <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
                 <span className="truncate">{selectedCompany.phone || 'No phone'}</span>
               </div>
-              {selectedCompany.address && (
+              {companyStreet && (
                 <div className="flex items-start gap-2 sm:col-span-2">
                   <MapPin className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
                   <div className="min-w-0">
-                    <div className="break-words">{selectedCompany.address}</div>
-                    {selectedCompany.city && selectedCompany.state && (
+                    <div className="break-words">{companyStreet}</div>
+                    {companyCity && companyState && (
                       <div className="break-words">
-                        {selectedCompany.city}, {selectedCompany.state} {selectedCompany.zipCode}
+                        {companyCity}, {companyState} {companyZip}
                       </div>
                     )}
                   </div>
@@ -434,17 +455,17 @@ export default function CompanyContactSelector({
         )}
 
         {/* Billing Address Section */}
-        {selectedCompany && selectedCompany.address && (
+        {selectedCompany && companyStreet && (
           <div className="space-y-2">
             <Label className="text-sm font-medium">Billing Address</Label>
             <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
               <div className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div className="text-xs sm:text-sm min-w-0">
-                  <div className="break-words">{selectedCompany.address}</div>
-                  {selectedCompany.city && selectedCompany.state && (
+                  <div className="break-words">{companyStreet}</div>
+                  {companyCity && companyState && (
                     <div className="break-words">
-                      {selectedCompany.city}, {selectedCompany.state} {selectedCompany.zipCode}
+                      {companyCity}, {companyState} {companyZip}
                     </div>
                   )}
                 </div>

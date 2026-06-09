@@ -6837,6 +6837,171 @@
       "passes": false,
       "notes": "Turns the audit (EDGE-012) into enforcement so the divergence can't silently come back. Sequenced last — only delete Express handlers once EDGE-013/014 prove the edge side has parity.",
       "category": "edge-migration"
+    },
+    {
+      "id": "QUOTE-001",
+      "title": "Quote module: pick one canonical data model and deprecate the orphans",
+      "description": "As an engineer, I need a single source of truth for quotes so the UI, edge functions, and schema stop diverging. Today three systems coexist: (A) proposals/proposal_line_items — the only one the UI actually uses via /api/proposals; (B) quotes/quote_line_items + quotePricing — orphaned; (C) enhanced_quote_pricing/enhanced_product_pricing/company_pricing_settings — the best-designed three-tier (dealer/rep/customer) system, but completely unwired. This fragmentation is the root cause of the module feeling clunky and unreliable.",
+      "acceptanceCriteria": [
+        "Decision recorded in docs/quote-module-architecture.md: standardize the UI flow on proposals/proposal_line_items (already wired, already has unit_cost + margin columns) and ABSORB the three-tier cost concepts (dealerCost, repCost, customerPrice, margin thresholds) into it, rather than rewiring to enhanced_quote_pricing",
+        "proposal_line_items confirmed to carry unit_cost (dealer cost), unit_price (customer price), margin; add columns via migration if any are missing (use ALTER TABLE ADD COLUMN IF NOT EXISTS pattern noted in project memory)",
+        "Orphaned systems clearly marked deprecated: add a header comment to supabase/functions/quotes/index.ts, supabase/functions/quote-line-items/index.ts, and the quotePricing/enhanced_quote_pricing schema blocks pointing to the canonical model; do NOT delete yet",
+        "Document in docs/quote-module-architecture.md the end-to-end data flow: business_records (customer) -> proposal -> proposal_line_items -> product catalog source-of-cost",
+        "npm run check passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "FOUNDATION — do first; every other QUOTE-### story assumes the proposals model is canonical. Active path: client QuoteBuilder.tsx + QuotesManagement.tsx -> /api/proposals -> supabase/functions/proposals/. Orphans: supabase/functions/quotes/, quote-line-items/, shared quotePricing + product-pricing-schema.ts enhanced_* tables. Reuse the three-tier CONCEPTS from product-pricing-schema.ts (dealerCost/repCost/customerPrice, minMarginPercentage, maxDiscountPercentage) without adopting its tables. [Implemented on feat/quote-module-overhaul, 2026-06-09.]",
+      "category": "quote-module"
+    },
+    {
+      "id": "QUOTE-002",
+      "title": "Capture real dealer cost on every quote line item (fixes $0-margin bug)",
+      "description": "As a sales manager, I need each line item to carry the product's true dealer/hard cost so profit and margin are real. Today cost is always 0: ProductTypeSelector's Product type has no cost field and never fetches it, LineItemManager reads the non-existent product.unitCost (line 155), QuoteBuilder hardcodes unitCost:0 on load (line 273) and omits unitCost entirely from the save payload (lines 295-306). The result is that margin is always 0 and the manager view is meaningless.",
+      "acceptanceCriteria": [
+        "Product list endpoints used by the selector (/api/product-models, /api/product-accessories, /api/professional-services, /api/service-products, /api/supplies, /api/managed-services, /api/software-products) return dealer cost + customer price fields for each row",
+        "client/src/components/quote-builder/ProductTypeSelector.tsx Product interface includes dealerCost (hard cost) and the correct customer-price field; getPrice() reads the correct schema fields (newSuggestedRetail/newRepCost), NOT the non-existent newRepPrice/upgradeRepPrice",
+        "client/src/components/quote-builder/LineItemManager.tsx handleProductSelect maps the product's real dealer cost into LineItem.unitCost (remove the product.unitCost||0 fallback that always yields 0); auto-added required accessories also carry their dealer cost",
+        "client/src/components/quote-builder/QuoteBuilder.tsx INCLUDES unitCost in the saveQuoteMutation payload per line item, and populates unitCost from the loaded line item on edit (remove the hardcoded unitCost:0 at line 273)",
+        "PricingCalculator margin block now renders with real totalCost > 0 for a normal quote",
+        "npm run check && npm run build pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "THE critical bug for the manager-quote feature. Field-name truth: product_models uses newDealerCost / newRepCost / newSuggestedRetail (+ upgrade*, lexmark*); product_accessories uses standard/new/upgrade Dealer/Rep/SuggestedRetail. Frontend currently invents newRepPrice/upgradeRepPrice which silently fall back to MSRP. Depends on QUOTE-001. [Implemented on feat/quote-module-overhaul, 2026-06-09.]",
+      "category": "quote-module"
+    },
+    {
+      "id": "QUOTE-003",
+      "title": "Persist and recompute cost/margin server-side on proposals",
+      "description": "As an engineer, I need the proposals edge function to store unit_cost on line items and recompute cost/margin totals so the numbers are authoritative on the server, not just in the browser.",
+      "acceptanceCriteria": [
+        "supabase/functions/proposals/index.ts create/update/line-item handlers accept and persist unit_cost and margin on proposal_line_items",
+        "On any line-item change the function recomputes proposal-level totals: subtotal, total_amount, and NEW total cost + total margin (store on proposals; add columns total_dealer_cost + total_margin_percentage via migration if absent)",
+        "Margin computed consistently as (customerPrice - dealerCost) and (margin% relative to revenue) — match the formula used in PricingCalculator.tsx so server and UI agree",
+        "GET /proposals/:id returns cost + margin fields so the builder and manager view can display them without recomputing",
+        "Every query filters by tenant_id; mutating actions keep existing audit behavior",
+        "npm run check passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Server-side recompute prevents tampering and makes the manager PDF trustworthy. Depends on QUOTE-002. The proposals fn already auto-generates proposal_number and recalculates totals — extend that existing recalc block rather than adding a parallel path. [Implemented on feat/quote-module-overhaul, 2026-06-09.]",
+      "category": "quote-module"
+    },
+    {
+      "id": "QUOTE-004",
+      "title": "Unify customer selection on business_records and fix billing autopopulate",
+      "description": "As a sales rep, when I start a quote I want to search/select a customer once and have their billing address fill in correctly. Today QuoteBuilder fetches /api/companies but stores businessRecordId, QuoteProposalGeneration uses /api/business-records, and billing autopopulate reads company.address/company.zipCode which don't exist on business_records (the real columns are addressLine1/postalCode), so the address never fills.",
+      "acceptanceCriteria": [
+        "All quote customer pickers resolve to the same source of truth (business_records) and store businessRecordId consistently; CompanyContactSelector search continues to work with debounced server-side search",
+        "Billing-address autopopulate in QuoteBuilder.tsx (handleCompanySelect + the prefill useEffect) maps the correct business_records fields: addressLine1/addressLine2/city/state/postalCode (and billing* variants when present)",
+        "Contact dropdown loads the selected customer's contacts and pre-selects the primary contact; selected contact email is captured for later send",
+        "Pre-fill from a lead/customer record context (?leadId=...&prefill=true) still works and fills company + title + billing address",
+        "npm run check && npm run build pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Customer step of the desired flow. business_records columns confirmed: addressLine1, addressLine2, city, state, postalCode, billingAddressLine1.., primaryContactEmail. Company contacts via /api/companies/:companyId/contacts. Depends on QUOTE-001. [Implemented on feat/quote-module-overhaul, 2026-06-09.]",
+      "category": "quote-module"
+    },
+    {
+      "id": "QUOTE-005",
+      "title": "Rebuild Quote Builder as a guided 4-step flow: Customer -> Products -> Pricing -> Review/Process",
+      "description": "As a sales rep, I want a guided stepper instead of one long form so building a quote is fast and hard to get wrong. The desired flow is: (1) select the customer, (2) add products from the catalog, (3) adjust pricing within allowed limits, (4) review and process (download/email). A QuoteWizardProgress component already exists but is unused.",
+      "acceptanceCriteria": [
+        "QuoteBuilder.tsx is restructured into 4 explicit steps using client/src/components/quotes/QuoteWizardProgress.tsx for the progress indicator",
+        "Step gating: cannot advance past Customer without a businessRecordId; cannot advance past Products without >=1 line item; Pricing step shows totals + margin; Review step shows the final quote",
+        "Draft is auto-saved (or save-on-step) so progress is never lost; Back/Next preserve all entered data including line items and pricing",
+        "Mobile-first: steps work on small screens, touch targets >=44px, consistent with existing builder styling",
+        "Existing entry points (/quotes/new, /quotes/:id edit, lead prefill) all land in the stepper",
+        "npm run check && npm run build pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "UX backbone the user explicitly described. Reuse existing CompanyContactSelector (step 1), LineItemManager/ProductTypeSelector (step 2), PricingCalculator (step 3). Depends on QUOTE-002 + QUOTE-004. QuoteWizardProgress already exists per QuotesManagement imports. [Implemented on feat/quote-module-overhaul, 2026-06-09.]",
+      "category": "quote-module"
+    },
+    {
+      "id": "QUOTE-006",
+      "title": "Pricing guardrails — enforce min margin / price floor / max discount with approval routing",
+      "description": "As a sales manager, I want reps to be able to adjust price only within limits ('to a point'), with anything beyond requiring approval, so we never accidentally sell below an acceptable margin. The company_pricing_settings table (minMarginPercentage, maxDiscountPercentage, minimumSalePrice, requireApprovalForPriceEdit, allowRepPriceEdit) already exists but is unused.",
+      "acceptanceCriteria": [
+        "PricingCalculator + LineItemManager read effective pricing policy (per-tenant company_pricing_settings with sensible defaults) and block/warn when a price falls below minimumSalePrice or quote margin falls below minMarginPercentage or discount exceeds maxDiscountPercentage",
+        "Reps see a clear inline warning and the quote cannot be SENT (status->sent) while it violates policy unless an approval is granted",
+        "When requireApprovalForPriceEdit/threshold is exceeded, the quote is flagged requiresApproval and surfaced to managers (reuse proposal_approvals or price_change_approvals concepts already in schema)",
+        "Server-side enforcement in the proposals edge function mirrors the client checks (client checks are UX only, server is authoritative)",
+        "Policy editing UI exists for admins (or reuse existing PricingSettings.tsx / PricingManagement.tsx) to set the thresholds",
+        "npm run check passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implements 'modify the pricing to a point'. Schema already present: company_pricing_settings + price_change_approvals (shared/product-pricing-schema.ts) and proposal_approvals (shared/quote-proposal-schema.ts). Depends on QUOTE-003. Gate sends with the existing usePricingVisibility/role context. [Implemented on feat/quote-module-overhaul, 2026-06-09.]",
+      "category": "quote-module"
+    },
+    {
+      "id": "QUOTE-007",
+      "title": "Manager Quote view + PDF: hard costs and built-in profit, role-gated",
+      "description": "As a manager or admin, I want a 'Manager Quote' button that shows the deal with hard costs and the profit/margin built into it, so I understand profitability before approving. A /export/manager-pdf endpoint exists but no UI exposes it, and cost data was broken (fixed by QUOTE-002/003).",
+      "acceptanceCriteria": [
+        "A 'Manager Quote' button is visible in the builder, quote view, and QuotesManagement row actions ONLY to managers/admins, gated via usePricingVisibility (showDealerCost) / role checks",
+        "The manager view shows per line item: dealer cost, customer price, line margin $ and %, plus quote totals: total cost, total revenue, total gross profit $ and %",
+        "GET /proposals/:id/export/manager-pdf produces a PDF including the cost + margin breakdown with the existing MANAGER EXPORT styling, populated with the now-real cost data",
+        "The customer-facing export (/export/pdf) continues to EXCLUDE all cost/margin fields — verified by a test or explicit check",
+        "Non-managers never receive cost/margin data from the API (server-side role filter, not just hidden in UI)",
+        "npm run check && npm run build pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "The headline ask. Endpoint scaffolding exists in supabase/functions/proposals/_pdf.ts (manager export branch). usePricingVisibility hook already exists (client/src/hooks/usePricingVisibility.ts) and MarginAnalysisReport.tsx already gates on showDealerCost. Depends on QUOTE-003 (real server-side cost/margin). [Implemented on feat/quote-module-overhaul, 2026-06-09.]",
+      "category": "quote-module"
+    },
+    {
+      "id": "QUOTE-008",
+      "title": "Process/finalize step — download, email to contact, and status transition",
+      "description": "As a sales rep, once a quote is fully built I want to process it: download the PDF, email it to the customer contact, or send it, with the status updating accordingly. Today the builder only has Save Draft / Submit / Create Proposal and no download or email.",
+      "acceptanceCriteria": [
+        "Review/Process step (final wizard step) offers: Download PDF (customer-facing), Email to selected contact, and Send (status -> sent)",
+        "Email uses the selected contact's email (falls back to business_records.primaryContactEmail) and attaches/links the customer PDF; success/failure surfaced via toast",
+        "Sending is blocked if pricing policy is violated without approval (ties to QUOTE-006)",
+        "Status transitions are reflected immediately in QuotesManagement (cache invalidation already wired on /api/proposals)",
+        "Download/email actions also available from the quote view and the QuotesManagement row action menu",
+        "npm run check && npm run build pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Terminal step of the desired flow ('process that quote to download, email or whatever'). PDF endpoints from QUOTE-007/existing. Check for an existing email/notification service before adding a new one. Depends on QUOTE-005 + QUOTE-007. [Implemented on feat/quote-module-overhaul, 2026-06-09.]",
+      "category": "quote-module"
+    },
+    {
+      "id": "QUOTE-009",
+      "title": "Product catalog pricing data quality for quoting",
+      "description": "As an admin, I need the product catalog to actually contain dealer cost and customer price for the products reps quote, otherwise the margin engine has nothing to compute from. This validates and surfaces gaps in cost data.",
+      "acceptanceCriteria": [
+        "A report/endpoint (or a column in the product management UI) flags active products missing dealer cost or customer price for the relevant pricing tier (new/upgrade)",
+        "ProductPricingForm.tsx / ProductPricingDisplay.tsx correctly read/write the three tiers (dealerCost, repCost, customerPrice) with the real schema field names",
+        "Adding a product to a quote whose cost is missing shows a clear, non-blocking warning ('cost unknown — margin unavailable') rather than silently using 0",
+        "npm run check passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Without cost data in the catalog, QUOTE-002/007 produce empty margins. This is the data-side complement to the code fixes. Lower urgency than 002 but needed for the feature to be meaningful in production. Can run in parallel after QUOTE-001. [Implemented on feat/quote-module-overhaul, 2026-06-09.]",
+      "category": "quote-module"
+    },
+    {
+      "id": "QUOTE-010",
+      "title": "End-to-end verification of the quote flow + regression guard",
+      "description": "As a maintainer, I want the full Customer -> Products -> Pricing -> Manager Quote -> Process flow verified so it doesn't silently break again.",
+      "acceptanceCriteria": [
+        "A Playwright E2E (tests/) walks: select customer, add a product with known cost, adjust price within limits, view manager quote with correct margin, download/email, and confirm status",
+        "A unit/integration test asserts the margin formula agrees between PricingCalculator and the proposals edge function recompute",
+        "A test asserts the customer-facing PDF contains no cost/margin strings and the manager PDF does",
+        "Manual verification checklist recorded in docs/quote-module-architecture.md (the actual numbers for one real product)",
+        "npm run check && npm run build && npm run test pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Closes the loop. Depends on QUOTE-002..008. The cost-leak test (customer PDF must not contain costs) is the key security/regression guard for the manager feature. [Implemented on feat/quote-module-overhaul, 2026-06-09.]",
+      "category": "quote-module"
     }
   ]
 }

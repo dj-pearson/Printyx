@@ -13,6 +13,13 @@
 //
 // SendGrid API docs: https://docs.sendgrid.com/api-reference/mail-send/mail-send
 
+export interface EmailAttachment {
+  content: string; // base64-encoded
+  filename: string;
+  type: string; // MIME type, e.g. application/pdf
+  disposition?: string; // 'attachment' (default) | 'inline'
+}
+
 export interface SendArgs {
   to: string | string[];
   from: string;
@@ -22,6 +29,7 @@ export interface SendArgs {
   text?: string;
   replyTo?: string;
   customArgs?: Record<string, string>;
+  attachments?: EmailAttachment[];
 }
 
 export interface SendResult {
@@ -65,6 +73,16 @@ export async function sendEmail(msg: SendArgs): Promise<SendResult> {
         ...(msg.text ? [{ type: 'text/plain', value: msg.text }] : []),
         { type: 'text/html', value: msg.html },
       ],
+      ...(msg.attachments && msg.attachments.length > 0
+        ? {
+            attachments: msg.attachments.map((a) => ({
+              content: a.content,
+              filename: a.filename,
+              type: a.type,
+              disposition: a.disposition ?? 'attachment',
+            })),
+          }
+        : {}),
     }),
   });
 

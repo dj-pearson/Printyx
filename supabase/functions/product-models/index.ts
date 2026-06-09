@@ -96,10 +96,13 @@ export default async function handler(req: Request) {
         required_accessories: body.requiredAccessories || null,
         new_active: body.newActive !== undefined ? body.newActive : false,
         new_rep_price: body.newRepPrice || null,
+        new_dealer_cost: body.newDealerCost ?? body.new_dealer_cost ?? null,
         upgrade_active: body.upgradeActive !== undefined ? body.upgradeActive : false,
         upgrade_rep_price: body.upgradeRepPrice || null,
+        upgrade_dealer_cost: body.upgradeDealerCost ?? body.upgrade_dealer_cost ?? null,
         lexmark_active: body.lexmarkActive !== undefined ? body.lexmarkActive : false,
         lexmark_rep_price: body.lexmarkRepPrice || null,
+        lexmark_dealer_cost: body.lexmarkDealerCost ?? body.lexmark_dealer_cost ?? null,
         is_active: body.isActive !== undefined ? body.isActive : true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -143,10 +146,13 @@ export default async function handler(req: Request) {
         dbData.required_accessories = body.requiredAccessories;
       if (body.newActive !== undefined) dbData.new_active = body.newActive;
       if (body.newRepPrice !== undefined) dbData.new_rep_price = body.newRepPrice;
+      if (body.newDealerCost !== undefined) dbData.new_dealer_cost = body.newDealerCost;
       if (body.upgradeActive !== undefined) dbData.upgrade_active = body.upgradeActive;
       if (body.upgradeRepPrice !== undefined) dbData.upgrade_rep_price = body.upgradeRepPrice;
+      if (body.upgradeDealerCost !== undefined) dbData.upgrade_dealer_cost = body.upgradeDealerCost;
       if (body.lexmarkActive !== undefined) dbData.lexmark_active = body.lexmarkActive;
       if (body.lexmarkRepPrice !== undefined) dbData.lexmark_rep_price = body.lexmarkRepPrice;
+      if (body.lexmarkDealerCost !== undefined) dbData.lexmark_dealer_cost = body.lexmarkDealerCost;
       if (body.isActive !== undefined) dbData.is_active = body.isActive;
 
       const { data: updatedModel, error } = await admin

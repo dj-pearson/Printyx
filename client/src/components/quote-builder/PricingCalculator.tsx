@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Calculator, DollarSign, Percent, TrendingUp, Info } from 'lucide-react';
+import { quoteMarginPct } from '@shared/quote-math';
 
 interface LineItem {
   id?: string;
@@ -43,6 +44,9 @@ interface PricingCalculatorProps {
   initialTaxAmount?: number;
   onDiscountChange?: (discountAmount: number, discountPercentage: number) => void;
   onTaxChange?: (taxAmount: number) => void;
+  // Pricing policy (QUOTE-006)
+  minMarginPercentage?: number;
+  maxDiscountPercentage?: number;
 }
 
 export default function PricingCalculator({
@@ -54,6 +58,8 @@ export default function PricingCalculator({
   initialTaxAmount = 0,
   onDiscountChange,
   onTaxChange,
+  minMarginPercentage,
+  maxDiscountPercentage,
 }: PricingCalculatorProps) {
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('percentage');
   const [discountAmount, setDiscountAmount] = useState(initialDiscountAmount);
@@ -79,9 +85,25 @@ export default function PricingCalculator({
   const taxValue = taxAmount > 0 ? taxAmount : (afterDiscountTotal * taxRate) / 100;
   const finalTotal = afterDiscountTotal + taxValue;
 
-  // Calculate overall margin
+  // Calculate overall margin on pre-tax revenue (after discount) — matches the
+  // server recompute and the manager PDF. Tax is not revenue.
   const totalCost = lineItems.reduce((sum, item) => sum + (item.unitCost || 0) * item.quantity, 0);
-  const overallMargin = totalCost > 0 ? ((finalTotal - totalCost) / finalTotal) * 100 : 0;
+  const overallMargin = quoteMarginPct({
+    subtotal: itemsSubtotal,
+    discount: discountValue,
+    totalCost,
+  });
+
+  // Pricing policy violations (QUOTE-006)
+  const belowMinMargin =
+    totalCost > 0 &&
+    minMarginPercentage !== undefined &&
+    minMarginPercentage > 0 &&
+    overallMargin < minMarginPercentage;
+  const overMaxDiscount =
+    maxDiscountPercentage !== undefined &&
+    maxDiscountPercentage > 0 &&
+    discountPercentage > maxDiscountPercentage;
 
   const handleDiscountAmountChange = (value: number) => {
     setDiscountAmount(value);
@@ -387,6 +409,30 @@ export default function PricingCalculator({
           </div>
         </div>
 
+        {/* Pricing Policy Warnings (QUOTE-006) */}
+        {(belowMinMargin || overMaxDiscount) && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-800">
+            <div className="flex items-start gap-2 text-xs sm:text-sm">
+              <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <div className="space-y-1">
+                <div className="font-medium">Manager approval required to send</div>
+                {belowMinMargin && (
+                  <div>
+                    Margin {formatPercentage(overallMargin)} is below the minimum{' '}
+                    {formatPercentage(minMarginPercentage!)}.
+                  </div>
+                )}
+                {overMaxDiscount && (
+                  <div>
+                    Discount {formatPercentage(Math.abs(discountPercentage))} exceeds the maximum{' '}
+                    {formatPercentage(maxDiscountPercentage!)}.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Margin Analysis */}
         {totalCost > 0 && (
           <div className="space-y-3">
@@ -403,9 +449,9 @@ export default function PricingCalculator({
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Total Revenue</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Revenue (pre-tax)</div>
                   <div className="text-sm sm:text-lg font-semibold text-blue-600">
-                    {formatCurrency(finalTotal)}
+                    {formatCurrency(afterDiscountTotal)}
                   </div>
                 </div>
                 <div>
