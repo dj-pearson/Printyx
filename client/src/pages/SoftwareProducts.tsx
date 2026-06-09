@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus,
@@ -60,9 +60,52 @@ import { SOFTWARE_IMPORT_FIELDS, suggestFieldForHeader } from '@shared/software-
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 
+// Normalize an API row (snake or camel) into the SoftwareProduct shape the UI uses.
+function mapSoftwareProduct(product: any): any {
+  return {
+    ...product,
+    id: product.id,
+    productCode: product.product_code || product.productCode || '',
+    productName: product.product_name || product.productName || '',
+    productType: product.product_type || product.productType || '',
+    vendor: product.vendor || '',
+    category: product.category || '',
+    accessoryType: product.accessory_type || product.accessoryType || '',
+    description: product.description || '',
+    summary: product.summary || '',
+    note: product.note || '',
+    eaNotes: product.ea_notes || product.eaNotes || '',
+    configNote: product.config_note || product.configNote || '',
+    relatedProducts: product.related_products || product.relatedProducts || '',
+    isActive: product.is_active ?? product.isActive ?? true,
+    availableForAll: product.available_for_all ?? product.availableForAll ?? false,
+    repostEdit: product.repost_edit ?? product.repostEdit ?? false,
+    salesRepCredit: product.sales_rep_credit ?? product.salesRepCredit ?? true,
+    funding: product.funding ?? true,
+    lease: product.lease ?? false,
+    paymentType: product.payment_type || product.paymentType || '',
+    standardActive: product.standard_active ?? product.standardActive ?? false,
+    standardCost: product.standard_cost ?? product.standardCost ?? null,
+    standardRepPrice: product.standard_rep_price ?? product.standardRepPrice ?? null,
+    newActive: product.new_active ?? product.newActive ?? false,
+    newCost: product.new_cost ?? product.newCost ?? null,
+    newRepPrice: product.new_rep_price ?? product.newRepPrice ?? null,
+    upgradeActive: product.upgrade_active ?? product.upgradeActive ?? false,
+    upgradeCost: product.upgrade_cost ?? product.upgradeCost ?? null,
+    upgradeRepPrice: product.upgrade_rep_price ?? product.upgradeRepPrice ?? null,
+    priceBookId: product.price_book_id || product.priceBookId || '',
+    tempKey: product.temp_key || product.tempKey || '',
+    createdAt: product.created_at || product.createdAt || '',
+    updatedAt: product.updated_at || product.updatedAt || '',
+  };
+}
+
 export default function SoftwareProducts() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -90,48 +133,45 @@ export default function SoftwareProducts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: products = [], isLoading } = useQuery<SoftwareProduct[]>({
-    queryKey: ['/api/software-products'],
+  // Debounce the search box, and reset to page 1 whenever a filter changes.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, selectedCategory, pageSize]);
+
+  // Server-paginated list (default 50/page) + server-side search/category filter.
+  const { data: productsResp, isLoading } = useQuery<{ items: any[]; total: number }>({
+    queryKey: [
+      '/api/software-products',
+      { page, pageSize, search: debouncedSearch, category: selectedCategory },
+    ],
     queryFn: async () => {
-      const response = await apiRequest('/api/software-products', 'GET');
-      // Edge function returns { data: [...], total: N }
+      const params = new URLSearchParams({ page: String(page), limit: String(pageSize) });
+      if (debouncedSearch) params.set('search', debouncedSearch);
+      if (selectedCategory !== 'all') params.set('category', selectedCategory);
+      const response = await apiRequest(`/api/software-products?${params.toString()}`, 'GET');
       const items = response?.data || (Array.isArray(response) ? response : []);
-      return (items || []).map((product: any) => ({
-        ...product,
-        id: product.id,
-        productCode: product.product_code || product.productCode || '',
-        productName: product.product_name || product.productName || '',
-        productType: product.product_type || product.productType || '',
-        vendor: product.vendor || '',
-        category: product.category || '',
-        accessoryType: product.accessory_type || product.accessoryType || '',
-        description: product.description || '',
-        summary: product.summary || '',
-        note: product.note || '',
-        eaNotes: product.ea_notes || product.eaNotes || '',
-        configNote: product.config_note || product.configNote || '',
-        relatedProducts: product.related_products || product.relatedProducts || '',
-        isActive: product.is_active ?? product.isActive ?? true,
-        availableForAll: product.available_for_all ?? product.availableForAll ?? false,
-        repostEdit: product.repost_edit ?? product.repostEdit ?? false,
-        salesRepCredit: product.sales_rep_credit ?? product.salesRepCredit ?? true,
-        funding: product.funding ?? true,
-        lease: product.lease ?? false,
-        paymentType: product.payment_type || product.paymentType || '',
-        standardActive: product.standard_active ?? product.standardActive ?? false,
-        standardCost: product.standard_cost ?? product.standardCost ?? null,
-        standardRepPrice: product.standard_rep_price ?? product.standardRepPrice ?? null,
-        newActive: product.new_active ?? product.newActive ?? false,
-        newCost: product.new_cost ?? product.newCost ?? null,
-        newRepPrice: product.new_rep_price ?? product.newRepPrice ?? null,
-        upgradeActive: product.upgrade_active ?? product.upgradeActive ?? false,
-        upgradeCost: product.upgrade_cost ?? product.upgradeCost ?? null,
-        upgradeRepPrice: product.upgrade_rep_price ?? product.upgradeRepPrice ?? null,
-        priceBookId: product.price_book_id || product.priceBookId || '',
-        tempKey: product.temp_key || product.tempKey || '',
-        createdAt: product.created_at || product.createdAt || '',
-        updatedAt: product.updated_at || product.updatedAt || '',
-      }));
+      return {
+        items: (items || []).map(mapSoftwareProduct),
+        total: response?.total ?? (items?.length || 0),
+      };
+    },
+    placeholderData: (prev) => prev, // keep current page visible while the next loads
+  });
+
+  const products = productsResp?.items ?? [];
+  const total = productsResp?.total ?? 0;
+  const totalPages = pageSize > 0 ? Math.max(1, Math.ceil(total / pageSize)) : 1;
+
+  // Distinct categories for the filter dropdown (fetched once, refreshed on mutations).
+  const { data: categories = [] } = useQuery<string[]>({
+    queryKey: ['/api/software-products', 'categories'],
+    queryFn: async () => {
+      const r = await apiRequest('/api/software-products?distinct=categories', 'GET');
+      return r?.categories || [];
     },
   });
 
@@ -564,22 +604,8 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
     });
   };
 
-  // Get unique categories from products
-  const categories = Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
-
-  // Filter products by search and category
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch =
-      (product.productName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (product.productCode?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (product.description?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-
-    if (selectedCategory === 'all') return matchesSearch;
-
-    const matchesCategory = product.category === selectedCategory;
-
-    return matchesSearch && matchesCategory;
-  });
+  // Server already filters + paginates; render the current page directly.
+  const filteredProducts = products;
 
   const formatCurrency = (value: string | number | null | undefined) => {
     if (!value || value === null || value === undefined) return '$0.00';
@@ -2219,16 +2245,49 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
           </div>
         )}
 
-        {/* Stats */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-sm text-muted-foreground border-t pt-4">
-          <span>
-            {filteredProducts.length} of {products.length} software products
-          </span>
-          <div className="flex gap-4">
-            <span>{products.filter((p) => p.isActive).length} active</span>
-            <span>{products.filter((p) => !p.isActive).length} inactive</span>
+        {/* Pagination */}
+        {total > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t pt-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>
+                Showing {total === 0 ? 0 : (page - 1) * pageSize + 1}–
+                {Math.min(page * pageSize, total)} of {total}
+              </span>
+              <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                <SelectTrigger className="h-8 w-[110px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25 / page</SelectItem>
+                  <SelectItem value="50">50 / page</SelectItem>
+                  <SelectItem value="100">100 / page</SelectItem>
+                  <SelectItem value="250">250 / page</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || isLoading}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages || isLoading}
+              >
+                Next
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </MainLayout>
   );

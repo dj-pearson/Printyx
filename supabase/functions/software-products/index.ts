@@ -44,20 +44,65 @@ export default async function handler(req: Request) {
     // Server strips function name, so /software-products/import becomes /import
     const productId = pathParts[0]; // Get ID or action from path
 
-    // GET /software-products - List all software products
+    // GET /software-products - paginated list (or distinct categories)
     if (req.method === 'GET' && !productId) {
-      const { data: products, error } = await admin
+      const params = url.searchParams;
+
+      // Distinct categories for the filter dropdown (one lightweight call).
+      if (params.get('distinct') === 'categories') {
+        const { data, error } = await admin
+          .from('software_products')
+          .select('category')
+          .eq('tenant_id', tenantId);
+        if (error) {
+          console.error('Error fetching categories:', error);
+          return createCorsResponse({ error: error.message }, 500, req);
+        }
+        const categories = Array.from(
+          new Set((data || []).map((r: any) => r.category).filter(Boolean)),
+        ).sort();
+        return createCorsResponse({ categories }, 200, req);
+      }
+
+      const page = Math.max(1, parseInt(params.get('page') || '1', 10) || 1);
+      const limitRaw = parseInt(params.get('limit') || '50', 10) || 50;
+      const limit = Math.min(Math.max(1, limitRaw), 500); // hard cap to protect the function
+      const search = (params.get('search') || '').trim();
+      const category = params.get('category');
+
+      let query = admin
         .from('software_products')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('product_name', { ascending: true });
 
+      if (search) {
+        // Strip chars that break PostgREST's .or() filter grammar.
+        const safe = search.replace(/[,()]/g, ' ').trim();
+        if (safe) {
+          query = query.or(
+            `product_name.ilike.%${safe}%,product_code.ilike.%${safe}%,description.ilike.%${safe}%`,
+          );
+        }
+      }
+      if (category && category !== 'all') {
+        query = query.eq('category', category);
+      }
+
+      const from = (page - 1) * limit;
+      query = query.range(from, from + limit - 1);
+
+      const { data: products, error, count } = await query;
       if (error) {
         console.error('Error fetching software products:', error);
         return createCorsResponse({ error: error.message }, 500, req);
       }
 
-      return createCorsResponse({ data: products || [], total: products?.length || 0 }, 200, req);
+      return createCorsResponse(
+        { data: products || [], total: count ?? products?.length ?? 0, page, limit },
+        200,
+        req,
+      );
     }
 
     // GET /software-products/:id - Get single software product
