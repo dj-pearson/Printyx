@@ -272,6 +272,14 @@ export default async function handler(req: Request) {
           price: number | null,
         ): boolean => (explicit !== null ? parseBool(explicit) : cost !== null || price !== null);
 
+        // ── Pass 1: classify rows in memory (NO per-row DB calls) ────────────
+        // A 1,800-row file with sequential awaits exceeds the edge time limit and
+        // the gateway returns a CORS-less 503. Build batches instead.
+        const toInsert: Record<string, any>[] = [];
+        const toUpdate: { id: string; data: Record<string, any> }[] = [];
+        const seenInFile = new Set<string>();
+        const nowIso = new Date().toISOString();
+
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
           if (row.length === 0 || (row.length === 1 && row[0] === '')) continue;
@@ -280,7 +288,7 @@ export default async function handler(req: Request) {
           const productName = getField(row, 'productName');
 
           if (!productCode && !productName) {
-            errors.push(`Row ${i + 2}: Product code or product name is required`);
+            if (errors.length < 100) errors.push(`Row ${i + 2}: Product code or name required`);
             skipped++;
             continue;
           }
@@ -332,55 +340,75 @@ export default async function handler(req: Request) {
             upgrade_cost: upgradeCost,
             upgrade_rep_price: upgradeRepPrice,
             price_book_id: getField(row, 'priceBookId') || null,
-            updated_at: new Date().toISOString(),
+            updated_at: nowIso,
           };
 
           // Dedup key: meaningful code first, else product name.
           const nameKey = (productName || '').toLowerCase().trim();
+          const dedupKey = codeMeaningful
+            ? 'c:' + (productCode as string).toLowerCase().trim()
+            : nameKey
+              ? 'n:' + nameKey
+              : '';
+          if (dedupKey && seenInFile.has(dedupKey)) {
+            skipped++; // duplicate within this same file
+            continue;
+          }
+          if (dedupKey) seenInFile.add(dedupKey);
+
           const existingId = codeMeaningful
             ? existingByCode.get((productCode as string).toLowerCase().trim())
             : nameKey
               ? existingByName.get(nameKey)
               : undefined;
 
-          try {
-            if (existingId && existingId !== 'new') {
-              delete dbData.tenant_id; // Don't update tenant_id
-              const { error: updateError } = await admin
-                .from('software_products')
-                .update(dbData)
-                .eq('id', existingId);
+          if (existingId) {
+            const { tenant_id: _t, ...updateData } = dbData;
+            toUpdate.push({ id: existingId, data: updateData });
+          } else {
+            dbData.created_at = nowIso;
+            toInsert.push(dbData);
+          }
+        }
 
-              if (updateError) {
-                errors.push(`Row ${i + 2}: ${updateError.message}`);
-                skipped++;
-              } else {
-                updated++;
-              }
-            } else if (existingId === 'new') {
-              // Already inserted earlier in this same file — skip the duplicate row.
+        // ── Pass 2: batched writes ───────────────────────────────────────────
+        const chunk = <T>(arr: T[], n: number): T[][] => {
+          const out: T[][] = [];
+          for (let j = 0; j < arr.length; j += n) out.push(arr.slice(j, j + n));
+          return out;
+        };
+
+        // Bulk inserts (one round-trip per 500 rows).
+        for (const batch of chunk(toInsert, 500)) {
+          const { error: insErr } = await admin.from('software_products').insert(batch);
+          if (insErr) {
+            if (errors.length < 100) errors.push(`Insert batch failed: ${insErr.message}`);
+            skipped += batch.length;
+          } else {
+            imported += batch.length;
+          }
+        }
+
+        // Updates in parallel batches (25 concurrent).
+        for (const batch of chunk(toUpdate, 25)) {
+          const results = await Promise.all(
+            batch.map((u) =>
+              admin
+                .from('software_products')
+                .update(u.data)
+                .eq('id', u.id)
+                .eq('tenant_id', tenantId),
+            ),
+          );
+          results.forEach((r: any, idx: number) => {
+            if (r.error) {
+              if (errors.length < 100)
+                errors.push(`Update failed (${batch[idx].id}): ${r.error.message}`);
               skipped++;
             } else {
-              dbData.created_at = new Date().toISOString();
-              const { error: insertError } = await admin.from('software_products').insert(dbData);
-
-              if (insertError) {
-                errors.push(`Row ${i + 2}: ${insertError.message}`);
-                skipped++;
-              } else {
-                imported++;
-                // Track within-file so the same code/name doesn't insert twice.
-                if (codeMeaningful) {
-                  existingByCode.set((productCode as string).toLowerCase().trim(), 'new');
-                } else if (nameKey) {
-                  existingByName.set(nameKey, 'new');
-                }
-              }
+              updated++;
             }
-          } catch (rowError: any) {
-            errors.push(`Row ${i + 2}: ${rowError.message || 'Unknown error'}`);
-            skipped++;
-          }
+          });
         }
 
         return createCorsResponse(
