@@ -177,6 +177,72 @@ function normalizeLineItem(
   return row;
 }
 
+// ─── Customer resolution ────────────────────────────────────────────────────
+// proposals.business_record_id holds the customer id. The current customer source
+// of truth is the `companies` table; legacy/lead customers live in
+// `business_records`. Resolve from companies first, then business_records, and
+// normalize to one shape for the UI + PDF.
+
+function mapCustomerRow(row: Record<string, any> | null | undefined) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    company_name:
+      row.business_name ||
+      row.company_name ||
+      [row.first_name, row.last_name].filter(Boolean).join(' ') ||
+      null,
+    email: row.email || row.primary_contact_email || null,
+    phone: row.phone || row.primary_contact_phone || null,
+    address_line1: row.billing_address || row.address_line1 || null,
+    city: row.billing_city || row.city || null,
+    state: row.billing_state || row.state || null,
+    postal_code: row.billing_zip || row.postal_code || null,
+  };
+}
+
+async function fetchCustomer(db: SB, tenantId: string, customerId: string | null | undefined) {
+  if (!customerId) return null;
+  const c = await db
+    .from('companies')
+    .select('*')
+    .eq('id', customerId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  if (c.data) return mapCustomerRow(c.data);
+  const b = await db
+    .from('business_records')
+    .select('*')
+    .eq('id', customerId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  return b.data ? mapCustomerRow(b.data) : null;
+}
+
+async function fetchCustomerMap(
+  db: SB,
+  tenantId: string,
+  ids: Array<string | null | undefined>,
+): Promise<Record<string, ReturnType<typeof mapCustomerRow>>> {
+  const map: Record<string, ReturnType<typeof mapCustomerRow>> = {};
+  const unique = Array.from(new Set(ids.filter((x): x is string => Boolean(x))));
+  if (unique.length === 0) return map;
+
+  const c = await db.from('companies').select('*').eq('tenant_id', tenantId).in('id', unique);
+  for (const row of c.data ?? []) map[row.id] = mapCustomerRow(row);
+
+  const missing = unique.filter((id) => !map[id]);
+  if (missing.length > 0) {
+    const b = await db
+      .from('business_records')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .in('id', missing);
+    for (const row of b.data ?? []) map[row.id] = mapCustomerRow(row);
+  }
+  return map;
+}
+
 async function recalculateProposalTotals(
   db: SB,
   proposalId: string,
@@ -637,7 +703,18 @@ export default async function handler(req: Request) {
           requestId,
         });
       }
-      return jsonResponse(data ?? [], 200, req, requestId);
+
+      // Enrich each proposal with its customer (name shown in QuotesManagement).
+      const custMap = await fetchCustomerMap(
+        db,
+        ctx.tenantId,
+        (data ?? []).map((p: { business_record_id?: string }) => p.business_record_id),
+      );
+      const enriched = (data ?? []).map((p: { business_record_id?: string }) => {
+        const customer = p.business_record_id ? custMap[p.business_record_id] : null;
+        return { ...p, customer, customer_name: customer?.company_name ?? null };
+      });
+      return jsonResponse(enriched, 200, req, requestId);
     }
 
     // GET /proposals/new - blank form template
@@ -778,7 +855,19 @@ export default async function handler(req: Request) {
         .eq('tenant_id', ctx.tenantId)
         .order('line_number', { ascending: true });
 
-      return jsonResponse({ ...proposal.data, lineItems: items.data ?? [] }, 200, req, requestId);
+      const customer = await fetchCustomer(db, ctx.tenantId, proposal.data.business_record_id);
+
+      return jsonResponse(
+        {
+          ...proposal.data,
+          customer,
+          customer_name: customer?.company_name ?? null,
+          lineItems: items.data ?? [],
+        },
+        200,
+        req,
+        requestId,
+      );
     }
 
     // PUT/PATCH /proposals/:id
@@ -1252,16 +1341,7 @@ export default async function handler(req: Request) {
         .eq('tenant_id', ctx.tenantId)
         .order('line_number', { ascending: true });
 
-      let company: any = null;
-      if (proposal.business_record_id) {
-        const r = await db
-          .from('business_records')
-          .select('company_name, email, phone, first_name, last_name')
-          .eq('id', proposal.business_record_id)
-          .eq('tenant_id', ctx.tenantId)
-          .maybeSingle();
-        company = r.data;
-      }
+      const company = await fetchCustomer(db, ctx.tenantId, proposal.business_record_id);
 
       let contact: any = null;
       if (proposal.contact_id) {

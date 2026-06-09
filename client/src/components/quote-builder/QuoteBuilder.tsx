@@ -181,18 +181,11 @@ export default function QuoteBuilder({
         console.log('🏢 Pre-filling quote with company:', company.companyName);
         setSelectedCompany(company);
         form.setValue('businessRecordId', company.id);
-        form.setValue('title', `Quote for ${company.companyName}`);
-
-        // Auto-populate billing address if available
-        if (company.address) {
-          form.setValue('billingAddress', {
-            street: company.address,
-            city: company.city || '',
-            state: company.state || '',
-            zipCode: company.zipCode || '',
-            country: 'US',
-          });
-        }
+        form.setValue(
+          'title',
+          `Quote for ${company.companyName || company.business_name || ''}`.trim(),
+        );
+        form.setValue('billingAddress', mapBillingAddress(company));
       }
     }
   }, [businessRecords, form, initialQuoteId]);
@@ -202,54 +195,61 @@ export default function QuoteBuilder({
     if (existingQuote && !quoteLoading) {
       console.log('📝 Populating form with existing quote:', existingQuote);
 
+      // GET /proposals/:id returns snake_case (edge fn). Read both shapes.
+      const businessRecordId =
+        existingQuote.businessRecordId || existingQuote.business_record_id || '';
+      const contactId = existingQuote.contactId || existingQuote.contact_id || '';
+      const validUntil = existingQuote.validUntil || existingQuote.valid_until || '';
+      const discountAmt = existingQuote.discountAmount ?? existingQuote.discount_amount ?? '0';
+      const discountPct =
+        existingQuote.discountPercentage ?? existingQuote.discount_percentage ?? '0';
+      const taxAmt = existingQuote.taxAmount ?? existingQuote.tax_amount ?? '0';
+      const customer = existingQuote.customer || null;
+      const billingAddress = customer
+        ? mapBillingAddress(customer)
+        : { street: '', city: '', state: '', zipCode: '', country: 'US' };
+
       // Update form with existing data
       form.reset({
         title: existingQuote.title || '',
-        businessRecordId: existingQuote.businessRecordId || '',
-        contactId: existingQuote.contactId || '',
-        billingAddress: {
-          street: '',
-          city: '',
-          state: '',
-          zipCode: '',
-          country: 'US',
-        },
+        businessRecordId,
+        contactId,
+        billingAddress,
         pricingType: 'new',
-        validUntil: existingQuote.validUntil ? existingQuote.validUntil.split('T')[0] : '',
-        customerNotes: existingQuote.customerNotes || '',
-        internalNotes: existingQuote.internalNotes || '',
-        discountAmount: existingQuote.discountAmount || '0',
-        discountPercentage: existingQuote.discountPercentage || '0',
-        taxAmount: existingQuote.taxAmount || '0',
+        validUntil: validUntil ? String(validUntil).split('T')[0] : '',
+        customerNotes: existingQuote.customerNotes || existingQuote.customer_notes || '',
+        internalNotes: existingQuote.internalNotes || existingQuote.internal_notes || '',
+        discountAmount: String(discountAmt),
+        discountPercentage: String(discountPct),
+        taxAmount: String(taxAmt),
       });
 
       // Set local state for pricing calculator
-      setDiscountAmount(parseFloat(existingQuote.discountAmount || '0'));
-      setDiscountPercentage(parseFloat(existingQuote.discountPercentage || '0'));
-      setTaxAmount(parseFloat(existingQuote.taxAmount || '0'));
+      setDiscountAmount(parseFloat(String(discountAmt)) || 0);
+      setDiscountPercentage(parseFloat(String(discountPct)) || 0);
+      setTaxAmount(parseFloat(String(taxAmt)) || 0);
 
-      // Find and set the selected company
-      if (existingQuote.businessRecordId && Array.isArray(businessRecords)) {
-        const company = businessRecords.find(
-          (record: any) => record.id === existingQuote.businessRecordId,
-        );
-        if (company) {
-          setSelectedCompany(company);
+      // Prefer the customer object returned with the proposal; fall back to the
+      // companies list lookup.
+      const company =
+        customer ||
+        (Array.isArray(businessRecords)
+          ? businessRecords.find((record: any) => record.id === businessRecordId)
+          : null);
+      if (company) {
+        setSelectedCompany(company);
 
-          // Also fetch and set the contact if contactId exists
-          if (existingQuote.contactId) {
-            // Fetch contacts for this company
-            apiRequest(`/api/companies/${existingQuote.businessRecordId}/contacts`, 'GET')
-              .then((contacts: any[]) => {
-                const contact = contacts.find((c: any) => c.id === existingQuote.contactId);
-                if (contact) {
-                  setSelectedContact(contact);
-                }
-              })
-              .catch((error) => {
-                console.warn('Failed to fetch contacts for company:', error);
-              });
-          }
+        // Fetch and set the contact if one was chosen
+        if (contactId && businessRecordId) {
+          apiRequest(`/api/companies/${businessRecordId}/contacts`, 'GET')
+            .then((contacts: any[]) => {
+              const list = Array.isArray(contacts) ? contacts : [];
+              const contact = list.find((cc: any) => cc.id === contactId);
+              if (contact) setSelectedContact(contact);
+            })
+            .catch((error) => {
+              console.warn('Failed to fetch contacts for company:', error);
+            });
         }
       }
 
@@ -260,8 +260,8 @@ export default function QuoteBuilder({
           lineNumber: index + 1,
           parentLineId: undefined,
           isSubline: false,
-          productType: (item.itemType as ProductType) || 'product_models',
-          productId: item.productId || '',
+          productType: ((item.itemType || item.item_type) as ProductType) || 'product_models',
+          productId: item.productId || item.product_id || '',
           productCode: item.productCode || item.product_code || '',
           productName: item.productName || item.product_name || '',
           description: item.description || '',
@@ -370,20 +370,40 @@ export default function QuoteBuilder({
 
   // Line items are now loaded with the quote data in the useEffect above
 
+  // Map a customer record (companies or business_records shape, camel or snake) to
+  // the quote billing address. Reads billing_* first, then plain address fields.
+  const mapBillingAddress = (company: any) => ({
+    street:
+      company.billing_address ||
+      company.billingAddressLine1 ||
+      company.billing_address_line1 ||
+      company.addressLine1 ||
+      company.address_line1 ||
+      company.address ||
+      '',
+    city: company.billing_city || company.billingCity || company.city || '',
+    state: company.billing_state || company.billingState || company.state || '',
+    zipCode:
+      company.billing_zip ||
+      company.billingPostalCode ||
+      company.billing_postal_code ||
+      company.postalCode ||
+      company.postal_code ||
+      company.zipCode ||
+      '',
+    country: company.country || 'US',
+  });
+
   const handleCompanySelect = (company: any) => {
     setSelectedCompany(company);
     form.setValue('businessRecordId', company.id);
-
-    // Auto-populate billing address if available
-    if (company.address) {
-      form.setValue('billingAddress', {
-        street: company.address,
-        city: company.city,
-        state: company.state,
-        zipCode: company.zipCode,
-        country: 'US',
-      });
+    if (!form.getValues('title')) {
+      form.setValue(
+        'title',
+        `Quote for ${company.companyName || company.business_name || ''}`.trim(),
+      );
     }
+    form.setValue('billingAddress', mapBillingAddress(company));
   };
 
   const handleContactSelect = (contact: any) => {
