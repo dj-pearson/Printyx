@@ -117,21 +117,117 @@ export default async function handler(req: Request) {
         const headers = parseCSVLine(lines[0]);
         const rows = lines.slice(1).map((line: string) => parseCSVLine(line));
 
-        // Build header-to-index map (case-insensitive, underscore/camelCase tolerant)
-        const normalize = (s: string) => s.toLowerCase().replace(/[_\s]/g, '');
+        // Optional explicit column mapping from the UI: { targetField: csvHeaderName }.
+        // Takes precedence over alias auto-detection so ANY CSV layout can import.
+        let mapping: Record<string, string> = {};
+        const mappingRaw = formData.get('mapping');
+        if (typeof mappingRaw === 'string' && mappingRaw.trim()) {
+          try {
+            mapping = JSON.parse(mappingRaw) || {};
+          } catch {
+            mapping = {};
+          }
+        }
+
+        // Build header-to-index map. Normalize aggressively (strip all non-alphanum)
+        // so "Manufacturer Code", "manufacturer_code", "manufacturerCode" all match.
+        const normalize = (s: string) =>
+          String(s ?? '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
         const headerMap: Record<string, number> = {};
         headers.forEach((h, i) => {
           headerMap[normalize(h)] = i;
         });
 
-        const getVal = (row: string[], ...keys: string[]): string | null => {
-          for (const key of keys) {
-            const idx = headerMap[normalize(key)];
-            if (idx !== undefined && row[idx] !== undefined && row[idx] !== '') {
-              return row[idx];
-            }
+        // Alias table — mirrors shared/software-import-fields.ts (Deno can't import it).
+        const ALIASES: Record<string, string[]> = {
+          productCode: [
+            'code',
+            'sku',
+            'manufacturer code',
+            'mfg code',
+            'manufacturer part number',
+            'item',
+            'item no',
+            'item number',
+            'ad product code',
+            'part number',
+            'part no',
+          ],
+          productName: [
+            'name',
+            'title',
+            'product description',
+            'description',
+            'software name',
+            'item description',
+          ],
+          vendor: ['brand', 'manufacturer', 'publisher', 'make'],
+          productType: ['type'],
+          category: ['product category', 'model', 'group', 'family'],
+          accessoryType: ['accessory type'],
+          paymentType: ['payment type', 'billing', 'term'],
+          description: ['sub description', 'long description', 'details'],
+          summary: ['short description'],
+          standardCost: [
+            'dealer price',
+            'dealer cost',
+            'cost',
+            'our cost',
+            'wholesale',
+            'buy price',
+          ],
+          standardRepPrice: [
+            'msrp',
+            'list price',
+            'retail',
+            'retail price',
+            'rep price',
+            'sell price',
+            'price',
+          ],
+          newCost: ['new cost'],
+          newRepPrice: ['new rep price', 'new price'],
+          upgradeCost: ['upgrade cost'],
+          upgradeRepPrice: ['upgrade rep price', 'upgrade price'],
+          isActive: ['active', 'enabled'],
+          availableForAll: ['available for all'],
+          salesRepCredit: ['sales rep credit'],
+          funding: ['fundable'],
+          lease: ['leasable'],
+        };
+
+        const idxForField = (field: string): number | undefined => {
+          // 1) explicit mapping wins
+          const mapped = mapping[field];
+          if (mapped) {
+            const idx = headerMap[normalize(mapped)];
+            if (idx !== undefined) return idx;
+          }
+          // 2) the field name itself (covers camel/snake/Title via normalize)
+          let idx = headerMap[normalize(field)];
+          if (idx !== undefined) return idx;
+          // 3) aliases
+          for (const a of ALIASES[field] || []) {
+            idx = headerMap[normalize(a)];
+            if (idx !== undefined) return idx;
+          }
+          return undefined;
+        };
+
+        const getField = (row: string[], field: string): string | null => {
+          const idx = idxForField(field);
+          if (idx !== undefined && row[idx] !== undefined && row[idx] !== '') {
+            return row[idx];
           }
           return null;
+        };
+
+        const isMeaningfulCode = (code: string | null | undefined): boolean => {
+          if (!code) return false;
+          const t = String(code).trim().toLowerCase();
+          return !['', '-', '--', 'n/a', 'na', 'none'].includes(t);
         };
 
         const parseBool = (val: string | null): boolean => {
@@ -152,25 +248,36 @@ export default async function handler(req: Request) {
         let skipped = 0;
         const errors: string[] = [];
 
-        // Pre-fetch existing product codes for dedup
+        // Pre-fetch existing products for dedup — by code (when meaningful) and by name.
         const { data: existingProducts } = await admin
           .from('software_products')
-          .select('id, product_code')
+          .select('id, product_code, product_name')
           .eq('tenant_id', tenantId);
 
         const existingByCode = new Map<string, string>();
+        const existingByName = new Map<string, string>();
         for (const p of existingProducts || []) {
-          if (p.product_code) {
+          if (isMeaningfulCode(p.product_code)) {
             existingByCode.set(p.product_code.toLowerCase().trim(), p.id);
           }
+          if (p.product_name) {
+            existingByName.set(p.product_name.toLowerCase().trim(), p.id);
+          }
         }
+
+        // Auto-enable a pricing tier when that tier has cost/price but no explicit flag.
+        const tierActive = (
+          explicit: string | null,
+          cost: number | null,
+          price: number | null,
+        ): boolean => (explicit !== null ? parseBool(explicit) : cost !== null || price !== null);
 
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
           if (row.length === 0 || (row.length === 1 && row[0] === '')) continue;
 
-          const productCode = getVal(row, 'productCode', 'product_code');
-          const productName = getVal(row, 'productName', 'product_name');
+          const productCode = getField(row, 'productCode');
+          const productName = getField(row, 'productName');
 
           if (!productCode && !productName) {
             errors.push(`Row ${i + 2}: Product code or product name is required`);
@@ -178,50 +285,66 @@ export default async function handler(req: Request) {
             continue;
           }
 
+          const codeMeaningful = isMeaningfulCode(productCode);
+          const standardCost = parseNum(getField(row, 'standardCost'));
+          const standardRepPrice = parseNum(getField(row, 'standardRepPrice'));
+          const newCost = parseNum(getField(row, 'newCost'));
+          const newRepPrice = parseNum(getField(row, 'newRepPrice'));
+          const upgradeCost = parseNum(getField(row, 'upgradeCost'));
+          const upgradeRepPrice = parseNum(getField(row, 'upgradeRepPrice'));
+
           const dbData: Record<string, any> = {
             tenant_id: tenantId,
-            product_code: productCode || null,
+            product_code: codeMeaningful ? (productCode as string).trim() : null,
             product_name: productName || productCode || 'Unknown',
-            vendor: getVal(row, 'vendor') || null,
-            product_type: getVal(row, 'productType', 'product_type') || null,
-            category: getVal(row, 'category') || null,
-            accessory_type: getVal(row, 'accessoryType', 'accessory_type') || null,
-            description: getVal(row, 'description') || null,
-            summary: getVal(row, 'summary') || null,
-            note: getVal(row, 'note') || null,
-            ea_notes: getVal(row, 'eaNotes', 'ea_notes') || null,
-            config_note: getVal(row, 'configNote', 'config_note') || null,
-            related_products: getVal(row, 'relatedProducts', 'related_products') || null,
-            is_active: parseBool(getVal(row, 'isActive', 'is_active') || 'true'),
-            available_for_all: parseBool(getVal(row, 'availableForAll', 'available_for_all')),
-            repost_edit: parseBool(getVal(row, 'repostEdit', 'repost_edit')),
-            sales_rep_credit: parseBool(
-              getVal(row, 'salesRepCredit', 'sales_rep_credit') || 'true',
+            vendor: getField(row, 'vendor') || null,
+            product_type: getField(row, 'productType') || null,
+            category: getField(row, 'category') || null,
+            accessory_type: getField(row, 'accessoryType') || null,
+            description: getField(row, 'description') || null,
+            summary: getField(row, 'summary') || null,
+            note: getField(row, 'note') || null,
+            ea_notes: getField(row, 'eaNotes') || null,
+            config_note: getField(row, 'configNote') || null,
+            related_products: getField(row, 'relatedProducts') || null,
+            is_active: parseBool(getField(row, 'isActive') || 'true'),
+            available_for_all: parseBool(getField(row, 'availableForAll')),
+            repost_edit: parseBool(getField(row, 'repostEdit')),
+            sales_rep_credit: parseBool(getField(row, 'salesRepCredit') || 'true'),
+            funding: parseBool(getField(row, 'funding') || 'true'),
+            lease: parseBool(getField(row, 'lease')),
+            payment_type: getField(row, 'paymentType') || null,
+            standard_active: tierActive(
+              getField(row, 'standardActive'),
+              standardCost,
+              standardRepPrice,
             ),
-            funding: parseBool(getVal(row, 'funding') || 'true'),
-            lease: parseBool(getVal(row, 'lease')),
-            payment_type: getVal(row, 'paymentType', 'payment_type') || null,
-            standard_active: parseBool(getVal(row, 'standardActive', 'standard_active')),
-            standard_cost: parseNum(getVal(row, 'standardCost', 'standard_cost')),
-            standard_rep_price: parseNum(getVal(row, 'standardRepPrice', 'standard_rep_price')),
-            new_active: parseBool(getVal(row, 'newActive', 'new_active')),
-            new_cost: parseNum(getVal(row, 'newCost', 'new_cost')),
-            new_rep_price: parseNum(getVal(row, 'newRepPrice', 'new_rep_price')),
-            upgrade_active: parseBool(getVal(row, 'upgradeActive', 'upgrade_active')),
-            upgrade_cost: parseNum(getVal(row, 'upgradeCost', 'upgrade_cost')),
-            upgrade_rep_price: parseNum(getVal(row, 'upgradeRepPrice', 'upgrade_rep_price')),
-            price_book_id: getVal(row, 'priceBookId', 'price_book_id') || null,
+            standard_cost: standardCost,
+            standard_rep_price: standardRepPrice,
+            new_active: tierActive(getField(row, 'newActive'), newCost, newRepPrice),
+            new_cost: newCost,
+            new_rep_price: newRepPrice,
+            upgrade_active: tierActive(
+              getField(row, 'upgradeActive'),
+              upgradeCost,
+              upgradeRepPrice,
+            ),
+            upgrade_cost: upgradeCost,
+            upgrade_rep_price: upgradeRepPrice,
+            price_book_id: getField(row, 'priceBookId') || null,
             updated_at: new Date().toISOString(),
           };
 
-          try {
-            // Check for existing product by product_code (dedup)
-            const existingId = productCode
-              ? existingByCode.get(productCode.toLowerCase().trim())
-              : null;
+          // Dedup key: meaningful code first, else product name.
+          const nameKey = (productName || '').toLowerCase().trim();
+          const existingId = codeMeaningful
+            ? existingByCode.get((productCode as string).toLowerCase().trim())
+            : nameKey
+              ? existingByName.get(nameKey)
+              : undefined;
 
-            if (existingId) {
-              // Update existing product
+          try {
+            if (existingId && existingId !== 'new') {
               delete dbData.tenant_id; // Don't update tenant_id
               const { error: updateError } = await admin
                 .from('software_products')
@@ -234,8 +357,10 @@ export default async function handler(req: Request) {
               } else {
                 updated++;
               }
+            } else if (existingId === 'new') {
+              // Already inserted earlier in this same file — skip the duplicate row.
+              skipped++;
             } else {
-              // Insert new product
               dbData.created_at = new Date().toISOString();
               const { error: insertError } = await admin.from('software_products').insert(dbData);
 
@@ -244,9 +369,11 @@ export default async function handler(req: Request) {
                 skipped++;
               } else {
                 imported++;
-                // Track the new product code for within-file dedup
-                if (productCode) {
-                  existingByCode.set(productCode.toLowerCase().trim(), 'new');
+                // Track within-file so the same code/name doesn't insert twice.
+                if (codeMeaningful) {
+                  existingByCode.set((productCode as string).toLowerCase().trim(), 'new');
+                } else if (nameKey) {
+                  existingByName.set(nameKey, 'new');
                 }
               }
             }

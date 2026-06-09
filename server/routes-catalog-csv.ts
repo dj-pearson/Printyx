@@ -26,6 +26,12 @@ import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-catalog-csv');
 
 import { insertCpcRateSchema, productAccessories, masterProductModels } from '@shared/schema';
+import {
+  SOFTWARE_IMPORT_FIELDS,
+  SOFTWARE_FIELD_TO_COLUMN,
+  normalizeHeader,
+  isMeaningfulCode,
+} from '@shared/software-import-fields';
 import { isAuthenticated } from './replitAuth';
 import { isPlatformAdmin } from './utils/auth-helpers';
 
@@ -194,6 +200,36 @@ function validateManagedServiceData(row: any): any {
   };
 }
 
+// Apply an explicit column mapping ({ targetField: csvHeader }) plus alias
+// auto-detection to a raw CSV row, producing canonical snake_case keys that
+// validateSoftwareProductData understands. Originals are preserved.
+function resolveSoftwareRow(rawRow: any, mapping: Record<string, string>): any {
+  const headers = Object.keys(rawRow || {});
+  const normToHeader: Record<string, string> = {};
+  for (const h of headers) normToHeader[normalizeHeader(h)] = h;
+
+  const resolved: Record<string, any> = { ...rawRow };
+  for (const f of SOFTWARE_IMPORT_FIELDS) {
+    let srcHeader: string | undefined;
+    const explicit = mapping[f.field];
+    if (explicit && normToHeader[normalizeHeader(explicit)]) {
+      srcHeader = normToHeader[normalizeHeader(explicit)];
+    } else {
+      for (const cand of [f.field, ...f.aliases]) {
+        const oh = normToHeader[normalizeHeader(cand)];
+        if (oh) {
+          srcHeader = oh;
+          break;
+        }
+      }
+    }
+    if (srcHeader !== undefined) {
+      resolved[SOFTWARE_FIELD_TO_COLUMN[f.field]] = rawRow[srcHeader];
+    }
+  }
+  return resolved;
+}
+
 function validateSoftwareProductData(row: any): any {
   const errors: string[] = [];
 
@@ -222,8 +258,9 @@ function validateSoftwareProductData(row: any): any {
   const productCode = getFieldValue('product_code');
   const productName = getFieldValue('product_name');
 
-  if (!productCode) errors.push('Product Code is required');
-  if (!productName) errors.push('Product Name is required');
+  // Require at least one of code/name (matches the edge function); names alone are
+  // a valid identity when a CSV has no real SKU (e.g. "-" placeholder codes).
+  if (!productCode && !productName) errors.push('Product Code or Product Name is required');
 
   // Helper function to parse boolean values
   const parseBoolean = (value: any): boolean => {
@@ -885,20 +922,34 @@ export function registerCatalogCsvRoutes(app: Express) {
 
         const csvData = await parseCSV(req.file.buffer);
 
-        // Debug: Log first row structure to understand CSV parsing
-        if (csvData.length > 0) {
-          log.info('First CSV row keys:', Object.keys(csvData[0]));
-          log.info('First CSV row standard_rep_price value:', csvData[0]['standard_rep_price']);
-          log.info('First CSV row standardRepPrice value:', csvData[0]['standardRepPrice']);
+        // Optional explicit column mapping from the UI: { targetField: csvHeader }.
+        let mapping: Record<string, string> = {};
+        if (req.body?.mapping) {
+          try {
+            mapping = JSON.parse(req.body.mapping) || {};
+          } catch {
+            mapping = {};
+          }
         }
 
         let imported = 0;
+        let updated = 0;
         let skipped = 0;
         const errors: string[] = [];
 
+        // Pre-fetch existing products for dedup — by meaningful code and by name.
+        const existing = await storage.getAllSoftwareProducts(tenantId);
+        const byCode = new Map<string, string>();
+        const byName = new Map<string, string>();
+        for (const p of existing) {
+          if (isMeaningfulCode(p.productCode))
+            byCode.set(p.productCode!.toLowerCase().trim(), p.id);
+          if (p.productName) byName.set(p.productName.toLowerCase().trim(), p.id);
+        }
+
         for (let i = 0; i < csvData.length; i++) {
-          const row = csvData[i];
-          const validation = validateSoftwareProductData(row);
+          const resolved = resolveSoftwareRow(csvData[i], mapping);
+          const validation = validateSoftwareProductData(resolved);
 
           if (!validation.isValid) {
             errors.push(`Row ${i + 2}: ${validation.errors.join(', ')}`);
@@ -907,18 +958,31 @@ export function registerCatalogCsvRoutes(app: Express) {
           }
 
           try {
-            const productData = { ...validation.data, tenantId };
-            // Debug logging for standardRepPrice issue
-            if (
-              productData.productCode &&
-              (productData.standardRepPrice || productData.standardCost)
-            ) {
-              log.info(
-                `Importing ${productData.productCode}: standardActive=${productData.standardActive}, standardCost=${productData.standardCost}, standardRepPrice=${productData.standardRepPrice}`,
-              );
+            const data = validation.data;
+            const codeMeaningful = isMeaningfulCode(data.productCode);
+            // Don't persist placeholder codes like "-".
+            if (!codeMeaningful) data.productCode = null;
+
+            const nameKey = (data.productName || '').toLowerCase().trim();
+            const existingId = codeMeaningful
+              ? byCode.get((data.productCode || '').toLowerCase().trim())
+              : nameKey
+                ? byName.get(nameKey)
+                : undefined;
+
+            if (existingId && existingId !== 'new') {
+              await storage.updateSoftwareProduct(existingId, data, tenantId);
+              updated++;
+            } else if (existingId === 'new') {
+              skipped++; // duplicate within this same file
+            } else {
+              const created = await storage.createSoftwareProduct({ ...data, tenantId });
+              imported++;
+              if (codeMeaningful)
+                byCode.set((data.productCode as string).toLowerCase().trim(), 'new');
+              else if (nameKey) byName.set(nameKey, 'new');
+              void created;
             }
-            await storage.createSoftwareProduct(productData);
-            imported++;
           } catch (error) {
             errors.push(
               `Row ${i + 2}: Failed to import - ${
@@ -932,6 +996,7 @@ export function registerCatalogCsvRoutes(app: Express) {
         res.json({
           success: errors.length === 0,
           imported,
+          updated,
           skipped,
           errors,
         });

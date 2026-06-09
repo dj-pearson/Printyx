@@ -56,6 +56,7 @@ import {
   type InsertSoftwareProduct,
 } from '@shared/schema';
 import { apiRequest, apiFormRequest } from '@/lib/queryClient';
+import { SOFTWARE_IMPORT_FIELDS, suggestFieldForHeader } from '@shared/software-import-fields';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 
@@ -70,6 +71,21 @@ export default function SoftwareProducts() {
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // CSV column-mapping selector state
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [csvSample, setCsvSample] = useState<Record<string, string>>({});
+  const [columnMapping, setColumnMapping] = useState<Record<string, string>>({}); // field -> header
+  const IGNORE = '__ignore__';
+
+  const resetImportState = () => {
+    setPendingFile(null);
+    setCsvHeaders([]);
+    setCsvSample({});
+    setColumnMapping({});
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -214,18 +230,18 @@ export default function SoftwareProducts() {
   });
 
   const csvImportMutation = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async ({ file, mapping }: { file: File; mapping: Record<string, string> }) => {
       const formData = new FormData();
       formData.append('file', file);
-
+      if (mapping && Object.keys(mapping).length > 0) {
+        formData.append('mapping', JSON.stringify(mapping));
+      }
       return apiFormRequest('/api/software-products/import', 'POST', formData);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/software-products'] });
       setCsvDialogOpen(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      resetImportState();
       toast({
         title: 'Import Completed',
         description: `Imported ${data.imported || 0} new, updated ${data.updated || 0} existing. ${data.skipped > 0 ? `Skipped ${data.skipped} rows.` : ''}`,
@@ -432,17 +448,93 @@ export default function SoftwareProducts() {
     setEditDialogOpen(true);
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Parse one CSV line (handles quoted fields + embedded commas).
+  const parseCsvLine = (line: string): string[] => {
+    const out: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') inQuotes = !inQuotes;
+      else if (ch === ',' && !inQuotes) {
+        out.push(cur);
+        cur = '';
+      } else cur += ch;
+    }
+    out.push(cur);
+    return out.map((c) => c.replace(/^"|"$/g, '').trim());
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && (file.type === 'text/csv' || file.name.endsWith('.csv'))) {
-      csvImportMutation.mutate(file);
-    } else {
+    if (!file || !(file.type === 'text/csv' || file.name.endsWith('.csv'))) {
       toast({
         title: 'Invalid File',
         description: 'Please select a valid CSV file',
         variant: 'destructive',
       });
+      return;
     }
+
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter((l) => l.trim());
+      if (lines.length < 2) {
+        toast({
+          title: 'Empty file',
+          description: 'The CSV has no data rows.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      const headers = parseCsvLine(lines[0]);
+      const firstRow = parseCsvLine(lines[1]);
+      const sample: Record<string, string> = {};
+      headers.forEach((h, i) => {
+        sample[h] = firstRow[i] ?? '';
+      });
+
+      // Auto-suggest: for each header, find its target field (first header wins per field).
+      const auto: Record<string, string> = {};
+      for (const h of headers) {
+        const field = suggestFieldForHeader(h);
+        if (field && !auto[field]) auto[field] = h;
+      }
+
+      setPendingFile(file);
+      setCsvHeaders(headers);
+      setCsvSample(sample);
+      setColumnMapping(auto);
+    } catch (err) {
+      toast({
+        title: 'Could not read file',
+        description: 'Failed to parse the CSV header.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRunImport = () => {
+    if (!pendingFile) return;
+    // Require at least one identifier mapped (matches the backend).
+    if (!columnMapping['productCode'] && !columnMapping['productName']) {
+      toast({
+        title: 'Map an identifier',
+        description: 'Map a column to Product Code or Product Name before importing.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    csvImportMutation.mutate({ file: pendingFile, mapping: columnMapping });
+  };
+
+  const setFieldMapping = (field: string, header: string) => {
+    setColumnMapping((prev) => {
+      const next = { ...prev };
+      if (header === IGNORE) delete next[field];
+      else next[field] = header;
+      return next;
+    });
   };
 
   const generateSampleCSV = () => {
@@ -671,7 +763,13 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
               </DialogTrigger>
             </Dialog>
 
-            <Dialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen}>
+            <Dialog
+              open={csvDialogOpen}
+              onOpenChange={(open) => {
+                setCsvDialogOpen(open);
+                if (!open) resetImportState();
+              }}
+            >
               <DialogTrigger asChild>
                 <Button variant="outline" className="w-full sm:w-auto">
                   <Upload className="h-4 w-4 mr-2" />
@@ -737,12 +835,74 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                         disabled={csvImportMutation.isPending}
                       />
                       <p className="text-sm text-muted-foreground">
-                        Select a CSV file containing your software product data. The file should
-                        include columns for productCode, productName, productType, category,
-                        paymentType, and pricing information.
+                        Pick any CSV. After selecting it, confirm the column mapping below — columns
+                        are auto-matched and you can adjust them. Existing products are matched by
+                        product code (or name) and updated, not duplicated.
                       </p>
                     </div>
                   </div>
+
+                  {/* Column mapping selector — appears after a file is chosen */}
+                  {csvHeaders.length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <h3 className="text-lg font-medium mb-1">Map Columns</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Match each Printyx field to a column from your CSV. Required fields are
+                          marked. Unmapped fields are left blank.
+                        </p>
+                        <div className="border rounded-md divide-y max-h-[40vh] overflow-y-auto">
+                          {SOFTWARE_IMPORT_FIELDS.map((f) => {
+                            const selected = columnMapping[f.field] || IGNORE;
+                            const sample = selected !== IGNORE ? csvSample[selected] : undefined;
+                            return (
+                              <div
+                                key={f.field}
+                                className="flex flex-col sm:flex-row sm:items-center gap-2 p-3"
+                              >
+                                <div className="sm:w-1/3">
+                                  <span className="text-sm font-medium">{f.label}</span>
+                                  {f.required && <span className="text-red-500 ml-1">*</span>}
+                                </div>
+                                <div className="sm:w-1/3">
+                                  <Select
+                                    value={selected}
+                                    onValueChange={(v) => setFieldMapping(f.field, v)}
+                                  >
+                                    <SelectTrigger className="h-9">
+                                      <SelectValue placeholder="— ignore —" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value={IGNORE}>— ignore —</SelectItem>
+                                      {csvHeaders.map((h) => (
+                                        <SelectItem key={h} value={h}>
+                                          {h}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="sm:w-1/3 text-xs text-muted-foreground truncate">
+                                  {sample ? `e.g. ${sample}` : ''}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+                          <Button variant="outline" onClick={resetImportState}>
+                            Choose Different File
+                          </Button>
+                          <Button onClick={handleRunImport} disabled={csvImportMutation.isPending}>
+                            <Upload className="h-4 w-4 mr-2" />
+                            {csvImportMutation.isPending ? 'Importing...' : 'Import Products'}
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </DialogContent>
             </Dialog>
