@@ -106,6 +106,7 @@ export default function SoftwareProducts() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  const [deduping, setDeduping] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -174,6 +175,38 @@ export default function SoftwareProducts() {
       return r?.categories || [];
     },
   });
+
+  // Find + remove duplicate rows (dry-run preview, then confirm).
+  const handleDedupe = async () => {
+    setDeduping(true);
+    try {
+      const preview = await apiRequest('/api/software-products/dedupe', 'POST', { dryRun: true });
+      if (!preview?.toRemove) {
+        toast({ title: 'No duplicates found', description: 'Every product is unique.' });
+        return;
+      }
+      const ok = window.confirm(
+        `Found ${preview.duplicateGroups} duplicate group(s) — ${preview.toRemove} extra record(s).\n\n` +
+          `The most complete / newest record in each group is kept and the rest are deleted. ` +
+          `This cannot be undone. Continue?`,
+      );
+      if (!ok) return;
+      const res = await apiRequest('/api/software-products/dedupe', 'POST', {});
+      queryClient.invalidateQueries({ queryKey: ['/api/software-products'] });
+      toast({
+        title: 'Duplicates removed',
+        description: `Removed ${res.removed} record(s) across ${res.duplicateGroups} group(s).`,
+      });
+    } catch (e: any) {
+      toast({
+        title: 'Dedupe failed',
+        description: e?.message || 'Could not remove duplicates.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeduping(false);
+    }
+  };
 
   const createProductMutation = useMutation({
     mutationFn: async (data: InsertSoftwareProduct) => {
@@ -821,6 +854,19 @@ SW-CLD-008,Cloud Sync Service,Cloud Service,Cloud Solutions,Cloud Subscription,M
                 </Button>
               </DialogTrigger>
             </Dialog>
+
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={handleDedupe}
+              disabled={deduping}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              <span className="sm:hidden">Dedupe</span>
+              <span className="hidden sm:inline">
+                {deduping ? 'Checking...' : 'Remove Duplicates'}
+              </span>
+            </Button>
 
             <Dialog
               open={csvDialogOpen}

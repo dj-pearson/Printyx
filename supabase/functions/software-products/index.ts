@@ -477,6 +477,105 @@ export default async function handler(req: Request) {
       }
     }
 
+    // POST /software-products/dedupe - find/remove duplicate rows.
+    // Body: { dryRun?: boolean }. Groups by meaningful product_code, else by
+    // product_name (case-insensitive). Keeps the most-complete/newest row in each
+    // group and removes the rest.
+    if (req.method === 'POST' && productId === 'dedupe') {
+      const body = await req.json().catch(() => ({}));
+      const dryRun = body?.dryRun === true;
+
+      const { data: all, error } = await admin
+        .from('software_products')
+        .select('*')
+        .eq('tenant_id', tenantId);
+      if (error) {
+        return createCorsResponse({ error: error.message }, 500, req);
+      }
+
+      const meaningful = (code: any): boolean => {
+        if (!code) return false;
+        const t = String(code).trim().toLowerCase();
+        return !['', '-', '--', 'n/a', 'na', 'none'].includes(t);
+      };
+      const completeness = (p: any): number => {
+        const fields = [
+          'standard_rep_price',
+          'new_rep_price',
+          'upgrade_rep_price',
+          'standard_cost',
+          'new_cost',
+          'upgrade_cost',
+          'vendor',
+          'category',
+          'description',
+          'product_type',
+        ];
+        return fields.reduce((n, f) => n + (p[f] != null && p[f] !== '' ? 1 : 0), 0);
+      };
+      const ts = (p: any): number => {
+        const v = p.updated_at || p.created_at;
+        const n = v ? Date.parse(v) : 0;
+        return Number.isFinite(n) ? n : 0;
+      };
+
+      // Group by dedup key.
+      const groups = new Map<string, any[]>();
+      for (const p of all || []) {
+        const key = meaningful(p.product_code)
+          ? 'c:' + String(p.product_code).trim().toLowerCase()
+          : p.product_name
+            ? 'n:' + String(p.product_name).trim().toLowerCase()
+            : '';
+        if (!key) continue;
+        const arr = groups.get(key) || [];
+        arr.push(p);
+        groups.set(key, arr);
+      }
+
+      const deleteIds: string[] = [];
+      let dupeGroups = 0;
+      const sample: Array<{ key: string; kept: string; removed: number }> = [];
+      for (const [key, arr] of groups) {
+        if (arr.length < 2) continue;
+        dupeGroups++;
+        // Keeper: most complete, then newest.
+        arr.sort((a, b) => completeness(b) - completeness(a) || ts(b) - ts(a));
+        const [keeper, ...dups] = arr;
+        deleteIds.push(...dups.map((d) => d.id));
+        if (sample.length < 20) sample.push({ key, kept: keeper.id, removed: dups.length });
+      }
+
+      if (dryRun) {
+        return createCorsResponse(
+          { dryRun: true, duplicateGroups: dupeGroups, toRemove: deleteIds.length, sample },
+          200,
+          req,
+        );
+      }
+
+      // Delete in chunks.
+      let removed = 0;
+      for (let i = 0; i < deleteIds.length; i += 200) {
+        const batch = deleteIds.slice(i, i + 200);
+        const { error: delErr } = await admin
+          .from('software_products')
+          .delete()
+          .in('id', batch)
+          .eq('tenant_id', tenantId);
+        if (delErr) {
+          return createCorsResponse(
+            { error: delErr.message, removedBeforeError: removed },
+            500,
+            req,
+          );
+        }
+        removed += batch.length;
+      }
+
+      return createCorsResponse({ duplicateGroups: dupeGroups, removed }, 200, req);
+    }
+
     // POST /software-products - Create new software product
     if (req.method === 'POST') {
       const body = await req.json();
