@@ -34,6 +34,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
+import { downloadQuotePdf } from '@/lib/quote-pdf';
 import CompanyContactSelector from './CompanyContactSelector';
 import LineItemManager from './LineItemManager';
 import PricingCalculator from './PricingCalculator';
@@ -609,6 +610,31 @@ export default function QuoteBuilder({
   const customerName =
     selectedCompany?.companyName || selectedCompany?.business_name || selectedCompany?.company_name;
 
+  // Manager-quote figures (QUOTE-007) — only surfaced to managers.
+  const managerTotalCost = lineItems.reduce((s, i) => s + (i.unitCost || 0) * i.quantity, 0);
+  const managerRevenue = totals.subtotal - discountAmount;
+  const managerGrossProfit = managerRevenue - managerTotalCost;
+  const managerMargin = managerRevenue > 0 ? (managerGrossProfit / managerRevenue) * 100 : 0;
+
+  const handleManagerPdf = async () => {
+    if (!initialQuoteId || initialQuoteId === 'new') {
+      toast({
+        title: 'Save first',
+        description: 'Save the quote before downloading the manager PDF.',
+      });
+      return;
+    }
+    try {
+      await downloadQuotePdf(initialQuoteId, undefined, { manager: true });
+    } catch (err: any) {
+      toast({
+        title: 'Export failed',
+        description: err?.message || 'Could not export the manager PDF.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 touch-manipulation">
       <Card>
@@ -834,6 +860,84 @@ export default function QuoteBuilder({
                 <span className="text-primary">{formatCurrency(totals.total)}</span>
               </div>
             </div>
+
+            {/* Manager Quote — hard costs + profit (managers/admins only) */}
+            {isManager && (
+              <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-semibold text-amber-900">Manager Quote — internal</div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManagerPdf}
+                    className="min-h-[36px] border-amber-400"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Download Manager PDF
+                  </Button>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <div className="text-xs text-amber-800">Total Cost</div>
+                    <div className="font-semibold text-red-700">
+                      {formatCurrency(managerTotalCost)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-amber-800">Gross Profit</div>
+                    <div className="font-semibold text-green-700">
+                      {formatCurrency(managerGrossProfit)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-amber-800">Margin</div>
+                    <div
+                      className={`font-semibold ${managerMargin >= 20 ? 'text-green-700' : managerMargin >= 10 ? 'text-yellow-700' : 'text-red-700'}`}
+                    >
+                      {managerMargin.toFixed(1)}%
+                    </div>
+                  </div>
+                </div>
+                {managerTotalCost === 0 && (
+                  <div className="text-xs text-amber-700">
+                    No dealer cost on these items — margin cannot be computed. Add cost in the
+                    product catalog.
+                  </div>
+                )}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-amber-800 border-b border-amber-200">
+                        <th className="py-1 pr-2">Item</th>
+                        <th className="py-1 px-2 text-right">Qty</th>
+                        <th className="py-1 px-2 text-right">Cost</th>
+                        <th className="py-1 px-2 text-right">Price</th>
+                        <th className="py-1 pl-2 text-right">Margin</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lineItems.map((item, idx) => {
+                        const cost = item.unitCost || 0;
+                        const lineMargin =
+                          item.unitPrice > 0 ? ((item.unitPrice - cost) / item.unitPrice) * 100 : 0;
+                        return (
+                          <tr key={item.id || idx} className="border-b border-amber-100">
+                            <td className="py-1 pr-2">{item.productName}</td>
+                            <td className="py-1 px-2 text-right">{item.quantity}</td>
+                            <td className="py-1 px-2 text-right">{formatCurrency(cost)}</td>
+                            <td className="py-1 px-2 text-right">
+                              {formatCurrency(item.unitPrice)}
+                            </td>
+                            <td className="py-1 pl-2 text-right">{lineMargin.toFixed(1)}%</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

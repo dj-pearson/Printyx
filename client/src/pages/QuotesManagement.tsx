@@ -67,6 +67,8 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
+import { downloadQuotePdf } from '@/lib/quote-pdf';
+import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 import { useToast } from '@/hooks/use-toast';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
@@ -137,6 +139,20 @@ export default function QuotesManagement() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: pricingVisibility } = usePricingVisibility();
+  const canViewManagerQuote = pricingVisibility?.showDealerCost === true;
+
+  const handleManagerQuotePdf = async (quote: { id: string; proposalNumber?: string }) => {
+    try {
+      await downloadQuotePdf(quote.id, quote.proposalNumber, { manager: true });
+    } catch (err: any) {
+      toast({
+        title: 'Export failed',
+        description: err?.message || 'Could not export the manager PDF.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Fetch quotes (using the existing proposals endpoint)
   const { data: quotes = [], isLoading } = useQuery<Quote[]>({
@@ -747,6 +763,12 @@ export default function QuotesManagement() {
                         <Edit className="h-4 w-4 mr-2" />
                         Edit Quote
                       </DropdownMenuItem>
+                      {canViewManagerQuote && (
+                        <DropdownMenuItem onClick={() => handleManagerQuotePdf(quote)}>
+                          <DollarSign className="h-4 w-4 mr-2" />
+                          Manager Quote (PDF)
+                        </DropdownMenuItem>
+                      )}
                       <div className="px-2 py-1">
                         <DoDEnforcementButton
                           recordId={quote.id}
