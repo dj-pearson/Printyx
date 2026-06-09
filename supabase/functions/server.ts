@@ -42,14 +42,24 @@ const functions: Record<string, any> = {};
 
 // Dynamically load functions
 for await (const dirEntry of Deno.readDir('/app/functions')) {
-  if (dirEntry.isDirectory && !dirEntry.name.startsWith('_')) {
-    try {
-      const handler = await import(`/app/functions/${dirEntry.name}/index.ts`);
-      functions[dirEntry.name] = handler;
-      console.log(`✅ Loaded function: ${dirEntry.name}`);
-    } catch (e) {
-      console.error(`❌ Failed to load ${dirEntry.name}:`, e.message);
-    }
+  if (!dirEntry.isDirectory || dirEntry.name.startsWith('_')) continue;
+
+  // Skip placeholder dirs with no entrypoint (e.g. blog/ holds shared code +
+  // a .gitkeep; the real functions are blog-*). Avoids a noisy load failure.
+  const entry = `/app/functions/${dirEntry.name}/index.ts`;
+  try {
+    const stat = await Deno.stat(entry);
+    if (!stat.isFile) continue;
+  } catch {
+    continue; // no index.ts — not a deployable function dir
+  }
+
+  try {
+    const handler = await import(entry);
+    functions[dirEntry.name] = handler;
+    console.log(`✅ Loaded function: ${dirEntry.name}`);
+  } catch (e) {
+    console.error(`❌ Failed to load ${dirEntry.name}:`, e.message);
   }
 }
 
@@ -85,7 +95,19 @@ await serve(
     }
 
     // Route to function
-    const functionName = pathParts[0];
+    let functionName = pathParts[0];
+    const subPath = pathParts.slice(1);
+
+    // Route overrides: some logical paths live in a differently-named function.
+    // The dashboard widget data + saved layout are served by `dashboard-widgets`,
+    // but the frontend (and stripPrefix in that fn) use /dashboard/widgets/* and
+    // /dashboard/user-layout — which would otherwise resolve to the `dashboard` fn.
+    if (
+      functionName === 'dashboard' &&
+      (subPath[0] === 'widgets' || subPath[0] === 'user-layout')
+    ) {
+      functionName = 'dashboard-widgets';
+    }
 
     if (!functionName || !functions[functionName]) {
       return new Response(
