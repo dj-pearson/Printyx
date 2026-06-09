@@ -67,7 +67,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
-import { downloadQuotePdf } from '@/lib/quote-pdf';
+import { downloadQuotePdf, emailQuote } from '@/lib/quote-pdf';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 import { useToast } from '@/hooks/use-toast';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
@@ -149,6 +149,34 @@ export default function QuotesManagement() {
       toast({
         title: 'Export failed',
         description: err?.message || 'Could not export the manager PDF.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDownloadPdf = async (quote: { id: string; proposalNumber?: string }) => {
+    try {
+      await downloadQuotePdf(quote.id, quote.proposalNumber);
+    } catch (err: any) {
+      toast({
+        title: 'Download failed',
+        description: err?.message || 'Could not download the PDF.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEmailQuote = async (quote: { id: string }) => {
+    try {
+      const r = await emailQuote(quote.id);
+      toast({
+        title: r.simulated ? 'Email simulated' : 'Email sent',
+        description: `Quote sent to ${r.to}${r.simulated ? ' (no email provider configured)' : ''}`,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Email failed',
+        description: err?.message || 'Could not email the quote.',
         variant: 'destructive',
       });
     }
@@ -758,6 +786,14 @@ export default function QuotesManagement() {
                       <DropdownMenuItem onClick={() => handleViewQuote(quote.id)}>
                         <Eye className="h-4 w-4 mr-2" />
                         View Quote
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDownloadPdf(quote)}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEmailQuote(quote)}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Email Quote
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleEditQuote(quote.id)}>
                         <Edit className="h-4 w-4 mr-2" />

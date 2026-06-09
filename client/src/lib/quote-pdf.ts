@@ -6,6 +6,7 @@
 
 import { getApiUrl } from '@/lib/config';
 import { getAccessToken } from '@/lib/supabase';
+import { apiRequest } from '@/lib/queryClient';
 
 function tenantIdForHeaders(): string | undefined {
   if (typeof window === 'undefined') return undefined;
@@ -66,4 +67,24 @@ export async function downloadQuotePdf(
     blob,
     `Quote-${quoteNumber || quoteId}${opts?.manager ? '-manager' : ''}.pdf`,
   );
+}
+
+export interface EmailQuoteResult {
+  success: boolean;
+  to: string;
+  messageId: string;
+  simulated?: boolean;
+}
+
+// Email the customer-facing PDF to a contact. `to` is optional — the server
+// falls back to the contact's, then the customer's, email.
+export async function emailQuote(
+  quoteId: string,
+  opts?: { to?: string; subject?: string; message?: string },
+): Promise<EmailQuoteResult> {
+  return apiRequest(`/api/proposals/${quoteId}/email`, 'POST', {
+    to: opts?.to,
+    subject: opts?.subject,
+    message: opts?.message,
+  });
 }

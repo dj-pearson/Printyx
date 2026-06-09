@@ -30,11 +30,13 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
+  Download,
+  Mail,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
-import { downloadQuotePdf } from '@/lib/quote-pdf';
+import { downloadQuotePdf, emailQuote } from '@/lib/quote-pdf';
 import CompanyContactSelector from './CompanyContactSelector';
 import LineItemManager from './LineItemManager';
 import PricingCalculator from './PricingCalculator';
@@ -117,6 +119,10 @@ export default function QuoteBuilder({
   const [discountPercentage, setDiscountPercentage] = useState<number>(0);
   const [taxAmount, setTaxAmount] = useState<number>(0);
   const [currentStep, setCurrentStep] = useState<number>(0); // 0=Customer 1=Products 2=Pricing 3=Review
+  const [savedQuoteId, setSavedQuoteId] = useState<string | undefined>(
+    initialQuoteId && initialQuoteId !== 'new' ? initialQuoteId : undefined,
+  );
+  const [emailing, setEmailing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -332,6 +338,7 @@ export default function QuoteBuilder({
       // Force clear all related cache
       queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
       queryClient.removeQueries({ queryKey: ['/api/proposals'] });
+      if (data?.id) setSavedQuoteId(data.id);
       toast({
         title: 'Success',
         description: `Quote ${initialQuoteId ? 'updated' : 'created'} successfully`,
@@ -616,22 +623,60 @@ export default function QuoteBuilder({
   const managerGrossProfit = managerRevenue - managerTotalCost;
   const managerMargin = managerRevenue > 0 ? (managerGrossProfit / managerRevenue) * 100 : 0;
 
-  const handleManagerPdf = async () => {
-    if (!initialQuoteId || initialQuoteId === 'new') {
-      toast({
-        title: 'Save first',
-        description: 'Save the quote before downloading the manager PDF.',
-      });
-      return;
+  const requireSaved = (): string | null => {
+    if (!savedQuoteId) {
+      toast({ title: 'Save first', description: 'Save the quote to use this action.' });
+      return null;
     }
+    return savedQuoteId;
+  };
+
+  const handleManagerPdf = async () => {
+    const id = requireSaved();
+    if (!id) return;
     try {
-      await downloadQuotePdf(initialQuoteId, undefined, { manager: true });
+      await downloadQuotePdf(id, undefined, { manager: true });
     } catch (err: any) {
       toast({
         title: 'Export failed',
         description: err?.message || 'Could not export the manager PDF.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleDownloadCustomerPdf = async () => {
+    const id = requireSaved();
+    if (!id) return;
+    try {
+      await downloadQuotePdf(id, undefined);
+    } catch (err: any) {
+      toast({
+        title: 'Download failed',
+        description: err?.message || 'Could not download the PDF.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEmailQuote = async () => {
+    const id = requireSaved();
+    if (!id) return;
+    setEmailing(true);
+    try {
+      const r = await emailQuote(id, { to: selectedContact?.email });
+      toast({
+        title: r.simulated ? 'Email simulated' : 'Email sent',
+        description: `Quote sent to ${r.to}${r.simulated ? ' (no email provider configured)' : ''}`,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Email failed',
+        description: err?.message || 'Could not email the quote.',
+        variant: 'destructive',
+      });
+    } finally {
+      setEmailing(false);
     }
   };
 
@@ -938,6 +983,39 @@ export default function QuoteBuilder({
                 </div>
               </div>
             )}
+
+            {/* Process actions: download / email the customer-facing quote */}
+            <div className="border-t pt-4">
+              <div className="text-sm font-medium mb-2">Process quote</div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadCustomerPdf}
+                  className="min-h-[40px]"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download PDF
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEmailQuote}
+                  disabled={emailing}
+                  className="min-h-[40px]"
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  {emailing ? 'Sending...' : 'Email to Customer'}
+                </Button>
+              </div>
+              {!savedQuoteId && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Save the quote first to download or email it.
+                </p>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

@@ -46,8 +46,19 @@ import { getDb } from '../_shared/db.ts';
 import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.ts';
 import { createLogger } from '../_shared/logger.ts';
 import { renderProposalPDF } from './_pdf.ts';
+import { sendEmail } from '../email-marketing/_sendgrid.ts';
 
 const log = createLogger('proposals');
+
+// Uint8Array -> base64 (chunked to avoid call-stack limits on large PDFs).
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
 
 function stripPrefix(path: string): string {
   return path.replace(/^\/+/, '/').replace(/^\/proposals/, '') || '/';
@@ -1195,6 +1206,128 @@ export default async function handler(req: Request) {
       });
 
       return jsonResponse({ success: true, openCount }, 200, req, requestId);
+    }
+
+    // POST /proposals/:id/email — email the customer-facing PDF to a contact
+    if (subMatch && method === 'POST' && subMatch[2] === 'email') {
+      const id = subMatch[1];
+      const body = (await req.json().catch(() => ({}))) as Record<string, any>;
+
+      const { data: proposal } = await db
+        .from('proposals')
+        .select('*')
+        .eq('id', id)
+        .eq('tenant_id', ctx.tenantId)
+        .maybeSingle();
+      if (!proposal) {
+        return errorResponse(404, 'Proposal not found', req, { code: 'NOT_FOUND', requestId });
+      }
+
+      const customer = await fetchCustomer(db, ctx.tenantId, proposal.business_record_id);
+
+      let contact: any = null;
+      if (proposal.contact_id) {
+        const r = await db
+          .from('company_contacts')
+          .select('first_name, last_name, email')
+          .eq('id', proposal.contact_id)
+          .eq('tenant_id', ctx.tenantId)
+          .maybeSingle();
+        contact = r.data;
+      }
+
+      const recipient: string | null =
+        body.to || contact?.email || (customer as any)?.email || null;
+      if (!recipient) {
+        return errorResponse(400, 'No recipient email available for this quote', req, {
+          code: 'NO_RECIPIENT',
+          requestId,
+        });
+      }
+
+      const { data: lineItems } = await db
+        .from('proposal_line_items')
+        .select('*')
+        .eq('proposal_id', id)
+        .eq('tenant_id', ctx.tenantId)
+        .order('line_number', { ascending: true });
+
+      let pdfBase64: string;
+      try {
+        const pdfBytes = await renderProposalPDF({
+          proposal,
+          lineItems: lineItems ?? [],
+          company: customer,
+          contact,
+          isManager: false,
+        });
+        pdfBase64 = bytesToBase64(pdfBytes);
+      } catch (renderErr) {
+        log.error({ requestId, err: String(renderErr) }, 'email_pdf_render_failed');
+        return errorResponse(500, 'Failed to render quote PDF', req, {
+          code: 'PDF_RENDER_ERROR',
+          requestId,
+        });
+      }
+
+      const fromEmail =
+        Deno.env.get('QUOTE_FROM_EMAIL') ||
+        Deno.env.get('DEFAULT_FROM_EMAIL') ||
+        'quotes@printyx.net';
+      const customerName = (customer as any)?.company_name || 'there';
+      const message: string =
+        body.message ||
+        `Hello ${customerName},\n\nPlease find your quote ${proposal.proposal_number} attached.`;
+      const safeHtml = `<p>${String(message).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/\n/g, '<br/>')}</p>`;
+
+      let result;
+      try {
+        result = await sendEmail({
+          to: recipient,
+          from: fromEmail,
+          fromName: 'Printyx',
+          subject: body.subject || `Quote ${proposal.proposal_number}`,
+          html: safeHtml,
+          text: String(message),
+          attachments: [
+            {
+              content: pdfBase64,
+              filename: `Quote-${proposal.proposal_number}.pdf`,
+              type: 'application/pdf',
+            },
+          ],
+        });
+      } catch (sendErr) {
+        log.error({ requestId, err: String(sendErr) }, 'email_send_failed');
+        return errorResponse(502, 'Failed to send email', req, {
+          code: 'EMAIL_SEND_FAILED',
+          requestId,
+        });
+      }
+
+      // Best-effort analytics event
+      await db.from('proposal_analytics').insert({
+        tenant_id: ctx.tenantId,
+        proposal_id: id,
+        event_type: 'emailed',
+        event_details: {
+          to: recipient,
+          messageId: result.messageId,
+          simulated: !!result.simulated,
+        },
+      });
+
+      return jsonResponse(
+        {
+          success: true,
+          to: recipient,
+          messageId: result.messageId,
+          simulated: !!result.simulated,
+        },
+        200,
+        req,
+        requestId,
+      );
     }
 
     // POST /proposals/:proposalId/line-items
