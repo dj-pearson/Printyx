@@ -30,6 +30,10 @@ import * as fs from 'fs';
 // @ts-ignore — types are provided by the runtime package or @types/archiver
 import archiver from 'archiver';
 
+// Public routes (no auth) — enrollment token redemption. Mounted first so
+// enhanceUserContext on the admin router never intercepts them.
+const publicRouter = express.Router();
+
 const router = express.Router();
 
 // All admin endpoints in this file require an authenticated user; tenancy
@@ -461,7 +465,7 @@ router.post(
  * Response:
  *   { tenantId, clientId, apiKey, endpoint, configuration }
  */
-router.post('/enroll', async (req, res) => {
+publicRouter.post('/enroll', async (req, res) => {
   try {
     const { token, hostname, clientVersion } = req.body || {};
     if (!token || typeof token !== 'string') {
@@ -704,4 +708,10 @@ To uninstall later:
     .\\uninstall-windows.ps1
 `;
 
-export default router;
+// Combine public (no-auth) routes first, then admin routes.
+// publicRouter handles /enroll before enhanceUserContext can reject it.
+const combinedRouter = express.Router();
+combinedRouter.use(publicRouter);
+combinedRouter.use(router);
+
+export default combinedRouter;
