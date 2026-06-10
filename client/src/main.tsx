@@ -84,6 +84,29 @@ class ErrorBoundary extends Component<
   }
 }
 
+// Self-heal stale deploys: when a lazy chunk fails to load (e.g. the index.html
+// in this tab references hashed chunks that a newer deploy replaced), Vite fires
+// `vite:preloadError`. Do a one-time hard reload to pick up the fresh index.html.
+// The sessionStorage guard prevents an infinite reload loop if the chunk is
+// genuinely missing from the server (a broken deploy rather than a stale tab).
+const PRELOAD_RELOAD_KEY = 'printyx:preload-reloaded';
+window.addEventListener('vite:preloadError', (event) => {
+  if (sessionStorage.getItem(PRELOAD_RELOAD_KEY)) {
+    // Already reloaded once and still failing — let the error surface to the
+    // boundary instead of looping. Clear the guard so a later deploy can retry.
+    return;
+  }
+  event.preventDefault();
+  sessionStorage.setItem(PRELOAD_RELOAD_KEY, '1');
+  window.location.reload();
+});
+// Clear the guard once the app successfully mounts so future stale deploys can
+// trigger a fresh reload.
+window.addEventListener('load', () => {
+  // Defer slightly so a load that immediately preload-errors keeps its guard.
+  setTimeout(() => sessionStorage.removeItem(PRELOAD_RELOAD_KEY), 5000);
+});
+
 // Global progress bar for queries/mutations
 NProgress.configure({ showSpinner: false, trickleSpeed: 120 });
 let isLoading = false;

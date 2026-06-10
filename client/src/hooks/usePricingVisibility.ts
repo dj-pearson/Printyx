@@ -21,7 +21,11 @@ export interface PricingVisibility {
 
 export function usePricingVisibility() {
   return useQuery<PricingVisibility>({
-    queryKey: ['/api/pricing/visibility'],
+    // The visibility handler lives in the `pricing-settings` edge function in
+    // production (functions.printyx.net/pricing-settings/visibility). Calling
+    // `/api/pricing/visibility` routed to the `pricing` function, which has no
+    // visibility resource and returned 405.
+    queryKey: ['/api/pricing-settings/visibility'],
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 }

@@ -122,7 +122,8 @@
       "Bash(Get-ChildItem -Directory client/src -Depth 2)",
       "Bash(Select-Object FullName)",
       "Bash(ConvertTo-Json)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "PowerShell(\\(Get-Content prd.json -Raw\\).Length; Get-ChildItem server | Where-Object Name -match 'quote|proposal' | Select-Object -ExpandProperty Name; Get-ChildItem client\\\\src\\\\components -Recurse -Depth 1 -Directory | Where-Object Name -match 'quote|proposal' | Select-Object -ExpandProperty FullName)"
     ],
     "deny": [],
     "ask": []

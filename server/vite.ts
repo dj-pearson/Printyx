@@ -99,8 +99,21 @@ export function serveStatic(app: Express) {
     }),
   );
 
-  // fall through to index.html if the file doesn't exist
-  app.use('*', (_req, res) => {
+  // Asset requests that reach this point don't exist on disk (express.static
+  // didn't match). Returning index.html here would hand back HTML with a 200 for
+  // a missing .js/.css chunk — the browser then fails the module MIME check with
+  // a confusing "Failed to fetch dynamically imported module" error and silently
+  // masks an incomplete deploy. Return a real 404 so the failure is visible and
+  // the client (see vite:preloadError handler in main.tsx) can recover.
+  const ASSET_REQUEST =
+    /^\/assets\/|\.(?:js|mjs|css|map|woff2?|ttf|png|jpe?g|svg|gif|webp|ico|wasm|json)$/i;
+  app.use('*', (req, res) => {
+    if (ASSET_REQUEST.test(req.path)) {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+      res.status(404).type('text/plain').send('Not found');
+      return;
+    }
+    // SPA navigation route — serve the app shell.
     res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
     res.sendFile(path.resolve(distPath, 'index.html'));
   });

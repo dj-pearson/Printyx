@@ -3,6 +3,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { X, AlertTriangle, CheckCircle2, ExternalLink } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 
 interface ValidationError {
   field: string;
@@ -43,13 +44,10 @@ export default function DoDValidationBanner({
     setShowBanner(true);
 
     try {
-      const response = await fetch(`/api/validate/${validationType}/${recordId}`, {
-        headers: {
-          'x-tenant-id': localStorage.getItem('currentTenantId') || '',
-        },
-      });
-
-      const result = await response.json();
+      // apiRequest attaches the Supabase Bearer token + tenant header and routes
+      // through getApiUrl (edge function in prod, Vite proxy in dev). It throws on
+      // any non-OK response, which the catch below treats as "unavailable".
+      const result = await apiRequest(`/api/validate/${validationType}/${recordId}`);
 
       if (result.valid) {
         setValidationStatus('passed');
@@ -67,12 +65,11 @@ export default function DoDValidationBanner({
         onValidationFail?.(result.errors || []);
       }
     } catch (error) {
+      // Network failure or a non-JSON body (e.g. the SPA fallback HTML). Treat
+      // the advisory check as unavailable rather than showing a false failure.
       console.error('DoD validation error:', error);
-      setValidationStatus('failed');
-      setValidationErrors([
-        { field: 'system', message: 'Unable to validate requirements. Please try again.' },
-      ]);
-      onValidationFail?.([{ field: 'system', message: 'Validation system error' }]);
+      setShowBanner(false);
+      setValidationStatus('hidden');
     }
   };
 
