@@ -7274,8 +7274,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Depends on PROP-004 + PROP-005. Old flow: QuoteTransformer.tsx:202-777 and ProposalBuilder.tsx steps 1-3.",
+      "passes": true,
+      "notes": "Depends on PROP-004 + PROP-005. Old flow: QuoteTransformer.tsx:202-777 and ProposalBuilder.tsx steps 1-3. [Implemented on main 2026-06-10: edge POST /:id/generate-from-template (merge engine→proposal_sections, deno-clean) + GenerateProposalDialog wired into QuotesManagement rows and QuoteBuilder Review step; QuoteTransformer hardcoded path deprecated (full removal in PROP-009). build green; 3 pre-existing QuotesManagement export/bulk-select type errors unrelated.]",
       "category": "proposal-templates"
     },
     {
