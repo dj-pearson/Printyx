@@ -307,6 +307,28 @@ async function loadInstallerScripts(): Promise<typeof _installerScripts> {
   }
 }
 
+// Lazy-cached agent bundle bytes. The prebuilt printyx-client.cjs is baked
+// into the edge-function image alongside the scripts. Including it in the ZIP
+// makes the download fully self-contained — install-windows.ps1 finds the
+// .cjs next to itself and skips the network download step entirely, so the
+// installer works even when PUBLIC_API_BASE_URL is wrong or the app server is
+// unreachable. Returns null when the bundle is absent (e.g. a dev image built
+// without `npm run bundle`) — the installer falls back to downloading from the
+// endpoint in that case.
+let _agentBundle: Uint8Array | null | undefined = undefined; // undefined = not yet attempted
+async function loadAgentBundle(): Promise<Uint8Array | null> {
+  if (_agentBundle !== undefined) return _agentBundle;
+  const bundlePath =
+    Deno.env.get('PRINTYX_CLIENT_BUNDLE_PATH') || '/app/printyx-client/dist/printyx-client.cjs';
+  try {
+    _agentBundle = await Deno.readFile(bundlePath);
+    return _agentBundle;
+  } catch {
+    _agentBundle = null;
+    return null;
+  }
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // handler
 // ──────────────────────────────────────────────────────────────────────
@@ -611,9 +633,15 @@ export default async function handler(req: Request) {
         enrollmentExpiresAt: expiresAt.toISOString(),
       };
 
+      // Include the prebuilt agent bundle when it's baked into the image.
+      // install-windows.ps1 detects the .cjs next to itself and runs in
+      // "bundle mode" — no network download needed, no Node install step.
+      const agentBundle = await loadAgentBundle();
+
       const zip = new JSZip();
       zip.file('install-windows.ps1', scripts.install);
       if (scripts.uninstall) zip.file('uninstall-windows.ps1', scripts.uninstall);
+      if (agentBundle) zip.file('printyx-client.cjs', agentBundle);
       zip.file('bootstrap-config.json', JSON.stringify(bootstrap, null, 2));
       zip.file('README.txt', README_FOR_BUNDLE);
 
