@@ -39,6 +39,29 @@ export const proposalTemplates = pgTable('proposal_templates', {
   termsAndConditionsTemplate: text('terms_conditions_template'),
   footerTemplate: text('footer_template'),
 
+  // PROP-001: canonical visual-builder content (sections + global styling).
+  // Supersedes the per-section text columns above (kept for back-compat).
+  templateContent: jsonb('template_content').$type<{
+    sections?: Array<{
+      id: string;
+      type: string;
+      title?: string;
+      content?: string;
+      styling?: Record<string, unknown>;
+      order?: number;
+      isVisible?: boolean;
+    }>;
+    globalStyling?: {
+      primaryColor?: string;
+      secondaryColor?: string;
+      accentColor?: string;
+      fontFamily?: string;
+      headerFont?: string;
+      pageMargins?: string | Record<string, number>;
+      [key: string]: unknown;
+    };
+  }>(),
+
   // Styling and Branding
   brandingColors: jsonb('branding_colors').$type<{
     primary?: string;

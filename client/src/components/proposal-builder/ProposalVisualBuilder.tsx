@@ -17,6 +17,12 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { sanitizeRichHtml } from '@/lib/sanitize-html';
+import { STARTER_SECTIONS } from '@/lib/proposal/starter-sections';
+import {
+  MERGE_FIELDS,
+  MERGE_FIELD_GROUPS,
+  renderWithSampleData,
+} from '@shared/proposal-merge-fields';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -254,6 +260,8 @@ function StylePanel({
   globalStyling: ProposalTemplate['globalStyling'];
   onGlobalStylingUpdate: (styling: ProposalTemplate['globalStyling']) => void;
 }) {
+  const [fieldToInsert, setFieldToInsert] = useState('');
+
   if (!selectedSection) {
     return (
       <Card className="h-full border-0 sm:border">
@@ -396,6 +404,59 @@ function StylePanel({
         <p className="text-sm text-muted-foreground">{selectedSection.title}</p>
       </CardHeader>
       <CardContent>
+        {/* Content + merge-field insertion (PROP-004) */}
+        <div className="space-y-2 mb-4">
+          <Label className="text-xs sm:text-sm">Content</Label>
+          <Textarea
+            value={selectedSection.content}
+            onChange={(e) => onSectionUpdate({ ...selectedSection, content: e.target.value })}
+            rows={6}
+            className="font-mono text-xs touch-manipulation"
+            placeholder="HTML content with {{merge.tokens}}"
+          />
+          <div className="flex gap-2">
+            <Select value={fieldToInsert} onValueChange={setFieldToInsert}>
+              <SelectTrigger className="flex-1 min-h-[40px] text-xs">
+                <SelectValue placeholder="Insert a field…" />
+              </SelectTrigger>
+              <SelectContent>
+                {MERGE_FIELD_GROUPS.map((g) => (
+                  <div key={g.group}>
+                    <div className="px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                      {g.label}
+                    </div>
+                    {MERGE_FIELDS.filter((f) => f.group === g.group).map((f) => (
+                      <SelectItem key={f.token} value={f.token} className="text-xs">
+                        {f.label}
+                      </SelectItem>
+                    ))}
+                  </div>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!fieldToInsert}
+              onClick={() => {
+                if (!fieldToInsert) return;
+                onSectionUpdate({
+                  ...selectedSection,
+                  content: `${selectedSection.content ?? ''}${fieldToInsert}`,
+                });
+                setFieldToInsert('');
+              }}
+              className="min-h-[40px]"
+            >
+              <Plus className="h-4 w-4 mr-1" /> Insert
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Tokens like <code className="bg-muted px-1 rounded">{'{{customer.companyName}}'}</code>{' '}
+            fill in per quote. Use Preview to see sample values.
+          </p>
+        </div>
+
         <Tabs defaultValue="typography">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="typography">Text</TabsTrigger>
@@ -558,11 +619,16 @@ export default function ProposalVisualBuilder({
   quoteData,
   onSave,
   onPreview,
+  brandingDefaults,
+  saving = false,
 }: {
   initialTemplate?: ProposalTemplate;
   quoteData?: any;
   onSave?: (template: ProposalTemplate) => void;
   onPreview?: () => void;
+  // PROP-004: seed a new template's global styling from the tenant's default brand.
+  brandingDefaults?: Partial<ProposalTemplate['globalStyling']>;
+  saving?: boolean;
 }) {
   const [template, setTemplate] = useState<ProposalTemplate>(
     initialTemplate || {
@@ -574,7 +640,7 @@ export default function ProposalVisualBuilder({
           id: 'cover',
           type: 'cover_page',
           title: 'Cover Page',
-          content: '<h1>Professional Proposal</h1><p>Prepared for [Customer Name]</p>',
+          content: STARTER_SECTIONS.find((s) => s.type === 'cover_page')!.content,
           styling: { fontSize: 24, fontWeight: 'bold', alignment: 'center' },
           layout: { width: '100%' },
           isVisible: true,
@@ -584,8 +650,7 @@ export default function ProposalVisualBuilder({
           id: 'executive',
           type: 'executive_summary',
           title: 'Executive Summary',
-          content:
-            '<h2>Executive Summary</h2><p>This proposal outlines our recommended solution...</p>',
+          content: STARTER_SECTIONS.find((s) => s.type === 'executive_summary')!.content,
           styling: { fontSize: 16 },
           layout: { width: '100%' },
           isVisible: true,
@@ -593,11 +658,12 @@ export default function ProposalVisualBuilder({
         },
       ],
       globalStyling: {
-        primaryColor: '#0066CC',
-        secondaryColor: '#4A90E2',
-        accentColor: '#FF6B35',
-        fontFamily: 'Inter',
-        headerFont: 'Inter',
+        primaryColor: brandingDefaults?.primaryColor ?? '#0066CC',
+        secondaryColor: brandingDefaults?.secondaryColor ?? '#4A90E2',
+        accentColor: brandingDefaults?.accentColor ?? '#FF6B35',
+        fontFamily: brandingDefaults?.fontFamily ?? 'Inter',
+        headerFont: brandingDefaults?.headerFont ?? 'Inter',
+        logoUrl: brandingDefaults?.logoUrl,
         pageMargins: { top: 20, right: 20, bottom: 20, left: 20 },
       },
     },
@@ -605,6 +671,11 @@ export default function ProposalVisualBuilder({
 
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
+
+  // Re-hydrate when a different template is loaded into the editor.
+  useEffect(() => {
+    if (initialTemplate) setTemplate(initialTemplate);
+  }, [initialTemplate?.id]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -633,11 +704,13 @@ export default function ProposalVisualBuilder({
   };
 
   const handleAddSection = (type: string) => {
+    const starter = STARTER_SECTIONS.find((s) => s.type === type);
     const newSection: ProposalSection = {
       id: `section-${Date.now()}`,
       type,
-      title: type.replace('_', ' ').toUpperCase(),
-      content: `<h3>${type.replace('_', ' ').toUpperCase()}</h3><p>Add your content here...</p>`,
+      title: starter?.title ?? type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      content:
+        starter?.content ?? `<h3>${type.replace(/_/g, ' ')}</h3><p>Add your content here...</p>`,
       styling: { fontSize: 16 },
       layout: { width: '100%' },
       isVisible: true,
@@ -683,25 +756,19 @@ export default function ProposalVisualBuilder({
         <ScrollArea className="flex-1 p-4">
           <div className="space-y-4">
             <div>
-              <h3 className="text-xs sm:text-sm font-medium mb-2">Add Sections</h3>
+              <h3 className="text-xs sm:text-sm font-medium mb-2">Section Library</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2">
-                {[
-                  { type: 'cover_page', label: 'Cover', icon: Layout },
-                  { type: 'executive_summary', label: 'Executive', icon: Eye },
-                  { type: 'company_intro', label: 'About Us', icon: Type },
-                  { type: 'solution_overview', label: 'Solution', icon: Settings },
-                  { type: 'pricing', label: 'Pricing', icon: Type },
-                  { type: 'terms', label: 'Terms', icon: Type },
-                ].map(({ type, label, icon: Icon }) => (
+                {STARTER_SECTIONS.map((s) => (
                   <Button
-                    key={type}
+                    key={s.type}
                     variant="outline"
                     size="sm"
                     className="h-16 flex flex-col gap-1 touch-manipulation active:scale-[0.98]"
-                    onClick={() => handleAddSection(type)}
+                    onClick={() => handleAddSection(s.type)}
+                    title={`Insert a ${s.label} section`}
                   >
-                    <Icon className="h-4 w-4" />
-                    <span className="text-xs">{label}</span>
+                    <Plus className="h-4 w-4" />
+                    <span className="text-xs text-center leading-tight">{s.label}</span>
                   </Button>
                 ))}
               </div>
@@ -814,10 +881,11 @@ export default function ProposalVisualBuilder({
               <Button
                 size="sm"
                 onClick={() => onSave?.(template)}
+                disabled={saving}
                 className="w-full sm:w-auto touch-manipulation active:scale-[0.98] min-h-[44px]"
               >
                 <Save className="h-4 w-4 mr-2" />
-                Save Template
+                {saving ? 'Saving…' : 'Save Template'}
               </Button>
             </div>
           </div>
@@ -857,7 +925,9 @@ export default function ProposalVisualBuilder({
                         fontStyle: section.styling.fontStyle || 'normal',
                         textDecoration: section.styling.textDecoration || 'none',
                       }}
-                      dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(section.content) }}
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeRichHtml(renderWithSampleData(section.content)),
+                      }}
                     />
                   ))}
               </div>

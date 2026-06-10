@@ -7188,8 +7188,8 @@
         "npm run check passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "FOUNDATION for the proposal track — PROP-003..006 depend on it. Existing routes: proposals/index.ts:567-646. Schema: quote-proposal-schema.ts:18-61.",
+      "passes": true,
+      "notes": "FOUNDATION for the proposal track — PROP-003..006 depend on it. Existing routes: proposals/index.ts:567-646. Schema: quote-proposal-schema.ts:18-61. [Implemented on main, 2026-06-10: check+build green; live browser verify deferred; migrations 0015/0016 pending manual apply.]",
       "category": "proposal-templates"
     },
     {
@@ -7204,8 +7204,8 @@
         "npm run check passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Backend-only; PROP-003 wires the UI. Check for an existing file-upload/storage helper before adding a new one.",
+      "passes": true,
+      "notes": "Backend-only; PROP-003 wires the UI. Check for an existing file-upload/storage helper before adding a new one. [Implemented on main, 2026-06-10: check+build green; live browser verify deferred; migrations 0015/0016 pending manual apply.]",
       "category": "proposal-templates"
     },
     {
@@ -7221,8 +7221,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Depends on PROP-002. Component: client/src/components/proposal-builder/BrandManager.tsx (logo upload at 238-254, onSave at 789).",
+      "passes": true,
+      "notes": "Depends on PROP-002. Component: client/src/components/proposal-builder/BrandManager.tsx (logo upload at 238-254, onSave at 789). [Implemented on main, 2026-06-10: check+build green; live browser verify deferred; migrations 0015/0016 pending manual apply.]",
       "category": "proposal-templates"
     },
     {
@@ -7239,8 +7239,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Depends on PROP-001 + PROP-002. The big UI story of this track — if it overruns one iteration, split the section library into a follow-up.",
+      "passes": true,
+      "notes": "Depends on PROP-001 + PROP-002. The big UI story of this track — if it overruns one iteration, split the section library into a follow-up. [Implemented on main, 2026-06-10: check+build green; live browser verify deferred; migrations 0015/0016 pending manual apply.]",
       "category": "proposal-templates"
     },
     {

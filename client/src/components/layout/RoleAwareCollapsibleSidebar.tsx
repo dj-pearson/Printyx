@@ -89,6 +89,7 @@ import {
   Minimize2,
   Maximize2,
   Newspaper,
+  Palette,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -227,6 +228,8 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Opportunities', path: '/opportunities', icon: Target },
       { title: 'Sales Pipeline', path: '/sales-pipeline', icon: TrendingUp },
       { title: 'Quotes & Proposals', path: '/quote-proposal-generation', icon: FileText },
+      { title: 'Proposal Templates', path: '/proposal-templates', icon: FileText },
+      { title: 'Proposal Branding', path: '/proposals/branding', icon: Palette },
       { title: 'Contracts', path: '/contracts', icon: FileSignature },
       { title: 'Deal Desk', path: '/deal-desk', icon: CheckCircle2 },
       { title: 'Sales Command Center', path: '/sales-command-center', icon: Monitor },

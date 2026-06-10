@@ -6077,6 +6077,10 @@ export const companyBrandingProfiles = pgTable('company_branding_profiles', {
   // Additional Styling
   customCSS: text('custom_css'), // Custom CSS for advanced styling
 
+  // PROP-003: rich BrandManager extras with no dedicated column — extended colors,
+  // full typography, page layout, gradients/patterns, logo variants, template presets.
+  settings: jsonb('settings').$type<Record<string, unknown>>(),
+
   createdBy: varchar('created_by').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

@@ -106,3 +106,34 @@ arithmetic inline; the parity test in `quote-math.test.ts` locks them against dr
 - `GET /proposals/:id/export/manager-pdf` renders cost + margin (role-gated: sales-only roles
   get 403). The customer PDF (`/export/pdf`) never includes cost/margin.
 - UI surfaces a role-gated "Manager Quote" action (QUOTE-007) via `usePricingVisibility`.
+
+## 6. Proposal templates & branding (PROP-001..004, in progress)
+
+The proposal-presentation layer is being made first-class and reusable.
+
+### Templates (`proposal_templates`)
+
+- Canonical content lives in `template_content` jsonb: `{ sections: [...], globalStyling: {...} }`
+  (migration 0015). Legacy per-section text columns are kept readable for back-compat.
+- Served by the **proposals edge function** (`supabase/functions/proposals/index.ts`):
+  `GET /proposal-templates` (`?templateType=`, `?includeInactive=`), `POST` (Zod-validated,
+  normalizes camelCase), `POST /:id/clone`, `PUT`/`PATCH /:id`, `DELETE /:id` (soft delete via
+  `is_active=false`). At most one default per `(tenant, template_type)` — enforced in the
+  function and by a partial unique index.
+
+### Branding (`company_branding_profiles`)
+
+- Dedicated **`branding-profiles` edge function** (`supabase/functions/branding-profiles/`):
+  `GET` (auto-seeds a default), `GET/:id`, `POST`, `PUT/PATCH/:id`, `DELETE/:id`,
+  `POST /:id/set-default`, `POST /:id/logo` (multipart → Supabase Storage bucket
+  `branding-assets` at `<tenant>/<profile>/logo-<uuid>.<ext>` → `logo_url`).
+- Flat columns (primary_color, heading_font, logo_url, company_name, address, …) are the
+  queryable source of truth the merge engine reads; the rich BrandManager extras (extended
+  colors, full typography, page layout, gradients, logo variants, template presets) round-trip
+  through the `settings` jsonb column (migration 0016).
+- UI: `client/src/pages/BrandingSettings.tsx` (route `/proposals/branding`, sidebar "Proposal
+  Branding") drives `BrandManager`; mapping in `client/src/lib/branding/profile-mapping.ts`.
+
+> **Deploy note:** migrations 0014, 0015, 0016 are hand-written files NOT in the drizzle
+> journal (same convention as 0010–0013) — apply them manually at deploy. Until applied,
+> `template_content` / branding `settings` writes will error against the live DB.

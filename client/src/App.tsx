@@ -188,6 +188,9 @@ const OutreachMySpecialty = React.lazy(() => import('@/pages/outreach/MySpecialt
 const OutreachSequenceStudio = React.lazy(() => import('@/pages/outreach/SequenceStudio'));
 const OutreachDraftGenerator = React.lazy(() => import('@/pages/outreach/DraftGenerator'));
 const QuoteProposalGeneration = React.lazy(() => import('@/pages/QuoteProposalGeneration'));
+const BrandingSettings = React.lazy(() => import('@/pages/BrandingSettings'));
+const ProposalTemplates = React.lazy(() => import('@/pages/ProposalTemplates'));
+const ProposalTemplateEditor = React.lazy(() => import('@/pages/ProposalTemplateEditor'));
 const QuoteBuilderPage = React.lazy(() => import('@/pages/QuoteBuilderPage'));
 const QuotesManagement = React.lazy(() => import('@/pages/QuotesManagement'));
 const CompanyIdsTest = React.lazy(() => import('@/pages/CompanyIdsTest'));
@@ -596,6 +599,9 @@ function Router() {
                 <Route path="/data-enrichment" component={DataEnrichment} />
                 <Route path="/quickbooks-integration" component={QuickBooksIntegration} />
                 <Route path="/quote-proposal-generation" component={QuoteProposalGeneration} />
+                <Route path="/proposals/branding" component={BrandingSettings} />
+                <Route path="/proposal-templates" component={ProposalTemplates} />
+                <Route path="/proposal-templates/:id/edit" component={ProposalTemplateEditor} />
                 <Route path="/quotes" component={QuotesManagement} />
                 <Route path="/quotes/new" component={QuoteBuilderPage} />
                 <Route path="/quotes/:quoteId" component={QuoteBuilderPage} />

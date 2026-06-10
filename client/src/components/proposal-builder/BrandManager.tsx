@@ -39,7 +39,7 @@ import {
   Tablet,
 } from 'lucide-react';
 
-interface BrandProfile {
+export interface BrandProfile {
   id: string;
   name: string;
   description: string;
@@ -98,6 +98,21 @@ interface BrandProfile {
     footerStyle: 'minimal' | 'branded' | 'contact-info' | 'none';
     sectionDividers: 'lines' | 'spacing' | 'cards' | 'none';
   };
+  // PROP-003: company identity + contact info shown on proposals.
+  company?: {
+    companyName: string;
+    tagline?: string;
+    websiteUrl?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    socialLinks?: {
+      linkedin?: string;
+      twitter?: string;
+      facebook?: string;
+      instagram?: string;
+    };
+  };
   isDefault: boolean;
   createdAt: string;
   updatedAt: string;
@@ -149,6 +164,15 @@ const defaultBrandProfile: Omit<BrandProfile, 'id' | 'createdAt' | 'updatedAt'> 
     footerStyle: 'minimal',
     sectionDividers: 'spacing',
   },
+  company: {
+    companyName: '',
+    tagline: '',
+    websiteUrl: '',
+    address: '',
+    phone: '',
+    email: '',
+    socialLinks: {},
+  },
   isDefault: false,
 };
 
@@ -184,10 +208,16 @@ export default function BrandManager({
   initialProfile,
   onSave,
   onClose,
+  onUploadLogo,
+  saving = false,
 }: {
   initialProfile?: BrandProfile;
   onSave: (profile: BrandProfile) => void;
   onClose: () => void;
+  // PROP-003: when provided, logo selection uploads to the server and resolves to
+  // a persistent URL. Without it, the component falls back to an object-URL preview.
+  onUploadLogo?: (file: File, type: keyof BrandProfile['logos']) => Promise<string>;
+  saving?: boolean;
 }) {
   const [profile, setProfile] = useState<BrandProfile>(
     initialProfile || {
@@ -197,12 +227,45 @@ export default function BrandManager({
       updatedAt: new Date().toISOString(),
     },
   );
-  const [activeTab, setActiveTab] = useState('colors');
+  const [activeTab, setActiveTab] = useState('company');
   const [previewMode, setPreviewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [isDirty, setIsDirty] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoUploadRef = useRef<HTMLInputElement>(null);
+
+  // Re-hydrate when the selected profile changes (e.g. switching profiles in the page).
+  React.useEffect(() => {
+    if (initialProfile) {
+      setProfile(initialProfile);
+      setIsDirty(false);
+    }
+  }, [initialProfile?.id]);
 
   const updateProfile = (updates: Partial<BrandProfile>) => {
     setProfile((prev) => ({ ...prev, ...updates, updatedAt: new Date().toISOString() }));
+    setIsDirty(true);
+  };
+
+  const updateCompany = (
+    key: 'companyName' | 'tagline' | 'websiteUrl' | 'address' | 'phone' | 'email',
+    value: string,
+  ) => {
+    updateProfile({
+      company: { companyName: '', ...profile.company, [key]: value },
+    });
+  };
+
+  const updateSocialLink = (
+    key: keyof NonNullable<NonNullable<BrandProfile['company']>['socialLinks']>,
+    value: string,
+  ) => {
+    updateProfile({
+      company: {
+        companyName: '',
+        ...profile.company,
+        socialLinks: { ...profile.company?.socialLinks, [key]: value },
+      },
+    });
   };
 
   const updateColors = (colorKey: keyof BrandProfile['colors'], value: string) => {
@@ -236,18 +299,30 @@ export default function BrandManager({
   };
 
   const handleLogoUpload = (type: keyof BrandProfile['logos']) => {
-    // In a real implementation, this would handle file upload
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (e) => {
+    input.accept = 'image/png,image/jpeg,image/svg+xml,image/webp';
+    input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        // Create object URL for preview (in production, upload to server)
-        const url = URL.createObjectURL(file);
-        updateProfile({
-          logos: { ...profile.logos, [type]: url },
-        });
+      if (!file) return;
+
+      // Show an immediate local preview while the upload is in flight.
+      const previewUrl = URL.createObjectURL(file);
+      updateProfile({ logos: { ...profile.logos, [type]: previewUrl } });
+
+      if (!onUploadLogo) return; // no backend wired — keep the object-URL preview
+
+      setUploadingLogo(true);
+      try {
+        const persistentUrl = await onUploadLogo(file, type);
+        updateProfile({ logos: { ...profile.logos, [type]: persistentUrl } });
+      } catch (err) {
+        console.error('Logo upload failed', err);
+        // Roll the preview back so we don't keep a URL that never persisted.
+        updateProfile({ logos: { ...profile.logos, [type]: initialProfile?.logos?.[type] } });
+      } finally {
+        URL.revokeObjectURL(previewUrl);
+        setUploadingLogo(false);
       }
     };
     input.click();
@@ -291,7 +366,7 @@ export default function BrandManager({
 
   const previewStyles = {
     fontFamily: profile.typography.bodyFont,
-    fontSize: `${profile.baseFontSize}px`,
+    fontSize: `${profile.typography.baseFontSize}px`,
     lineHeight: profile.typography.lineHeight,
     color: profile.colors.text,
     backgroundColor: profile.colors.background,
@@ -333,7 +408,10 @@ export default function BrandManager({
 
         <ScrollArea className="flex-1">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mx-3 sm:mx-4 mt-4 gap-1">
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 mx-3 sm:mx-4 mt-4 gap-1">
+              <TabsTrigger value="company" className="text-xs sm:text-sm">
+                Company
+              </TabsTrigger>
               <TabsTrigger value="colors" className="text-xs sm:text-sm">
                 Colors
               </TabsTrigger>
@@ -349,6 +427,95 @@ export default function BrandManager({
             </TabsList>
 
             <div className="p-3 sm:p-4">
+              <TabsContent value="company" className="space-y-4">
+                <div className="space-y-1">
+                  <Label className="text-xs sm:text-sm">Company Name</Label>
+                  <Input
+                    value={profile.company?.companyName ?? ''}
+                    onChange={(e) => updateCompany('companyName', e.target.value)}
+                    placeholder="Acme Office Solutions"
+                    className="touch-manipulation min-h-[44px]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs sm:text-sm">Tagline</Label>
+                  <Input
+                    value={profile.company?.tagline ?? ''}
+                    onChange={(e) => updateCompany('tagline', e.target.value)}
+                    placeholder="Your print partner"
+                    className="touch-manipulation min-h-[44px]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs sm:text-sm">Website</Label>
+                  <Input
+                    value={profile.company?.websiteUrl ?? ''}
+                    onChange={(e) => updateCompany('websiteUrl', e.target.value)}
+                    placeholder="https://acme.com"
+                    className="touch-manipulation min-h-[44px]"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs sm:text-sm">Phone</Label>
+                    <Input
+                      value={profile.company?.phone ?? ''}
+                      onChange={(e) => updateCompany('phone', e.target.value)}
+                      placeholder="(555) 123-4567"
+                      className="touch-manipulation min-h-[44px]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs sm:text-sm">Email</Label>
+                    <Input
+                      value={profile.company?.email ?? ''}
+                      onChange={(e) => updateCompany('email', e.target.value)}
+                      placeholder="sales@acme.com"
+                      className="touch-manipulation min-h-[44px]"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs sm:text-sm">Address</Label>
+                  <Textarea
+                    value={profile.company?.address ?? ''}
+                    onChange={(e) => updateCompany('address', e.target.value)}
+                    placeholder="123 Main St, Suite 100&#10;City, ST 00000"
+                    rows={2}
+                    className="touch-manipulation"
+                  />
+                </div>
+                <div className="pt-2">
+                  <Label className="text-xs sm:text-sm font-medium">Social Links</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                    <Input
+                      value={profile.company?.socialLinks?.linkedin ?? ''}
+                      onChange={(e) => updateSocialLink('linkedin', e.target.value)}
+                      placeholder="LinkedIn URL"
+                      className="touch-manipulation min-h-[44px]"
+                    />
+                    <Input
+                      value={profile.company?.socialLinks?.twitter ?? ''}
+                      onChange={(e) => updateSocialLink('twitter', e.target.value)}
+                      placeholder="Twitter/X URL"
+                      className="touch-manipulation min-h-[44px]"
+                    />
+                    <Input
+                      value={profile.company?.socialLinks?.facebook ?? ''}
+                      onChange={(e) => updateSocialLink('facebook', e.target.value)}
+                      placeholder="Facebook URL"
+                      className="touch-manipulation min-h-[44px]"
+                    />
+                    <Input
+                      value={profile.company?.socialLinks?.instagram ?? ''}
+                      onChange={(e) => updateSocialLink('instagram', e.target.value)}
+                      placeholder="Instagram URL"
+                      className="touch-manipulation min-h-[44px]"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+
               <TabsContent value="colors" className="space-y-4">
                 <div className="flex justify-between items-center gap-2">
                   <Label className="text-xs sm:text-sm">Color Palette</Label>
@@ -766,18 +933,29 @@ export default function BrandManager({
         </ScrollArea>
 
         <div className="p-3 sm:p-4 border-t">
+          <div className="flex items-center justify-between mb-2 text-xs">
+            {uploadingLogo ? (
+              <span className="text-blue-600">Uploading logo…</span>
+            ) : isDirty ? (
+              <span className="text-amber-600">Unsaved changes</span>
+            ) : (
+              <span className="text-muted-foreground">All changes saved</span>
+            )}
+          </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
+              onClick={() => {
                 setProfile({
                   ...defaultBrandProfile,
                   id: profile.id,
                   createdAt: profile.createdAt,
                   updatedAt: new Date().toISOString(),
-                })
-              }
+                });
+                setIsDirty(true);
+              }}
+              disabled={saving}
               className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1"
             >
               <RotateCcw className="h-4 w-4 mr-2" />
@@ -785,11 +963,15 @@ export default function BrandManager({
             </Button>
             <Button
               size="sm"
-              onClick={() => onSave(profile)}
+              onClick={() => {
+                onSave(profile);
+                setIsDirty(false);
+              }}
+              disabled={saving || uploadingLogo}
               className="touch-manipulation active:scale-[0.98] min-h-[44px] flex-1"
             >
               <Save className="h-4 w-4 mr-2" />
-              Save Brand
+              {saving ? 'Saving…' : 'Save Brand'}
             </Button>
           </div>
         </div>

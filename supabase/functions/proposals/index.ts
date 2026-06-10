@@ -3,10 +3,13 @@
  *
  * Replaces server/routes-proposals.ts (1,778 lines). Endpoints:
  *
- *   Templates (3):
- *     GET    /proposals/proposal-templates
- *     POST   /proposals/proposal-templates
+ *   Templates (6) — PROP-001:
+ *     GET    /proposals/proposal-templates            — ?templateType= , ?includeInactive=true
+ *     POST   /proposals/proposal-templates            — Zod-validated, normalizes camelCase
+ *     POST   /proposals/proposal-templates/:id/clone  — copies content, never default
  *     PUT    /proposals/proposal-templates/:id
+ *     PATCH  /proposals/proposal-templates/:id
+ *     DELETE /proposals/proposal-templates/:id        — soft delete (is_active=false)
  *
  *   Equipment packages (2):
  *     GET    /proposals/equipment-packages
@@ -40,6 +43,7 @@
  *     GET    /proposals/:id/export/manager-pdf    — includes cost + margin; manager-only
  */
 
+import { z } from 'https://esm.sh/zod@3.22.4';
 import { handleCors } from '../_shared/cors.ts';
 import { requireAuth, AuthError } from '../_shared/auth.ts';
 import { getDb } from '../_shared/db.ts';
@@ -94,6 +98,89 @@ function toNum(v: unknown): number {
   if (v === null || v === undefined || v === '') return 0;
   const n = typeof v === 'number' ? v : parseFloat(String(v));
   return Number.isFinite(n) ? n : 0;
+}
+
+// ─── Proposal template helpers (PROP-001) ──────────────────────────────────────
+
+// camelCase (what the UI sends) OR snake_case → real snake_case columns. Anything
+// not in this map is dropped, so a stray UI-only field can never break the insert
+// and a caller can never write tenant_id / created_by / id from the body.
+const TEMPLATE_FIELD_MAP: Record<string, string> = {
+  templateName: 'template_name',
+  template_name: 'template_name',
+  templateType: 'template_type',
+  template_type: 'template_type',
+  description: 'description',
+  headerContent: 'header_content',
+  header_content: 'header_content',
+  coverPageTemplate: 'cover_page_template',
+  cover_page_template: 'cover_page_template',
+  executiveSummaryTemplate: 'executive_summary_template',
+  executive_summary_template: 'executive_summary_template',
+  proposalBodyTemplate: 'proposal_body_template',
+  proposal_body_template: 'proposal_body_template',
+  termsAndConditionsTemplate: 'terms_conditions_template',
+  termsConditionsTemplate: 'terms_conditions_template',
+  terms_conditions_template: 'terms_conditions_template',
+  footerTemplate: 'footer_template',
+  footer_template: 'footer_template',
+  brandingColors: 'branding_colors',
+  branding_colors: 'branding_colors',
+  fontSettings: 'font_settings',
+  font_settings: 'font_settings',
+  templateContent: 'template_content',
+  template_content: 'template_content',
+  isActive: 'is_active',
+  is_active: 'is_active',
+  isDefault: 'is_default',
+  is_default: 'is_default',
+};
+
+function normalizeTemplate(raw: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(raw ?? {})) {
+    const col = TEMPLATE_FIELD_MAP[k];
+    if (col && !(col in out)) out[col] = v;
+  }
+  return out;
+}
+
+const templateCreateSchema = z.object({
+  template_name: z.string().trim().min(1, 'template_name is required'),
+  template_type: z.string().trim().min(1, 'template_type is required'),
+  description: z.string().nullish(),
+  header_content: z.record(z.unknown()).nullish(),
+  cover_page_template: z.string().nullish(),
+  executive_summary_template: z.string().nullish(),
+  proposal_body_template: z.string().nullish(),
+  terms_conditions_template: z.string().nullish(),
+  footer_template: z.string().nullish(),
+  branding_colors: z.record(z.unknown()).nullish(),
+  font_settings: z.record(z.unknown()).nullish(),
+  template_content: z.record(z.unknown()).nullish(),
+  is_active: z.boolean().optional(),
+  is_default: z.boolean().optional(),
+});
+
+// PUT/PATCH: every field optional, but if present must be valid.
+const templateUpdateSchema = templateCreateSchema.partial();
+
+// Clear is_default on every OTHER template of the same type in this tenant, so at
+// most one default per (tenant, template_type). Mirrors the blog default-row pattern.
+async function clearOtherDefaultTemplates(
+  db: SB,
+  tenantId: string,
+  templateType: string,
+  exceptId?: string,
+) {
+  let q = db
+    .from('proposal_templates')
+    .update({ is_default: false, updated_at: new Date().toISOString() })
+    .eq('tenant_id', tenantId)
+    .eq('template_type', templateType)
+    .eq('is_default', true);
+  if (exceptId) q = q.neq('id', exceptId);
+  await q;
 }
 
 // Real columns on proposal_line_items (snake_case). Anything else is dropped so a
@@ -565,12 +652,20 @@ export default async function handler(req: Request) {
     // =========================================================================
 
     if (path === '/proposal-templates' && method === 'GET') {
-      const { data, error } = await db
-        .from('proposal_templates')
-        .select('*')
-        .eq('tenant_id', ctx.tenantId)
+      // Active templates only by default; ?includeInactive=true to see soft-deleted.
+      // ?templateType= filters to one type (used to pick the per-type default).
+      const templateType = url.searchParams.get('templateType');
+      const includeInactive = url.searchParams.get('includeInactive') === 'true';
+
+      let query = db.from('proposal_templates').select('*').eq('tenant_id', ctx.tenantId);
+      if (!includeInactive) query = query.eq('is_active', true);
+      if (templateType) query = query.eq('template_type', templateType);
+      // Default first, then newest.
+      query = query
+        .order('is_default', { ascending: false })
         .order('created_at', { ascending: false });
 
+      const { data, error } = await query;
       if (error) {
         return errorResponse(500, 'Failed to fetch proposal templates', req, {
           code: 'DB_ERROR',
@@ -584,16 +679,28 @@ export default async function handler(req: Request) {
     if (path === '/proposal-templates' && method === 'POST') {
       const body = await req.json().catch(() => null);
       if (!body) {
-        return errorResponse(400, 'Invalid JSON body', req, {
-          code: 'INVALID_JSON',
+        return errorResponse(400, 'Invalid JSON body', req, { code: 'INVALID_JSON', requestId });
+      }
+
+      const parsed = templateCreateSchema.safeParse(normalizeTemplate(body));
+      if (!parsed.success) {
+        return errorResponse(400, 'Invalid template', req, {
+          code: 'VALIDATION_ERROR',
+          details: parsed.error.flatten(),
           requestId,
         });
+      }
+      const fields = parsed.data;
+
+      // At most one default per (tenant, type).
+      if (fields.is_default) {
+        await clearOtherDefaultTemplates(db, ctx.tenantId, fields.template_type);
       }
 
       const { data, error } = await db
         .from('proposal_templates')
         .insert({
-          ...body,
+          ...fields,
           tenant_id: ctx.tenantId,
           created_by: ctx.userId,
           created_at: new Date().toISOString(),
@@ -612,21 +719,99 @@ export default async function handler(req: Request) {
       return jsonResponse(data, 201, req, requestId);
     }
 
-    const templateUpdate = path.match(/^\/proposal-templates\/([^/]+)$/);
-    if (templateUpdate && method === 'PUT') {
-      const id = templateUpdate[1];
-      const body = await req.json().catch(() => null);
-      if (!body) {
-        return errorResponse(400, 'Invalid JSON body', req, {
-          code: 'INVALID_JSON',
+    // POST /proposal-templates/:id/clone — copy an existing template (never default).
+    const templateClone = path.match(/^\/proposal-templates\/([^/]+)\/clone$/);
+    if (templateClone && method === 'POST') {
+      const id = templateClone[1];
+      const { data: source, error: srcErr } = await db
+        .from('proposal_templates')
+        .select('*')
+        .eq('id', id)
+        .eq('tenant_id', ctx.tenantId)
+        .maybeSingle();
+
+      if (srcErr) {
+        return errorResponse(500, 'Failed to read source template', req, {
+          code: 'DB_ERROR',
+          details: srcErr,
           requestId,
         });
       }
-      const { updatedAt: _drop, ...rest } = body;
+      if (!source) {
+        return errorResponse(404, 'Template not found', req, { code: 'NOT_FOUND', requestId });
+      }
+
+      const {
+        id: _id,
+        created_at: _c,
+        updated_at: _u,
+        created_by: _cb,
+        ...rest
+      } = source as Record<string, unknown>;
 
       const { data, error } = await db
         .from('proposal_templates')
-        .update({ ...rest, updated_at: new Date().toISOString() })
+        .insert({
+          ...rest,
+          template_name: `${source.template_name} (Copy)`,
+          is_default: false,
+          is_active: true,
+          tenant_id: ctx.tenantId,
+          created_by: ctx.userId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error || !data) {
+        return errorResponse(500, 'Failed to clone proposal template', req, {
+          code: 'DB_ERROR',
+          details: error,
+          requestId,
+        });
+      }
+      return jsonResponse(data, 201, req, requestId);
+    }
+
+    const templateById = path.match(/^\/proposal-templates\/([^/]+)$/);
+    if (templateById && (method === 'PUT' || method === 'PATCH')) {
+      const id = templateById[1];
+      const body = await req.json().catch(() => null);
+      if (!body) {
+        return errorResponse(400, 'Invalid JSON body', req, { code: 'INVALID_JSON', requestId });
+      }
+
+      const parsed = templateUpdateSchema.safeParse(normalizeTemplate(body));
+      if (!parsed.success) {
+        return errorResponse(400, 'Invalid template', req, {
+          code: 'VALIDATION_ERROR',
+          details: parsed.error.flatten(),
+          requestId,
+        });
+      }
+      const fields = parsed.data;
+
+      // Resolve the template_type to scope default-clearing (body may omit it).
+      if (fields.is_default) {
+        let templateType = fields.template_type;
+        if (!templateType) {
+          const { data: existing } = await db
+            .from('proposal_templates')
+            .select('template_type')
+            .eq('id', id)
+            .eq('tenant_id', ctx.tenantId)
+            .maybeSingle();
+          templateType = existing?.template_type;
+        }
+        if (templateType) {
+          await clearOtherDefaultTemplates(db, ctx.tenantId, templateType, id);
+        }
+      }
+
+      const { data, error } = await db
+        .from('proposal_templates')
+        .update({ ...fields, updated_at: new Date().toISOString() })
         .eq('id', id)
         .eq('tenant_id', ctx.tenantId)
         .select()
@@ -643,6 +828,30 @@ export default async function handler(req: Request) {
         return errorResponse(404, 'Template not found', req, { code: 'NOT_FOUND', requestId });
       }
       return jsonResponse(data, 200, req, requestId);
+    }
+
+    // DELETE /proposal-templates/:id — soft delete (is_active=false), also drops default.
+    if (templateById && method === 'DELETE') {
+      const id = templateById[1];
+      const { data, error } = await db
+        .from('proposal_templates')
+        .update({ is_active: false, is_default: false, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('tenant_id', ctx.tenantId)
+        .select()
+        .maybeSingle();
+
+      if (error) {
+        return errorResponse(500, 'Failed to delete proposal template', req, {
+          code: 'DB_ERROR',
+          details: error,
+          requestId,
+        });
+      }
+      if (!data) {
+        return errorResponse(404, 'Template not found', req, { code: 'NOT_FOUND', requestId });
+      }
+      return jsonResponse({ id, deleted: true }, 200, req, requestId);
     }
 
     // =========================================================================
