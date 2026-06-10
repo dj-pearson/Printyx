@@ -103,10 +103,13 @@ export default async function handler(req: Request) {
         .from('pricing_visibility')
         .select('*')
         .eq('tenant_id', tenantId)
-        .single();
+        .maybeSingle();
 
+      // Visibility is non-critical: if the row is missing OR the query errors
+      // (e.g. the table isn't provisioned for this tenant), fall back to safe
+      // defaults rather than 500-ing and breaking every page that reads it.
       if (error && error.code !== 'PGRST116') {
-        return createCorsResponse({ error: 'Failed to fetch visibility settings' }, 500, req);
+        console.warn('pricing-settings: visibility lookup failed, using defaults:', error.message);
       }
 
       return createCorsResponse(

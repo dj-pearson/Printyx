@@ -283,6 +283,62 @@ function normalizeLineItem(
   return row;
 }
 
+// Columns that are guaranteed to exist on proposal_line_items per the Drizzle
+// schema. Used as the fallback set when an insert fails on a phantom column
+// (schema drift between the column whitelist above and the actual table).
+const CORE_LINE_ITEM_COLUMNS = [
+  'tenant_id',
+  'proposal_id',
+  'line_number',
+  'item_type',
+  'product_id',
+  'product_name',
+  'description',
+  'quantity',
+  'unit_cost',
+  'unit_price',
+  'total_price',
+  'is_optional',
+];
+
+function isMissingColumnError(err: { code?: string; message?: string } | null): boolean {
+  if (!err) return false;
+  return err.code === 'PGRST204' || /could not find the .* column/i.test(err.message || '');
+}
+
+function stripToCoreLineItem(row: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const col of CORE_LINE_ITEM_COLUMNS) {
+    if (row[col] !== undefined) out[col] = row[col];
+  }
+  return out;
+}
+
+// Insert line items, self-healing against schema drift: if the full insert fails
+// because a column doesn't exist (PGRST204), retry with only the core columns so
+// line items still persist instead of being silently dropped.
+async function insertLineItemRows(
+  db: SB,
+  rows: Record<string, unknown>[],
+  requestId: string,
+): Promise<{ ok: boolean; error?: unknown; droppedColumns?: boolean }> {
+  if (rows.length === 0) return { ok: true };
+  const first = await db.from('proposal_line_items').insert(rows);
+  if (!first.error) return { ok: true };
+  if (isMissingColumnError(first.error)) {
+    const retry = await db.from('proposal_line_items').insert(rows.map(stripToCoreLineItem));
+    if (!retry.error) {
+      log.warn(
+        { requestId, err: first.error.message },
+        'Line items inserted with non-core columns dropped (proposal_line_items schema drift)',
+      );
+      return { ok: true, droppedColumns: true };
+    }
+    return { ok: false, error: retry.error };
+  }
+  return { ok: false, error: first.error };
+}
+
 // ─── Customer resolution ────────────────────────────────────────────────────
 // proposals.business_record_id holds the customer id. The current customer source
 // of truth is the `companies` table; legacy/lead customers live in
@@ -1269,8 +1325,8 @@ export default async function handler(req: Request) {
         const rows = lineItems.map((item: Record<string, unknown>, index: number) =>
           normalizeLineItem(item, ctx.tenantId, (proposal as { id: string }).id, index),
         );
-        const insertItems = await db.from('proposal_line_items').insert(rows);
-        if (insertItems.error) {
+        const insertItems = await insertLineItemRows(db, rows, requestId);
+        if (!insertItems.ok) {
           log.warn(
             { requestId, err: insertItems.error },
             'Proposal created but line-item insert failed',
@@ -1376,8 +1432,8 @@ export default async function handler(req: Request) {
         const rows = lineItemsToUpdate.map((item: Record<string, unknown>, index: number) =>
           normalizeLineItem(item, ctx.tenantId, id, index),
         );
-        const insertItems = await db.from('proposal_line_items').insert(rows);
-        if (insertItems.error) {
+        const insertItems = await insertLineItemRows(db, rows, requestId);
+        if (!insertItems.ok) {
           log.warn(
             { requestId, err: insertItems.error },
             'Proposal updated but line-item replace failed',

@@ -91,6 +91,44 @@ interface LineItem {
   totalPrice: string;
 }
 
+// The proposals edge function returns raw snake_case DB rows. Map the fields this
+// view reads to the camelCase shape; keep originals so nothing is lost.
+function normalizeQuote(q: any): Quote {
+  if (!q) return q;
+  return {
+    ...q,
+    proposalNumber: q.proposalNumber ?? q.proposal_number,
+    businessRecordId: q.businessRecordId ?? q.business_record_id,
+    contactId: q.contactId ?? q.contact_id,
+    discountAmount: q.discountAmount ?? q.discount_amount,
+    discountPercentage: q.discountPercentage ?? q.discount_percentage,
+    taxAmount: q.taxAmount ?? q.tax_amount,
+    totalAmount: q.totalAmount ?? q.total_amount,
+    validUntil: q.validUntil ?? q.valid_until,
+    createdAt: q.createdAt ?? q.created_at,
+    updatedAt: q.updatedAt ?? q.updated_at,
+    createdBy: q.createdBy ?? q.created_by,
+    assignedTo: q.assignedTo ?? q.assigned_to,
+    customerNotes: q.customerNotes ?? q.customer_notes,
+    internalNotes: q.internalNotes ?? q.internal_notes,
+    lineItems: (q.lineItems ?? q.line_items ?? []).map((it: any) => ({
+      ...it,
+      lineNumber: it.lineNumber ?? it.line_number,
+      itemType: it.itemType ?? it.item_type,
+      productName: it.productName ?? it.product_name,
+      unitPrice: it.unitPrice ?? it.unit_price,
+      totalPrice: it.totalPrice ?? it.total_price,
+    })),
+  };
+}
+
+// date-fns format() throws "Invalid time value" on a null/invalid date. Guard it.
+function safeFormatDate(value: string | undefined | null, fmt: string): string {
+  if (!value) return 'Not specified';
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? 'Not specified' : format(d, fmt);
+}
+
 export default function QuoteView() {
   const [match, params] = useRoute('/quotes/:quoteId/view');
   const [, setLocation] = useLocation();
@@ -100,12 +138,14 @@ export default function QuoteView() {
   const { toast } = useToast();
   const quoteId = params?.quoteId;
 
-  // Fetch quote details
+  // Fetch quote details. The proposals edge function returns snake_case columns;
+  // normalize to the camelCase shape this component expects.
   const { data: quote, isLoading: quoteLoading } = useQuery<Quote>({
     queryKey: [`/api/proposals/${quoteId}`],
     enabled: !!quoteId,
     queryFn: async () => {
-      return await apiRequest(`/api/proposals/${quoteId}`, 'GET');
+      const raw = await apiRequest(`/api/proposals/${quoteId}`, 'GET');
+      return normalizeQuote(raw);
     },
   });
 
@@ -298,12 +338,12 @@ export default function QuoteView() {
                 <div className="flex items-center gap-4 mt-2 text-sm">
                   <span className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    Created {format(new Date(quote.createdAt), 'MMM dd, yyyy')}
+                    Created {safeFormatDate(quote.createdAt, 'MMM dd, yyyy')}
                   </span>
                   {quote.validUntil && (
                     <span className="flex items-center gap-1">
                       <Clock className="h-4 w-4" />
-                      Valid until {format(new Date(quote.validUntil), 'MMM dd, yyyy')}
+                      Valid until {safeFormatDate(quote.validUntil, 'MMM dd, yyyy')}
                     </span>
                   )}
                 </div>
@@ -371,13 +411,11 @@ export default function QuoteView() {
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Valid Until</p>
-                <p className="font-medium">
-                  {quote.validUntil ? format(new Date(quote.validUntil), 'PPP') : 'Not specified'}
-                </p>
+                <p className="font-medium">{safeFormatDate(quote.validUntil, 'PPP')}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-500">Created</p>
-                <p className="font-medium">{format(new Date(quote.createdAt), 'PPP')}</p>
+                <p className="font-medium">{safeFormatDate(quote.createdAt, 'PPP')}</p>
               </div>
             </CardContent>
           </Card>
