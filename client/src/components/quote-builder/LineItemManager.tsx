@@ -157,6 +157,9 @@ export default function LineItemManager({
         ? product.unitCost
         : resolveDealerCost(product, pricingType);
 
+    // QUOTE-013: ProductTypeSelector may pass a per-row quantity chosen at add time.
+    const quantity = Number(product.quantity) > 0 ? Math.floor(Number(product.quantity)) : 1;
+
     const newItem: Omit<LineItem, 'lineNumber'> = {
       isSubline: !!parentProductForAccessory,
       parentLineId: parentProductForAccessory,
@@ -165,11 +168,11 @@ export default function LineItemManager({
       productCode: productCode,
       productName: productName,
       description: product.description || '',
-      quantity: 1,
+      quantity,
       msrp: product.msrp || 0,
       listPrice: unitPrice,
       unitPrice: unitPrice,
-      totalPrice: unitPrice,
+      totalPrice: unitPrice * quantity,
       unitCost: unitCost,
       margin: calculateMargin(unitPrice, unitCost),
     };
@@ -225,8 +228,8 @@ export default function LineItemManager({
       }
     }
 
-    setShowProductSelector(false);
-    setParentProductForAccessory(undefined);
+    // QUOTE-013: keep the picker open for fast multi-add. Closing + parent reset
+    // happen on the Done action / dialog close (onDone / onOpenChange) instead.
   };
 
   const calculateMargin = (price: number, cost: number): number => {
@@ -336,7 +339,13 @@ export default function LineItemManager({
               Add and manage products, services, and accessories for this quote
             </CardDescription>
           </div>
-          <Dialog open={showProductSelector} onOpenChange={setShowProductSelector}>
+          <Dialog
+            open={showProductSelector}
+            onOpenChange={(open) => {
+              setShowProductSelector(open);
+              if (!open) setParentProductForAccessory(undefined);
+            }}
+          >
             <DialogTrigger asChild>
               <Button className="w-full sm:w-auto min-h-[44px] active:scale-[0.98] transition-transform">
                 <Plus className="h-4 w-4 mr-2" />
@@ -350,14 +359,18 @@ export default function LineItemManager({
                 </DialogTitle>
                 <DialogDescription>
                   {parentProductForAccessory
-                    ? 'Select an accessory for the selected product'
-                    : 'Select a product or service to add to the quote'}
+                    ? 'Select accessories for the selected product — add as many as you need, then Done'
+                    : 'Add as many products as you need, then click Done'}
                 </DialogDescription>
               </DialogHeader>
               <ProductTypeSelector
                 onProductSelect={handleProductSelect}
                 pricingType={pricingType}
                 parentProductId={parentProductForAccessory}
+                onDone={() => {
+                  setShowProductSelector(false);
+                  setParentProductForAccessory(undefined);
+                }}
               />
             </DialogContent>
           </Dialog>

@@ -85,12 +85,62 @@ export interface SelectedProduct extends Product {
   type: ProductType;
   unitPrice: number;
   unitCost: number;
+  quantity?: number; // QUOTE-013: per-row quantity chosen at add time
 }
 
 interface ProductTypeSelectorProps {
   onProductSelect: (product: SelectedProduct) => void;
   pricingType: 'new' | 'upgrade';
   parentProductId?: string; // For selecting accessories for a specific product
+  // QUOTE-013: when provided, the picker stays open for multi-add and renders a
+  // "Done" control that calls this to close.
+  onDone?: () => void;
+}
+
+// QUOTE-013: a lightweight snapshot of a recently-added product for one-click re-add.
+interface RecentProduct {
+  id: string;
+  type: ProductType;
+  productName: string;
+  productCode: string;
+  raw: Record<string, any>;
+}
+
+const RECENTS_LIMIT = 20;
+
+function recentsKey(): string {
+  const tenant =
+    (typeof window !== 'undefined' &&
+      (localStorage.getItem('tenant-id') ||
+        localStorage.getItem('printyx-tenant-id') ||
+        localStorage.getItem('demo-tenant-id'))) ||
+    't';
+  const user =
+    (typeof window !== 'undefined' &&
+      (localStorage.getItem('printyx-user-id') || localStorage.getItem('demo-user-id'))) ||
+    'u';
+  return `printyx-recent-products:${tenant}:${user}`;
+}
+
+function loadRecents(): RecentProduct[] {
+  try {
+    const raw = localStorage.getItem(recentsKey());
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.slice(0, RECENTS_LIMIT) : [];
+  } catch {
+    return [];
+  }
+}
+
+function pushRecent(entry: RecentProduct): RecentProduct[] {
+  const existing = loadRecents().filter((r) => !(r.id === entry.id && r.type === entry.type));
+  const next = [entry, ...existing].slice(0, RECENTS_LIMIT);
+  try {
+    localStorage.setItem(recentsKey(), JSON.stringify(next));
+  } catch {
+    /* localStorage may be unavailable; recents are best-effort */
+  }
+  return next;
 }
 
 function num(v: unknown): number | undefined {
@@ -238,6 +288,7 @@ export default function ProductTypeSelector({
   onProductSelect,
   pricingType,
   parentProductId,
+  onDone,
 }: ProductTypeSelectorProps) {
   // If we're adding accessories for a parent product, default to accessories
   const [selectedType, setSelectedType] = useState<ProductType>(
@@ -247,8 +298,32 @@ export default function ProductTypeSelector({
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [manufacturerFilter, setManufacturerFilter] = useState('all');
+  // QUOTE-013: multi-add session state.
+  const [addedCount, setAddedCount] = useState(0); // items added since the picker opened
+  const [lastAddedId, setLastAddedId] = useState<string | null>(null); // brief per-row "Added" flash
+  const [quantities, setQuantities] = useState<Record<string, number>>({}); // per-row qty
+  const [recents, setRecents] = useState<RecentProduct[]>(() => loadRecents());
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   const selectedTypeOption = productTypes.find((type) => type.value === selectedType);
+
+  // Auto-focus search on open.
+  useEffect(() => {
+    const t = setTimeout(() => searchInputRef.current?.focus(), 50);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Flash the "Added" indicator briefly, then clear it.
+  useEffect(() => {
+    if (!lastAddedId) return;
+    const t = setTimeout(() => setLastAddedId(null), 1200);
+    return () => clearTimeout(t);
+  }, [lastAddedId]);
+
+  const qtyOf = (id: string) => Math.max(1, quantities[id] ?? 1);
+  const setQty = (id: string, n: number) =>
+    setQuantities((prev) => ({ ...prev, [id]: Math.max(1, Math.floor(n) || 1) }));
 
   // QUOTE-012: debounce the search box 300ms before hitting the API (mirrors
   // CompanyContactSelector). The query key includes the debounced term + filters,
@@ -333,13 +408,56 @@ export default function ProductTypeSelector({
   // be unavailable for them.
   const hasCost = (product: Product): boolean => getCost(product) > 0;
 
-  const handleProductSelect = (product: Product) => {
+  // QUOTE-013: add a product without closing the picker. Carries the per-row
+  // quantity, flashes an "Added" indicator, bumps the session count, and records
+  // the product in the per-user recents list. `type`/`raw` let recents re-add.
+  const handleProductSelect = (
+    product: Product,
+    type: ProductType = selectedType,
+    raw?: Record<string, any>,
+  ) => {
+    const quantity = qtyOf(product.id);
     onProductSelect({
       ...product,
-      type: selectedType,
+      type,
+      quantity,
       unitPrice: getPrice(product),
       unitCost: getCost(product),
     });
+
+    setAddedCount((c) => c + 1);
+    setLastAddedId(product.id);
+    setRecents(
+      pushRecent({
+        id: product.id,
+        type,
+        productName: product.productName,
+        productCode: product.productCode,
+        raw: raw ?? { ...product },
+      }),
+    );
+  };
+
+  // Re-add a recent product in one click (uses its stored snapshot + type).
+  const handleRecentSelect = (r: RecentProduct) => {
+    handleProductSelect(normalizeProduct(r.raw), r.type, r.raw);
+  };
+
+  // Keyboard: ArrowUp/Down move the highlight, Enter adds the highlighted row.
+  const handleListKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex((i) => Math.min(i + 1, Math.max(0, filteredProducts.length - 1)));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex((i) => Math.max(0, i - 1));
+    } else if (e.key === 'Enter') {
+      const product = filteredProducts[highlightedIndex];
+      if (product) {
+        e.preventDefault();
+        handleProductSelect(product);
+      }
+    }
   };
 
   const formatPrice = (price?: number) => {
@@ -353,12 +471,27 @@ export default function ProductTypeSelector({
   return (
     <div className="flex flex-col h-full max-h-full overflow-hidden touch-manipulation">
       <div className="flex-shrink-0 p-4 sm:p-6 border-b">
-        <div className="flex items-center gap-2 mb-2">
-          <Package className="h-5 w-5" />
-          <h3 className="text-base sm:text-lg font-semibold">Product Selection</h3>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            <h3 className="text-base sm:text-lg font-semibold">Product Selection</h3>
+          </div>
+          {/* QUOTE-013: multi-add session count + Done */}
+          <div className="flex items-center gap-2">
+            {addedCount > 0 && (
+              <Badge variant="secondary" className="whitespace-nowrap">
+                {addedCount} added
+              </Badge>
+            )}
+            {onDone && (
+              <Button size="sm" onClick={onDone} className="min-h-[40px]">
+                Done
+              </Button>
+            )}
+          </div>
         </div>
         <p className="text-xs sm:text-sm text-muted-foreground">
-          Select the type of product and choose from available options
+          Add as many products as you need — the picker stays open. Click Done when finished.
         </p>
       </div>
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
@@ -402,9 +535,14 @@ export default function ProductTypeSelector({
           <div className="relative sm:col-span-2 lg:col-span-1">
             <Search className="absolute left-2 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search products..."
+              ref={searchInputRef}
+              placeholder="Search products… (↑/↓ to highlight, Enter to add)"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setHighlightedIndex(0);
+              }}
+              onKeyDown={handleListKeyDown}
               className="pl-8 min-h-[44px]"
             />
           </div>
@@ -441,6 +579,28 @@ export default function ProductTypeSelector({
             </Select>
           )}
         </div>
+
+        {/* QUOTE-013: recently-added products — one-click re-add */}
+        {recents.length > 0 && (
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Recently added</Label>
+            <div className="flex flex-wrap gap-2">
+              {recents.slice(0, 12).map((r) => (
+                <Button
+                  key={`${r.type}:${r.id}`}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleRecentSelect(r)}
+                  className="h-8 text-xs"
+                  title={`Add ${r.productName}`}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  <span className="max-w-[160px] truncate">{r.productName}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Pricing Type Indicator */}
         <div className="bg-muted/50 rounded-lg p-3">
@@ -531,14 +691,45 @@ export default function ProductTypeSelector({
                           </span>
                         )}
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => handleProductSelect(product)}
-                        className="shrink-0 min-h-[44px] active:scale-[0.98] transition-transform"
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add
-                      </Button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* QUOTE-013: per-row quantity stepper */}
+                        <div className="flex items-center border rounded">
+                          <button
+                            type="button"
+                            onClick={() => setQty(product.id, qtyOf(product.id) - 1)}
+                            className="px-3 py-2 text-muted-foreground"
+                            aria-label="Decrease quantity"
+                          >
+                            −
+                          </button>
+                          <span className="w-7 text-center text-sm tabular-nums">
+                            {qtyOf(product.id)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setQty(product.id, qtyOf(product.id) + 1)}
+                            className="px-3 py-2 text-muted-foreground"
+                            aria-label="Increase quantity"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={lastAddedId === product.id ? 'secondary' : 'default'}
+                          onClick={() => handleProductSelect(product)}
+                          className="min-h-[44px] active:scale-[0.98] transition-transform"
+                        >
+                          {lastAddedId === product.id ? (
+                            'Added'
+                          ) : (
+                            <>
+                              <Plus className="h-4 w-4 mr-1" />
+                              Add
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -563,8 +754,11 @@ export default function ProductTypeSelector({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredProducts.map((product) => (
-                      <TableRow key={product.id} className="group">
+                    {filteredProducts.map((product, idx) => (
+                      <TableRow
+                        key={product.id}
+                        className={`group ${idx === highlightedIndex ? 'bg-primary/5' : ''}`}
+                      >
                         <TableCell className="py-2">
                           <div className="max-w-[300px]">
                             <div
@@ -615,14 +809,45 @@ export default function ProductTypeSelector({
                           )}
                         </TableCell>
                         <TableCell className="py-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleProductSelect(product)}
-                            className="h-8 w-8 p-0 opacity-60 group-hover:opacity-100 transition-opacity"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            {/* QUOTE-013: per-row quantity stepper */}
+                            <div className="flex items-center border rounded">
+                              <button
+                                type="button"
+                                onClick={() => setQty(product.id, qtyOf(product.id) - 1)}
+                                className="px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
+                                aria-label="Decrease quantity"
+                              >
+                                −
+                              </button>
+                              <span className="w-7 text-center text-xs tabular-nums">
+                                {qtyOf(product.id)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setQty(product.id, qtyOf(product.id) + 1)}
+                                className="px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
+                                aria-label="Increase quantity"
+                              >
+                                +
+                              </button>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant={lastAddedId === product.id ? 'secondary' : 'ghost'}
+                              onClick={() => handleProductSelect(product)}
+                              className="h-8 min-w-[64px] px-2"
+                            >
+                              {lastAddedId === product.id ? (
+                                'Added'
+                              ) : (
+                                <>
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Add
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
