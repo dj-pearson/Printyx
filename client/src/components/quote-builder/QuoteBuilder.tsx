@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -107,6 +108,40 @@ interface QuoteBuilderProps {
   onCreateProposal?: (quoteId: string) => void;
 }
 
+// Build the draft proposal payload from form + line items. Shared by the manual
+// Save Draft mutation and the QUOTE-018 autosave so they stay in sync.
+function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
+  const subtotalAmount = lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
+  const discountAmt = parseFloat(quote.discountAmount || '0');
+  const taxAmt = parseFloat(quote.taxAmount || '0');
+  const totalAmount = subtotalAmount - discountAmt + taxAmt;
+
+  return {
+    ...quote,
+    proposalType: 'quote',
+    status: 'draft',
+    lineItems: lineItems.map((item, index) => ({
+      lineNumber: index + 1,
+      itemType: item.productType || 'equipment',
+      productId: item.productId,
+      productCode: item.productCode,
+      productName: item.productName,
+      description: item.description || item.productName,
+      quantity: item.quantity,
+      unitCost: item.unitCost ?? 0,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice,
+      margin: item.margin,
+      notes: item.notes,
+    })),
+    subtotal: subtotalAmount.toString(),
+    discountAmount: discountAmt.toString(),
+    discountPercentage: quote.discountPercentage || '0',
+    taxAmount: taxAmt.toString(),
+    totalAmount: totalAmount.toString(),
+  };
+}
+
 export default function QuoteBuilder({
   initialQuoteId,
   onSave,
@@ -127,6 +162,18 @@ export default function QuoteBuilder({
   const [generateProposalOpen, setGenerateProposalOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
+
+  // QUOTE-018: autosave state. Only drafts autosave; non-draft quotes (sent/accepted)
+  // are never auto-mutated. `hydratedRef` gates autosave until after the initial
+  // server load (or draft creation), so loading never triggers a clobbering save.
+  const [isDraft, setIsDraft] = useState(true);
+  const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const hydratedRef = useRef(false);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savingRef = useRef(false);
+  const dirtyAgainRef = useRef(false);
+  const creatingDraftRef = useRef(false);
 
   // Pricing policy + role (QUOTE-006). Managers (can see dealer cost) may override.
   const { data: pricingVisibility } = usePricingVisibility();
@@ -204,10 +251,17 @@ export default function QuoteBuilder({
     }
   }, [businessRecords, form, initialQuoteId]);
 
-  // Populate form when existing quote is loaded
+  // Populate form when existing quote is loaded.
+  // QUOTE-018: hydrate exactly once — re-fetches (e.g. after the autosave-created
+  // draft updates the URL) must never clobber in-progress local edits.
   useEffect(() => {
-    if (existingQuote && !quoteLoading) {
+    if (existingQuote && !quoteLoading && !hydratedRef.current) {
+      hydratedRef.current = true;
       console.log('📝 Populating form with existing quote:', existingQuote);
+
+      // Only drafts autosave; preserve sent/accepted quotes as-is.
+      const loadedStatus = existingQuote.status || 'draft';
+      setIsDraft(loadedStatus === 'draft');
 
       // GET /proposals/:id returns snake_case (edge fn). Read both shapes.
       const businessRecordId =
@@ -291,50 +345,27 @@ export default function QuoteBuilder({
         setLineItems(transformedLineItems);
         console.log('📦 Set line items:', transformedLineItems);
       }
+
+      // QUOTE-018: resume on the furthest valid step. A loaded quote always has a
+      // customer; if it has line items, jump to Review so the user sees the whole
+      // quote on reload.
+      const hasLineItems = !!(existingQuote.lineItems && existingQuote.lineItems.length > 0);
+      setCurrentStep(hasLineItems ? 3 : businessRecordId ? 1 : 0);
     }
   }, [existingQuote, quoteLoading, businessRecords, form]);
 
   // Create or update quote mutation
   const saveQuoteMutation = useMutation({
     mutationFn: async (data: { quote: QuoteFormData; lineItems: LineItem[] }) => {
-      const subtotalAmount = data.lineItems.reduce((sum, item) => sum + item.totalPrice, 0);
-      const discountAmt = parseFloat(data.quote.discountAmount || '0');
-      const taxAmt = parseFloat(data.quote.taxAmount || '0');
-      const totalAmount = subtotalAmount - discountAmt + taxAmt;
-
-      const quoteData = {
-        ...data.quote,
-        proposalType: 'quote',
-        status: 'draft',
-        // Keep validUntil as string - backend will convert to Date
-        lineItems: data.lineItems.map((item, index) => ({
-          lineNumber: index + 1,
-          itemType: item.productType || 'equipment', // Map productType to itemType
-          productId: item.productId,
-          productCode: item.productCode,
-          productName: item.productName,
-          description: item.description || item.productName,
-          quantity: item.quantity,
-          unitCost: item.unitCost ?? 0, // dealer/hard cost — required for margin
-          unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice,
-          margin: item.margin,
-          notes: item.notes,
-        })),
-        subtotal: subtotalAmount.toString(),
-        discountAmount: discountAmt.toString(),
-        discountPercentage: data.quote.discountPercentage || '0',
-        taxAmount: taxAmt.toString(),
-        totalAmount: totalAmount.toString(),
-      };
-
+      const quoteData = buildQuoteData(data.quote, data.lineItems);
       console.log('📤 Submitting quote:', quoteData);
 
-      if (initialQuoteId && initialQuoteId !== 'new') {
-        return await apiRequest(`/api/proposals/${initialQuoteId}`, 'PATCH', quoteData);
-      } else {
-        return await apiRequest('/api/proposals', 'POST', quoteData);
+      // Prefer an existing persisted id (route or autosave-created draft).
+      const existingId = initialQuoteId && initialQuoteId !== 'new' ? initialQuoteId : savedQuoteId;
+      if (existingId) {
+        return await apiRequest(`/api/proposals/${existingId}`, 'PATCH', quoteData);
       }
+      return await apiRequest('/api/proposals', 'POST', quoteData);
     },
     onSuccess: (data) => {
       // Force clear all related cache
@@ -571,6 +602,87 @@ export default function QuoteBuilder({
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
 
+  // ─── QUOTE-018: draft autosave ────────────────────────────────────────────
+  // Keep the latest line items in a ref so a serialized re-run saves current state.
+  const latestLineItemsRef = useRef<LineItem[]>(lineItems);
+  latestLineItemsRef.current = lineItems;
+
+  // Serialized autosave (never overlaps; last-write-wins). Drafts only.
+  const doAutosave = async () => {
+    if (!savedQuoteId || !isDraft) return;
+    if (savingRef.current) {
+      dirtyAgainRef.current = true; // a change landed mid-save — re-run after.
+      return;
+    }
+    savingRef.current = true;
+    setAutosaveState('saving');
+    try {
+      await apiRequest(
+        `/api/proposals/${savedQuoteId}`,
+        'PATCH',
+        buildQuoteData(form.getValues(), latestLineItemsRef.current),
+      );
+      setAutosaveState('saved');
+    } catch (err) {
+      setAutosaveState('error');
+      toast({
+        title: 'Autosave failed',
+        description: 'Your changes are kept locally and will retry on the next edit.',
+        variant: 'destructive',
+      });
+    } finally {
+      savingRef.current = false;
+      if (dirtyAgainRef.current) {
+        dirtyAgainRef.current = false;
+        void doAutosave();
+      }
+    }
+  };
+
+  // Create the draft on the server the moment a customer is chosen, so a refresh /
+  // back-button resumes it. Updates the URL to the edit route (no remount).
+  const ensureDraft = async (): Promise<string | undefined> => {
+    if (savedQuoteId || creatingDraftRef.current) return savedQuoteId;
+    creatingDraftRef.current = true;
+    try {
+      const created = await apiRequest(
+        '/api/proposals',
+        'POST',
+        buildQuoteData(form.getValues(), lineItems),
+      );
+      if (created?.id) {
+        hydratedRef.current = true; // local state is authoritative; don't re-hydrate
+        setSavedQuoteId(created.id);
+        setIsDraft(true);
+        setAutosaveState('saved');
+        navigate(`/quotes/${created.id}`, { replace: true });
+        return created.id;
+      }
+    } catch (err) {
+      toast({
+        title: 'Could not start draft',
+        description: 'Your work is kept locally; saving will retry as you edit.',
+        variant: 'destructive',
+      });
+    } finally {
+      creatingDraftRef.current = false;
+    }
+    return undefined;
+  };
+
+  // Debounced trigger: any change to line items / pricing / form fields schedules a
+  // save ~3s later. Gated until hydrated (load) or a draft exists (create).
+  const watchedSig = JSON.stringify(form.watch());
+  useEffect(() => {
+    if (!savedQuoteId || !isDraft || !hydratedRef.current) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => void doAutosave(), 3000);
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedQuoteId, isDraft, lineItems, discountAmount, discountPercentage, taxAmount, watchedSig]);
+
   // ─── Wizard navigation + step gating ──────────────────────────────────────
   const businessRecordId = form.watch('businessRecordId');
   const stepValid = (step: number): boolean => {
@@ -604,6 +716,9 @@ export default function QuoteBuilder({
       });
       return;
     }
+    // QUOTE-018: persist a draft as soon as the customer step is complete, so a
+    // refresh / back-button resumes the quote. Fire-and-forget; advance immediately.
+    if (currentStep === 0) void ensureDraft();
     setCurrentStep((s) => Math.min(DEFAULT_QUOTE_STEPS.length - 1, s + 1));
   };
   const handleBack = () => setCurrentStep((s) => Math.max(0, s - 1));
@@ -700,6 +815,18 @@ export default function QuoteBuilder({
             currentStep={currentStep}
             onStepClick={goToStep}
           />
+          {/* QUOTE-018: autosave status */}
+          {savedQuoteId && isDraft && (
+            <div className="mt-2 text-xs text-right text-muted-foreground" aria-live="polite">
+              {autosaveState === 'saving'
+                ? 'Saving…'
+                : autosaveState === 'saved'
+                  ? 'Draft saved'
+                  : autosaveState === 'error'
+                    ? 'Save failed — will retry'
+                    : 'Draft'}
+            </div>
+          )}
         </CardContent>
       </Card>
 

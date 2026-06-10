@@ -7139,8 +7139,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Highest-impact UX fix in the quote flow per exploration. Reuse saveQuoteMutation payload shape; watch the unitCost mapping fixed in QUOTE-002.",
+      "passes": true,
+      "notes": "Highest-impact UX fix in the quote flow per exploration. Reuse saveQuoteMutation payload shape; watch the unitCost mapping fixed in QUOTE-002. [Implemented on main 2026-06-10: completing Customer step on a new quote POSTs a draft (ensureDraft) + navigates /quotes/:id (replace, no remount); debounced 3s serialized PATCH autosave (savingRef+dirtyAgainRef, last-write-wins via latestLineItemsRef) on lineItems/discount/tax/form changes; saving/saved/error indicator near wizard header; hydrate-once guard (hydratedRef) so refetch never clobbers; reload restores from server + opens furthest valid step (Review if line items); autosave gated to drafts only (isDraft from loaded status) so sent/accepted quotes never auto-reverted; failed save → non-blocking retry toast, local state kept; shared buildQuoteData() with manual Save. check+build green.]",
       "category": "quote-module-v2"
     },
     {
