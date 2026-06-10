@@ -7328,7 +7328,7 @@
       ],
       "priority": 3,
       "passes": false,
-      "notes": "Do after PROP-004/006 settle so the editor swap does not churn. TipTap is the shadcn-ecosystem default choice.",
+      "notes": "Do after PROP-004/006 settle so the editor swap does not churn. TipTap is the shadcn-ecosystem default choice. [PARTIAL on main 2026-06-10: mock-data cleanup DONE — ProposalBuilder in-memory templates removed (now reads /api/proposals/proposal-templates via mapTemplateRow); MeetingToProposalDashboard gated to coming-soon (no fake pipeline shown). check+build green. STILL TODO (passes stays false): TipTap rewrite of RichTextEditor + merge-token TipTap node (needs npm i @tiptap/* --legacy-peer-deps + browser verify).]",
       "category": "proposal-templates"
     },
     {
