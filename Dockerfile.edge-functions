@@ -7,8 +7,15 @@
 # on the customer's machine and no dependency on PUBLIC_API_BASE_URL being set.
 FROM node:20-slim AS bundle-builder
 WORKDIR /build
+# Force a clean dev/optional install regardless of the build host's NODE_ENV or
+# npm `omit` config: esbuild is a devDependency and its platform binary
+# (@esbuild/linux-x64) is an optionalDependency. If the env omits either, the
+# bundle fails with "@esbuild/linux-x64 could not be found". --include= overrides
+# any omit so the Linux binary is always present. --ignore-scripts still skips
+# native postinstall builds (net-snmp/postject) we don't need for bundling.
+ENV NODE_ENV=development
 COPY printyx-client/package*.json ./
-RUN npm ci --ignore-scripts
+RUN npm ci --include=dev --include=optional --ignore-scripts
 COPY printyx-client/ ./
 RUN npm run bundle
 
