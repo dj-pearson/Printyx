@@ -7292,8 +7292,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Depends on PROP-005/006 for sections; branding-only improvements to the existing PDF can land even when a proposal has no template sections.",
+      "passes": true,
+      "notes": "Depends on PROP-005/006 for sections; branding-only improvements to the existing PDF can land even when a proposal has no template sections. [Implemented on main 2026-06-10: _pdf.ts branding + _html-to-pdf.ts section renderer (node-html-parser) w/ page breaks + table-header repeat; manager PDF gating+branding; email attaches branded PDF; 4 dead Export PDF buttons removed/wired. deno check clean; build green.]",
       "category": "proposal-templates"
     },
     {

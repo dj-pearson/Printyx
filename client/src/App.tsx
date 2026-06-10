@@ -191,6 +191,7 @@ const QuoteProposalGeneration = React.lazy(() => import('@/pages/QuoteProposalGe
 const BrandingSettings = React.lazy(() => import('@/pages/BrandingSettings'));
 const ProposalTemplates = React.lazy(() => import('@/pages/ProposalTemplates'));
 const ProposalTemplateEditor = React.lazy(() => import('@/pages/ProposalTemplateEditor'));
+const ProposalPublicView = React.lazy(() => import('@/pages/ProposalPublicView'));
 const QuoteBuilderPage = React.lazy(() => import('@/pages/QuoteBuilderPage'));
 const QuotesManagement = React.lazy(() => import('@/pages/QuotesManagement'));
 const CompanyIdsTest = React.lazy(() => import('@/pages/CompanyIdsTest'));
@@ -427,6 +428,21 @@ function Router() {
       }
     }
   }, [isAuthenticated]);
+
+  // PROP-008: public proposal view (/p/:token) — no auth, no app shell. Marketing
+  // landing pages also live under /p/<slug>, but share tokens are long random
+  // strings, so they never collide with those short kebab slugs.
+  if (pathname.startsWith('/p/')) {
+    const seg = pathname.slice(3).split('/')[0];
+    const marketingSlugs = new Set(['copier-dealer-crm', 'print-service-dispatch-mobile']);
+    if (seg.length >= 20 && !marketingSlugs.has(seg)) {
+      return (
+        <React.Suspense fallback={null}>
+          <ProposalPublicView />
+        </React.Suspense>
+      );
+    }
+  }
 
   if (isLoading) {
     return (

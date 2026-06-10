@@ -27,6 +27,11 @@
  *     POST   /proposals/:id/track-view            — analytics
  *     POST   /proposals/:id/generate-from-template — PROP-006: merge a template + this
  *                                                    proposal + branding → proposal_sections
+ *     POST   /proposals/:id/share                 — PROP-008: create/rotate public share token
+ *
+ *   Public (NO auth — share_token only) — PROP-008:
+ *     GET    /proposals/public/:token             — customer-safe view + tracking
+ *     POST   /proposals/public/:token/respond     — accept / decline
  *
  *   Line items (3):
  *     POST   /proposals/:proposalId/line-items
@@ -382,6 +387,47 @@ async function loadProposalSections(db: SB, tenantId: string, proposalId: string
   }));
 }
 
+// ─── Public share link (PROP-008) ───────────────────────────────────────────
+
+// 32 random bytes → url-safe base64 (no padding). ~43 chars.
+function generateShareToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let bin = '';
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// Customer-safe projection of a proposal: never expose cost, margin, or internal notes.
+function publicProposalShape(p: Record<string, any>) {
+  return {
+    id: p.id,
+    proposal_number: p.proposal_number,
+    title: p.title,
+    status: p.status,
+    valid_until: p.valid_until,
+    subtotal: p.subtotal,
+    discount_amount: p.discount_amount,
+    tax_amount: p.tax_amount,
+    total_amount: p.total_amount,
+    accepted_at: p.accepted_at,
+    rejected_at: p.rejected_at,
+    created_at: p.created_at,
+  };
+}
+
+function readCookie(req: Request, name: string): string | null {
+  const cookie = req.headers.get('cookie') ?? '';
+  const m = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function isShareExpired(p: { share_expires_at?: string | null }): boolean {
+  if (!p.share_expires_at) return false;
+  const t = new Date(p.share_expires_at).getTime();
+  return Number.isFinite(t) && t < Date.now();
+}
+
 // ─── Pricing policy (QUOTE-006) ─────────────────────────────────────────────
 // Sales-only roles cannot send a quote whose margin is below the tenant minimum
 // (pricing_settings.require_approval_below_margin) — that needs manager approval.
@@ -682,6 +728,138 @@ export default async function handler(req: Request) {
   const path = stripPrefix(url.pathname);
 
   log.info({ requestId, method, path }, 'request_received');
+
+  // ─── PUBLIC share routes (PROP-008) — NO auth; gated by share_token only ─────
+  // Never expose cost/margin/internal notes here.
+  const publicGet = path.match(/^\/public\/([^/]+)$/);
+  const publicRespond = path.match(/^\/public\/([^/]+)\/respond$/);
+  if ((publicGet && method === 'GET') || (publicRespond && method === 'POST')) {
+    try {
+      const db = getDb();
+      const token = (publicGet ? publicGet[1] : publicRespond![1]) || '';
+      if (token.length < 20) {
+        return errorResponse(404, 'Not found', req, { code: 'NOT_FOUND', requestId });
+      }
+
+      const { data: proposal } = await db
+        .from('proposals')
+        .select('*')
+        .eq('share_token', token)
+        .maybeSingle();
+
+      if (!proposal || isShareExpired(proposal)) {
+        return errorResponse(404, 'Not found', req, { code: 'NOT_FOUND', requestId });
+      }
+      const tenantId = proposal.tenant_id;
+
+      // POST /public/:token/respond — accept or decline.
+      if (publicRespond) {
+        const body = (await req.json().catch(() => ({}))) as { action?: string; name?: string };
+        const action = body.action;
+        if (action !== 'accept' && action !== 'decline') {
+          return errorResponse(400, 'action must be accept or decline', req, {
+            code: 'VALIDATION_ERROR',
+            requestId,
+          });
+        }
+        const now = new Date().toISOString();
+        const signer = (body.name ?? '').toString().slice(0, 200);
+        if (action === 'accept') {
+          await db
+            .from('proposals')
+            .update({
+              status: 'accepted',
+              accepted_at: now,
+              customer_feedback: signer ? `Accepted by ${signer}` : 'Accepted online',
+              updated_at: now,
+            })
+            .eq('id', proposal.id)
+            .eq('tenant_id', tenantId);
+          try {
+            await upsertDealForProposal(db, proposal, proposal.created_by ?? 'public', tenantId, {
+              forceWon: true,
+            });
+            await createContractFromProposal(db, proposal, tenantId);
+          } catch (syncErr) {
+            log.warn({ requestId, err: String(syncErr) }, 'public_accept_sync_failed');
+          }
+        } else {
+          await db
+            .from('proposals')
+            .update({
+              status: 'rejected',
+              rejected_at: now,
+              customer_feedback: signer ? `Declined by ${signer}` : 'Declined online',
+              updated_at: now,
+            })
+            .eq('id', proposal.id)
+            .eq('tenant_id', tenantId);
+        }
+        await db.from('proposal_analytics').insert({
+          tenant_id: tenantId,
+          proposal_id: proposal.id,
+          event_type: action === 'accept' ? 'accepted' : 'rejected',
+          event_details: { name: signer, via: 'public_link' },
+          visitor_id: readCookie(req, 'pxv') ?? null,
+        });
+        return jsonResponse(
+          { success: true, status: action === 'accept' ? 'accepted' : 'rejected' },
+          200,
+          req,
+          requestId,
+        );
+      }
+
+      // GET /public/:token — view + track.
+      const newViewerId = readCookie(req, 'pxv') ?? crypto.randomUUID();
+      const isFirstView = !proposal.viewed_at;
+      const nowIso = new Date().toISOString();
+      await db
+        .from('proposals')
+        .update({
+          open_count: (proposal.open_count ?? 0) + 1,
+          last_opened_at: nowIso,
+          ...(isFirstView ? { viewed_at: nowIso } : {}),
+          ...(proposal.status === 'draft' || proposal.status === 'sent'
+            ? { status: 'viewed' }
+            : {}),
+        })
+        .eq('id', proposal.id)
+        .eq('tenant_id', tenantId);
+      await db.from('proposal_analytics').insert({
+        tenant_id: tenantId,
+        proposal_id: proposal.id,
+        event_type: 'opened',
+        event_details: { via: 'public_link' },
+        visitor_id: newViewerId,
+      });
+
+      const branding = await loadBrandingForPdf(db, tenantId);
+      const sections = await loadProposalSections(db, tenantId, proposal.id);
+      const customer = await fetchCustomer(db, tenantId, proposal.business_record_id);
+
+      const resp = jsonResponse(
+        {
+          proposal: publicProposalShape(proposal),
+          sections,
+          branding,
+          customerName: customer?.company_name ?? null,
+        },
+        200,
+        req,
+        requestId,
+      );
+      // Persist an anonymous visitor id for repeat-view de-duplication.
+      resp.headers.append(
+        'Set-Cookie',
+        `pxv=${newViewerId}; Path=/; Max-Age=31536000; SameSite=Lax`,
+      );
+      return resp;
+    } catch (err) {
+      log.error({ requestId, err: String(err) }, 'public_share_error');
+      return errorResponse(500, 'Internal error', req, { code: 'INTERNAL', requestId });
+    }
+  }
 
   try {
     const ctx = await requireAuth(req);
@@ -1771,6 +1949,55 @@ export default async function handler(req: Request) {
           templateId: body.templateId,
           sections: outSections,
           warnings: rendered.warnings,
+        },
+        200,
+        req,
+        requestId,
+      );
+    }
+
+    // POST /proposals/:id/share (PROP-008) — create/rotate the public share token.
+    if (subMatch && method === 'POST' && subMatch[2] === 'share') {
+      const id = subMatch[1];
+      const { data: proposal } = await db
+        .from('proposals')
+        .select('id, valid_until')
+        .eq('id', id)
+        .eq('tenant_id', ctx.tenantId)
+        .maybeSingle();
+      if (!proposal) {
+        return errorResponse(404, 'Proposal not found', req, { code: 'NOT_FOUND', requestId });
+      }
+
+      const shareToken = generateShareToken();
+      // Expiry defaults to valid_until; otherwise 30 days out.
+      const expires = proposal.valid_until ?? new Date(Date.now() + 30 * 864e5).toISOString();
+
+      const { error } = await db
+        .from('proposals')
+        .update({
+          share_token: shareToken,
+          share_expires_at: expires,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .eq('tenant_id', ctx.tenantId);
+      if (error) {
+        return errorResponse(500, 'Failed to create share link', req, {
+          code: 'DB_ERROR',
+          details: error,
+          requestId,
+        });
+      }
+
+      const base = Deno.env.get('PUBLIC_APP_URL') || Deno.env.get('APP_BASE_URL') || '';
+      const sharePath = `/p/${shareToken}`;
+      return jsonResponse(
+        {
+          shareToken,
+          sharePath,
+          shareUrl: base ? `${base.replace(/\/$/, '')}${sharePath}` : null,
+          expiresAt: expires,
         },
         200,
         req,

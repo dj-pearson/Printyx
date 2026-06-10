@@ -1268,7 +1268,7 @@ export default function ProposalBuilder() {
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
-                  onClick={() => selectedQuote && downloadQuotePdf(selectedQuote)}
+                  onClick={() => selectedQuote && downloadQuotePdf(selectedQuote, undefined)}
                   disabled={!selectedQuote}
                   className="touch-manipulation active:scale-[0.98] min-h-[44px]"
                 >

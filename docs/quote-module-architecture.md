@@ -148,6 +148,22 @@ The proposal-presentation layer is being made first-class and reusable.
 - UI: `client/src/pages/BrandingSettings.tsx` (route `/proposals/branding`, sidebar "Proposal
   Branding") drives `BrandManager`; mapping in `client/src/lib/branding/profile-mapping.ts`.
 
-> **Deploy note:** migrations 0014, 0015, 0016 are hand-written files NOT in the drizzle
+### Public share link (PROP-008)
+
+- `POST /proposals/:id/share` (authed) generates/rotates a 32-byte url-safe `share_token`
+  (migration 0017) with `share_expires_at` defaulting to `valid_until` (else +30d); returns
+  `{ shareToken, sharePath: '/p/<token>', shareUrl }`.
+- **Public, no-auth** routes resolved by token only (constant-ish lookup; expired/revoked → 404),
+  handled BEFORE `requireAuth` in the proposals function:
+  - `GET /proposals/public/:token` → customer-safe proposal (no cost/margin/internal notes) +
+    rendered `proposal_sections` + branding; increments `open_count`, sets `viewed_at` + status
+    draft/sent→viewed on first view, logs an `opened` analytics event, sets a `pxv` visitor cookie.
+  - `POST /proposals/public/:token/respond` → `accept`/`decline` with a typed name; accept sets
+    status=accepted and runs the existing deal (forceWon) + contract sync; decline sets rejected.
+- Frontend: `client/src/pages/ProposalPublicView.tsx` at `/p/:token` renders OUTSIDE the app shell
+  (early return in `App.tsx` Router before the auth branches; long random tokens never collide
+  with the `/p/<slug>` marketing pages). "Copy Share Link" lives in the QuotesManagement row menu.
+
+> **Deploy note:** migrations 0014, 0015, 0016, 0017 are hand-written files NOT in the drizzle
 > journal (same convention as 0010–0013) — apply them manually at deploy. Until applied,
 > `template_content` / branding `settings` writes will error against the live DB.

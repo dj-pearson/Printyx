@@ -65,6 +65,7 @@ import {
   TrendingUp,
   Wand2,
   Download,
+  Share2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
@@ -163,6 +164,26 @@ export default function QuotesManagement() {
       toast({
         title: 'Download failed',
         description: err?.message || 'Could not download the PDF.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleShareLink = async (quote: { id: string }) => {
+    try {
+      const r = await apiRequest(`/api/proposals/${quote.id}/share`, { method: 'POST' });
+      const url = r?.shareUrl || `${window.location.origin}${r?.sharePath ?? ''}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        toast({ title: 'Share link copied', description: url });
+      } catch {
+        // Clipboard may be blocked; still surface the URL.
+        toast({ title: 'Share link created', description: url });
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Could not create share link',
+        description: err?.message,
         variant: 'destructive',
       });
     }
@@ -804,6 +825,10 @@ export default function QuotesManagement() {
                       <DropdownMenuItem onClick={() => setGenerateForQuote(quote.id)}>
                         <FileText className="h-4 w-4 mr-2" />
                         Generate Proposal
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleShareLink(quote)}>
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Copy Share Link
                       </DropdownMenuItem>
                       {canViewManagerQuote && (
                         <DropdownMenuItem onClick={() => handleManagerQuotePdf(quote)}>

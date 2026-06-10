@@ -209,6 +209,10 @@ export const proposals = pgTable('proposals', {
   acceptedAt: timestamp('accepted_at'),
   rejectedAt: timestamp('rejected_at'),
 
+  // Public share link (PROP-008)
+  shareToken: varchar('share_token'),
+  shareExpiresAt: timestamp('share_expires_at'),
+
   // E-Signature Integration
   eSignatureRequired: boolean('e_signature_required').default(false),
   eSignatureProvider: varchar('e_signature_provider'), // docusign, adobe_sign, etc.
