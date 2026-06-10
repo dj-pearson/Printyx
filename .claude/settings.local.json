@@ -123,7 +123,10 @@
       "Bash(Select-Object FullName)",
       "Bash(ConvertTo-Json)",
       "mcp__ide__getDiagnostics",
-      "PowerShell(\\(Get-Content prd.json -Raw\\).Length; Get-ChildItem server | Where-Object Name -match 'quote|proposal' | Select-Object -ExpandProperty Name; Get-ChildItem client\\\\src\\\\components -Recurse -Depth 1 -Directory | Where-Object Name -match 'quote|proposal' | Select-Object -ExpandProperty FullName)"
+      "PowerShell(\\(Get-Content prd.json -Raw\\).Length; Get-ChildItem server | Where-Object Name -match 'quote|proposal' | Select-Object -ExpandProperty Name; Get-ChildItem client\\\\src\\\\components -Recurse -Depth 1 -Directory | Where-Object Name -match 'quote|proposal' | Select-Object -ExpandProperty FullName)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npx vitest run server/tests/unit/proposal-merge.test.ts)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npm run check)",
+      "Bash([ -s \"$f\" ])"
     ],
     "deny": [],
     "ask": []
