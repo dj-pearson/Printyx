@@ -5839,14 +5839,17 @@ export const proposalLineItems = pgTable('proposal_line_items', {
   lineNumber: integer('line_number').notNull(),
   itemType: varchar('item_type').notNull(), // equipment, accessory, service, software, supply
   productId: varchar('product_id'), // Reference to product table
+  productCode: varchar('product_code'), // Vendor/catalog SKU sent by the quote builder
   productName: varchar('product_name').notNull(),
   description: text('description'),
+  notes: text('notes'), // Per-line internal note from the quote builder
 
   // Pricing Details
   quantity: integer('quantity').default(1),
   unitPrice: decimal('unit_price').notNull(),
   unitCost: decimal('unit_cost'), // Internal cost
   totalPrice: decimal('total_price').notNull(),
+  margin: decimal('margin'), // Line margin %, server-computed from cost vs price
 
   // Service-specific fields
   serviceFrequency: varchar('service_frequency'), // monthly, quarterly, annually
