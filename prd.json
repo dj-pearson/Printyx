@@ -7015,8 +7015,8 @@
         "npm run check passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Backend-only story; QUOTE-012 consumes it. Endpoint inventory + current search/pagination matrix: routes-product-models.ts:61, routes-software-products.ts:17, routes-products-crud.ts:567/808. Reuse the response envelope from the software-products pagination work (commit ab73cb94).",
+      "passes": true,
+      "notes": "Backend-only story; QUOTE-012 consumes it. Endpoint inventory + current search/pagination matrix: routes-product-models.ts:61, routes-software-products.ts:17, routes-products-crud.ts:567/808. Reuse the response envelope from the software-products pagination work (commit ab73cb94). [Implemented on main 2026-06-10 in the EDGE functions (not Express — prod/dev hit edge via vite proxy). Opt-in ?page=&limit= (default 50, cap 200) + ?search= ILIKE, returning {data,pagination:{page,limit,total}}; legacy shape kept when ?page= absent (backward compat). product-models (search+filters+pagination), product-accessories (envelope+cap+sanitized search), service-products, supplies, professional-services (in-memory for ad-hoc table). software-products already had it. managed-services has NO products table (contracts-only) — excluded + noted. All 5 deno-check clean; npm check unaffected (edge fns not in tsconfig).]",
       "category": "quote-module-v2"
     },
     {

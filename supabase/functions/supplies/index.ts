@@ -11,7 +11,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -49,16 +49,36 @@ export default async function handler(req: Request) {
       const lowStock = url.searchParams.get('lowStock');
       const search = url.searchParams.get('search');
 
+      // QUOTE-011: opt-in server-side pagination (when ?page= present). lowStock is
+      // an in-memory post-filter, so we skip server pagination when it's requested.
+      const pageParam = url.searchParams.get('page');
+      const paginate = pageParam !== null && lowStock !== 'true';
+
       let query = admin
         .from('supplies')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (category) query = query.eq('category', category);
-      if (search) query = query.or(`sku.ilike.%${search}%,note.ilike.%${search}%`);
+      if (search) {
+        const safe = search.replace(/[,()]/g, ' ').trim();
+        if (safe) query = query.or(`sku.ilike.%${safe}%,note.ilike.%${safe}%`);
+      }
 
-      const { data: supplies, error } = await query;
+      let page = 1;
+      let limit = 50;
+      if (paginate) {
+        page = Math.max(1, parseInt(pageParam || '1', 10) || 1);
+        limit = Math.min(
+          Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10) || 50),
+          200,
+        );
+        const from = (page - 1) * limit;
+        query = query.range(from, from + limit - 1);
+      }
+
+      const { data: supplies, error, count } = await query;
 
       if (error) {
         console.error('Error fetching supplies:', error);
@@ -67,11 +87,18 @@ export default async function handler(req: Request) {
 
       let result = supplies || [];
 
-      // Filter low stock if requested
+      // Filter low stock if requested (legacy, non-paginated path)
       if (lowStock === 'true') {
         result = result.filter((s: any) => s.quantity <= (s.reorder_level || 10));
       }
 
+      if (paginate) {
+        return createCorsResponse(
+          { data: result, pagination: { page, limit, total: count ?? 0 } },
+          200,
+          req,
+        );
+      }
       return createCorsResponse(result, 200, req);
     }
 

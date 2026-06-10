@@ -29,7 +29,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -63,7 +63,7 @@ export default async function handler(req: Request) {
     }
 
     // GET /service-products
-    if (req.method === 'GET' && !first) return await listProducts(admin, tenantId, req);
+    if (req.method === 'GET' && !first) return await listProducts(admin, tenantId, req, url);
 
     // POST /service-products
     if (req.method === 'POST' && !first) return await createProduct(admin, tenantId, req);
@@ -90,16 +90,54 @@ export default async function handler(req: Request) {
 
 // ─── handlers ───────────────────────────────────────────────────────────────
 
-async function listProducts(admin: Admin, tenantId: string, req: Request): Promise<Response> {
-  const { data, error } = await admin
+async function listProducts(
+  admin: Admin,
+  tenantId: string,
+  req: Request,
+  url: URL,
+): Promise<Response> {
+  // QUOTE-011: opt-in server-side search + pagination (when ?page= is present).
+  const params = url.searchParams;
+  const search = (params.get('search') || '').trim();
+  const category = params.get('category');
+  const pageParam = params.get('page');
+  const paginate = pageParam !== null;
+
+  let query = admin
     .from('service_products')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('tenant_id', tenantId)
     .order('product_name', { ascending: true });
 
+  if (search) {
+    const safe = search.replace(/[,()]/g, ' ').trim();
+    if (safe)
+      query = query.or(
+        `product_name.ilike.%${safe}%,product_code.ilike.%${safe}%,description.ilike.%${safe}%`,
+      );
+  }
+  if (category && category !== 'all') query = query.eq('category', category);
+
+  let page = 1;
+  let limit = 50;
+  if (paginate) {
+    page = Math.max(1, parseInt(pageParam || '1', 10) || 1);
+    limit = Math.min(Math.max(1, parseInt(params.get('limit') || '50', 10) || 50), 200);
+    const from = (page - 1) * limit;
+    query = query.range(from, from + limit - 1);
+  }
+
+  const { data, error, count } = await query;
   if (error) {
     console.error('Error fetching service products:', error);
     return createCorsResponse({ error: 'Failed to fetch service products' }, 500, req);
+  }
+  if (paginate) {
+    return createCorsResponse(
+      { data: data ?? [], pagination: { page, limit, total: count ?? 0 } },
+      200,
+      req,
+    );
   }
   return createCorsResponse(data ?? [], 200, req);
 }

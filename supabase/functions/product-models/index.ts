@@ -11,7 +11,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -43,20 +43,60 @@ export default async function handler(req: Request) {
     const pathParts = url.pathname.split('/').filter(Boolean);
     const modelId = pathParts[1]; // Get ID from path if present
 
-    // GET /product-models - List all product models
+    // GET /product-models - List product models.
+    // QUOTE-011: opt-in server-side search + pagination (when ?page= is present).
+    // Filters: ?search= (product_name/product_code), ?category=, ?manufacturer=, ?status=.
     if (req.method === 'GET' && !modelId) {
-      const { data: models, error } = await admin
+      const params = url.searchParams;
+      const search = (params.get('search') || '').trim();
+      const category = params.get('category');
+      const manufacturer = params.get('manufacturer');
+      const status = params.get('status');
+      const pageParam = params.get('page');
+      const paginate = pageParam !== null;
+
+      let query = admin
         .from('product_models')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('tenant_id', tenantId)
         .order('product_name', { ascending: true });
 
+      if (search) {
+        const safe = search.replace(/[,()]/g, ' ').trim();
+        if (safe) query = query.or(`product_name.ilike.%${safe}%,product_code.ilike.%${safe}%`);
+      }
+      if (category && category !== 'all') query = query.eq('category', category);
+      if (manufacturer && manufacturer !== 'all') query = query.eq('manufacturer', manufacturer);
+      if (status && status !== 'all') query = query.eq('status', status);
+
+      let page = 1;
+      let limit = 50;
+      if (paginate) {
+        page = Math.max(1, parseInt(pageParam || '1', 10) || 1);
+        limit = Math.min(Math.max(1, parseInt(params.get('limit') || '50', 10) || 50), 200);
+        const from = (page - 1) * limit;
+        query = query.range(from, from + limit - 1);
+      }
+
+      const { data: models, error, count } = await query;
       if (error) {
         console.error('Error fetching product models:', error);
         return createCorsResponse({ error: error.message }, 500, req);
       }
 
-      return createCorsResponse({ data: models || [], total: models?.length || 0 }, 200, req);
+      if (paginate) {
+        return createCorsResponse(
+          { data: models || [], pagination: { page, limit, total: count ?? 0 } },
+          200,
+          req,
+        );
+      }
+      // Legacy shape (unchanged) when no pagination requested.
+      return createCorsResponse(
+        { data: models || [], total: count ?? models?.length ?? 0 },
+        200,
+        req,
+      );
     }
 
     // GET /product-models/:id - Get single product model

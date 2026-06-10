@@ -11,7 +11,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -88,8 +88,12 @@ export default async function handler(req: Request) {
       const manufacturer = url.searchParams.get('manufacturer');
       const search = url.searchParams.get('search');
       const isActive = url.searchParams.get('isActive') || url.searchParams.get('is_active');
-      const page = parseInt(url.searchParams.get('page') || '1');
-      const limit = parseInt(url.searchParams.get('limit') || '100');
+      const page = Math.max(1, parseInt(url.searchParams.get('page') || '1') || 1);
+      // QUOTE-011: cap limit (was uncapped) to protect the function.
+      const limit = Math.min(
+        Math.max(1, parseInt(url.searchParams.get('limit') || '100') || 100),
+        200,
+      );
       const offset = (page - 1) * limit;
 
       let query = admin
@@ -117,9 +121,12 @@ export default async function handler(req: Request) {
       }
 
       if (search) {
-        query = query.or(
-          `accessory_code.ilike.%${search}%,accessory_name.ilike.%${search}%,description.ilike.%${search}%,manufacturer.ilike.%${search}%`,
-        );
+        const safe = search.replace(/[,()]/g, ' ').trim();
+        if (safe) {
+          query = query.or(
+            `accessory_code.ilike.%${safe}%,accessory_name.ilike.%${safe}%,description.ilike.%${safe}%,manufacturer.ilike.%${safe}%`,
+          );
+        }
       }
 
       const { data: accessories, error, count } = await query;
@@ -154,6 +161,8 @@ export default async function handler(req: Request) {
           total: count || 0,
           page,
           limit,
+          // QUOTE-011: standard envelope alongside the legacy flat fields.
+          pagination: { page, limit, total: count || 0 },
         },
         200,
         req,

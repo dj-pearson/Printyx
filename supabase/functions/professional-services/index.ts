@@ -9,7 +9,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -43,6 +43,12 @@ export default async function handler(req: Request) {
     if (req.method === 'GET' && !projectId) {
       const status = url.searchParams.get('status');
       const customerId = url.searchParams.get('customerId');
+      const search = (url.searchParams.get('search') || '').trim().toLowerCase();
+      // QUOTE-011: opt-in pagination. professional_services_projects is an ad-hoc
+      // table with no fixed schema, so search + pagination are applied in-memory
+      // (volume is low) rather than via a risky PostgREST .or() on unknown columns.
+      const pageParam = url.searchParams.get('page');
+      const paginate = pageParam !== null;
 
       // Check if table exists by attempting query
       const { data: projects, error } = await admin
@@ -54,12 +60,34 @@ export default async function handler(req: Request) {
       if (error) {
         // Table may not exist yet - return empty array gracefully
         console.error('Error fetching professional services:', error);
-        return createCorsResponse([], 200, req);
+        return paginate
+          ? createCorsResponse({ data: [], pagination: { page: 1, limit: 50, total: 0 } }, 200, req)
+          : createCorsResponse([], 200, req);
       }
 
       let result = projects || [];
       if (status) result = result.filter((p: any) => p.status === status);
       if (customerId) result = result.filter((p: any) => p.customer_id === customerId);
+      if (search) {
+        result = result.filter((p: any) =>
+          Object.values(p).some((v) => typeof v === 'string' && v.toLowerCase().includes(search)),
+        );
+      }
+
+      if (paginate) {
+        const page = Math.max(1, parseInt(pageParam || '1', 10) || 1);
+        const limit = Math.min(
+          Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10) || 50),
+          200,
+        );
+        const total = result.length;
+        const from = (page - 1) * limit;
+        return createCorsResponse(
+          { data: result.slice(from, from + limit), pagination: { page, limit, total } },
+          200,
+          req,
+        );
+      }
 
       return createCorsResponse(result, 200, req);
     }
