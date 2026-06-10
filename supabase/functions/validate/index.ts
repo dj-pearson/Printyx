@@ -94,9 +94,11 @@ async function validateQuoteToProposal(
 ) {
   const errors: ValidationError[] = [];
 
+  // In this data model the "quote" is a row in the `proposals` table
+  // (proposal_type = 'quote'), not the legacy `quotes` table.
   const { data: quote } = await admin
-    .from('quotes')
-    .select('id, title, business_record_id, status, total_amount, description, valid_until')
+    .from('proposals')
+    .select('id, title, business_record_id, status, total_amount, description')
     .eq('id', quoteId)
     .eq('tenant_id', tenantId)
     .maybeSingle();

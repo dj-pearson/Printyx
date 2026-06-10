@@ -870,14 +870,8 @@ export default function ProposalVisualBuilder({
                 <Eye className="h-4 w-4 mr-2" />
                 {previewMode ? 'Edit' : 'Preview'}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 sm:flex-initial touch-manipulation active:scale-[0.98] min-h-[44px]"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export PDF
-              </Button>
+              {/* PROP-007: no "Export PDF" here — a template has merge tokens, not a
+                  concrete proposal. PDF export lives on a generated proposal. */}
               <Button
                 size="sm"
                 onClick={() => onSave?.(template)}

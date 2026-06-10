@@ -14,7 +14,16 @@
 //     for tabular documents; if per-tenant branded templates become a thing,
 //     revisit Browserless per leases PRD §4.
 
-import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1';
+import {
+  PDFDocument,
+  PDFFont,
+  PDFImage,
+  PDFPage,
+  RGB,
+  StandardFonts,
+  rgb,
+} from 'https://esm.sh/pdf-lib@1.17.1';
+import { renderSectionsToPdf, type FlowCtx } from './_html-to-pdf.ts';
 
 const PAGE_WIDTH = 595.28; // A4
 const PAGE_HEIGHT = 841.89;
@@ -62,12 +71,33 @@ interface Contact {
   last_name?: string | null;
 }
 
+// PROP-007: dealer branding applied to the document.
+export interface PdfBranding {
+  companyName?: string | null;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  accentColor?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+}
+
+export interface PdfSection {
+  section_title?: string | null;
+  html_content?: string | null;
+}
+
 export interface RenderPDFInput {
   proposal: Proposal;
   lineItems: LineItem[];
   company: Company | null;
   contact: Contact | null;
   isManager: boolean;
+  // PROP-007: when present (customer PDF), sections are rendered via the merge
+  // output instead of the structured line-item layout. Manager PDF always uses
+  // the structured cost/margin table. branding applies to both.
+  branding?: PdfBranding | null;
+  sections?: PdfSection[] | null;
 }
 
 export async function renderProposalPDF(input: RenderPDFInput): Promise<Uint8Array> {
@@ -75,44 +105,101 @@ export async function renderProposalPDF(input: RenderPDFInput): Promise<Uint8Arr
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
+  // PROP-007: brand color + logo.
+  const brandColor = parseHexColor(input.branding?.primaryColor) ?? HEADER_BG;
+  const accentColor = parseHexColor(input.branding?.accentColor) ?? brandColor;
+  const logo = await maybeEmbedLogo(pdf, input.branding?.logoUrl);
+
+  const headerHeight = 70;
+  const title = input.proposal.title || 'Quote';
+  const subtitle = `Quote #${input.proposal.proposal_number}${input.isManager ? '  —  MANAGER EXPORT' : ''}`;
+
+  // Full branded header band — page 1.
+  const drawHeaderBand = (p: PDFPage) => {
+    p.drawRectangle({
+      x: 0,
+      y: PAGE_HEIGHT - headerHeight,
+      width: PAGE_WIDTH,
+      height: headerHeight,
+      color: brandColor,
+    });
+    // Logo top-right when available; title text on the left either way.
+    if (logo) {
+      const scale = Math.min(150 / logo.width, 40 / logo.height, 1);
+      const lw = logo.width * scale;
+      const lh = logo.height * scale;
+      p.drawImage(logo, {
+        x: PAGE_WIDTH - MARGIN_X - lw,
+        y: PAGE_HEIGHT - headerHeight + (headerHeight - lh) / 2,
+        width: lw,
+        height: lh,
+      });
+    }
+    p.drawText(title, {
+      x: MARGIN_X,
+      y: PAGE_HEIGHT - 32,
+      size: 20,
+      font: bold,
+      color: HEADER_TEXT,
+    });
+    p.drawText(subtitle, { x: MARGIN_X, y: PAGE_HEIGHT - 50, size: 10, font, color: HEADER_TEXT });
+    p.drawText(`Generated ${new Date().toLocaleDateString()}`, {
+      x: MARGIN_X,
+      y: PAGE_HEIGHT - 63,
+      size: 9,
+      font,
+      color: HEADER_TEXT,
+    });
+  };
+
+  // Thin brand bar for continuation pages.
+  const drawContinuationBar = (p: PDFPage) => {
+    p.drawRectangle({
+      x: 0,
+      y: PAGE_HEIGHT - 6,
+      width: PAGE_WIDTH,
+      height: 6,
+      color: brandColor,
+    });
+  };
+
   let page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   let y = PAGE_HEIGHT;
-
-  // ─── Header band ────────────────────────────────────────────────────────────
-  const headerHeight = 70;
-  page.drawRectangle({
-    x: 0,
-    y: PAGE_HEIGHT - headerHeight,
-    width: PAGE_WIDTH,
-    height: headerHeight,
-    color: HEADER_BG,
-  });
-
-  const title = input.proposal.title || 'Quote';
-  page.drawText(title, {
-    x: MARGIN_X,
-    y: PAGE_HEIGHT - 32,
-    size: 20,
-    font: bold,
-    color: HEADER_TEXT,
-  });
-  const subtitle = `Quote #${input.proposal.proposal_number}${input.isManager ? '  —  MANAGER EXPORT' : ''}`;
-  page.drawText(subtitle, {
-    x: MARGIN_X,
-    y: PAGE_HEIGHT - 50,
-    size: 10,
-    font,
-    color: HEADER_TEXT,
-  });
-  page.drawText(`Generated ${new Date().toLocaleDateString()}`, {
-    x: MARGIN_X,
-    y: PAGE_HEIGHT - 63,
-    size: 9,
-    font,
-    color: HEADER_TEXT,
-  });
-
+  drawHeaderBand(page);
   y = PAGE_HEIGHT - headerHeight - 24;
+
+  // ─── PROP-007: render generated sections (customer PDF) when present ─────────
+  const useSections =
+    !input.isManager && Array.isArray(input.sections) && input.sections.length > 0;
+  if (useSections) {
+    const ctx: FlowCtx = {
+      pdf,
+      page,
+      y,
+      pageWidth: PAGE_WIDTH,
+      pageHeight: PAGE_HEIGHT,
+      marginX: MARGIN_X,
+      marginTop: PAGE_HEIGHT - MARGIN_Y - 16,
+      marginBottom: MARGIN_Y + 40,
+      theme: {
+        font,
+        bold,
+        bodyColor: BODY_TEXT,
+        accentColor,
+        lineColor: LINE_GRAY,
+        tableHeaderBg: TABLE_HEADER_BG,
+      },
+      onNewPage: drawContinuationBar,
+    };
+    await renderSectionsToPdf(
+      ctx,
+      input.sections!.map((s) => ({ title: s.section_title ?? '', html: s.html_content ?? '' })),
+    );
+    drawFooterOnAllPages(pdf, font, input.branding ?? null);
+    return await pdf.save();
+  }
+
+  // ─── Structured layout (manager PDF, or customer PDF with no sections) ───────
 
   // ─── Two-column info (Quote Info | Customer Info) ───────────────────────────
   const colW = (PAGE_WIDTH - MARGIN_X * 2) / 2;
@@ -311,7 +398,70 @@ export async function renderProposalPDF(input: RenderPDFInput): Promise<Uint8Arr
     });
   }
 
+  drawFooterOnAllPages(pdf, font, input.branding ?? null);
   return await pdf.save();
+}
+
+// ─── PROP-007 branding helpers ──────────────────────────────────────────────────
+
+function parseHexColor(hex: string | null | undefined): RGB | null {
+  if (!hex) return null;
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!m) return null;
+  const int = parseInt(m[1], 16);
+  return rgb(((int >> 16) & 255) / 255, ((int >> 8) & 255) / 255, (int & 255) / 255);
+}
+
+async function maybeEmbedLogo(
+  pdf: PDFDocument,
+  url: string | null | undefined,
+): Promise<PDFImage | null> {
+  if (!url) return null;
+  try {
+    if (/^data:image\/svg|\.svg(\?|$)/i.test(url)) return null; // pdf-lib can't embed SVG
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const ct = res.headers.get('content-type') ?? '';
+    if (ct.includes('png') || /\.png(\?|$)/i.test(url)) return await pdf.embedPng(bytes);
+    if (ct.includes('jpeg') || ct.includes('jpg') || /\.jpe?g(\?|$)/i.test(url))
+      return await pdf.embedJpg(bytes);
+    return null;
+  } catch {
+    return null; // branding is best-effort
+  }
+}
+
+function drawFooterOnAllPages(pdf: PDFDocument, font: PDFFont, branding: PdfBranding | null) {
+  const parts = [
+    branding?.companyName,
+    branding?.phone,
+    branding?.email,
+    branding?.address?.replace(/\s+/g, ' ').trim(),
+  ].filter(Boolean) as string[];
+  const footer = parts.join('  •  ');
+  const pages = pdf.getPages();
+  pages.forEach((p, i) => {
+    if (footer) {
+      const w = font.widthOfTextAtSize(footer, 7.5);
+      p.drawText(footer.slice(0, 200), {
+        x: Math.max(MARGIN_X, (PAGE_WIDTH - w) / 2),
+        y: 18,
+        size: 7.5,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+    }
+    const pageLabel = `Page ${i + 1} of ${pages.length}`;
+    const plw = font.widthOfTextAtSize(pageLabel, 7.5);
+    p.drawText(pageLabel, {
+      x: PAGE_WIDTH - MARGIN_X - plw,
+      y: 8,
+      size: 7.5,
+      font,
+      color: rgb(0.6, 0.6, 0.6),
+    });
+  });
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

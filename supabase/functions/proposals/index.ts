@@ -344,6 +344,44 @@ async function fetchCustomerMap(
   return map;
 }
 
+// ─── PDF branding + sections (PROP-007) ────────────────────────────────────
+
+async function loadBrandingForPdf(db: SB, tenantId: string) {
+  const r = await db
+    .from('company_branding_profiles')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .order('is_default', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const b = r.data;
+  return b
+    ? {
+        companyName: b.company_name,
+        logoUrl: b.logo_url,
+        primaryColor: b.primary_color,
+        accentColor: b.accent_color,
+        address: b.address,
+        phone: b.phone,
+        email: b.email,
+      }
+    : null;
+}
+
+async function loadProposalSections(db: SB, tenantId: string, proposalId: string) {
+  const r = await db
+    .from('proposal_sections')
+    .select('section_title, html_content, display_order')
+    .eq('proposal_id', proposalId)
+    .eq('tenant_id', tenantId)
+    .eq('is_visible', true)
+    .order('display_order', { ascending: true });
+  return (r.data ?? []).map((s: Record<string, any>) => ({
+    section_title: s.section_title,
+    html_content: s.html_content,
+  }));
+}
+
 // ─── Pricing policy (QUOTE-006) ─────────────────────────────────────────────
 // Sales-only roles cannot send a quote whose margin is below the tenant minimum
 // (pricing_settings.require_approval_below_margin) — that needs manager approval.
@@ -612,7 +650,6 @@ const PROPOSAL_FIELD_MAP: Record<string, string> = {
   taxAmount: 'tax_amount',
   totalAmount: 'total_amount',
   validUntil: 'valid_until',
-  paymentTerms: 'payment_terms',
   internalNotes: 'internal_notes',
   notes: 'internal_notes',
   version: 'version',
@@ -1031,7 +1068,6 @@ export default async function handler(req: Request) {
           tax_amount: body.taxAmount || body.tax_amount || 0,
           total_amount: body.totalAmount || body.total_amount || 0,
           valid_until: body.validUntil || body.valid_until || null,
-          payment_terms: body.paymentTerms || body.payment_terms || null,
           internal_notes: body.notes || body.internalNotes || body.internal_notes || null,
           assigned_to: body.assignedTo || body.assigned_to || ctx.userId,
           created_by: ctx.userId,
@@ -1464,6 +1500,9 @@ export default async function handler(req: Request) {
         .eq('tenant_id', ctx.tenantId)
         .order('line_number', { ascending: true });
 
+      const emailBranding = await loadBrandingForPdf(db, ctx.tenantId);
+      const emailSections = await loadProposalSections(db, ctx.tenantId, id);
+
       let pdfBase64: string;
       try {
         const pdfBytes = await renderProposalPDF({
@@ -1472,6 +1511,8 @@ export default async function handler(req: Request) {
           company: customer,
           contact,
           isManager: false,
+          branding: emailBranding,
+          sections: emailSections,
         });
         pdfBase64 = bytesToBase64(pdfBytes);
       } catch (renderErr) {
@@ -1940,6 +1981,9 @@ export default async function handler(req: Request) {
         contact = r.data;
       }
 
+      const branding = await loadBrandingForPdf(db, ctx.tenantId);
+      const sections = isManager ? null : await loadProposalSections(db, ctx.tenantId, id);
+
       let pdfBytes: Uint8Array;
       try {
         pdfBytes = await renderProposalPDF({
@@ -1948,6 +1992,8 @@ export default async function handler(req: Request) {
           company,
           contact,
           isManager,
+          branding,
+          sections,
         });
       } catch (renderErr) {
         log.error({ requestId, err: String(renderErr) }, 'pdf_render_failed');
@@ -1958,7 +2004,9 @@ export default async function handler(req: Request) {
       }
 
       const filename = `Quote-${proposal.proposal_number}${isManager ? '-manager' : ''}.pdf`;
-      return new Response(pdfBytes, {
+      // Cast to BodyInit: Deno accepts a Uint8Array body at runtime, but newer
+      // TS/Deno libs make Uint8Array generic which trips the static checker.
+      return new Response(pdfBytes as unknown as BodyInit, {
         status: 200,
         headers: {
           'Content-Type': 'application/pdf',

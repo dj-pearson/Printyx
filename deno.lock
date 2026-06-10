@@ -2,6 +2,8 @@
   "version": "5",
   "remote": {
     "https://esm.sh/@supabase/supabase-js@2.39.0": "f51aeb2dbf8f67c8fa396628af45793e3513067d45705f1ea158f5c678bb0cea",
+    "https://esm.sh/node-html-parser@6.1.13": "3de4f049429acbd64c74e5438e4c183b682fc79b777f0c37143c2656e8f617e3",
+    "https://esm.sh/pdf-lib@1.17.1": "cf7c5527829cb9bbb3aa20d339c530067441c10eb98880360aea9e77c3c87ff8",
     "https://esm.sh/zod@3.22.4": "58f997d2fb4d837fdccc359937cfa92ec0c2870fcda1e58fa52eadd998b06dd1"
   },
   "workspace": {

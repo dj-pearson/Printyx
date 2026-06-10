@@ -10,7 +10,6 @@ import {
   purchaseOrders,
   serviceTickets,
   invoices,
-  quotes,
   equipment,
 } from '../shared/schema';
 
@@ -30,19 +29,19 @@ router.get('/validate/quote-to-proposal/:quoteId', async (req, res) => {
 
     const errors = [];
 
-    // Check if quote exists and has required fields
+    // In this data model the "quote" is a row in the `proposals` table
+    // (proposal_type = 'quote'), not the legacy `quotes` table.
     const [quote] = await db
       .select({
-        id: quotes.id,
-        title: quotes.title,
-        businessRecordId: quotes.businessRecordId,
-        status: quotes.status,
-        totalAmount: quotes.totalAmount,
-        description: quotes.description,
-        validUntil: quotes.validUntil,
+        id: proposals.id,
+        title: proposals.title,
+        businessRecordId: proposals.businessRecordId,
+        status: proposals.status,
+        totalAmount: proposals.totalAmount,
+        description: proposals.description,
       })
-      .from(quotes)
-      .where(and(eq(quotes.id, quoteId), eq(quotes.tenantId, tenantId)))
+      .from(proposals)
+      .where(and(eq(proposals.id, quoteId), eq(proposals.tenantId, tenantId)))
       .limit(1);
 
     if (!quote) {

@@ -62,6 +62,7 @@ import DoDValidationBanner from '@/components/dod/DoDValidationBanner';
 import DoDEnforcementButton from '@/components/dod/DoDEnforcementButton';
 import ProcessHelpBanner from '@/components/training/ProcessHelpBanner';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
+import { downloadQuotePdf } from '@/lib/quote-pdf';
 
 interface ProposalTemplate {
   id: string;
@@ -1267,6 +1268,8 @@ export default function ProposalBuilder() {
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
+                  onClick={() => selectedQuote && downloadQuotePdf(selectedQuote)}
+                  disabled={!selectedQuote}
                   className="touch-manipulation active:scale-[0.98] min-h-[44px]"
                 >
                   <Download className="h-4 w-4 mr-2" />

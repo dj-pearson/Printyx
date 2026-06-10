@@ -107,6 +107,20 @@ arithmetic inline; the parity test in `quote-math.test.ts` locks them against dr
   get 403). The customer PDF (`/export/pdf`) never includes cost/margin.
 - UI surfaces a role-gated "Manager Quote" action (QUOTE-007) via `usePricingVisibility`.
 
+### Branded PDF (PROP-007)
+
+- `_pdf.ts` applies the tenant's default branding profile: logo in the header band,
+  brand `primary_color` for the band, `accent_color` for section headings, and a footer
+  (company name • phone • email • address + page numbers) on every page.
+- When a proposal has generated `proposal_sections` (PROP-006), the **customer** PDF renders
+  those sections via `_html-to-pdf.ts` — a constrained HTML→pdf-lib renderer (headings,
+  paragraphs/`<br>`, lists, the line-items table, images, rules) with section-aware page
+  breaks and a repeating table header. With no sections it falls back to the structured
+  line-item layout. The **manager** PDF always uses the structured cost/margin table (+ branding).
+- `_html-to-pdf.ts` uses `node-html-parser` (esm.sh). It is NOT a general HTML/CSS engine;
+  it covers the proposal section vocabulary. Browserless remains the option if pixel-accurate
+  CSS is ever required (leases PRD §4).
+
 ## 6. Proposal templates & branding (PROP-001..004, in progress)
 
 The proposal-presentation layer is being made first-class and reusable.

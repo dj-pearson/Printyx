@@ -731,10 +731,8 @@ export default function QuoteTransformer({
                   <Eye className="h-4 w-4 mr-2" />
                   Full Preview
                 </Button>
-                <Button variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export PDF
-                </Button>
+                {/* PROP-007: dead "Export PDF" removed. This component is deprecated
+                    (see header); PDF export lives on a generated proposal. */}
               </div>
             </CardHeader>
             <CardContent>

@@ -158,10 +158,14 @@ async function userHasAnyPermission(
     return { allowed: true, via: 'jwt-perm' };
 
   // DB fallback — JWT often doesn't carry roleLevel or permissions.
+  // NOTE: don't use a PostgREST embed (`roles!inner(...)`) here — there is no
+  // declared FK between `users.role_id` and `roles.id` in the schema cache, so
+  // the embed fails with "Could not find a relationship" → 403. Two plain
+  // queries are FK-independent and robust to that.
   try {
     const { data, error } = await admin
       .from('users')
-      .select('role_id, roles!inner(level, can_access_all_tenants, permissions)')
+      .select('role_id')
       .eq('id', user.id)
       .maybeSingle();
     if (error) {
@@ -178,8 +182,26 @@ async function userHasAnyPermission(
         details: { userId: user.id, email: user.email },
       };
     }
-    const role = (data as any)?.roles;
-    if (!role || !data.role_id) {
+    if (!data.role_id) {
+      return {
+        allowed: false,
+        reason: 'no_role_assigned',
+        details: { userId: user.id, email: user.email },
+      };
+    }
+    const { data: role, error: roleError } = await admin
+      .from('roles')
+      .select('level, can_access_all_tenants, permissions')
+      .eq('id', data.role_id)
+      .maybeSingle();
+    if (roleError) {
+      return {
+        allowed: false,
+        reason: 'db_lookup_error',
+        details: { error: roleError.message, userId: user.id },
+      };
+    }
+    if (!role) {
       return {
         allowed: false,
         reason: 'no_role_assigned',

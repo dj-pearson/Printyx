@@ -374,10 +374,8 @@ Example:
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </Button>
-                  <Button variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download PDF
-                  </Button>
+                  {/* PROP-007: dead "Download PDF" removed (this dashboard is mock;
+                      PROP-009 gates/removes it). */}
                   {pipeline.status === 'draft' || pipeline.status === 'review' ? (
                     <Button size="sm" className="ml-auto">
                       <Send className="h-4 w-4 mr-2" />

@@ -35,7 +35,10 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
-    const resource = pathParts[1]; // settings or visibility
+    // server.ts strips the function name before invoking this handler, so the
+    // resource segment is pathParts[0] (e.g. /pricing-settings/visibility arrives
+    // here as /visibility). Reading pathParts[1] left resource undefined → 404.
+    const resource = pathParts[0]; // settings or visibility
 
     // GET /pricing/settings - Get pricing settings
     if (req.method === 'GET' && resource === 'settings') {
