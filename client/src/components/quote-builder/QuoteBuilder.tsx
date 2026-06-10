@@ -41,6 +41,7 @@ import CompanyContactSelector from './CompanyContactSelector';
 import LineItemManager from './LineItemManager';
 import PricingCalculator from './PricingCalculator';
 import { QuoteWizardProgress, DEFAULT_QUOTE_STEPS } from '@/components/quotes/QuoteWizardProgress';
+import GenerateProposalDialog from '@/components/proposal-builder/GenerateProposalDialog';
 
 // Quote form schema
 const quoteSchema = z.object({
@@ -123,6 +124,7 @@ export default function QuoteBuilder({
     initialQuoteId && initialQuoteId !== 'new' ? initialQuoteId : undefined,
   );
   const [emailing, setEmailing] = useState(false);
+  const [generateProposalOpen, setGenerateProposalOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -1009,10 +1011,21 @@ export default function QuoteBuilder({
                   <Mail className="h-4 w-4 mr-2" />
                   {emailing ? 'Sending...' : 'Email to Customer'}
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setGenerateProposalOpen(true)}
+                  disabled={!savedQuoteId}
+                  className="min-h-[40px]"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Generate Proposal
+                </Button>
               </div>
               {!savedQuoteId && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  Save the quote first to download or email it.
+                  Save the quote first to download, email, or generate a proposal.
                 </p>
               )}
             </div>
@@ -1084,6 +1097,11 @@ export default function QuoteBuilder({
           )}
         </div>
       </div>
+      <GenerateProposalDialog
+        quoteId={savedQuoteId ?? null}
+        open={generateProposalOpen}
+        onOpenChange={setGenerateProposalOpen}
+      />
     </div>
   );
 }

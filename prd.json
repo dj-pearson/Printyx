@@ -7256,8 +7256,8 @@
         "npm run check && npm run test pass"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Depends on PROP-001/002 shapes; pure logic + tests, no UI. PROP-006 and PROP-007 consume it.",
+      "passes": true,
+      "notes": "Depends on PROP-001/002 shapes; pure logic + tests, no UI. PROP-006 and PROP-007 consume it. [Implemented on main 2026-06-10: shared/proposal-merge.ts canonical (13 unit tests pass) + Deno copy supabase/functions/_shared/proposal-merge.ts (deno check clean). check+test green.]",
       "category": "proposal-templates"
     },
     {

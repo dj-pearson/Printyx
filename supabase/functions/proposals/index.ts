@@ -25,6 +25,8 @@
  *     DELETE /proposals/:id
  *     PATCH  /proposals/:id/status                — status transition + timestamps + analytics
  *     POST   /proposals/:id/track-view            — analytics
+ *     POST   /proposals/:id/generate-from-template — PROP-006: merge a template + this
+ *                                                    proposal + branding → proposal_sections
  *
  *   Line items (3):
  *     POST   /proposals/:proposalId/line-items
@@ -51,6 +53,7 @@ import { errorResponse, generateRequestId, jsonResponse } from '../_shared/http.
 import { createLogger } from '../_shared/logger.ts';
 import { renderProposalPDF } from './_pdf.ts';
 import { sendEmail } from '../email-marketing/_sendgrid.ts';
+import { renderTemplate, type MergeData } from '../_shared/proposal-merge.ts';
 
 const log = createLogger('proposals');
 
@@ -1532,6 +1535,201 @@ export default async function handler(req: Request) {
           to: recipient,
           messageId: result.messageId,
           simulated: !!result.simulated,
+        },
+        200,
+        req,
+        requestId,
+      );
+    }
+
+    // POST /proposals/:id/generate-from-template (PROP-006)
+    // Renders a template + this proposal's data + a branding profile into
+    // customer-facing proposal_sections via the shared merge engine.
+    if (subMatch && method === 'POST' && subMatch[2] === 'generate-from-template') {
+      const id = subMatch[1];
+      const body = (await req.json().catch(() => ({}))) as {
+        templateId?: string;
+        brandingProfileId?: string;
+        sectionIds?: string[];
+      };
+      if (!body.templateId) {
+        return errorResponse(400, 'templateId is required', req, {
+          code: 'VALIDATION_ERROR',
+          requestId,
+        });
+      }
+
+      // Proposal + line items + customer + contact (all tenant-scoped).
+      const { data: proposal } = await db
+        .from('proposals')
+        .select('*')
+        .eq('id', id)
+        .eq('tenant_id', ctx.tenantId)
+        .maybeSingle();
+      if (!proposal) {
+        return errorResponse(404, 'Proposal not found', req, { code: 'NOT_FOUND', requestId });
+      }
+
+      const { data: template } = await db
+        .from('proposal_templates')
+        .select('*')
+        .eq('id', body.templateId)
+        .eq('tenant_id', ctx.tenantId)
+        .maybeSingle();
+      if (!template) {
+        return errorResponse(404, 'Template not found', req, { code: 'NOT_FOUND', requestId });
+      }
+
+      // Branding: explicit id, else the tenant default, else first.
+      let branding: Record<string, any> | null = null;
+      if (body.brandingProfileId) {
+        const r = await db
+          .from('company_branding_profiles')
+          .select('*')
+          .eq('id', body.brandingProfileId)
+          .eq('tenant_id', ctx.tenantId)
+          .maybeSingle();
+        branding = r.data ?? null;
+      }
+      if (!branding) {
+        const r = await db
+          .from('company_branding_profiles')
+          .select('*')
+          .eq('tenant_id', ctx.tenantId)
+          .order('is_default', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        branding = r.data ?? null;
+      }
+
+      const itemsRes = await db
+        .from('proposal_line_items')
+        .select('*')
+        .eq('proposal_id', id)
+        .eq('tenant_id', ctx.tenantId)
+        .order('line_number', { ascending: true });
+      const items = itemsRes.data ?? [];
+
+      const customer = await fetchCustomer(db, ctx.tenantId, proposal.business_record_id);
+
+      let contact: { first_name?: string; last_name?: string } | null = null;
+      if (proposal.contact_id) {
+        const r = await db
+          .from('company_contacts')
+          .select('first_name, last_name')
+          .eq('id', proposal.contact_id)
+          .eq('tenant_id', ctx.tenantId)
+          .maybeSingle();
+        contact = r.data;
+      }
+
+      // Split one-time vs recurring for the merge totals.
+      const lineTotal = (it: Record<string, any>) =>
+        it.total_price !== null && it.total_price !== undefined && it.total_price !== ''
+          ? toNum(it.total_price)
+          : (toNum(it.quantity) || 1) * toNum(it.unit_price) - toNum(it.discount);
+      const oneTimeTotal = items
+        .filter((it: Record<string, any>) => !it.is_recurring)
+        .reduce((s: number, it: Record<string, any>) => s + lineTotal(it), 0);
+      const recurringTotal = items
+        .filter((it: Record<string, any>) => it.is_recurring)
+        .reduce((s: number, it: Record<string, any>) => s + lineTotal(it), 0);
+
+      const mergeData: MergeData = {
+        customer: {
+          name: customer?.company_name ?? null,
+          companyName: customer?.company_name ?? null,
+        },
+        contact: {
+          name: contact
+            ? [contact.first_name, contact.last_name].filter(Boolean).join(' ') || null
+            : null,
+        },
+        quote: {
+          number: proposal.proposal_number,
+          title: proposal.title,
+          validUntil: proposal.valid_until,
+          totalAmount: proposal.total_amount,
+          oneTimeTotal,
+          recurringTotal: recurringTotal || null,
+          lineItems: items.map((it: Record<string, any>) => ({
+            productName: it.product_name,
+            description: it.description,
+            quantity: it.quantity,
+            unitPrice: it.unit_price,
+            totalPrice: it.total_price,
+            discount: it.discount,
+            isRecurring: it.is_recurring,
+            recurringFrequency: it.recurring_frequency,
+          })),
+        },
+        branding: branding
+          ? {
+              logoUrl: branding.logo_url,
+              companyName: branding.company_name,
+              address: branding.address,
+              phone: branding.phone,
+              email: branding.email,
+            }
+          : null,
+      };
+
+      const content = template.template_content ?? { sections: [] };
+      const rendered = renderTemplate(content, mergeData);
+
+      // Optional section checklist filter.
+      let outSections = rendered.sections;
+      if (Array.isArray(body.sectionIds) && body.sectionIds.length > 0) {
+        const keep = new Set(body.sectionIds);
+        outSections = outSections.filter((s) => keep.has(s.id));
+      }
+
+      // Replace existing sections for this proposal (re-generate overwrites).
+      await db
+        .from('proposal_sections')
+        .delete()
+        .eq('proposal_id', id)
+        .eq('tenant_id', ctx.tenantId);
+
+      if (outSections.length > 0) {
+        const rows = outSections.map((s, i) => ({
+          id: crypto.randomUUID(),
+          tenant_id: ctx.tenantId,
+          proposal_id: id,
+          section_type: s.type,
+          section_title: s.title || s.type,
+          display_order: i,
+          html_content: s.html,
+          content: s.html,
+          is_visible: true,
+          is_completed: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }));
+        const ins = await db.from('proposal_sections').insert(rows);
+        if (ins.error) {
+          return errorResponse(500, 'Failed to write proposal sections', req, {
+            code: 'DB_ERROR',
+            details: ins.error,
+            requestId,
+          });
+        }
+      }
+
+      // Link the template to the proposal.
+      await db
+        .from('proposals')
+        .update({ template_id: body.templateId, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('tenant_id', ctx.tenantId);
+
+      return jsonResponse(
+        {
+          success: true,
+          proposalId: id,
+          templateId: body.templateId,
+          sections: outSections,
+          warnings: rendered.warnings,
         },
         200,
         req,

@@ -1,3 +1,9 @@
+// DEPRECATED (PROP-006): the hardcoded generateContentFromQuote() path below is
+// superseded by the template-driven flow — GenerateProposalDialog → the proposals
+// edge function `generate-from-template` → the shared merge engine
+// (shared/proposal-merge.ts). New work should use a reusable template + branding
+// profile instead of this one-off HTML generation. Full removal of this component
+// and ProposalBuilder's mock data is tracked in PROP-009.
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

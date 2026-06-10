@@ -17,6 +17,7 @@ import {
 import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
 import { SavedFilters, useFilterState } from '@/components/ui/saved-filters';
 import { QuoteTemplates } from '@/components/quotes/quote-templates';
+import GenerateProposalDialog from '@/components/proposal-builder/GenerateProposalDialog';
 import {
   Select,
   SelectContent,
@@ -141,6 +142,7 @@ export default function QuotesManagement() {
   const queryClient = useQueryClient();
   const { data: pricingVisibility } = usePricingVisibility();
   const canViewManagerQuote = pricingVisibility?.showDealerCost === true;
+  const [generateForQuote, setGenerateForQuote] = useState<string | null>(null);
 
   const handleManagerQuotePdf = async (quote: { id: string; proposalNumber?: string }) => {
     try {
@@ -799,6 +801,10 @@ export default function QuotesManagement() {
                         <Edit className="h-4 w-4 mr-2" />
                         Edit Quote
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setGenerateForQuote(quote.id)}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Generate Proposal
+                      </DropdownMenuItem>
                       {canViewManagerQuote && (
                         <DropdownMenuItem onClick={() => handleManagerQuotePdf(quote)}>
                           <DollarSign className="h-4 w-4 mr-2" />
@@ -878,6 +884,13 @@ export default function QuotesManagement() {
         </Card>
       </div>
       <MobileFAB onClick={handleCreateQuote} label="New Quote" />
+      <GenerateProposalDialog
+        quoteId={generateForQuote}
+        open={!!generateForQuote}
+        onOpenChange={(o) => {
+          if (!o) setGenerateForQuote(null);
+        }}
+      />
     </MainLayout>
   );
 }
