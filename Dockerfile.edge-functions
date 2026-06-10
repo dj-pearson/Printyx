@@ -7,15 +7,17 @@
 # on the customer's machine and no dependency on PUBLIC_API_BASE_URL being set.
 FROM node:20-slim AS bundle-builder
 WORKDIR /build
-# Force a clean dev/optional install regardless of the build host's NODE_ENV or
-# npm `omit` config: esbuild is a devDependency and its platform binary
-# (@esbuild/linux-x64) is an optionalDependency. If the env omits either, the
-# bundle fails with "@esbuild/linux-x64 could not be found". --include= overrides
-# any omit so the Linux binary is always present. --ignore-scripts still skips
-# native postinstall builds (net-snmp/postject) we don't need for bundling.
+# esbuild is a devDependency; its platform binary (@esbuild/linux-x64) is an
+# optionalDependency. The committed package-lock.json was generated on Windows, so
+# `npm ci` (strict, platform-locked reproduce) refuses to install the Linux-only
+# optional even with --include=optional -> the bundle fails with
+# "@esbuild/linux-x64 could not be found". `npm install` re-resolves optionals for
+# THIS platform (Linux) and fetches the correct binary, while still honoring the
+# lockfile's versions. NODE_ENV=development + --include ensure dev/optional are kept.
+# --ignore-scripts skips native postinstall builds (net-snmp/postject) we don't need.
 ENV NODE_ENV=development
 COPY printyx-client/package*.json ./
-RUN npm ci --include=dev --include=optional --ignore-scripts
+RUN npm install --include=dev --include=optional --ignore-scripts --no-audit --no-fund
 COPY printyx-client/ ./
 RUN npm run bundle
 
