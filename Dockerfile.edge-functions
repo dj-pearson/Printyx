@@ -9,15 +9,18 @@ FROM node:20-slim AS bundle-builder
 WORKDIR /build
 # esbuild is a devDependency; its platform binary (@esbuild/linux-x64) is an
 # optionalDependency. The committed package-lock.json was generated on Windows, so
-# `npm ci` (strict, platform-locked reproduce) refuses to install the Linux-only
-# optional even with --include=optional -> the bundle fails with
-# "@esbuild/linux-x64 could not be found". `npm install` re-resolves optionals for
-# THIS platform (Linux) and fetches the correct binary, while still honoring the
-# lockfile's versions. NODE_ENV=development + --include ensure dev/optional are kept.
-# --ignore-scripts skips native postinstall builds (net-snmp/postject) we don't need.
+# it only records @esbuild/win32-x64 — the Linux optional is absent from the lock
+# tree entirely. With the lockfile present, neither `npm ci` nor `npm install`
+# re-adds the missing Linux optional, so the bundle fails with
+# "@esbuild/linux-x64 could not be found". We therefore install the exact-matching
+# Linux binary explicitly (esbuild requires the platform pkg version == esbuild's
+# own version, currently 0.24.2). NODE_ENV=development + --include keep dev/optional.
+# --ignore-scripts skips native postinstall builds (net-snmp/postject) we don't need;
+# the @esbuild/linux-x64 package ships a prebuilt binary and needs no postinstall.
 ENV NODE_ENV=development
 COPY printyx-client/package*.json ./
-RUN npm install --include=dev --include=optional --ignore-scripts --no-audit --no-fund
+RUN npm install --include=dev --include=optional --ignore-scripts --no-audit --no-fund \
+    && npm install --no-save --no-audit --no-fund @esbuild/linux-x64@0.24.2
 COPY printyx-client/ ./
 RUN npm run bundle
 
