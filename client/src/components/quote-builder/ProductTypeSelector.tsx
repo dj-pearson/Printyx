@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -244,33 +244,64 @@ export default function ProductTypeSelector({
     parentProductId ? 'product_accessories' : 'product_models',
   );
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [manufacturerFilter, setManufacturerFilter] = useState('all');
 
   const selectedTypeOption = productTypes.find((type) => type.value === selectedType);
 
-  // Fetch products based on selected type
-  const { data: products = [], isLoading } = useQuery<Product[]>({
-    queryKey: [selectedTypeOption?.endpoint, parentProductId],
-    queryFn: async () => {
-      let url = selectedTypeOption?.endpoint || '';
+  // QUOTE-012: debounce the search box 300ms before hitting the API (mirrors
+  // CompanyContactSelector). The query key includes the debounced term + filters,
+  // so changing any of them resets to page 1.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-      // For accessories, filter by parent product if specified
-      if (selectedType === 'product_accessories' && parentProductId) {
-        url += `?modelId=${parentProductId}`;
-      }
+  const PAGE_SIZE = 50;
 
-      const response = await apiRequest(url, 'GET');
-      // Ensure response is always an array - handle { data: [...] }, { records: [...] }, or direct array
-      const data = response?.data || response?.records || (Array.isArray(response) ? response : []);
-      const rows = Array.isArray(data) ? data : [];
-      return rows.map((row: Record<string, any>) => normalizeProduct(row));
-    },
-    enabled: !!selectedTypeOption,
-  });
+  // QUOTE-012: server-side search + pagination (QUOTE-011 endpoints). "Load more"
+  // fetches subsequent pages; total match count comes from the pagination envelope.
+  const { data, isLoading, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+      queryKey: [
+        selectedTypeOption?.endpoint,
+        parentProductId,
+        debouncedSearch,
+        categoryFilter,
+        manufacturerFilter,
+      ],
+      initialPageParam: 1,
+      queryFn: async ({ pageParam }) => {
+        const params = new URLSearchParams({ page: String(pageParam), limit: String(PAGE_SIZE) });
+        if (debouncedSearch) params.set('search', debouncedSearch);
+        if (categoryFilter !== 'all') params.set('category', categoryFilter);
+        if (manufacturerFilter !== 'all') params.set('manufacturer', manufacturerFilter);
+        if (selectedType === 'product_accessories' && parentProductId) {
+          params.set('modelId', parentProductId);
+        }
+        const response = await apiRequest(
+          `${selectedTypeOption?.endpoint}?${params.toString()}`,
+          'GET',
+        );
+        const raw =
+          response?.data || response?.records || (Array.isArray(response) ? response : []);
+        const rows = (Array.isArray(raw) ? raw : []).map((row: Record<string, any>) =>
+          normalizeProduct(row),
+        );
+        const total = response?.pagination?.total ?? response?.total ?? rows.length;
+        return { rows, total, page: Number(pageParam) };
+      },
+      getNextPageParam: (lastPage, allPages) => {
+        const loaded = allPages.reduce((n, p) => n + p.rows.length, 0);
+        return loaded < lastPage.total ? lastPage.page + 1 : undefined;
+      },
+      enabled: !!selectedTypeOption,
+    });
 
-  // Ensure products is always an array before using array methods
-  const productsArray = Array.isArray(products) ? products : [];
+  // Flatten loaded pages.
+  const productsArray: Product[] = (data?.pages ?? []).flatMap((p) => p.rows);
+  const totalMatches = data?.pages?.[0]?.total ?? productsArray.length;
 
   // Get unique categories and manufacturers for filtering
   const categories = Array.from(
@@ -280,23 +311,9 @@ export default function ProductTypeSelector({
     new Set(productsArray.map((p) => p.manufacturer).filter((m): m is string => Boolean(m))),
   );
 
-  // Filter products (products are already normalized)
-  const filteredProducts = productsArray.filter((product) => {
-    if (product.isActive === false) return false;
-
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      !term ||
-      (product.productName && product.productName.toLowerCase().includes(term)) ||
-      (product.productCode && product.productCode.toLowerCase().includes(term)) ||
-      (product.description && product.description.toLowerCase().includes(term));
-
-    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
-    const matchesManufacturer =
-      manufacturerFilter === 'all' || product.manufacturer === manufacturerFilter;
-
-    return matchesSearch && matchesCategory && matchesManufacturer;
-  });
+  // QUOTE-012: search + category + manufacturer are now applied server-side. Only
+  // the cheap active/inactive guard stays client-side.
+  const filteredProducts = productsArray.filter((product) => product.isActive !== false);
 
   // Customer (selling) price for the active pricing tier, falling back to MSRP.
   const getPrice = (product: Product): number => {
@@ -439,9 +456,9 @@ export default function ProductTypeSelector({
         </div>
 
         {/* Product List */}
-        {!isLoading && filteredProducts.length > 0 && (
+        {!isLoading && !isError && filteredProducts.length > 0 && (
           <div className="text-xs text-muted-foreground">
-            Showing {filteredProducts.length} of {productsArray.length} products
+            Showing {filteredProducts.length} of {totalMatches} products
           </div>
         )}
         <div className="border rounded-lg flex-1 min-h-0 flex flex-col">
@@ -450,10 +467,22 @@ export default function ProductTypeSelector({
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
               <p className="mt-2 text-muted-foreground">Loading products...</p>
             </div>
+          ) : isError ? (
+            <div className="p-8 text-center text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="mb-3">Couldn’t load products.</p>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </div>
           ) : filteredProducts.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No products found matching your criteria</p>
+              <p>
+                {debouncedSearch
+                  ? `No products match “${debouncedSearch}”`
+                  : 'No products found matching your criteria'}
+              </p>
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto">
@@ -600,6 +629,23 @@ export default function ProductTypeSelector({
                   </TableBody>
                 </Table>
               </div>
+
+              {/* QUOTE-012: load subsequent pages */}
+              {hasNextPage && (
+                <div className="p-3 text-center border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                    className="min-h-[40px]"
+                  >
+                    {isFetchingNextPage
+                      ? 'Loading…'
+                      : `Load more (${filteredProducts.length} of ${totalMatches})`}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

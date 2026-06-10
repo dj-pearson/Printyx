@@ -7033,8 +7033,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Depends on QUOTE-011. Friction source: ProductTypeSelector.tsx:253-270 (full fetch), 284-299 (client filter).",
+      "passes": true,
+      "notes": "Depends on QUOTE-011. Friction source: ProductTypeSelector.tsx:253-270 (full fetch), 284-299 (client filter). [Implemented on main 2026-06-10: ProductTypeSelector now uses useInfiniteQuery with 300ms-debounced search (mirrors CompanyContactSelector), passes ?search=&page=&limit=50&category=&manufacturer= to QUOTE-011 endpoints; flattens pages; Load more button + Showing X of N total; loading spinner + error/retry state; client-side search/category/manufacturer filtering removed (now server-side, only isActive guard stays). hasCost/New-Upgrade pricing preserved. check+build green.]",
       "category": "quote-module-v2"
     },
     {
