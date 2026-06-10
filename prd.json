@@ -7051,8 +7051,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "Pure frontend. Touches ProductTypeSelector.tsx + LineItemManager.tsx handleProductSelect.",
+      "passes": true,
+      "notes": "Pure frontend. Touches ProductTypeSelector.tsx + LineItemManager.tsx handleProductSelect. [Implemented on main 2026-06-10: ProductTypeSelector picker stays open for multi-add (LineItemManager onDone closes; per-add quantity applied), per-row qty stepper (desktop+mobile), session added-count badge + Done button + brief Added flash, Recently-added chips (localStorage per tenant+user, last 20, one-click re-add), keyboard nav (autofocus search, Up/Down highlight desktop row, Enter adds). Required-accessory auto-add still fires. check+build green.]",
       "category": "quote-module-v2"
     },
     {
