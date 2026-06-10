@@ -114,6 +114,28 @@ export default function MeetingToProposalDashboard() {
     }, 2000);
   };
 
+  // PROP-009: the AI meeting→proposal pipeline is not implemented. Gate the page so
+  // the mock pipeline data below is never presented to users as real. Build proposals
+  // from a quote via the template-driven generator instead.
+  return (
+    <MainLayout title="Meeting to Proposal AI" description="Coming soon">
+      <div className="container mx-auto p-6">
+        <div className="max-w-xl mx-auto text-center border rounded-lg bg-white py-12 px-6">
+          <Sparkles className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+          <h1 className="text-2xl font-bold mb-2">Meeting → Proposal AI</h1>
+          <p className="text-muted-foreground mb-5">
+            Automatically turning meeting notes into proposals is coming soon. For now, build a
+            quote and generate a branded proposal from a reusable template.
+          </p>
+          <Button onClick={() => (window.location.href = '/proposal-templates')}>
+            Go to Proposal Templates
+          </Button>
+        </div>
+      </div>
+    </MainLayout>
+  );
+
+  // eslint-disable-next-line no-unreachable
   return (
     <MainLayout
       title="Meeting to Proposal AI"

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -155,79 +155,47 @@ const sectionTypes = [
   },
 ];
 
-const proposalTemplates: ProposalTemplate[] = [
-  {
-    id: '1',
-    name: 'Enterprise Equipment Lease',
-    category: 'equipment_lease',
-    description: 'Comprehensive template for large equipment leasing proposals',
-    isDefault: true,
-    sections: sectionTypes.slice(0, 7).map((section, index) => ({
-      id: `section-${index}`,
-      type: section.type,
-      title: section.title,
-      displayOrder: index + 1,
-      isRequired: section.required,
-      isVisible: true,
-      icon: section.icon,
-      description: section.description,
-    })),
+// PROP-009: in-memory mock templates removed. Templates now come from the
+// proposal-templates edge function (PROP-001) — see useProposalTemplates() below.
+
+// Map a proposal_templates row → the picker's ProposalTemplate shape.
+function mapTemplateRow(r: any): ProposalTemplate {
+  const contentSections = r?.template_content?.sections;
+  const sections: ProposalSection[] =
+    Array.isArray(contentSections) && contentSections.length > 0
+      ? contentSections.map((s: any, index: number) => ({
+          id: s.id ?? `section-${index}`,
+          type: s.type ?? 'custom',
+          title: s.title ?? s.type ?? `Section ${index + 1}`,
+          displayOrder: typeof s.order === 'number' ? s.order : index + 1,
+          isRequired: false,
+          isVisible: s.isVisible !== false,
+          icon: undefined,
+          description: '',
+        }))
+      : sectionTypes.slice(0, 7).map((section, index) => ({
+          id: `section-${index}`,
+          type: section.type,
+          title: section.title,
+          displayOrder: index + 1,
+          isRequired: section.required,
+          isVisible: true,
+          icon: section.icon,
+          description: section.description,
+        }));
+  return {
+    id: r.id,
+    name: r.template_name ?? 'Untitled Template',
+    category: r.template_type ?? 'general',
+    description: r.description ?? '',
+    isDefault: !!r.is_default,
+    sections,
     styling: {
-      primaryColor: '#0066CC',
-      fontFamily: 'Inter',
+      primaryColor: r?.template_content?.globalStyling?.primaryColor ?? '#0066CC',
+      fontFamily: r?.template_content?.globalStyling?.fontFamily ?? 'Inter',
     },
-  },
-  {
-    id: '2',
-    name: 'Service Contract Standard',
-    category: 'service_contract',
-    description: 'Template for ongoing service and maintenance contracts',
-    isDefault: false,
-    sections: [
-      sectionTypes[0],
-      sectionTypes[1],
-      sectionTypes[2],
-      sectionTypes[4],
-      sectionTypes[5],
-      sectionTypes[7],
-      sectionTypes[8],
-    ].map((section, index) => ({
-      id: `section-${index}`,
-      type: section.type,
-      title: section.title,
-      displayOrder: index + 1,
-      isRequired: section.required,
-      isVisible: true,
-      icon: section.icon,
-      description: section.description,
-    })),
-    styling: {
-      primaryColor: '#28A745',
-      fontFamily: 'Inter',
-    },
-  },
-  {
-    id: '3',
-    name: 'Managed Services',
-    category: 'managed_services',
-    description: 'Comprehensive managed IT and print services proposal',
-    isDefault: false,
-    sections: sectionTypes.map((section, index) => ({
-      id: `section-${index}`,
-      type: section.type,
-      title: section.title,
-      displayOrder: index + 1,
-      isRequired: section.required,
-      isVisible: true,
-      icon: section.icon,
-      description: section.description,
-    })),
-    styling: {
-      primaryColor: '#6C5CE7',
-      fontFamily: 'Inter',
-    },
-  },
-];
+  };
+}
 
 export default function ProposalBuilder() {
   const [, setLocation] = useLocation();
@@ -237,6 +205,16 @@ export default function ProposalBuilder() {
     'quote' | 'template' | 'transform' | 'visual' | 'preview'
   >('quote');
   const [agingFilterDays, setAgingFilterDays] = useState<number | null>(null);
+
+  // PROP-009: templates come from the proposal-templates edge function (no mock data).
+  const { data: templateRows = [] } = useQuery<any[]>({
+    queryKey: ['/api/proposals/proposal-templates'],
+    queryFn: () => apiRequest('/api/proposals/proposal-templates'),
+  });
+  const proposalTemplates: ProposalTemplate[] = useMemo(
+    () => (Array.isArray(templateRows) ? templateRows.map(mapTemplateRow) : []),
+    [templateRows],
+  );
 
   // Check for quote ID in URL parameters
   useEffect(() => {
