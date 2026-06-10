@@ -93,13 +93,18 @@ quoteMargin% = revenue > 0   ? ((revenue   - totalCost) / revenue)   * 100 : 0
 recompute and `_pdf.ts` (Deno — cannot import the Node module) replicate the same
 arithmetic inline; the parity test in `quote-math.test.ts` locks them against drift.
 
-## 5. Verification (QUOTE-010)
+## 5. Verification (QUOTE-010, PROP-005, PROP-010)
 
 - Unit: `npm run test -- server/tests/unit/quote-math.test.ts` (margin parity).
-- E2E: `npm run test:e2e:chromium -- tests/quote-flow.spec.ts` (wizard + gating).
-- Manual checklist: see the bottom of `tests/quote-flow.spec.ts` — covers billing
-  autofill, cost→margin, manager PDF vs cost-free customer PDF, the min-margin send
-  gate, and email.
+- Unit: `npm run test -- server/tests/unit/proposal-merge.test.ts` (merge engine: token
+  substitution, line-items table incl. per-line discount + recurring split, missing-data
+  fallbacks, unknown-token warnings, and **no cost/margin in customer output**).
+- E2E: `npm run test:e2e:chromium -- tests/quote-flow.spec.ts` (quote wizard + gating).
+- E2E: `npm run test:e2e:chromium -- tests/proposal-flow.spec.ts` (PROP-001..008 smoke:
+  templates, branding, generate/share actions, public view; data-dependent legs in its
+  manual checklist). The quote-flow legs (server search, per-line discount, recurring,
+  autosave) await the QUOTE-011..020 track.
+- Manual checklists: bottoms of `tests/quote-flow.spec.ts` and `tests/proposal-flow.spec.ts`.
 
 ## 4. Manager quote
 

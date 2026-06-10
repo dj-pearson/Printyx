@@ -7344,7 +7344,7 @@
       ],
       "priority": 3,
       "passes": false,
-      "notes": "Final story of the track — depends on everything above. Mirror the conventions in tests/quote-flow.spec.ts.",
+      "notes": "Final story of the track — depends on everything above. Mirror the conventions in tests/quote-flow.spec.ts. [PARTIAL on main 2026-06-10: tests/proposal-flow.spec.ts added (smoke for PROP-001..008: templates/branding/generate+share actions/public-view-unavailable; data-dependent legs in manual checklist). Merge-engine customer-safe (no cost/margin) asserted in server/tests/unit/proposal-merge.test.ts. Docs verification section updated. STILL TODO (passes false): quote-flow legs (server search/per-line discount/recurring/autosave) depend on unbuilt QUOTE-011..020; e2e not executed (needs running stack).]",
       "category": "proposal-templates"
     }
   ]
