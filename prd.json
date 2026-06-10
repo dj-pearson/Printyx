@@ -7310,8 +7310,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "SECURITY: public route must be token-gated and field-whitelisted — never expose unit_cost/margin/internal notes. Status handler with deal/contract sync: proposals/index.ts (status PATCH).",
+      "passes": true,
+      "notes": "SECURITY: public route must be token-gated and field-whitelisted — never expose unit_cost/margin/internal notes. Status handler with deal/contract sync: proposals/index.ts (status PATCH). [Implemented on main 2026-06-10: migration 0017 share_token+share_expires_at; edge POST /:id/share (rotate, expiry=valid_until), pre-auth public GET /public/:token (customer-safe + branded sections + view tracking + pxv cookie) and POST /public/:token/respond (accept→status+deal/contract sync, decline→rejected); ProposalPublicView at /p/:token (early-return outside app shell); Copy Share Link in QuotesManagement. deno clean; build green; no new type errors.]",
       "category": "proposal-templates"
     },
     {
