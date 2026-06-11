@@ -7086,8 +7086,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "Depends on QUOTE-013/014 dialog patterns. Package CRUD management UI is intentionally out of scope (packages can be seeded/created via existing POST endpoint); add a follow-up story if needed.",
+      "passes": true,
+      "notes": "Depends on QUOTE-013/014 dialog patterns. Package CRUD management UI is intentionally out of scope (packages can be seeded/created via existing POST endpoint); add a follow-up story if needed. [DONE 2026-06-11: ProductTypeSelector gained Packages type backed by /api/proposals/equipment-packages (edge fn now supports ?search/?category/?page+limit envelope; legacy bare-array kept for QuoteProposalGeneration). New edge endpoint GET /equipment-packages/:id/items resolves package JSONB against product_models/product_accessories/professional_services+service_products server-side (one backend = no Express parity gap). LineItemManager expands via generalized QUOTE-014 confirm dialog (RequiredAccessoriesDialog gained title/description/itemNoun/cancelLabel + per-row defaultQuantity): first confirmed equipment row = parent, rest sublines; optional items unchecked; inserted lines are ordinary lines. Browser verify still environment-blocked (anon key stale, GoTrue 401 — same as QUOTE-014).]",
       "category": "quote-module-v2"
     },
     {

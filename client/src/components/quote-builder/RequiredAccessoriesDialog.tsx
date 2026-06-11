@@ -16,6 +16,8 @@ import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 // QUOTE-014: confirmation list shown when a selected product model resolves
 // required/suggested accessories. Replaces the old silent auto-add — the rep
 // sees every accessory with its price before anything hits the quote.
+// QUOTE-015 reuses it (via title/description/noun overrides) to preview an
+// equipment package's contents before they're expanded into line items.
 
 export interface AccessoryConfirmRow {
   id: string;
@@ -27,6 +29,12 @@ export interface AccessoryConfirmRow {
   unitCost: number;
   /** Required accessories are pre-checked and locked; optional ones start unchecked. */
   required: boolean;
+  /** QUOTE-015: package items carry their own quantity; defaults to 1. */
+  defaultQuantity?: number;
+  /** QUOTE-015: line-item product type for this row (packages mix types). */
+  productType?: string;
+  /** QUOTE-015: package item kind — the first confirmed 'equipment' row becomes the parent line. */
+  itemKind?: 'equipment' | 'accessory' | 'service';
 }
 
 export interface ConfirmedAccessory extends AccessoryConfirmRow {
@@ -39,6 +47,11 @@ interface RequiredAccessoriesDialogProps {
   accessories: AccessoryConfirmRow[];
   onConfirm: (selected: ConfirmedAccessory[]) => void;
   onCancel: () => void;
+  /** Overrides for package previews (QUOTE-015). Defaults keep QUOTE-014 copy. */
+  title?: string;
+  description?: string;
+  itemNoun?: { singular: string; plural: string };
+  cancelLabel?: string;
 }
 
 const formatCurrency = (amount: number) =>
@@ -50,24 +63,32 @@ export default function RequiredAccessoriesDialog({
   accessories,
   onConfirm,
   onCancel,
+  title,
+  description,
+  itemNoun = { singular: 'accessory', plural: 'accessories' },
+  cancelLabel = 'Cancel — model only',
 }: RequiredAccessoriesDialogProps) {
   const { data: visibility } = usePricingVisibility();
   const showDealerCost = visibility?.showDealerCost === true;
 
-  // Required rows are always checked; optional rows toggle. Quantities default to 1.
+  // Required rows are always checked; optional rows toggle. Quantities default
+  // to the row's defaultQuantity (package items carry one) or 1.
   const [optionalChecked, setOptionalChecked] = useState<Record<string, boolean>>({});
   const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   const isChecked = (row: AccessoryConfirmRow) => row.required || optionalChecked[row.id] === true;
-  const qtyOf = (id: string) => Math.max(1, quantities[id] ?? 1);
+  const qtyOf = (row: AccessoryConfirmRow) =>
+    Math.max(1, quantities[row.id] ?? Math.floor(row.defaultQuantity ?? 1) ?? 1);
   const setQty = (id: string, n: number) =>
     setQuantities((prev) => ({ ...prev, [id]: Math.max(1, Math.floor(n) || 1) }));
 
   const checkedRows = accessories.filter(isChecked);
-  const checkedTotal = checkedRows.reduce((sum, row) => sum + row.unitPrice * qtyOf(row.id), 0);
+  const checkedTotal = checkedRows.reduce((sum, row) => sum + row.unitPrice * qtyOf(row), 0);
+
+  const noun = (n: number) => (n === 1 ? itemNoun.singular : itemNoun.plural);
 
   const handleConfirm = () => {
-    onConfirm(checkedRows.map((row) => ({ ...row, quantity: qtyOf(row.id) })));
+    onConfirm(checkedRows.map((row) => ({ ...row, quantity: qtyOf(row) })));
   };
 
   return (
@@ -76,11 +97,11 @@ export default function RequiredAccessoriesDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wrench className="h-5 w-5" />
-            Accessories for {modelName}
+            {title ?? `Accessories for ${modelName}`}
           </DialogTitle>
           <DialogDescription>
-            This model has required accessories. Review them before they're added to the quote —
-            Cancel adds only the model.
+            {description ??
+              "This model has required accessories. Review them before they're added to the quote — Cancel adds only the model."}
           </DialogDescription>
         </DialogHeader>
 
@@ -131,17 +152,17 @@ export default function RequiredAccessoriesDialog({
                   <div className="flex items-center border rounded">
                     <button
                       type="button"
-                      onClick={() => setQty(row.id, qtyOf(row.id) - 1)}
+                      onClick={() => setQty(row.id, qtyOf(row) - 1)}
                       className="px-3 py-2 text-sm text-muted-foreground hover:bg-muted disabled:opacity-50"
                       disabled={!checked}
                       aria-label="Decrease quantity"
                     >
                       −
                     </button>
-                    <span className="w-7 text-center text-sm tabular-nums">{qtyOf(row.id)}</span>
+                    <span className="w-7 text-center text-sm tabular-nums">{qtyOf(row)}</span>
                     <button
                       type="button"
-                      onClick={() => setQty(row.id, qtyOf(row.id) + 1)}
+                      onClick={() => setQty(row.id, qtyOf(row) + 1)}
                       className="px-3 py-2 text-sm text-muted-foreground hover:bg-muted disabled:opacity-50"
                       disabled={!checked}
                       aria-label="Increase quantity"
@@ -165,20 +186,19 @@ export default function RequiredAccessoriesDialog({
 
         <DialogFooter className="flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 border-t pt-3">
           <div className="text-sm text-muted-foreground sm:mr-auto">
-            {checkedRows.length} accessor{checkedRows.length === 1 ? 'y' : 'ies'} ·{' '}
+            {checkedRows.length} {noun(checkedRows.length)} ·{' '}
             <span className="font-medium text-foreground">{formatCurrency(checkedTotal)}</span>
           </div>
           <div className="flex flex-col-reverse sm:flex-row gap-2">
             <Button variant="outline" onClick={onCancel} className="min-h-[44px]">
-              Cancel — model only
+              {cancelLabel}
             </Button>
             <Button
               onClick={handleConfirm}
               disabled={checkedRows.length === 0}
               className="min-h-[44px]"
             >
-              Confirm — add {checkedRows.length} accessor
-              {checkedRows.length === 1 ? 'y' : 'ies'}
+              Confirm — add {checkedRows.length} {noun(checkedRows.length)}
             </Button>
           </div>
         </DialogFooter>

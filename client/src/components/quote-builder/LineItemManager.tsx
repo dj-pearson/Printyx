@@ -131,17 +131,19 @@ export default function LineItemManager({
   const [editingItem, setEditingItem] = useState<LineItem | null>(null);
   const [parentProductForAccessory, setParentProductForAccessory] = useState<string | undefined>();
 
-  // QUOTE-014: pending accessory confirmations, one entry per added model whose
-  // required accessories resolved. A queue because the picker stays open
-  // (QUOTE-013) and several models can be added before the first dialog is
-  // answered. The dialog shows the head of the queue.
-  interface PendingAccessoryConfirm {
-    modelId: string;
-    modelName: string;
-    accessories: AccessoryConfirmRow[];
+  // QUOTE-014: pending confirmations, one entry per added model whose required
+  // accessories resolved — or, QUOTE-015, per selected equipment package. A
+  // queue because the picker stays open (QUOTE-013) and several models/packages
+  // can be added before the first dialog is answered. The dialog shows the head
+  // of the queue.
+  interface PendingItemConfirm {
+    kind: 'accessories' | 'package';
+    sourceId: string; // model id (accessories) or package id (package)
+    sourceName: string;
+    rows: AccessoryConfirmRow[];
   }
-  const [accessoryQueue, setAccessoryQueue] = useState<PendingAccessoryConfirm[]>([]);
-  const pendingConfirm = accessoryQueue[0] ?? null;
+  const [confirmQueue, setConfirmQueue] = useState<PendingItemConfirm[]>([]);
+  const pendingConfirm = confirmQueue[0] ?? null;
 
   // Resolve customer (selling) price for a normalized product by pricing tier.
   const resolveSellingPrice = (p: any, pricing: 'new' | 'upgrade'): number => {
@@ -153,7 +155,71 @@ export default function LineItemManager({
     return p.dealerCostNew || 0;
   };
 
+  // QUOTE-015: a selected package never becomes a line itself — fetch its
+  // catalog-resolved contents and queue a preview/confirm dialog. Confirm
+  // expands the checked items into a parent equipment line + sublines.
+  const handlePackageSelect = async (pkg: any) => {
+    const packageName = pkg.productName || 'Equipment package';
+    try {
+      const payload = await apiRequest(
+        `/api/proposals/equipment-packages/${encodeURIComponent(pkg.id)}/items`,
+        'GET',
+      );
+      const items: Record<string, any>[] = Array.isArray(payload?.items) ? payload.items : [];
+      if (items.length === 0) {
+        console.warn(`Equipment package "${packageName}" has no items to add`);
+        return;
+      }
+
+      const fallbackType: Record<string, ProductType> = {
+        equipment: 'product_models',
+        accessory: 'product_accessories',
+        service: 'professional_services',
+      };
+      const numOrNull = (v: unknown): number | null => {
+        if (v === null || v === undefined || v === '') return null;
+        const n = typeof v === 'number' ? v : parseFloat(String(v));
+        return Number.isFinite(n) ? n : null;
+      };
+
+      const rows: AccessoryConfirmRow[] = items.map((item, i) => {
+        const catalog = item.catalog ? normalizeProduct(item.catalog) : null;
+        const itemKind = (item.itemType ?? 'equipment') as 'equipment' | 'accessory' | 'service';
+        // Package rows carry their own price; the catalog fills the gaps
+        // (price when the package omits it, dealer cost always).
+        const unitPrice =
+          numOrNull(item.unitPrice) ?? (catalog ? resolveSellingPrice(catalog, pricingType) : 0);
+        const unitCost = catalog ? resolveDealerCost(catalog, pricingType) : 0;
+        return {
+          id: catalog?.id || item.refId || `package-item-${i}`,
+          productCode: catalog?.productCode || '',
+          productName: catalog?.productName || item.description || 'Package item',
+          description: item.description || catalog?.description,
+          msrp: catalog?.msrp,
+          unitPrice,
+          unitCost,
+          required: item.isOptional !== true,
+          defaultQuantity: Number(item.quantity) > 0 ? Math.floor(Number(item.quantity)) : 1,
+          productType: item.catalogSource || fallbackType[itemKind],
+          itemKind,
+        };
+      });
+
+      setConfirmQueue((queue) => [
+        ...queue,
+        { kind: 'package', sourceId: pkg.id, sourceName: packageName, rows },
+      ]);
+    } catch (error) {
+      console.warn('Failed to fetch equipment package items:', error);
+    }
+  };
+
   const handleProductSelect = async (product: any) => {
+    if (product.type === 'equipment_packages') {
+      await handlePackageSelect(product);
+      return;
+    }
+
     const productName = product.productName || product.name || 'Unnamed Product';
     const productCode = product.productCode || product.code || product.sku || '';
     // ProductTypeSelector resolves unitPrice/unitCost for the active tier; fall
@@ -232,9 +298,9 @@ export default function LineItemManager({
           );
 
           if (rows.length > 0) {
-            setAccessoryQueue((queue) => [
+            setConfirmQueue((queue) => [
               ...queue,
-              { modelId: product.id, modelName: productName, accessories: rows },
+              { kind: 'accessories', sourceId: product.id, sourceName: productName, rows },
             ]);
           }
         } catch (error) {
@@ -249,15 +315,47 @@ export default function LineItemManager({
 
   // QUOTE-014: Confirm adds every checked accessory as a subline of the model;
   // Cancel adds nothing beyond the already-added model.
-  const handleConfirmAccessories = (selected: ConfirmedAccessory[]) => {
+  // QUOTE-015 (kind 'package'): the first confirmed equipment row becomes the
+  // parent line and everything else nests under it as sublines; with no
+  // equipment confirmed, all rows insert as top-level lines. Cancel adds
+  // nothing. Inserted lines are ordinary lines — no live link to the package.
+  const handleConfirmItems = (selected: ConfirmedAccessory[]) => {
     if (!pendingConfirm) return;
+
+    if (pendingConfirm.kind === 'package') {
+      const provenance = `From package ${pendingConfirm.sourceName}`;
+      const parent = selected.find((row) => row.itemKind === 'equipment');
+      selected.forEach((row) => {
+        const isParent = parent !== undefined && row === parent;
+        onAddItem({
+          isSubline: !isParent && parent !== undefined,
+          parentLineId: !isParent && parent !== undefined ? parent.id : undefined,
+          productType: (row.productType ?? 'product_accessories') as ProductType,
+          productId: row.id,
+          productCode: row.productCode,
+          productName: row.productName,
+          description: row.description || provenance,
+          quantity: row.quantity,
+          msrp: row.msrp || 0,
+          listPrice: row.unitPrice,
+          unitPrice: row.unitPrice,
+          totalPrice: row.unitPrice * row.quantity,
+          unitCost: row.unitCost,
+          margin: calculateMargin(row.unitPrice, row.unitCost),
+          notes: provenance,
+        });
+      });
+      setConfirmQueue((queue) => queue.slice(1));
+      return;
+    }
+
     selected.forEach((row) => {
       const provenance = row.required
-        ? `Required accessory for ${pendingConfirm.modelName}`
-        : `Accessory for ${pendingConfirm.modelName}`;
+        ? `Required accessory for ${pendingConfirm.sourceName}`
+        : `Accessory for ${pendingConfirm.sourceName}`;
       onAddItem({
         isSubline: true,
-        parentLineId: pendingConfirm.modelId,
+        parentLineId: pendingConfirm.sourceId,
         productType: 'product_accessories',
         productId: row.id,
         productCode: row.productCode,
@@ -273,11 +371,11 @@ export default function LineItemManager({
         notes: provenance,
       });
     });
-    setAccessoryQueue((queue) => queue.slice(1));
+    setConfirmQueue((queue) => queue.slice(1));
   };
 
-  const handleCancelAccessories = () => {
-    setAccessoryQueue((queue) => queue.slice(1));
+  const handleCancelConfirm = () => {
+    setConfirmQueue((queue) => queue.slice(1));
   };
 
   const calculateMargin = (price: number, cost: number): number => {
@@ -1033,16 +1131,31 @@ export default function LineItemManager({
           </DialogContent>
         </Dialog>
 
-        {/* QUOTE-014: required-accessory preview & confirm. Keyed per queue
-            entry so checkbox/quantity state resets between models. */}
+        {/* QUOTE-014: required-accessory preview & confirm. QUOTE-015 reuses it
+            as the package-contents preview. Keyed per queue entry so
+            checkbox/quantity state resets between models/packages. */}
         {pendingConfirm && (
           <RequiredAccessoriesDialog
-            key={`${pendingConfirm.modelId}:${accessoryQueue.length}`}
+            key={`${pendingConfirm.kind}:${pendingConfirm.sourceId}:${confirmQueue.length}`}
             open
-            modelName={pendingConfirm.modelName}
-            accessories={pendingConfirm.accessories}
-            onConfirm={handleConfirmAccessories}
-            onCancel={handleCancelAccessories}
+            modelName={pendingConfirm.sourceName}
+            accessories={pendingConfirm.rows}
+            title={
+              pendingConfirm.kind === 'package'
+                ? `Package: ${pendingConfirm.sourceName}`
+                : undefined
+            }
+            description={
+              pendingConfirm.kind === 'package'
+                ? "Review the package contents before they're added to the quote — optional items start unchecked. Cancel adds nothing."
+                : undefined
+            }
+            itemNoun={
+              pendingConfirm.kind === 'package' ? { singular: 'item', plural: 'items' } : undefined
+            }
+            cancelLabel={pendingConfirm.kind === 'package' ? 'Cancel — add nothing' : undefined}
+            onConfirm={handleConfirmItems}
+            onCancel={handleCancelConfirm}
           />
         )}
       </CardContent>

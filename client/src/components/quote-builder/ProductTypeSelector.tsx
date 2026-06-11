@@ -40,6 +40,7 @@ import {
   DollarSign,
   Tag,
   Code,
+  Boxes,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -50,7 +51,8 @@ type ProductType =
   | 'service_products'
   | 'supplies'
   | 'managed_services'
-  | 'software_products';
+  | 'software_products'
+  | 'equipment_packages';
 
 interface ProductTypeOption {
   value: ProductType;
@@ -162,8 +164,17 @@ export function normalizeProduct(raw: Record<string, any>): Product {
   return {
     id: String(raw.id ?? ''),
     productCode: String(
-      pick(raw, 'productCode', 'product_code', 'accessoryCode', 'accessory_code', 'code', 'sku') ??
-        '',
+      pick(
+        raw,
+        'productCode',
+        'product_code',
+        'accessoryCode',
+        'accessory_code',
+        'packageCode',
+        'package_code',
+        'code',
+        'sku',
+      ) ?? '',
     ),
     productName: String(
       pick(
@@ -172,6 +183,8 @@ export function normalizeProduct(raw: Record<string, any>): Product {
         'product_name',
         'accessoryName',
         'accessory_name',
+        'packageName',
+        'package_name',
         'name',
         'modelName',
         'model_name',
@@ -185,7 +198,7 @@ export function normalizeProduct(raw: Record<string, any>): Product {
     isActive: pick(raw, 'isActive', 'is_active') !== false && raw.status !== 'inactive',
     requiredAccessories:
       (pick(raw, 'requiredAccessories', 'required_accessories') as string) ?? undefined,
-    msrp: num(pick(raw, 'msrp')),
+    msrp: num(pick(raw, 'msrp', 'totalRetailPrice', 'total_retail_price')),
     sellingPriceNew: num(
       pick(
         raw,
@@ -201,6 +214,11 @@ export function normalizeProduct(raw: Record<string, any>): Product {
         'unitPrice',
         'unit_price',
         'rate',
+        // equipment_packages (QUOTE-015)
+        'recommendedSellingPrice',
+        'recommended_selling_price',
+        'basePrice',
+        'base_price',
       ),
     ),
     sellingPriceUpgrade: num(
@@ -281,6 +299,13 @@ const productTypes: ProductTypeOption[] = [
     description: 'Software licenses and digital solutions',
     icon: Code,
     endpoint: '/api/software-products',
+  },
+  {
+    value: 'equipment_packages',
+    label: 'Packages',
+    description: 'Pre-built bundles of equipment, accessories & services',
+    icon: Boxes,
+    endpoint: '/api/proposals/equipment-packages',
   },
 ];
 
@@ -685,35 +710,38 @@ export default function ProductTypeSelector({
                         <div className="font-medium truncate">
                           Your Price: {formatPrice(getPrice(product))}
                         </div>
-                        {!hasCost(product) && (
+                        {selectedType !== 'equipment_packages' && !hasCost(product) && (
                           <span className="inline-block mt-1 text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
                             No cost — margin unavailable
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {/* QUOTE-013: per-row quantity stepper */}
-                        <div className="flex items-center border rounded">
-                          <button
-                            type="button"
-                            onClick={() => setQty(product.id, qtyOf(product.id) - 1)}
-                            className="px-3 py-2 text-muted-foreground"
-                            aria-label="Decrease quantity"
-                          >
-                            −
-                          </button>
-                          <span className="w-7 text-center text-sm tabular-nums">
-                            {qtyOf(product.id)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setQty(product.id, qtyOf(product.id) + 1)}
-                            className="px-3 py-2 text-muted-foreground"
-                            aria-label="Increase quantity"
-                          >
-                            +
-                          </button>
-                        </div>
+                        {/* QUOTE-013: per-row quantity stepper. QUOTE-015: hidden
+                            for packages — quantities come from the package items. */}
+                        {selectedType !== 'equipment_packages' && (
+                          <div className="flex items-center border rounded">
+                            <button
+                              type="button"
+                              onClick={() => setQty(product.id, qtyOf(product.id) - 1)}
+                              className="px-3 py-2 text-muted-foreground"
+                              aria-label="Decrease quantity"
+                            >
+                              −
+                            </button>
+                            <span className="w-7 text-center text-sm tabular-nums">
+                              {qtyOf(product.id)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setQty(product.id, qtyOf(product.id) + 1)}
+                              className="px-3 py-2 text-muted-foreground"
+                              aria-label="Increase quantity"
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
                         <Button
                           size="sm"
                           variant={lastAddedId === product.id ? 'secondary' : 'default'}
@@ -799,7 +827,7 @@ export default function ProductTypeSelector({
                           <span className="font-medium text-sm">
                             {formatPrice(getPrice(product))}
                           </span>
-                          {!hasCost(product) && (
+                          {selectedType !== 'equipment_packages' && !hasCost(product) && (
                             <div
                               className="text-[10px] text-amber-700"
                               title="No dealer cost in catalog — margin unavailable"
@@ -810,28 +838,31 @@ export default function ProductTypeSelector({
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="flex items-center justify-end gap-1">
-                            {/* QUOTE-013: per-row quantity stepper */}
-                            <div className="flex items-center border rounded">
-                              <button
-                                type="button"
-                                onClick={() => setQty(product.id, qtyOf(product.id) - 1)}
-                                className="px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
-                                aria-label="Decrease quantity"
-                              >
-                                −
-                              </button>
-                              <span className="w-7 text-center text-xs tabular-nums">
-                                {qtyOf(product.id)}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => setQty(product.id, qtyOf(product.id) + 1)}
-                                className="px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
-                                aria-label="Increase quantity"
-                              >
-                                +
-                              </button>
-                            </div>
+                            {/* QUOTE-013: per-row quantity stepper. QUOTE-015: hidden
+                                for packages — quantities come from the package items. */}
+                            {selectedType !== 'equipment_packages' && (
+                              <div className="flex items-center border rounded">
+                                <button
+                                  type="button"
+                                  onClick={() => setQty(product.id, qtyOf(product.id) - 1)}
+                                  className="px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
+                                  aria-label="Decrease quantity"
+                                >
+                                  −
+                                </button>
+                                <span className="w-7 text-center text-xs tabular-nums">
+                                  {qtyOf(product.id)}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setQty(product.id, qtyOf(product.id) + 1)}
+                                  className="px-2 py-1 text-sm text-muted-foreground hover:bg-muted"
+                                  aria-label="Increase quantity"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            )}
                             <Button
                               size="sm"
                               variant={lastAddedId === product.id ? 'secondary' : 'ghost'}

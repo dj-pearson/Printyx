@@ -11,8 +11,9 @@
  *     PATCH  /proposals/proposal-templates/:id
  *     DELETE /proposals/proposal-templates/:id        — soft delete (is_active=false)
  *
- *   Equipment packages (2):
- *     GET    /proposals/equipment-packages
+ *   Equipment packages (3):
+ *     GET    /proposals/equipment-packages            — ?search=, ?category=, opt-in ?page=/?limit= (QUOTE-015)
+ *     GET    /proposals/equipment-packages/:id/items  — package JSONB resolved against catalog (QUOTE-015)
  *     POST   /proposals/equipment-packages
  *
  *   Proposals core (7):
@@ -1132,13 +1133,39 @@ export default async function handler(req: Request) {
     // EQUIPMENT PACKAGES
     // =========================================================================
 
+    // GET /equipment-packages — list. QUOTE-015: opt-in server-side search +
+    // pagination (when ?page= is present) so the quote-builder picker can use
+    // this like the other catalog endpoints. Filters: ?search= (package_name/
+    // package_code), ?category=. Legacy bare-array shape is kept when no ?page=.
     if (path === '/equipment-packages' && method === 'GET') {
-      const { data, error } = await db
+      const params = url.searchParams;
+      const search = (params.get('search') || '').trim();
+      const category = params.get('category');
+      const pageParam = params.get('page');
+      const paginate = pageParam !== null;
+
+      let query = db
         .from('equipment_packages')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('tenant_id', ctx.tenantId)
         .order('package_name', { ascending: true });
 
+      if (search) {
+        const safe = search.replace(/[,()]/g, ' ').trim();
+        if (safe) query = query.or(`package_name.ilike.%${safe}%,package_code.ilike.%${safe}%`);
+      }
+      if (category && category !== 'all') query = query.eq('category', category);
+
+      let page = 1;
+      let limit = 50;
+      if (paginate) {
+        page = Math.max(1, parseInt(pageParam || '1', 10) || 1);
+        limit = Math.min(Math.max(1, parseInt(params.get('limit') || '50', 10) || 50), 200);
+        const from = (page - 1) * limit;
+        query = query.range(from, from + limit - 1);
+      }
+
+      const { data, error, count } = await query;
       if (error) {
         return errorResponse(500, 'Failed to fetch equipment packages', req, {
           code: 'DB_ERROR',
@@ -1146,7 +1173,156 @@ export default async function handler(req: Request) {
           requestId,
         });
       }
+      if (paginate) {
+        return jsonResponse(
+          { data: data ?? [], pagination: { page, limit, total: count ?? 0 } },
+          200,
+          req,
+          requestId,
+        );
+      }
       return jsonResponse(data ?? [], 200, req, requestId);
+    }
+
+    // GET /equipment-packages/:id/items — QUOTE-015: the package's equipment/
+    // accessories/services JSONB resolved against the catalog tables, so the
+    // quote builder can expand a package into real line items (name, code,
+    // selling price, dealer cost) without N client roundtrips. Items whose
+    // catalog row no longer exists come back with catalog:null and are still
+    // insertable from the package's own inline data.
+    const packageItems = path.match(/^\/equipment-packages\/([^/]+)\/items$/);
+    if (packageItems && method === 'GET') {
+      const pkgId = packageItems[1];
+      const { data: pkg, error: pkgError } = await db
+        .from('equipment_packages')
+        .select('*')
+        .eq('id', pkgId)
+        .eq('tenant_id', ctx.tenantId)
+        .maybeSingle();
+
+      if (pkgError) {
+        return errorResponse(500, 'Failed to fetch equipment package', req, {
+          code: 'DB_ERROR',
+          details: pkgError,
+          requestId,
+        });
+      }
+      if (!pkg) {
+        return errorResponse(404, 'Equipment package not found', req, {
+          code: 'NOT_FOUND',
+          requestId,
+        });
+      }
+
+      // JSONB shape per shared/quote-proposal-schema.ts (camelCase), but POST
+      // inserts the body as-is so tolerate snake_case too.
+      // deno-lint-ignore no-explicit-any
+      const asArray = (v: unknown): any[] => (Array.isArray(v) ? v : []);
+      const equipment = asArray(pkg.equipment);
+      const accessories = asArray(pkg.accessories);
+      const services = asArray(pkg.services);
+      // deno-lint-ignore no-explicit-any
+      const refOf = (row: any, ...keys: string[]): string | null => {
+        for (const k of keys) {
+          if (row?.[k]) return String(row[k]);
+        }
+        return null;
+      };
+
+      const modelIds = [
+        ...new Set(equipment.map((e) => refOf(e, 'modelId', 'model_id', 'id')).filter(Boolean)),
+      ] as string[];
+      const accessoryIds = [
+        ...new Set(
+          accessories.map((a) => refOf(a, 'accessoryId', 'accessory_id', 'id')).filter(Boolean),
+        ),
+      ] as string[];
+      const serviceIds = [
+        ...new Set(services.map((s) => refOf(s, 'serviceId', 'service_id', 'id')).filter(Boolean)),
+      ] as string[];
+
+      const fetchByIds = async (table: string, ids: string[]) => {
+        if (ids.length === 0) return [];
+        const { data, error } = await db
+          .from(table)
+          .select('*')
+          .eq('tenant_id', ctx.tenantId)
+          .in('id', ids);
+        if (error) {
+          log.warn({ requestId, table, err: String(error.message ?? error) }, 'pkg_resolve_failed');
+          return [];
+        }
+        return data ?? [];
+      };
+
+      // serviceId provenance is ambiguous (packages may reference either
+      // services catalog) — resolve against both, preferring professional_services.
+      const [models, accessoryRows, profServices, svcProducts] = await Promise.all([
+        fetchByIds('product_models', modelIds),
+        fetchByIds('product_accessories', accessoryIds),
+        fetchByIds('professional_services', serviceIds),
+        fetchByIds('service_products', serviceIds),
+      ]);
+
+      // deno-lint-ignore no-explicit-any
+      const byId = (rows: any[]) => new Map(rows.map((r) => [String(r.id), r]));
+      const modelById = byId(models);
+      const accessoryById = byId(accessoryRows);
+      const profById = byId(profServices);
+      const svcById = byId(svcProducts);
+
+      // deno-lint-ignore no-explicit-any
+      const baseItem = (row: any) => ({
+        quantity: Math.max(1, toNum(row?.quantity) || 1),
+        unitPrice: row?.unitPrice ?? row?.unit_price ?? null,
+        isOptional: (row?.isOptional ?? row?.is_optional) === true,
+        description: row?.description ?? null,
+      });
+
+      const items = [
+        ...equipment.map((e) => {
+          const refId = refOf(e, 'modelId', 'model_id', 'id');
+          return {
+            itemType: 'equipment',
+            refId,
+            ...baseItem(e),
+            catalog: (refId && modelById.get(refId)) || null,
+            catalogSource: refId && modelById.has(refId) ? 'product_models' : null,
+          };
+        }),
+        ...accessories.map((a) => {
+          const refId = refOf(a, 'accessoryId', 'accessory_id', 'id');
+          return {
+            itemType: 'accessory',
+            refId,
+            ...baseItem(a),
+            catalog: (refId && accessoryById.get(refId)) || null,
+            catalogSource: refId && accessoryById.has(refId) ? 'product_accessories' : null,
+          };
+        }),
+        ...services.map((s) => {
+          const refId = refOf(s, 'serviceId', 'service_id', 'id');
+          const catalog = (refId && (profById.get(refId) ?? svcById.get(refId))) || null;
+          return {
+            itemType: 'service',
+            refId,
+            ...baseItem(s),
+            // Services carry their own price fields in the package JSONB.
+            unitPrice:
+              s?.oneTimePrice ?? s?.one_time_price ?? s?.monthlyPrice ?? s?.monthly_price ?? null,
+            catalog,
+            catalogSource: refId
+              ? profById.has(refId)
+                ? 'professional_services'
+                : svcById.has(refId)
+                  ? 'service_products'
+                  : null
+              : null,
+          };
+        }),
+      ];
+
+      return jsonResponse({ package: pkg, items }, 200, req, requestId);
     }
 
     if (path === '/equipment-packages' && method === 'POST') {

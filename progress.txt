@@ -5654,3 +5654,53 @@ That's it — no schema change needed. Idempotency_key callers pick is per-job-t
 - The accessory-confirm queue pattern in LineItemManager is the hook for QUOTE-015 (packages will also need a multi-line confirm).
 - If you need browser verification: steps 1-2 above are solved; you only need a current SUPABASE_ANON_KEY. Suggest asking the user to refresh .env keys.
 - The old `client/src/lib/useRequiredAccessories.ts` is now only used elsewhere (if anywhere) — candidates for cleanup when QUOTE wave ends.
+
+Iteration 1 (06/11/2026 18:25:50): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+## Ralph Iteration — QUOTE-015 (Equipment packages in the quote builder)
+
+**Date:** 2026-06-11
+**Story:** QUOTE-015 — Equipment packages addable in the quote builder
+**Status:** ✅ passes: true (AC1-5; AC6 browser verify environment-blocked — same stale-anon-key blocker as QUOTE-014, re-confirmed today: GoTrue /auth/v1/health still 401)
+
+### What Shipped
+
+**Edge fn `supabase/functions/proposals/index.ts` (single backend — works in dev via the `/api/proposals` Express proxy and in prod directly; no Express parity gap by design)**
+- `GET /equipment-packages` now supports `?search=` (package_name/package_code ilike), `?category=`, and opt-in `?page=`/`?limit=` returning the QUOTE-011-style `{data, pagination:{page,limit,total}}` envelope. Legacy bare-array shape preserved when no `?page=` (QuoteProposalGeneration.tsx depends on it).
+- NEW `GET /equipment-packages/:id/items` — fetches the package (tenant-filtered) and resolves its equipment/accessories/services JSONB against catalog tables in 4 parallel batched `.in('id', ids)` queries (product_models, product_accessories, professional_services, service_products — serviceId provenance is ambiguous so both service catalogs are tried, professional_services preferred). Returns `{package, items:[{itemType, refId, quantity, unitPrice, isOptional, description, catalog, catalogSource}]}`. Tolerates camelCase AND snake_case JSONB keys (POST inserts body as-is, so shape isn't guaranteed). Items with deleted catalog rows return catalog:null and remain insertable from inline package data.
+
+**`ProductTypeSelector.tsx`**
+- New 'Packages' product type (`equipment_packages`, icon Boxes, endpoint `/api/proposals/equipment-packages`). normalizeProduct learned package fields (package_name/package_code/recommended_selling_price/base_price/total_retail_price→msrp).
+- Qty stepper + "no cost" badge hidden for package rows (quantities/costs live on the package items).
+
+**`RequiredAccessoriesDialog.tsx` (generalized, QUOTE-014 defaults unchanged)**
+- Optional props: `title`, `description`, `itemNoun {singular,plural}`, `cancelLabel`. Rows gained optional `defaultQuantity` (package items carry their own qty — dialog qty now defaults per-row), `productType`, `itemKind`.
+
+**`LineItemManager.tsx`**
+- Accessory queue generalized to `PendingItemConfirm { kind: 'accessories'|'package', sourceId, sourceName, rows }` — same queue serves both flows (picker stays open, several adds can stack).
+- Selecting a package adds NO line itself; fetches `/items`, builds confirm rows (package unitPrice wins; catalog fills price gaps + always supplies dealer cost via the pricing-tier resolvers; isOptional → unchecked).
+- Confirm: first confirmed equipment row becomes the parent line, everything else inserts as its sublines (parentLineId = parent catalog id, matching the grouped-rendering convention); if no equipment confirmed, all rows insert top-level. notes = "From package {name}". Lines are ordinary lines afterwards — individually editable/deletable, no live package link (AC3).
+
+### Acceptance Criteria
+| AC | Status |
+|---|---|
+| 1. Packages product type, tenant-filtered, searchable by name/code/category | ✅ (server-side search; manufacturer filter naturally absent) |
+| 2. Package expands into line items: first equipment = parent, rest sublines, own qty/price/dealer-cost from catalog | ✅ |
+| 3. Package-derived lines individually editable/deletable, no live link | ✅ (plain lines) |
+| 4. isOptional items unchecked in confirm dialog (QUOTE-014 pattern reused) | ✅ (same dialog, generalized) |
+| 5. npm run check && npm run build | ✅ (tsc clean on touched files — pre-existing repo errors unchanged; vite build 22.3s; deno check green) |
+| 6. Verify in browser | ⛔ environment-blocked (stale anon key, re-verified 401 today — see QUOTE-014 entry for the full diagnosis chain) |
+
+### Quality Gates
+- tsc: zero errors in the 3 quote-builder files / proposals edge fn (pre-existing repo errors unchanged)
+- vite build ✅ 22.3s · deno check proposals fn ✅ · prettier applied · eslint: client/ ignored by repo config (pre-existing)
+- vitest server/tests/unit: 2016 pass / 10 fail — all failures pre-existing (connection-resilience, report-cache, error-sanitization + their database-exports/ duplicates). quote-math + proposal-merge suites: 22/22 green.
+
+### Notes for the Next Ralph Iteration
+- No equipment_packages seed data exists (table is empty in most envs) — the Packages picker tab will be empty until packages are POSTed. Package CRUD management UI is intentionally out of scope per story notes; consider a follow-up story.
+- The `/equipment-packages/:id/items` resolver is the reusable piece if QUOTE-016/017 need package-aware pricing.
+- Remaining prio-2 quote stories: QUOTE-016 (per-line discounts — largest), QUOTE-017 (recurring lines), QUOTE-019 (wizard polish). LAUNCH-011/020 remain ops-blocked (need live infra / k6).
+- REMINDER: migrations 0014-0018 still pending manual apply (journal stops at 0009).
