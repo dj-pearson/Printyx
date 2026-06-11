@@ -11,13 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
-  useRequiredAccessories,
-  addRequiredAccessoriesToQuote,
-  getRequiredAccessoriesInfo,
-} from '@/lib/useRequiredAccessories';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Info, Zap } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Dialog,
   DialogContent,
@@ -63,6 +57,10 @@ import {
   Minus,
 } from 'lucide-react';
 import ProductTypeSelector, { normalizeProduct } from './ProductTypeSelector';
+import RequiredAccessoriesDialog, {
+  type AccessoryConfirmRow,
+  type ConfirmedAccessory,
+} from './RequiredAccessoriesDialog';
 
 type ProductType =
   | 'product_models'
@@ -133,6 +131,18 @@ export default function LineItemManager({
   const [editingItem, setEditingItem] = useState<LineItem | null>(null);
   const [parentProductForAccessory, setParentProductForAccessory] = useState<string | undefined>();
 
+  // QUOTE-014: pending accessory confirmations, one entry per added model whose
+  // required accessories resolved. A queue because the picker stays open
+  // (QUOTE-013) and several models can be added before the first dialog is
+  // answered. The dialog shows the head of the queue.
+  interface PendingAccessoryConfirm {
+    modelId: string;
+    modelName: string;
+    accessories: AccessoryConfirmRow[];
+  }
+  const [accessoryQueue, setAccessoryQueue] = useState<PendingAccessoryConfirm[]>([]);
+  const pendingConfirm = accessoryQueue[0] ?? null;
+
   // Resolve customer (selling) price for a normalized product by pricing tier.
   const resolveSellingPrice = (p: any, pricing: 'new' | 'upgrade'): number => {
     if (pricing === 'upgrade' && p.sellingPriceUpgrade) return p.sellingPriceUpgrade;
@@ -180,47 +190,52 @@ export default function LineItemManager({
     // Add the main product
     onAddItem(newItem);
 
-    // If this is a product model, automatically add required accessories
+    // QUOTE-014: if this is a product model with required accessories, resolve
+    // them and queue a confirmation dialog instead of silently auto-adding.
+    // Models with no required accessories keep the unchanged single-add path.
     if (product.type === 'product_models' && product.requiredAccessories) {
-      // Parse required accessory codes
       const requiredCodes = product.requiredAccessories
         .split(',')
         .map((code: string) => code.trim())
         .filter((code: string) => code.length > 0);
 
       if (requiredCodes.length > 0) {
-        // Fetch matching accessories from product accessories catalog
         try {
-          const response = await fetch(`/api/product-accessories?codes=${requiredCodes.join(',')}`);
-          if (response.ok) {
-            const payload = await response.json();
-            const rawAccessories = Array.isArray(payload)
-              ? payload
-              : payload?.data || payload?.records || [];
+          // productModelId lets the edge function annotate each row with
+          // compatibility info (is_required/is_optional) when available, so
+          // optional accessories can be listed unchecked.
+          const payload = await apiRequest(
+            `/api/product-accessories?codes=${encodeURIComponent(requiredCodes.join(','))}&productModelId=${encodeURIComponent(product.id)}`,
+            'GET',
+          );
+          const rawAccessories = Array.isArray(payload)
+            ? payload
+            : payload?.data || payload?.records || [];
 
-            // Add each required accessory as a line item (normalized for cost/price)
-            rawAccessories.forEach((raw: any) => {
+          const rows: AccessoryConfirmRow[] = (rawAccessories as Record<string, any>[]).map(
+            (raw) => {
               const accessory = normalizeProduct(raw);
-              const accPrice = resolveSellingPrice(accessory, pricingType);
-              const accCost = resolveDealerCost(accessory, pricingType);
-              const accessoryItem: Omit<LineItem, 'lineNumber'> = {
-                isSubline: false,
-                productType: 'product_accessories',
-                productId: accessory.id,
+              const compat = raw?.compatibility;
+              return {
+                id: accessory.id,
                 productCode: accessory.productCode,
-                productName: `${accessory.productName} (Required for ${productName})`,
-                description: `Required accessory for ${productName}`,
-                quantity: 1,
-                msrp: accessory.msrp || 0,
-                listPrice: accPrice,
-                unitPrice: accPrice,
-                totalPrice: accPrice,
-                unitCost: accCost,
-                margin: calculateMargin(accPrice, accCost),
-                notes: `Auto-added required accessory for ${productName}`,
+                productName: accessory.productName,
+                description: accessory.description,
+                msrp: accessory.msrp,
+                unitPrice: resolveSellingPrice(accessory, pricingType),
+                unitCost: resolveDealerCost(accessory, pricingType),
+                // Codes listed on the model are required unless the
+                // compatibility record explicitly marks them optional.
+                required: compat ? compat.is_required !== false : true,
               };
-              onAddItem(accessoryItem);
-            });
+            },
+          );
+
+          if (rows.length > 0) {
+            setAccessoryQueue((queue) => [
+              ...queue,
+              { modelId: product.id, modelName: productName, accessories: rows },
+            ]);
           }
         } catch (error) {
           console.warn('Failed to fetch required accessories:', error);
@@ -230,6 +245,39 @@ export default function LineItemManager({
 
     // QUOTE-013: keep the picker open for fast multi-add. Closing + parent reset
     // happen on the Done action / dialog close (onDone / onOpenChange) instead.
+  };
+
+  // QUOTE-014: Confirm adds every checked accessory as a subline of the model;
+  // Cancel adds nothing beyond the already-added model.
+  const handleConfirmAccessories = (selected: ConfirmedAccessory[]) => {
+    if (!pendingConfirm) return;
+    selected.forEach((row) => {
+      const provenance = row.required
+        ? `Required accessory for ${pendingConfirm.modelName}`
+        : `Accessory for ${pendingConfirm.modelName}`;
+      onAddItem({
+        isSubline: true,
+        parentLineId: pendingConfirm.modelId,
+        productType: 'product_accessories',
+        productId: row.id,
+        productCode: row.productCode,
+        productName: row.productName,
+        description: provenance,
+        quantity: row.quantity,
+        msrp: row.msrp || 0,
+        listPrice: row.unitPrice,
+        unitPrice: row.unitPrice,
+        totalPrice: row.unitPrice * row.quantity,
+        unitCost: row.unitCost,
+        margin: calculateMargin(row.unitPrice, row.unitCost),
+        notes: provenance,
+      });
+    });
+    setAccessoryQueue((queue) => queue.slice(1));
+  };
+
+  const handleCancelAccessories = () => {
+    setAccessoryQueue((queue) => queue.slice(1));
   };
 
   const calculateMargin = (price: number, cost: number): number => {
@@ -984,6 +1032,19 @@ export default function LineItemManager({
             )}
           </DialogContent>
         </Dialog>
+
+        {/* QUOTE-014: required-accessory preview & confirm. Keyed per queue
+            entry so checkbox/quantity state resets between models. */}
+        {pendingConfirm && (
+          <RequiredAccessoriesDialog
+            key={`${pendingConfirm.modelId}:${accessoryQueue.length}`}
+            open
+            modelName={pendingConfirm.modelName}
+            accessories={pendingConfirm.accessories}
+            onConfirm={handleConfirmAccessories}
+            onCancel={handleCancelAccessories}
+          />
+        )}
       </CardContent>
     </Card>
   );

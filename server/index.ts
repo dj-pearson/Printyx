@@ -110,7 +110,16 @@ app.use((req: Request, res: Response, next: NextFunction) => {
             'style-src': ["'self'", "'unsafe-inline'", 'https:'],
             'img-src': ["'self'", 'data:', 'blob:', 'https:'],
             'font-src': ["'self'", 'https:', 'data:'],
-            'connect-src': ["'self'", 'ws:', 'wss:', 'http://localhost:*'],
+            'connect-src': [
+              "'self'",
+              'ws:',
+              'wss:',
+              'http://localhost:*',
+              // Local dev signs in against the hosted GoTrue/edge functions —
+              // without these the login form is CSP-blocked in the browser.
+              'https://api.printyx.net',
+              'https://functions.printyx.net',
+            ],
             'frame-ancestors': ["'none'"],
             'object-src': ["'none'"],
             'base-uri': ["'self'"],
@@ -130,10 +139,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // Permissions-Policy header (not provided by helmet v7 directly)
 app.use((_req: Request, res: Response, next: NextFunction) => {
-  res.setHeader(
-    'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), payment=(self)',
-  );
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self)');
   next();
 });
 

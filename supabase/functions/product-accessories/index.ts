@@ -129,6 +129,20 @@ export default async function handler(req: Request) {
         }
       }
 
+      // QUOTE-014: exact-match lookup by comma-separated accessory codes, used by
+      // the quote builder's required-accessory confirmation (parity with the
+      // Express route's ?codes= filter).
+      const codesParam = url.searchParams.get('codes');
+      if (codesParam) {
+        const codes = codesParam
+          .split(',')
+          .map((code) => code.trim())
+          .filter((code) => code.length > 0);
+        if (codes.length > 0) {
+          query = query.in('accessory_code', codes);
+        }
+      }
+
       const { data: accessories, error, count } = await query;
 
       if (error) {

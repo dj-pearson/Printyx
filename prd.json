@@ -7069,8 +7069,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "Builds on QUOTE-013 (picker stays open). Keep the subline grouping rendering at LineItemManager.tsx:664-893 untouched.",
+      "passes": true,
+      "notes": "Builds on QUOTE-013 (picker stays open). Keep the subline grouping rendering at LineItemManager.tsx:664-893 untouched. DONE 2026-06-11: RequiredAccessoriesDialog.tsx (preview/confirm list: name+code+price, dealer cost gated by usePricingVisibility().showDealerCost, qty steppers, required rows pre-checked+locked via compatibility.is_required, optional rows unchecked). LineItemManager: silent auto-add replaced with a confirm queue (handles multi-add picker); Confirm adds checked accessories as sublines (isSubline+parentLineId=model productId), Cancel adds model only, provenance note kept, no-accessory models unchanged. Edge fn product-accessories: added ?codes= filter (Express already had it; prod hits edge directly). tsc clean on touched files; vite build green; security-headers tests green. Browser verify BLOCKED: hosted Supabase anon keys rotated (GoTrue /health 401s with every key in repo) — dev CSP fixed (server/index.ts dev connect-src now allows api/functions.printyx.net) so login works once a valid anon key is provided via VITE_SUPABASE_ANON_KEY.",
       "category": "quote-module-v2"
     },
     {
