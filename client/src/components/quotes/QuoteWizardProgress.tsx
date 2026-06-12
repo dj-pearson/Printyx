@@ -25,7 +25,10 @@ export function QuoteWizardProgress({ steps, currentStep, onStepClick }: QuoteWi
         {steps.map((step, index) => {
           const isCompleted = index < currentStep;
           const isCurrent = index === currentStep;
-          const isClickable = onStepClick && index <= currentStep;
+          // QUOTE-019: every step is clickable — forward jumps included. The
+          // parent's onStepClick validates prerequisites and explains what's
+          // missing when a jump is invalid.
+          const isClickable = !!onStepClick;
 
           return (
             <li
@@ -46,7 +49,7 @@ export function QuoteWizardProgress({ steps, currentStep, onStepClick }: QuoteWi
                       ? 'bg-blue-600 text-white'
                       : isCurrent
                         ? 'bg-blue-100 text-blue-600 ring-2 ring-blue-600'
-                        : 'bg-gray-100 text-gray-400'
+                        : `bg-gray-100 text-gray-400 ${isClickable ? 'hover:bg-gray-200 hover:text-gray-600' : ''}`
                   }`}
                 >
                   {isCompleted ? <Check className="h-4 w-4" /> : index + 1}

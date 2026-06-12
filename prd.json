@@ -7156,8 +7156,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "Depends on QUOTE-018 (autosave makes free navigation safe). Wizard steps: QuoteWizardProgress.tsx:85-90.",
+      "passes": true,
+      "notes": "Depends on QUOTE-018 (autosave makes free navigation safe). Wizard steps: QuoteWizardProgress.tsx:85-90. DONE 2026-06-11: forward jumps unlocked in QuoteWizardProgress (validation lives in QuoteBuilder goToStep, names the missing prerequisite, fires ensureDraft when leaving step 0); Review sections (Customer/Products/Pricing) each have an Edit link; sticky summary bar on Products+Pricing steps (subtotal/discount/total + margin gated by pricingVisibility.showMargin, red below policy / amber within 5pts) with guardrail banner; guardrail warning also surfaces on Review and as a toast at draft-save. check/build/tests green. AC6 browser verify environment-blocked (stale anon key, GoTrue 401 re-confirmed).",
       "category": "quote-module-v2"
     },
     {

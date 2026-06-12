@@ -33,6 +33,8 @@ import {
   ChevronRight,
   Download,
   Mail,
+  AlertTriangle,
+  Pencil,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
@@ -207,6 +209,8 @@ export default function QuoteBuilder({
   const minMargin = pricingVisibility?.minMarginPercentage;
   const maxDiscount = pricingVisibility?.maxDiscountPercentage;
   const isManager = pricingVisibility?.showDealerCost === true;
+  // QUOTE-019: margin is cost-derived — only render it where the role allows.
+  const showMargin = pricingVisibility?.showMargin === true;
 
   const form = useForm<QuoteFormData>({
     resolver: zodResolver(quoteSchema),
@@ -585,7 +589,23 @@ export default function QuoteBuilder({
       return;
     }
 
-    saveQuoteMutation.mutate({ quote: data, lineItems });
+    saveQuoteMutation.mutate(
+      { quote: data, lineItems },
+      {
+        onSuccess: () => {
+          // QUOTE-019: guardrail problems surface when the draft is saved, not
+          // only at send. The save itself is never blocked.
+          if (guardrailViolated) {
+            toast({
+              title: 'Saved — manager approval required to send',
+              description: belowMinMargin
+                ? `Margin ${overallMargin.toFixed(1)}% is below the ${minMargin}% minimum.`
+                : `Effective discount ${effectiveDiscount.toFixed(1)}% exceeds the ${maxDiscount}% maximum.`,
+            });
+          }
+        },
+      },
+    );
   };
 
   const handleSubmitQuote = async () => {
@@ -612,21 +632,9 @@ export default function QuoteBuilder({
     }
 
     // QUOTE-006/016: enforce pricing policy on send. Managers may override.
-    // Margin uses the discounted subtotal (line totals are net of per-line
-    // discounts); the max-discount check evaluates the EFFECTIVE discount —
-    // per-line plus quote-level, relative to the gross subtotal.
-    // QUOTE-017: the guardrail margin deliberately spans BOTH billing buckets
-    // (one-time + one period of every recurring line) — low margin cannot be
-    // hidden in recurring lines.
-    const totalCost = lineItems.reduce((sum, i) => sum + (i.unitCost || 0) * i.quantity, 0);
-    const revenue = totals.subtotal - discountAmount;
-    const overallMargin = revenue > 0 ? ((revenue - totalCost) / revenue) * 100 : 0;
-    const effectiveDiscount = effectiveDiscountPct(lineItems, Math.max(0, discountAmount));
-    const belowMinMargin =
-      totalCost > 0 && minMargin != null && minMargin > 0 && overallMargin < minMargin;
-    const overMaxDiscount =
-      maxDiscount != null && maxDiscount > 0 && effectiveDiscount > maxDiscount;
-    if ((belowMinMargin || overMaxDiscount) && !isManager) {
+    // Guardrail math is hoisted to the component body (QUOTE-019) so the
+    // sticky summary bar and draft-save warning evaluate the same numbers.
+    if (guardrailViolated && !isManager) {
       toast({
         title: 'Manager approval required',
         description: belowMinMargin
@@ -699,6 +707,22 @@ export default function QuoteBuilder({
   const hasRecurring = recurringLines(lineItems).length > 0;
   const oneTimeBucket = oneTimeBucketTotals(lineItems, Math.max(0, discountAmount));
   const recurringBuckets = recurringTotalsByFrequency(lineItems);
+
+  // QUOTE-006/016/019: guardrail evaluation, shared by the send gate, the
+  // sticky summary bar, and the draft-save warning. Margin uses the discounted
+  // subtotal (line totals are net of per-line discounts); max-discount checks
+  // the EFFECTIVE discount (per-line + quote-level over the gross subtotal).
+  // QUOTE-017: margin deliberately spans BOTH billing buckets (one-time + one
+  // period of every recurring line) — low margin cannot hide in recurring lines.
+  const guardrailTotalCost = lineItems.reduce((sum, i) => sum + (i.unitCost || 0) * i.quantity, 0);
+  const guardrailRevenue = totals.subtotal - discountAmount;
+  const overallMargin =
+    guardrailRevenue > 0 ? ((guardrailRevenue - guardrailTotalCost) / guardrailRevenue) * 100 : 0;
+  const effectiveDiscount = effectiveDiscountPct(lineItems, Math.max(0, discountAmount));
+  const belowMinMargin =
+    guardrailTotalCost > 0 && minMargin != null && minMargin > 0 && overallMargin < minMargin;
+  const overMaxDiscount = maxDiscount != null && maxDiscount > 0 && effectiveDiscount > maxDiscount;
+  const guardrailViolated = belowMinMargin || overMaxDiscount;
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
@@ -795,17 +819,25 @@ export default function QuoteBuilder({
     step === 0 ? 'Select a customer to continue' : 'Add at least one line item to continue';
 
   const goToStep = (step: number) => {
-    // Allow jumping backwards freely; forward only if all prior steps are valid.
+    // Allow jumping backwards freely; forward jumps (QUOTE-019) only need the
+    // prerequisites met — a chosen customer unlocks Products, and ≥1 line item
+    // unlocks Pricing/Review. Invalid jumps name the missing prerequisite.
     if (step <= currentStep) {
       setCurrentStep(step);
       return;
     }
     for (let s = currentStep; s < step; s++) {
       if (!stepValid(s)) {
-        toast({ title: 'Incomplete', description: stepBlockedMessage(s), variant: 'destructive' });
+        toast({
+          title: `${DEFAULT_QUOTE_STEPS[step]?.label ?? 'Step'} is locked`,
+          description: stepBlockedMessage(s),
+          variant: 'destructive',
+        });
         return;
       }
     }
+    // QUOTE-018: leaving the customer step persists a draft so refresh resumes.
+    if (currentStep === 0) void ensureDraft();
     setCurrentStep(step);
   };
   const handleNext = () => {
@@ -930,6 +962,64 @@ export default function QuoteBuilder({
           )}
         </CardContent>
       </Card>
+
+      {/* ── QUOTE-019: persistent pricing summary bar (Products & Pricing) ──── */}
+      {(currentStep === 1 || currentStep === 2) && (
+        <div
+          className="sticky top-0 z-20 rounded-lg border bg-background/95 backdrop-blur shadow-sm"
+          data-testid="quote-summary-bar"
+          aria-label="Pricing summary"
+        >
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-3 py-2 sm:px-4 text-sm">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xs text-muted-foreground">Subtotal</span>
+              <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xs text-muted-foreground">Discount</span>
+              <span className={`font-medium ${discountAmount > 0 ? 'text-red-600' : ''}`}>
+                {discountAmount > 0 ? `−${formatCurrency(discountAmount)}` : formatCurrency(0)}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xs text-muted-foreground">Total</span>
+              <span className="font-bold text-primary">{formatCurrency(totals.total)}</span>
+            </div>
+            {showMargin && guardrailTotalCost > 0 && (
+              <div className="flex items-baseline gap-1.5 sm:ml-auto">
+                <span className="text-xs text-muted-foreground">Margin</span>
+                <span
+                  className={`font-semibold ${
+                    belowMinMargin
+                      ? 'text-red-600'
+                      : minMargin != null && minMargin > 0 && overallMargin < minMargin + 5
+                        ? 'text-amber-600'
+                        : 'text-green-600'
+                  }`}
+                >
+                  {overallMargin.toFixed(1)}%
+                </span>
+              </div>
+            )}
+          </div>
+          {guardrailViolated && (
+            <div
+              className={`flex items-start gap-2 rounded-b-lg border-t px-3 py-1.5 sm:px-4 text-xs ${
+                belowMinMargin ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-800'
+              }`}
+            >
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+              <span>
+                {belowMinMargin &&
+                  `Margin ${overallMargin.toFixed(1)}% is below the ${minMargin}% minimum. `}
+                {overMaxDiscount &&
+                  `Effective discount ${effectiveDiscount.toFixed(1)}% (including line discounts) exceeds the ${maxDiscount}% maximum. `}
+                Manager approval will be required to send.
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Step 0: Customer & setup ───────────────────────────────────────── */}
       {currentStep === 0 && (
@@ -1093,30 +1183,85 @@ export default function QuoteBuilder({
             </CardDescription>
           </CardHeader>
           <CardContent className="p-4 sm:p-6 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <div className="flex justify-between sm:block">
-                <span className="text-muted-foreground">Customer</span>
-                <div className="font-medium">{customerName || 'Not selected'}</div>
+            {/* QUOTE-019: each review section links straight back to its step */}
+            <div className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold">Customer</h4>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => goToStep(0)}
+                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                  data-testid="review-edit-customer"
+                >
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
               </div>
-              <div className="flex justify-between sm:block">
-                <span className="text-muted-foreground">Contact</span>
-                <div className="font-medium">
-                  {selectedContact
-                    ? `${selectedContact.firstName || ''} ${selectedContact.lastName || ''}`.trim() ||
-                      '—'
-                    : '—'}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                <div className="flex justify-between sm:block">
+                  <span className="text-muted-foreground">Customer</span>
+                  <div className="font-medium">{customerName || 'Not selected'}</div>
+                </div>
+                <div className="flex justify-between sm:block">
+                  <span className="text-muted-foreground">Contact</span>
+                  <div className="font-medium">
+                    {selectedContact
+                      ? `${selectedContact.firstName || ''} ${selectedContact.lastName || ''}`.trim() ||
+                        '—'
+                      : '—'}
+                  </div>
+                </div>
+                <div className="flex justify-between sm:block">
+                  <span className="text-muted-foreground">Title</span>
+                  <div className="font-medium">{form.watch('title') || '—'}</div>
                 </div>
               </div>
-              <div className="flex justify-between sm:block">
-                <span className="text-muted-foreground">Line items</span>
-                <div className="font-medium">{lineItems.length}</div>
+            </div>
+
+            <div className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold">Products</h4>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => goToStep(1)}
+                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                  data-testid="review-edit-products"
+                >
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
               </div>
-              <div className="flex justify-between sm:block">
-                <span className="text-muted-foreground">Title</span>
-                <div className="font-medium">{form.watch('title') || '—'}</div>
+              <div className="text-sm">
+                <span className="text-muted-foreground">
+                  {lineItems.length} line item{lineItems.length === 1 ? '' : 's'}
+                </span>
+                {lineItems.length > 0 && (
+                  <div className="mt-1 font-medium line-clamp-2">
+                    {lineItems.map((i) => i.productName).join(' · ')}
+                  </div>
+                )}
               </div>
             </div>
+
             <div className="rounded-lg border p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold">Pricing</h4>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => goToStep(2)}
+                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                  data-testid="review-edit-pricing"
+                >
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+              </div>
               {/* QUOTE-017: one-time vs recurring split */}
               {hasRecurring && (
                 <div className="space-y-1 pb-2 mb-2 border-b">
@@ -1188,6 +1333,19 @@ export default function QuoteBuilder({
                 <span>Total</span>
                 <span className="text-primary">{formatCurrency(totals.total)}</span>
               </div>
+              {/* QUOTE-019: guardrail status is visible before save/send */}
+              {guardrailViolated && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  <span>
+                    {belowMinMargin &&
+                      `Margin ${overallMargin.toFixed(1)}% is below the ${minMargin}% minimum. `}
+                    {overMaxDiscount &&
+                      `Effective discount ${effectiveDiscount.toFixed(1)}% (including line discounts) exceeds the ${maxDiscount}% maximum. `}
+                    Manager approval will be required to send.
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Manager Quote — hard costs + profit (managers/admins only) */}

@@ -5851,3 +5851,54 @@ Bucket rules:
   (drag-reorder, prio-3). LAUNCH-011/020 still ops-blocked.
 - Migrations 0014-0019 still pending manual apply (journal stops at 0009) — not
   needed for QUOTE-017 (is_recurring/recurring_* are base-schema columns).
+
+Iteration 4 (06/11/2026 19:16:21): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+## Ralph Iteration — QUOTE-019 (Wizard navigation polish)
+
+**Date:** 2026-06-11
+**Story:** QUOTE-019 — jump-forward navigation, Review edit links, persistent pricing summary bar
+**Status:** ✅ passes: true (AC1-5; AC6 browser verify environment-blocked — stale anon key re-confirmed, GoTrue /auth/v1/health 401)
+
+### What shipped
+- **QuoteWizardProgress**: step headers are now clickable in BOTH directions
+  (`isClickable = !!onStepClick`); upcoming steps get hover affordance. All
+  prerequisite validation lives in the parent.
+- **QuoteBuilder goToStep**: forward jumps validate per-step prerequisites
+  (customer → unlocks Products+; ≥1 line item → unlocks Pricing/Review) and the
+  rejection toast names the locked step + missing prerequisite. Jumping forward
+  from step 0 fires ensureDraft() (QUOTE-018 parity with handleNext).
+- **Guardrail math hoisted** to component body (guardrailTotalCost/Revenue,
+  overallMargin, effectiveDiscount, belowMinMargin, overMaxDiscount,
+  guardrailViolated) — shared by the send gate (handleSubmitQuote now reads the
+  hoisted values), sticky bar, Review banner, and draft-save toast.
+- **Sticky summary bar** (`data-testid="quote-summary-bar"`, sticky top-0 z-20)
+  renders on Products + Pricing steps: Subtotal / Discount / Total always;
+  Margin % gated by `pricingVisibility.showMargin` (cost-derived) and colored
+  red below min-margin policy, amber within 5pts above, green otherwise. When
+  guardrails are violated a banner row (red bg for margin, amber for discount)
+  extends the PricingCalculator QUOTE-006 warning to the bar.
+- **Review step restructured** into three bordered sections — Customer
+  (customer/contact/title), Products (count + names), Pricing (totals box) —
+  each with a Pencil "Edit" button jumping to its step (data-testid
+  review-edit-{customer,products,pricing}). Guardrail banner also renders under
+  the Review total, and Save Draft surfaces a "Saved — manager approval required
+  to send" toast when violated (save itself never blocked).
+
+### Quality gates
+- tsc error count identical with/without changes (6290 pre-existing repo-wide; 0 in touched files)
+- vite build 22.6s green; quote-math 27/27 + proposal-merge 13/13
+- vitest full-run failures (42 files) are pre-existing: Playwright specs collected by vitest + server/mobile tests needing live env
+- eslint clean (client files repo-ignored, pre-existing); prettier applied
+
+### Notes for the next Ralph iteration
+- Remaining quote stories: QUOTE-020 (drag-reorder + type grouping, prio 3).
+  Then EDGE-002a (billing edge fn ports, prio 3), PROP-009/010 partials.
+- The summary bar shows guardrail VIOLATION text (with margin numbers) to all
+  roles — consistent with the existing PricingCalculator QUOTE-006 warning and
+  the send-gate toast which already do; only the always-on margin chip is
+  role-gated (showMargin).
+- LAUNCH-011/020 still ops-blocked; browser login still blocked by stale anon key.
