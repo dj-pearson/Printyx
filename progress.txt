@@ -5962,3 +5962,90 @@ Status: Needs Review
 
 Iteration 6 (06/11/2026): Story QUOTE-020
 Status: Complete
+
+Iteration 6 (06/11/2026 19:38:34): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+## Ralph Iteration — EDGE-002a (Billing edge function full parity)
+
+**Date:** 2026-06-11
+**Story:** EDGE-002a — port missing endpoints to billing edge function + proxy /api/billing
+**Status:** passes: true (all ACs; browser smoke env-blocked — stale anon key, DB also unreachable from this env: pg ECONNRESET both sandboxed+not)
+
+### What shipped
+- **supabase/functions/billing/handlers/** (new dir, dispatched from index.ts via a
+  BillingCtx before the legacy resource blocks):
+  - `_context.ts` — BillingCtx + the SCHEMA AUDIT header (canonical drift notes),
+    isMissingTableError (42P01/PGRST205), isMissingColumnError (PGRST204),
+    mapInvoiceRow (snake→camel for invoice rows + customer fields).
+  - `configurations.ts` / `cycles.ts` / `adjustments.ts` — the three DRIFT tables
+    (billing_configurations/billing_cycles/billing_adjustments exist in NO Drizzle
+    schema or migration; legacy Express hit them with raw SQL). Tolerance: GET→[]
+    when table missing, writes→503 with degraded reason. All return BARE ARRAYS
+    (frontend contract). cycles/run runs the REAL meter-reading pipeline
+    (extracted to handlers/generate-invoices.ts, shared with POST
+    /generate-invoices) instead of the legacy demo-data inserts (hard-coded
+    business_record_id — intentionally not ported); cycle stat columns update
+    retries minimal-set on PGRST204.
+  - `payment-methods.ts` — subscription_payment_methods (real table), camelCase
+    out (Billing.tsx contract), DELETE guards last-method + promotes new default
+    + best-effort Stripe REST detach (fetch, STRIPE_SECRET_KEY); also /info (GET
+    default method billing_details) + /address (PUT validation + update). POST
+    payment-methods NOT ported (no frontend caller).
+  - `service-entries.ts` — endpoint NEVER existed on Express (frontend-only URL
+    from TechnicianTicketWorkflow). Creates a DRAFT service invoice in `invoices`
+    (invoice_type service, SVC- number, external_customer_id = ticket id so the
+    existing ?ticketId= list filter finds it) + best-effort labor line item.
+  - `invoices.ts` — GET/PATCH/PUT/DELETE /invoices/:id, POST /:id/pay (+PATCH
+    /paid), POST /:id/email (+PATCH /send, sendgrid via
+    ../email-marketing/_sendgrid.ts — cross-fn import is the proposals idiom —
+    with base64 PDF attach), GET /:id/pdf (binary + CORS headers + watermark
+    DRAFT/PAID/OVERDUE), POST /invoices/generate-from-contract (also
+    frontend-only before; bills contracts.monthly_base). Uses REAL invoice
+    columns — the consolidated Express router referenced phantom cols
+    (balance/paid/total/tax) that don't exist in shared/schema.ts.
+  - `analytics-extra.ts` — /analytics/{revenue-forecast,churn-prediction,
+    lifetime-value} matching the Express service interfaces (BillingAnalytics.tsx);
+    linear-trend forecast + recency heuristics with honest degraded notes.
+- **billing/index.ts** — handler dispatch, PATCH /rules/:id/{activate,deactivate}
+  (BillingRules.tsx called these; the generic rules PATCH would have swallowed
+  them as empty updates), ticketId filter on the invoices list, generate-invoices
+  body replaced by the extracted core, jwt null→undefined (deno check fix).
+- **billing/_pdf.ts** — pdf-lib invoice renderer (esm.sh pin matches proposals fn).
+  Runtime-smoked via deno eval: valid %PDF-1.7 output incl. wrap + fallback row.
+- **Proxy:** '/api/billing': 'billing' added to crmProxies. Safety check done:
+  Stripe's configured webhook URL is /api/webhooks/stripe (scripts/setup-stripe-*)
+  NOT /api/billing/stripe/webhooks — and that billing-router copy was
+  non-functional anyway (express.json parses the body → signature verification
+  cannot work). Express-only surfaces with no frontend callers (anomalies,
+  disputes, generation, schedules, credit-memos, metrics, health-score,
+  dashboard, stripe/*) now 404 in dev = prod parity (that IS the EDGE-013 goal).
+- **Frontend:** AdvancedBillingEngine + Billing.tsx invoice queryFns wrapped in
+  extractRecords + snake/camel bridge ({data,total} edge shape previously CRASHED
+  AdvancedBillingEngine in prod — .map on object). Plain-fetch PDF downloads
+  (Billing.tsx, invoice-pdf-preview.tsx) moved to new lib/invoice-pdf.ts which
+  attaches Bearer + x-tenant-id (mirrors lib/quote-pdf.ts) — plain fetch has no
+  auth header through the proxy → would 401.
+
+### Quality gates
+- deno check billing/index.ts + all handlers green; deno lint: only the
+  pre-existing repo-idiom findings remain (https: esm.sh import, legacy index.ts
+  unused var) — proposals fn has the same profile
+- vite build 27s green; tsc 6290 errors = exact pre-existing baseline (0 new)
+- quote-math 27/27 + proposal-merge 13/13; eslint: touched client files
+  repo-ignored (pre-existing)
+
+### Notes for the next Ralph iteration
+- Schema-audit notes live in supabase/functions/billing/handlers/_context.ts —
+  reuse the isMissingTableError/isMissingColumnError helpers for other drift-table
+  domains (EDGE-002b..k ports will hit the same pattern).
+- Live DB is unreachable from this dev box today (pg ECONNRESET to
+  209.145.59.219:5433, sandboxed AND unsandboxed) — drift-table existence could
+  not be verified live; handlers are written to be safe either way.
+- GET /billing/invoices list response stays { data, total } (already-deployed
+  edge shape); all known consumers now go through extractRecords.
+- Next prio-3: PROP-009 (TipTap — previously SKIPPED with rationale), PROP-010
+  (e2e partial, needs running stack). EDGE-002b (customer-portal) is the next
+  edge port. LAUNCH-011/020 remain ops-blocked.

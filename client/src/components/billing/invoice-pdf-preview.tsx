@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Download, Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { fetchInvoicePdfBlob, triggerBlobDownload } from '@/lib/invoice-pdf';
 
 interface InvoicePDFPreviewProps {
   open: boolean;
@@ -44,13 +45,7 @@ export function InvoicePDFPreview({ open, onOpenChange, invoiceId }: InvoicePDFP
     setError(null);
 
     try {
-      const response = await fetch(`/api/billing/invoices/${invoiceId}/pdf`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to load PDF: ${response.statusText}`);
-      }
-
-      const blob = await response.blob();
+      const blob = await fetchInvoicePdfBlob(invoiceId);
       const url = URL.createObjectURL(blob);
       setPdfUrl(url);
     } catch (err: any) {
@@ -70,16 +65,8 @@ export function InvoicePDFPreview({ open, onOpenChange, invoiceId }: InvoicePDFP
     if (!invoiceId) return;
 
     try {
-      const response = await fetch(`/api/billing/invoices/${invoiceId}/pdf`);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `invoice-${invoiceId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      const blob = await fetchInvoicePdfBlob(invoiceId);
+      triggerBlobDownload(blob, `invoice-${invoiceId}.pdf`);
 
       toast({
         title: 'Download started',

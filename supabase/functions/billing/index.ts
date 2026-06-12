@@ -1,8 +1,42 @@
 // Billing Edge Function
-// Handles billing analytics, invoices, rules, and invoice generation
+//
+// Resources (EDGE-002a brought this to full /api/billing/* frontend parity):
+//   GET   /analytics                         — aggregate invoice analytics
+//   GET   /analytics/{revenue-forecast,churn-prediction,lifetime-value}
+//                                            → handlers/analytics-extra.ts
+//   GET   /invoices                          — paginated list ({ data, total })
+//   *     /invoices/:id[...]                 → handlers/invoices.ts
+//                                              (GET/PATCH/PUT/DELETE, /pay, /paid,
+//                                               /email, /send, /pdf,
+//                                               POST /invoices/generate-from-contract)
+//   CRUD  /rules[/:id]                       — billing rules (+ PATCH /:id/{activate,deactivate})
+//   POST  /generate-invoices                 — pending meter readings → invoices
+//                                              (core in handlers/generate-invoices.ts)
+//   GET   /contract-profitability            — per-contract revenue/margin
+//   GET|POST /configurations                 → handlers/configurations.ts (drift table)
+//   GET   /cycles, POST /cycles/run          → handlers/cycles.ts (drift table)
+//   GET|POST /adjustments                    → handlers/adjustments.ts (drift table)
+//   GET /payment-methods, DELETE /payment-methods/:id, GET /info, PUT /address
+//                                            → handlers/payment-methods.ts
+//   POST  /service-entries                   → handlers/service-entries.ts
+//
+// Schema-drift notes live in handlers/_context.ts.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import type { BillingCtx } from './handlers/_context.ts';
+import { handleAnalyticsExtra } from './handlers/analytics-extra.ts';
+import { handleConfigurations } from './handlers/configurations.ts';
+import { handleCycles } from './handlers/cycles.ts';
+import { handleAdjustments } from './handlers/adjustments.ts';
+import {
+  handleBillingAddress,
+  handleBillingInfo,
+  handlePaymentMethods,
+} from './handlers/payment-methods.ts';
+import { handleServiceEntries } from './handlers/service-entries.ts';
+import { handleInvoiceSubResource } from './handlers/invoices.ts';
+import { generateInvoicesFromPendingReadings } from './handlers/generate-invoices.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -12,7 +46,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -43,8 +77,62 @@ export default async function handler(req: Request) {
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'billing');
     // Path structure after function-name strip: /[resource]/[id]
-    const resource = parts[0]; // analytics, invoices, rules, generate-invoices, contract-profitability
-    const resourceId = parts[1]; // :id for rules
+    const resource = parts[0]; // analytics, invoices, rules, generate-invoices, ...
+    const resourceId = parts[1]; // :id for rules/invoices
+
+    const ctx: BillingCtx = { req, admin, user: { id: user.id }, tenantId, url, parts };
+
+    // ── EDGE-002a handler dispatch ──────────────────────────────────────────
+    // Sub-path routing must run before the legacy resource blocks below
+    // (e.g. /analytics/revenue-forecast would otherwise be swallowed by the
+    // generic /analytics block).
+    let handled: Response | null = null;
+    if (resource === 'analytics' && resourceId) {
+      handled = await handleAnalyticsExtra(ctx);
+    } else if (resource === 'configurations') {
+      handled = await handleConfigurations(ctx);
+    } else if (resource === 'cycles') {
+      handled = await handleCycles(ctx);
+    } else if (resource === 'adjustments') {
+      handled = await handleAdjustments(ctx);
+    } else if (resource === 'payment-methods') {
+      handled = await handlePaymentMethods(ctx);
+    } else if (resource === 'info') {
+      handled = await handleBillingInfo(ctx);
+    } else if (resource === 'address') {
+      handled = await handleBillingAddress(ctx);
+    } else if (resource === 'service-entries') {
+      handled = await handleServiceEntries(ctx);
+    } else if (resource === 'invoices' && resourceId) {
+      handled = await handleInvoiceSubResource(ctx);
+    }
+    if (handled) return handled;
+
+    // =============================================================================
+    // PATCH /billing/rules/:id/activate | /deactivate - Toggle billing rule
+    // (BillingRules.tsx contract — must run before the generic rules update)
+    // =============================================================================
+    if (
+      req.method === 'PATCH' &&
+      resource === 'rules' &&
+      resourceId &&
+      (parts[2] === 'activate' || parts[2] === 'deactivate')
+    ) {
+      const newStatus = parts[2] === 'activate' ? 'active' : 'inactive';
+      const { data: updatedRule, error } = await admin
+        .from('billing_rules')
+        .update({ rule_status: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', resourceId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (error || !updatedRule) {
+        console.error(`Error ${parts[2]} billing rule:`, error);
+        return createCorsResponse({ error: 'Billing rule not found' }, 404, req);
+      }
+      return createCorsResponse(updatedRule, 200, req);
+    }
 
     // =============================================================================
     // GET /billing/analytics - Get billing analytics
@@ -125,6 +213,9 @@ export default async function handler(req: Request) {
       const status = url.searchParams.get('status');
       const contractId = url.searchParams.get('contractId') || url.searchParams.get('contract_id');
       const customerId = url.searchParams.get('customerId') || url.searchParams.get('customer_id');
+      // external_customer_id doubles as the service-ticket reference
+      // (AdvancedBillingEngine passes ?ticketId= from the ticket workflow).
+      const ticketId = url.searchParams.get('ticketId') || url.searchParams.get('ticket_id');
       const limit = parseInt(url.searchParams.get('limit') || '100');
       const offset = parseInt(url.searchParams.get('offset') || '0');
 
@@ -151,6 +242,10 @@ export default async function handler(req: Request) {
 
       if (customerId) {
         query = query.eq('customer_id', customerId);
+      }
+
+      if (ticketId) {
+        query = query.eq('external_customer_id', ticketId);
       }
 
       const { data: invoices, error, count } = await query;
@@ -382,169 +477,24 @@ export default async function handler(req: Request) {
 
     // =============================================================================
     // POST /billing/generate-invoices - Generate invoices from meter readings
+    // (core logic shared with /cycles/run — handlers/generate-invoices.ts)
     // =============================================================================
     if (req.method === 'POST' && resource === 'generate-invoices') {
-      // Get all pending meter readings
-      const { data: pendingReadings, error: readingsError } = await admin
-        .from('meter_readings')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('billing_status', 'pending');
-
-      if (readingsError) {
-        console.error('Error fetching pending meter readings:', readingsError);
-        return createCorsResponse({ error: 'Failed to fetch meter readings' }, 500, req);
-      }
-
-      if (!pendingReadings || pendingReadings.length === 0) {
-        return createCorsResponse(
-          { message: 'No pending meter readings to process', invoices: [] },
-          200,
-          req,
-        );
-      }
-
-      // Extract unique contract IDs
-      const contractIds = [
-        ...new Set(pendingReadings.filter((r) => r.contract_id).map((r) => String(r.contract_id))),
-      ];
-
-      if (contractIds.length === 0) {
-        return createCorsResponse(
-          { message: 'No meter readings with valid contracts', invoices: [] },
-          200,
-          req,
-        );
-      }
-
-      // Batch fetch all contracts
-      const { data: allContracts, error: contractsError } = await admin
-        .from('contracts')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .in('id', contractIds);
-
-      if (contractsError) {
-        console.error('Error fetching contracts:', contractsError);
-        return createCorsResponse({ error: 'Failed to fetch contracts' }, 500, req);
-      }
-
-      // Batch fetch tiered rates
-      const { data: allTieredRates, error: ratesError } = await admin
-        .from('contract_tiered_rates')
-        .select('*')
-        .in('contract_id', contractIds)
-        .order('sort_order', { ascending: true });
-
-      if (ratesError) {
-        console.error('Error fetching tiered rates:', ratesError);
-      }
-
-      // Create lookup maps
-      const contractMap = new Map((allContracts || []).map((c) => [c.id, c]));
-      const tieredRatesMap = new Map<string, any[]>();
-      for (const rate of allTieredRates || []) {
-        const rates = tieredRatesMap.get(rate.contract_id) || [];
-        rates.push(rate);
-        tieredRatesMap.set(rate.contract_id, rates);
-      }
-
-      const generatedInvoices: any[] = [];
-      const failedReadings: string[] = [];
-
-      // Process each reading
-      for (const reading of pendingReadings) {
-        try {
-          if (!reading.contract_id) continue;
-
-          const contract = contractMap.get(String(reading.contract_id));
-          if (!contract) continue;
-
-          const tieredRates = tieredRatesMap.get(String(reading.contract_id)) || [];
-
-          // Calculate billing amounts
-          let blackAmount = 0;
-          let colorAmount = 0;
-
-          if (reading.black_copies && Number(reading.black_copies) > 0) {
-            const blackRates = tieredRates
-              .filter((rate) => rate.color_type === 'black')
-              .sort((a, b) => a.minimum_volume - b.minimum_volume);
-            blackAmount = calculateTieredAmount(
-              Number(reading.black_copies),
-              blackRates,
-              parseFloat(contract.black_rate?.toString() || '0'),
-            );
-          }
-
-          if (reading.color_copies && Number(reading.color_copies) > 0) {
-            const colorRates = tieredRates
-              .filter((rate) => rate.color_type === 'color')
-              .sort((a, b) => a.minimum_volume - b.minimum_volume);
-            colorAmount = calculateTieredAmount(
-              Number(reading.color_copies),
-              colorRates,
-              parseFloat(contract.color_rate?.toString() || '0'),
-            );
-          }
-
-          const totalAmount =
-            blackAmount + colorAmount + parseFloat(contract.monthly_base?.toString() || '0');
-
-          // Create invoice
-          const invoiceData = {
-            tenant_id: tenantId,
-            customer_id: String(contract.customer_id),
-            contract_id: contract.id,
-            invoice_number: `INV-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            invoice_date: new Date().toISOString(),
-            due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            total_amount: String(totalAmount),
-            amount_paid: '0',
-            balance_due: String(totalAmount),
-            invoice_status: 'open',
-            payment_terms: 'Net 30',
-            invoice_notes: `Meter billing for ${new Date(reading.reading_date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
-            created_by: user.id,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-
-          const { data: invoice, error: invoiceError } = await admin
-            .from('invoices')
-            .insert(invoiceData)
-            .select()
-            .single();
-
-          if (invoiceError) {
-            console.error('Error creating invoice:', invoiceError);
-            failedReadings.push(reading.id);
-            continue;
-          }
-
-          // Update meter reading billing status
-          await admin
-            .from('meter_readings')
-            .update({
-              billing_status: 'processed',
-              billing_amount: totalAmount.toString(),
-              invoice_id: invoice.id,
-            })
-            .eq('id', reading.id)
-            .eq('tenant_id', tenantId);
-
-          generatedInvoices.push(invoice);
-        } catch (readingError) {
-          console.error(`Error processing reading ${reading.id}:`, readingError);
-          failedReadings.push(reading.id);
-        }
+      let result;
+      try {
+        result = await generateInvoicesFromPendingReadings(admin, tenantId, user.id);
+      } catch (genError) {
+        console.error('Error generating invoices:', genError);
+        return createCorsResponse({ error: 'Failed to generate invoices' }, 500, req);
       }
 
       return createCorsResponse(
         {
-          message: `Generated ${generatedInvoices.length} invoices`,
-          invoices: generatedInvoices,
-          ...(failedReadings.length > 0 && { failedReadingIds: failedReadings }),
+          message: result.message,
+          invoices: result.invoices,
+          ...(result.failedReadingIds.length > 0 && {
+            failedReadingIds: result.failedReadingIds,
+          }),
         },
         200,
         req,
@@ -662,37 +612,4 @@ export default async function handler(req: Request) {
       req,
     );
   }
-}
-
-// Helper function to calculate tiered billing amounts
-function calculateTieredAmount(
-  volume: number,
-  tieredRates: Array<{ minimum_volume: number; rate_per_unit: number }>,
-  defaultRate: number,
-): number {
-  if (!tieredRates || tieredRates.length === 0) {
-    return volume * defaultRate;
-  }
-
-  let totalAmount = 0;
-  let remainingVolume = volume;
-
-  for (let i = 0; i < tieredRates.length; i++) {
-    const currentTier = tieredRates[i];
-    const nextTier = tieredRates[i + 1];
-
-    const tierStart = currentTier.minimum_volume;
-    const tierEnd = nextTier ? nextTier.minimum_volume : Infinity;
-    const tierRate = parseFloat(currentTier.rate_per_unit?.toString() || '0') || defaultRate;
-
-    if (remainingVolume <= 0) break;
-
-    const tierVolume = Math.min(remainingVolume, tierEnd - tierStart);
-    if (tierVolume > 0) {
-      totalAmount += tierVolume * tierRate;
-      remainingVolume -= tierVolume;
-    }
-  }
-
-  return totalAmount;
 }

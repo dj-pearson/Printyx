@@ -4,6 +4,7 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
+    "ralph": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ralph/ralph.ps1",
     "dev": "cross-env NODE_ENV=development tsx server/index.ts",
     "dev:frontend": "vite",
     "build": "vite build",

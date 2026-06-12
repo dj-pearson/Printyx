@@ -252,8 +252,8 @@ export function registerEdgeFunctionProxy(app: any) {
   // loudly in dev instead of silently in prod.
   //
   // Tracked exceptions (edge function exists but NOT safe to proxy yet):
-  //   - billing, catalog, customer-portal, etc. (35 RISKY domains tracked
-  //     in EDGE-002a-EDGE-002k follow-ups in prd.json)
+  //   - catalog, customer-portal, etc. (RISKY domains tracked in
+  //     EDGE-002b-EDGE-002k follow-ups in prd.json)
   //   - client-metrics (DEPRECATED edge function — frontend uses Express
   //     `routes-client-monitoring.ts` for the live device-monitoring path)
   //
@@ -317,6 +317,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // handler under reports/handlers/scheduled.ts; pathPrefix routes
     // /api/scheduled-reports/* → /reports/scheduled/*.
     '/api/scheduled-reports': { fn: 'reports', pathPrefix: '/scheduled' },
+
+    // EDGE-002a: billing — full frontend parity audited 2026-06-11
+    // (analytics + 3 sub-routes, invoices list/:id/pay/email/pdf/
+    // generate-from-contract, rules + activate/deactivate, configurations,
+    // cycles + run, adjustments, payment-methods, info, address,
+    // service-entries, generate-invoices, contract-profitability).
+    '/api/billing': 'billing',
 
     // EDGE-005d-remainder: security (7 frontend callsites). Platform-admin
     // gated. New edge function ports server/routes-security-dashboard.ts

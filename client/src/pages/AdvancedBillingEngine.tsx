@@ -56,7 +56,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
 import { type Invoice, type BillingEntry, type BusinessRecord } from '@shared/schema';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
@@ -201,7 +201,18 @@ export default function AdvancedBillingEngine() {
         if (contractId) params.append('contractId', contractId);
       }
       if (selectedInvoiceStatus !== 'all') params.append('status', selectedInvoiceStatus);
-      return await apiRequest(`/api/billing/invoices?${params.toString()}`);
+      const response = await apiRequest(`/api/billing/invoices?${params.toString()}`);
+      // Edge function returns { data, total } of snake_case rows; legacy
+      // Express returned a bare array of mixed-case rows. extractRecords
+      // handles the wrapper; the map bridges the casing this page renders.
+      return extractRecords<any>(response).map((inv: any) => ({
+        ...inv,
+        invoiceNumber: inv.invoiceNumber ?? inv.invoice_number ?? '',
+        dueDate: inv.dueDate ?? inv.due_date ?? '',
+        totalAmount: inv.totalAmount ?? inv.total_amount ?? '0',
+        status: inv.status ?? inv.invoice_status ?? 'open',
+        customer_name: inv.customer_name ?? inv.customer?.company_name ?? inv.business_record_name,
+      })) as BillingInvoice[];
     },
   });
 

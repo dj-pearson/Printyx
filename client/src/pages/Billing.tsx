@@ -30,6 +30,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
+import { fetchInvoicePdfBlob, triggerBlobDownload } from '@/lib/invoice-pdf';
 import MainLayout from '@/components/layout/main-layout';
 import { CreditCard, Download, Plus, Trash2, Edit, CheckCircle, Building2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -85,12 +86,16 @@ export default function Billing() {
     queryKey: ['/api/billing/invoices'],
     queryFn: async () => {
       const response = await apiRequest('/api/billing/invoices', 'GET');
+      // Edge function rows are snake_case — bridge to the camelCase this page renders.
       return extractRecords(response).map((invoice: any) => ({
         ...invoice,
         id: invoice.id,
-        invoiceNumber: invoice.invoiceNumber || invoice.invoiceNumber || '',
-        dueDate: invoice.dueDate || invoice.dueDate || '',
-        createdAt: invoice.createdAt || invoice.createdAt || '',
+        invoiceNumber: invoice.invoiceNumber || invoice.invoice_number || '',
+        dueDate: invoice.dueDate || invoice.due_date || '',
+        createdAt: invoice.createdAt || invoice.created_at || '',
+        invoiceDate: invoice.invoiceDate || invoice.invoice_date || '',
+        total: invoice.total ?? invoice.totalAmount ?? invoice.total_amount,
+        status: invoice.status || invoice.invoice_status || '',
       }));
     },
   });
@@ -167,16 +172,8 @@ export default function Billing() {
 
   const handleDownloadInvoice = async (invoiceId: string) => {
     try {
-      const response = await fetch(`/api/billing/invoices/${invoiceId}/pdf`);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `invoice-${invoiceId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      const blob = await fetchInvoicePdfBlob(invoiceId);
+      triggerBlobDownload(blob, `invoice-${invoiceId}.pdf`);
     } catch (error) {
       toast({
         title: 'Failed to download invoice',
