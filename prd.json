@@ -1086,8 +1086,8 @@
         "Build passes: npm run build"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "FOUNDATION STORY - This is the data layer for all CRM views. Currently saved filters use localStorage only (client/src/components/ui/saved-filters.tsx). This replaces that with a proper backend. The filterDefinition jsonb stores conditions like: [{field: 'status', operator: 'eq', value: 'active'}, {field: 'amount', operator: 'gte', value: 10000}]. The boardConfig stores card layout preferences per view. Reference: CRM_Layout.md 'Filtering and saved views' section.",
+      "passes": true,
+      "notes": "IMPLEMENTED 2026-06-12. shared/saved-views-schema.ts (savedViews + savedViewPins tables, Zod body schemas, filter/sort schemas), exported from shared/schema.ts. server/routes-saved-views.ts: GET/POST /api/saved-views, PUT/DELETE /api/saved-views/:id, POST /:id/clone, PUT /:id/pin and /:id/unpin - all tenant-filtered, visibility 'everyone' requires admin (roleLevel>=7 or platform admin), system defaults undeletable (isSystem column added beyond AC for this). Defaults ('All Records', 'My Records' with __CURRENT_USER__ token, 'Recently Modified') lazy-seeded per tenant+objectType on first GET. Registered in routes-registry.ts. 22 unit tests in server/tests/unit/saved-views.test.ts. DB NOT REACHABLE from dev machine (ECONNRESET to 209.145.59.219:5433) - db:push not run; idempotent SQL saved at migrations/saved-views-migration.sql for manual apply (lazy seeding makes first request self-heal after tables exist). Typecheck (no new errors) + build + tests pass.",
       "category": "crm-hubspot"
     },
     {

@@ -1154,3 +1154,45 @@ Status: Needs Review
 - prd.json - Marked US-053 and US-054 as passes: true
 
 ---
+
+## Iteration (2026-06-12) - US-062: Create saved_views table and CRUD API
+**Status**: COMPLETE
+
+### What Was Done:
+1. Discovered commit 72c68967 ("feat(crm): implement saved views...") only ADDED the US-062..071 stories to prd.json - no implementation existed. US-062 was the true next story.
+2. Created `shared/saved-views-schema.ts`:
+   - savedViews table: id, tenantId, userId (null = system view), objectType, name, description, filterDefinition (jsonb), sortConfig, columnConfig, boardConfig, visibility (private/team/everyone), isDefault, isPinned, isSystem, timestamps. Indexes on tenant+object and tenant+user.
+   - savedViewPins table: id, userId, viewId, sortOrder
+   - Zod schemas: createSavedViewBodySchema, updateSavedViewBodySchema, filterConditionSchema (17 operators), sortConfigSchema
+   - varchar ids/refs to match users.id (varchar), NOT uuid
+3. Exported from shared/schema.ts (`export * from './saved-views-schema'`)
+4. Created `server/routes-saved-views.ts` with registerSavedViewsRoutes(app):
+   - GET /api/saved-views?objectType=X - own + shared + system views, with per-user pin state attached
+   - POST /api/saved-views - Zod validated; visibility 'everyone' requires admin (roleLevel >= 7 or isPlatformAdmin)
+   - PUT /api/saved-views/:id - owner or admin only; escalating to 'everyone' requires admin
+   - DELETE /api/saved-views/:id - owner or admin; system views rejected with 400 SYSTEM_VIEW
+   - POST /api/saved-views/:id/clone - clones any accessible view as private for current user
+   - PUT /api/saved-views/:id/pin + /unpin - per-user tab pins with sortOrder
+   - Lazy seeding: 3 system defaults per tenant+objectType created on first GET ('All Records', 'My Records' using __CURRENT_USER__ token in filter, 'Recently Modified')
+   - All queries filter by tenantId; ids generated with randomUUID() in code (DB default not relied on)
+5. Registered in server/routes-registry.ts
+6. Created `migrations/saved-views-migration.sql` (idempotent CREATE TABLE IF NOT EXISTS)
+7. Created server/tests/unit/saved-views.test.ts - 22 tests (schemas + access rules)
+
+### DB Apply Status:
+- Database 209.145.59.219:5433 NOT reachable (ECONNRESET, tried with/without SSL) - same blocker as January iterations
+- Did NOT run db:push (also would be unsafe: full-schema diff against drifted prod DB)
+- ACTION FOR HUMAN: run migrations/saved-views-migration.sql against prod DB. Lazy seeding self-heals after that.
+
+### Learnings:
+- createModuleLogger uses pino arg order: log.error({ err }, 'message') NOT log.error('message', err)
+- Commit messages may claim stories are done when only prd.json was updated - always verify code exists
+- Test baseline now: 1645 passed, 28 pre-existing failures, 66 skipped
+
+### Build Verification:
+- New tests: 22/22 PASS; full suite: no new failures (28 pre-existing)
+- Typecheck: no errors in new files
+- `npm run build`: PASS
+
+### Story Status:
+- US-062: **COMPLETE** (passes: true; DB SQL pending manual apply)

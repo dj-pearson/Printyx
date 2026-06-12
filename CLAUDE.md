@@ -377,3 +377,6 @@ Commit the working code and start the cycle again for the next piece.
 4. **No error handling** - Implement try-catch and error boundaries
 5. **Over-fetching** - Use pagination and field selection
 6. **Using `any` type** - Fix TypeScript errors, avoid `any`
+7. **Logger argument order** - `createModuleLogger` is pino-style: `log.error({ err }, 'message')` and `log.info({ context }, 'message')`. Passing the message first and an object/error second is a type error.
+8. **Schema id/ref column types** - `users.id` and most tenant/user references are `varchar`, not `uuid`. New tables referencing them should use `varchar` columns and generate ids in code with `randomUUID()` (don't rely on DB defaults).
+9. **DB may be unreachable from dev machines** - 209.145.59.219:5433 often refuses external connections. Ship idempotent SQL files (CREATE TABLE IF NOT EXISTS) in `migrations/` for manual apply, and prefer lazy seeding in route handlers so features self-heal once tables exist.

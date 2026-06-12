@@ -20,6 +20,7 @@ import { registerFinancialForecastingRoutes } from './routes-financial-forecasti
 import { registerOperationsExtendedRoutes } from './routes-operations-extended';
 import { registerAuditLogRoutes } from './routes-audit-logs';
 import { registerNotificationRoutes } from './routes-notifications';
+import { registerSavedViewsRoutes } from './routes-saved-views';
 import { registerWorkflowMobileRoutes } from './routes-workflow-mobile';
 
 // ─── Static Route Module Imports ──────────────────────────────────────
@@ -179,6 +180,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerWorkflowMobileRoutes(app);
   registerAuditLogRoutes(app);
   registerNotificationRoutes(app);
+  registerSavedViewsRoutes(app);
 
   // ─── Pricing ───────────────────────────────────────────────────────
   app.get('/api/pricing/company-settings', getCompanyPricingSettings);

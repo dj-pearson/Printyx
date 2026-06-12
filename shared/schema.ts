@@ -8624,3 +8624,6 @@ export {
 
 // Export notification schema
 export * from './notification-schema';
+
+// Export saved views schema (CRM saved views + pins)
+export * from './saved-views-schema';
