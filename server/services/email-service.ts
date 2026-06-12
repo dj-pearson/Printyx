@@ -1,8 +1,5 @@
 /**
 
-import { createModuleLogger } from '../lib/logger';
-const log = createModuleLogger('email-service');
-
  * Email Service Adapter
  *
  * Provider-agnostic email service that supports multiple providers:
@@ -15,6 +12,9 @@ const log = createModuleLogger('email-service');
  * - EMAIL_PROVIDER: 'sendgrid' | 'aws-ses' | 'resend' | 'simulation'
  * - EMAIL_ENABLED: 'true' | 'false'
  */
+
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('email-service');
 
 interface EmailMessage {
   to: string;

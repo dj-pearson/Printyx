@@ -1,7 +1,5 @@
 // Load environment variables FIRST before anything else
 import { config as dotenvConfig } from 'dotenv';
-import { createModuleLogger } from './lib/logger';
-const log = createModuleLogger('index');
 
 dotenvConfig(); // Load .env file
 
@@ -162,9 +160,9 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
 
     // Log CORS decision
-    log.info('[CORS] ✅ Allowed origin:', allowedOrigin);
+    serverLog.info({ allowedOrigin }, '[CORS] ✅ Allowed origin');
   } else if (origin) {
-    log.error('[CORS] ❌ BLOCKED origin:', origin);
+    serverLog.error({ origin }, '[CORS] ❌ BLOCKED origin');
   }
 
   // Handle preflight requests

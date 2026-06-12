@@ -1,11 +1,11 @@
 /**
 
-import { createModuleLogger } from '../lib/logger';
-const log = createModuleLogger('calculator-email-service');
-
  * Print Cost Calculator Email Service
  * Handles email sequence delivery for calculator leads
  */
+
+import { createModuleLogger } from '../lib/logger';
+const log = createModuleLogger('calculator-email-service');
 
 interface EmailTemplate {
   subject: string;

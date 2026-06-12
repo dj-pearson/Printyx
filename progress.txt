@@ -1387,3 +1387,74 @@ Status: Complete
 
 ### Story Status:
 - US-023: **COMPLETE** (passes: true)
+
+Iteration 5 (06/12/2026 09:45:21): Story US-023
+Status: Complete
+
+## Iteration (2026-06-12) - US-024: React Error Boundaries on all route pages
+**Status**: COMPLETE
+
+### What Was Done (per AC):
+1. **components/ErrorBoundary.tsx** (NEW base): class boundary with error card, Try Again reset,
+   optional onError, `resetKey` prop (auto-reset when it changes while errored), and automatic
+   reporting through lib/client-error-reporter.ts.
+2. **components/PageErrorBoundary.tsx** (NEW): route-level. KEY INSIGHT: pages render their OWN
+   MainLayout, so a crashed page takes the sidebar/header down with it - the fallback therefore
+   re-renders MainLayout (when authenticated via useAuthContext) with the error card inside, so
+   navigation stays fully functional. Public pages get a standalone centered card. resetKey =
+   wouter location, so navigating away always recovers.
+3. **components/SectionErrorBoundary.tsx** (NEW): compact error card sized to the widget space.
+4. **Every route wrapped**: App.tsx now imports `Route as WouterRoute` and defines a local `Route`
+   wrapper (children-render-prop form, forwards Switch's injected `match` prop) - all ~300 routes
+   in BOTH Switches (public + authenticated) get PageErrorBoundary with zero per-route edits.
+   Verified in browser that Switch matching still works through the wrapper.
+5. **Dashboard widgets**: the real dashboard is RoleBasedDashboard -> DashboardBuilder (dashboard.tsx
+   is a thin shell); DashboardBuilder now wraps each WidgetRenderer in SectionErrorBoundary.
+6. **POST /api/client-errors** (NEW server/routes-client-errors.ts): Zod-validated with hard length
+   caps, log-only (no DB), 204 response, registered in routes-registry, 6 unit tests. Exempted in
+   csrf-protection EXEMPT_PATHS and routes.ts publicPaths (errors happen on login/marketing pages).
+   Reporter uses same-origin relative fetch ON PURPOSE - getApiUrl() rewrites /api/* to
+   functions.printyx.net in prod where this Express endpoint doesn't exist. Dedupe + 10/session cap.
+
+### DRIVE-BY FIXES - dev server was UNBOOTABLE at HEAD (found because I actually ran it):
+- 6 service files (email, calculator-email, claude-ai, integrations, performance-monitor, sms):
+  US-011's codemod injected `import {createModuleLogger}` + `const log = ...` INSIDE the file's
+  opening /** block comment -> live log.* calls referenced undefined `log` -> instant crash on
+  import. Moved declarations below the comment. (This was ~45 of the tsc baseline errors.)
+- server/index.ts: same codemod added a duplicate `log`/`createModuleLogger` colliding with the
+  `log` imported from ./vite -> esbuild parse error. Removed dupes; CORS logs use serverLog.
+- enhanced-validation.ts: `listQuerySchema = ....merge(dateRangeSchema)` where dateRangeSchema is
+  a .refine()d ZodEffects -> zod throws "merging._def.shape is not a function" at MODULE LOAD.
+  Split into dateRangeFieldsSchema (plain object, mergeable) + dateRangeSchema (refined export).
+- routes.ts: `require('crypto')` (CJS) in ESM for the dev session secret -> ReferenceError. Now a
+  top-level import.
+- routes.ts publicPaths gate: compared mount-stripped req.path ('/csrf-token') against
+  '/api/csrf-token' prefixes -> NEVER matched -> every unauthenticated API call 401'd (login,
+  csrf-token, everything). Fixed with req.baseUrl + req.path. This also unblocks dev-mode login.
+
+### Browser Verification (Playwright vs full `npm run dev` + VITE_* placeholders):
+- /login and /signup render normally through the Route wrapper (Switch matching intact).
+- Temp crash injected in Login (?__crash=1): PageErrorBoundary fallback rendered (role=alert,
+  Try Again / Go to Dashboard / Reload / technical details), POST /api/client-errors -> 204,
+  server log shows structured entry with [page:/login] boundary + requestId + stack.
+- Navigating away from the crashed state recovers cleanly. Temp crash reverted before commit.
+- Endpoint: valid 204 / missing-message 400 / oversized 400 via curl.
+
+### Learnings:
+- tsc passing != server boots. The dirty 6578-error baseline HID three startup-fatal bugs. Always
+  boot-check (curl /health) after touching server code.
+- Express app.use('/api', fn): req.path inside fn is mount-stripped; use req.baseUrl + req.path
+  for full-path prefix checks.
+- TaskStop on `npm run dev` orphans the child on :5000 - netstat -ano | grep :5000, taskkill //F.
+- wouter Switch matches any element with a `path` prop and clones it with `match`; a wrapper
+  component that forwards props (incl. match) to the real Route composes cleanly.
+
+### Build Verification:
+- Typecheck: 6533 errors vs 6578 HEAD baseline (-45 fixed, 0 new; verified via git stash compare)
+- Tests: 1688 passed / 27 failed / 66 skipped. The 27th failure is database-exports snapshot
+  error-sanitization.test.ts which fails IDENTICALLY at HEAD when run (verified via stash) - its
+  suite simply collects now. +6 new client-errors tests pass.
+- Build: PASS (60s). Prettier applied to all touched files.
+
+### Story Status:
+- US-024: **COMPLETE** (passes: true)

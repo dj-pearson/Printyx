@@ -86,20 +86,22 @@ export const dateStringSchema = z
 /**
  * Date range validation
  */
-export const dateRangeSchema = z
-  .object({
-    startDate: dateStringSchema.optional(),
-    endDate: dateStringSchema.optional(),
-  })
-  .refine(
-    (data) => {
-      if (data.startDate && data.endDate) {
-        return new Date(data.startDate) <= new Date(data.endDate);
-      }
-      return true;
-    },
-    { message: 'Start date must be before end date' },
-  );
+// Plain object form - required for .merge()/.shape composition (a .refine()d
+// schema is a ZodEffects, which cannot be merged and crashes at module load)
+export const dateRangeFieldsSchema = z.object({
+  startDate: dateStringSchema.optional(),
+  endDate: dateStringSchema.optional(),
+});
+
+export const dateRangeSchema = dateRangeFieldsSchema.refine(
+  (data) => {
+    if (data.startDate && data.endDate) {
+      return new Date(data.startDate) <= new Date(data.endDate);
+    }
+    return true;
+  },
+  { message: 'Start date must be before end date' },
+);
 
 // ============================================================================
 // Pagination & Query Schemas
@@ -141,7 +143,7 @@ export const sortSchema = z.object({
 export const listQuerySchema = paginationSchema
   .merge(searchSchema)
   .merge(sortSchema)
-  .merge(dateRangeSchema);
+  .merge(dateRangeFieldsSchema);
 
 // ============================================================================
 // Entity-Specific Schemas

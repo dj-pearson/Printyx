@@ -19,6 +19,7 @@ import { registerSeoCoreRoutes } from './routes-seo-core';
 import { registerFinancialForecastingRoutes } from './routes-financial-forecasting';
 import { registerOperationsExtendedRoutes } from './routes-operations-extended';
 import { registerAuditLogRoutes } from './routes-audit-logs';
+import { registerClientErrorRoutes } from './routes-client-errors';
 import { registerNotificationRoutes } from './routes-notifications';
 import { registerSavedViewsRoutes } from './routes-saved-views';
 import { registerWorkflowMobileRoutes } from './routes-workflow-mobile';
@@ -180,6 +181,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerOperationsExtendedRoutes(app);
   registerWorkflowMobileRoutes(app);
   registerAuditLogRoutes(app);
+  registerClientErrorRoutes(app);
   registerNotificationRoutes(app);
   registerSavedViewsRoutes(app);
 

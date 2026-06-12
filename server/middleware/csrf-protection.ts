@@ -43,6 +43,9 @@ const EXEMPT_PATHS = [
   '/api/salesforce/webhook',
   '/api/integrations/webhook',
   '/api/stripe/webhook',
+  // Error-boundary reports must always deliver, even when the client is too
+  // broken to fetch a CSRF token first (validated, log-only, rate-limited)
+  '/api/client-errors',
 ];
 
 /**

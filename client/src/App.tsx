@@ -1,4 +1,4 @@
-import { Switch, Route } from 'wouter';
+import { Switch, Route as WouterRoute } from 'wouter';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
 import React, { useState, useEffect } from 'react';
@@ -12,6 +12,8 @@ import { CommandPalette } from '@/components/navigation/command-palette';
 import { useCommandPalette } from '@/hooks/useCommandPalette';
 import { PWAProvider } from '@/components/pwa/PWAProvider';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { PageErrorBoundary } from '@/components/PageErrorBoundary';
+import { reportClientError } from '@/lib/client-error-reporter';
 import { SessionGuard } from '@/components/SessionGuard';
 import { AccessibilityProvider } from '@/hooks/useAccessibility';
 import { LiveRegionProvider } from '@/components/accessibility/LiveRegion';
@@ -306,6 +308,36 @@ const TenantManagement = React.lazy(() => import('@/pages/admin/TenantManagement
 const UserManagement = React.lazy(() => import('@/pages/admin/UserManagement'));
 
 const LAST_ROUTE_KEY = 'printyx_last_route';
+
+type AppRouteProps = {
+  path?: string;
+  nest?: boolean;
+  component?: React.ComponentType<any>;
+  children?: ((params: Record<string, string | undefined>) => React.ReactNode) | React.ReactNode;
+} & Record<string, unknown>;
+
+/**
+ * Route wrapper (US-024): every route below renders inside a PageErrorBoundary
+ * so a page crash is contained and navigation stays functional. Forwards all
+ * props to wouter's Route, including the `match` prop injected by Switch.
+ */
+function Route({ component: Component, children, ...rest }: AppRouteProps) {
+  return (
+    <WouterRoute {...(rest as any)}>
+      {(params: Record<string, string | undefined>) => (
+        <PageErrorBoundary route={typeof rest.path === 'string' ? rest.path : undefined}>
+          {Component ? (
+            <Component params={params} />
+          ) : typeof children === 'function' ? (
+            children(params)
+          ) : (
+            ((children as React.ReactNode) ?? null)
+          )}
+        </PageErrorBoundary>
+      )}
+    </WouterRoute>
+  );
+}
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuthContext();
@@ -973,6 +1005,10 @@ function App() {
                       onError={(error, errorInfo) => {
                         // Log to console in development, send to monitoring in production
                         console.error('[App Error Boundary]', error, errorInfo);
+                        reportClientError(error, {
+                          componentStack: errorInfo.componentStack ?? undefined,
+                          boundary: 'app:critical',
+                        });
                       }}
                     >
                       <React.Suspense

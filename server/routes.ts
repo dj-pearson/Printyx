@@ -12,6 +12,7 @@
 
 import type { Express } from 'express';
 import { createServer, type Server } from 'http';
+import { randomBytes } from 'crypto';
 
 // ─── Middleware Imports ────────────────────────────────────────────────
 import session from 'express-session';
@@ -112,7 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   if (process.env.SESSION_SECRET) {
     sessionSecret = process.env.SESSION_SECRET;
   } else {
-    sessionSecret = require('crypto').randomBytes(32).toString('hex');
+    sessionSecret = randomBytes(32).toString('hex');
     log.warn(
       '[SECURITY WARNING] Using randomly generated session secret for development. Set SESSION_SECRET env var for persistent sessions.',
     );
@@ -175,8 +176,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       '/api/trial',
       '/api/knowledge-base',
       '/api/signup-crm',
+      // Error-boundary reports from public pages (login, marketing) and
+      // broken auth states - validated, log-only, rate-limited (US-024)
+      '/api/client-errors',
     ];
-    if (publicPaths.some((p) => req.path.startsWith(p))) return next();
+    // Mounted at '/api', so req.path is stripped ('/auth/...'); rebuild the
+    // full path or none of these prefixes would ever match
+    const fullPath = `${req.baseUrl}${req.path}`;
+    if (publicPaths.some((p) => fullPath.startsWith(p))) return next();
     const userId = getUserId(req);
     if (!userId) {
       return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });
