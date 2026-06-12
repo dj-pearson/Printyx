@@ -7172,8 +7172,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "Grouping render logic lives at LineItemManager.tsx:306-324.",
+      "passes": true,
+      "notes": "DONE 2026-06-11. LineItemManager: @dnd-kit sortable parent groups (handle-only drag via SortableLineGroup render prop; PointerSensor+KeyboardSensor matching ProposalVisualBuilder); sublines move with parent; mobile handle 48px (drag-handle-mobile-N), desktop h-9 (drag-handle-N). handleDragEnd rebuilds flat array [parent, ...sublines] in new order, renumbers lineNumber 1..n, hands up via new optional onReorderItems prop — array order is what buildQuoteData persists as line_number (edge fn PATCH delete+reinserts; all reads + both PDFs already order by line_number, so no backend change). Group-by-type Switch (group-by-type-toggle) clusters by parent productType into Equipment/Accessories/Services/Software/Supplies with per-group net subtotals (type-group-{key} / type-group-subtotal-{key}); drag disabled in grouped view; flat order default. Drive-by: QuoteBuilder.handleDeleteLineItem now also matches sublines by parentLineId===productId (sublines reference parents by productId, so deleting a parent previously orphaned them invisibly while still counting in totals). tsc baseline 6290 unchanged (0 in touched files); build 18.6s green; quote-math 27/27 + proposal-merge 13/13; eslint client-ignored (pre-existing). Browser verify environment-blocked: anon key still stale (GoTrue /auth/v1/health 401, re-confirmed).",
       "category": "quote-module-v2"
     },
     {

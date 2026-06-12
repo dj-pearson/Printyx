@@ -517,12 +517,23 @@ export default function QuoteBuilder({
   const handleDeleteLineItem = (index: number) => {
     const itemToDelete = lineItems[index];
     const filtered = lineItems.filter((_, i) => {
-      // Remove the item and any sublines
+      // Remove the item and any sublines. Sublines reference their parent by
+      // productId (see LineItemManager), so match both id and productId.
       if (i === index) return false;
-      if (itemToDelete.id && lineItems[i].parentLineId === itemToDelete.id) return false;
+      const parentRef = lineItems[i].parentLineId;
+      if (!parentRef) return true;
+      if (itemToDelete.id && parentRef === itemToDelete.id) return false;
+      if (itemToDelete.productId && parentRef === itemToDelete.productId) return false;
       return true;
     });
     setLineItems(filtered);
+  };
+
+  // QUOTE-020: drag-reorder hands back the full re-sequenced array (parents with
+  // their sublines, lineNumber already renumbered 1..n). Array order is what
+  // buildQuoteData persists as line_number, so autosave picks this up too.
+  const handleReorderLineItems = (items: LineItem[]) => {
+    setLineItems(items);
   };
 
   const handleDiscountChange = (discountAmt: number, discountPct: number) => {
@@ -1104,6 +1115,7 @@ export default function QuoteBuilder({
           onAddItem={handleAddLineItem}
           onUpdateItem={handleUpdateLineItem}
           onDeleteItem={handleDeleteLineItem}
+          onReorderItems={handleReorderLineItems}
         />
       )}
 

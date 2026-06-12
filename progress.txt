@@ -5902,3 +5902,63 @@ Status: Needs Review
   the send-gate toast which already do; only the always-on margin chip is
   role-gated (showMargin).
 - LAUNCH-011/020 still ops-blocked; browser login still blocked by stale anon key.
+
+Iteration 5 (06/11/2026 19:26:47): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+## Ralph Iteration — QUOTE-020 (Line item drag-reorder + type grouping)
+
+**Date:** 2026-06-11
+**Story:** QUOTE-020 — drag-reorder parent lines, sublines follow, optional group-by-type view
+**Status:** passes: true (AC1-4; AC5 browser verify environment-blocked — stale anon key re-confirmed, GoTrue /auth/v1/health 401)
+
+### What shipped
+- **LineItemManager**: parent line groups are @dnd-kit sortables (DndContext +
+  SortableContext verticalListSortingStrategy, PointerSensor + KeyboardSensor —
+  same idiom as ProposalVisualBuilder). Drag starts ONLY from a GripVertical
+  handle (SortableLineGroup render-prop exposes attributes/listeners) because
+  the rows are full of inputs. Mobile handle is 48x48 (touch-none), desktop h-9.
+  Sortable id = `line-${lineNumber}` (lineNumber is unique per line).
+- **Reorder semantics**: handleDragEnd rebuilds the flat lineItems array as
+  [parent, ...its sublines] blocks in the new parent order, appends any orphan
+  sublines (parent missing) so totals never silently change, renumbers
+  lineNumber 1..n, and hands the array up via the new optional onReorderItems
+  prop. QuoteBuilder just setLineItems — buildQuoteData persists array order as
+  line_number and the QUOTE-018 autosave effect already watches lineItems, so
+  reorders autosave with zero extra wiring.
+- **No backend change needed**: proposals edge fn PATCH deletes + reinserts
+  line items honoring provided lineNumber (normalizeLineItem line 268), and
+  every read path (GET detail, PDFs at index.ts:2033/2183, share page) already
+  orders by line_number. PricingCalculator maps the array in order.
+- **Group by type**: Switch (`group-by-type-toggle`) clusters parent groups by
+  productType into Equipment / Accessories / Services (prof+service+managed) /
+  Software / Supplies with per-group net subtotals
+  (`type-group-{key}`, `type-group-subtotal-{key}`). Cluster membership follows
+  the PARENT type so sublines never separate. Drag is disabled in grouped view;
+  flat custom order stays the default (groupByType is local UI state, not
+  persisted).
+- **Drive-by fix**: QuoteBuilder.handleDeleteLineItem matched sublines by
+  parentLineId === itemToDelete.id, but sublines are created with parentLineId
+  = parent PRODUCT id — deleting a parent orphaned its sublines invisibly
+  (hidden from the grouped render but still counted in totals). Now matches id
+  OR productId.
+
+### Quality gates
+- tsc error count 6290 = pre-existing baseline, 0 in touched files
+- vite build 18.6s green; quote-math 27/27 + proposal-merge 13/13
+- eslint: client files repo-ignored (pre-existing)
+
+### Notes for the next Ralph iteration
+- Remaining prio-3: PROP-009 (TipTap, previously SKIPPED with rationale),
+  EDGE-002a (billing edge ports), PROP-010 (e2e partial). LAUNCH-011/020 remain
+  ops-blocked (need live infra / k6).
+- parentLineId referencing productId (not row id) is a standing quirk: adding
+  the same model twice shows shared sublines under both copies. Reorder rebuild
+  handles this with a claimed-index set (no duplication/loss).
+- Browser login still blocked by stale anon key; fresh VITE_SUPABASE_ANON_KEY
+  would unblock dev-browser verification of QUOTE-018/019/020 UI.
+
+Iteration 6 (06/11/2026): Story QUOTE-020
+Status: Complete
