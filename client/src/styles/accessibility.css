@@ -81,8 +81,16 @@
   outline-offset: 2px;
 }
 
-.skip-target:focus {
+/* Skip targets receive programmatic focus from skip links. Suppress the
+   outline only for non-keyboard focus; keyboard users (activating a skip
+   link) still get a visible indicator showing where focus landed. */
+.skip-target:focus:not(:focus-visible) {
   outline: none;
+}
+
+.skip-target:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }
 
 /* ==========================================================================

@@ -48,6 +48,14 @@
 
 /* Mobile-responsive optimizations */
 @layer utilities {
+  /* Visible 2px focus ring utility (WCAG 2.4.7). Use on interactive elements
+     that opt out of the global :focus-visible outline. The --ring color meets
+     the 3:1 contrast minimum for focus indicators in both light and dark mode. */
+  .ring-focus {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
   /* Smooth horizontal scrolling for mobile tabs */
   .overflow-x-auto {
     scrollbar-width: thin;
@@ -291,7 +299,14 @@ div:has([class*='runtime-error']) {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Improve mobile focus styles */
+/* ==========================================================================
+   Visible Focus Indicators - WCAG 2.1 AA Focus Visible (2.4.7)
+   Global fallback for ALL interactive elements (buttons, links, inputs,
+   selects, custom widgets). Declared outside @layer so it wins over the
+   `outline-none` utility for keyboard users. Components that suppress the
+   outline with `focus:outline-none` + `focus-visible:ring-*` (shadcn pattern)
+   still take precedence and show their box-shadow ring instead.
+   Ring color contrast: light 5.79:1 on background, dark 5.16:1 (>= 3:1). */
 :focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
@@ -320,19 +335,29 @@ div:has([class*='runtime-error']) {
     --secondary-foreground: 230 35% 12%;
 
     --muted: 230 20% 90%;
-    --muted-foreground: 230 15% 50%;
+    --muted-foreground: 230 15% 45%;
+    /* 45% lightness: 5.25:1 on background, 5.53:1 on card (WCAG AA >= 4.5:1) */
 
     --accent: 230 20% 90%;
     --accent-foreground: 230 35% 12%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84.2% 45%;
+    /* 45% lightness: 5.17:1 with destructive-foreground (WCAG AA >= 4.5:1) */
     --destructive-foreground: 210 40% 98%;
 
     --border: 230 20% 85%;
     --input: 230 20% 85%;
     --ring: 250 90% 60%;
+    /* Focus ring: 5.79:1 on background, 6.10:1 on card (WCAG >= 3:1 for focus indicators) */
 
     --radius: 0.5rem;
+
+    /* Chart palette (referenced by tailwind.config.ts chart colors) */
+    --chart-1: 250 90% 60%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
 
     /* Sidebar variables (matching light mode) */
     --sidebar-background: 0 0% 100%;
@@ -361,7 +386,8 @@ div:has([class*='runtime-error']) {
 
     --primary: 250 90% 70%;
     /* Vivid Indigo - Brighter */
-    --primary-foreground: 210 40% 98%;
+    --primary-foreground: 230 35% 12%;
+    /* Dark text on light indigo: 4.67:1 (white was 3.61:1, below WCAG AA) */
 
     --secondary: 230 20% 35%;
     /* Much lighter Secondary */
@@ -370,13 +396,22 @@ div:has([class*='runtime-error']) {
     --muted: 230 20% 35%;
     --muted-foreground: 210 20% 80%;
 
-    --accent: 250 80% 65%;
+    --accent: 250 80% 55%;
+    /* 55% lightness: 6.85:1 with accent-foreground (65% was 4.35:1, below WCAG AA) */
     --accent-foreground: 210 40% 98%;
 
     --border: 230 20% 35%;
     /* Subtle Indigo Grey */
     --input: 230 30% 20%;
-    --ring: 250 90% 65%;
+    --ring: 250 90% 72%;
+    /* Focus ring: 5.16:1 on background, 3.50:1 on card (WCAG >= 3:1 for focus indicators) */
+
+    /* Chart palette - dark mode */
+    --chart-1: 250 90% 70%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
 
     /* Sidebar variables (matching dark mode) */
     --sidebar-background: 230 35% 12%;
@@ -386,7 +421,7 @@ div:has([class*='runtime-error']) {
     --sidebar-accent: 230 25% 20%;
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 230 30% 20%;
-    --sidebar-ring: 250 90% 65%;
+    --sidebar-ring: 250 90% 72%;
   }
 
   * {
@@ -405,7 +440,7 @@ div:has([class*='runtime-error']) {
 [data-sidebar='sidebar'] [data-sidebar='header'],
 [data-sidebar='sidebar'] [data-sidebar='content'],
 [data-sidebar='sidebar'] [data-sidebar='footer'] {
-  background-color: var(--sidebar-background) !important;
+  background-color: hsl(var(--sidebar-background)) !important;
 }
 
 /* Ensure sidebar text color is always applied - Desktop and Mobile */
@@ -438,7 +473,7 @@ div:has([class*='runtime-error']) {
 /* Ensure mobile sidebar overlay has proper background */
 @media (max-width: 768px) {
   [data-sidebar='sidebar'][data-mobile='true'] {
-    background-color: var(--sidebar-background) !important;
+    background-color: hsl(var(--sidebar-background)) !important;
     box-shadow:
       0 10px 15px -3px rgb(0 0 0 / 0.1),
       0 4px 6px -4px rgb(0 0 0 / 0.1);

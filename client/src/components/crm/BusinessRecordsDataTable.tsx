@@ -62,6 +62,11 @@ import {
   ArrowUpDown,
   Filter,
   X,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  CircleDashed,
+  type LucideIcon,
 } from 'lucide-react';
 
 // ─── Snake-to-Camel Helpers ──────────────────────────────────────────────────
@@ -104,6 +109,8 @@ export interface StatusConfig {
   label: string;
   variant: 'default' | 'secondary' | 'outline' | 'destructive';
   className?: string;
+  /** Override the variant-derived icon (WCAG 1.4.1: status is never color alone) */
+  icon?: LucideIcon;
 }
 
 export interface ActionDef {
@@ -141,17 +148,29 @@ export interface BusinessRecordsDataTableProps {
 
 // ─── Status Badge ───────────────────────────────────────────────────────────
 
+// Icon per badge variant so status is conveyed by shape as well as color
+// (WCAG 1.4.1 Use of Color). A StatusConfig can override via `icon`.
+const statusVariantIcons: Record<StatusConfig['variant'], LucideIcon> = {
+  default: CheckCircle2,
+  secondary: Clock,
+  outline: CircleDashed,
+  destructive: XCircle,
+};
+
 function StatusBadge({ status, configs }: { status: string; configs: StatusConfig[] }) {
   const config = configs.find((c) => c.value === status);
   if (!config) {
     return (
-      <Badge variant="outline" className="capitalize text-xs">
+      <Badge variant="outline" className="capitalize text-xs gap-1">
+        <CircleDashed className="h-3 w-3 shrink-0" aria-hidden="true" />
         {status?.replace(/_/g, ' ') || 'Unknown'}
       </Badge>
     );
   }
+  const Icon = config.icon ?? statusVariantIcons[config.variant];
   return (
-    <Badge variant={config.variant} className={`text-xs ${config.className || ''}`}>
+    <Badge variant={config.variant} className={`text-xs gap-1 ${config.className || ''}`}>
+      <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
       {config.label}
     </Badge>
   );

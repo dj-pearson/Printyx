@@ -60,7 +60,7 @@ interface SkipTargetProps {
 
 export function SkipTarget({ id, children, as: Component = 'div' }: SkipTargetProps) {
   return (
-    <Component id={id} tabIndex={-1} className="skip-target outline-none focus:outline-none">
+    <Component id={id} tabIndex={-1} className="skip-target">
       {children}
     </Component>
   );

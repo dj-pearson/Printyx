@@ -446,7 +446,7 @@ const RichTextEditor = ({
       <div
         ref={editorRef}
         contentEditable
-        className="p-4 focus:outline-none"
+        className="p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
         style={{ minHeight }}
         onInput={handleInput}
         onKeyDown={handleKeyDown}

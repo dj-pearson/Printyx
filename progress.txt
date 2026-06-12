@@ -1271,3 +1271,63 @@ Status: Complete
 
 ### Story Status:
 - US-021: **COMPLETE** (passes: true)
+
+Iteration 3 (06/12/2026 09:07:55): Story US-021
+Status: Complete
+
+## Iteration (2026-06-12) - US-022: Visible focus indicators and color contrast compliance
+**Status**: COMPLETE
+
+### ROOT-CAUSE DISCOVERY (the big one):
+tailwind.config.ts referenced ALL theme colors as bare `var(--background)` etc., but index.css
+defines those variables as bare HSL triples (`230 30% 98%`). Result: `bg-background` emitted
+`background-color: 230 30% 98%` - INVALID CSS, silently dropped by browsers. Consequences:
+- Every shadcn focus ring (`focus-visible:ring-2 ring-ring`) was INVISIBLE app-wide
+- The entire "Executive Indigo" theme never rendered (pages fell back to browser defaults)
+- Opacity modifiers (bg-primary/80) were no-ops
+Fix: wrap every config color in `hsl(var(--x))` (standard shadcn pattern). Verified by compiling
+Tailwind directly (`npx tailwindcss -c tailwind.config.ts -i client/src/index.css -o out.css`)
+and grepping the dist build. index.css.backup shows the regression origin: vars used to be full
+hsl() colors matching the old config style; someone switched to shadcn triples without updating
+the config. NOTE: this restores the intended theme = deliberate app-wide visual change.
+
+### What Was Done (per AC):
+1. ring-focus utility in index.css @layer utilities (2px solid hsl(var(--ring)), offset 2px) +
+   safelist: ['ring-focus'] in tailwind.config.ts (layered utilities are tree-shaken when unused)
+2. Global :focus-visible 2px outline (pre-existing, kept + documented). It is deliberately
+   UN-layered so it beats the plain `outline-none` utility (utilities emit at the @tailwind
+   directive, before un-layered CSS); `focus:outline-none` (0,2,0 specificity) still wins for
+   shadcn components which show their box-shadow ring instead.
+3. outline:none audit: .skip-target:focus{outline:none} -> :focus:not(:focus-visible) + visible
+   :focus-visible outline; removed outline-none classes from SkipNavigation.tsx SkipTarget;
+   RichTextEditor contentEditable got focus-visible:ring-2 inset; remaining 30 outline-none
+   usages all pair with focus ring replacements (verified).
+4. NEW ui/status-badge.tsx: StatusBadge with success/error/warning/info/pending/neutral variants,
+   each lucide icon + WCAG AA color pair, icon aria-hidden. Adopted in shared
+   BusinessRecordsDataTable (leads/customers/prospects): variant->icon map
+   (default=CheckCircle2, secondary=Clock, outline=CircleDashed, destructive=XCircle),
+   overridable via new StatusConfig.icon field. Full 213-page badge sweep out of scope.
+5/6. Contrast verified by computing WCAG ratios (node script, hsl->rgb->luminance):
+   PASS as-is: light fg/bg 16.78, secondary 13.69, primary-fg/primary 6.10, ring/bg 5.79;
+   dark fg/bg 16.88, muted-fg 10.86.
+   FIXED: light --muted-foreground 50%->45% (4.43->5.25), light --destructive 60.2%->45%
+   (3.59->5.17); dark --primary-foreground white->dark navy (3.61->4.67), dark --accent
+   65%->55% (4.35->6.85), dark --ring + --sidebar-ring 65%->72% (ring vs card 2.48->3.50).
+   Also defined missing --chart-1..5 (light+dark) and fixed two raw
+   `var(--sidebar-background)` usages in index.css to hsl(var()).
+
+### Learnings:
+- CSS variables in this codebase are HSL TRIPLES: any color reference (tailwind config, raw CSS)
+  MUST wrap with hsl(var(--x)) or the declaration is silently invalid
+- Tailwind @layer utilities classes are tree-shaken if no template uses them - safelist
+  hand-written utilities that ship as API
+- Verify CSS-level changes by compiling: npx tailwindcss -c tailwind.config.ts -i client/src/index.css -o /tmp/out.css
+
+### Build Verification:
+- Typecheck: 6578 errors = exact baseline (0 new); only touched-file hit is pre-existing
+  <style jsx> error in RichTextEditor (line untouched)
+- Tests: 1669 passed / 26 pre-existing failures / 66 skipped - baseline unchanged
+- Build: PASS (31s); dist CSS contains hsl-wrapped colors, ring-focus, new palette values
+
+### Story Status:
+- US-022: **COMPLETE** (passes: true)
