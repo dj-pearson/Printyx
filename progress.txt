@@ -1196,3 +1196,45 @@ Status: Needs Review
 
 ### Story Status:
 - US-062: **COMPLETE** (passes: true; DB SQL pending manual apply)
+
+Iteration 1 (06/12/2026 08:23:26): Story US-020
+Status: Needs Review
+
+## Iteration (2026-06-12) - US-020: Enhance API key management for external integrations
+**Status**: COMPLETE
+
+### Audit Findings (code existed but was broken/dead):
+1. server/routes/api-key-routes.ts was NEVER registered anywhere - completely dead code
+2. shared/api-key-schema.ts used uuid columns referencing users.id/tenants.id which are VARCHAR - FKs impossible against real DB
+3. key_prefix was varchar(12) but service writes 16 chars ("pk_live_" + 8) - every insert would have failed
+4. No way to show masked key (last 4) since only the prefix was stored
+5. DELETE /:id hard-deleted the key, destroying usage logs / rotation audit trail
+6. pino logger arg-order bugs (message-first) in routes + middleware
+
+### What Was Done:
+- Schema: tenant/user refs uuid->varchar, key_prefix varchar(20), added key_last4 varchar(4), rotation prefixes widened
+- Service: stores keyLast4 on create; new exported maskApiKey() helper; GeneratedApiKey includes maskedKey; fixed environment enum cast in rotateApiKey
+- Routes: switched to getUserId/getTenantId from utils/auth-helpers; GET list returns maskedKey (last 4 only); DELETE /:id now REVOKES (soft, audit-preserving) instead of hard delete; 401 guards where userId required; pino arg order fixed
+- Registry: mounted at /api/api-keys behind requireAuth in routes-registry.ts (API Key Management section, before Breach Detection)
+- Middleware: fixed middlewares array typing in apiKeyAuth() (pre-existing TS error)
+- Hashing verified per AC: HMAC-SHA256 + per-key 128-bit salt + timingSafeEqual. Deliberately NOT bcrypt/argon2: those are for low-entropy passwords; 256-bit random keys make brute force infeasible, and salted HMAC is the Stripe/GitHub-style standard. Test asserts plaintext key never reaches the DB.
+- Tests: server/tests/unit/api-key-management.test.ts (24 tests) runs the REAL service + requireApiKey middleware against a vi.hoisted mocked db: hashed storage, masked display, expired->401, revoked->401, scope 403/allow, wildcard scope, bearer-header extraction, tenant-scoped revoke
+- Fixed 2 pre-existing failures in api-key-service.test.ts (falsy-vs-false assertion; hardcoded 2025 'future' date that expired)
+
+### DB Apply Status:
+- DB 209.145.59.219:5433 unreachable as usual - ship migrations/api-keys-migration.sql (idempotent, enums via DO blocks, CREATE TABLE IF NOT EXISTS x4 + upgrade ALTERs)
+- ACTION FOR HUMAN: run migrations/api-keys-migration.sql against prod DB before using /api/api-keys
+
+### Learnings:
+- "Existing" infrastructure may be dead code - grep routes-registry.ts/routes.ts for actual registration before trusting it
+- registerAllRouteModules(app, requireAuth) receives requireAuth as a param - use it when mounting routers that need auth
+- ESLint config ignores server/ files (0 errors reported = not linted); prettier still applies
+- Test baseline now: 1669 passed, 26 pre-existing failures, 66 skipped (fixed 2 old api-key test bugs)
+
+### Build Verification:
+- New tests: 103/103 across both api-key test files; full suite: no new failures
+- Typecheck: zero errors in all touched files
+- npm run build: PASS (48s)
+
+### Story Status:
+- US-020: **COMPLETE** (passes: true; DB SQL pending manual apply)

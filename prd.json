@@ -357,8 +357,8 @@
         "Tests pass: npm run test"
       ],
       "priority": 20,
-      "passes": false,
-      "notes": "server/middleware/api-key-auth.ts and server/services/api-key-service.ts already exist. Audit and enhance to enterprise standards: proper hashing, rotation support, scoped permissions, usage logging."
+      "passes": true,
+      "notes": "IMPLEMENTED 2026-06-12. Audit found service/middleware/routes existed but routes were NEVER REGISTERED (dead code) and schema had uuid refs to varchar users/tenants ids + key_prefix varchar(12) too narrow for the 16-char prefix written by the service (inserts would fail). Fixed schema (varchar refs, key_prefix varchar(20), new key_last4 column), added maskApiKey() so GET list shows masked key (last 4 only), DELETE /api/api-keys/:id now revokes (preserves audit trail) instead of hard-deleting, mounted router at /api/api-keys behind requireAuth in routes-registry.ts. Hashing verified: HMAC-SHA256 with per-key 128-bit salt + timing-safe compare; appropriate for 256-bit random keys (bcrypt/argon2 are for low-entropy passwords; GitHub/Stripe use the same approach) - never plaintext, covered by test asserting full key never reaches DB. Scopes enforced by requireApiKey middleware (incl wildcard), usage logged to api_key_usage_logs, expired keys 401. 24 new tests in server/tests/unit/api-key-management.test.ts exercising real service+middleware against mocked db; fixed 2 pre-existing broken tests in api-key-service.test.ts. DB unreachable from dev: idempotent SQL at migrations/api-keys-migration.sql for manual apply. Typecheck/tests/build pass."
     },
     {
       "id": "US-021",

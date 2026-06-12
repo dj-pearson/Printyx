@@ -2,11 +2,13 @@
  * API Key Management Routes
  *
  * REST API endpoints for managing API keys.
+ * Mounted at /api/api-keys behind requireAuth (see routes-registry.ts).
  */
 
 import { Router, Request, Response } from 'express';
-import { apiKeyService } from '../services/api-key-service';
+import { apiKeyService, maskApiKey } from '../services/api-key-service';
 import { createApiKeyRequestSchema, updateApiKeyRequestSchema } from '@shared/api-key-schema';
+import { getUserId, getTenantId } from '../utils/auth-helpers';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('api-key-routes');
 
@@ -15,11 +17,13 @@ const router = Router();
 /**
  * Create a new API key
  * POST /api/api-keys
+ *
+ * The full key is returned ONCE in this response and never again.
  */
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
-    const userId = (req as any).user?.id;
+    const tenantId = getTenantId(req);
+    const userId = getUserId(req);
 
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant context required' });
@@ -43,8 +47,8 @@ router.post('/', async (req: Request, res: Response) => {
       ...apiKey,
       message: 'Save this key securely. It will only be shown once.',
     });
-  } catch (error: any) {
-    log.error('[API Key Routes] Error creating key:', error);
+  } catch (error) {
+    log.error({ err: error }, 'Error creating API key');
     res.status(500).json({ error: 'Failed to create API key' });
   }
 });
@@ -52,10 +56,12 @@ router.post('/', async (req: Request, res: Response) => {
 /**
  * List API keys
  * GET /api/api-keys
+ *
+ * Returns key metadata only - the key itself is masked (last 4 chars).
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = getTenantId(req);
 
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant context required' });
@@ -77,6 +83,7 @@ router.get('/', async (req: Request, res: Response) => {
       description: key.description,
       keyType: key.keyType,
       keyPrefix: key.keyPrefix,
+      maskedKey: maskApiKey(key.keyLast4),
       status: key.status,
       isActive: key.isActive,
       scopes: key.scopes,
@@ -100,8 +107,8 @@ router.get('/', async (req: Request, res: Response) => {
       keys: sanitizedKeys,
       total: result.total,
     });
-  } catch (error: any) {
-    log.error('[API Key Routes] Error listing keys:', error);
+  } catch (error) {
+    log.error({ err: error }, 'Error listing API keys');
     res.status(500).json({ error: 'Failed to list API keys' });
   }
 });
@@ -112,7 +119,7 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = getTenantId(req);
     const { id } = req.params;
 
     if (!tenantId) {
@@ -128,9 +135,9 @@ router.get('/:id', async (req: Request, res: Response) => {
     // Remove sensitive data
     const { keyHash, keySalt, ...safeKey } = apiKey;
 
-    res.json(safeKey);
-  } catch (error: any) {
-    log.error('[API Key Routes] Error getting key:', error);
+    res.json({ ...safeKey, maskedKey: maskApiKey(apiKey.keyLast4) });
+  } catch (error) {
+    log.error({ err: error }, 'Error getting API key');
     res.status(500).json({ error: 'Failed to get API key' });
   }
 });
@@ -141,12 +148,16 @@ router.get('/:id', async (req: Request, res: Response) => {
  */
 router.patch('/:id', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
-    const userId = (req as any).user?.id;
+    const tenantId = getTenantId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
 
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant context required' });
+    }
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
     }
 
     const validation = updateApiKeyRequestSchema.safeParse(req.body);
@@ -165,25 +176,68 @@ router.patch('/:id', async (req: Request, res: Response) => {
 
     const { keyHash, keySalt, ...safeKey } = apiKey;
     res.json(safeKey);
-  } catch (error: any) {
-    log.error('[API Key Routes] Error updating key:', error);
+  } catch (error) {
+    log.error({ err: error }, 'Error updating API key');
     res.status(500).json({ error: 'Failed to update API key' });
   }
 });
 
 /**
- * Revoke API key
+ * Revoke API key (DELETE = immediate revocation)
+ * DELETE /api/api-keys/:id
+ *
+ * Revokes rather than hard-deletes so the audit trail (usage logs,
+ * rotation history) is preserved. The key stops working immediately.
+ */
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const tenantId = getTenantId(req);
+    const userId = getUserId(req);
+    const { id } = req.params;
+
+    if (!tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const success = await apiKeyService.revokeApiKey(
+      id,
+      tenantId,
+      userId,
+      'Revoked via DELETE /api/api-keys/:id',
+    );
+
+    if (!success) {
+      return res.status(404).json({ error: 'API key not found' });
+    }
+
+    res.json({ success: true, message: 'API key revoked' });
+  } catch (error) {
+    log.error({ err: error }, 'Error revoking API key');
+    res.status(500).json({ error: 'Failed to revoke API key' });
+  }
+});
+
+/**
+ * Revoke API key (explicit endpoint with reason)
  * POST /api/api-keys/:id/revoke
  */
 router.post('/:id/revoke', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
-    const userId = (req as any).user?.id;
+    const tenantId = getTenantId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
     const { reason } = req.body;
 
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant context required' });
+    }
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
     }
 
     const success = await apiKeyService.revokeApiKey(id, tenantId, userId, reason);
@@ -193,8 +247,8 @@ router.post('/:id/revoke', async (req: Request, res: Response) => {
     }
 
     res.json({ success: true, message: 'API key revoked' });
-  } catch (error: any) {
-    log.error('[API Key Routes] Error revoking key:', error);
+  } catch (error) {
+    log.error({ err: error }, 'Error revoking API key');
     res.status(500).json({ error: 'Failed to revoke API key' });
   }
 });
@@ -205,13 +259,17 @@ router.post('/:id/revoke', async (req: Request, res: Response) => {
  */
 router.post('/:id/rotate', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
-    const userId = (req as any).user?.id;
+    const tenantId = getTenantId(req);
+    const userId = getUserId(req);
     const { id } = req.params;
     const { gracePeriodHours, reason } = req.body;
 
     if (!tenantId) {
       return res.status(400).json({ error: 'Tenant context required' });
+    }
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
     }
 
     const newKey = await apiKeyService.rotateApiKey(id, tenantId, userId, {
@@ -228,35 +286,9 @@ router.post('/:id/rotate', async (req: Request, res: Response) => {
       message:
         'Key rotated. Save the new key securely. Old key will remain active during grace period.',
     });
-  } catch (error: any) {
-    log.error('[API Key Routes] Error rotating key:', error);
+  } catch (error) {
+    log.error({ err: error }, 'Error rotating API key');
     res.status(500).json({ error: 'Failed to rotate API key' });
-  }
-});
-
-/**
- * Delete API key
- * DELETE /api/api-keys/:id
- */
-router.delete('/:id', async (req: Request, res: Response) => {
-  try {
-    const tenantId = (req as any).tenantId;
-    const { id } = req.params;
-
-    if (!tenantId) {
-      return res.status(400).json({ error: 'Tenant context required' });
-    }
-
-    const success = await apiKeyService.deleteApiKey(id, tenantId);
-
-    if (!success) {
-      return res.status(404).json({ error: 'API key not found' });
-    }
-
-    res.status(204).send();
-  } catch (error: any) {
-    log.error('[API Key Routes] Error deleting key:', error);
-    res.status(500).json({ error: 'Failed to delete API key' });
   }
 });
 
@@ -266,7 +298,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
  */
 router.get('/:id/stats', async (req: Request, res: Response) => {
   try {
-    const tenantId = (req as any).tenantId;
+    const tenantId = getTenantId(req);
     const { id } = req.params;
     const { startDate, endDate } = req.query;
 
@@ -280,14 +312,14 @@ router.get('/:id/stats', async (req: Request, res: Response) => {
     });
 
     res.json(stats);
-  } catch (error: any) {
-    log.error('[API Key Routes] Error getting stats:', error);
+  } catch (error) {
+    log.error({ err: error }, 'Error getting API key stats');
     res.status(500).json({ error: 'Failed to get API key statistics' });
   }
 });
 
 /**
- * Validate API key (for testing)
+ * Validate API key (for testing an integration setup)
  * POST /api/api-keys/validate
  */
 router.post('/validate', async (req: Request, res: Response) => {
@@ -314,8 +346,8 @@ router.post('/validate', async (req: Request, res: Response) => {
       name: result.apiKey!.name,
       scopes: result.apiKey!.scopes,
     });
-  } catch (error: any) {
-    log.error('[API Key Routes] Error validating key:', error);
+  } catch (error) {
+    log.error({ err: error }, 'Error validating API key');
     res.status(500).json({ error: 'Failed to validate API key' });
   }
 });

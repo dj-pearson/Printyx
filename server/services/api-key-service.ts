@@ -26,11 +26,20 @@ export interface GeneratedApiKey {
   id: string;
   key: string; // Full key (only shown once)
   prefix: string;
+  maskedKey: string;
   name: string;
   keyType: string;
   scopes: string[];
   expiresAt: Date | null;
   createdAt: Date;
+}
+
+/**
+ * Build the masked representation of an API key for display.
+ * Only the last 4 characters of the key are revealed.
+ */
+export function maskApiKey(keyLast4?: string | null): string {
+  return `••••••••${keyLast4 || '????'}`;
 }
 
 export interface ApiKeyValidationResult {
@@ -81,8 +90,9 @@ export class ApiKeyService {
 
     // Create key prefix (first 8 chars after prefix for identification)
     const keyPrefix = fullKey.substring(0, prefix.length + 8);
+    const keyLast4 = fullKey.slice(-4);
 
-    // Hash the key for storage
+    // Hash the key for storage (never store the key itself)
     const keyHash = this.hashKey(fullKey, salt.toString('hex'));
 
     // Calculate expiration
@@ -100,6 +110,7 @@ export class ApiKeyService {
         description: request.description,
         keyType: request.keyType,
         keyPrefix,
+        keyLast4,
         keyHash,
         keySalt: salt.toString('hex'),
         scopes: request.scopes,
@@ -122,6 +133,7 @@ export class ApiKeyService {
       id: apiKey.id,
       key: fullKey,
       prefix: keyPrefix,
+      maskedKey: maskApiKey(keyLast4),
       name: apiKey.name,
       keyType: apiKey.keyType,
       scopes: (apiKey.scopes as string[]) || [],
@@ -666,7 +678,7 @@ export class ApiKeyService {
       rateLimitPerMinute: oldKey.rateLimitPerMinute || 1000,
       rateLimitPerHour: oldKey.rateLimitPerHour || 10000,
       rateLimitPerDay: oldKey.rateLimitPerDay || 100000,
-      environment: oldKey.environment || 'production',
+      environment: (oldKey.environment || 'production') as 'production' | 'staging' | 'development',
       metadata: (oldKey.metadata as Record<string, any>) || {},
       tags: (oldKey.tags as string[]) || [],
     });

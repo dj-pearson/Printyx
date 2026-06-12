@@ -268,7 +268,7 @@ export function logApiKeyUsage() {
             },
           )
           .catch((err) => {
-            log.error('[API Key Usage] Failed to log usage:', err);
+            log.error({ err }, 'Failed to log API key usage');
           });
       }
 
@@ -354,7 +354,7 @@ export function apiKeyAuth(
     logUsage?: boolean;
   } = {},
 ) {
-  const middlewares = [
+  const middlewares: Array<(req: Request, res: Response, next: NextFunction) => unknown> = [
     requireApiKey({
       requiredScopes: options.requiredScopes,
       requiredPermissions: options.requiredPermissions,

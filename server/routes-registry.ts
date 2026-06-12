@@ -63,6 +63,7 @@ import { registerAutomationRoutes } from './routes-automation';
 import equipmentLifecycleStateMachineRoutes from './routes-equipment-lifecycle-state-machine';
 import equipmentDisposalRoutes from './routes-equipment-disposal';
 import breachDetectionRoutes from './routes-breach-detection';
+import apiKeyManagementRoutes from './routes/api-key-routes';
 import { registerCrmGoalRoutes } from './routes-crm-goals';
 import { registerBusinessRecordRoutes } from './routes-business-records';
 import { registerCustomerRoutes } from './routes-customers';
@@ -448,6 +449,9 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
 
   // ─── Sales Forecasting ────────────────────────────────────────────
   app.use(salesForecastingRoutes);
+
+  // ─── API Key Management ───────────────────────────────────────────
+  app.use('/api/api-keys', requireAuth, apiKeyManagementRoutes);
 
   // ─── Breach Detection & Validation ────────────────────────────────
   app.use('/api', breachDetectionRoutes);

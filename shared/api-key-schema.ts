@@ -49,7 +49,7 @@ export const apiKeys = pgTable(
   'api_keys',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    tenantId: uuid('tenant_id')
+    tenantId: varchar('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
 
@@ -58,9 +58,10 @@ export const apiKeys = pgTable(
     description: text('description'),
     keyType: apiKeyTypeEnum('key_type').notNull().default('service'),
 
-    // Key data (prefix is visible, hash is stored for verification)
-    keyPrefix: varchar('key_prefix', { length: 12 }).notNull(), // First 8 chars of key for identification
-    keyHash: varchar('key_hash', { length: 128 }).notNull(), // SHA-256 hash of the full key
+    // Key data (prefix + last4 are visible, hash is stored for verification)
+    keyPrefix: varchar('key_prefix', { length: 20 }).notNull(), // e.g. "pk_live_" + first 8 chars for identification
+    keyLast4: varchar('key_last4', { length: 4 }), // Last 4 chars for masked display
+    keyHash: varchar('key_hash', { length: 128 }).notNull(), // HMAC-SHA256 hash of the full key
     keySalt: varchar('key_salt', { length: 64 }).notNull(), // Salt used for hashing
 
     // Status
@@ -99,8 +100,8 @@ export const apiKeys = pgTable(
     tags: jsonb('tags').$type<string[]>().default([]),
 
     // Ownership
-    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
-    revokedBy: uuid('revoked_by').references(() => users.id, { onDelete: 'set null' }),
+    createdBy: varchar('created_by').references(() => users.id, { onDelete: 'set null' }),
+    revokedBy: varchar('revoked_by').references(() => users.id, { onDelete: 'set null' }),
     revokedAt: timestamp('revoked_at'),
     revokedReason: text('revoked_reason'),
 
@@ -131,7 +132,7 @@ export const apiKeyUsageLogs = pgTable(
     apiKeyId: uuid('api_key_id')
       .notNull()
       .references(() => apiKeys.id, { onDelete: 'cascade' }),
-    tenantId: uuid('tenant_id')
+    tenantId: varchar('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
 
@@ -218,20 +219,20 @@ export const apiKeyRotations = pgTable(
     apiKeyId: uuid('api_key_id')
       .notNull()
       .references(() => apiKeys.id, { onDelete: 'cascade' }),
-    tenantId: uuid('tenant_id')
+    tenantId: varchar('tenant_id')
       .notNull()
       .references(() => tenants.id, { onDelete: 'cascade' }),
 
     // Old key info (hash only for security)
-    oldKeyPrefix: varchar('old_key_prefix', { length: 12 }).notNull(),
+    oldKeyPrefix: varchar('old_key_prefix', { length: 20 }).notNull(),
     oldKeyHash: varchar('old_key_hash', { length: 128 }).notNull(),
 
     // New key info
-    newKeyPrefix: varchar('new_key_prefix', { length: 12 }).notNull(),
+    newKeyPrefix: varchar('new_key_prefix', { length: 20 }).notNull(),
 
     // Rotation details
     rotatedAt: timestamp('rotated_at').defaultNow().notNull(),
-    rotatedBy: uuid('rotated_by').references(() => users.id, { onDelete: 'set null' }),
+    rotatedBy: varchar('rotated_by').references(() => users.id, { onDelete: 'set null' }),
     reason: text('reason'),
 
     // Grace period for old key
