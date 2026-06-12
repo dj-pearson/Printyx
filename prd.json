@@ -410,8 +410,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 23,
-      "passes": false,
-      "notes": "No i18n exists. Start with foundation and extract strings from the most visible components. Full string extraction across 213 pages is a separate future effort. react-i18next is the most popular React i18n library."
+      "passes": true,
+      "notes": "IMPLEMENTED 2026-06-12. i18next@25.8.11 + react-i18next@16.5.4 added to package.json (were already in node_modules as extraneous). Created client/src/i18n/config.ts (init with inline resources, fallbackLng en, language persisted to localStorage key printyx_language, browser-language detection) + locales/en.json (full extraction: nav sections by id / nav items by path, sidebar chrome, all Login + Signup strings incl zod validation messages and toasts) + locales/es.json (partial placeholder; missing keys fall back to English). main.tsx wraps App in I18nextProvider. Sidebar (RoleAwareCollapsibleSidebar) resolves titles via t('nav.sections.<id>')/t('nav.items.<path>') with defaultValue fallback in a useMemo before permission filtering, so search works on translated titles. Login/Signup zod schemas converted to makeXxxSchema(t) factories memoized on t (type via z.infer<ReturnType<...>>); INDUSTRIES/COMPANY_SIZES stay canonical values, labels translated with defaultValue. client/src/hooks/useTranslation.ts wraps react-i18next and exposes persistent changeLanguage. Settings language Select (pre-existing en/es/fr) now calls changeLanguage on change (fr has no bundle = falls back to en). Required tsconfig resolveJsonModule:true for the JSON locale imports. Verified in browser via Playwright: /login + /signup render from i18n in en, switch to es (Bienvenido de nuevo, Paso 1 de 5 interpolation) with English fallback for untranslated keys; needs VITE_SUPABASE_* placeholder env for standalone dev:frontend (pre-existing supabase.ts throw, unrelated). Typecheck 6578 = exact baseline (0 new); tests 1669/26/66 baseline unchanged; build PASS."
     },
     {
       "id": "US-024",

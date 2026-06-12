@@ -3,6 +3,7 @@ import { useLocation, Link } from 'wouter';
 // useQuery removed - permissions are now resolved via usePermissions hook
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   SECTION_PERMISSIONS,
   ITEM_PERMISSIONS,
@@ -112,6 +113,9 @@ interface RoleAwareCollapsibleSidebarProps {
  * Complete navigation structure - ALL sections and items are defined here.
  * Filtering by role/permissions happens separately using the permission map.
  * This separation ensures consistent hook ordering and avoids conditional rendering issues.
+ *
+ * The title values are the English defaults; display titles are resolved at render
+ * time from i18n (nav.sections.<id> / nav.items.<path> in client/src/i18n/locales/).
  */
 const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
   // Always visible
@@ -562,6 +566,7 @@ export function RoleAwareCollapsibleSidebar({
 }: RoleAwareCollapsibleSidebarProps) {
   const { user, isAuthenticated } = useAuth();
   const { permissions, level, isPlatformUser } = usePermissions();
+  const { t } = useTranslation();
   const [location] = useLocation();
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [userExpandedSections, setUserExpandedSections] = useState<Set<string>>(new Set());
@@ -571,11 +576,24 @@ export function RoleAwareCollapsibleSidebar({
   // Use role from user object for display
   const userRole = user?.role;
 
+  // Resolve display titles from i18n (falls back to the English defaults above)
+  const localizedSections = useMemo(
+    () =>
+      ALL_NAVIGATION_SECTIONS.map((section) => ({
+        ...section,
+        title: t(`nav.sections.${section.id}`, { defaultValue: section.title }),
+        children: section.children?.map((child) => ({
+          ...child,
+          title: t(`nav.items.${child.path}`, { defaultValue: child.title }),
+        })),
+      })),
+    [t],
+  );
+
   // Filter navigation sections based on granular RBAC permissions
   const navigationSections = useMemo(
-    () =>
-      filterNavigationByPermissions(ALL_NAVIGATION_SECTIONS, permissions, level, isPlatformUser),
-    [permissions, level, isPlatformUser],
+    () => filterNavigationByPermissions(localizedSections, permissions, level, isPlatformUser),
+    [localizedSections, permissions, level, isPlatformUser],
   );
 
   // Debug removed for cleaner console output
@@ -685,7 +703,7 @@ export function RoleAwareCollapsibleSidebar({
     return (
       <div className={`bg-white border-r border-gray-200 ${className}`}>
         <div className="p-4">
-          <div className="text-gray-500">Not authenticated</div>
+          <div className="text-gray-500">{t('nav.notAuthenticated')}</div>
         </div>
       </div>
     );
@@ -695,8 +713,10 @@ export function RoleAwareCollapsibleSidebar({
     return (
       <div className={`bg-white border-r border-gray-200 ${className}`}>
         <div className="p-4">
-          <div className="text-gray-500">No navigation sections available</div>
-          <div className="text-xs text-gray-400 mt-1">Role: {JSON.stringify(userRole)}</div>
+          <div className="text-gray-500">{t('nav.noSections')}</div>
+          <div className="text-xs text-gray-400 mt-1">
+            {t('nav.roleLabel', { role: JSON.stringify(userRole) })}
+          </div>
         </div>
       </div>
     );
@@ -783,8 +803,8 @@ export function RoleAwareCollapsibleSidebar({
             <div className="flex items-center gap-3 px-2 py-2">
               <Logo className="h-10 w-10" />
               <div className="group-data-[collapsible=icon]:hidden">
-                <h1 className="text-xl font-bold text-slate-900">Printyx</h1>
-                <p className="text-xs text-slate-600 font-medium">Business Management</p>
+                <h1 className="text-xl font-bold text-slate-900">{t('brand.name')}</h1>
+                <p className="text-xs text-slate-600 font-medium">{t('brand.tagline')}</p>
               </div>
             </div>
           </SidebarMenuItem>
@@ -796,8 +816,8 @@ export function RoleAwareCollapsibleSidebar({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               type="text"
-              placeholder="Search menu..."
-              aria-label="Search navigation menu"
+              placeholder={t('nav.searchPlaceholder')}
+              aria-label={t('nav.searchAriaLabel')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 h-9 text-sm"
@@ -809,7 +829,7 @@ export function RoleAwareCollapsibleSidebar({
             <div className="flex gap-1 mt-2">
               <Button variant="ghost" size="sm" onClick={expandAll} className="flex-1 h-7 text-xs">
                 <ChevronsUpDown className="h-3 w-3 mr-1" />
-                Expand All
+                {t('nav.expandAll')}
               </Button>
               <Button
                 variant="ghost"
@@ -818,7 +838,7 @@ export function RoleAwareCollapsibleSidebar({
                 className="flex-1 h-7 text-xs"
               >
                 <Minimize2 className="h-3 w-3 mr-1" />
-                Collapse All
+                {t('nav.collapseAll')}
               </Button>
             </div>
           )}
@@ -832,8 +852,8 @@ export function RoleAwareCollapsibleSidebar({
               {filteredSections.length === 0 && searchQuery ? (
                 <div className="text-center py-8 text-gray-500 text-sm">
                   <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No menu items found</p>
-                  <p className="text-xs mt-1">Try a different search term</p>
+                  <p>{t('nav.noResults')}</p>
+                  <p className="text-xs mt-1">{t('nav.noResultsHint')}</p>
                 </div>
               ) : null}
               {filteredSections.map((section) => {
@@ -923,7 +943,7 @@ export function RoleAwareCollapsibleSidebar({
                                         aria-hidden="true"
                                         className="ml-auto bg-blue-600 text-white text-xs"
                                       >
-                                        Active
+                                        {t('nav.activeBadge')}
                                       </Badge>
                                     )}
                                   </Link>
@@ -968,7 +988,7 @@ export function RoleAwareCollapsibleSidebar({
                             aria-hidden="true"
                             className="ml-auto bg-blue-600 text-white text-xs"
                           >
-                            Active
+                            {t('nav.activeBadge')}
                           </Badge>
                         )}
                       </Link>
@@ -992,17 +1012,19 @@ export function RoleAwareCollapsibleSidebar({
           </Avatar>
           <div className="group-data-[collapsible=icon]:hidden flex-1 min-w-0">
             <p className="text-sm font-semibold text-slate-900 truncate">
-              {user?.firstName || user?.email?.split('@')[0] || 'User'}
+              {user?.firstName || user?.email?.split('@')[0] || t('nav.defaultUser')}
             </p>
             <div className="flex items-center gap-1.5">
-              <p className="text-xs text-slate-600 truncate">{userRole?.name || 'User'}</p>
+              <p className="text-xs text-slate-600 truncate">
+                {userRole?.name || t('nav.defaultUser')}
+              </p>
               {userRole?.level && userRole.level >= 8 && (
                 <Badge
                   variant="secondary"
                   className="text-[10px] px-1.5 py-0 h-4 bg-gradient-to-r from-amber-400 to-orange-500 text-white border-0"
                 >
                   <Crown className="h-2.5 w-2.5 mr-0.5" />
-                  Admin
+                  {t('nav.adminBadge')}
                 </Badge>
               )}
             </div>
@@ -1011,7 +1033,7 @@ export function RoleAwareCollapsibleSidebar({
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Open settings"
+              aria-label={t('nav.openSettings')}
               className="h-8 w-8 group-data-[collapsible=icon]:hidden"
             >
               <Settings className="h-4 w-4" aria-hidden="true" />

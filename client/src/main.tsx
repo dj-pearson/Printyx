@@ -1,6 +1,8 @@
 import { createRoot } from 'react-dom/client';
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { I18nextProvider } from 'react-i18next';
 import App from './App';
+import i18n from '@/i18n/config';
 import './index.css';
 import NProgress from 'nprogress';
 import 'nprogress/nprogress.css';
@@ -112,7 +114,9 @@ try {
   const root = createRoot(rootElement);
   root.render(
     <ErrorBoundary>
-      <App />
+      <I18nextProvider i18n={i18n}>
+        <App />
+      </I18nextProvider>
     </ErrorBoundary>,
   );
 } catch (error) {

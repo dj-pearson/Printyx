@@ -1,0 +1,74 @@
+{
+  "brand": {
+    "name": "Printyx",
+    "tagline": "Gestión Empresarial"
+  },
+  "nav": {
+    "searchPlaceholder": "Buscar menú...",
+    "searchAriaLabel": "Buscar en el menú de navegación",
+    "expandAll": "Expandir todo",
+    "collapseAll": "Contraer todo",
+    "noResults": "No se encontraron elementos",
+    "noResultsHint": "Pruebe con otro término de búsqueda",
+    "notAuthenticated": "No autenticado",
+    "noSections": "No hay secciones de navegación disponibles",
+    "roleLabel": "Rol: {{role}}",
+    "activeBadge": "Activo",
+    "adminBadge": "Admin",
+    "openSettings": "Abrir configuración",
+    "defaultUser": "Usuario",
+    "sections": {
+      "dashboard": "Panel de Control",
+      "platform-admin-hub": "Administración de Plataforma",
+      "tenant-org-management": "Inquilinos y Organización",
+      "user-access-management": "Usuarios y Acceso",
+      "system-operations": "Operaciones del Sistema",
+      "platform-features": "Funciones de Plataforma",
+      "crm": "Centro de Ventas",
+      "service": "Centro de Servicio",
+      "products": "Centro de Productos",
+      "equipment": "Ciclo de Vida de Equipos",
+      "billing": "Centro de Facturación",
+      "reports": "Informes",
+      "tasks": "Gestión de Tareas",
+      "ai-hub": "Centro de IA",
+      "knowledge-base": "Base de Conocimientos",
+      "integrations-hub": "Integraciones",
+      "system-admin": "Administración del Sistema",
+      "customers": "Clientes y CRM",
+      "settings": "Configuración"
+    }
+  },
+  "login": {
+    "welcomeBack": "Bienvenido de nuevo",
+    "signInToContinue": "Inicie sesión en su cuenta para continuar",
+    "emailLabel": "Correo electrónico",
+    "passwordLabel": "Contraseña",
+    "forgotPassword": "¿Olvidó su contraseña?",
+    "signIn": "Iniciar sesión",
+    "signingIn": "Iniciando sesión...",
+    "noAccount": "¿No tiene una cuenta?",
+    "getStartedFree": "Comience gratis",
+    "backToHomepage": "Volver a la página principal",
+    "orDivider": "o"
+  },
+  "signup": {
+    "title": "Cree Su Cuenta",
+    "subtitle": "Comience su prueba gratuita de 14 días - sin tarjeta de crédito",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "createAccount": "Crear Cuenta",
+    "creatingAccount": "Creando cuenta...",
+    "alreadyHaveAccount": "¿Ya tiene una cuenta?",
+    "signIn": "Iniciar sesión",
+    "stepIndicator": "Paso {{current}} de {{total}}"
+  },
+  "settings": {
+    "languageLabel": "Idioma",
+    "languages": {
+      "en": "Inglés",
+      "es": "Español",
+      "fr": "Francés"
+    }
+  }
+}

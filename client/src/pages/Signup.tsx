@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import type { TFunction } from 'i18next';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,46 +33,49 @@ import { formatAuthError } from '@/lib/auth-utils';
 import { Printer, ArrowRight, ArrowLeft, CheckCircle, Eye, EyeOff, Mail } from 'lucide-react';
 import { Link } from 'wouter';
 
-const signupSchema = z
-  .object({
-    // Company information
-    companyName: z.string().min(2, 'Company name is required'),
-    industry: z.string().optional(),
-    companySize: z.string().optional(),
-    website: z.string().url('Please enter a valid URL').optional().or(z.literal('')),
+const makeSignupSchema = (t: TFunction) =>
+  z
+    .object({
+      // Company information
+      companyName: z.string().min(2, t('signup.validation.companyNameRequired')),
+      industry: z.string().optional(),
+      companySize: z.string().optional(),
+      website: z.string().url(t('signup.validation.invalidUrl')).optional().or(z.literal('')),
 
-    // Admin user
-    firstName: z.string().min(1, 'First name is required'),
-    lastName: z.string().min(1, 'Last name is required'),
-    email: EmailSchema, // SECURITY: Use shared email schema with sanitization
-    password: PasswordSchema, // SECURITY: Use shared password schema with complexity requirements
-    confirmPassword: z.string(),
-    phone: z.string().optional(),
+      // Admin user
+      firstName: z.string().min(1, t('signup.validation.firstNameRequired')),
+      lastName: z.string().min(1, t('signup.validation.lastNameRequired')),
+      email: EmailSchema, // SECURITY: Use shared email schema with sanitization
+      password: PasswordSchema, // SECURITY: Use shared password schema with complexity requirements
+      confirmPassword: z.string(),
+      phone: z.string().optional(),
 
-    // Company details
-    address: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    zip: z.string().optional(),
-    country: z.string(),
-    timezone: z.string(),
+      // Company details
+      address: z.string().optional(),
+      city: z.string().optional(),
+      state: z.string().optional(),
+      zip: z.string().optional(),
+      country: z.string(),
+      timezone: z.string(),
 
-    // Plan selection
-    planSlug: z.string(),
-    billingCycle: z.enum(['monthly', 'annual']),
+      // Plan selection
+      planSlug: z.string(),
+      billingCycle: z.enum(['monthly', 'annual']),
 
-    // Terms acceptance
-    acceptedTerms: z.boolean().refine((val) => val === true, 'You must accept the terms'),
-    acceptedPrivacy: z
-      .boolean()
-      .refine((val) => val === true, 'You must accept the privacy policy'),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ['confirmPassword'],
-  });
+      // Terms acceptance
+      acceptedTerms: z
+        .boolean()
+        .refine((val) => val === true, t('signup.validation.mustAcceptTerms')),
+      acceptedPrivacy: z
+        .boolean()
+        .refine((val) => val === true, t('signup.validation.mustAcceptPrivacy')),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t('signup.validation.passwordsDontMatch'),
+      path: ['confirmPassword'],
+    });
 
-type SignupForm = z.infer<typeof signupSchema>;
+type SignupForm = z.infer<ReturnType<typeof makeSignupSchema>>;
 
 const INDUSTRIES = [
   'Copier Dealer',
@@ -95,12 +100,15 @@ const TIMEZONES = [
 
 export default function Signup() {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { signup } = useAuthContext();
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [signupEmail, setSignupEmail] = useState('');
+
+  const signupSchema = useMemo(() => makeSignupSchema(t), [t]);
 
   const form = useForm<SignupForm>({
     resolver: zodResolver(signupSchema),
@@ -158,13 +166,13 @@ export default function Signup() {
       setSignupEmail(data.email);
       setIsSuccess(true);
       toast({
-        title: 'Account created!',
-        description: 'Please check your email to verify your account.',
+        title: t('signup.toast.successTitle'),
+        description: t('signup.toast.successDescription'),
       });
     },
     onError: (error: any) => {
       toast({
-        title: 'Signup failed',
+        title: t('signup.toast.failedTitle'),
         description: formatAuthError(error),
         variant: 'destructive',
       });
@@ -215,40 +223,38 @@ export default function Signup() {
                 <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
                   <Printer className="text-white h-6 w-6" />
                 </div>
-                <h1 className="text-2xl font-bold text-gray-900">Printyx</h1>
+                <h1 className="text-2xl font-bold text-gray-900">{t('brand.name')}</h1>
               </div>
-              <CardTitle>Check Your Email</CardTitle>
-              <CardDescription>We've sent you a verification link</CardDescription>
+              <CardTitle>{t('signup.successTitle')}</CardTitle>
+              <CardDescription>{t('signup.successSubtitle')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center mb-4">
                 <Mail className="h-16 w-16 text-green-600 mx-auto mb-4" />
                 <p className="text-sm text-green-800 font-medium mb-2">
-                  Account Created Successfully!
+                  {t('signup.accountCreated')}
                 </p>
                 <p className="text-sm text-green-700 mb-4">
-                  We've sent a verification email to:
+                  {t('signup.verificationSentTo')}
                   <br />
                   <strong>{signupEmail}</strong>
                 </p>
-                <p className="text-xs text-green-600">
-                  Click the link in the email to activate your account.
-                </p>
+                <p className="text-xs text-green-600">{t('signup.clickLinkToActivate')}</p>
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                 <p className="text-sm text-blue-800 mb-2">
-                  <strong>Didn't receive the email?</strong>
+                  <strong>{t('signup.didntReceiveEmail')}</strong>
                 </p>
                 <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• Check your spam/junk folder</li>
-                  <li>• Wait a few minutes and check again</li>
-                  <li>• Make sure you entered the correct email</li>
+                  <li>• {t('signup.checkSpam')}</li>
+                  <li>• {t('signup.waitAndCheck')}</li>
+                  <li>• {t('signup.verifyCorrectEmail')}</li>
                 </ul>
               </div>
 
               <Link href="/login">
-                <Button className="w-full">Go to Login</Button>
+                <Button className="w-full">{t('signup.goToLogin')}</Button>
               </Link>
             </CardContent>
           </Card>
@@ -270,7 +276,7 @@ export default function Signup() {
           >
             <a href="/">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Homepage
+              {t('signup.backToHomepage')}
             </a>
           </Button>
         </div>
@@ -281,12 +287,10 @@ export default function Signup() {
               <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
                 <Printer className="text-white h-6 w-6" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">Printyx</h1>
+              <h1 className="text-2xl font-bold text-gray-900">{t('brand.name')}</h1>
             </div>
-            <CardTitle>Create Your Account</CardTitle>
-            <CardDescription>
-              Start your 14-day free trial - no credit card required
-            </CardDescription>
+            <CardTitle>{t('signup.title')}</CardTitle>
+            <CardDescription>{t('signup.subtitle')}</CardDescription>
 
             {/* Progress Indicator */}
             <div className="flex items-center justify-center space-x-2 mt-6">
@@ -303,7 +307,9 @@ export default function Signup() {
                 />
               ))}
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Step {currentStep} of 5</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {t('signup.stepIndicator', { current: currentStep, total: 5 })}
+            </p>
           </CardHeader>
 
           <CardContent>
@@ -312,16 +318,16 @@ export default function Signup() {
                 {/* Step 1: Company Information */}
                 {currentStep === 1 && (
                   <div className="space-y-4">
-                    <h3 className="font-semibold text-lg">Company Information</h3>
+                    <h3 className="font-semibold text-lg">{t('signup.companyInformation')}</h3>
 
                     <FormField
                       control={form.control}
                       name="companyName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Company Name *</FormLabel>
+                          <FormLabel>{t('signup.companyNameLabel')}</FormLabel>
                           <FormControl>
-                            <Input placeholder="Acme Copier Solutions" {...field} />
+                            <Input placeholder={t('signup.companyNamePlaceholder')} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -333,17 +339,17 @@ export default function Signup() {
                       name="industry"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Industry</FormLabel>
+                          <FormLabel>{t('signup.industryLabel')}</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select industry" />
+                                <SelectValue placeholder={t('signup.industryPlaceholder')} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               {INDUSTRIES.map((industry) => (
                                 <SelectItem key={industry} value={industry}>
-                                  {industry}
+                                  {t(`signup.industries.${industry}`, { defaultValue: industry })}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -358,17 +364,17 @@ export default function Signup() {
                       name="companySize"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Company Size</FormLabel>
+                          <FormLabel>{t('signup.companySizeLabel')}</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select company size" />
+                                <SelectValue placeholder={t('signup.companySizePlaceholder')} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               {COMPANY_SIZES.map((size) => (
                                 <SelectItem key={size} value={size}>
-                                  {size}
+                                  {t(`signup.companySizes.${size}`, { defaultValue: size })}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -383,9 +389,9 @@ export default function Signup() {
                       name="website"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Website</FormLabel>
+                          <FormLabel>{t('signup.websiteLabel')}</FormLabel>
                           <FormControl>
-                            <Input placeholder="https://www.example.com" {...field} />
+                            <Input placeholder={t('signup.websitePlaceholder')} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -397,7 +403,7 @@ export default function Signup() {
                 {/* Step 2: Admin User */}
                 {currentStep === 2 && (
                   <div className="space-y-4">
-                    <h3 className="font-semibold text-lg">Your Information</h3>
+                    <h3 className="font-semibold text-lg">{t('signup.yourInformation')}</h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
@@ -405,9 +411,9 @@ export default function Signup() {
                         name="firstName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>First Name *</FormLabel>
+                            <FormLabel>{t('signup.firstNameLabel')}</FormLabel>
                             <FormControl>
-                              <Input placeholder="John" {...field} />
+                              <Input placeholder={t('signup.firstNamePlaceholder')} {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -419,9 +425,9 @@ export default function Signup() {
                         name="lastName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Last Name *</FormLabel>
+                            <FormLabel>{t('signup.lastNameLabel')}</FormLabel>
                             <FormControl>
-                              <Input placeholder="Doe" {...field} />
+                              <Input placeholder={t('signup.lastNamePlaceholder')} {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -434,9 +440,13 @@ export default function Signup() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email Address *</FormLabel>
+                          <FormLabel>{t('signup.emailLabel')}</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="john@example.com" {...field} />
+                            <Input
+                              type="email"
+                              placeholder={t('signup.emailPlaceholder')}
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -448,9 +458,13 @@ export default function Signup() {
                       name="phone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Phone Number</FormLabel>
+                          <FormLabel>{t('signup.phoneLabel')}</FormLabel>
                           <FormControl>
-                            <Input type="tel" placeholder="(555) 123-4567" {...field} />
+                            <Input
+                              type="tel"
+                              placeholder={t('signup.phonePlaceholder')}
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -462,19 +476,21 @@ export default function Signup() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Password *</FormLabel>
+                          <FormLabel>{t('signup.passwordLabel')}</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Input
                                 type={showPassword ? 'text' : 'password'}
-                                placeholder="Create a strong password"
+                                placeholder={t('signup.passwordPlaceholder')}
                                 {...field}
                               />
                               <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                aria-label={
+                                  showPassword ? t('signup.hidePassword') : t('signup.showPassword')
+                                }
                                 aria-pressed={showPassword}
                               >
                                 {showPassword ? (
@@ -500,12 +516,12 @@ export default function Signup() {
                       name="confirmPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Confirm Password *</FormLabel>
+                          <FormLabel>{t('signup.confirmPasswordLabel')}</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Input
                                 type={showConfirmPassword ? 'text' : 'password'}
-                                placeholder="Confirm your password"
+                                placeholder={t('signup.confirmPasswordPlaceholder')}
                                 {...field}
                               />
                               <button
@@ -514,8 +530,8 @@ export default function Signup() {
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                                 aria-label={
                                   showConfirmPassword
-                                    ? 'Hide confirm password'
-                                    : 'Show confirm password'
+                                    ? t('signup.hideConfirmPassword')
+                                    : t('signup.showConfirmPassword')
                                 }
                                 aria-pressed={showConfirmPassword}
                               >
@@ -537,16 +553,16 @@ export default function Signup() {
                 {/* Step 3: Company Address */}
                 {currentStep === 3 && (
                   <div className="space-y-4">
-                    <h3 className="font-semibold text-lg">Company Address</h3>
+                    <h3 className="font-semibold text-lg">{t('signup.companyAddress')}</h3>
 
                     <FormField
                       control={form.control}
                       name="address"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Street Address</FormLabel>
+                          <FormLabel>{t('signup.streetAddressLabel')}</FormLabel>
                           <FormControl>
-                            <Input placeholder="123 Main Street" {...field} />
+                            <Input placeholder={t('signup.streetAddressPlaceholder')} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -559,9 +575,9 @@ export default function Signup() {
                         name="city"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>City</FormLabel>
+                            <FormLabel>{t('signup.cityLabel')}</FormLabel>
                             <FormControl>
-                              <Input placeholder="New York" {...field} />
+                              <Input placeholder={t('signup.cityPlaceholder')} {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -573,9 +589,9 @@ export default function Signup() {
                         name="state"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>State</FormLabel>
+                            <FormLabel>{t('signup.stateLabel')}</FormLabel>
                             <FormControl>
-                              <Input placeholder="NY" {...field} />
+                              <Input placeholder={t('signup.statePlaceholder')} {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -589,9 +605,9 @@ export default function Signup() {
                         name="zip"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>ZIP Code</FormLabel>
+                            <FormLabel>{t('signup.zipLabel')}</FormLabel>
                             <FormControl>
-                              <Input placeholder="10001" {...field} />
+                              <Input placeholder={t('signup.zipPlaceholder')} {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -603,9 +619,9 @@ export default function Signup() {
                         name="country"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Country</FormLabel>
+                            <FormLabel>{t('signup.countryLabel')}</FormLabel>
                             <FormControl>
-                              <Input placeholder="US" {...field} />
+                              <Input placeholder={t('signup.countryPlaceholder')} {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -618,7 +634,7 @@ export default function Signup() {
                       name="timezone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Timezone</FormLabel>
+                          <FormLabel>{t('signup.timezoneLabel')}</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
@@ -643,12 +659,14 @@ export default function Signup() {
                 {/* Step 4: Plan Selection */}
                 {currentStep === 4 && (
                   <div className="space-y-4">
-                    <h3 className="font-semibold text-lg">Choose Your Plan</h3>
+                    <h3 className="font-semibold text-lg">{t('signup.chooseYourPlan')}</h3>
 
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                      <p className="text-sm text-blue-800 font-medium">14-Day Free Trial</p>
+                      <p className="text-sm text-blue-800 font-medium">
+                        {t('signup.freeTrialBanner')}
+                      </p>
                       <p className="text-xs text-blue-700 mt-1">
-                        No credit card required. Full access to all features.
+                        {t('signup.freeTrialDescription')}
                       </p>
                     </div>
 
@@ -657,7 +675,7 @@ export default function Signup() {
                       name="planSlug"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Select Plan</FormLabel>
+                          <FormLabel>{t('signup.selectPlanLabel')}</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
@@ -665,14 +683,12 @@ export default function Signup() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="starter">
-                                Starter - Best for getting started
-                              </SelectItem>
+                              <SelectItem value="starter">{t('signup.planStarter')}</SelectItem>
                               <SelectItem value="professional">
-                                Professional - Most popular
+                                {t('signup.planProfessional')}
                               </SelectItem>
                               <SelectItem value="enterprise">
-                                Enterprise - Advanced features
+                                {t('signup.planEnterprise')}
                               </SelectItem>
                             </SelectContent>
                           </Select>
@@ -686,7 +702,7 @@ export default function Signup() {
                       name="billingCycle"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Billing Cycle</FormLabel>
+                          <FormLabel>{t('signup.billingCycleLabel')}</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
@@ -694,8 +710,8 @@ export default function Signup() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="monthly">Monthly</SelectItem>
-                              <SelectItem value="annual">Annual (Save 20%)</SelectItem>
+                              <SelectItem value="monthly">{t('signup.billingMonthly')}</SelectItem>
+                              <SelectItem value="annual">{t('signup.billingAnnual')}</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -704,9 +720,7 @@ export default function Signup() {
                     />
 
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                      <p className="text-sm text-gray-700">
-                        You can upgrade, downgrade, or cancel anytime.
-                      </p>
+                      <p className="text-sm text-gray-700">{t('signup.changeAnytime')}</p>
                     </div>
                   </div>
                 )}
@@ -714,7 +728,9 @@ export default function Signup() {
                 {/* Step 5: Terms & Create */}
                 {currentStep === 5 && (
                   <div className="space-y-4">
-                    <h3 className="font-semibold text-lg">Terms & Conditions</h3>
+                    <h3 className="font-semibold text-lg">
+                      {t('signup.termsAndConditionsHeading')}
+                    </h3>
 
                     <FormField
                       control={form.control}
@@ -726,13 +742,13 @@ export default function Signup() {
                           </FormControl>
                           <div className="space-y-1 leading-none">
                             <FormLabel>
-                              I agree to the{' '}
+                              {t('signup.agreeTermsPrefix')}{' '}
                               <a
                                 href="/terms"
                                 target="_blank"
                                 className="text-primary hover:underline"
                               >
-                                Terms and Conditions
+                                {t('signup.termsAndConditionsLink')}
                               </a>
                             </FormLabel>
                             <FormMessage />
@@ -751,13 +767,13 @@ export default function Signup() {
                           </FormControl>
                           <div className="space-y-1 leading-none">
                             <FormLabel>
-                              I agree to the{' '}
+                              {t('signup.agreeTermsPrefix')}{' '}
                               <a
                                 href="/privacy"
                                 target="_blank"
                                 className="text-primary hover:underline"
                               >
-                                Privacy Policy
+                                {t('signup.privacyPolicyLink')}
                               </a>
                             </FormLabel>
                             <FormMessage />
@@ -768,11 +784,10 @@ export default function Signup() {
 
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                       <p className="text-sm text-green-800 font-medium mb-2">
-                        Ready to get started?
+                        {t('signup.readyToStart')}
                       </p>
                       <p className="text-xs text-green-700">
-                        Click "Create Account" to complete your registration. We'll send you a
-                        verification email to activate your account.
+                        {t('signup.readyToStartDescription')}
                       </p>
                     </div>
                   </div>
@@ -783,7 +798,7 @@ export default function Signup() {
                   {currentStep > 1 && (
                     <Button type="button" variant="outline" onClick={prevStep}>
                       <ArrowLeft className="mr-2 h-4 w-4" />
-                      Previous
+                      {t('signup.previous')}
                     </Button>
                   )}
 
@@ -793,20 +808,22 @@ export default function Signup() {
                       onClick={nextStep}
                       className={currentStep === 1 ? 'ml-auto' : ''}
                     >
-                      Next
+                      {t('signup.next')}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   ) : (
                     <Button type="submit" disabled={signupMutation.isPending} className="ml-auto">
-                      {signupMutation.isPending ? 'Creating Account...' : 'Create Account'}
+                      {signupMutation.isPending
+                        ? t('signup.creatingAccount')
+                        : t('signup.createAccount')}
                     </Button>
                   )}
                 </div>
 
                 <div className="text-center text-sm text-muted-foreground border-t pt-4">
-                  Already have an account?{' '}
+                  {t('signup.alreadyHaveAccount')}{' '}
                   <Link href="/login" className="text-primary hover:underline">
-                    Sign in
+                    {t('signup.signIn')}
                   </Link>
                 </div>
               </form>

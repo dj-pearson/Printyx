@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import type { TFunction } from 'i18next';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,15 +24,17 @@ import { Printer, ArrowLeft, Eye, EyeOff, Loader2, Shield, Zap, BarChart3 } from
 import { GoogleIcon } from '@/components/icons/GoogleIcon';
 import { AppleIcon } from '@/components/icons/AppleIcon';
 
-const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password is required'),
-});
+const makeLoginSchema = (t: TFunction) =>
+  z.object({
+    email: z.string().email(t('login.validation.invalidEmail')),
+    password: z.string().min(1, t('login.validation.passwordRequired')),
+  });
 
-type LoginForm = z.infer<typeof loginSchema>;
+type LoginForm = z.infer<ReturnType<typeof makeLoginSchema>>;
 
 export default function Login() {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const { login, isAuthenticated, isLoading: authLoading } = useAuthContext();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
@@ -46,8 +50,8 @@ export default function Login() {
   const startOAuth = async (provider: 'google' | 'apple') => {
     if (!oauthEnabled) {
       toast({
-        title: 'OAuth not configured',
-        description: 'Social sign-in is not available at this time. Please use email and password.',
+        title: t('login.toast.oauthNotConfiguredTitle'),
+        description: t('login.toast.oauthNotConfiguredDescription'),
         variant: 'destructive',
       });
       return;
@@ -64,7 +68,9 @@ export default function Login() {
       window.location.href = oauthUrl;
     } catch (error: any) {
       toast({
-        title: `Sign in with ${provider === 'google' ? 'Google' : 'Apple'} failed`,
+        title: t('login.toast.oauthFailedTitle', {
+          provider: provider === 'google' ? 'Google' : 'Apple',
+        }),
         description: formatAuthError(error),
         variant: 'destructive',
       });
@@ -78,6 +84,8 @@ export default function Login() {
       window.location.replace('/');
     }
   }, [isAuthenticated, authLoading]);
+
+  const loginSchema = useMemo(() => makeLoginSchema(t), [t]);
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -95,8 +103,8 @@ export default function Login() {
     },
     onSuccess: () => {
       toast({
-        title: 'Login successful',
-        description: 'Welcome back!',
+        title: t('login.toast.successTitle'),
+        description: t('login.toast.successDescription'),
       });
       queryClient.invalidateQueries({ queryKey: ['supabase-auth-user'] });
       const redirectTo = getSafeRedirectRoute();
@@ -104,7 +112,7 @@ export default function Login() {
     },
     onError: (error: any) => {
       toast({
-        title: 'Login failed',
+        title: t('login.toast.failedTitle'),
         description: formatAuthError(error),
         variant: 'destructive',
       });
@@ -146,21 +154,18 @@ export default function Login() {
             <div className="w-11 h-11 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl flex items-center justify-center">
               <Printer className="text-white h-6 w-6" />
             </div>
-            <span className="text-2xl font-bold text-white tracking-tight">Printyx</span>
+            <span className="text-2xl font-bold text-white tracking-tight">{t('brand.name')}</span>
           </div>
 
           {/* Central content */}
           <div className="space-y-8">
             <div>
               <h2 className="text-4xl font-bold text-white leading-tight">
-                The Modern Platform
+                {t('login.heroTitleLine1')}
                 <br />
-                for Copier Dealers
+                {t('login.heroTitleLine2')}
               </h2>
-              <p className="mt-4 text-lg text-blue-200/70 max-w-md">
-                Streamline operations, boost revenue, and deliver exceptional service with
-                intelligent automation.
-              </p>
+              <p className="mt-4 text-lg text-blue-200/70 max-w-md">{t('login.heroSubtitle')}</p>
             </div>
 
             {/* Feature highlights */}
@@ -170,9 +175,9 @@ export default function Login() {
                   <Zap className="h-5 w-5 text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold">AI-Powered Automation</h3>
+                  <h3 className="text-white font-semibold">{t('login.featureAutomationTitle')}</h3>
                   <p className="text-sm text-blue-200/50 mt-0.5">
-                    Predictive maintenance, smart routing, and automated billing
+                    {t('login.featureAutomationDescription')}
                   </p>
                 </div>
               </div>
@@ -181,9 +186,9 @@ export default function Login() {
                   <BarChart3 className="h-5 w-5 text-emerald-400" />
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold">Real-Time Analytics</h3>
+                  <h3 className="text-white font-semibold">{t('login.featureAnalyticsTitle')}</h3>
                   <p className="text-sm text-blue-200/50 mt-0.5">
-                    Live dashboards, fleet monitoring, and financial insights
+                    {t('login.featureAnalyticsDescription')}
                   </p>
                 </div>
               </div>
@@ -192,9 +197,9 @@ export default function Login() {
                   <Shield className="h-5 w-5 text-violet-400" />
                 </div>
                 <div>
-                  <h3 className="text-white font-semibold">Enterprise Security</h3>
+                  <h3 className="text-white font-semibold">{t('login.featureSecurityTitle')}</h3>
                   <p className="text-sm text-blue-200/50 mt-0.5">
-                    Multi-tenant isolation, RBAC, and SOC 2 compliance
+                    {t('login.featureSecurityDescription')}
                   </p>
                 </div>
               </div>
@@ -204,7 +209,7 @@ export default function Login() {
           {/* Bottom */}
           <div className="flex items-center gap-2 text-sm text-blue-200/30">
             <div className="w-2 h-2 rounded-full bg-emerald-400/60" />
-            <span>All systems operational</span>
+            <span>{t('login.systemsOperational')}</span>
           </div>
         </div>
       </div>
@@ -218,14 +223,14 @@ export default function Login() {
             className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Homepage
+            {t('login.backToHomepage')}
           </a>
           {/* Mobile logo */}
           <div className="flex items-center gap-2 lg:hidden">
             <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center">
               <Printer className="text-white h-4 w-4" />
             </div>
-            <span className="font-bold text-gray-900">Printyx</span>
+            <span className="font-bold text-gray-900">{t('brand.name')}</span>
           </div>
         </div>
 
@@ -234,8 +239,10 @@ export default function Login() {
           <div className="w-full max-w-sm">
             {/* Header */}
             <div className="mb-8">
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome back</h1>
-              <p className="mt-2 text-sm text-gray-500">Sign in to your account to continue</p>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+                {t('login.welcomeBack')}
+              </h1>
+              <p className="mt-2 text-sm text-gray-500">{t('login.signInToContinue')}</p>
             </div>
 
             {/* OAuth buttons */}
@@ -252,7 +259,7 @@ export default function Login() {
                 ) : (
                   <GoogleIcon className="h-5 w-5 mr-3" />
                 )}
-                {oauthLoading === 'google' ? 'Redirecting...' : 'Continue with Google'}
+                {oauthLoading === 'google' ? t('login.redirecting') : t('login.continueWithGoogle')}
               </Button>
               <Button
                 type="button"
@@ -266,7 +273,7 @@ export default function Login() {
                 ) : (
                   <AppleIcon className="h-5 w-5 mr-3" />
                 )}
-                {oauthLoading === 'apple' ? 'Redirecting...' : 'Continue with Apple'}
+                {oauthLoading === 'apple' ? t('login.redirecting') : t('login.continueWithApple')}
               </Button>
             </div>
 
@@ -277,7 +284,7 @@ export default function Login() {
               </div>
               <div className="relative flex justify-center">
                 <span className="bg-white px-3 text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  or
+                  {t('login.orDivider')}
                 </span>
               </div>
             </div>
@@ -290,10 +297,12 @@ export default function Login() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-700">Email</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        {t('login.emailLabel')}
+                      </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="you@company.com"
+                          placeholder={t('login.emailPlaceholder')}
                           className="h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20"
                           autoComplete="email"
                           {...field}
@@ -310,20 +319,20 @@ export default function Login() {
                     <FormItem>
                       <div className="flex items-center justify-between">
                         <FormLabel className="text-sm font-medium text-gray-700">
-                          Password
+                          {t('login.passwordLabel')}
                         </FormLabel>
                         <a
                           href="/forgot-password"
                           className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
                         >
-                          Forgot password?
+                          {t('login.forgotPassword')}
                         </a>
                       </div>
                       <FormControl>
                         <div className="relative">
                           <Input
                             type={showPassword ? 'text' : 'password'}
-                            placeholder="Enter your password"
+                            placeholder={t('login.passwordPlaceholder')}
                             className="h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 pr-10"
                             autoComplete="current-password"
                             {...field}
@@ -332,7 +341,9 @@ export default function Login() {
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            aria-label={
+                              showPassword ? t('login.hidePassword') : t('login.showPassword')
+                            }
                             aria-pressed={showPassword}
                           >
                             {showPassword ? (
@@ -355,10 +366,10 @@ export default function Login() {
                   {isLoading || loginMutation.isPending ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Signing in...
+                      {t('login.signingIn')}
                     </>
                   ) : (
-                    'Sign in'
+                    t('login.signIn')
                   )}
                 </Button>
               </form>
@@ -366,12 +377,12 @@ export default function Login() {
 
             {/* Sign up link */}
             <p className="mt-8 text-center text-sm text-gray-500">
-              Don't have an account?{' '}
+              {t('login.noAccount')}{' '}
               <a
                 href="/signup"
                 className="text-blue-600 hover:text-blue-700 font-semibold transition-colors"
               >
-                Get started free
+                {t('login.getStartedFree')}
               </a>
             </p>
           </div>
@@ -379,13 +390,13 @@ export default function Login() {
 
         {/* Footer */}
         <div className="px-6 py-4 text-center text-xs text-gray-400">
-          By signing in, you agree to our{' '}
+          {t('login.agreePrefix')}{' '}
           <a href="/terms" className="text-gray-500 hover:text-gray-700 underline">
-            Terms
+            {t('login.terms')}
           </a>{' '}
-          and{' '}
+          {t('login.and')}{' '}
           <a href="/privacy" className="text-gray-500 hover:text-gray-700 underline">
-            Privacy Policy
+            {t('login.privacyPolicy')}
           </a>
         </div>
       </div>

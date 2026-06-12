@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useTranslation } from '@/hooks/useTranslation';
 import MainLayout from '@/components/layout/main-layout';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -83,6 +84,7 @@ interface UserSettings {
 export default function Settings() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
+  const { t, changeLanguage } = useTranslation();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('profile');
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
@@ -126,6 +128,11 @@ export default function Settings() {
   const updatePreference = (key: string, value: string) => {
     const newPreferences = { ...preferencesForm, [key]: value };
     setPreferencesForm(newPreferences);
+
+    // Switch the UI language immediately (persisted to localStorage by changeLanguage)
+    if (key === 'language') {
+      changeLanguage(value);
+    }
 
     // Auto-save preferences immediately
     preferencesMutation.mutate({
@@ -766,7 +773,7 @@ export default function Settings() {
                     </div>
 
                     <div>
-                      <Label htmlFor="language">Language</Label>
+                      <Label htmlFor="language">{t('settings.languageLabel')}</Label>
                       <Select
                         value={preferencesForm.language}
                         onValueChange={(value) => updatePreference('language', value)}
@@ -775,9 +782,9 @@ export default function Settings() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="en">English</SelectItem>
-                          <SelectItem value="es">Spanish</SelectItem>
-                          <SelectItem value="fr">French</SelectItem>
+                          <SelectItem value="en">{t('settings.languages.en')}</SelectItem>
+                          <SelectItem value="es">{t('settings.languages.es')}</SelectItem>
+                          <SelectItem value="fr">{t('settings.languages.fr')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

@@ -1331,3 +1331,59 @@ the config. NOTE: this restores the intended theme = deliberate app-wide visual 
 
 ### Story Status:
 - US-022: **COMPLETE** (passes: true)
+
+Iteration 4 (06/12/2026 09:24:00): Story US-022
+Status: Complete
+
+## Iteration (2026-06-12) - US-023: i18n foundation with extracted navigation strings
+**Status**: COMPLETE
+
+### What Was Done (per AC):
+1. **Packages**: i18next@25.8.11 + react-i18next@16.5.4 added to package.json. They were ALREADY
+   in node_modules as "extraneous" (not in package.json); `npm install --save --legacy-peer-deps`
+   registered them and pruned 106 other extraneous packages (build/tests confirmed nothing needed
+   was lost).
+2. **client/src/i18n/**: config.ts (synchronous init with inline resources, fallbackLng en,
+   initial language = localStorage 'printyx_language' > navigator.language > en; exported
+   changeLanguage() persists choice) + locales/en.json (full message catalog) + locales/es.json
+   (partial placeholder locale - missing keys fall back to English via fallbackLng).
+3. **main.tsx**: App wrapped in <I18nextProvider i18n={i18n}> inside the existing ErrorBoundary.
+4. **Sidebar** (RoleAwareCollapsibleSidebar.tsx): ALL_NAVIGATION_SECTIONS keeps English titles as
+   defaults; a useMemo([t]) maps them through t('nav.sections.<id>') / t('nav.items.<path>')
+   BEFORE permission filtering, so menu search operates on translated titles. All chrome strings
+   extracted too (search placeholder, Expand/Collapse All, empty states, Active/Admin badges,
+   brand tagline, aria-labels).
+5. **Login.tsx + Signup.tsx**: every user-visible string through t() (labels, placeholders,
+   buttons, toasts, hero panel, success screen, terms). Zod schemas converted to makeXxxSchema(t)
+   factories memoized on t; types via z.infer<ReturnType<...>>. INDUSTRIES/COMPANY_SIZES remain
+   canonical stored values; only display labels translated (defaultValue fallback).
+6. **hooks/useTranslation.ts**: wrapper re-exporting t/i18n/ready + app-level changeLanguage.
+7. **Settings**: pre-existing language Select (en/es/fr) now calls changeLanguage() in
+   updatePreference, so the UI switches immediately and persists; fr has no bundle yet = English
+   via fallback. Label + option names also translated.
+8. **tsconfig.json**: added resolveJsonModule:true (required for JSON locale imports; 0 new errors).
+
+### Browser Verification (Playwright):
+- /login renders fully from i18n in English; setting localStorage printyx_language=es + reload
+  renders Spanish (Bienvenido de nuevo, Iniciar sesion, etc.) with English fallback for keys not
+  in es.json. /signup same, incl. interpolation (Paso 1 de 5).
+- GOTCHA: standalone `npm run dev:frontend` crashes at client/src/lib/supabase.ts
+  ("supabaseKey is required") unless VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY are set -
+  placeholder values work (Login's oauthEnabled explicitly checks for 'placeholder').
+  Pre-existing, unrelated to i18n.
+
+### Learnings:
+- i18next keys can be arbitrary strings (paths like "/leads-management" work as nested keys).
+- t() identity changes on language switch -> useMemo([t]) is the right dependency for derived
+  translated structures (nav tree, zod schemas).
+- TaskStop on `npm run dev:frontend` may leave the vite child holding the port; the next server
+  silently takes 5174 - check the output file for the actual port.
+
+### Build Verification:
+- Typecheck: 6578 errors = exact baseline (0 new; the 3 hits in touched files are pre-existing
+  lines: nprogress types, useAuth logout, signup arity)
+- Tests: 1669 passed / 26 pre-existing failures / 66 skipped - baseline unchanged
+- Build: PASS (41.8s); Prettier applied; ESLint ignores client files (known)
+
+### Story Status:
+- US-023: **COMPLETE** (passes: true)
