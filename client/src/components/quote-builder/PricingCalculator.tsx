@@ -12,8 +12,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Calculator, DollarSign, Percent, TrendingUp, Info } from 'lucide-react';
-import { quoteMarginPct, effectiveDiscountPct, sumLineDiscounts } from '@shared/quote-math';
+import { Calculator, DollarSign, Percent, TrendingUp, Info, Repeat } from 'lucide-react';
+import {
+  quoteMarginPct,
+  effectiveDiscountPct,
+  sumLineDiscounts,
+  recurringLines,
+  oneTimeBucketTotals,
+  recurringTotalsByFrequency,
+  normalizeFrequency,
+  FREQUENCY_LABELS,
+} from '@shared/quote-math';
 import { Textarea } from '@/components/ui/textarea';
 
 interface LineItem {
@@ -35,6 +44,10 @@ interface LineItem {
   margin?: number;
   // QUOTE-016: dollar amount off the whole line; totalPrice is net of it.
   discount?: number;
+  // QUOTE-017: recurring/contract billing (money fields are per period).
+  isRecurring?: boolean;
+  recurringFrequency?: string;
+  recurringDuration?: number;
   notes?: string;
 }
 
@@ -115,6 +128,14 @@ export default function PricingCalculator({
     discount: discountValue,
     totalCost,
   });
+
+  // QUOTE-017: one-time vs recurring buckets. The quote-level discount applies
+  // to the ONE-TIME bucket only (rule documented in shared/quote-math.ts); the
+  // grand total and the QUOTE-006 guardrail below stay computed across both
+  // buckets combined, so low margin can't hide in recurring lines.
+  const hasRecurring = recurringLines(lineItems).length > 0;
+  const oneTimeBucket = oneTimeBucketTotals(lineItems, Math.max(0, discountValue));
+  const recurringBuckets = recurringTotalsByFrequency(lineItems);
 
   // QUOTE-016: the max-discount guardrail evaluates the EFFECTIVE discount —
   // per-line discounts plus the quote-level one, relative to the gross
@@ -229,6 +250,13 @@ export default function PricingCalculator({
                       {item.productName}
                     </span>
                     <span className="text-muted-foreground shrink-0">(Qty: {item.quantity})</span>
+                    {item.isRecurring && (
+                      <span className="text-blue-700 shrink-0 flex items-center gap-0.5">
+                        <Repeat className="h-3 w-3" />
+                        per {FREQUENCY_LABELS[normalizeFrequency(item.recurringFrequency)].per}
+                        {item.recurringDuration ? ` ×${item.recurringDuration}` : ''}
+                      </span>
+                    )}
                   </div>
                   <span className="font-medium shrink-0">
                     {formatCurrency(item.totalPrice)}
@@ -254,6 +282,46 @@ export default function PricingCalculator({
             </div>
           </div>
         </div>
+
+        {/* QUOTE-017: one-time vs recurring split */}
+        {hasRecurring && (
+          <div className="space-y-3">
+            <h4 className="text-sm sm:text-base font-semibold flex items-center gap-2">
+              <Repeat className="h-4 w-4" />
+              One-time vs Recurring
+            </h4>
+            <div className="bg-muted/50 rounded-lg p-3 sm:p-4 space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span>One-time total{discountValue > 0 ? ' (after discount)' : ''}</span>
+                <span className="font-semibold">{formatCurrency(oneTimeBucket.revenue)}</span>
+              </div>
+              {oneTimeBucket.cost > 0 && (
+                <div className="flex justify-between items-center text-xs text-muted-foreground">
+                  <span>One-time margin</span>
+                  <span>{formatPercentage(oneTimeBucket.marginPct)}</span>
+                </div>
+              )}
+              {recurringBuckets.map((b) => (
+                <React.Fragment key={b.frequency}>
+                  <div className="flex justify-between items-center text-sm">
+                    <span>Recurring (per {FREQUENCY_LABELS[b.frequency].per})</span>
+                    <span className="font-semibold">{formatCurrency(b.revenue)}</span>
+                  </div>
+                  {b.cost > 0 && (
+                    <div className="flex justify-between items-center text-xs text-muted-foreground">
+                      <span>{FREQUENCY_LABELS[b.frequency].adjective} margin</span>
+                      <span>{formatPercentage(b.marginPct)}</span>
+                    </div>
+                  )}
+                </React.Fragment>
+              ))}
+              <div className="text-xs text-muted-foreground pt-1 border-t">
+                Quote-level discount applies to one-time charges only. Recurring amounts are per
+                billing period.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Markup/Discount Section */}
         <div className="space-y-3">

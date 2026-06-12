@@ -5774,3 +5774,80 @@ inline in the Deno edge fn — locked by server/tests/unit/quote-math.test.ts (2
 - Remaining prio-2 quote stories: QUOTE-017 (recurring lines — reuse the one-time vs
   recurring split already in the merge data path), QUOTE-019 (wizard polish). QUOTE-020 prio-3.
 - Browser verify still blocked on stale anon key (not an AC for this story).
+
+Iteration 3 (06/11/2026 19:01:20): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+## Ralph Iteration — QUOTE-017 (Recurring/contract lines with one-time vs monthly totals)
+
+**Date:** 2026-06-11
+**Story:** QUOTE-017 — Recurring/contract lines in the builder UI with one-time vs monthly totals
+**Status:** ✅ passes: true (AC1-5; AC6 browser verify environment-blocked — stale anon key re-confirmed today, GoTrue /auth/v1/health 401)
+
+### Semantics decision (canonical in shared/quote-math.ts, locked by tests)
+Every money field on a recurring line (qty/unitPrice/discount/totalPrice) is a PER
+PERIOD amount. recurring_frequency ∈ monthly|quarterly|annually (missing/unknown
+reads as monthly); recurring_duration = number of billing periods, NULL/0 = ongoing.
+Bucket rules:
+  • Quote-level discount applies to the ONE-TIME bucket only. Recurring per-period
+    totals are never reduced by it (per-line discounts still apply inside recurring
+    lines, per period).
+  • QUOTE-006 guardrail margin stays COMBINED across both buckets (one-time net +
+    one period of every recurring line) — that is exactly the proposals-table
+    subtotal/total_dealer_cost recompute, which the send gate reads. Already true
+    server-side; now documented + test-locked ("sneaky low-margin recurring" test).
+  • proposals.total_amount semantics unchanged: subtotal(all lines, one period of
+    recurring) − discount + tax. The split is a display concern.
+
+### What shipped
+- **shared/quote-math.ts**: RECURRING_FREQUENCIES, BucketedLine, isRecurringLine,
+  normalizeFrequency, oneTimeLines/recurringLines, bucketTotals,
+  oneTimeBucketTotals(lines, quoteDiscount), recurringTotalsByFrequency (canonical
+  frequency order, empty buckets omitted, frequency-less lines fold into monthly),
+  FREQUENCY_LABELS. 13 new tests (40/40 green in quote-math + proposal-merge).
+- **LineItemManager**: LineItem += isRecurring/recurringFrequency/recurringDuration.
+  Edit dialog gained Billing (One-time/Recurring) select; Recurring reveals
+  Frequency + Periods (blank placeholder "Ongoing"; switching back to one-time
+  clears both). Blue Repeat-icon badge ("Monthly ×12" / "Monthly") on main+subline
+  rows, mobile+desktop.
+- **QuoteBuilder**: buildQuoteData sends isRecurring (strict bool) +
+  frequency/duration (NULL for one-time lines so stale values can't leak);
+  hydration reads both casings. Review totals box gained the split block:
+  one-time total (after discount) + per-frequency recurring rows, per-bucket
+  margin shown to managers only, with the discount-applies-to-one-time note.
+- **PricingCalculator**: per-item "per month ×12" markers in the breakdown; new
+  "One-time vs Recurring" card (split totals + per-bucket margin when cost>0).
+  Guardrails unchanged (combined buckets / effective discount).
+- **proposals edge fn**: normalizeLineItem normalizes recurring fields (strict
+  boolean, whitelisted frequency default monthly, positive-int duration or null;
+  one-time ⇒ NULLs). recalculateProposalTotals documented as intentionally
+  combined-bucket (AC4). is_recurring/recurring_* were already in
+  LINE_ITEM_COLUMNS + FIELD_MAP and survive the PGRST204 drift-retry path.
+- **_pdf.ts**: line items render as grouped sections when any recurring line
+  exists — "One-Time Items" + "Recurring Charges". Customer recurring table has a
+  Billing column ("Monthly x12" / "Monthly (ongoing)") and Per Period total;
+  manager recurring table = 9 cols with compact billing ("/mo x12"). Totals block
+  splits: One-time subtotal → Discount → Tax → One-time total, then bold
+  "Recurring (per month)" rows per frequency. Manager-only "Bucket Cost & Margin"
+  block (revenue/cost/margin per bucket + combined-guardrail note). No recurring
+  lines ⇒ classic single-table layout byte-for-byte unchanged.
+
+### Quality gates
+- quote-math 27/27 + proposal-merge 13/13; deno check proposals/index.ts + _pdf.ts
+  green; vite build 28.4s; tsc 0 errors in touched files (pre-existing repo errors
+  unchanged); prettier applied; eslint clean (client files repo-ignored,
+  pre-existing).
+
+### Notes for the next Ralph iteration
+- The proposals-fn template-merge path (generate-from-template) had a pre-existing
+  oneTimeTotal/recurringTotal split that does NOT subtract the quote-level
+  discount from the one-time bucket — left as-is (merge tokens predate this
+  story); align it if a story touches merge totals.
+- QuoteView.tsx / public share page do not yet show the split — only builder +
+  PDFs per ACs. Candidate follow-up.
+- Remaining prio-2 quote stories: QUOTE-019 (wizard polish). Then QUOTE-020
+  (drag-reorder, prio-3). LAUNCH-011/020 still ops-blocked.
+- Migrations 0014-0019 still pending manual apply (journal stops at 0009) — not
+  needed for QUOTE-017 (is_recurring/recurring_* are base-schema columns).

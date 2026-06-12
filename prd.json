@@ -7121,7 +7121,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Schema fields ready: quote-proposal-schema.ts:244-251. Touches QuoteBuilder save payload, proposals edge fn recalc, _pdf.ts.",
       "category": "quote-module-v2"
     },

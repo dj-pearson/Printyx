@@ -37,7 +37,14 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
-import { effectiveDiscountPct, sumLineDiscounts } from '@shared/quote-math';
+import {
+  effectiveDiscountPct,
+  sumLineDiscounts,
+  recurringLines,
+  oneTimeBucketTotals,
+  recurringTotalsByFrequency,
+  FREQUENCY_LABELS,
+} from '@shared/quote-math';
 import { downloadQuotePdf, emailQuote } from '@/lib/quote-pdf';
 import CompanyContactSelector from './CompanyContactSelector';
 import LineItemManager from './LineItemManager';
@@ -105,6 +112,11 @@ interface LineItem {
   margin?: number;
   // QUOTE-016: dollar amount off the whole line; totalPrice is net of it.
   discount?: number;
+  // QUOTE-017: recurring/contract billing. Money fields on a recurring line
+  // are per billing period; duration = number of periods (blank = ongoing).
+  isRecurring?: boolean;
+  recurringFrequency?: string;
+  recurringDuration?: number;
   notes?: string;
 }
 
@@ -141,6 +153,11 @@ function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
       discount: item.discount ?? 0,
       margin: item.margin,
       notes: item.notes,
+      // QUOTE-017: one-time lines persist NULL frequency/duration so stale
+      // values never leak back after a billing-type change.
+      isRecurring: item.isRecurring === true,
+      recurringFrequency: item.isRecurring ? item.recurringFrequency || 'monthly' : null,
+      recurringDuration: item.isRecurring ? (item.recurringDuration ?? null) : null,
     })),
     subtotal: subtotalAmount.toString(),
     discountAmount: discountAmt.toString(),
@@ -359,6 +376,11 @@ export default function QuoteBuilder({
           unitCost: parseFloat(item.unitCost || item.unit_cost || '0'),
           margin: parseFloat(item.margin || '0') || 0,
           discount: parseFloat(item.discount || '0') || 0,
+          // QUOTE-017: recurring fields, both casings (edge fn returns snake_case)
+          isRecurring: (item.isRecurring ?? item.is_recurring) === true,
+          recurringFrequency: item.recurringFrequency || item.recurring_frequency || undefined,
+          recurringDuration:
+            parseInt(String(item.recurringDuration ?? item.recurring_duration ?? '')) || undefined,
           notes: item.notes || '',
         }));
         setLineItems(transformedLineItems);
@@ -593,6 +615,9 @@ export default function QuoteBuilder({
     // Margin uses the discounted subtotal (line totals are net of per-line
     // discounts); the max-discount check evaluates the EFFECTIVE discount —
     // per-line plus quote-level, relative to the gross subtotal.
+    // QUOTE-017: the guardrail margin deliberately spans BOTH billing buckets
+    // (one-time + one period of every recurring line) — low margin cannot be
+    // hidden in recurring lines.
     const totalCost = lineItems.reduce((sum, i) => sum + (i.unitCost || 0) * i.quantity, 0);
     const revenue = totals.subtotal - discountAmount;
     const overallMargin = revenue > 0 ? ((revenue - totalCost) / revenue) * 100 : 0;
@@ -666,6 +691,14 @@ export default function QuoteBuilder({
     subtotal: lineItems.reduce((sum, item) => sum + item.totalPrice, 0),
     total: lineItems.reduce((sum, item) => sum + item.totalPrice, 0) - discountAmount + taxAmount,
   };
+
+  // QUOTE-017: one-time vs recurring buckets for the split display. The
+  // quote-level discount applies to the ONE-TIME bucket only (rule documented
+  // in shared/quote-math.ts); the grand total and the QUOTE-006 guardrail stay
+  // computed across both buckets combined.
+  const hasRecurring = recurringLines(lineItems).length > 0;
+  const oneTimeBucket = oneTimeBucketTotals(lineItems, Math.max(0, discountAmount));
+  const recurringBuckets = recurringTotalsByFrequency(lineItems);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
@@ -1084,6 +1117,39 @@ export default function QuoteBuilder({
               </div>
             </div>
             <div className="rounded-lg border p-4 space-y-2">
+              {/* QUOTE-017: one-time vs recurring split */}
+              {hasRecurring && (
+                <div className="space-y-1 pb-2 mb-2 border-b">
+                  <div className="flex justify-between text-sm">
+                    <span>One-time total{discountAmount > 0 ? ' (after discount)' : ''}</span>
+                    <span className="font-medium">{formatCurrency(oneTimeBucket.revenue)}</span>
+                  </div>
+                  {oneTimeBucket.cost > 0 && isManager && (
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>One-time margin</span>
+                      <span>{oneTimeBucket.marginPct.toFixed(1)}%</span>
+                    </div>
+                  )}
+                  {recurringBuckets.map((b) => (
+                    <React.Fragment key={b.frequency}>
+                      <div className="flex justify-between text-sm">
+                        <span>Recurring (per {FREQUENCY_LABELS[b.frequency].per})</span>
+                        <span className="font-medium">{formatCurrency(b.revenue)}</span>
+                      </div>
+                      {b.cost > 0 && isManager && (
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{FREQUENCY_LABELS[b.frequency].adjective} margin</span>
+                          <span>{b.marginPct.toFixed(1)}%</span>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  ))}
+                  <div className="text-xs text-muted-foreground">
+                    Quote-level discount applies to one-time charges only. Recurring amounts are per
+                    billing period.
+                  </div>
+                </div>
+              )}
               {sumLineDiscounts(lineItems) > 0 && (
                 <div className="flex justify-between text-xs text-red-600">
                   <span>Line discounts (included in subtotal)</span>

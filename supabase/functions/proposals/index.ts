@@ -280,6 +280,23 @@ function normalizeLineItem(
   const discount = Math.max(0, toNum(row.discount));
   row.discount = discount;
   row.total_price = toNum(row.total_price) || Math.max(0, unitPrice * qty - discount);
+  // QUOTE-017: recurring/contract lines. is_recurring is a strict boolean;
+  // frequency is whitelisted (default monthly); duration is a positive integer
+  // count of billing periods or null (= ongoing). One-time lines always store
+  // NULL frequency/duration so a billing-type change can't leave stale values.
+  const isRecurring = row.is_recurring === true || row.is_recurring === 'true';
+  row.is_recurring = isRecurring;
+  if (isRecurring) {
+    const freq = String(row.recurring_frequency ?? '').toLowerCase();
+    row.recurring_frequency = ['monthly', 'quarterly', 'annually'].includes(freq)
+      ? freq
+      : 'monthly';
+    const duration = Math.floor(toNum(row.recurring_duration));
+    row.recurring_duration = duration > 0 ? duration : null;
+  } else {
+    row.recurring_frequency = null;
+    row.recurring_duration = null;
+  }
   if (row.margin === undefined || row.margin === null || row.margin === '') {
     const revenue = toNum(row.total_price);
     const cost = toNum(row.unit_cost) * qty;
@@ -526,6 +543,11 @@ async function getMaxDiscountPolicy(db: SB, tenantId: string): Promise<number> {
   return toNum(data?.max_discount_percentage);
 }
 
+// QUOTE-017: subtotal / total_dealer_cost intentionally span BOTH billing
+// buckets — every one-time line plus ONE period of every recurring line. The
+// QUOTE-006 send-time margin gate reads these columns, so a rep cannot hide
+// low margin in recurring lines. The one-time vs recurring split is a display
+// concern (client + _pdf.ts); the stored rollup stays combined.
 async function recalculateProposalTotals(
   db: SB,
   proposalId: string,

@@ -62,6 +62,10 @@ interface LineItem {
   // QUOTE-016: dollar amount off the whole line; total_price is net of it.
   discount?: string | number | null;
   total_price?: string | number | null;
+  // QUOTE-017: recurring/contract billing — money fields are per period.
+  is_recurring?: boolean | null;
+  recurring_frequency?: string | null;
+  recurring_duration?: string | number | null;
 }
 
 // QUOTE-016 reason codes → display labels (manager PDF only).
@@ -72,6 +76,29 @@ const DISCOUNT_REASON_LABELS: Record<string, string> = {
   manager_approved: 'Manager approved',
   other: 'Other',
 };
+
+// QUOTE-017: billing-frequency labels (replicates shared/quote-math.ts
+// FREQUENCY_LABELS — Deno can't import the Node module; keep in sync).
+const FREQ_LABEL: Record<string, { adjective: string; per: string; short: string }> = {
+  monthly: { adjective: 'Monthly', per: 'month', short: '/mo' },
+  quarterly: { adjective: 'Quarterly', per: 'quarter', short: '/qtr' },
+  annually: { adjective: 'Annual', per: 'year', short: '/yr' },
+};
+const FREQ_ORDER = ['monthly', 'quarterly', 'annually'];
+
+function freqOf(item: LineItem): string {
+  const f = String(item.recurring_frequency ?? '').toLowerCase();
+  return FREQ_LABEL[f] ? f : 'monthly';
+}
+
+// "Monthly ×12" / "Monthly (ongoing)" — compact "/mo ×12" for the narrow
+// manager-table column.
+function billingLabel(item: LineItem, compact: boolean): string {
+  const f = FREQ_LABEL[freqOf(item)];
+  const dur = Math.floor(toNum(item.recurring_duration));
+  if (compact) return dur > 0 ? `${f.short} x${dur}` : f.short;
+  return dur > 0 ? `${f.adjective} x${dur}` : `${f.adjective} (ongoing)`;
+}
 
 interface Company {
   company_name?: string | null;
@@ -261,9 +288,19 @@ export async function renderProposalPDF(input: RenderPDFInput): Promise<Uint8Arr
   }
   y = Math.min(leftY, rightY) - 20;
 
-  // ─── Line items table ───────────────────────────────────────────────────────
-  page.drawText('Line Items', { x: MARGIN_X, y, size: 12, font: bold, color: BODY_TEXT });
-  y -= 14;
+  // ─── Line items table(s) ─────────────────────────────────────────────────
+  // QUOTE-017: recurring lines render in a separate section with billing
+  // (frequency × periods) labels. With no recurring lines the layout stays the
+  // single classic "Line Items" table.
+  const oneTimeItems = input.lineItems.filter((it) => it.is_recurring !== true);
+  const recurringItems = input.lineItems.filter((it) => it.is_recurring === true);
+  const hasRecurring = recurringItems.length > 0;
+  const groups: Array<{ title: string; items: LineItem[]; recurring: boolean }> = hasRecurring
+    ? [
+        { title: 'One-Time Items', items: oneTimeItems, recurring: false },
+        { title: 'Recurring Charges', items: recurringItems, recurring: true },
+      ].filter((g) => g.items.length > 0)
+    : [{ title: 'Line Items', items: input.lineItems, recurring: false }];
 
   const usableWidth = PAGE_WIDTH - MARGIN_X * 2;
   const colsConsumer = [
@@ -272,6 +309,16 @@ export async function renderProposalPDF(input: RenderPDFInput): Promise<Uint8Arr
     { label: 'Qty', width: usableWidth * 0.08, align: 'center' as const },
     { label: 'Unit Price', width: usableWidth * 0.16, align: 'right' as const },
     { label: 'Total', width: usableWidth * 0.16, align: 'right' as const },
+  ];
+  // Recurring section: Description shrinks to fit a Billing column; the line
+  // total is the per-period amount.
+  const colsConsumerRecurring = [
+    { label: 'Product', width: usableWidth * 0.26, align: 'left' as const },
+    { label: 'Description', width: usableWidth * 0.22, align: 'left' as const },
+    { label: 'Billing', width: usableWidth * 0.14, align: 'left' as const },
+    { label: 'Qty', width: usableWidth * 0.07, align: 'center' as const },
+    { label: 'Unit Price', width: usableWidth * 0.15, align: 'right' as const },
+    { label: 'Per Period', width: usableWidth * 0.16, align: 'right' as const },
   ];
   const colsManager = [
     { label: 'Product', width: usableWidth * 0.22, align: 'left' as const },
@@ -283,110 +330,267 @@ export async function renderProposalPDF(input: RenderPDFInput): Promise<Uint8Arr
     { label: 'Total Price', width: usableWidth * 0.13, align: 'right' as const },
     { label: 'Margin', width: usableWidth * 0.13, align: 'right' as const },
   ];
-  const cols = input.isManager ? colsManager : colsConsumer;
+  const colsManagerRecurring = [
+    { label: 'Product', width: usableWidth * 0.16, align: 'left' as const },
+    { label: 'Billing', width: usableWidth * 0.1, align: 'left' as const },
+    { label: 'Qty', width: usableWidth * 0.06, align: 'center' as const },
+    { label: 'Cost', width: usableWidth * 0.1, align: 'right' as const },
+    { label: 'Unit Price', width: usableWidth * 0.11, align: 'right' as const },
+    { label: 'Disc.', width: usableWidth * 0.09, align: 'right' as const },
+    { label: 'Total Cost', width: usableWidth * 0.12, align: 'right' as const },
+    { label: 'Per Period', width: usableWidth * 0.13, align: 'right' as const },
+    { label: 'Margin', width: usableWidth * 0.13, align: 'right' as const },
+  ];
 
-  // Table header row
   const rowH = 18;
-  page.drawRectangle({
-    x: MARGIN_X,
-    y: y - rowH,
-    width: usableWidth,
-    height: rowH,
-    color: TABLE_HEADER_BG,
-  });
-  let colX = MARGIN_X;
-  for (const col of cols) {
-    drawAligned(page, bold, col.label, 9, colX + 4, y - rowH + 5, col.width - 8, col.align);
-    colX += col.width;
-  }
-  y -= rowH;
+  // Bucket rollups (QUOTE-017): one-time subtotal/cost, recurring per frequency.
+  let oneTimeSubtotal = 0;
+  let oneTimeCost = 0;
+  const recurringByFreq = new Map<string, { revenue: number; cost: number }>();
 
-  // Body rows
-  let subtotal = 0;
-  for (const item of input.lineItems) {
-    if (y < MARGIN_Y + 120) {
+  for (const group of groups) {
+    const cols = input.isManager
+      ? group.recurring
+        ? colsManagerRecurring
+        : colsManager
+      : group.recurring
+        ? colsConsumerRecurring
+        : colsConsumer;
+
+    if (y < MARGIN_Y + 140) {
       page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       y = PAGE_HEIGHT - MARGIN_Y;
     }
-    const qty = Number(item.quantity ?? 1) || 1;
-    const unitPrice = toNum(item.unit_price);
-    // QUOTE-016: line totals are net of the per-line discount. Prefer the
-    // stored total_price (already net); fall back to recomputing.
-    const lineDiscount = toNum(item.discount);
-    const lineTotal =
-      item.total_price !== null && item.total_price !== undefined && item.total_price !== ''
-        ? toNum(item.total_price)
-        : Math.max(0, qty * unitPrice - lineDiscount);
-    subtotal += lineTotal;
-    // Customer PDF shows discounted prices ONLY — the effective unit price,
-    // never the discount itself. Manager PDF gets the explicit Disc. column.
-    const effectiveUnitPrice = qty > 0 ? lineTotal / qty : unitPrice;
-    const lineCost = qty * toNum(item.unit_cost);
-    const netMargin =
-      lineTotal > 0 ? `${(((lineTotal - lineCost) / lineTotal) * 100).toFixed(1)}%` : '0.0%';
+    page.drawText(group.title, { x: MARGIN_X, y, size: 12, font: bold, color: BODY_TEXT });
+    y -= 14;
 
-    const cells = input.isManager
-      ? [
-          item.product_name,
-          String(qty),
-          money(toNum(item.unit_cost)),
-          money(unitPrice),
-          lineDiscount > 0 ? `-${money(lineDiscount)}` : '—',
-          money(lineCost),
-          money(lineTotal),
-          netMargin,
-        ]
-      : [
-          item.product_name,
-          truncate(item.description ?? '', 60),
-          String(qty),
-          money(effectiveUnitPrice),
-          money(lineTotal),
-        ];
-
-    // bottom border
-    page.drawLine({
-      start: { x: MARGIN_X, y: y - rowH },
-      end: { x: MARGIN_X + usableWidth, y: y - rowH },
-      thickness: 0.5,
-      color: LINE_GRAY,
+    // Table header row
+    page.drawRectangle({
+      x: MARGIN_X,
+      y: y - rowH,
+      width: usableWidth,
+      height: rowH,
+      color: TABLE_HEADER_BG,
     });
-    colX = MARGIN_X;
-    for (let i = 0; i < cols.length; i++) {
-      drawAligned(
-        page,
-        font,
-        cells[i],
-        9,
-        colX + 4,
-        y - rowH + 5,
-        cols[i].width - 8,
-        cols[i].align,
-      );
-      colX += cols[i].width;
+    let colX = MARGIN_X;
+    for (const col of cols) {
+      drawAligned(page, bold, col.label, 9, colX + 4, y - rowH + 5, col.width - 8, col.align);
+      colX += col.width;
     }
     y -= rowH;
+
+    // Body rows
+    for (const item of group.items) {
+      if (y < MARGIN_Y + 120) {
+        page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+        y = PAGE_HEIGHT - MARGIN_Y;
+      }
+      const qty = Number(item.quantity ?? 1) || 1;
+      const unitPrice = toNum(item.unit_price);
+      // QUOTE-016: line totals are net of the per-line discount. Prefer the
+      // stored total_price (already net); fall back to recomputing.
+      const lineDiscount = toNum(item.discount);
+      const lineTotal =
+        item.total_price !== null && item.total_price !== undefined && item.total_price !== ''
+          ? toNum(item.total_price)
+          : Math.max(0, qty * unitPrice - lineDiscount);
+      // Customer PDF shows discounted prices ONLY — the effective unit price,
+      // never the discount itself. Manager PDF gets the explicit Disc. column.
+      const effectiveUnitPrice = qty > 0 ? lineTotal / qty : unitPrice;
+      const lineCost = qty * toNum(item.unit_cost);
+      const netMargin =
+        lineTotal > 0 ? `${(((lineTotal - lineCost) / lineTotal) * 100).toFixed(1)}%` : '0.0%';
+
+      if (group.recurring) {
+        const f = freqOf(item);
+        const t = recurringByFreq.get(f) ?? { revenue: 0, cost: 0 };
+        t.revenue += lineTotal;
+        t.cost += lineCost;
+        recurringByFreq.set(f, t);
+      } else {
+        oneTimeSubtotal += lineTotal;
+        oneTimeCost += lineCost;
+      }
+
+      const cells = input.isManager
+        ? group.recurring
+          ? [
+              truncate(item.product_name, 22),
+              billingLabel(item, true),
+              String(qty),
+              money(toNum(item.unit_cost)),
+              money(unitPrice),
+              lineDiscount > 0 ? `-${money(lineDiscount)}` : '—',
+              money(lineCost),
+              money(lineTotal),
+              netMargin,
+            ]
+          : [
+              item.product_name,
+              String(qty),
+              money(toNum(item.unit_cost)),
+              money(unitPrice),
+              lineDiscount > 0 ? `-${money(lineDiscount)}` : '—',
+              money(lineCost),
+              money(lineTotal),
+              netMargin,
+            ]
+        : group.recurring
+          ? [
+              item.product_name,
+              truncate(item.description ?? '', 40),
+              billingLabel(item, false),
+              String(qty),
+              money(effectiveUnitPrice),
+              money(lineTotal),
+            ]
+          : [
+              item.product_name,
+              truncate(item.description ?? '', 60),
+              String(qty),
+              money(effectiveUnitPrice),
+              money(lineTotal),
+            ];
+
+      // bottom border
+      page.drawLine({
+        start: { x: MARGIN_X, y: y - rowH },
+        end: { x: MARGIN_X + usableWidth, y: y - rowH },
+        thickness: 0.5,
+        color: LINE_GRAY,
+      });
+      colX = MARGIN_X;
+      for (let i = 0; i < cols.length; i++) {
+        drawAligned(
+          page,
+          font,
+          cells[i],
+          9,
+          colX + 4,
+          y - rowH + 5,
+          cols[i].width - 8,
+          cols[i].align,
+        );
+        colX += cols[i].width;
+      }
+      y -= rowH;
+    }
+    y -= 10; // gap between groups
   }
 
   // ─── Totals block (right-aligned) ───────────────────────────────────────────
-  y -= 14;
+  y -= 4;
   const discount = toNum(input.proposal.discount_amount);
   const tax = toNum(input.proposal.tax_amount);
-  const total = subtotal + tax - discount;
   const totalsX = PAGE_WIDTH - MARGIN_X - 220;
   const totalsW = 220;
-  drawTotalRow(page, font, bold, 'Subtotal', money(subtotal), totalsX, y, totalsW, false);
-  y -= 14;
-  if (discount > 0) {
-    drawTotalRow(page, font, bold, 'Discount', `-${money(discount)}`, totalsX, y, totalsW, false);
-    y -= 14;
+  if (y < MARGIN_Y + 140) {
+    page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    y = PAGE_HEIGHT - MARGIN_Y;
   }
-  if (tax > 0) {
-    drawTotalRow(page, font, bold, 'Tax', money(tax), totalsX, y, totalsW, false);
+  const orderedRecurring = FREQ_ORDER.filter((f) => recurringByFreq.has(f)).map(
+    (f) => [f, recurringByFreq.get(f)!] as const,
+  );
+  if (hasRecurring) {
+    // QUOTE-017 split totals: the quote-level discount applies to the ONE-TIME
+    // bucket only (rule documented in shared/quote-math.ts); recurring totals
+    // are per billing period and never reduced by it.
+    drawTotalRow(
+      page,
+      font,
+      bold,
+      'One-time subtotal',
+      money(oneTimeSubtotal),
+      totalsX,
+      y,
+      totalsW,
+      false,
+    );
     y -= 14;
+    if (discount > 0) {
+      drawTotalRow(page, font, bold, 'Discount', `-${money(discount)}`, totalsX, y, totalsW, false);
+      y -= 14;
+    }
+    if (tax > 0) {
+      drawTotalRow(page, font, bold, 'Tax', money(tax), totalsX, y, totalsW, false);
+      y -= 14;
+    }
+    drawTotalRow(
+      page,
+      font,
+      bold,
+      'One-time total',
+      money(oneTimeSubtotal - discount + tax),
+      totalsX,
+      y,
+      totalsW,
+      true,
+    );
+    y -= 16;
+    for (const [f, t] of orderedRecurring) {
+      drawTotalRow(
+        page,
+        font,
+        bold,
+        `Recurring (per ${FREQ_LABEL[f].per})`,
+        money(t.revenue),
+        totalsX,
+        y,
+        totalsW,
+        true,
+      );
+      y -= 16;
+    }
+    y -= 8;
+  } else {
+    const subtotal = oneTimeSubtotal;
+    const total = subtotal + tax - discount;
+    drawTotalRow(page, font, bold, 'Subtotal', money(subtotal), totalsX, y, totalsW, false);
+    y -= 14;
+    if (discount > 0) {
+      drawTotalRow(page, font, bold, 'Discount', `-${money(discount)}`, totalsX, y, totalsW, false);
+      y -= 14;
+    }
+    if (tax > 0) {
+      drawTotalRow(page, font, bold, 'Tax', money(tax), totalsX, y, totalsW, false);
+      y -= 14;
+    }
+    drawTotalRow(page, font, bold, 'Total', money(total), totalsX, y, totalsW, true);
+    y -= 24;
   }
-  drawTotalRow(page, font, bold, 'Total', money(total), totalsX, y, totalsW, true);
-  y -= 24;
+
+  // QUOTE-017: manager PDF gets per-bucket cost/margin. Never on the customer PDF.
+  if (input.isManager && hasRecurring) {
+    if (y < MARGIN_Y + 110) {
+      page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      y = PAGE_HEIGHT - MARGIN_Y;
+    }
+    page.drawText('Bucket Cost & Margin', {
+      x: MARGIN_X,
+      y,
+      size: 11,
+      font: bold,
+      color: BODY_TEXT,
+    });
+    y -= 14;
+    const oneTimeRevenue = oneTimeSubtotal - discount;
+    const bucketLines = [
+      `One-time: revenue ${money(oneTimeRevenue)} - cost ${money(oneTimeCost)} - margin ${pct(oneTimeRevenue, oneTimeCost)}`,
+      ...orderedRecurring.map(
+        ([f, t]) =>
+          `${FREQ_LABEL[f].adjective} (per ${FREQ_LABEL[f].per}): revenue ${money(t.revenue)} - cost ${money(t.cost)} - margin ${pct(t.revenue, t.cost)}`,
+      ),
+    ];
+    for (const line of bucketLines) {
+      page.drawText(line, { x: MARGIN_X, y, size: 9, font, color: BODY_TEXT });
+      y -= 13;
+    }
+    page.drawText(
+      'Guardrail margin is evaluated across both buckets combined (one period of each recurring line).',
+      { x: MARGIN_X, y, size: 8, font, color: rgb(0.45, 0.45, 0.45) },
+    );
+    y -= 16;
+  }
 
   // QUOTE-016: manager PDF surfaces the recorded discount justification.
   // Never shown on the customer PDF.
@@ -523,6 +727,11 @@ function money(n: number): string {
 function margin(unitPrice: number, unitCost: number): string {
   if (unitPrice <= 0) return '0.0%';
   return `${(((unitPrice - unitCost) / unitPrice) * 100).toFixed(1)}%`;
+}
+
+// QUOTE-017: bucket margin % on net revenue.
+function pct(revenue: number, cost: number): string {
+  return revenue > 0 ? `${(((revenue - cost) / revenue) * 100).toFixed(1)}%` : '0.0%';
 }
 
 function truncate(s: string, max: number): string {

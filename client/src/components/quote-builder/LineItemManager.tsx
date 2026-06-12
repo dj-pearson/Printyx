@@ -55,13 +55,21 @@ import {
   MoveDown,
   MoveUp,
   Minus,
+  Repeat,
 } from 'lucide-react';
 import ProductTypeSelector, { normalizeProduct } from './ProductTypeSelector';
 import RequiredAccessoriesDialog, {
   type AccessoryConfirmRow,
   type ConfirmedAccessory,
 } from './RequiredAccessoriesDialog';
-import { lineGrossTotal, lineNetTotal, lineNetMarginPct } from '@shared/quote-math';
+import {
+  lineGrossTotal,
+  lineNetTotal,
+  lineNetMarginPct,
+  normalizeFrequency,
+  FREQUENCY_LABELS,
+  RECURRING_FREQUENCIES,
+} from '@shared/quote-math';
 import {
   Select,
   SelectContent,
@@ -98,6 +106,11 @@ interface LineItem {
   margin?: number;
   // QUOTE-016: dollar amount off the whole line; totalPrice is net of it.
   discount?: number;
+  // QUOTE-017: recurring/contract billing. All money fields on a recurring
+  // line are per billing period; duration = number of periods (blank = ongoing).
+  isRecurring?: boolean;
+  recurringFrequency?: string;
+  recurringDuration?: number;
   notes?: string;
 }
 
@@ -470,6 +483,23 @@ export default function LineItemManager({
     }).format(amount);
   };
 
+  // QUOTE-017: compact billing badge for recurring lines — "Monthly ×12" or
+  // "Monthly" (ongoing). One-time lines render nothing.
+  const renderRecurringBadge = (item: LineItem) => {
+    if (!item.isRecurring) return null;
+    const freq = FREQUENCY_LABELS[normalizeFrequency(item.recurringFrequency)];
+    return (
+      <Badge
+        variant="outline"
+        className="text-xs border-blue-300 text-blue-700 bg-blue-50 dark:bg-blue-950 dark:text-blue-300 flex items-center gap-1"
+      >
+        <Repeat className="h-3 w-3" />
+        {freq.adjective}
+        {item.recurringDuration ? ` ×${item.recurringDuration}` : ''}
+      </Badge>
+    );
+  };
+
   const getProductTypeIcon = (type: ProductType) => {
     const Icon = productTypeIcons[type];
     if (!Icon) {
@@ -586,11 +616,12 @@ export default function LineItemManager({
                             {mainItem.lineNumber}
                           </Badge>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               {getProductTypeIcon(mainItem.productType)}
                               <Badge variant="secondary" className="text-xs">
                                 {productTypeLabels[mainItem.productType]}
                               </Badge>
+                              {renderRecurringBadge(mainItem)}
                             </div>
                             <div className="font-semibold text-sm line-clamp-2">
                               {mainItem.productName}
@@ -753,6 +784,7 @@ export default function LineItemManager({
                           <Badge variant="secondary">
                             {productTypeLabels[mainItem.productType]}
                           </Badge>
+                          {renderRecurringBadge(mainItem)}
                         </div>
                         <div>
                           <div className="font-semibold">{mainItem.productName}</div>
@@ -898,11 +930,12 @@ export default function LineItemManager({
                               <div className="flex items-start gap-2 flex-1 min-w-0">
                                 <MoveDown className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                                 <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
+                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                                     {getProductTypeIcon(subItem.productType)}
                                     <Badge variant="outline" className="text-xs">
                                       {productTypeLabels[subItem.productType]}
                                     </Badge>
+                                    {renderRecurringBadge(subItem)}
                                   </div>
                                   <div className="font-medium text-sm line-clamp-2">
                                     {subItem.productName}
@@ -1051,6 +1084,7 @@ export default function LineItemManager({
                                 <Badge variant="outline" className="text-xs">
                                   {productTypeLabels[subItem.productType]}
                                 </Badge>
+                                {renderRecurringBadge(subItem)}
                               </div>
                               <div>
                                 <div className="font-medium">{subItem.productName}</div>
@@ -1257,6 +1291,83 @@ export default function LineItemManager({
                     </div>
                   ) : null;
                 })()}
+                {/* QUOTE-017: one-time vs recurring billing */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Billing</label>
+                    <Select
+                      value={editingItem.isRecurring ? 'recurring' : 'one_time'}
+                      onValueChange={(value) =>
+                        setEditingItem({
+                          ...editingItem,
+                          isRecurring: value === 'recurring',
+                          recurringFrequency:
+                            value === 'recurring'
+                              ? editingItem.recurringFrequency || 'monthly'
+                              : undefined,
+                          recurringDuration:
+                            value === 'recurring' ? editingItem.recurringDuration : undefined,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="min-h-[44px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="one_time">One-time</SelectItem>
+                        <SelectItem value="recurring">Recurring</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {editingItem.isRecurring && (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Frequency</label>
+                        <Select
+                          value={normalizeFrequency(editingItem.recurringFrequency)}
+                          onValueChange={(value) =>
+                            setEditingItem({ ...editingItem, recurringFrequency: value })
+                          }
+                        >
+                          <SelectTrigger className="min-h-[44px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {RECURRING_FREQUENCIES.map((f) => (
+                              <SelectItem key={f} value={f}>
+                                {FREQUENCY_LABELS[f].adjective}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Periods</label>
+                        <Input
+                          type="number"
+                          value={editingItem.recurringDuration ?? ''}
+                          onChange={(e) => {
+                            const n = parseInt(e.target.value);
+                            setEditingItem({
+                              ...editingItem,
+                              recurringDuration: Number.isFinite(n) && n > 0 ? n : undefined,
+                            });
+                          }}
+                          min="1"
+                          placeholder="Ongoing"
+                          className="min-h-[44px]"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+                {editingItem.isRecurring && (
+                  <div className="text-xs text-muted-foreground">
+                    Price, quantity, and discount on this line are per{' '}
+                    {FREQUENCY_LABELS[normalizeFrequency(editingItem.recurringFrequency)].per}.
+                    Leave Periods blank for an ongoing contract.
+                  </div>
+                )}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Notes</label>
                   <Input

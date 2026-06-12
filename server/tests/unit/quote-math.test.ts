@@ -12,6 +12,12 @@ import {
   sumLineDiscounts,
   sumLineNet,
   effectiveDiscountPct,
+  normalizeFrequency,
+  oneTimeLines,
+  recurringLines,
+  bucketTotals,
+  oneTimeBucketTotals,
+  recurringTotalsByFrequency,
 } from '@shared/quote-math';
 
 describe('quote-math', () => {
@@ -138,6 +144,92 @@ describe('quote-math', () => {
     });
     it('returns 0 with no lines', () => {
       expect(effectiveDiscountPct([], 100)).toBe(0);
+    });
+  });
+
+  // ─── QUOTE-017: one-time vs recurring buckets ─────────────────────────────
+  describe('recurring buckets (QUOTE-017)', () => {
+    const lines = [
+      // one-time: net 4500 (5000 − 500), cost 3000
+      { quantity: 1, unitPrice: 5000, discount: 500, unitCost: 3000 },
+      // monthly ×12: net 200/period, cost 80
+      {
+        quantity: 2,
+        unitPrice: 100,
+        unitCost: 40,
+        isRecurring: true,
+        recurringFrequency: 'monthly',
+        recurringDuration: 12,
+      },
+      // quarterly ongoing: net 900/period, cost 600
+      {
+        quantity: 1,
+        unitPrice: 900,
+        unitCost: 600,
+        isRecurring: true,
+        recurringFrequency: 'quarterly',
+      },
+      // recurring with no frequency → treated as monthly: net 50, cost 10
+      { quantity: 1, unitPrice: 50, unitCost: 10, isRecurring: true },
+    ];
+
+    it('splits lines into one-time and recurring buckets', () => {
+      expect(oneTimeLines(lines)).toHaveLength(1);
+      expect(recurringLines(lines)).toHaveLength(3);
+    });
+
+    it('normalizes missing/unknown frequency to monthly', () => {
+      expect(normalizeFrequency('monthly')).toBe('monthly');
+      expect(normalizeFrequency('QUARTERLY')).toBe('quarterly');
+      expect(normalizeFrequency(undefined)).toBe('monthly');
+      expect(normalizeFrequency('weekly')).toBe('monthly');
+    });
+
+    it('quote-level discount applies to the ONE-TIME bucket only', () => {
+      const ot = oneTimeBucketTotals(lines, 450);
+      expect(ot.revenue).toBe(4050); // 4500 net − 450 quote discount
+      expect(ot.cost).toBe(3000);
+      expect(round2(ot.marginPct)).toBe(round2(((4050 - 3000) / 4050) * 100));
+      // recurring buckets are identical with or without a quote-level discount
+      expect(recurringTotalsByFrequency(lines)).toEqual(recurringTotalsByFrequency(lines));
+      const rec = recurringTotalsByFrequency(lines);
+      expect(rec.map((b) => b.frequency)).toEqual(['monthly', 'quarterly']);
+      expect(rec[0].revenue).toBe(250); // 200 + 50 (frequency-less line folds into monthly)
+      expect(rec[0].cost).toBe(90);
+      expect(rec[1].revenue).toBe(900);
+      expect(rec[1].cost).toBe(600);
+    });
+
+    it('per-line discounts still apply inside recurring lines (per period)', () => {
+      const rec = recurringTotalsByFrequency([
+        { quantity: 1, unitPrice: 100, discount: 20, unitCost: 50, isRecurring: true },
+      ]);
+      expect(rec[0].revenue).toBe(80);
+      expect(round2(rec[0].marginPct)).toBe(round2(((80 - 50) / 80) * 100));
+    });
+
+    it('guardrail margin stays combined across BOTH buckets (QUOTE-006 cannot be dodged)', () => {
+      // A healthy one-time line + a near-zero-margin recurring line: hiding the
+      // bad margin in the recurring bucket must still drag the guardrail down.
+      const sneaky = [
+        { quantity: 1, unitPrice: 1000, unitCost: 500 }, // one-time, 50% margin
+        { quantity: 1, unitPrice: 1000, unitCost: 990, isRecurring: true }, // recurring, 1% margin
+      ];
+      // The send-time gate computes margin from the proposals-table recompute:
+      // subtotal = net of ALL lines (one period of recurring), cost = ALL lines.
+      const combined = quoteMarginPct({
+        subtotal: sumLineNet(sneaky),
+        discount: 0,
+        totalCost: bucketTotals(sneaky).cost,
+      });
+      const oneTimeOnly = oneTimeBucketTotals(sneaky, 0).marginPct;
+      expect(oneTimeOnly).toBeCloseTo(50);
+      expect(combined).toBeCloseTo(25.5); // (2000 − 1490) / 2000
+      expect(combined).toBeLessThan(oneTimeOnly);
+    });
+
+    it('bucketTotals returns 0 margin when revenue is not positive', () => {
+      expect(bucketTotals([], 100).marginPct).toBe(0);
     });
   });
 
