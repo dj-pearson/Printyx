@@ -26,6 +26,7 @@ import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-util
 import {
   Table as UITable,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -176,16 +177,17 @@ function SortableHeader({
     <button
       className="flex items-center gap-1 hover:text-foreground transition-colors font-medium text-left"
       onClick={() => onSort(sortKey)}
+      aria-label={`Sort by ${label}${isActive ? (currentOrder === 'asc' ? ', currently ascending' : ', currently descending') : ''}`}
     >
       {label}
       {isActive ? (
         currentOrder === 'asc' ? (
-          <ChevronUp className="h-3.5 w-3.5" />
+          <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
         ) : (
-          <ChevronDown className="h-3.5 w-3.5" />
+          <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
         )
       ) : (
-        <ChevronsUpDown className="h-3.5 w-3.5 opacity-40" />
+        <ChevronsUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden="true" />
       )}
     </button>
   );
@@ -626,6 +628,7 @@ export function BusinessRecordsDataTable({
           {viewMode === 'table' ? (
             <div className="bg-background rounded-md border overflow-x-auto">
               <UITable>
+                <TableCaption className="sr-only">{title}</TableCaption>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-10">
@@ -636,7 +639,19 @@ export function BusinessRecordsDataTable({
                       />
                     </TableHead>
                     {columns.map((col) => (
-                      <TableHead key={col.key} style={col.width ? { width: col.width } : undefined}>
+                      <TableHead
+                        key={col.key}
+                        style={col.width ? { width: col.width } : undefined}
+                        aria-sort={
+                          col.sortable
+                            ? sortBy === col.key
+                              ? sortOrder === 'asc'
+                                ? 'ascending'
+                                : 'descending'
+                              : 'none'
+                            : undefined
+                        }
+                      >
                         {col.sortable ? (
                           <SortableHeader
                             label={col.label}
@@ -650,7 +665,11 @@ export function BusinessRecordsDataTable({
                         )}
                       </TableHead>
                     ))}
-                    {rowActions.length > 0 && <TableHead className="w-16" />}
+                    {rowActions.length > 0 && (
+                      <TableHead className="w-16">
+                        <span className="sr-only">Actions</span>
+                      </TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>

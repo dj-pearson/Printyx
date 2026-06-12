@@ -52,7 +52,9 @@ export default function Header({ title, description, onSearchClick }: HeaderProp
           <div className="relative hidden sm:block">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
             <Input
+              id="search-input"
               placeholder="Search customers, tickets... (⌘K)"
+              aria-label="Search customers, tickets, and more"
               className="pl-10 h-10 bg-gray-50 border-gray-200 focus:bg-white cursor-pointer"
               onClick={onSearchClick}
               readOnly
@@ -73,7 +75,11 @@ export default function Header({ title, description, onSearchClick }: HeaderProp
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+              <Button
+                variant="ghost"
+                aria-label="Open user menu"
+                className="relative h-9 w-9 rounded-full"
+              >
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user?.profileImageUrl || ''} alt={user?.firstName || ''} />
                   <AvatarFallback className="text-xs">

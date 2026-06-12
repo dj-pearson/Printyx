@@ -15,6 +15,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { SessionGuard } from '@/components/SessionGuard';
 import { AccessibilityProvider } from '@/hooks/useAccessibility';
 import { LiveRegionProvider } from '@/components/accessibility/LiveRegion';
+import { SkipNavigation } from '@/components/accessibility/SkipNavigation';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AdminRouteGuard } from '@/components/auth/RouteGuard';
 
@@ -959,6 +960,13 @@ function App() {
               <TooltipProvider>
                 <PWAProvider>
                   <SEOProvider>
+                    <SkipNavigation
+                      links={[
+                        { id: 'main-content', label: 'Skip to main content' },
+                        { id: 'sidebar-navigation', label: 'Skip to navigation' },
+                        { id: 'search-input', label: 'Skip to search' },
+                      ]}
+                    />
                     <Toaster />
                     <ErrorBoundary
                       level="critical"

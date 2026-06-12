@@ -797,6 +797,7 @@ export function RoleAwareCollapsibleSidebar({
             <Input
               type="text"
               placeholder="Search menu..."
+              aria-label="Search navigation menu"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 h-9 text-sm"
@@ -905,8 +906,12 @@ export function RoleAwareCollapsibleSidebar({
                                   data-active={isActive(child.path)}
                                   data-testid={`nav-${child.path.replace(/[^a-zA-Z0-9]/g, '-')}`}
                                 >
-                                  <Link href={child.path}>
+                                  <Link
+                                    href={child.path}
+                                    aria-current={isActive(child.path) ? 'page' : undefined}
+                                  >
                                     <child.icon
+                                      aria-hidden="true"
                                       className={cn(
                                         'h-4 w-4',
                                         isActive(child.path) ? 'text-blue-600' : 'text-slate-700',
@@ -914,7 +919,10 @@ export function RoleAwareCollapsibleSidebar({
                                     />
                                     <span>{child.title}</span>
                                     {isActive(child.path) && (
-                                      <Badge className="ml-auto bg-blue-600 text-white text-xs">
+                                      <Badge
+                                        aria-hidden="true"
+                                        className="ml-auto bg-blue-600 text-white text-xs"
+                                      >
                                         Active
                                       </Badge>
                                     )}
@@ -943,8 +951,12 @@ export function RoleAwareCollapsibleSidebar({
                       data-active={shouldShowAsActive}
                       data-testid={`nav-${section.id}`}
                     >
-                      <Link href={section.path}>
+                      <Link
+                        href={section.path}
+                        aria-current={isActive(section.path) ? 'page' : undefined}
+                      >
                         <section.icon
+                          aria-hidden="true"
                           className={cn(
                             'h-5 w-5',
                             shouldShowAsActive ? 'text-white' : 'text-slate-800',
@@ -952,7 +964,12 @@ export function RoleAwareCollapsibleSidebar({
                         />
                         <span className="font-semibold">{section.title}</span>
                         {shouldShowAsActive && (
-                          <Badge className="ml-auto bg-blue-600 text-white text-xs">Active</Badge>
+                          <Badge
+                            aria-hidden="true"
+                            className="ml-auto bg-blue-600 text-white text-xs"
+                          >
+                            Active
+                          </Badge>
                         )}
                       </Link>
                     </SidebarMenuButton>
@@ -994,9 +1011,10 @@ export function RoleAwareCollapsibleSidebar({
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Open settings"
               className="h-8 w-8 group-data-[collapsible=icon]:hidden"
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-4 w-4" aria-hidden="true" />
             </Button>
           </Link>
         </div>

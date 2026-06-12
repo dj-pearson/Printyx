@@ -47,8 +47,7 @@ export default function Login() {
     if (!oauthEnabled) {
       toast({
         title: 'OAuth not configured',
-        description:
-          'Social sign-in is not available at this time. Please use email and password.',
+        description: 'Social sign-in is not available at this time. Please use email and password.',
         variant: 'destructive',
       });
       return;
@@ -236,9 +235,7 @@ export default function Login() {
             {/* Header */}
             <div className="mb-8">
               <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Welcome back</h1>
-              <p className="mt-2 text-sm text-gray-500">
-                Sign in to your account to continue
-              </p>
+              <p className="mt-2 text-sm text-gray-500">Sign in to your account to continue</p>
             </div>
 
             {/* OAuth buttons */}
@@ -312,7 +309,9 @@ export default function Login() {
                   render={({ field }) => (
                     <FormItem>
                       <div className="flex items-center justify-between">
-                        <FormLabel className="text-sm font-medium text-gray-700">Password</FormLabel>
+                        <FormLabel className="text-sm font-medium text-gray-700">
+                          Password
+                        </FormLabel>
                         <a
                           href="/forgot-password"
                           className="text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors"
@@ -333,12 +332,13 @@ export default function Login() {
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                            tabIndex={-1}
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            aria-pressed={showPassword}
                           >
                             {showPassword ? (
-                              <EyeOff className="h-4 w-4" />
+                              <EyeOff className="h-4 w-4" aria-hidden="true" />
                             ) : (
-                              <Eye className="h-4 w-4" />
+                              <Eye className="h-4 w-4" aria-hidden="true" />
                             )}
                           </button>
                         </div>

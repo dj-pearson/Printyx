@@ -374,7 +374,7 @@ export default function Settings() {
           {/* Mobile Tab Selection Dropdown */}
           <div className="md:hidden">
             <Select value={activeTab} onValueChange={setActiveTab}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" aria-label="Select settings section">
                 <SelectValue>
                   <div className="flex items-center gap-2">
                     {activeTab === 'profile' && (
@@ -580,7 +580,7 @@ export default function Settings() {
                         setProfileForm({ ...profileForm, department: value })
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="department">
                         <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
@@ -685,7 +685,10 @@ export default function Settings() {
                       {userSettings?.twoFactorEnabled ? 'Enabled' : 'Disabled'}
                     </p>
                   </div>
-                  <Switch checked={userSettings?.twoFactorEnabled || false} />
+                  <Switch
+                    checked={userSettings?.twoFactorEnabled || false}
+                    aria-label="Two-factor authentication"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -751,7 +754,7 @@ export default function Settings() {
                         value={preferencesForm.theme}
                         onValueChange={(value) => updatePreference('theme', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger id="theme">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -768,7 +771,7 @@ export default function Settings() {
                         value={preferencesForm.language}
                         onValueChange={(value) => updatePreference('language', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger id="language">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -787,7 +790,7 @@ export default function Settings() {
                         value={preferencesForm.timezone}
                         onValueChange={(value) => updatePreference('timezone', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger id="timezone">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -805,7 +808,7 @@ export default function Settings() {
                         value={preferencesForm.currency}
                         onValueChange={(value) => updatePreference('currency', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger id="currency">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -825,7 +828,7 @@ export default function Settings() {
                         value={preferencesForm.dateFormat}
                         onValueChange={(value) => updatePreference('dateFormat', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger id="dateFormat">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -842,7 +845,7 @@ export default function Settings() {
                         value={preferencesForm.timeFormat}
                         onValueChange={(value) => updatePreference('timeFormat', value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger id="timeFormat">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -883,6 +886,7 @@ export default function Settings() {
                     <Switch
                       checked={notifications.email}
                       onCheckedChange={(checked) => updateNotification('email', checked)}
+                      aria-label="Email notifications"
                     />
                   </div>
 
@@ -896,6 +900,7 @@ export default function Settings() {
                     <Switch
                       checked={notifications.push}
                       onCheckedChange={(checked) => updateNotification('push', checked)}
+                      aria-label="Push notifications"
                     />
                   </div>
 
@@ -909,6 +914,7 @@ export default function Settings() {
                     <Switch
                       checked={notifications.sms}
                       onCheckedChange={(checked) => updateNotification('sms', checked)}
+                      aria-label="SMS notifications"
                     />
                   </div>
 
@@ -922,6 +928,7 @@ export default function Settings() {
                     <Switch
                       checked={notifications.marketing}
                       onCheckedChange={(checked) => updateNotification('marketing', checked)}
+                      aria-label="Marketing communications"
                     />
                   </div>
                 </div>
@@ -960,6 +967,7 @@ export default function Settings() {
                     <Switch
                       checked={accessibility.highContrast}
                       onCheckedChange={(checked) => updateAccessibility('highContrast', checked)}
+                      aria-label="High contrast"
                     />
                   </div>
 
@@ -973,6 +981,7 @@ export default function Settings() {
                     <Switch
                       checked={accessibility.reducedMotion}
                       onCheckedChange={(checked) => updateAccessibility('reducedMotion', checked)}
+                      aria-label="Reduced motion"
                     />
                   </div>
 
@@ -982,7 +991,7 @@ export default function Settings() {
                       value={accessibility.fontSize}
                       onValueChange={(value) => updateAccessibility('fontSize', value)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="fontSize">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1000,7 +1009,7 @@ export default function Settings() {
                       value={accessibility.colorBlind}
                       onValueChange={(value) => updateAccessibility('colorBlind', value)}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="colorBlind">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1020,6 +1029,7 @@ export default function Settings() {
                     <Switch
                       checked={accessibility.screenReader}
                       onCheckedChange={(checked) => updateAccessibility('screenReader', checked)}
+                      aria-label="Screen reader support"
                     />
                   </div>
 
@@ -1035,6 +1045,7 @@ export default function Settings() {
                       onCheckedChange={(checked) =>
                         updateAccessibility('keyboardNavigation', checked)
                       }
+                      aria-label="Keyboard navigation"
                     />
                   </div>
 
@@ -1046,6 +1057,7 @@ export default function Settings() {
                     <Switch
                       checked={accessibility.soundEnabled}
                       onCheckedChange={(checked) => updateAccessibility('soundEnabled', checked)}
+                      aria-label="Sound enabled"
                     />
                   </div>
                 </div>

@@ -11,7 +11,6 @@ import {
   KeyboardShortcutsDialog,
   useKeyboardNavigation,
 } from '@/components/layout/keyboard-shortcuts-dialog';
-import { SkipNavigation } from '@/components/accessibility/SkipNavigation';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -54,15 +53,7 @@ export function MainLayout({ children, title, description }: MainLayoutProps) {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      {/* Skip Navigation for Keyboard Users - WCAG 2.1 Level A (2.4.1) */}
-      <SkipNavigation
-        links={[
-          { id: 'main-content', label: 'Skip to main content' },
-          { id: 'sidebar-navigation', label: 'Skip to navigation' },
-          { id: 'search-input', label: 'Skip to search' },
-        ]}
-      />
-
+      {/* Skip navigation links are rendered once at the App root (App.tsx) */}
       <div className="flex min-h-screen w-full bg-executive">
         {/* Global Components */}
         <CommandPalette open={open} onOpenChange={setOpen} />
