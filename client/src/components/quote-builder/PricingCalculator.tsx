@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Calculator, DollarSign, Percent, TrendingUp, Info } from 'lucide-react';
-import { quoteMarginPct } from '@shared/quote-math';
+import { quoteMarginPct, effectiveDiscountPct, sumLineDiscounts } from '@shared/quote-math';
+import { Textarea } from '@/components/ui/textarea';
 
 interface LineItem {
   id?: string;
@@ -32,8 +33,19 @@ interface LineItem {
   totalPrice: number;
   unitCost?: number;
   margin?: number;
+  // QUOTE-016: dollar amount off the whole line; totalPrice is net of it.
+  discount?: number;
   notes?: string;
 }
+
+// QUOTE-016 discount reason codes.
+export const DISCOUNT_REASONS = [
+  { value: 'competitive_match', label: 'Competitive match' },
+  { value: 'volume', label: 'Volume' },
+  { value: 'promotion', label: 'Promotion' },
+  { value: 'manager_approved', label: 'Manager approved' },
+  { value: 'other', label: 'Other' },
+] as const;
 
 interface PricingCalculatorProps {
   lineItems: LineItem[];
@@ -47,6 +59,10 @@ interface PricingCalculatorProps {
   // Pricing policy (QUOTE-006)
   minMarginPercentage?: number;
   maxDiscountPercentage?: number;
+  // QUOTE-016: discount justification (required whenever any discount is set)
+  discountReason?: string;
+  discountReasonNote?: string;
+  onDiscountReasonChange?: (reason: string, note: string) => void;
 }
 
 export default function PricingCalculator({
@@ -60,6 +76,9 @@ export default function PricingCalculator({
   onTaxChange,
   minMarginPercentage,
   maxDiscountPercentage,
+  discountReason,
+  discountReasonNote,
+  onDiscountReasonChange,
 }: PricingCalculatorProps) {
   const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('percentage');
   const [discountAmount, setDiscountAmount] = useState(initialDiscountAmount);
@@ -74,11 +93,14 @@ export default function PricingCalculator({
     setTaxAmount(initialTaxAmount);
   }, [initialDiscountAmount, initialDiscountPercentage, initialTaxAmount]);
 
-  // Calculate totals
+  // Calculate totals. Line item totalPrice values are already net of per-line
+  // discounts (QUOTE-016), so itemsSubtotal is the discounted subtotal and the
+  // overall margin naturally includes line discounts.
   const itemsSubtotal = lineItems.reduce(
     (sum, item) => sum + (parseFloat(item.totalPrice.toString()) || 0),
     0,
   );
+  const lineDiscountTotal = sumLineDiscounts(lineItems);
   const discountValue =
     discountType === 'percentage' ? (itemsSubtotal * discountPercentage) / 100 : discountAmount;
   const afterDiscountTotal = itemsSubtotal - discountValue;
@@ -94,6 +116,12 @@ export default function PricingCalculator({
     totalCost,
   });
 
+  // QUOTE-016: the max-discount guardrail evaluates the EFFECTIVE discount —
+  // per-line discounts plus the quote-level one, relative to the gross
+  // (pre-discount) subtotal — so spreading a discount across lines can't dodge
+  // the policy.
+  const effectiveDiscount = effectiveDiscountPct(lineItems, Math.max(0, discountValue));
+
   // Pricing policy violations (QUOTE-006)
   const belowMinMargin =
     totalCost > 0 &&
@@ -103,7 +131,11 @@ export default function PricingCalculator({
   const overMaxDiscount =
     maxDiscountPercentage !== undefined &&
     maxDiscountPercentage > 0 &&
-    discountPercentage > maxDiscountPercentage;
+    effectiveDiscount > maxDiscountPercentage;
+
+  // QUOTE-016: any discount (line-level or quote-level) requires a reason.
+  const anyDiscountSet = lineDiscountTotal > 0 || discountValue > 0;
+  const reasonMissing = anyDiscountSet && !discountReason;
 
   const handleDiscountAmountChange = (value: number) => {
     setDiscountAmount(value);
@@ -198,11 +230,24 @@ export default function PricingCalculator({
                     </span>
                     <span className="text-muted-foreground shrink-0">(Qty: {item.quantity})</span>
                   </div>
-                  <span className="font-medium shrink-0">{formatCurrency(item.totalPrice)}</span>
+                  <span className="font-medium shrink-0">
+                    {formatCurrency(item.totalPrice)}
+                    {(item.discount || 0) > 0 && (
+                      <span className="block text-[10px] text-red-600 text-right">
+                        −{formatCurrency(item.discount || 0)} disc.
+                      </span>
+                    )}
+                  </span>
                 </div>
               ))}
             </div>
             <Separator className="my-3" />
+            {lineDiscountTotal > 0 && (
+              <div className="flex justify-between items-center text-xs sm:text-sm text-red-600 mb-1">
+                <span>Line discounts (included)</span>
+                <span>−{formatCurrency(lineDiscountTotal)}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center font-semibold text-sm sm:text-base">
               <span>Subtotal</span>
               <span>{formatCurrency(itemsSubtotal)}</span>
@@ -304,6 +349,62 @@ export default function PricingCalculator({
               </div>
             </div>
           </div>
+
+          {/* QUOTE-016: required justification for any discount (line or quote-level) */}
+          {anyDiscountSet && (
+            <div
+              className={`rounded-lg border p-3 space-y-3 ${
+                reasonMissing ? 'border-red-300 bg-red-50' : 'border-muted'
+              }`}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-sm">
+                    Discount Reason <span className="text-red-600">*</span>
+                  </Label>
+                  <Select
+                    value={discountReason || ''}
+                    onValueChange={(value) =>
+                      onDiscountReasonChange?.(value, discountReasonNote || '')
+                    }
+                  >
+                    <SelectTrigger className="min-h-[44px]">
+                      <SelectValue placeholder="Select a reason..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DISCOUNT_REASONS.map((r) => (
+                        <SelectItem key={r.value} value={r.value}>
+                          {r.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">
+                    Reason Note
+                    {discountReason === 'other' && <span className="text-red-600"> *</span>}
+                  </Label>
+                  <Textarea
+                    value={discountReasonNote || ''}
+                    onChange={(e) => onDiscountReasonChange?.(discountReason || '', e.target.value)}
+                    placeholder={
+                      discountReason === 'other'
+                        ? 'Required — explain this discount...'
+                        : 'Optional context for this discount...'
+                    }
+                    rows={2}
+                    className="min-h-[44px] resize-y"
+                  />
+                </div>
+              </div>
+              {reasonMissing && (
+                <div className="text-xs text-red-600">
+                  A discount reason is required before this quote can be saved or sent.
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Tax Section */}
@@ -424,8 +525,8 @@ export default function PricingCalculator({
                 )}
                 {overMaxDiscount && (
                   <div>
-                    Discount {formatPercentage(Math.abs(discountPercentage))} exceeds the maximum{' '}
-                    {formatPercentage(maxDiscountPercentage!)}.
+                    Effective discount {formatPercentage(effectiveDiscount)} (including line
+                    discounts) exceeds the maximum {formatPercentage(maxDiscountPercentage!)}.
                   </div>
                 )}
               </div>

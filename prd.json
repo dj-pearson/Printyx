@@ -7104,8 +7104,8 @@
         "npm run check && npm run build pass"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "Largest quote story — schema column exists so no line-item migration needed, only the two proposals columns. Guardrail code: QuoteBuilder.tsx:495-512, PricingCalculator.tsx:97-106, proposals/index.ts:257-280.",
+      "passes": true,
+      "notes": "Largest quote story — schema column exists so no line-item migration needed, only the two proposals columns. Guardrail code: QuoteBuilder.tsx:495-512, PricingCalculator.tsx:97-106, proposals/index.ts:257-280. [DONE 2026-06-11: discount = $ off the WHOLE line (UI converts % entries to $ at save). shared/quote-math gained lineGrossTotal/lineNetTotal/lineNetMarginPct/sumLine*/effectiveDiscountPct (21 tests). LineItemManager: inline $ input on every row (mobile+desktop, sublines too) + edit-dialog %-or-$ entry with clamped preview. normalizeLineItem computes total_price + margin net of discount; recalculateProposalTotals rolls up net totals. Reason select (5 codes + note, note required for 'other') lives in PricingCalculator, stored on proposals.discount_reason/_note via migration 0019 (PENDING manual apply — edge fn has PGRST204 drift-retry that strips the two columns until applied). Guardrails: PricingCalculator warning + QuoteBuilder send gate + edge 409 gate all evaluate EFFECTIVE discount (line+quote over gross); server max-discount policy read from company_pricing_settings.max_discount_percentage (0/absent = not enforced). Manager PDF: Disc. column + net-margin column + 'Discount reason:' line; customer PDF shows effective unit price + net totals only. check/build/deno-check/tests green.]",
       "category": "quote-module-v2"
     },
     {

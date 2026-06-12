@@ -274,12 +274,16 @@ function normalizeLineItem(
   const unitPrice = toNum(row.unit_price);
   row.unit_price = unitPrice;
   row.unit_cost = toNum(row.unit_cost);
-  row.total_price = toNum(row.total_price) || unitPrice * qty;
+  // QUOTE-016: discount is a dollar amount off the WHOLE line. Line totals and
+  // margin are computed net of it (mirrors shared/quote-math.ts lineNetTotal /
+  // lineNetMarginPct — keep in sync).
+  const discount = Math.max(0, toNum(row.discount));
+  row.discount = discount;
+  row.total_price = toNum(row.total_price) || Math.max(0, unitPrice * qty - discount);
   if (row.margin === undefined || row.margin === null || row.margin === '') {
-    row.margin =
-      unitPrice > 0
-        ? Number((((unitPrice - toNum(row.unit_cost)) / unitPrice) * 100).toFixed(2))
-        : 0;
+    const revenue = toNum(row.total_price);
+    const cost = toNum(row.unit_cost) * qty;
+    row.margin = revenue > 0 ? Number((((revenue - cost) / revenue) * 100).toFixed(2)) : 0;
   }
   return row;
 }
@@ -510,6 +514,18 @@ async function getMinMarginPolicy(db: SB, tenantId: string): Promise<number> {
   return v > 0 ? v : 15; // default 15%
 }
 
+// QUOTE-016: max-discount policy lives on company_pricing_settings. 0 = not
+// configured → the max-discount gate is not enforced (matches the client
+// PricingCalculator, which only warns when the policy value is > 0).
+async function getMaxDiscountPolicy(db: SB, tenantId: string): Promise<number> {
+  const { data } = await db
+    .from('company_pricing_settings')
+    .select('max_discount_percentage')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  return toNum(data?.max_discount_percentage);
+}
+
 async function recalculateProposalTotals(
   db: SB,
   proposalId: string,
@@ -517,15 +533,22 @@ async function recalculateProposalTotals(
 ): Promise<void> {
   const { data: items } = await db
     .from('proposal_line_items')
-    .select('total_price, unit_cost, quantity')
+    .select('total_price, unit_price, unit_cost, quantity, discount')
     .eq('proposal_id', proposalId)
     .eq('tenant_id', tenantId);
 
   let subtotal = 0;
   let totalCost = 0;
   for (const item of items ?? []) {
-    subtotal += toNum(item.total_price);
-    totalCost += toNum(item.unit_cost) * (toNum(item.quantity) || 1);
+    const qty = toNum(item.quantity) || 1;
+    // total_price is stored net of the per-line discount (QUOTE-016); fall back
+    // to recomputing for rows that predate discounted totals.
+    const net =
+      item.total_price !== null && item.total_price !== undefined && item.total_price !== ''
+        ? toNum(item.total_price)
+        : Math.max(0, qty * toNum(item.unit_price) - toNum(item.discount));
+    subtotal += net;
+    totalCost += toNum(item.unit_cost) * qty;
   }
 
   const { data: proposal } = await db
@@ -750,6 +773,8 @@ const PROPOSAL_FIELD_MAP: Record<string, string> = {
   subtotal: 'subtotal',
   discountAmount: 'discount_amount',
   discountPercentage: 'discount_percentage',
+  discountReason: 'discount_reason',
+  discountReasonNote: 'discount_reason_note',
   taxAmount: 'tax_amount',
   totalAmount: 'total_amount',
   validUntil: 'valid_until',
@@ -771,6 +796,17 @@ function buildProposalUpdate(body: Record<string, unknown>): Record<string, unkn
       out[snakeKey] = body[snakeKey];
     }
   }
+  return out;
+}
+
+// Proposals columns added by pending migrations (0019). Until the migration is
+// applied, writes including them fail with PGRST204 — retry without them so a
+// drifted database degrades gracefully instead of 500-ing the whole save.
+const PROPOSAL_DRIFT_COLUMNS = ['discount_reason', 'discount_reason_note'];
+
+function stripProposalDriftColumns(row: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...row };
+  for (const col of PROPOSAL_DRIFT_COLUMNS) delete out[col];
   return out;
 }
 
@@ -1461,31 +1497,47 @@ export default async function handler(req: Request) {
         body.proposal_number ||
         (await generateProposalNumber(db, ctx.tenantId));
 
-      const { data: proposal, error } = await db
+      const insertRow: Record<string, unknown> = {
+        tenant_id: ctx.tenantId,
+        proposal_number: proposalNumber,
+        title: body.title,
+        status: body.status || 'draft',
+        proposal_type: body.proposalType || body.proposal_type || 'quote',
+        business_record_id: body.businessRecordId || body.business_record_id || null,
+        contact_id: body.contactId || body.contact_id || null,
+        template_id: body.templateId || body.template_id || null,
+        subtotal: body.subtotal ?? 0,
+        discount_amount: body.discountAmount || body.discount_amount || 0,
+        discount_percentage: body.discountPercentage || body.discount_percentage || 0,
+        discount_reason: body.discountReason || body.discount_reason || null,
+        discount_reason_note: body.discountReasonNote || body.discount_reason_note || null,
+        tax_amount: body.taxAmount || body.tax_amount || 0,
+        total_amount: body.totalAmount || body.total_amount || 0,
+        valid_until: body.validUntil || body.valid_until || null,
+        internal_notes: body.notes || body.internalNotes || body.internal_notes || null,
+        assigned_to: body.assignedTo || body.assigned_to || ctx.userId,
+        created_by: ctx.userId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      let { data: proposal, error } = await db
         .from('proposals')
-        .insert({
-          tenant_id: ctx.tenantId,
-          proposal_number: proposalNumber,
-          title: body.title,
-          status: body.status || 'draft',
-          proposal_type: body.proposalType || body.proposal_type || 'quote',
-          business_record_id: body.businessRecordId || body.business_record_id || null,
-          contact_id: body.contactId || body.contact_id || null,
-          template_id: body.templateId || body.template_id || null,
-          subtotal: body.subtotal ?? 0,
-          discount_amount: body.discountAmount || body.discount_amount || 0,
-          discount_percentage: body.discountPercentage || body.discount_percentage || 0,
-          tax_amount: body.taxAmount || body.tax_amount || 0,
-          total_amount: body.totalAmount || body.total_amount || 0,
-          valid_until: body.validUntil || body.valid_until || null,
-          internal_notes: body.notes || body.internalNotes || body.internal_notes || null,
-          assigned_to: body.assignedTo || body.assigned_to || ctx.userId,
-          created_by: ctx.userId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
+        .insert(insertRow)
         .select()
         .single();
+      if (error && isMissingColumnError(error)) {
+        // discount_reason columns not migrated yet — save without them.
+        log.warn(
+          { requestId, err: error.message },
+          'Proposal insert retried without drift columns',
+        );
+        ({ data: proposal, error } = await db
+          .from('proposals')
+          .insert(stripProposalDriftColumns(insertRow))
+          .select()
+          .single());
+      }
 
       if (error || !proposal) {
         return errorResponse(500, 'Failed to create proposal', req, {
@@ -1578,13 +1630,27 @@ export default async function handler(req: Request) {
       const { lineItems: lineItemsToUpdate, ..._rest } = body;
       const updateData = buildProposalUpdate(body);
 
-      const { data: proposal, error } = await db
+      let { data: proposal, error } = await db
         .from('proposals')
         .update(updateData)
         .eq('id', id)
         .eq('tenant_id', ctx.tenantId)
         .select()
         .maybeSingle();
+      if (error && isMissingColumnError(error)) {
+        // discount_reason columns not migrated yet — save without them.
+        log.warn(
+          { requestId, err: error.message },
+          'Proposal update retried without drift columns',
+        );
+        ({ data: proposal, error } = await db
+          .from('proposals')
+          .update(stripProposalDriftColumns(updateData))
+          .eq('id', id)
+          .eq('tenant_id', ctx.tenantId)
+          .select()
+          .maybeSingle());
+      }
 
       if (error) {
         return errorResponse(500, 'Failed to update proposal', req, {
@@ -1733,8 +1799,13 @@ export default async function handler(req: Request) {
       }
       const status = String(body.status);
 
-      // QUOTE-006: a sales-only rep cannot send a below-minimum-margin quote
-      // without manager approval (body.approved bypasses, for an approval flow).
+      // QUOTE-006/016: a sales-only rep cannot send a quote that violates the
+      // pricing policy without manager approval (body.approved bypasses, for an
+      // approval flow). Margin is computed on the discounted subtotal (which is
+      // already net of per-line discounts), and the max-discount gate evaluates
+      // the EFFECTIVE discount — per-line discounts plus the quote-level one,
+      // relative to the gross subtotal — so spreading a discount across lines
+      // cannot dodge the policy.
       if (status === 'sent' && isSalesOnlyRole(ctx) && !body.approved) {
         const { data: cur } = await db
           .from('proposals')
@@ -1758,6 +1829,35 @@ export default async function handler(req: Request) {
                 requestId,
               },
             );
+          }
+
+          const maxDiscount = await getMaxDiscountPolicy(db, ctx.tenantId);
+          if (maxDiscount > 0) {
+            const { data: gateItems } = await db
+              .from('proposal_line_items')
+              .select('quantity, unit_price, discount')
+              .eq('proposal_id', subMatch[1])
+              .eq('tenant_id', ctx.tenantId);
+            let gross = 0;
+            let lineDiscounts = 0;
+            for (const it of gateItems ?? []) {
+              gross += (toNum(it.quantity) || 1) * toNum(it.unit_price);
+              lineDiscounts += toNum(it.discount);
+            }
+            const effectivePct =
+              gross > 0 ? ((lineDiscounts + toNum(cur.discount_amount)) / gross) * 100 : 0;
+            if (effectivePct > maxDiscount) {
+              return errorResponse(
+                409,
+                `Effective discount ${effectivePct.toFixed(1)}% (including line discounts) exceeds the ${maxDiscount}% maximum and requires manager approval.`,
+                req,
+                {
+                  code: 'PRICING_APPROVAL_REQUIRED',
+                  details: { effectiveDiscountPct: effectivePct, maxDiscount },
+                  requestId,
+                },
+              );
+            }
           }
         }
       }

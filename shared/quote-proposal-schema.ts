@@ -187,6 +187,10 @@ export const proposals = pgTable('proposals', {
   subtotal: decimal('subtotal', { precision: 10, scale: 2 }),
   discountAmount: decimal('discount_amount', { precision: 10, scale: 2 }).default('0'),
   discountPercentage: decimal('discount_percentage', { precision: 5, scale: 2 }).default('0'),
+  // QUOTE-016: required justification whenever any discount (quote-level or
+  // per-line) is set. competitive_match | volume | promotion | manager_approved | other
+  discountReason: varchar('discount_reason'),
+  discountReasonNote: text('discount_reason_note'),
   taxAmount: decimal('tax_amount', { precision: 10, scale: 2 }).default('0'),
   totalAmount: decimal('total_amount', { precision: 10, scale: 2 }),
 

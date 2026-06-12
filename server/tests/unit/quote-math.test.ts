@@ -5,6 +5,13 @@ import {
   quoteGrossProfit,
   round2,
   toNumber,
+  lineGrossTotal,
+  lineNetTotal,
+  lineNetMarginPct,
+  sumLineGross,
+  sumLineDiscounts,
+  sumLineNet,
+  effectiveDiscountPct,
 } from '@shared/quote-math';
 
 describe('quote-math', () => {
@@ -48,6 +55,89 @@ describe('quote-math', () => {
       expect(toNumber(undefined)).toBe(0);
       expect(toNumber('abc')).toBe(0);
       expect(toNumber(7)).toBe(7);
+    });
+  });
+
+  // ─── QUOTE-016: per-line discounts ────────────────────────────────────────
+  describe('lineNetTotal / lineGrossTotal', () => {
+    it('net = qty × unitPrice − discount (discount is a whole-line dollar amount)', () => {
+      expect(lineGrossTotal({ quantity: 2, unitPrice: 100 })).toBe(200);
+      expect(lineNetTotal({ quantity: 2, unitPrice: 100, discount: 50 })).toBe(150);
+    });
+    it('no discount → net equals gross', () => {
+      expect(lineNetTotal({ quantity: 3, unitPrice: 40 })).toBe(120);
+    });
+    it('floors at 0 — a discount can never make a line negative', () => {
+      expect(lineNetTotal({ quantity: 1, unitPrice: 100, discount: 500 })).toBe(0);
+    });
+  });
+
+  describe('lineNetMarginPct', () => {
+    it('computes margin on net revenue', () => {
+      // 2 × $100 − $50 = $150 revenue; cost 2 × $60 = $120 → 20%
+      expect(
+        lineNetMarginPct({ quantity: 2, unitPrice: 100, discount: 50, unitCost: 60 }),
+      ).toBeCloseTo(20);
+    });
+    it('equals lineMarginPct when there is no discount', () => {
+      expect(lineNetMarginPct({ quantity: 4, unitPrice: 100, unitCost: 60 })).toBeCloseTo(
+        lineMarginPct(100, 60),
+      );
+    });
+    it('returns 0 when net revenue is 0', () => {
+      expect(lineNetMarginPct({ quantity: 1, unitPrice: 100, discount: 100, unitCost: 60 })).toBe(
+        0,
+      );
+    });
+    it('matches the edge-fn inline computation (revenue-based, parity guard)', () => {
+      const qty = 2,
+        unitPrice = 100,
+        discount = 30,
+        unitCost = 55;
+      const revenue = Math.max(0, qty * unitPrice - discount);
+      const inline = revenue > 0 ? ((revenue - unitCost * qty) / revenue) * 100 : 0;
+      expect(lineNetMarginPct({ quantity: qty, unitPrice, discount, unitCost })).toBeCloseTo(
+        inline,
+      );
+    });
+  });
+
+  describe('quote rollup with per-line discounts', () => {
+    const lines = [
+      { quantity: 1, unitPrice: 1000, discount: 100, unitCost: 600 },
+      { quantity: 2, unitPrice: 250, unitCost: 150 },
+    ];
+    it('sums gross, discounts, and net independently', () => {
+      expect(sumLineGross(lines)).toBe(1500);
+      expect(sumLineDiscounts(lines)).toBe(100);
+      expect(sumLineNet(lines)).toBe(1400);
+    });
+    it('quote-level discount applies AFTER line discounts (subtotal is net)', () => {
+      // subtotal (net) 1400, quote discount 200 → revenue 1200; cost 900 → 25%
+      const margin = quoteMarginPct({ subtotal: sumLineNet(lines), discount: 200, totalCost: 900 });
+      expect(round2(margin)).toBe(25);
+    });
+  });
+
+  describe('effectiveDiscountPct (guardrail input)', () => {
+    it('combines line + quote discounts over the gross subtotal', () => {
+      const lines = [{ quantity: 1, unitPrice: 1000, discount: 100 }];
+      // (100 + 100) / 1000 = 20%
+      expect(effectiveDiscountPct(lines, 100)).toBeCloseTo(20);
+    });
+    it('spreading a discount across lines cannot dodge the policy', () => {
+      const spread = [
+        { quantity: 1, unitPrice: 500, discount: 75 },
+        { quantity: 1, unitPrice: 500, discount: 75 },
+      ];
+      const quoteLevel = [
+        { quantity: 1, unitPrice: 500 },
+        { quantity: 1, unitPrice: 500 },
+      ];
+      expect(effectiveDiscountPct(spread, 0)).toBeCloseTo(effectiveDiscountPct(quoteLevel, 150));
+    });
+    it('returns 0 with no lines', () => {
+      expect(effectiveDiscountPct([], 100)).toBe(0);
     });
   });
 

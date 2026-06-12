@@ -37,6 +37,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
+import { effectiveDiscountPct, sumLineDiscounts } from '@shared/quote-math';
 import { downloadQuotePdf, emailQuote } from '@/lib/quote-pdf';
 import CompanyContactSelector from './CompanyContactSelector';
 import LineItemManager from './LineItemManager';
@@ -65,6 +66,10 @@ const quoteSchema = z.object({
   // Pricing fields
   discountAmount: z.string().optional(),
   discountPercentage: z.string().optional(),
+  // QUOTE-016: justification, required (enforced at save/submit) when any
+  // discount — quote-level or per-line — is set.
+  discountReason: z.string().optional(),
+  discountReasonNote: z.string().optional(),
   taxAmount: z.string().optional(),
   subtotal: z.string().optional(),
   totalAmount: z.string().optional(),
@@ -98,6 +103,8 @@ interface LineItem {
   totalPrice: number;
   unitCost?: number;
   margin?: number;
+  // QUOTE-016: dollar amount off the whole line; totalPrice is net of it.
+  discount?: number;
   notes?: string;
 }
 
@@ -131,12 +138,15 @@ function buildQuoteData(quote: QuoteFormData, lineItems: LineItem[]) {
       unitCost: item.unitCost ?? 0,
       unitPrice: item.unitPrice,
       totalPrice: item.totalPrice,
+      discount: item.discount ?? 0,
       margin: item.margin,
       notes: item.notes,
     })),
     subtotal: subtotalAmount.toString(),
     discountAmount: discountAmt.toString(),
     discountPercentage: quote.discountPercentage || '0',
+    discountReason: quote.discountReason || null,
+    discountReasonNote: quote.discountReasonNote || null,
     taxAmount: taxAmt.toString(),
     totalAmount: totalAmount.toString(),
   };
@@ -200,6 +210,8 @@ export default function QuoteBuilder({
       internalNotes: '',
       discountAmount: '0',
       discountPercentage: '0',
+      discountReason: '',
+      discountReasonNote: '',
       taxAmount: '0',
       subtotal: '0',
       totalAmount: '0',
@@ -271,6 +283,10 @@ export default function QuoteBuilder({
       const discountAmt = existingQuote.discountAmount ?? existingQuote.discount_amount ?? '0';
       const discountPct =
         existingQuote.discountPercentage ?? existingQuote.discount_percentage ?? '0';
+      const loadedDiscountReason =
+        existingQuote.discountReason ?? existingQuote.discount_reason ?? '';
+      const loadedDiscountReasonNote =
+        existingQuote.discountReasonNote ?? existingQuote.discount_reason_note ?? '';
       const taxAmt = existingQuote.taxAmount ?? existingQuote.tax_amount ?? '0';
       const customer = existingQuote.customer || null;
       const billingAddress = customer
@@ -289,6 +305,8 @@ export default function QuoteBuilder({
         internalNotes: existingQuote.internalNotes || existingQuote.internal_notes || '',
         discountAmount: String(discountAmt),
         discountPercentage: String(discountPct),
+        discountReason: String(loadedDiscountReason || ''),
+        discountReasonNote: String(loadedDiscountReasonNote || ''),
         taxAmount: String(taxAmt),
       });
 
@@ -340,6 +358,7 @@ export default function QuoteBuilder({
           totalPrice: parseFloat(item.totalPrice || item.total_price || '0'),
           unitCost: parseFloat(item.unitCost || item.unit_cost || '0'),
           margin: parseFloat(item.margin || '0') || 0,
+          discount: parseFloat(item.discount || '0') || 0,
           notes: item.notes || '',
         }));
         setLineItems(transformedLineItems);
@@ -487,6 +506,26 @@ export default function QuoteBuilder({
     form.setValue('discountPercentage', discountPct.toString());
   };
 
+  // QUOTE-016: discount justification, owned by the form so it persists with
+  // the quote. Returns the validation error message (or null) — a reason is
+  // required whenever ANY discount (per-line or quote-level) is set, and the
+  // free-text note is required when the reason is 'other'.
+  const handleDiscountReasonChange = (reason: string, note: string) => {
+    form.setValue('discountReason', reason);
+    form.setValue('discountReasonNote', note);
+  };
+
+  const discountReasonError = (): string | null => {
+    const anyDiscount = sumLineDiscounts(lineItems) > 0 || discountAmount > 0;
+    if (!anyDiscount) return null;
+    const reason = form.getValues('discountReason');
+    if (!reason) return 'Select a discount reason — every discount needs a recorded justification.';
+    if (reason === 'other' && !(form.getValues('discountReasonNote') || '').trim()) {
+      return "Add a note explaining the discount — required when the reason is 'Other'.";
+    }
+    return null;
+  };
+
   const handleTaxChange = (taxAmt: number) => {
     setTaxAmount(taxAmt);
     form.setValue('taxAmount', taxAmt.toString());
@@ -511,6 +550,19 @@ export default function QuoteBuilder({
       return;
     }
 
+    // QUOTE-016: discounts must carry a reason, even on drafts saved manually.
+    // (Background autosave still persists work-in-progress without blocking.)
+    const reasonError = discountReasonError();
+    if (reasonError) {
+      toast({
+        title: 'Discount reason required',
+        description: reasonError,
+        variant: 'destructive',
+      });
+      setCurrentStep(2);
+      return;
+    }
+
     saveQuoteMutation.mutate({ quote: data, lineItems });
   };
 
@@ -525,20 +577,36 @@ export default function QuoteBuilder({
       return;
     }
 
-    // QUOTE-006: enforce pricing policy on send. Managers may override.
+    // QUOTE-016: discounts must carry a reason before the quote can be sent.
+    const reasonError = discountReasonError();
+    if (reasonError) {
+      toast({
+        title: 'Discount reason required',
+        description: reasonError,
+        variant: 'destructive',
+      });
+      setCurrentStep(2);
+      return;
+    }
+
+    // QUOTE-006/016: enforce pricing policy on send. Managers may override.
+    // Margin uses the discounted subtotal (line totals are net of per-line
+    // discounts); the max-discount check evaluates the EFFECTIVE discount —
+    // per-line plus quote-level, relative to the gross subtotal.
     const totalCost = lineItems.reduce((sum, i) => sum + (i.unitCost || 0) * i.quantity, 0);
     const revenue = totals.subtotal - discountAmount;
     const overallMargin = revenue > 0 ? ((revenue - totalCost) / revenue) * 100 : 0;
+    const effectiveDiscount = effectiveDiscountPct(lineItems, Math.max(0, discountAmount));
     const belowMinMargin =
       totalCost > 0 && minMargin != null && minMargin > 0 && overallMargin < minMargin;
     const overMaxDiscount =
-      maxDiscount != null && maxDiscount > 0 && discountPercentage > maxDiscount;
+      maxDiscount != null && maxDiscount > 0 && effectiveDiscount > maxDiscount;
     if ((belowMinMargin || overMaxDiscount) && !isManager) {
       toast({
         title: 'Manager approval required',
         description: belowMinMargin
           ? `Margin ${overallMargin.toFixed(1)}% is below the ${minMargin}% minimum. Save as draft and request manager approval.`
-          : `Discount ${discountPercentage.toFixed(1)}% exceeds the ${maxDiscount}% maximum. Save as draft and request manager approval.`,
+          : `Effective discount ${effectiveDiscount.toFixed(1)}% (including line discounts) exceeds the ${maxDiscount}% maximum. Save as draft and request manager approval.`,
         variant: 'destructive',
       });
       return;
@@ -930,6 +998,9 @@ export default function QuoteBuilder({
             onTaxChange={handleTaxChange}
             minMarginPercentage={minMargin}
             maxDiscountPercentage={maxDiscount}
+            discountReason={form.watch('discountReason') || ''}
+            discountReasonNote={form.watch('discountReasonNote') || ''}
+            onDiscountReasonChange={handleDiscountReasonChange}
           />
           <Card>
             <CardHeader className="p-4 sm:p-6">
@@ -1013,6 +1084,12 @@ export default function QuoteBuilder({
               </div>
             </div>
             <div className="rounded-lg border p-4 space-y-2">
+              {sumLineDiscounts(lineItems) > 0 && (
+                <div className="flex justify-between text-xs text-red-600">
+                  <span>Line discounts (included in subtotal)</span>
+                  <span>-{formatCurrency(sumLineDiscounts(lineItems))}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span>Subtotal</span>
                 <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
@@ -1023,6 +1100,18 @@ export default function QuoteBuilder({
                   <span>-{formatCurrency(discountAmount)}</span>
                 </div>
               )}
+              {(sumLineDiscounts(lineItems) > 0 || discountAmount > 0) &&
+                form.watch('discountReason') && (
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Discount reason</span>
+                    <span>
+                      {form.watch('discountReason')?.replace(/_/g, ' ')}
+                      {form.watch('discountReasonNote')
+                        ? ` — ${form.watch('discountReasonNote')}`
+                        : ''}
+                    </span>
+                  </div>
+                )}
               {taxAmount > 0 && (
                 <div className="flex justify-between text-sm">
                   <span>Tax</span>
@@ -1093,8 +1182,12 @@ export default function QuoteBuilder({
                     <tbody>
                       {lineItems.map((item, idx) => {
                         const cost = item.unitCost || 0;
+                        // Margin on the line's net revenue (after per-line discount).
+                        const lineRevenue = item.totalPrice;
                         const lineMargin =
-                          item.unitPrice > 0 ? ((item.unitPrice - cost) / item.unitPrice) * 100 : 0;
+                          lineRevenue > 0
+                            ? ((lineRevenue - cost * item.quantity) / lineRevenue) * 100
+                            : 0;
                         return (
                           <tr key={item.id || idx} className="border-b border-amber-100">
                             <td className="py-1 pr-2">{item.productName}</td>

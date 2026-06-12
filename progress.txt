@@ -5704,3 +5704,73 @@ Status: Needs Review
 - The `/equipment-packages/:id/items` resolver is the reusable piece if QUOTE-016/017 need package-aware pricing.
 - Remaining prio-2 quote stories: QUOTE-016 (per-line discounts — largest), QUOTE-017 (recurring lines), QUOTE-019 (wizard polish). LAUNCH-011/020 remain ops-blocked (need live infra / k6).
 - REMINDER: migrations 0014-0018 still pending manual apply (journal stops at 0009).
+
+Iteration 2 (06/11/2026 18:40:17): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+## Ralph Iteration — QUOTE-016 (Per-line discounts with reason codes)
+
+**Date:** 2026-06-11
+**Story:** QUOTE-016 — Per-line discounts with reason codes, enforced in guardrails and server totals
+**Status:** ✅ passes: true (all 7 ACs; AC7 check+build green)
+
+### Semantics decision (important for QUOTE-017/019/020)
+`proposal_line_items.discount` = DOLLAR amount off the WHOLE line. UI accepts percent
+in the edit dialog but converts to $ at save, so stored values stay unambiguous when
+qty/price change later. `total_price` is stored NET of the line discount; the quote
+subtotal is therefore automatically net, and quote-level discount applies after.
+Line margin = (netRevenue − qty×cost)/netRevenue (equals old unit-price formula when
+no discount). All formulas canonical in shared/quote-math.ts (Node) and replicated
+inline in the Deno edge fn — locked by server/tests/unit/quote-math.test.ts (21 tests).
+
+### What shipped
+- **shared/quote-math.ts**: lineGrossTotal/lineNetTotal (floored at 0)/lineNetMarginPct/
+  sumLineGross/sumLineDiscounts/sumLineNet/effectiveDiscountPct(lines, quoteDiscount).
+  Effective discount = (Σ line discounts + quote discount) / gross subtotal — spreading
+  a discount across lines cannot dodge the max-discount policy (test asserts equality).
+- **Migration 0019_proposal_discount_reason.sql** (PENDING manual apply, like 0014-0018):
+  proposals.discount_reason varchar + discount_reason_note text; also defensive
+  proposal_line_items.discount ADD COLUMN IF NOT EXISTS. Schema added to quote-proposal-schema.ts.
+- **proposals edge fn**: normalizeLineItem computes total_price + margin net of discount;
+  recalculateProposalTotals selects discount and falls back to qty×price−discount when
+  total_price empty; PROPOSAL_FIELD_MAP += discountReason/discountReasonNote; POST+PATCH
+  have PGRST204 drift-retry (stripProposalDriftColumns) so saves survive the un-applied
+  migration; status=sent 409 gate adds max-discount check on EFFECTIVE discount using
+  company_pricing_settings.max_discount_percentage (0/no row = not enforced, matches client).
+- **LineItemManager**: discount on LineItem; withDerived() recomputes net total+margin on
+  qty/price/discount change; inline $ discount input on main+subline rows (mobile+desktop);
+  edit dialog %-or-$ entry, clamped to [0, gross], live discounted-total preview.
+- **PricingCalculator**: per-item "−$X disc." markers + "Line discounts (included)" row;
+  overMaxDiscount now uses effectiveDiscountPct; discount-reason select (competitive_match/
+  volume/promotion/manager_approved/other) + note (required for 'other'), red highlight
+  when missing; new props discountReason/discountReasonNote/onDiscountReasonChange.
+- **QuoteBuilder**: discountReason/Note in zod schema+form+payload+hydration (both casings);
+  send gate evaluates effective discount; manual Save Draft AND Submit blocked with toast +
+  jump to Pricing step when a discount lacks a reason (background autosave still persists —
+  drafts may violate, per QUOTE-018 rule); Review shows line-discount rollup + reason;
+  manager table margin now net of line discounts.
+- **_pdf.ts**: manager table gained Disc. column (8 cols, widths rebalanced) + margin on net
+  revenue + "Discount reason: <label> — <note>" line under totals; customer PDF shows
+  effective (discounted) unit price + net line totals ONLY — discount never rendered.
+
+### Quality gates
+- quote-math tests 21/21; proposal-merge 13/13; vite build 22.5s; deno check both files green;
+  tsc: 0 errors in touched files (6290 pre-existing repo-wide); prettier applied; eslint:
+  touched files ignored by repo config (pre-existing).
+- Full server/tests/unit: 2028 pass / 10 fail — ALL pre-existing (connection-resilience,
+  report-cache, error-sanitization, navigation-permissions, hierarchical-query-builder +
+  their database-exports/ frozen duplicates failing identically → provably not mine).
+
+### Notes for the next Ralph iteration
+- Migrations 0014-0019 ALL pending manual apply (journal stops at 0009). Until 0019 lands,
+  discount_reason silently drops on save (drift-retry logs a warning) — discounts + line
+  totals still work since proposal_line_items.discount exists in the base schema.
+- usePricingVisibility maxDiscountPercentage/minMarginPercentage come from the Express
+  /api/pricing-settings/visibility in dev; the edge fn pricing-settings/visibility returns
+  snake_case pricing_visibility WITHOUT the policy numbers — pre-existing prod parity gap
+  (predates this story; affects QUOTE-006 too). Worth an EDGE story.
+- Remaining prio-2 quote stories: QUOTE-017 (recurring lines — reuse the one-time vs
+  recurring split already in the merge data path), QUOTE-019 (wizard polish). QUOTE-020 prio-3.
+- Browser verify still blocked on stale anon key (not an AC for this story).

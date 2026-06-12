@@ -47,6 +47,9 @@ interface Proposal {
   created_at: string | null;
   tax_amount: string | number | null;
   discount_amount: string | number | null;
+  // QUOTE-016: justification recorded whenever any discount is set.
+  discount_reason?: string | null;
+  discount_reason_note?: string | null;
 }
 
 interface LineItem {
@@ -56,7 +59,19 @@ interface LineItem {
   quantity: number | null;
   unit_price: string | number | null;
   unit_cost: string | number | null;
+  // QUOTE-016: dollar amount off the whole line; total_price is net of it.
+  discount?: string | number | null;
+  total_price?: string | number | null;
 }
+
+// QUOTE-016 reason codes → display labels (manager PDF only).
+const DISCOUNT_REASON_LABELS: Record<string, string> = {
+  competitive_match: 'Competitive match',
+  volume: 'Volume',
+  promotion: 'Promotion',
+  manager_approved: 'Manager approved',
+  other: 'Other',
+};
 
 interface Company {
   company_name?: string | null;
@@ -259,11 +274,12 @@ export async function renderProposalPDF(input: RenderPDFInput): Promise<Uint8Arr
     { label: 'Total', width: usableWidth * 0.16, align: 'right' as const },
   ];
   const colsManager = [
-    { label: 'Product', width: usableWidth * 0.26, align: 'left' as const },
-    { label: 'Qty', width: usableWidth * 0.08, align: 'center' as const },
-    { label: 'Cost', width: usableWidth * 0.13, align: 'right' as const },
-    { label: 'Unit Price', width: usableWidth * 0.14, align: 'right' as const },
-    { label: 'Total Cost', width: usableWidth * 0.13, align: 'right' as const },
+    { label: 'Product', width: usableWidth * 0.22, align: 'left' as const },
+    { label: 'Qty', width: usableWidth * 0.07, align: 'center' as const },
+    { label: 'Cost', width: usableWidth * 0.11, align: 'right' as const },
+    { label: 'Unit Price', width: usableWidth * 0.12, align: 'right' as const },
+    { label: 'Disc.', width: usableWidth * 0.1, align: 'right' as const },
+    { label: 'Total Cost', width: usableWidth * 0.12, align: 'right' as const },
     { label: 'Total Price', width: usableWidth * 0.13, align: 'right' as const },
     { label: 'Margin', width: usableWidth * 0.13, align: 'right' as const },
   ];
@@ -292,10 +308,22 @@ export async function renderProposalPDF(input: RenderPDFInput): Promise<Uint8Arr
       page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
       y = PAGE_HEIGHT - MARGIN_Y;
     }
-    const qty = Number(item.quantity ?? 1);
+    const qty = Number(item.quantity ?? 1) || 1;
     const unitPrice = toNum(item.unit_price);
-    const lineTotal = qty * unitPrice;
+    // QUOTE-016: line totals are net of the per-line discount. Prefer the
+    // stored total_price (already net); fall back to recomputing.
+    const lineDiscount = toNum(item.discount);
+    const lineTotal =
+      item.total_price !== null && item.total_price !== undefined && item.total_price !== ''
+        ? toNum(item.total_price)
+        : Math.max(0, qty * unitPrice - lineDiscount);
     subtotal += lineTotal;
+    // Customer PDF shows discounted prices ONLY — the effective unit price,
+    // never the discount itself. Manager PDF gets the explicit Disc. column.
+    const effectiveUnitPrice = qty > 0 ? lineTotal / qty : unitPrice;
+    const lineCost = qty * toNum(item.unit_cost);
+    const netMargin =
+      lineTotal > 0 ? `${(((lineTotal - lineCost) / lineTotal) * 100).toFixed(1)}%` : '0.0%';
 
     const cells = input.isManager
       ? [
@@ -303,15 +331,16 @@ export async function renderProposalPDF(input: RenderPDFInput): Promise<Uint8Arr
           String(qty),
           money(toNum(item.unit_cost)),
           money(unitPrice),
-          money(qty * toNum(item.unit_cost)),
+          lineDiscount > 0 ? `-${money(lineDiscount)}` : '—',
+          money(lineCost),
           money(lineTotal),
-          margin(unitPrice, toNum(item.unit_cost)),
+          netMargin,
         ]
       : [
           item.product_name,
           truncate(item.description ?? '', 60),
           String(qty),
-          money(unitPrice),
+          money(effectiveUnitPrice),
           money(lineTotal),
         ];
 
@@ -358,6 +387,21 @@ export async function renderProposalPDF(input: RenderPDFInput): Promise<Uint8Arr
   }
   drawTotalRow(page, font, bold, 'Total', money(total), totalsX, y, totalsW, true);
   y -= 24;
+
+  // QUOTE-016: manager PDF surfaces the recorded discount justification.
+  // Never shown on the customer PDF.
+  if (input.isManager && input.proposal.discount_reason) {
+    const reasonLabel =
+      DISCOUNT_REASON_LABELS[input.proposal.discount_reason] ?? input.proposal.discount_reason;
+    const note = (input.proposal.discount_reason_note ?? '').replace(/\s+/g, ' ').trim();
+    const reasonText = `Discount reason: ${reasonLabel}${note ? ` — ${truncate(note, 140)}` : ''}`;
+    if (y < MARGIN_Y + 90) {
+      page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      y = PAGE_HEIGHT - MARGIN_Y;
+    }
+    page.drawText(reasonText, { x: MARGIN_X, y, size: 9, font, color: BODY_TEXT });
+    y -= 16;
+  }
 
   // ─── Manager export notice ──────────────────────────────────────────────────
   if (input.isManager) {

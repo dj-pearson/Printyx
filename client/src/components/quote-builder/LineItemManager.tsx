@@ -61,6 +61,14 @@ import RequiredAccessoriesDialog, {
   type AccessoryConfirmRow,
   type ConfirmedAccessory,
 } from './RequiredAccessoriesDialog';
+import { lineGrossTotal, lineNetTotal, lineNetMarginPct } from '@shared/quote-math';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type ProductType =
   | 'product_models'
@@ -88,6 +96,8 @@ interface LineItem {
   totalPrice: number;
   unitCost?: number;
   margin?: number;
+  // QUOTE-016: dollar amount off the whole line; totalPrice is net of it.
+  discount?: number;
   notes?: string;
 }
 
@@ -383,40 +393,58 @@ export default function LineItemManager({
     return ((price - cost) / price) * 100;
   };
 
-  const handleQuantityChange = (index: number, newQuantity: number) => {
-    const item = lineItems[index];
-    const updatedItem = {
-      ...item,
-      quantity: newQuantity,
-      totalPrice: newQuantity * parseFloat(item.unitPrice.toString()),
+  // QUOTE-016: recompute the derived fields (net total + margin) from qty,
+  // price, and the per-line discount. The discount is a dollar amount off the
+  // whole line; formulas come from shared/quote-math so the server agrees.
+  const withDerived = (item: LineItem): LineItem => {
+    const line = {
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      discount: item.discount || 0,
+      unitCost: item.unitCost || 0,
     };
-    onUpdateItem(index, updatedItem);
+    return { ...item, totalPrice: lineNetTotal(line), margin: lineNetMarginPct(line) };
+  };
+
+  const handleQuantityChange = (index: number, newQuantity: number) => {
+    onUpdateItem(index, withDerived({ ...lineItems[index], quantity: newQuantity }));
   };
 
   const handlePriceChange = (index: number, newPrice: number) => {
-    const item = lineItems[index];
-    const updatedItem = {
-      ...item,
-      unitPrice: newPrice,
-      totalPrice: parseFloat(item.quantity.toString()) * parseFloat(newPrice.toString()),
-      margin: calculateMargin(newPrice, item.unitCost || 0),
-    };
-    onUpdateItem(index, updatedItem);
+    onUpdateItem(index, withDerived({ ...lineItems[index], unitPrice: newPrice }));
   };
+
+  // Inline per-line discount (dollar amount), clamped to the line gross so a
+  // discount can never push a line negative.
+  const handleLineDiscountChange = (index: number, amount: number) => {
+    const item = lineItems[index];
+    const gross = lineGrossTotal({ quantity: item.quantity, unitPrice: item.unitPrice });
+    const discount = Math.min(Math.max(0, amount), gross);
+    onUpdateItem(index, withDerived({ ...item, discount }));
+  };
+
+  // Edit-dialog discount entry: percent or dollar amount. Percent converts to
+  // dollars on save — the stored value is always a dollar amount.
+  const [editDiscountMode, setEditDiscountMode] = useState<'amount' | 'percent'>('amount');
+  const [editDiscountValue, setEditDiscountValue] = useState<number>(0);
 
   const handleEditItem = (index: number) => {
     setEditingIndex(index);
     setEditingItem({ ...lineItems[index] });
+    setEditDiscountMode('amount');
+    setEditDiscountValue(lineItems[index].discount || 0);
   };
 
   const handleSaveEdit = () => {
     if (editingIndex !== null && editingItem) {
-      const updatedItem = {
-        ...editingItem,
-        totalPrice: editingItem.quantity * editingItem.unitPrice,
-        margin: calculateMargin(editingItem.unitPrice, editingItem.unitCost || 0),
-      };
-      onUpdateItem(editingIndex, updatedItem);
+      const gross = lineGrossTotal({
+        quantity: editingItem.quantity,
+        unitPrice: editingItem.unitPrice,
+      });
+      const rawDiscount =
+        editDiscountMode === 'percent' ? (gross * editDiscountValue) / 100 : editDiscountValue;
+      const discount = Math.min(Math.max(0, rawDiscount), gross);
+      onUpdateItem(editingIndex, withDerived({ ...editingItem, discount }));
       setEditingIndex(null);
       setEditingItem(null);
     }
@@ -675,6 +703,20 @@ export default function LineItemManager({
                           />
                         </div>
 
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground w-16">Discount $:</span>
+                          <Input
+                            type="number"
+                            value={mainItem.discount || 0}
+                            onChange={(e) =>
+                              handleLineDiscountChange(mainIndex, parseFloat(e.target.value) || 0)
+                            }
+                            className="flex-1 h-9"
+                            step="0.01"
+                            min="0"
+                          />
+                        </div>
+
                         <div className="flex items-center justify-between pt-2 border-t">
                           <span className="text-sm font-medium">Line Total:</span>
                           <span className="text-lg font-bold">{formatCurrency(lineTotal)}</span>
@@ -752,6 +794,23 @@ export default function LineItemManager({
                               className="w-24 h-9 min-h-[44px]"
                               step="0.01"
                             />
+                            <span
+                              className="text-sm text-muted-foreground"
+                              title="Line discount ($)"
+                            >
+                              −
+                            </span>
+                            <Input
+                              type="number"
+                              value={mainItem.discount || 0}
+                              onChange={(e) =>
+                                handleLineDiscountChange(mainIndex, parseFloat(e.target.value) || 0)
+                              }
+                              className="w-20 h-9 min-h-[44px]"
+                              step="0.01"
+                              min="0"
+                              title="Line discount ($)"
+                            />
                             <span className="text-sm text-muted-foreground">=</span>
                             <div className="font-bold text-lg w-24 text-right">
                               {formatCurrency(lineTotal)}
@@ -760,6 +819,11 @@ export default function LineItemManager({
                           {mainItem.msrp && mainItem.msrp !== mainItem.unitPrice && (
                             <div className="text-xs text-muted-foreground">
                               MSRP: {formatCurrency(mainItem.msrp)}
+                            </div>
+                          )}
+                          {(mainItem.discount || 0) > 0 && (
+                            <div className="text-xs text-red-600">
+                              Line discount: −{formatCurrency(mainItem.discount || 0)}
                             </div>
                           )}
                         </div>
@@ -950,6 +1014,25 @@ export default function LineItemManager({
                                 />
                               </div>
 
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground w-16">
+                                  Discount $:
+                                </span>
+                                <Input
+                                  type="number"
+                                  value={subItem.discount || 0}
+                                  onChange={(e) =>
+                                    handleLineDiscountChange(
+                                      subIndex,
+                                      parseFloat(e.target.value) || 0,
+                                    )
+                                  }
+                                  className="flex-1 h-9"
+                                  step="0.01"
+                                  min="0"
+                                />
+                              </div>
+
                               <div className="flex items-center justify-between pt-2 border-t">
                                 <span className="text-sm font-medium">Total:</span>
                                 <span className="font-semibold">
@@ -998,11 +1081,36 @@ export default function LineItemManager({
                                     className="w-24 h-9 min-h-[44px]"
                                     step="0.01"
                                   />
+                                  <span
+                                    className="text-sm text-muted-foreground"
+                                    title="Line discount ($)"
+                                  >
+                                    −
+                                  </span>
+                                  <Input
+                                    type="number"
+                                    value={subItem.discount || 0}
+                                    onChange={(e) =>
+                                      handleLineDiscountChange(
+                                        subIndex,
+                                        parseFloat(e.target.value) || 0,
+                                      )
+                                    }
+                                    className="w-20 h-9 min-h-[44px]"
+                                    step="0.01"
+                                    min="0"
+                                    title="Line discount ($)"
+                                  />
                                   <span className="text-sm text-muted-foreground">=</span>
                                   <div className="font-medium w-20 text-right">
                                     {formatCurrency(subItem.totalPrice)}
                                   </div>
                                 </div>
+                                {(subItem.discount || 0) > 0 && (
+                                  <div className="text-xs text-red-600 text-right">
+                                    Line discount: −{formatCurrency(subItem.discount || 0)}
+                                  </div>
+                                )}
                               </div>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -1097,6 +1205,58 @@ export default function LineItemManager({
                     />
                   </div>
                 </div>
+                {/* QUOTE-016: per-line discount, entered as % or $ (stored as $) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Discount Type</label>
+                    <Select
+                      value={editDiscountMode}
+                      onValueChange={(value: 'amount' | 'percent') => setEditDiscountMode(value)}
+                    >
+                      <SelectTrigger className="min-h-[44px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="amount">Dollar Amount</SelectItem>
+                        <SelectItem value="percent">Percentage</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Discount {editDiscountMode === 'percent' ? '(%)' : '($)'}
+                    </label>
+                    <Input
+                      type="number"
+                      value={editDiscountValue}
+                      onChange={(e) => setEditDiscountValue(parseFloat(e.target.value) || 0)}
+                      step="0.01"
+                      min="0"
+                      max={editDiscountMode === 'percent' ? 100 : undefined}
+                      className="min-h-[44px]"
+                    />
+                  </div>
+                </div>
+                {(() => {
+                  const gross = lineGrossTotal({
+                    quantity: editingItem.quantity,
+                    unitPrice: editingItem.unitPrice,
+                  });
+                  const dollars =
+                    editDiscountMode === 'percent'
+                      ? (gross * editDiscountValue) / 100
+                      : editDiscountValue;
+                  const clamped = Math.min(Math.max(0, dollars), gross);
+                  return clamped > 0 ? (
+                    <div className="text-xs text-muted-foreground">
+                      Discounted line total:{' '}
+                      <span className="font-medium text-foreground">
+                        {formatCurrency(gross - clamped)}
+                      </span>{' '}
+                      (−{formatCurrency(clamped)} off {formatCurrency(gross)})
+                    </div>
+                  ) : null;
+                })()}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Notes</label>
                   <Input
