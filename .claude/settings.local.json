@@ -88,7 +88,10 @@
       "Bash(python3:*)",
       "Bash(pip install:*)",
       "Bash(pip3 install:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "PowerShell(ssh -o BatchMode=yes root@209.145.59.219 'docker exec supabase-kong-cgkko0cscowggwk8sss44wkw sh -c \"printf %s \\\\\"$SUPABASE_ANON_KEY\\\\\" | sha256sum; printf %s \\\\\"$SUPABASE_SERVICE_KEY\\\\\" | sha256sum\"')",
+      "PowerShell(ssh -o BatchMode=yes root@209.145.59.219 'echo KONG_ANON:; docker exec supabase-kong-cgkko0cscowggwk8sss44wkw printenv SUPABASE_ANON_KEY | tr -d \"\\\\n\" | sha256sum; echo KONG_SVC:; docker exec supabase-kong-cgkko0cscowggwk8sss44wkw printenv SUPABASE_SERVICE_KEY | tr -d \"\\\\n\" | sha256sum; echo AUTH_JWT_SECRET_LEN:; docker exec supabase-auth-cgkko0cscowggwk8sss44wkw printenv GOTRUE_JWT_SECRET | tr -d \"\\\\n\" | wc -c')",
+      "PowerShell(ssh -o BatchMode=yes root@209.145.59.219 'ANON=$\\(docker exec supabase-kong-cgkko0cscowggwk8sss44wkw printenv SUPABASE_ANON_KEY | tr -d \"\\\\n\"\\); curl -s -o /dev/null -w \"settings_status:%{http_code}\\\\n\" -H \"apikey: $ANON\" https://api.printyx.net/auth/v1/settings; curl -s -w \"\\\\ntoken_status:%{http_code}\\\\n\" -H \"apikey: $ANON\" -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"pearsonperformance@gmail.com\\\\\",\\\\\"password\\\\\":\\\\\"definitely-wrong-password-123\\\\\"}\" \"https://api.printyx.net/auth/v1/token?grant_type=password\"')"
     ],
     "deny": [],
     "ask": []
