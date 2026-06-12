@@ -1238,3 +1238,6 @@ Status: Needs Review
 
 ### Story Status:
 - US-020: **COMPLETE** (passes: true; DB SQL pending manual apply)
+
+Iteration 2 (06/12/2026 08:52:22): Story US-020
+Status: Complete
