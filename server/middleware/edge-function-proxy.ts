@@ -325,6 +325,17 @@ export function registerEdgeFunctionProxy(app: any) {
     // service-entries, generate-invoices, contract-profitability).
     '/api/billing': 'billing',
 
+    // EDGE-002b: customer-portal — full frontend parity audited 2026-06-11
+    // (dashboard, equipment [+`equipment` alias key], supply-orders GET/POST,
+    // knowledge-base, service-requests list [page/search]/detail/:id/history,
+    // maintenance-availability, maintenance-appointments CRUD + reschedule,
+    // satisfaction surveys list/detail/start/submit + analytics,
+    // usage-analytics, equipment-health). The legacy /auth/* + /notifications
+    // paths (CustomerPortal.tsx standalone portal-session login) were already
+    // unserved by Express (routes-customer-portal.ts never had them) — equally
+    // 404 before and after this proxy entry.
+    '/api/customer-portal': 'customer-portal',
+
     // EDGE-005d-remainder: security (7 frontend callsites). Platform-admin
     // gated. New edge function ports server/routes-security-dashboard.ts
     // with corrected schema (audit_logs.timestamp not .created_at, etc.).

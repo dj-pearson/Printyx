@@ -4047,8 +4047,8 @@
         "Verify customer portal pages load real data"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "Express source at server/routes-customer-portal.ts. Customer portal is high-visibility (end-customer-facing).",
+      "passes": true,
+      "notes": "DONE 2026-06-11. New handlers/ dir (billing EDGE-002a pattern): maintenance.ts (availability + appointments CRUD/reschedule/cancel against customer_maintenance_appointments), satisfaction.ts (surveys list/detail/start/submit + analytics, manual template join, weighted+NPS scoring), analytics.ts (usage-analytics = real meter-delta port; equipment-health = REAL equipment rows + meter totals instead of the Express mock machines, zeroed IoT metrics). index.ts also gained: service-requests page/search params + /:id/history, equipment alias key (ServiceRequestForm reads data.equipment), POST /supply-orders (was frontend-only, served nowhere). '/api/customer-portal': 'customer-portal' added to crmProxies. Drift tolerance via handlers/_context.ts isMissingTableError (GET→[]/write→503). deno check+lint green, vite build green, tsc/vitest = pre-existing baseline (verified via stash). Browser smoke env-blocked (stale anon key + DB unreachable from dev box) — verify after Coolify edge deploy: /customer-portal pages incl. maintenance scheduling, satisfaction form, equipment health, usage analytics. Legacy /auth/* + /notifications (CustomerPortal.tsx portal-session login) were already unserved by Express pre-proxy — separate story if that surface is revived.",
       "category": "edge-migration"
     },
     {

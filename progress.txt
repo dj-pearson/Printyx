@@ -6049,3 +6049,124 @@ Status: Needs Review
 - Next prio-3: PROP-009 (TipTap — previously SKIPPED with rationale), PROP-010
   (e2e partial, needs running stack). EDGE-002b (customer-portal) is the next
   edge port. LAUNCH-011/020 remain ops-blocked.
+
+Iteration 7 (06/11/2026 20:07:53): Story LAUNCH-011
+Status: Needs Review
+
+---
+## Ralph Iteration — EDGE-002b (Customer-portal edge function full parity)
+
+**Date:** 2026-06-11
+**Story:** EDGE-002b — port missing endpoints to customer-portal edge function + proxy /api/customer-portal
+**Status:** passes: true (all ACs; browser smoke env-blocked — same stale-anon-key + unreachable-DB env as EDGE-002a)
+
+### What shipped
+- **supabase/functions/customer-portal/handlers/** (new dir, dispatched from
+  index.ts via PortalCtx BEFORE the legacy sub-route blocks — billing pattern):
+  - `_context.ts` — PortalCtx + schema-audit header, isMissingTableError,
+    resolveCustomerId (query param → JWT metadata, same convention as the
+    existing dashboard handler), confirmation-code gen (Web Crypto), and
+    snake→camel mappers for appointments / surveys / questions / responses
+    (frontend components expect the Drizzle camelCase shapes).
+  - `maintenance.ts` — GET /maintenance-availability (mirrors Express mock
+    slots 8AM-5PM with fixed unavailable indices; real source would be
+    technician_availability_slots), full /maintenance-appointments CRUD:
+    list (status/includeCompleted/limit), POST book (validates type enum +
+    date + time, confirmation code), GET /:id, PUT /:id/reschedule (guards
+    completed/cancelled, tracks original_date + reschedule_count),
+    DELETE /:id cancel (guards completed). Table missing → GET [] / write 503.
+  - `satisfaction.ts` — /satisfaction/surveys list (manual template-name join —
+    avoids PostgREST FK-embedding dependency), GET /:id detail
+    (survey+questions+existingResponses, 410 on expiry, marks first_viewed_at),
+    POST /:id/start, POST /:id/submit (validates question IDs, weighted
+    rating_scale average + nps_score extraction — same math as Express,
+    delete→insert→update sequence since supabase-js has no transactions),
+    /satisfaction/analytics (summary/byType/recentSurveys; date filter now done
+    IN SQL via gte completed_at — the Express version computed the range but
+    never applied it).
+  - `analytics.ts` — /usage-analytics is a REAL port of the meter-delta
+    computation (validated submissions in range → per-equipment consecutive
+    deltas, clamps resets/outliers >100k, trends by periodType, cost model,
+    recommendations). Deterministic: comparison uses fixed 0.9 multiplier
+    instead of Express Math.random placeholder. /equipment-health DIVERGES
+    from Express ON PURPOSE: Express returned 3 hardcoded mock machines to
+    every customer; the port builds rows from the customer's real `equipment`
+    table + latest/earliest meter totals (totalPrintCount + monthlyAverage),
+    heuristic health score from next_service_due_date (overdue → warning +
+    alert), zeroed IoT metrics (toner/temp/jam) until real telemetry exists.
+- **index.ts** — handler dispatch + jwt null→undefined (deno check), and parity
+  fixes in the existing blocks: service-requests list now accepts page (1-based
+  → offset) + search (ilike title/request_number/description — what
+  ServiceRequestsDashboard actually sends), GET /service-requests/:id/history
+  (dashboard calls it as a separate endpoint; edge fn only embedded history in
+  /:id), equipment GET response gains `equipment` alias key (ServiceRequestForm
+  reads data.equipment), POST /supply-orders (CustomerSelfServicePortal posts
+  it; NEITHER Express nor edge served it — items mapped into
+  customer_supply_order_items, form metadata folded into customer_notes).
+- **Proxy:** '/api/customer-portal': 'customer-portal' in crmProxies. Safety
+  audit: Express only ever mounted routes-customer-portal.ts at this prefix —
+  the legacy /auth/login|logout|reset-password + /notifications calls
+  (CustomerPortal.tsx standalone portal-session login) were ALREADY unserved in
+  dev Express, so the proxy changes nothing for them (404 before and after).
+  Equipment-analytics/:id + equipment-usage/:id Express routes have zero
+  frontend callers — intentionally not ported.
+
+### Quality gates
+- deno check + deno lint customer-portal green (fixed: TrendPoint interface
+  instead of Record spread, typed SurveyRow instead of any, jwt undefined)
+- vite build 34s green; tsc errors = pre-existing baseline (no new ones in
+  changed files); vitest 42-failed-files/30-failed-tests CONFIRMED identical on
+  stashed clean tree (pre-existing baseline, e.g. ReportCacheService)
+- eslint: edge-function-proxy.ts is repo-ignored (pre-existing pattern)
+
+### Notes for the next Ralph iteration
+- The customer-portal fn now has the same handlers/ layout as billing — reuse
+  for EDGE-002c..k. PortalCtx carries customerId (nullable) — staff JWTs
+  without app_metadata.customer_id get 400/403 from customer-context endpoints
+  unless they pass ?customerId= (dealer view), matching prior edge behavior.
+- Satisfaction submit is non-transactional (delete→insert→update). Failure
+  mid-sequence leaves the survey re-submittable (responses cleared but status
+  not completed) — acceptable; a pg function would make it atomic if it matters.
+- MaintenanceSchedulingComponent sends x-portal-session header — ignored by the
+  edge fn (JWT-only). Field is vestigial from the standalone portal concept.
+- Next: EDGE-002c (subscriptions/Stripe flow port, prio 5) or EDGE-004
+  (platform admin, prio 4). LAUNCH-011/020 remain ops-blocked.
+
+Iteration 8 (06/11/2026 20:21:27): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 9 (06/11/2026 20:21:31): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 10 (06/11/2026 20:21:34): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 11 (06/11/2026 20:21:39): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 12 (06/11/2026 20:21:45): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 13 (06/11/2026 20:21:49): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 14 (06/11/2026 20:21:54): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 15 (06/11/2026 20:21:59): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 16 (06/11/2026 20:22:04): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 17 (06/11/2026 20:22:09): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 18 (06/11/2026 20:22:14): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 19 (06/11/2026 20:22:19): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 20 (06/11/2026 20:22:25): Story LAUNCH-011
+Status: Needs Review

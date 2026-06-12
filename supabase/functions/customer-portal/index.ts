@@ -1,9 +1,27 @@
 // Customer Portal Edge Function
 // Handles customer-facing portal operations including dashboard, service requests,
-// equipment, supply orders, and knowledge base access
+// equipment, supply orders, and knowledge base access.
+//
+// EDGE-002b brought this to /api/customer-portal/* frontend parity:
+//   GET    /dashboard, /equipment, /supply-orders, /knowledge-base   (pre-existing)
+//   POST   /supply-orders                                            (CustomerSelfServicePortal)
+//   GET|POST /service-requests, GET /service-requests/:id[/history]
+//   GET    /maintenance-availability                                 → handlers/maintenance.ts
+//   CRUD   /maintenance-appointments[/:id[/reschedule]]              → handlers/maintenance.ts
+//   GET    /satisfaction/surveys[/:id], POST /:id/{start,submit},
+//   GET    /satisfaction/analytics                                   → handlers/satisfaction.ts
+//   GET    /usage-analytics, GET /equipment-health                   → handlers/analytics.ts
+// Schema-drift + customer-context notes live in handlers/_context.ts.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
+import type { PortalCtx } from './handlers/_context.ts';
+import {
+  handleMaintenanceAvailability,
+  handleMaintenanceAppointments,
+} from './handlers/maintenance.ts';
+import { handleSatisfaction } from './handlers/satisfaction.ts';
+import { handleUsageAnalytics, handleEquipmentHealth } from './handlers/analytics.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -13,7 +31,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -47,6 +65,32 @@ export default async function handler(req: Request) {
     // Path structure after function-name strip: /<sub-route>/<id>
     const subRoute = parts[0]; // dashboard, service-requests, equipment, supply-orders, knowledge-base
     const resourceId = parts[1]; // Optional ID
+
+    // ── EDGE-002b handler dispatch ───────────────────────────────────────────
+    const ctx: PortalCtx = {
+      req,
+      admin,
+      user: { id: user.id },
+      tenantId,
+      customerId: customerId || null,
+      url,
+      parts,
+    };
+    if (subRoute === 'maintenance-availability') {
+      return handleMaintenanceAvailability(ctx);
+    }
+    if (subRoute === 'maintenance-appointments') {
+      return await handleMaintenanceAppointments(ctx);
+    }
+    if (subRoute === 'satisfaction') {
+      return await handleSatisfaction(ctx);
+    }
+    if (subRoute === 'usage-analytics') {
+      return await handleUsageAnalytics(ctx);
+    }
+    if (subRoute === 'equipment-health') {
+      return await handleEquipmentHealth(ctx);
+    }
 
     // =========================================================================
     // GET /customer-portal/dashboard - Get customer dashboard data
@@ -172,10 +216,15 @@ export default async function handler(req: Request) {
       }
 
       // GET - List service requests
+      // Supports limit/offset AND the page/search params ServiceRequestsDashboard
+      // sends (page is 1-based; search matches title/request_number/description).
       if (req.method === 'GET' && !resourceId) {
         const status = url.searchParams.get('status');
+        const search = url.searchParams.get('search');
         const limit = parseInt(url.searchParams.get('limit') || '50');
-        const offset = parseInt(url.searchParams.get('offset') || '0');
+        const page = parseInt(url.searchParams.get('page') || '0');
+        const offset =
+          page > 0 ? (page - 1) * limit : parseInt(url.searchParams.get('offset') || '0');
 
         let query = admin
           .from('customer_service_requests')
@@ -215,6 +264,12 @@ export default async function handler(req: Request) {
         if (status) {
           query = query.eq('status', status);
         }
+        if (search) {
+          const term = search.replace(/[%,()]/g, '');
+          query = query.or(
+            `title.ilike.%${term}%,request_number.ilike.%${term}%,description.ilike.%${term}%`,
+          );
+        }
 
         const { data: requests, error, count } = await query;
 
@@ -231,6 +286,48 @@ export default async function handler(req: Request) {
             limit,
             offset,
           },
+          200,
+          req,
+        );
+      }
+
+      // GET /service-requests/:id/history - status history timeline
+      // (ServiceRequestsDashboard calls this as a separate endpoint)
+      if (req.method === 'GET' && resourceId && parts[2] === 'history') {
+        const { data: request } = await admin
+          .from('customer_service_requests')
+          .select('id')
+          .eq('id', resourceId)
+          .eq('tenant_id', tenantId)
+          .eq('customer_id', queryCustomerId)
+          .single();
+
+        if (!request) {
+          return createCorsResponse(
+            { success: false, message: 'Service request not found' },
+            404,
+            req,
+          );
+        }
+
+        const { data: history, error: historyError } = await admin
+          .from('customer_service_request_status_history')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('service_request_id', resourceId)
+          .order('created_at', { ascending: false });
+
+        if (historyError) {
+          console.error('Error fetching status history:', historyError);
+          return createCorsResponse(
+            { success: false, message: 'Failed to fetch service request status history' },
+            500,
+            req,
+          );
+        }
+
+        return createCorsResponse(
+          { success: true, data: history || [], count: (history || []).length },
           200,
           req,
         );
@@ -411,11 +508,98 @@ export default async function handler(req: Request) {
         {
           success: true,
           data: equipment || [],
+          // ServiceRequestForm.tsx reads `data.equipment` — keep both keys.
+          equipment: equipment || [],
           total: count || 0,
           limit,
           offset,
         },
         200,
+        req,
+      );
+    }
+
+    // =========================================================================
+    // POST /customer-portal/supply-orders - Create supply order
+    // (CustomerSelfServicePortal supply-order form)
+    // =========================================================================
+    if (req.method === 'POST' && subRoute === 'supply-orders') {
+      const queryCustomerId =
+        url.searchParams.get('customerId') || url.searchParams.get('customer_id') || customerId;
+      if (!queryCustomerId) {
+        return createCorsResponse({ error: 'Customer ID required' }, 400, req);
+      }
+
+      const body = await req.json().catch(() => null);
+      const items = Array.isArray(body?.items) ? body.items : [];
+      if (!body || items.length === 0) {
+        return createCorsResponse(
+          { success: false, message: 'At least one item is required' },
+          400,
+          req,
+        );
+      }
+
+      const orderNumber = `SO-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000)
+        .toString()
+        .padStart(4, '0')}`;
+
+      const { data: order, error: orderError } = await admin
+        .from('customer_supply_orders')
+        .insert({
+          tenant_id: tenantId,
+          customer_id: queryCustomerId,
+          order_number: orderNumber,
+          status: 'submitted',
+          requested_delivery_date:
+            body.requestedDeliveryDate || body.requested_delivery_date || null,
+          delivery_instructions: body.specialInstructions || body.special_instructions || null,
+          customer_notes:
+            [
+              body.orderType || body.order_type
+                ? `Type: ${body.orderType || body.order_type}`
+                : null,
+              body.priority ? `Priority: ${body.priority}` : null,
+              body.purchaseOrderNumber || body.purchase_order_number
+                ? `PO: ${body.purchaseOrderNumber || body.purchase_order_number}`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(' | ') || null,
+          submitted_at: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (orderError || !order) {
+        console.error('Error creating supply order:', orderError);
+        return createCorsResponse(
+          { success: false, message: 'Failed to create supply order' },
+          500,
+          req,
+        );
+      }
+
+      const itemRows = items.map((item: Record<string, unknown>) => ({
+        order_id: order.id,
+        product_name: item.productName || item.product_name || 'Item',
+        product_description: item.productType || item.product_type || null,
+        quantity: Number(item.quantity ?? item.quantityRequested ?? item.quantity_requested ?? 1),
+        unit_price: String(item.unitPrice ?? item.unit_price ?? '0'),
+        total_price: String(item.totalPrice ?? item.total_price ?? '0'),
+      }));
+      const { error: itemsError } = await admin
+        .from('customer_supply_order_items')
+        .insert(itemRows);
+      if (itemsError) {
+        console.error('Error creating supply order items:', itemsError);
+      }
+
+      return createCorsResponse(
+        { success: true, data: order, message: 'Supply order created successfully' },
+        201,
         req,
       );
     }
