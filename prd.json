@@ -7346,6 +7346,662 @@
       "passes": false,
       "notes": "Final story of the track — depends on everything above. Mirror the conventions in tests/quote-flow.spec.ts. [PARTIAL on main 2026-06-10: tests/proposal-flow.spec.ts added (smoke for PROP-001..008: templates/branding/generate+share actions/public-view-unavailable; data-dependent legs in manual checklist). Merge-engine customer-safe (no cost/margin) asserted in server/tests/unit/proposal-merge.test.ts. Docs verification section updated. STILL TODO (passes false): quote-flow legs (server search/per-line discount/recurring/autosave) depend on unbuilt QUOTE-011..020; e2e not executed (needs running stack).]",
       "category": "proposal-templates"
+    },
+    {
+      "id": "IOS-027",
+      "title": "Fix Home/Today dashboard data contract (KPIs + activity feed decode to empty)",
+      "description": "As a user, the Home tab is my landing screen and today it silently shows all-zero KPIs and a feed of generic 'Activity' rows against the live backend, because the iOS models don't match the edge-function response shapes. I need the dashboard to render real numbers and readable activity.",
+      "acceptanceCriteria": [
+        "TodayDashboard (ios/Printyx/Features/Dashboard/Models/DashboardModels.swift:5-14) decodes the real today-dashboard payload: taskCount, overdueCount, appointmentCount, and nested metrics{ newLeads, todayRevenue, dealsWon } (supabase/functions/today-dashboard/index.ts:109-129) — not the non-existent flat keys openTasks/overdueInvoices/pipelineValue/monthlyRevenue",
+        "ActivityItem (DashboardModels.swift:18-27) maps activity_type->type, subject->title, notes->description so HomeView feed rows (HomeView.swift:388-409) show real titles/icons instead of the fallback 'Activity'/grey circle",
+        "Activity feed rows are tappable and route via AppRouter using entityType/entityId (HomeView.swift:388-422)",
+        "Surface the revenue/appointments metrics the backend already returns (currently dropped); KPI cards no longer hard-default to 0",
+        "Add a decode test against a captured real today-dashboard + activities payload",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 137,
+      "passes": false,
+      "notes": "Found in deep-dive audit. The UI layer is fine; only the data contract is wrong. Per ios-docs, prod /api/* hits functions.printyx.net so the Express dev shim won't save it. Pairs with IOS-031 (regression tests)."
+    },
+    {
+      "id": "IOS-028",
+      "title": "Fix global search — returns zero results in production (keyed object vs array)",
+      "description": "As a user, global search is my fastest path to any record, but it always shows 'No Results' against the live backend because the search edge function returns a keyed object of raw rows while iOS decodes a flat array of typed results.",
+      "acceptanceCriteria": [
+        "DashboardService.search (ios/Printyx/Features/Dashboard/Services/DashboardService.swift:40-43) flattens the keyed backend object { results: { businessRecords, contacts, quotes, tickets, equipment, projects, users } } (supabase/functions/search/index.ts:150-159) into [SearchResult], synthesizing type + title (company_name/quote_number/ticket_number/serial_number)",
+        "Result rows route correctly via GlobalSearchViewModel.route(for:) for every returned bucket; add routes for project/user or filter them out (GlobalSearchViewModel.swift:64-90)",
+        "Remove the dead duplicate Home search UI (HomeView.swift:427-484 GlobalSearchView whose rows don't route) and present the working UniversalSearchSheet from Home instead",
+        "Add opportunity/invoice/contract buckets to search scope or document the gap",
+        "Add a decode test against a captured real search payload; verify both empty and multi-bucket cases",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 138,
+      "passes": false,
+      "notes": "Single highest-impact data bug for a field rep. Two parallel search implementations exist; Home one is a dead-end, UniversalSearchSheet works."
+    },
+    {
+      "id": "IOS-029",
+      "title": "Fix Manager team roll-up — all four cards non-functional against team-reports backend",
+      "description": "As a sales manager, the My Team section on Home is fully built UI but every card shows blank/zero/—  because the iOS service paths and models don't match the team-reports edge function routes.",
+      "acceptanceCriteria": [
+        "Reconcile ManagerReportsService + ManagerReportsModels with real team-reports routes (summary, leaderboard, activity, pipeline, performance, comparison) in supabase/functions/team-reports/index.ts",
+        "Pipeline card: map { totalDeals, totalValue, byStage[] } (team-reports/index.ts:219-228) not the non-existent pipelineValue/weightedValue/openOpportunityCount (ManagerReportsModels.swift:7-13)",
+        "Activities card: call the 'activity' route (singular) and reshape, or add a per-rep activities route server-side (APIEndpoint.swift:345-348 currently hits /activities which 404s)",
+        "Leaderboard: map { userId, name, count, value } (team-reports/index.ts:153-158) and compute rank",
+        "No-Touch card: add the missing /no-touch route server-side or drive it from an existing route (APIEndpoint.swift:355-358 currently 404s)",
+        "Add decode/integration tests; verify against a manager-role token",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 139,
+      "passes": false,
+      "notes": "Manager persona. Whole section is dead against live backend. May require small server-side additions to team-reports."
+    },
+    {
+      "id": "IOS-030",
+      "title": "Fix Invoice field mapping (invoice_status / balance_due / amount_paid)",
+      "description": "As a user, the invoice list status chips, Overdue/Paid metrics, and Mark-Paid gating are unreliable because the iOS model decodes a phantom 'status' column and amountDue instead of the canonical invoice columns.",
+      "acceptanceCriteria": [
+        "Invoice model (ios/Printyx/Features/Invoices/Models/InvoiceModels.swift) decodes invoice_status (CodingKeys) — the canonical column per CLAUDE.md — instead of the legacy phantom status (InvoiceModels.swift:10)",
+        "Map total_amount/amount_paid/balance_due/paid_date; replace amountDue with balance_due so totalOutstanding (InvoiceListViewModel.swift:56-60) is correct",
+        "List query and filters send invoiceStatus and sort on invoice_status (InvoiceListViewModel.swift:57,62-63; InvoiceService.swift:22; APIEndpoint.swift:513)",
+        "Status chips, Overdue/Paid stat cards, and the Mark-Paid swipe gating all reflect real data",
+        "Add a decode test against a captured real invoices payload",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 140,
+      "passes": false,
+      "notes": "CLAUDE.md billing note confirms invoice_status/total_amount/amount_paid/balance_due/paid_date are the real columns; status is phantom. Backend select('*') returns both so the bug is silent."
+    },
+    {
+      "id": "IOS-031",
+      "title": "Decode/contract regression tests against captured real edge-function payloads",
+      "description": "As a developer, I keep shipping screens that render but show empty data because iOS Codable models drift from the edge-function response shapes (dashboard, search, team-reports, invoices, activities). I need golden-payload decode tests so this class of bug is caught in CI.",
+      "acceptanceCriteria": [
+        "Add ios/PrintyxTests fixtures: captured real JSON responses for today-dashboard, activities, search, team-reports (all routes), invoices, contracts, contacts, meter-readings, opportunities",
+        "Add decode tests that fail if any model can't decode the real payload or silently drops a documented field",
+        "Backfill unit tests for the most logic-heavy ViewModels and Services (0 of 15 ViewModels and 0 of 15 Services currently have tests)",
+        "Document a 'capture a real payload before changing a model' workflow in ios-docs",
+        "ios xcodebuild test passes and runs these fixtures"
+      ],
+      "priority": 141,
+      "passes": false,
+      "notes": "Prevention story for the IOS-027..030 / IOS-029 class. Current tests only cover Core/Network + Auth. Pairs with the new PR-gated CI in IOS-069."
+    },
+    {
+      "id": "IOS-032",
+      "title": "Wire dead Create flows (Opportunity / Proposal / Quote 'Create' silently no-ops)",
+      "description": "As a user, tapping Create on a new Opportunity, Proposal, or Quote fills out the form, dismisses, and saves nothing — because the form views are constructed with a nil service that the create() guard silently returns on.",
+      "acceptanceCriteria": [
+        "OpportunityListView.swift:81 passes a real OpportunityService(apiClient: apiClient) instead of nil (OpportunityFormView.create guard at OpportunityFormView.swift:99-100)",
+        "QuoteListView.swift:79 and :84 pass a real QuoteService to ProposalFormView and QuoteFormView instead of nil (guards at ProposalFormView.swift:63 and :198); thread apiClient/QuoteService into QuoteListView (currently has none, it's a SalesHubView child)",
+        "ProposalDetailView is given the shared environment APIClient instead of a throwaway APIClient() (QuoteListView.swift:90-91)",
+        "Make the *Service parameters non-optional so the compiler catches this class of bug going forward",
+        "Manual verification: creating an opportunity, proposal, and quote persists and the new record appears in the list",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 142,
+      "passes": false,
+      "notes": "Highest-impact UI bug: three primary Create buttons do nothing. HomeView.swift:221 already passes a real QuoteService, proving the wiring works — the list views just forgot. Same nil-service root cause across all three."
+    },
+    {
+      "id": "IOS-033",
+      "title": "Confirm destructive deletes (CRM / Tasks / Contacts) + disable full-swipe + undo",
+      "description": "As a user, a mis-swipe permanently deletes a customer, task, or contact with no confirmation and no undo, because list rows use full swipe-to-delete that fires the delete immediately.",
+      "acceptanceCriteria": [
+        "Deleting a business record (CRMListView.swift:142-147), task (TaskListView.swift:243-247), or contact (ContactListView.swift:76-82) shows a confirmation dialog before the mutation",
+        "Set allowsFullSwipe: false on delete swipe actions (CRM currently allows full swipe)",
+        "Offer an undo affordance (toast/snackbar) after delete where feasible",
+        "Apply the same confirm pattern to any other destructive action (e.g. mark-churned)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 143,
+      "passes": false,
+      "notes": "SettingsView Sign Out already confirms (MainTabView.swift:177) — follow that pattern. Pairs with IOS-047 (mutation feedback)."
+    },
+    {
+      "id": "IOS-034",
+      "title": "Harden token refresh (single-flight, propagate failure, clear keychain on terminal 401)",
+      "description": "As a user, concurrent 401s can wedge auth or leave stale tokens that fail forever, because the manual isRefreshingToken flag + continuation array doesn't fan out refresh failures and a terminal refresh failure never clears the keychain.",
+      "acceptanceCriteria": [
+        "Replace the isRefreshingToken flag + pendingRequests continuation array (APIClient.swift:482-496) with a single shared Task<Void,Error> that concurrent callers await",
+        "Waiters are resumed with the refresh result; on refresh failure they throw unauthorized rather than retrying with a cleared token",
+        "On terminal 401 (retry still 401), call keychain.clearAll() and drive a deterministic logout (APIClient.swift:281-294)",
+        "No second refresh can start while waiters from the first wave are mid-retry",
+        "Extend APIClientTests/AuthManagerTests with a concurrent-401 scenario",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 144,
+      "passes": false,
+      "notes": "Networking audit C1 + security audit M2. Risk: auth wedging and confusing 401 storms instead of a clean logout."
+    },
+    {
+      "id": "IOS-035",
+      "title": "Offline write-queue correctness — dedup, idempotency, ordering, no silent data loss",
+      "description": "As a field rep on flaky cellular, the offline write queue can create duplicate records, replay mutations out of order, and silently drop a write after 5 attempts even though I saw a success toast.",
+      "acceptanceCriteria": [
+        "Dedup on a content hash (method+path+body) at enqueue so a double-tap offline doesn't queue two writes (OfflineWriteQueue.swift:56-87; APIClient.swift:363 currently mints a fresh UUID per enqueue)",
+        "Add a client-generated idempotency key header so replayed POSTs (create activity, attachment) are server-side idempotent",
+        "Preserve ordering: stop the flush loop on first failure (or track dependencies) so a failed create can't be overtaken by a dependent write (OfflineWriteQueue.swift flush, APIClient.swift:356-402)",
+        "A write dropped after max attempts surfaces to the user / is logged, never silently discarded; the success toast only fires on confirmed enqueue+eventual send",
+        "Extend OfflineWriteQueueTests for dedup, ordering-on-partial-failure, and drop-notification",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 145,
+      "passes": false,
+      "notes": "Networking audit C2. Multi-tenant CRM data corruption risk. Photo uploads (TicketPhotoPickerSheet) ride this queue."
+    },
+    {
+      "id": "IOS-036",
+      "title": "Fix QuickLog concurrency crashes/hangs (speech audio-thread race + location continuation leak)",
+      "description": "As a field rep, the two-tap quick-log happy path can hang or crash: the speech transcriber touches @MainActor state from the audio I/O thread, and the location provider leaks its continuation on concurrent calls.",
+      "acceptanceCriteria": [
+        "SpeechTranscriber.swift:84-86 captures the SFSpeechAudioBufferRecognitionRequest into a local let before installTap so the audio thread never touches @MainActor self (fixes the actor-isolation data race / intermittent crash)",
+        "QuickLogLocationProvider.fetchOnce (QuickLogLocationProvider.swift:38-48) guards re-entry so a second call can't overwrite and leak the first continuation (permanent hang); cancel the 3s timeout Task once a fix arrives",
+        "First-launch permission race fixed: await the authorization callback before requestLocation() (or skip location on the very first .notDetermined log) so the first capture isn't always nil",
+        "Verify NSMicrophoneUsageDescription + NSSpeechRecognitionUsageDescription are present (they are) so dictation doesn't crash on first use",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 146,
+      "passes": false,
+      "notes": "Networking audit H1/H2 + dashboard audit Q2. QuickLog is otherwise the app's model-citizen feature."
+    },
+    {
+      "id": "IOS-037",
+      "title": "Remove hardcoded debug Supabase anon JWT; inject via xcconfig and rotate",
+      "description": "As a security engineer, a long-lived Supabase anon JWT (exp ~year 2126) is compiled into source and shipped in debug/TestFlight-internal builds, defeating key rotation and sitting in git history.",
+      "acceptanceCriteria": [
+        "Remove the literal debugSupabaseAnonKey from AppConfig.swift:26",
+        "Inject the debug key via an untracked .xcconfig / Info.plist build setting, mirroring the Release path (AppConfig.swift:43-55)",
+        "Rotate the embedded anon key now that it is in VCS history",
+        "Add a CI/secret-scan guard that fails if a JWT literal reappears in iOS source",
+        "Build succeeds in Debug and Release with the key injected, not hardcoded"
+      ],
+      "priority": 147,
+      "passes": false,
+      "notes": "Security audit C2. Anon key is lower-privilege than service-role, but a non-expiring hardcoded credential in VCS is a hygiene failure that blocks IT review."
+    },
+    {
+      "id": "IOS-038",
+      "title": "Keychain accessibility hardening + biometric-gated token release",
+      "description": "As a security engineer, refresh/access tokens are readable while the device is locked and the biometric lock only gates the UI (not the keychain), so a locked-but-powered stolen device is more exposed than necessary.",
+      "acceptanceCriteria": [
+        "Store accessToken/refreshToken (and ideally all auth items) with kSecAttrAccessibleWhenUnlockedThisDeviceOnly instead of AfterFirstUnlockThisDeviceOnly (KeychainManager.swift:123)",
+        "Gate token *release* behind a SecAccessControl (.biometryCurrentSet / .userPresence) so the keychain itself enforces presence, not just the SwiftUI isLocked swap (BiometricLockManager / RootView.swift:23-30)",
+        "Add basic jailbreak heuristics as defense-in-depth",
+        "Auth/login/refresh flows still work end-to-end after the accessibility change",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 148,
+      "passes": false,
+      "notes": "Security audit H1/H3. No background path reads tokens while locked, so WhenUnlocked is safe."
+    },
+    {
+      "id": "IOS-039",
+      "title": "Background privacy overlay/blur + shorter biometric re-lock",
+      "description": "As a user, customer CRM data, quotes, and invoices are written in plaintext to the app-switcher snapshot and remain visible for up to 10 minutes after backgrounding because there's no privacy cover and the re-lock timeout is long.",
+      "acceptanceCriteria": [
+        "On .inactive/.background, overlay a privacy/blur cover view (or .privacySensitive) so the app-switcher snapshot doesn't leak data (PrintyxApp.swift:42-48 currently only records backgroundedAt)",
+        "Make the biometric re-lock timeout configurable and default it low (e.g. 60s) instead of 10 minutes (BiometricLockManager.swift:29,65)",
+        "The login screen's password field is also covered by the privacy overlay",
+        "Reduce-Transparency users get a solid cover, not a blur",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 149,
+      "passes": false,
+      "notes": "Security audit H2 (+H3 timeout). The privacy cover also mitigates the reveal-password TextField snapshot (M5)."
+    },
+    {
+      "id": "IOS-040",
+      "title": "Tenant-context integrity + reliable server-side logout",
+      "description": "As a security engineer, the client sends a client-controlled x-tenant-id derived from a stale keychain value, and logout fires the server revoke best-effort without awaiting, so a 'logged out' refresh token can remain valid.",
+      "acceptanceCriteria": [
+        "Re-derive x-tenant-id from the freshly decoded access-token claim on each request/refresh rather than a stale keychain value (APIClient.swift:467-470; AuthManager.swift:173 currently falls back to old keychain on refresh)",
+        "Confirm (and document) that edge functions derive tenant from the verified JWT claim and reject/ignore a mismatched x-tenant-id header — the client header must not be a trust boundary",
+        "logout() awaits the /auth/v1/logout revoke and surfaces failure; queue the revoke for retry on next launch if it fails (AuthManager.swift:136-146; note the offline queue excludes /auth/* at APIEndpoint.swift:39)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 150,
+      "passes": false,
+      "notes": "Security audit H4 + M3. The cross-tenant risk is server-dependent; this story covers the client side and the server verification check."
+    },
+    {
+      "id": "IOS-041",
+      "title": "Untrusted-input hygiene: validate push routing payload + stop DEBUG PII logging",
+      "description": "As a security engineer, push payloads drive navigation with an unvalidated id used as an API path segment, and decode failures print raw response bodies (tokens/PII) to the device log in debug/TestFlight builds.",
+      "acceptanceCriteria": [
+        "routeNotification validates route_id/entity_id against a UUID format and rejects ids containing path separators before building a route (PushNotificationManager.swift:155-194)",
+        "URL-encode path segments when building endpoints from push-supplied ids",
+        "Stop logging raw response bodies on decode failure; log only the error type + coding path, redacting bodies (APIClient.swift:169-172) — gate any verbose body logging behind an explicit off-by-default flag",
+        "APNs device-token registration failures are logged (not silently swallowed) so targeting issues are diagnosable (PushNotificationManager.swift:111-117)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 151,
+      "passes": false,
+      "notes": "Security audit M4 + M1 + L3. Treat push-driven navigation as untrusted input; rely on server-side tenant scoping (IOS-040) as the backstop."
+    },
+    {
+      "id": "IOS-042",
+      "title": "Fix broken pagination (CRM/Service/Contacts) + use server hasMore/total + sort order",
+      "description": "As a user on a large tenant, CRM/Service/Contacts lists are silently capped at the first page because loadMore() is never triggered, and other lists stop early or loop because the server's hasMore/total is discarded and pages are sorted independently.",
+      "acceptanceCriteria": [
+        "Add the trailing onAppear sentinel that calls loadMore() to CRMListView, ServiceTicketListView, and ContactListView (pattern: TaskListView.swift:183-188) — their VMs implement loadMore but it's never invoked",
+        "Add a requestPage<T> returning the wrapped { data, total, hasMore } so VMs use the authoritative hasMore/total instead of the fetched.count >= pageSize heuristic (APIClient.swift:184-192 discards total/hasMore)",
+        "Fix per-page client-side sort corruption: re-sort the full accumulated array after append, or rely on server-side sort (TaskListViewModel.swift:79,104; CRMListViewModel.swift:78,101)",
+        "Verify records past page 1 are reachable on every list",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 152,
+      "passes": false,
+      "notes": "Networking audit H4/H3/M1. CRM with hundreds of customers currently hides everything past ~25 records."
+    },
+    {
+      "id": "IOS-043",
+      "title": "Harden the response cache (SHA-256 keys + integrity, invalidation on mutation, TTL)",
+      "description": "As a performance/security engineer, the persistent cache keys list payloads with a 64-bit FNV hash (cross-tenant collision risk), never invalidates on mutation (ghost/stale data offline), and double-caches every GET alongside URLCache.",
+      "acceptanceCriteria": [
+        "Replace the 64-bit FNV-1a filename with SHA-256 of (tenantId|path?query) and store the plaintext key inside the blob to verify on read (PersistentResponseCache.swift:31-39)",
+        "On any successful 2xx mutation, evict cache entries whose path prefix matches the affected resource so deleted/edited records don't reappear offline (APIClient.swift:216-224,256-266)",
+        "Add shorter per-endpoint TTLs for volatile endpoints (dashboard, notifications) instead of a flat 7-day maxAge (PersistentResponseCache.swift:49)",
+        "Stop double-caching: pick PersistentResponseCache and set requestCachePolicy accordingly, or shrink URLCache to near-zero (APIClient.swift:65-69)",
+        "Extend PersistentResponseCacheTests for key integrity + invalidation",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 153,
+      "passes": false,
+      "notes": "Networking audit M5/M6/L1. The FNV collision is low-probability/high-impact (multi-tenant leak)."
+    },
+    {
+      "id": "IOS-044",
+      "title": "Move heavy work off the main actor + stable service injection + cancel-previous requests",
+      "description": "As a user, photo attach janks the UI, tab switches re-fetch the same payloads, and rapid filter/search changes leave stale data, because image encoding runs on the main actor, services are reconstructed per render, and in-flight loads aren't cancelled.",
+      "acceptanceCriteria": [
+        "Move TicketPhotoPickerSheet image compress + base64 to a detached background task; hop back to MainActor only to update results (TicketPhotoPickerSheet.swift:95-153)",
+        "Inject services once via StateObject/EnvironmentObject instead of reconstructing per render/closure (MainTabView.swift:12-20 computed DashboardService; inline TaskService/CRMService/QuoteService in sheets/destinations)",
+        "Replace the boolean isLoading guard with a cancel-previous-Task pattern so a filter change during an in-flight load isn't dropped (TaskListView.swift:103-116; CRMListView.swift:106-113)",
+        "Cancel and re-issue HomeViewModel.performSearch; add a post-await Task.isCancelled guard before assigning search results (HomeViewModel.swift:36-47; GlobalSearchViewModel.swift:44-59)",
+        "Fix the OfflineBanner animation keyed on value: UUID() so it only animates on connectivity change (MainTabView.swift:40)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 154,
+      "passes": false,
+      "notes": "Networking audit M7/M3/M4/M2 + L2. Redundant fetch storms come from .task + .onChange refresh + per-render service allocation."
+    },
+    {
+      "id": "IOS-045",
+      "title": "Unsaved-changes guard on detail edit screens",
+      "description": "As a user editing a customer, opportunity, proposal, or task, swiping back or tapping Close silently discards all my edits with no warning.",
+      "acceptanceCriteria": [
+        "Track a dirty flag on CRMDetailView, OpportunityDetailView, ProposalDetailView, TaskDetailView",
+        "On dismiss with unsaved changes, show a 'Discard changes?' confirmation",
+        "Apply .interactiveDismissDisabled(isDirty) to sheet-presented detail views",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 155,
+      "passes": false,
+      "notes": "UI/UX audit H3. These are full edit forms bound to @State with no guard."
+    },
+    {
+      "id": "IOS-046",
+      "title": "Keyboard handling on forms (Done toolbar + interactive dismiss), esp. numeric pads",
+      "description": "As a user, on the ScrollView-based edit forms there's no way to dismiss a number-pad keyboard (no return key) and no Done button, so amount/ZIP fields trap the keyboard.",
+      "acceptanceCriteria": [
+        "Add .scrollDismissesKeyboard(.interactive) to the ScrollView edit/detail forms (CRMDetailView.swift:74, OpportunityDetailView.swift:60, ProposalDetailView.swift:73, TaskDetailView.swift:58)",
+        "Add a ToolbarItemGroup(placement: .keyboard) Done button — essential for decimalPad/numberPad fields (CRMDetailView.swift:281,315; OpportunityDetailView.swift:100)",
+        "Set appropriate .keyboardType/.submitLabel/.textContentType on fields; LoginView's tap-to-dismiss pattern (LoginView.swift:125) applied where useful",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 156,
+      "passes": false,
+      "notes": "UI/UX audit H6."
+    },
+    {
+      "id": "IOS-047",
+      "title": "Mutation feedback: success/error haptics + toast + optimistic UI",
+      "description": "As a user, create/save/send/mark-paid/delete/convert give no confirmation — no haptic, no toast, often no spinner — so I can't tell if an action worked, and on slow links I re-tap.",
+      "acceptanceCriteria": [
+        "Add UINotificationFeedbackGenerator success/error + a transient toast on mutation outcomes app-wide, mirroring QuickLogSheet (QuickLogSheet.swift:107-110)",
+        "ProposalDetailView send()/markAccepted() surface the real APIError.errorDescription and show an in-flight spinner instead of a generic message with no feedback (ProposalDetailView.swift:233-249)",
+        "Make mark-paid/delete/convert optimistic with rollback on failure, or show a row-level progress state (InvoiceListViewModel.markAsPaid:117; CRMListView convert:151)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 157,
+      "passes": false,
+      "notes": "UI/UX audit H7/H8/M10. QuickLog already does this well — propagate the pattern. Distinct from the IOS-022 aesthetic haptic palette; this is functional feedback wiring."
+    },
+    {
+      "id": "IOS-048",
+      "title": "Navigation consistency + detail pull-to-refresh + register missing deep-link destinations",
+      "description": "As a user, some detail screens push (swipe-back works) and others are sheets-with-their-own-stack (dead-end), pushed details have no pull-to-refresh, and deep links to invoice/contract/contact land on nothing because those routes have no navigationDestination.",
+      "acceptanceCriteria": [
+        "Standardize record details on router.push + navigationDestination; reserve sheets for create forms and pickers (Task/Proposal/Equipment/Contract/Invoice/Contact details are sheets today)",
+        "Register navigationDestination for AppRoute.equipment/.invoice/.contract/.contact so search/notification deep links resolve instead of dead-pushing (AppRouter.swift:13-17; currently only .serviceTicket is handled, .equipment hits a placeholder at ServiceTicketListView.swift:718-741)",
+        "Add .refreshable to detail scroll/list containers (CRM/Opportunity/Proposal/ServiceTicket/Equipment/Contract/Invoice details)",
+        "Make list rows Buttons/NavigationLinks (or add .isButton trait) instead of onTapGesture for VoiceOver actionability",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 158,
+      "passes": false,
+      "notes": "UI/UX audit H5/H4/M7 + feature audit cross-cutting #1/#2. Deep-link dead-ends are silent today."
+    },
+    {
+      "id": "IOS-049",
+      "title": "Consolidate currency/date formatting via shared Formatters",
+      "description": "As a user, the same amount shows as $1,200 in a row and $1,200.00 in detail, and raw $\\(Int(total)) totals have no thousands separators, because formatCurrency is re-declared in 9+ views and the shared Formatters helper is unused.",
+      "acceptanceCriteria": [
+        "Route all currency through Core/Extensions/Formatters (currency/currencyRounded + a single abbreviated K/M helper); delete the per-view formatCurrency copies (CRMRowView, OpportunityListView, QuoteListView, ProposalDetailView, InvoiceListView, ContractListView, detail views)",
+        "Fix ProposalFormView raw totals to use Formatters (ProposalFormView.swift:136,156)",
+        "Cache DateFormatters as statics (DateExtensions.swift:13-34 allocates per access) and standardize on one date idiom across rows/Home/Customer360",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 159,
+      "passes": false,
+      "notes": "UI/UX audit M4/M5/L4. Also a per-render NumberFormatter/DateFormatter allocation perf win in lists."
+    },
+    {
+      "id": "IOS-050",
+      "title": "Dynamic Type + color-only-meaning remediation",
+      "description": "As a user on large Dynamic Type or who is color-blind, text doesn't scale and overdue state is conveyed by red color alone, because the app uses hardcoded .system(size:) fonts, fixed-width frames, and color-only date styling.",
+      "acceptanceCriteria": [
+        "Replace text .system(size:) with text styles (printyxSmall/.caption2) across rows/cards/Home; reserve fixed sizes for SF Symbol glyphs; use @ScaledMetric for avatar/ring sizes (PriorityIndicator.swift:43,82; many *Row + HomeView sites; eliminate 10pt text)",
+        "Replace fixed-width numeric/State/ZIP frames with flexible/minimumScaleFactor so they don't clip at AX5 (CRMDetailView.swift:314,318; OpportunityDetailView.swift:103,114)",
+        "Pair red/overdue dates with an SF Symbol + accessibility label 'overdue' (CRMRowView.swift:69; OpportunityListView.swift:360,421; ContractRow.swift:187) following StatusBadge",
+        "Add accessibilityLabel to icon-only buttons missing one (TaskListView sort:72-83; CRMDetailView activities+:344; TaskDetailView send/log:279,308; ProposalDetailView ellipsis:63; LoginView eye toggle:80) and 44pt min hit areas",
+        "Verify layout at AX5 with VoiceOver; ios xcodebuild test passes"
+      ],
+      "priority": 160,
+      "passes": false,
+      "notes": "UI/UX audit M1/M2/M3/M6/L5. Complements existing IOS-015 (exhaustive a11y audit) and IOS-020 (typography) with the concrete offending sites."
+    },
+    {
+      "id": "IOS-051",
+      "title": "Field-service mobile workflow: check-in/out, time logging, parts (mobile-field)",
+      "description": "As a field technician, I can't record arrival/departure at a site, log labor hours, or capture parts used from the app — even though the backend ships a dedicated mobile-field edge function built exactly for this and iOS uses none of it.",
+      "acceptanceCriteria": [
+        "Add mobile-field endpoints to APIEndpoint.swift: check-in, check-out, log-time, parts-inventory, request-parts (supabase/functions/mobile-field/index.ts:110,144,233,261,280)",
+        "ServiceTicketDetailView gets Check In / Check Out buttons that stamp on_site/check_in_time and compute on-site duration",
+        "Add a Log Time form (labor hours) and extend UpdateServiceTicketRequest with laborHours/partsUsed/customerSignature (the service-tickets PATCH already maps these at service-tickets/index.ts:319-321; ServiceTicketModels.swift:191-200 omits them)",
+        "Add a Parts section: list parts used + request parts",
+        "Offline-queue these writes; ios xcodebuild test passes"
+      ],
+      "priority": 161,
+      "passes": false,
+      "notes": "Feature audit ServiceTickets #2/#3/#4. The entire mobile-field function (my-tickets, today, check-in/out, update-status, add-note, log-time, parts) is unused — the single biggest backend gap for the field-tech persona."
+    },
+    {
+      "id": "IOS-052",
+      "title": "Service ticket status change / assign / resolve + reusable edit form",
+      "description": "As a field technician on-site, I can't mark a ticket In Progress/Resolved, capture a resolution, reassign, reschedule, or set a category — the detail view is read-only and the only mutation is a hardcoded swipe 'escalate to urgent'.",
+      "acceptanceCriteria": [
+        "ServiceTicketDetailView gets a status Menu (in_progress/on_hold/waiting_parts/scheduled/resolved), an Assign Technician picker, and a reschedule control backed by updateTicket (ServiceTicketDetailView.swift:558-607; UpdateServiceTicketRequest already supports these)",
+        "Resolve flow captures a resolution note; use mobile-field/update-status (accepts notes) where appropriate",
+        "Make ServiceTicketFormView reusable for edit (pass optional ticket) and add a category/subcategory picker (category is in CreateServiceTicketRequest:185 with no control) + technician assignment",
+        "escalateTicket also changes status/notifies as appropriate rather than only setting priority:urgent (ServiceTicketService.swift:59-61)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 162,
+      "passes": false,
+      "notes": "Feature audit ServiceTickets #3/#5/#8/#9. Core on-site workflow."
+    },
+    {
+      "id": "IOS-053",
+      "title": "Service ticket detail enrichment: address, click-to-call, directions, timeline, SLA",
+      "description": "As a field technician, the ticket detail doesn't show the site address or phone, offers no directions or click-to-call, lumps all updates into a flat Notes list, and never surfaces SLA/overdue.",
+      "acceptanceCriteria": [
+        "Add site address + a 'Get Directions' link (Apple Maps) and a tel: click-to-call on the Customer row (ServiceTicketDetailView.swift:565-587; siteAddress at ServiceTicketModels.swift:22)",
+        "Render a real timeline grouping by TicketUpdate.type (status_change/assignment/escalation/resolution/parts_ordered) with distinct icons instead of a flat Notes section (ServiceTicketListView.swift:611-661; types at ServiceTicketModels.swift:166-176)",
+        "Show SLA deadline + overdue badge using the existing isOverdue computed (ServiceTicketModels.swift:65-68)",
+        "Add priority + 'My Tickets' (assignedTo) filters to the list — selectedPriority is plumbed but no UI sets it (ServiceTicketListView.swift:109-124; mobile-field/my-tickets)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 163,
+      "passes": false,
+      "notes": "Feature audit ServiceTickets #5/#6/#7/#8. Reps drive to sites daily — directions/call are table-stakes."
+    },
+    {
+      "id": "IOS-054",
+      "title": "Service ticket photo attachments backend route + gallery view + signature capture",
+      "description": "As a field technician, photo uploads silently fail in production (the endpoint doesn't exist in the edge function), existing photos can never be viewed, and there's no customer signature on resolve.",
+      "acceptanceCriteria": [
+        "Add an attachments route to the service-tickets edge function (or repoint to field-service/storage) so POST /service-tickets/:id/attachments actually persists (TicketPhotoPickerSheet.swift:115-117 -> APIEndpoint.swift:413; route is missing today and queues/404s forever in prod)",
+        "Add a fetch-attachments endpoint + a thumbnail gallery in ServiceTicketDetailView.photoSection (currently only an Add button + in-memory count at ServiceTicketListView.swift:663-675)",
+        "Add a signature pad gated to the resolve flow; POST customer_signature alongside resolution (backend maps customer_signature; field-service/handlers/signatures.ts exists)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 164,
+      "passes": false,
+      "notes": "Feature audit ServiceTickets #1/#6. Prod-breaking: the picker UI is built but the endpoint isn't — violates the CLAUDE.md 'both backends' rule."
+    },
+    {
+      "id": "IOS-055",
+      "title": "Meter reading capture + history (flagship copier-dealer field task)",
+      "description": "As a field technician at a copier, I can't record a meter reading or view reading history — the single most common field task for a print/copier dealer — because there's only a GET endpoint and the detail shows static current meters.",
+      "acceptanceCriteria": [
+        "Add a createMeterReading endpoint (backend meter-readings POST at meter-readings/index.ts:125; APIEndpoint.swift:448 is GET-only) and a 'Record Meter Reading' form (B&W / color / total + date, source=manual)",
+        "Render a reading-history list using the existing EquipmentService.fetchMeterReadings (EquipmentService.swift:41 + MeterReading model are decode-only and never called by any view)",
+        "Offline-queue the reading; ios xcodebuild test passes"
+      ],
+      "priority": 165,
+      "passes": false,
+      "notes": "Feature audit Equipment #11/#12. Highest-impact missing field feature for this business."
+    },
+    {
+      "id": "IOS-056",
+      "title": "Equipment detail fetch + service history + field edit/create + real deep-link",
+      "description": "As a field technician, the Equipment 'detail' only re-renders the list row (no detail fetch), shows no service history, can't be edited or created in the field, and deep links to equipment hit a hardcoded placeholder.",
+      "acceptanceCriteria": [
+        "EquipmentDetailView fetches the full record on appear via EquipmentService.fetchEquipmentDetail (EquipmentService.swift:27; today it only shows list-row fields)",
+        "Add a 'Service History' section listing tickets for the device and a 'New service ticket for this device' button (ServiceTicketFormView already accepts an Equipment)",
+        "Wire create/edit: add a create form + edit-on-detail backed by the existing createEquipment/updateEquipment (dead code today) for field updates to IP/status/notes/location",
+        "Route AppRoute.equipment(id) to the real EquipmentDetailView instead of EquipmentDetailPlaceholder (ServiceTicketListView.swift:718-741)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 166,
+      "passes": false,
+      "notes": "Feature audit Equipment #10/#13/#14 + ServiceTickets #11/#14."
+    },
+    {
+      "id": "IOS-057",
+      "title": "Serial/barcode/QR scan (VisionKit) for equipment lookup",
+      "description": "As a field technician, I have to type a serial number to find equipment; I need to scan the device's barcode/QR/serial with the camera.",
+      "acceptanceCriteria": [
+        "Add a VisionKit DataScannerViewController scanner that reads serial/asset-tag barcodes/QR (and OCR text) and searches equipment by serialNumber/assetTag",
+        "Expose the scanner from the Equipment list and from the service-ticket equipment picker",
+        "Graceful fallback + permission handling when the scanner is unavailable",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 167,
+      "passes": false,
+      "notes": "Feature audit Equipment #12 / ServiceTickets #10. Equipment is keyed by serialNumber/assetTag."
+    },
+    {
+      "id": "IOS-058",
+      "title": "Build Quote detail/edit screen with line-item editing, status/send/PDF",
+      "description": "As a sales rep, once a quote is created I can never open it: there's no QuoteDetailView, rows aren't tappable, and I can't edit line items, change status, send, or view the PDF.",
+      "acceptanceCriteria": [
+        "Build a QuoteDetailView (mirroring ProposalDetailView) and wire QuoteRowView taps + navigationDestination (QuoteListView.swift:221-228 has no tap today; selectedQuote is declared but unused)",
+        "Support add/edit/reorder/delete of line items after creation (today line items are create-only at QuoteFormView.swift:124-160; QuoteLineItem is read-only) — keep line-number ordering consistent with QUOTE-020",
+        "Add quote send + status-change + PDF service methods if the backend supports them; surface them in the detail",
+        "Set customerId/leadId on create (ProposalFormView/QuoteFormView never set customerId despite the DTO supporting it — QuoteModels.swift:148) via a customer picker",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 168,
+      "passes": false,
+      "notes": "Feature audit Quotes #7/#8/#10. Hard blocker for the sell-side workflow once a quote exists."
+    },
+    {
+      "id": "IOS-059",
+      "title": "Opportunity close (Won/Lost + reason), pipeline backward/drag, quick-call/log",
+      "description": "As a sales rep, closing a deal is my #1 action but there's no explicit Won/Lost button (only a buried stage selector), I can't move a deal back a stage or close it from the kanban, and the opportunity detail has no quick-call/email/log.",
+      "acceptanceCriteria": [
+        "Add explicit Mark Won / Mark Lost actions in OpportunityDetailView (and a pipeline card action) that set the stage + capture a close reason (and actual amount)",
+        "Allow backward stage movement and (ideally) real drag-and-drop between kanban columns; today it's a context-menu 'Move Forward' only and closedWon/closedLost are filtered out of the board so deals can't be closed from it (OpportunityListView.swift:311-317; OpportunityListViewModel.swift:122-128)",
+        "Add Call/Email/Log-activity quick actions to OpportunityDetailView reusing the CRMDetailView quickActions pattern",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 169,
+      "passes": false,
+      "notes": "Feature audit Opportunities #2/#3/#5."
+    },
+    {
+      "id": "IOS-060",
+      "title": "Proposal PDF view/share + rejected/expired transitions + customer linkage",
+      "description": "As a sales rep, I can send a proposal but can't preview/share its PDF in-app and can't record a lost (rejected/expired) proposal.",
+      "acceptanceCriteria": [
+        "Add a 'View PDF' action to ProposalDetailView that calls QuoteService.downloadProposalPDF (QuoteService.swift:38, never called by any view) and presents/shares it via QuickLook with the authenticated Bearer download pattern",
+        "Add Mark Rejected (and expired) transitions using the existing ProposalStatus.rejected + updateProposalStatus (ProposalDetailView.swift:49-62 only exposes Send + Mark Accepted)",
+        "Set customerId on proposal create (currently never set despite the DTO/customerName)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 170,
+      "passes": false,
+      "notes": "Feature audit Quotes #9/#10/#11. Plain links 401 on edge functions — mirror client/src/lib/invoice-pdf.ts/quote-pdf.ts."
+    },
+    {
+      "id": "IOS-061",
+      "title": "Contacts: real create/edit forms (stub today) + address/directions + tel/SMS + grouping",
+      "description": "As a field rep, tapping 'Add Contact' opens a dead screen that renders the literal text 'Add Contact' and saves nothing, I can't edit a contact, and the detail hides the address and doesn't let me call the mobile number.",
+      "acceptanceCriteria": [
+        "Replace the stub ContactFormView (ContactListView.swift:150-168) with a real form (first/last name, email, phone, mobile, title, department, role, company, notes) calling ContactService.createContact and firing onSave",
+        "Add an Edit button on ContactDetailView wired to updateContact (UpdateContactRequest exists, never called)",
+        "Add an Address section + Directions (Apple Maps) link; make mobilePhone a tel: link and add an SMS action (ContactDetailView.swift:215-217 is plain text; primary phone/email already link)",
+        "Surface preferredContactMethod and a Do-Not-Contact warning badge; add company section grouping + role filter (ContactModels.swift:30-31)",
+        "Add the missing loadMore onAppear trigger so contacts past page 1 are reachable (ContactListView has none)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 171,
+      "passes": false,
+      "notes": "Feature audit Contacts #15/#16/#17/#18/#19/#22. The Add affordance currently does nothing."
+    },
+    {
+      "id": "IOS-062",
+      "title": "Invoice detail completeness: line items, payments, record payment, PDF, reminder",
+      "description": "As a rep, the invoice detail shows no line items, no payment history, only an all-or-nothing Mark Paid, and there's no way to view/share the invoice PDF or send a reminder.",
+      "acceptanceCriteria": [
+        "Add an InvoiceDetailViewModel that fetches the single invoice on appear and renders Line Items (backend returns lineItems at invoices/index.ts:141-149; InvoiceLineItem model exists at InvoiceModels.swift:71-80 but is never decoded/displayed)",
+        "Show amountPaid/balanceDue/paidDate clearly; add a 'Record Payment' action that PATCHes amountPaid (partial payments) instead of only status:paid (InvoiceService.swift:42; backend recomputes balance at invoices/index.ts:255-260)",
+        "Wire markAsSent (dead code today, InvoiceService.swift:46) and add a Send Reminder action (add backend route if needed)",
+        "Add an invoice PDF view/share endpoint + authenticated download (no invoicePdf endpoint exists today; mirror quote-pdf Bearer pattern)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 172,
+      "passes": false,
+      "notes": "Feature audit Invoices #1/#2/#3/#4/#5. Detail is currently fed the stale list-row object and never fetches the single invoice."
+    },
+    {
+      "id": "IOS-063",
+      "title": "Contracts: renewals screen + renew/churn actions + tiered rates + covered equipment",
+      "description": "As a rep, I can see a contract is expiring but can't renew it, mark it churned, view its CPC tiered rates, or see covered equipment — the marquee renewal workflow is entirely unwired.",
+      "acceptanceCriteria": [
+        "Add Renew + Mark Churned actions to the contract detail backed by ContractService.renewContract (dead code, ContractService.swift:46) + a new markChurned endpoint (backend contract-renewal/:id/mark-churned at contract-renewal/index.ts:201-220); churn captures reason/notes",
+        "Add an 'Upcoming Renewals' screen driven by fetchUpcomingRenewals (ContractService.swift:42, never called) showing riskScore + value",
+        "Detail fetches the single contract on appear and renders Tiered Rates (backend returns tieredRates at contracts/index.ts:148-156; add a ContractTieredRate model) and a covered-equipment list (equipmentCount at ContractModels.swift:37)",
+        "Reconcile the .expiring status chip with the computed isExpiring (30-day) notion so an active-but-expiring contract appears (ContractModels.swift:51,73)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 173,
+      "passes": false,
+      "notes": "Feature audit Contracts #9/#10/#11/#12/#13/#22. CPC tiered rates are central for copier dealers."
+    },
+    {
+      "id": "IOS-064",
+      "title": "CRM detail: call/email/log for customers (not leads-only) + Maps + status edit + delete",
+      "description": "As a field rep visiting a customer, I can't one-tap call/email them or log an activity (those are gated to leads only), there's no directions button despite a full address, I can't change the record's status, and I can't delete from detail.",
+      "acceptanceCriteria": [
+        "Remove the isLead gate so Call/Email/Log-activity and the activities timeline work for customer records too (CRMDetailView.swift:87,119; CRMDetailViewModel.load:61 only fetches activities for lead/prospect) — confirm the activity endpoint supports customers",
+        "Add a Directions quick action opening Apple Maps from BusinessRecord.fullAddress (CRMModels.swift:101)",
+        "Make status/recordType/salesStage editable in the detail (UpdateBusinessRecordRequest supports them, CRMModels.swift:214-215; only source/rating/etc are editable today)",
+        "Add delete-from-detail with confirmation (per IOS-033)",
+        "Fix Customer360 tickets strip: add a customerId filter to the tickets endpoint so customers with >10 open tickets don't show 'No open tickets' (Customer360Section.swift:236)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 174,
+      "passes": false,
+      "notes": "Feature audit CRM #12/#13/#14/#16 + parent findings."
+    },
+    {
+      "id": "IOS-065",
+      "title": "Tasks: display comment/time-log threads, bulk-ops UI, subtasks/assignee",
+      "description": "As a user, I can add task comments and log time but never see the existing threads, the implemented bulk-update has no UI, and modeled subtasks/dependencies/watchers/assignee aren't usable.",
+      "acceptanceCriteria": [
+        "Add fetchComments/fetchTimeLogs + render the comment thread and individual time-log entries in TaskDetailView (TaskDetailView.swift:262-316 only has inputs; TaskComment/TaskTimeLog models exist at TaskModels.swift:134,145 but nothing displays them)",
+        "Add a multi-select / bulk-action mode to TaskListView wired to TaskService.bulkUpdate (TaskService.swift:65, dead code today)",
+        "Surface subtask creation + a child-task list on the detail (parentTaskId/projectId in CreateTaskRequest); add an assignee picker to create/edit (assignedTo supported, never editable — feed it from myDirectReports)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 175,
+      "passes": false,
+      "notes": "Feature audit Tasks #17/#18/#19/#20."
+    },
+    {
+      "id": "IOS-066",
+      "title": "Notifications center screen + push preferences",
+      "description": "As a user, I can only see the first 5 notifications in the Home preview (the 6th is unreachable and the section hides entirely when empty), there's no dedicated notifications screen, and no UI to manage push preferences.",
+      "acceptanceCriteria": [
+        "Add a NotificationListView (full list, pagination, isRead/type filters, unread count) using the notifications edge function (notifications/index.ts:44-91) with a 'See all' affordance from the Home section (HomeView.swift:259 .prefix(5))",
+        "In-app notification rows navigate to their entity (not just mark read) consistent with push tap routing (HomeView.swift:261-263)",
+        "Add a notification-preferences screen (category opt in/out) and replace the placeholder Settings rows (MainTabView.swift:135-145 push bare Text)",
+        "Verify mark-all-read backend route exists (PATCH /notifications/read-all, APIEndpoint.swift:328) since failures are swallowed silently (HomeViewModel.swift:112)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 176,
+      "passes": false,
+      "notes": "Dashboard audit N1/N2/N3/N4 + UI/UX M11. Push plumbing exists; the center + prefs UI don't."
+    },
+    {
+      "id": "IOS-067",
+      "title": "QuickLog: broaden record coverage + record picker + correct non-lead routing",
+      "description": "As a field rep, QuickLog only auto-links after I open a CRM customer/lead — opening a ticket or opportunity then tapping the FAB blocks me with no record, there's no picker fallback, and non-lead activities would post to the wrong endpoint.",
+      "acceptanceCriteria": [
+        "Call LastViewedRecordStore.shared.record() from ticket/opportunity/quote detail views too (today only CRMDetailView.swift:53 does), so logging against a ticket/opportunity works",
+        "Implement the record-picker fallback the code promises (showingRecordPicker is dead state at QuickLogViewModel.swift:19) so a stale/absent last-record doesn't fully block logging",
+        "Route ActivityQuickLogService by recordKind instead of always hitting the lead endpoint (ActivityQuickLogService.swift:24-28 ignores recordKind) — ticket/opportunity activities post to the correct endpoint",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 177,
+      "passes": false,
+      "notes": "Dashboard audit Q3/Q4/Q5. The non-lead routing becomes a correctness bug the moment ticket logging is enabled."
+    },
+    {
+      "id": "IOS-068",
+      "title": "List search/sort/filter completeness across all list screens",
+      "description": "As a user, list search only matches the ~25 loaded rows (the server search param is never sent), stat cards understate totals (computed from the current page), and there are no sort controls or the filters that are already plumbed server-side.",
+      "acceptanceCriteria": [
+        "Pass searchText to the service search: param on every list so results reflect the full dataset, not just the loaded page (Invoices/Contracts/Contacts/Equipment/Tickets VMs filter client-side and default search:nil)",
+        "Source stat-card counts from a totals/stats endpoint or the response total instead of counting the loaded page (e.g. EquipmentListViewModel activeCount/needsServiceCount:56-57; ServiceTicket Resolved count)",
+        "Add sort controls where missing (by due date / value / name / expiry) and wire the already-plumbed-but-unused filters (ServiceTicket priority + assignedTo/My Tickets; equipment status/type)",
+        "ios xcodebuild test passes"
+      ],
+      "priority": 178,
+      "passes": false,
+      "notes": "Feature audit cross-cutting #14/#20/#21 + ServiceTickets #9 + Equipment #15. Generalizes across all five list areas."
+    },
+    {
+      "id": "IOS-069",
+      "title": "PR-gated native iOS CI (xcodebuild test) + cert-pin empty-set build guard",
+      "description": "As a maintainer, native Swift iOS tests only run in the manual ios-deploy workflow (mobile-ci.yml is the separate Expo app), so PRs touching ios/ never run xcodebuild test, and nothing prevents shipping empty certificate pins.",
+      "acceptanceCriteria": [
+        "Add a CI job triggered on pull_request when ios/** changes that runs xcodegen + xcodebuild test on the Printyx scheme (macos runner)",
+        "Make the job a required status check for PRs touching ios/",
+        "Add a build-time assertion / unit test that fails CI if any tracked host in CertificatePinner has an empty pin set in a Release configuration (CertificatePinner.swift:35-37)",
+        "Wire the IOS-031 decode fixtures into this job",
+        "CI is green on the current branch"
+      ],
+      "priority": 179,
+      "passes": false,
+      "notes": "My own finding + networking H5/security C1. Complements IOS-014 (populate pins) with enforcement."
+    },
+    {
+      "id": "IOS-070",
+      "title": "Info.plist device-capability fix (armv7) + bundle-id drift cleanup",
+      "description": "As a release engineer, the app declares the legacy armv7 required-device-capability on an arm64-only iOS 17 target, and the bundle id is documented inconsistently (net.printyx.ios vs net.printyx.mainapp), risking App Store validation/config confusion.",
+      "acceptanceCriteria": [
+        "Remove/replace the UIRequiredDeviceCapabilities armv7 entry on the iOS 17 arm64 target (ios/Printyx/Resources/Info.plist:32-35)",
+        "Reconcile the bundle identifier across SECRETS.md (net.printyx.ios), project.yml, and ios-deploy.yml (net.printyx.mainapp) to a single value",
+        "xcodegen generate + a Release archive validate cleanly"
+      ],
+      "priority": 180,
+      "passes": false,
+      "notes": "My own finding + security audit L2. Low risk but a real release-config inconsistency."
     }
   ]
 }
