@@ -6382,3 +6382,54 @@ Files Deleted:
 
 Story Status:
 - EDGE-005g: COMPLETE (passes: true)
+
+Iteration 4 (06/18/2026 17:39:30): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+Iteration - EDGE-007a: Drop orphaned PL/pgSQL report functions in drizzle/reports/*.sql
+Completed: 2026-06-18
+
+Key Changes:
+- Chose drop-and-remove over migrate-to-rpc. All 13 SECURITY DEFINER functions
+  across the 6 files (drizzle/reports/{director,executive,sales,sales-manager,
+  service,warehouse}.sql) are fully orphaned: repo-wide grep found ZERO .rpc()
+  callers, the persona-reports/ edge dirs were deleted in EDGE-001/EDGE-007, and
+  supabase/functions/reports/handlers/reporting-engine.ts does inline JS
+  aggregation (its own comment confirms the generic execute path is NOT wired to
+  any stored function).
+- Added drizzle/migrations/0020_drop_orphaned_report_functions.sql: idempotent
+  DROP FUNCTION IF EXISTS with the exact argument signatures pulled from each
+  source file. Follows the hand-authored numbered-migration convention
+  (0008_client_enrollment_tokens.sql, 0010_client_commands.sql, ...), NOT a
+  drizzle-kit-generated one — these functions aren't in the Drizzle schema so
+  drizzle-kit generate can't diff them.
+- Deleted the 6 orphaned report .sql files (git rm).
+
+What Was Learned:
+- drizzle/reports/ held ONLY the 6 orphaned persona-report files (all git-tracked).
+  The IN-USE rpc target functions (dashboard_widget_data, lead_assignment_*,
+  lead_scoring_*, pipeline_*, sales_pipeline_*) live in a SEPARATE dir,
+  drizzle/functions/, and were untouched. (Watch concatenated `ls a; ls b` output
+  — it merges with no separator and looks like one listing.)
+- Migration application is split: server/lib/migrate.ts runs drizzle's
+  journal-based migrate() over drizzle/migrations/meta/_journal.json (only the
+  drizzle-kit-generated 0000..0009 tags). The numbered hand-authored .sql files
+  (0008_client_enrollment_tokens, 0010_client_commands, ... and now 0020) are NOT
+  in the journal and are applied manually/out-of-band (psql), so a hand-written
+  DROP-FUNCTION migration is the right vehicle here.
+- npm run check carries a documented multi-thousand-error tsc baseline
+  (6278 "error TS" lines this run) in server/+shared/. A .sql-only change is not
+  compiled by tsc, so it adds zero new errors by construction. Build green (20.86s).
+- db:migrate against staging is the remaining ops-only step (DB unreachable from
+  the sandbox). The migration is idempotent (IF EXISTS) and safe to re-run.
+
+Files Modified:
+- drizzle/migrations/0020_drop_orphaned_report_functions.sql (new)
+- prd.json (EDGE-007a -> passes: true)
+Files Deleted:
+- drizzle/reports/{director,executive,sales,sales-manager,service,warehouse}.sql
+
+Story Status:
+- EDGE-007a: COMPLETE (passes: true) — pending ops db:migrate on staging.

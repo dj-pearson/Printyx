@@ -4502,8 +4502,8 @@
         "Run npm run check and npm run build"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "Surface area: 6 SQL files, ~6 corresponding edge function handlers. Discovered as a follow-up to EDGE-007. Performance argument for migrate: aggregating thousands of rows in Postgres is faster than transferring them to Deno and aggregating in JS. Argument for drop: less surface area, simpler deployment.",
+      "passes": true,
+      "notes": "DONE 2026-06-18 (drop-and-remove path). Audit confirmed all 13 functions across the 6 files (report_company_sales_performance, report_company_service_performance, report_executive_dashboard, report_platform_admin_dashboard, report_regional_performance, report_sales_personal_{pipeline,activity,quota}, report_sales_team_comparison, report_service_personal_{calls,time}, report_service_team_quick_stats, report_warehouse_team_quick_stats) are fully orphaned: repo-wide grep found ZERO .rpc() callers, persona-reports/ edge dirs were deleted in EDGE-001/EDGE-007, and reports/handlers/reporting-engine.ts explicitly does inline JS aggregation (its own comment says the generic execute path is not wired to stored functions). Chose drop over migrate-to-rpc: less surface area, no behavior change, and the handlers already return real data via JS aggregation. Added drizzle/migrations/0020_drop_orphaned_report_functions.sql (idempotent DROP FUNCTION IF EXISTS with explicit signatures) and deleted the 6 drizzle/reports/*.sql files. IMPORTANT: drizzle/reports/ held ONLY these 6 orphaned report files — the IN-USE rpc target functions (dashboard_widget_data, lead_assignment_*, lead_scoring_*, pipeline_*, sales_pipeline_*) live in drizzle/functions/ and were left untouched. npm run check = pre-existing baseline only (0 new errors; change is .sql-only, not compiled by tsc). npm run build green (20.86s). db:migrate against staging is the remaining ops step (DB unreachable from this sandbox); migration is idempotent and safe to re-run.",
       "category": "edge-migration"
     },
     {
