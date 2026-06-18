@@ -142,7 +142,7 @@ export default function ESignatureIntegration() {
 
   // Fetch signature requests
   const { data: signatureRequests = [], isLoading: requestsLoading } = useQuery({
-    queryKey: ['/api/signature-requests'],
+    queryKey: ['/api/signatures/requests'],
     select: (data: any[]) =>
       data.map((request) => ({
         ...request,
@@ -156,7 +156,7 @@ export default function ESignatureIntegration() {
 
   // Fetch signature templates
   const { data: templates = [] } = useQuery<SignatureTemplate[]>({
-    queryKey: ['/api/signature-templates'],
+    queryKey: ['/api/signatures/templates'],
     select: (data: any[]) =>
       data.map((template) => ({
         ...template,
@@ -172,18 +172,18 @@ export default function ESignatureIntegration() {
 
   // Fetch signature analytics
   const { data: analytics } = useQuery({
-    queryKey: ['/api/signature-analytics'],
+    queryKey: ['/api/signatures/analytics'],
   });
 
   // Create signature request mutation
   const createRequestMutation = useMutation({
     mutationFn: (data: any) =>
-      apiRequest('/api/signature-requests', {
+      apiRequest('/api/signatures/requests', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/signature-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/signatures/requests'] });
       setIsCreateRequestOpen(false);
       reset();
       toast({
@@ -196,12 +196,12 @@ export default function ESignatureIntegration() {
   // Send reminder mutation
   const sendReminderMutation = useMutation({
     mutationFn: ({ id, customMessage }: any) =>
-      apiRequest(`/api/signature-requests/${id}/remind`, {
+      apiRequest(`/api/signatures/requests/${id}/remind`, {
         method: 'POST',
         body: JSON.stringify({ customMessage }),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/signature-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/signatures/requests'] });
       toast({
         title: 'Reminder Sent',
         description: 'Reminder email has been sent to the customer.',

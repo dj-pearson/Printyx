@@ -299,6 +299,14 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/customer-success': 'customer-success',
     '/api/company-ids': 'company-ids',
 
+    // EDGE-005e: signatures — consolidates the old flat /api/signature-{requests,
+    // templates,analytics} prefixes (orphaned mock router routes-esignature.ts, now
+    // deleted) under the canonical /api/signatures/* prefix. The page-compat routes
+    // (requests/templates/analytics) serve the legacy ESignatureIntegration shape from
+    // the real signature_requests table; the fn also has the real CRUD surface
+    // (signature-requests/signers/documents, webhooks).
+    '/api/signatures': 'signatures',
+
     // EDGE-005: defensive proxy for the search endpoint. Frontend's
     // command-palette was the only stale /api/universal-search caller;
     // it was rewritten to /api/search to match the canonical edge function.

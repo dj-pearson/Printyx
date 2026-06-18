@@ -34,6 +34,7 @@ import { handleSigners } from './handlers/signers.ts';
 import { handleDocuments } from './handlers/documents.ts';
 import { handleAudit } from './handlers/audit.ts';
 import { handleSignatureWebhook } from './handlers/webhooks.ts';
+import { handlePage } from './handlers/page.ts';
 
 const log = createLogger('signatures');
 
@@ -104,6 +105,13 @@ export default async function handler(req: Request) {
         break;
       case 'signature-documents':
         result = await handleDocuments(req, ctx);
+        break;
+      // Legacy ESignatureIntegration page (EDGE-005e) — consolidates the old flat
+      // /api/signature-{requests,templates,analytics} prefixes under /signatures/*.
+      case 'requests':
+      case 'templates':
+      case 'analytics':
+        result = await handlePage(req, ctx, first);
         break;
       case 'customers': {
         // /customers/:customerId/signature-requests forward
