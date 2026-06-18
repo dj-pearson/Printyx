@@ -6759,8 +6759,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 40,
-      "passes": false,
-      "notes": "Foundation for EDGE-013..EDGE-017. Today only 33 of ~205 edge functions are in the proxy map; getApiUrl (client/src/lib/config.ts) sends prod traffic straight to functions.printyx.net, so the proxy map only governs dev. The matrix turns 'we think it's migrated' into evidence.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. scripts/audit-route-parity.mjs (npm run audit:routes) enumerates all four sources: frontend /api/* calls (regex over client/src), edge fn dirs (supabase/functions), Express app.METHOD/use('/api/x') registrations (server/**), and the edge-function-proxy crmProxies map. Emits docs/route-parity-matrix.md (architecture fact + summary-by-class table + action-needed list + full matrix) and docs/route-divergence.json (machine-readable companion the dev route-divergence-detector loads at startup). Classes: missing-edge (prod blocker — 44), both-divergent (dev≠prod — 61), express-only (25), dead-express (19), proxied (37), edge-only (110), express-canonical (10). EDGE-012's last gap was CI wiring — added a non-blocking `continue-on-error` 'Route parity audit' step to the quality job in .github/workflows/ci.yml that runs the audit and pushes the summary-by-class table into $GITHUB_STEP_SUMMARY. Script/matrix/json were committed during EDGE-013 partial work; npm run check baseline unchanged (no TS source touched).",
       "category": "edge-migration"
     },
     {

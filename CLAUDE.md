@@ -178,6 +178,9 @@ DELETE /api/[resource]/:id
 | RBAC | `server/middleware/enhanced-rbac-middleware.ts` |
 | Query scoping | `server/middleware/hierarchical-query-builder.ts` |
 
+### Route parity / edge migration (EDGE-0xx)
+`npm run audit:routes` (`scripts/audit-route-parity.mjs`) is the re-runnable source of truth for where every `/api/*` route is served. It regex-scans four sources (frontend `/api/*` calls in `client/src`, edge fn dirs in `supabase/functions`, Express `app.METHOD/use('/api/x')` regs in `server/**`, and the `crmProxies` map in `server/middleware/edge-function-proxy.ts`) and writes `docs/route-parity-matrix.md` + `docs/route-divergence.json` (the latter is loaded at startup by the dev-only `route-divergence-detector.ts`). Classes: `missing-edge` = frontend calls it but no edge fn → **PROD BLOCKER** (prod hits `functions.printyx.net` directly via `getApiUrl`; dev silently falls back to Express, masking it); `both-divergent` = Express+edge exist, not proxied → dev≠prod; `proxied`/`edge-only` = aligned. The audit runs as a **non-blocking** (`continue-on-error`) report step in the `quality` CI job. EDGE-013..017 all consume this matrix.
+
 ## Feature Modules
 
 ### Address Book Manager (ABK-###)

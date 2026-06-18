@@ -6289,3 +6289,47 @@ Story Status:
 - PROP-010: COMPLETE (passes: true)
 
 ---
+
+Iteration 2 (06/18/2026 17:29:41): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+Iteration - EDGE-012: Build authoritative route-parity matrix (frontend ↔ edge ↔ Express ↔ proxy map)
+Completed: 2026-06-18
+
+Key Changes:
+- The bulk of EDGE-012 (scripts/audit-route-parity.mjs + docs/route-parity-matrix.md
+  + docs/route-divergence.json + the `audit:routes` npm script) was already built
+  during EDGE-013's partial work but EDGE-012 stayed passes:false. The single
+  remaining acceptance gap was "script wired into CI as a report (non-blocking)".
+- Added a non-blocking CI step to the `quality` job in .github/workflows/ci.yml:
+  `continue-on-error: true` runs `npm run audit:routes` and pipes the
+  summary-by-class table from docs/route-parity-matrix.md into $GITHUB_STEP_SUMMARY.
+- Re-ran the audit to refresh the committed matrix/json (totals shifted as routes
+  evolved): 306 domains, 228 edge fns, 168 Express-served, 188 frontend-called,
+  37 proxied. Classes: missing-edge 44 (PROD BLOCKERS), both-divergent 61,
+  express-only 25, dead-express 19, proxied 37, edge-only 110, express-canonical 10.
+
+What Was Learned:
+- audit-route-parity.mjs is the source of truth feeding EDGE-013..017. Class names
+  differ slightly from the PRD's prose (script uses edge-only≈prod-live-edge,
+  express-only≈dev-express-only) but cover every concept in the AC.
+- The 44 `missing-edge` domains are genuine production blockers: prod frontend
+  calls functions.printyx.net directly (getApiUrl), so a missing edge fn is a hard
+  prod failure even though dev silently falls back to Express. EDGE-014 targets these.
+- CI (ci.yml) has paths-ignore for `*.md` and `mobile/**`; the audit step still runs
+  on any non-doc push/PR to main since the trigger fires on source changes.
+- npm run check carries the documented multi-thousand-error baseline in server/+shared/;
+  this story touched only .yml/.mjs/.md/.json so tsc is entirely unaffected (zero new errors).
+
+Files Modified:
+- .github/workflows/ci.yml (non-blocking route-parity report step)
+- docs/route-parity-matrix.md (regenerated)
+- docs/route-divergence.json (regenerated)
+- prd.json (EDGE-012 → passes: true)
+
+Story Status:
+- EDGE-012: COMPLETE (passes: true)
+
+---
