@@ -318,6 +318,15 @@ export function registerEdgeFunctionProxy(app: any) {
     // /api/scheduled-reports/* → /reports/scheduled/*.
     '/api/scheduled-reports': { fn: 'reports', pathPrefix: '/scheduled' },
 
+    // EDGE-005a: accounts-payable + accounts-receivable. Flat CRUD over the
+    // accounts_payable / accounts_receivable tables (7 + 7 frontend callsites,
+    // GET list/:id, POST, PATCH/PUT, DELETE). The plural dir names match the
+    // prod route (functions.printyx.net/accounts-{payable,receivable}); the old
+    // singular account-{payable,receivable} fns served an orphaned bills/aging
+    // sub-ledger over phantom tables and were deleted.
+    '/api/accounts-payable': 'accounts-payable',
+    '/api/accounts-receivable': 'accounts-receivable',
+
     // EDGE-002a: billing — full frontend parity audited 2026-06-11
     // (analytics + 3 sub-routes, invoices list/:id/pay/email/pdf/
     // generate-from-contract, rules + activate/deactivate, configurations,

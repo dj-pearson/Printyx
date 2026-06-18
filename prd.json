@@ -4321,8 +4321,8 @@
         "Smoke-test AccountsPayable.tsx and AccountsReceivable.tsx pages"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "Bundled because both follow the same pattern (singular edge fn + plural frontend prefix + URL structure mismatch). 7 + 7 frontend callers each.",
+      "passes": true,
+      "notes": "Bundled because both follow the same pattern (singular edge fn + plural frontend prefix + URL structure mismatch). 7 + 7 frontend callers each. [DONE 2026-06-18: chose REFACTOR strategy. Created NEW plural-named edge fns supabase/functions/accounts-{payable,receivable}/ serving flat CRUD (GET list/:id, POST, PATCH+PUT, DELETE) over the real accounts_payable/accounts_receivable tables via normalizePath. Deleted the dead singular account-{payable,receivable} dirs (orphaned bills/aging sub-ledger over phantom tables bills/ar_reminders/etc that exist in NO schema, zero callers). Edge fns return camelCase rows (toCamel) to match the Drizzle/Express contract the frontend reads (.totalAmount/.balanceAmount.toString()). AR drift handled: invoice_type defaulted to invoice (NOT NULL, no default), phantom form fields referenceNumber/priority dropped by column whitelist. Added /api/accounts-{payable,receivable} to crmProxies. Audit now classifies both as proxied. deno check + npm run build green.]",
       "category": "edge-migration"
     },
     {

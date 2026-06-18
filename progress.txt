@@ -6518,3 +6518,47 @@ Files Deleted:
 
 Story Status:
 - EDGE-004: COMPLETE (passes: true) - pending ops live smoke-test on deployed edge fns.
+
+Iteration 6 (06/18/2026 18:16:10): Story LAUNCH-011
+Status: Needs Review
+
+## Iteration N - EDGE-005a: Port accounts-payable + accounts-receivable to flat frontend URL pattern
+Completed: 2026-06-18
+
+Key Changes:
+- Chose REFACTOR strategy over proxy-alias: the singular account-{payable,receivable}
+  edge fns were dead drift (served an orphaned bills/aging/collections sub-ledger over
+  tables bills/bill_line_items/bill_payments/ar_reminders/ar_write_offs that exist in NO
+  Drizzle schema; zero frontend callers). Deleted both singular dirs.
+- Created NEW plural-named edge fns supabase/functions/accounts-payable/ +
+  accounts-receivable/ serving flat CRUD (GET list, GET :id, POST, PATCH+PUT, DELETE)
+  over the real accounts_payable/accounts_receivable tables, using normalizePath.
+- PLURAL dir names are required for prod: frontend hits functions.printyx.net/accounts-
+  payable directly (getApiUrl strips /api/) and server.ts resolves first path segment to a
+  function dir by EXACT name. Singular dir => prod 404 regardless of dev proxy.
+- Edge fns return camelCase rows (toCamel helper) because the Express path returned Drizzle
+  camelCase objects and the frontend reads .totalAmount/.balanceAmount.toString() directly;
+  supabase-js raw snake_case would have crashed the page on render.
+- AR drift handled: invoice_type is NOT NULL with no DB default and the AR form never sends
+  it -> default to 'invoice'. AR form also sends phantom referenceNumber/priority (no such
+  columns) -> dropped by the column whitelist. balance_amount (NOT NULL) defaults to total.
+- Accept both PATCH (what frontend uses) and PUT for updates.
+- Added '/api/accounts-payable' + '/api/accounts-receivable' to crmProxies (dev parity).
+
+Gotchas Discovered:
+- Express only ever served GET(list)+POST for these prefixes (routes-products-crud.ts via
+  storage); GET/:id, PATCH/:id, DELETE were unimplemented, so the page's edit feature was
+  broken everywhere before this. New edge fns implement the full set.
+
+Verification:
+- deno check both fns: clean. npm run build: green. npm run check: no new errors naming
+  changed files. audit:routes now classifies both as `proxied` (was missing-edge).
+
+Files Modified:
+- supabase/functions/accounts-payable/index.ts (new)
+- supabase/functions/accounts-receivable/index.ts (new)
+- supabase/functions/account-payable/, account-receivable/ (deleted)
+- server/middleware/edge-function-proxy.ts (crmProxies entries)
+- prd.json (EDGE-005a passes:true), docs/route-parity-matrix.md (regenerated)
+
+---
