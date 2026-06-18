@@ -1,7 +1,28 @@
 # Quote Module Architecture (canonical)
 
-Status: **active** — established by stories QUOTE-001..010 (prd.json).
-Last updated: 2026-06-09.
+Status: **active** — established by stories QUOTE-001..020 + PROP-001..010 (prd.json).
+Last updated: 2026-06-18.
+
+## v2 flow at a glance
+
+```
+Quote builder (/quotes/new, /quotes/:id)                Proposal presentation
+  Customer → Products → Pricing → Review                  Templates + Branding
+  ├─ server product search + multi-add  (QUOTE-011/013)     ├─ proposal_templates (merge tokens)
+  ├─ per-line discount + reason         (QUOTE-016)         ├─ company_branding_profiles (logo, colors)
+  ├─ recurring / contract lines         (QUOTE-017)         └─ Generate Proposal → proposal_sections
+  ├─ autosave + reload recovery         (QUOTE-018)
+  └─ drag reorder / group-by-type       (QUOTE-019/020)   Customer-facing outputs (NO cost/margin)
+                                                            ├─ branded customer PDF  /export/pdf
+        proposals / proposal_line_items  ────────────────▶ ├─ public share page     /p/<token>
+        (one canonical model, §1)                          └─ accept/decline → deal won + contract
+```
+
+The merge/branding/share pipeline is the **same** `supabase/functions/proposals/` edge
+function that owns the quote — generate, PDF, share, and the public/accept routes all live
+there (§4, §6). The customer-safe boundary (no `unit_cost` / `total_dealer_cost` / `margin`
+in any customer surface) is the single hard invariant the PROP-010 regression enforces
+automatically.
 
 ## 1. Decision: one canonical model
 
@@ -10,23 +31,23 @@ by the **`supabase/functions/proposals/`** edge function and consumed by the UI 
 `/api/proposals`. This is the only quote system the UI actually used, and the line-item
 table already carries `unit_cost`, `unit_price`, `margin`, and `discount`.
 
-The three-tier cost *concepts* (dealer cost → rep/selling price → customer price, plus
+The three-tier cost _concepts_ (dealer cost → rep/selling price → customer price, plus
 margin/discount thresholds) are **absorbed into this model**, rather than re-wiring the UI
 onto the parallel `enhanced_quote_pricing` tables.
 
 ### Deprecated (do not build on; not yet deleted)
 
-| Thing | Location | Why deprecated |
-|---|---|---|
-| `quotes` edge fn | `supabase/functions/quotes/index.ts` | Duplicate quote CRUD; UI never calls it |
-| `quote-line-items` edge fn | `supabase/functions/quote-line-items/index.ts` | Duplicate line-item CRUD |
-| `quotePricing` / `quotePricingLineItems` | `shared/schema.ts` (~6228) | Parallel quote-document tables, unused by UI |
-| `enhancedQuotePricing` / `enhancedQuotePricingLineItems` | `shared/product-pricing-schema.ts` (~174/235) | Parallel quote-document tables, unused by UI |
+| Thing                                                    | Location                                       | Why deprecated                               |
+| -------------------------------------------------------- | ---------------------------------------------- | -------------------------------------------- |
+| `quotes` edge fn                                         | `supabase/functions/quotes/index.ts`           | Duplicate quote CRUD; UI never calls it      |
+| `quote-line-items` edge fn                               | `supabase/functions/quote-line-items/index.ts` | Duplicate line-item CRUD                     |
+| `quotePricing` / `quotePricingLineItems`                 | `shared/schema.ts` (~6228)                     | Parallel quote-document tables, unused by UI |
+| `enhancedQuotePricing` / `enhancedQuotePricingLineItems` | `shared/product-pricing-schema.ts` (~174/235)  | Parallel quote-document tables, unused by UI |
 
 ### Retained from the "enhanced" set (still used)
 
-| Thing | Location | Use |
-|---|---|---|
+| Thing                      | Location                                 | Use                                                                                         |
+| -------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `company_pricing_settings` | `shared/product-pricing-schema.ts` (~44) | Per-tenant **pricing policy** (min margin, max discount, price floor, approval) — QUOTE-006 |
 
 ## 2. End-to-end data flow
@@ -49,7 +70,7 @@ proposals  ──────────────  proposal_line_items
 
 - **Customer** comes from `business_records` (leads + customers share this table).
 - **Products** come from the per-type product catalog edge functions. Each line item stores
-  a *snapshot* of `unit_cost` (dealer/hard cost) and `unit_price` (customer price) at the
+  a _snapshot_ of `unit_cost` (dealer/hard cost) and `unit_price` (customer price) at the
   time it is added, so later catalog price changes never rewrite historical quotes.
 - **Cost/margin** is computed from the line-item snapshots and rolled up onto the proposal.
 
@@ -69,10 +90,10 @@ is_optional, is_customizable, configuration_options, alternative_options`
 
 ### Product catalog price/cost columns (ACTUAL live columns)
 
-| Type | List | Selling price | Hard cost |
-|---|---|---|---|
-| `product_models` | `msrp` | `new_rep_price`, `upgrade_rep_price`, `lexmark_rep_price` | `new_dealer_cost`, `upgrade_dealer_cost`, `lexmark_dealer_cost` *(added QUOTE-002)* |
-| `product_accessories` | `*_suggested_retail` | `standard/new/upgrade_rep_price` | `standard/new/upgrade_dealer_cost` *(already present)* |
+| Type                  | List                 | Selling price                                             | Hard cost                                                                           |
+| --------------------- | -------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `product_models`      | `msrp`               | `new_rep_price`, `upgrade_rep_price`, `lexmark_rep_price` | `new_dealer_cost`, `upgrade_dealer_cost`, `lexmark_dealer_cost` _(added QUOTE-002)_ |
+| `product_accessories` | `*_suggested_retail` | `standard/new/upgrade_rep_price`                          | `standard/new/upgrade_dealer_cost` _(already present)_                              |
 
 > The Drizzle declarations in `shared/schema.ts` for `product_models` use different names
 > (`newRepCost`, `newSuggestedRetail`); the **live** table uses `new_rep_price` etc. The live
@@ -100,10 +121,17 @@ arithmetic inline; the parity test in `quote-math.test.ts` locks them against dr
   substitution, line-items table incl. per-line discount + recurring split, missing-data
   fallbacks, unknown-token warnings, and **no cost/margin in customer output**).
 - E2E: `npm run test:e2e:chromium -- tests/quote-flow.spec.ts` (quote wizard + gating).
-- E2E: `npm run test:e2e:chromium -- tests/proposal-flow.spec.ts` (PROP-001..008 smoke:
-  templates, branding, generate/share actions, public view; data-dependent legs in its
-  manual checklist). The quote-flow legs (server search, per-line discount, recurring,
-  autosave) await the QUOTE-011..020 track.
+- E2E: `npm run test:e2e:chromium -- tests/proposal-flow.spec.ts` — the **full PROP-010
+  regression**: quote builder legs (server product search, per-line discount + reason,
+  recurring lines, autosave/reload recovery), proposal templates, branding, Generate +
+  Copy-Share-Link (round-trips `/share` and opens `/p/<token>` logged-out), and the public
+  view. A `page.on('response')` guard (`installCustomerSafeGuard`) asserts that **no
+  public-proposal payload or customer PDF ever leaks `unit_cost` / `total_dealer_cost` /
+  `margin`** — it never trips with empty seed data and fails loudly on a regression. The
+  suite **skips gracefully** (a `beforeAll` reachability probe) when no dev server answers
+  on `baseURL`, so it gates a live stack, not the unit build. Data-dependent legs that need
+  a seeded cost-bearing catalog + migrations 0015/0016/0017 stay in the spec's manual
+  checklist.
 - Manual checklists: bottoms of `tests/quote-flow.spec.ts` and `tests/proposal-flow.spec.ts`.
 
 ## 4. Manager quote
