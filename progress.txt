@@ -6170,3 +6170,75 @@ Status: Needs Review
 
 Iteration 20 (06/11/2026 20:22:25): Story LAUNCH-011
 Status: Needs Review
+
+---
+## Ralph Iteration — PROP-009 (TipTap rich text editor + merge-token node)
+
+**Date:** 2026-06-18
+**Story:** PROP-009 — Replace execCommand RichTextEditor with TipTap; merge-token TipTap node
+**Status:** passes: true (mock-data cleanup + coming-soon gate were already done on main; this iteration finished the TipTap rewrite)
+
+### What shipped
+- **client/src/components/proposal-builder/rich-text-extensions.ts** (new): shared
+  TipTap extension factory `buildRichTextExtensions(placeholder?)` + custom
+  `MergeToken` inline-atom Node. The node serializes to
+  `<span data-merge-token="{{token}}">{{token}}</span>` — the INNER TEXT is the
+  literal token, so it survives sanitizeRichHtml (DOMPurify allows span/class/
+  data-*) and is matched by proposal-merge.ts's `/\{\{\s*[\w.]+\s*\}\}/g` regex
+  with ZERO engine changes. Extracted as its own module (no React) so the editor
+  and the unit test build the exact same schema.
+- **client/src/components/proposal-builder/RichTextEditor.tsx** (rewritten):
+  execCommand fully removed; now useEditor/EditorContent. Same props
+  (value/onChange/placeholder/className/minHeight) — drop-in. Toolbar parity:
+  undo/redo, format select (p/h1-h4/blockquote), font size, bold/italic/
+  underline, text color (setColor), bg color (setBackgroundColor), align L/C/R
+  (setTextAlign), bullet/ordered lists, link (with optional text), image, hr,
+  blockquote, code block, + NEW "Merge field" select that inserts chips from
+  @shared/proposal-merge-fields. onUpdate emits sanitizeRichHtml(getHTML()) and
+  normalizes empty doc → ''. isActive states wired for toggle buttons.
+- **server/tests/unit/rich-text-roundtrip.test.ts** (new): `// @vitest-environment
+  jsdom`, uses @tiptap/core generateJSON/generateHTML against the shipped
+  extension set. 4 tests, all green.
+
+### Key learnings / gotchas (for future iterations)
+- `@tiptap/*` was DECLARED in package.json but NOT in node_modules — had to
+  `npm install --legacy-peer-deps @tiptap/extension-{underline,text-style,color,
+  text-align,highlight}@3.22.5` (this also materialized the declared @tiptap
+  deps). Pin new extensions to 3.22.5 to match @tiptap/react/core already pinned.
+- **@tiptap/extension-text-style@3.22.5 bundles TextStyle, Color, BackgroundColor,
+  FontSize, FontFamily, LineHeight** — no need for separate extension-color/
+  -highlight for text+bg color+font size. Import them as named exports.
+- **StarterKit v3 bundles Link AND Underline** (configurable via
+  `link`/`underline` options). Do NOT also register standalone Link/Underline —
+  duplicate-extension warning. Configure link via StarterKit's `link` option.
+- TipTap commands confirmed: setColor/setBackgroundColor/setFontSize (text-style),
+  setTextAlign (text-align), setImage (image). FontSize wants a CSS size ('16px').
+- vitest default env is **node** (vitest.config.ts) and there are NO client tests
+  yet — for any test needing a DOM (TipTap schema parse), add the file-level
+  docblock `// @vitest-environment jsdom` (jsdom is installed).
+- Round-trip tests must assert SEMANTIC preservation (contains text/tags/tokens),
+  NOT byte-equality — TipTap re-normalizes HTML. Second-pass idempotency
+  (roundTrip(roundTrip(x)) === roundTrip(x)) is the stable equality check.
+- RichTextEditor is imported in ProposalBuilder.tsx but currently NOT rendered;
+  the PROP-004 merge UI lives in ProposalVisualBuilder.tsx as a plain Textarea.
+  The TipTap editor is a ready drop-in if/when a section gets a WYSIWYG field.
+- eslint/prettier IGNORE client/src/components/** and server/tests/** in this
+  repo — those files won't show in `npm run lint`; rely on tsc + build + vitest.
+
+### Quality gates
+- npm run check: 0 TS errors (whole project)
+- npm run build: green (31s)
+- rich-text-roundtrip.test.ts: 4/4 pass
+- Browser verify: env-blocked (stale anon key per CLAUDE.md; editor not mounted
+  in a reachable page) — covered by round-trip unit test + build instead.
+
+### Files modified/created
+- client/src/components/proposal-builder/rich-text-extensions.ts (new)
+- client/src/components/proposal-builder/RichTextEditor.tsx (rewritten)
+- server/tests/unit/rich-text-roundtrip.test.ts (new)
+- package.json / package-lock.json (5 @tiptap extensions added)
+- prd.json (PROP-009 → passes: true)
+
+### Next suggested story
+- PROP-010 (E2E regression quote→template→proposal→PDF→share/accept, P3) or
+  EDGE-004 (platform admin endpoints, P4). LAUNCH-011/020 remain ops-blocked.
