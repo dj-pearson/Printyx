@@ -4287,8 +4287,8 @@
         "Delete the four server/routes-platform-*.ts files after verification"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "Platform admin features are visibility-gated by roles.can_access_all_tenants per CLAUDE.md memory note. Frontend pages currently render with empty data in production because Express isn't reachable.",
+      "passes": true,
+      "notes": "DONE 2026-06-18: Created supabase/functions/platform-activities, platform-analytics, platform-cs and expanded the existing platform-crm edge fn to full /business-records/* parity (list/stats/export/:id[+include]/:id/contacts/:id/timeline/POST/PATCH/convert-to-tenant/bulk-update/bulk-assign/bulk-delete/DELETE). All four are root-admin gated (roleLevel >= 7 OR roles.can_access_all_tenants) and use createSupabaseServiceClient() service-role bypass (explicit comment in each) instead of new RLS files, matching the existing platform-deals/platform-crm pattern. Column names taken from the authoritative shared/platform-crm-schema.ts; the analytics port also REMAPS several drift columns the old Express route referenced but that don't exist (documented inline with // Drift: comments) — those Express handlers would have errored on the live DB. Added the four prefixes to crmProxies (server/middleware/edge-function-proxy.ts) and deleted the four routes-platform-*.ts files + their registry.ts registrations (platform-deals kept Express-served). Verified: deno check clean on all four edge fns; npm run build (frontend) green; tsc baseline-neutral (no new errors; the routes-registry.ts errors at lines 130/656+ are the pre-existing ./domains/reporting breakage, unrelated); edge-function-proxy unit test (33) passing. Remaining AC = live smoke-test of PlatformAdminDashboard/PlatformCSDashboard/PlatformAnalytics, which is a deploy-time/ops step (no Supabase functions runtime in sandbox). Net prod improvement: these endpoints 404'd in prod before (frontend hits functions.printyx.net directly via getApiUrl).",
       "category": "edge-migration"
     },
     {

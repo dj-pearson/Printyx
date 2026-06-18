@@ -6433,3 +6433,88 @@ Files Deleted:
 
 Story Status:
 - EDGE-007a: COMPLETE (passes: true) — pending ops db:migrate on staging.
+
+Iteration 5 (06/18/2026 17:56:40): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+Iteration - EDGE-004: Port platform admin endpoints (platform-crm, platform-activities, platform-analytics, platform-cs)
+Completed: 2026-06-18
+
+Key Changes:
+- Created 3 new Supabase edge functions and expanded 1 existing:
+  * supabase/functions/platform-activities/index.ts (NEW) - list+filters/stats/:id/
+    POST/log-call|email|meeting|demo/PATCH/:id/complete-task/DELETE
+  * supabase/functions/platform-analytics/index.ts (NEW) - all 14 analytics endpoints
+    (revenue/conversion/pipeline/performance/growth/cohort/health/churn/sales-perf/etc.)
+  * supabase/functions/platform-cs/index.ts (NEW) - health-scores(+:id+?businessRecordId)/
+    calculate/churn-predictions/predict/interventions CRUD/metrics/csms
+  * supabase/functions/platform-crm/index.ts (EXPANDED) - now full /business-records/*
+    parity: list/stats/export/:id[?include]/:id/contacts/:id/timeline/POST/PATCH/
+    convert-to-tenant/bulk-update/bulk/assign/bulk-delete/DELETE (kept legacy leads/
+    activities/stats helpers).
+- All four gate on roleLevel >= 7 OR roles.can_access_all_tenants, use
+  createSupabaseServiceClient() service-role bypass (explicit comment) - no new RLS
+  files (matches existing platform-deals pattern).
+- Wired all four prefixes into crmProxies (server/middleware/edge-function-proxy.ts).
+- Deleted the 4 Express routers (routes-platform-business-records/activities/
+  customer-success/analytics.ts) + their imports/app.use() in routes-registry.ts.
+  platform-deals stays Express-served in dev.
+
+What Was Learned:
+- DENO IS INSTALLED (deno 2.8.2 at ~/.deno/bin) and `deno check supabase/functions/<fn>/
+  index.ts` typechecks edge functions WITH the esm.sh/_shared imports resolving. This is
+  the best in-sandbox verification for Deno edge fns (they're NOT in tsconfig/`npm run
+  check`, NOT eslint/prettier-scoped by default for server/). NOTE: the project does NOT
+  gate on deno check - the committed platform-crm even had a getUser(jwt: string|null)
+  TS2345 nit; fix new code with `jwt = ... ? slice(7) : undefined`.
+- /api/platform-crm is an UMBRELLA prefix: only /business-records/* was ever served
+  (by routes-platform-business-records.ts). The frontend ALSO calls /platform-crm/
+  assignment-rules|territories|managers|scoring-models|scoring-rules (PlatformAssignment
+  Rules/Territories/LeadScoring pages) but NOTHING serves those on either backend - they
+  404 today. So blanket-proxying /api/platform-crm is safe (no regression) and those
+  remain out of scope (separate unbuilt features).
+- The platform tables live in shared/platform-crm-schema.ts (re-exported via schema.ts).
+  The OLD routes-platform-analytics.ts referenced MANY Drizzle fields that don't exist on
+  the schema (platform_activity_reports has user_id/total_calls/meetings_held/total_arr_
+  booked - NOT rep_id/rep_name/leads_generated/revenue_generated; platform_cohort_analysis
+  uses cohort_date/initial_size/initial_mrr - NOT cohort_start_date/customers_at_start;
+  platform_sales_goals uses target_value/current_value/assigned_to_user_id - NOT rep_id/
+  revenue_target). Those Express handlers would error on the live DB; the edge port remaps
+  to real columns (// Drift: comments) so it's MORE correct than the deleted code.
+- routes-registry.ts mounts platform routers (NOT routes.ts). Build pre-flight gotcha:
+  `npm run build:fullstack` (vite + esbuild server bundle) is ALREADY BROKEN on the clean
+  tree - routes-registry.ts:130 imports a missing './domains/reporting'. The canonical
+  pre-flight is `npm run build` (frontend only), which is green. tsc carries the documented
+  ~6200-error baseline.
+
+Verification:
+- deno check: clean on all 4 edge fns.
+- npm run build (frontend): green (23.66s).
+- tsc: baseline-neutral (6172 error lines; pre-existing reporting/unknown-arg errors only;
+  no refs to deleted symbols).
+- npm run test: edge-function-proxy.test.ts (33) PASS; the 15 failing tests are all
+  pre-existing baseline (mobile/, printyx-client/, E2E specs needing a live server,
+  report-cache, hierarchical-query-builder, navigation-permissions, etc.) - none touch
+  platform CRM.
+- Remaining AC (live smoke-test of the 3 platform admin pages) is deploy-time/ops -
+  no Supabase functions runtime in the sandbox.
+
+Files Modified:
+- supabase/functions/platform-crm/index.ts (expanded)
+- server/middleware/edge-function-proxy.ts (crmProxies +4)
+- server/routes-registry.ts (removed 4 imports + 4 app.use)
+- prd.json (EDGE-004 -> passes: true)
+Files Created:
+- supabase/functions/platform-activities/index.ts
+- supabase/functions/platform-analytics/index.ts
+- supabase/functions/platform-cs/index.ts
+Files Deleted:
+- server/routes-platform-business-records.ts
+- server/routes-platform-activities.ts
+- server/routes-platform-customer-success.ts
+- server/routes-platform-analytics.ts
+
+Story Status:
+- EDGE-004: COMPLETE (passes: true) - pending ops live smoke-test on deployed edge fns.

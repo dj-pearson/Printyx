@@ -351,6 +351,18 @@ export function registerEdgeFunctionProxy(app: any) {
     // return degraded responses (require Claude integration port).
     '/api/predictive-maintenance': 'predictive-maintenance',
 
+    // EDGE-004: platform admin CRM. Frontend (PlatformBusinessRecords,
+    // PlatformBusinessRecordDetail, PlatformCRMDashboard, PlatformAnalytics,
+    // PlatformCohortAnalysis, PlatformCustomerSuccess) hits these directly via
+    // functions.printyx.net in prod; only platform-deals had an edge fn before.
+    // New edge functions port routes-platform-business-records/activities/
+    // analytics/customer-success.ts (all root-admin gated: roleLevel ≥ 7 OR
+    // can_access_all_tenants). The four Express routers were deleted.
+    '/api/platform-crm': 'platform-crm',
+    '/api/platform-activities': 'platform-activities',
+    '/api/platform-analytics': 'platform-analytics',
+    '/api/platform-cs': 'platform-cs',
+
     // EDGE-013: monitoring-clients. Verified parity — the edge function
     // (supabase/functions/monitoring-clients/) handles every path the
     // Monitoring Clients UI calls: list/detail/create/PATCH/delete,
