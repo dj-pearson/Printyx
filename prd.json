@@ -4433,8 +4433,8 @@
         "Verify no other code imports the deleted pages"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "These were never functional (Express returned hardcoded data). Decide the future of the feature in addition to the API.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. Inventory: /api/customer-access had exactly 5 callsites, all inside the single non-functional page client/src/pages/CustomerAccessManagement.tsx (1 useQuery key + create/revoke mutations + 2 invalidateQueries). /api/bug-reports had ZERO frontend callers — the error boundary's handleReportBug (client/src/components/error-boundary.tsx) only logs locally via console.log + mobileLogger.error; nothing ever POSTed to it. Both Express handlers in routes-misc-stubs.ts returned hardcoded zeros (never functional). DECISION: customer-access was an unused, never-functional feature with NO sidebar entry (reachable only by direct URL via App.tsx route + navigation-permissions gate) → deleted the page, its lazy import + Route in App.tsx, and its navigation-permissions.ts entry. bug-reports had no caller to delete → removed the dead Express stub router; error boundary local logging is sufficient. Kept serviceAnalyticsRouter (still consumed by ServiceHub + role-dashboard-config). Verified: no remaining code imports (only stale generated audit/report JSON + historical docs reference the old names). Build ✓, no new tsc errors (App.tsx ApolloLeadEnrichment error pre-exists on clean tree), eslint 0 errors, unit-test failures all pre-existing/unrelated.",
       "category": "edge-migration"
     },
     {

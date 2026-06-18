@@ -269,7 +269,6 @@ const IntegrationHub = React.lazy(() => import('@/pages/IntegrationHub'));
 const WorkflowAutomation = React.lazy(() => import('@/pages/WorkflowAutomation'));
 const PredictiveAnalytics = React.lazy(() => import('@/pages/PredictiveAnalytics'));
 const ERPIntegration = React.lazy(() => import('@/pages/ERPIntegration'));
-const CustomerAccessManagement = React.lazy(() => import('@/pages/CustomerAccessManagement'));
 const ServiceHub = React.lazy(() => import('@/pages/ServiceHub'));
 const ApolloLeadEnrichment = React.lazy(() => import('@/pages/ApolloLeadEnrichment'));
 const OnboardingDashboard = React.lazy(() => import('@/pages/OnboardingDashboard'));
@@ -1076,7 +1075,6 @@ function Router() {
                   {() => <ProtectedRoute component={AuditLogViewer} platformOnly />}
                 </Route>
                 <Route path="/erp-integration" component={ERPIntegration} />
-                <Route path="/customer-access-management" component={CustomerAccessManagement} />
                 <Route path="/manufacturer-integration" component={ManufacturerIntegration} />
                 <Route
                   path="/manufacturer-integration/devices"

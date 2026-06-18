@@ -6333,3 +6333,52 @@ Story Status:
 - EDGE-012: COMPLETE (passes: true)
 
 ---
+
+Iteration 3 (06/18/2026 17:33:31): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+Iteration - EDGE-005g: Delete dead frontend code calling /api/customer-access and /api/bug-reports
+Completed: 2026-06-18
+
+Key Changes:
+- /api/customer-access: 5 callsites, ALL inside one non-functional page
+  (client/src/pages/CustomerAccessManagement.tsx). It was backed only by the
+  routes-misc-stubs.ts customerAccessRouter which returned {customers:[],total:0}.
+  No sidebar entry existed (reachable only by direct URL). DECISION: unused,
+  never-functional feature -> deleted the page + its lazy import + <Route> in
+  App.tsx + its navigation-permissions.ts gate entry + the Express stub router.
+- /api/bug-reports: ZERO frontend callers. error-boundary.tsx handleReportBug
+  builds a bugReport object but only console.log + mobileLogger.error (local).
+  Nothing POSTed to the endpoint. DECISION: removed the dead Express stub router;
+  local error-boundary logging is sufficient (no feature lost).
+- Kept serviceAnalyticsRouter in routes-misc-stubs.ts (still consumed by
+  ServiceHub.tsx + role-dashboard-config.ts via /api/service-analytics).
+
+What Was Learned:
+- routes-misc-stubs.ts holds 3 unrelated placeholder routers (customer-access,
+  bug-reports, service-analytics); only service-analytics has live callers.
+- Frontend "dead code" can be asymmetric: customer-access had callers but a dead
+  backend; bug-reports had a (logging) backend but zero callers. Inventory BOTH
+  directions before deciding delete-page vs delete-route.
+- App.tsx wires pages in TWO places: a React.lazy() const (~line 272) AND a
+  <Route> (~line 1079). navigation-permissions.ts has a separate per-path
+  permission/minLevel gate. Removing a page means touching all three.
+- Stale generated artifacts (edge-function-audit.json, system-check-report.json,
+  tools/data-transformation-report.json, tests/frontend-schema-fix-report.json)
+  still name deleted pages — they are reports, not code, and don't break builds.
+- Verification baseline confirmed via `git stash` + `npm run check`: the lone
+  App.tsx tsc error (ApolloLeadEnrichment Route type) pre-exists on the clean
+  tree, so this deletion introduced zero new type errors. Build ✓ (17.98s).
+
+Files Modified:
+- client/src/App.tsx (removed lazy import + Route)
+- client/src/lib/navigation-permissions.ts (removed gate entry)
+- server/routes-misc-stubs.ts (removed customerAccess + bugReports routers)
+- prd.json (EDGE-005g -> passes: true)
+Files Deleted:
+- client/src/pages/CustomerAccessManagement.tsx
+
+Story Status:
+- EDGE-005g: COMPLETE (passes: true)
