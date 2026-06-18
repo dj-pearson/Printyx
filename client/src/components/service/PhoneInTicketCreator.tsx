@@ -123,35 +123,35 @@ export default function PhoneInTicketCreator({ isOpen, onClose }: PhoneInTicketC
 
   // Company search query
   const { data: companies = [], isLoading: companiesLoading } = useQuery({
-    queryKey: ['/api/phone-tickets/search-companies', companySearchTerm],
+    queryKey: ['/api/phone-in-tickets/search-companies', companySearchTerm],
     enabled: companySearchTerm.length >= 2,
     queryFn: async () => {
       return await apiRequest(
-        `/api/phone-tickets/search-companies?q=${encodeURIComponent(companySearchTerm)}`,
+        `/api/phone-in-tickets/search-companies?q=${encodeURIComponent(companySearchTerm)}`,
       );
     },
   });
 
   // Contact search query (when company is selected) - now loads all contacts initially
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
-    queryKey: ['/api/phone-tickets/search-contacts', selectedCompany?.id, contactSearchTerm],
+    queryKey: ['/api/phone-in-tickets/search-contacts', selectedCompany?.id, contactSearchTerm],
     enabled: !!selectedCompany,
     queryFn: async () => {
       if (!selectedCompany) return [];
       const queryParam = contactSearchTerm ? `?q=${encodeURIComponent(contactSearchTerm)}` : '';
       return await apiRequest(
-        `/api/phone-tickets/search-contacts/${selectedCompany.id}${queryParam}`,
+        `/api/phone-in-tickets/search-contacts/${selectedCompany.id}${queryParam}`,
       );
     },
   });
 
   // Equipment query (when company is selected)
   const { data: equipment = [], isLoading: equipmentLoading } = useQuery({
-    queryKey: ['/api/phone-tickets/equipment', selectedCompany?.id, equipmentSearchTerm],
+    queryKey: ['/api/phone-in-tickets/equipment', selectedCompany?.id, equipmentSearchTerm],
     enabled: !!selectedCompany,
     queryFn: async () => {
       if (!selectedCompany) return [];
-      return await apiRequest(`/api/phone-tickets/equipment/${selectedCompany.id}`);
+      return await apiRequest(`/api/phone-in-tickets/equipment/${selectedCompany.id}`);
     },
   });
 

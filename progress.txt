@@ -6562,3 +6562,54 @@ Files Modified:
 - prd.json (EDGE-005a passes:true), docs/route-parity-matrix.md (regenerated)
 
 ---
+
+Iteration 7 (06/18/2026 18:26:15): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+## Iteration - EDGE-005c: Port phone-tickets sub-routes to phone-in-tickets edge function
+Completed: 2026-06-18
+Status: COMPLETE
+
+Key Changes:
+- supabase/functions/phone-in-tickets/index.ts: switched path parsing from raw
+  pathParts[1] to normalizePath(pathname, 'phone-in-tickets') so parts[0] is the
+  first segment under BOTH the Supabase native runtime and Coolify's server.ts.
+- Added three GET sub-routes used by the ticket-creation flow (PhoneInTicketCreator):
+    * /search-companies?q=   -> business_records (record_type='customer'),
+      OR ilike on company_name/primary_contact_name; returns {id,name,phone,email,address}.
+    * /search-contacts/:companyId?q= -> the record's primary contact; {id,name,phone,email,role}.
+    * /equipment/:companyId  -> REAL equipment table (manufacturer/model_number/
+      serial_number/asset_tag -> brand/model/serialNumber/assetNumber). The old Express
+      equipment handlers were a stub ([]) and a fake-Canon synthesizer over service_tickets;
+      both replaced by a real query.
+  Reserved-word dispatch: 'search-companies'/'search-contacts'/'equipment' are matched
+  BEFORE the :id routes (they share the prefix with ticket UUIDs).
+- client/src/components/service/PhoneInTicketCreator.tsx: migrated 3 callsites off the
+  legacy /api/phone-tickets/* prefix onto canonical /api/phone-in-tickets/* (query keys + URLs).
+- server/middleware/edge-function-proxy.ts: added '/api/phone-in-tickets' to crmProxies so
+  dev forwards the WHOLE prefix to the edge fn (full parity: list/:id/create/convert/delete
+  + the 3 search/equipment sub-routes). This shadows the legacy Express handlers in
+  routes-operations-extended.ts / routes-enhanced-service.ts in dev.
+- Fixed pre-existing getUser(jwt) overload (null -> undefined) so deno check is clean.
+
+Gotchas Discovered:
+- The frontend used a SPLIT prefix before: /api/phone-tickets/* for search/equipment but
+  /api/phone-in-tickets for CRUD/convert. Consolidated onto phone-in-tickets (the edge fn dir).
+- equipment.customer_id references business_records.id; phone-in search returns that same id as
+  the "company" id, so equipment(:companyId) keys on customer_id directly.
+- Express had TWO conflicting equipment handlers (operations-extended stub vs enhanced-service
+  fake-Canon). Neither queried real equipment — the edge port is the first real implementation.
+
+Verification:
+- deno check supabase/functions/phone-in-tickets/index.ts: clean.
+- npm run build: green. tsc: no new errors naming changed files.
+- audit:routes: phone-in-tickets now `proxied` (✅✅✅✅); phone-tickets no longer a prod blocker.
+
+Files Modified:
+- supabase/functions/phone-in-tickets/index.ts
+- client/src/components/service/PhoneInTicketCreator.tsx
+- server/middleware/edge-function-proxy.ts
+- prd.json (EDGE-005c passes:true), docs/route-parity-matrix.md + route-divergence.json (regenerated)
+

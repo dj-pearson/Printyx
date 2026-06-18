@@ -4354,8 +4354,8 @@
         "Smoke-test PhoneInTicketCreator.tsx"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "Used in service-ticket creation flow (high-traffic). 6 callsites.",
+      "passes": true,
+      "notes": "Used in service-ticket creation flow (high-traffic). 6 callsites. [DONE 2026-06-18: edge fn phone-in-tickets/index.ts converted to normalizePath (parts[0]) + added GET search-companies, search-contacts/:companyId, equipment/:companyId. Equipment queries the real equipment table (manufacturer/model_number/serial_number/asset_tag → brand/model/serialNumber/assetNumber). Frontend PhoneInTicketCreator.tsx migrated off /api/phone-tickets/* onto canonical /api/phone-in-tickets/*. Added /api/phone-in-tickets proxy entry (crmProxies). Audit: proxied/aligned. Fixed getUser(jwt) null→undefined; deno check clean.]",
       "category": "edge-migration"
     },
     {

@@ -2,6 +2,7 @@
 // Handles phone-in ticket CRUD operations
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -11,7 +12,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -41,9 +42,122 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const ticketId = pathParts[1]; // /phone-in-tickets/:id
-    const subResource = pathParts[2]; // /phone-in-tickets/:id/convert
+    // normalizePath strips the function-name prefix so parts[0] is the first
+    // path segment under both Supabase native runtime and Coolify's server.ts.
+    const { parts } = normalizePath(url.pathname, 'phone-in-tickets');
+
+    // Reserved sub-resources used by the phone-in ticket creation flow. These
+    // share the prefix with ticket IDs, so dispatch them before the :id routes.
+    const RESERVED = new Set(['search-companies', 'search-contacts', 'equipment']);
+    const segment = parts[0]; // 'search-companies' | 'search-contacts' | 'equipment' | :id | undefined
+    const isReserved = !!segment && RESERVED.has(segment);
+
+    const ticketId = isReserved ? undefined : segment; // /phone-in-tickets/:id
+    const subResource = isReserved ? undefined : parts[1]; // /phone-in-tickets/:id/convert
+
+    // GET /phone-in-tickets/search-companies?q= - Search customer companies for ticket creation
+    if (req.method === 'GET' && segment === 'search-companies') {
+      const searchTerm = (url.searchParams.get('q') || '').trim();
+      if (searchTerm.length < 2) {
+        return createCorsResponse([], 200, req);
+      }
+
+      const pattern = `%${searchTerm.toLowerCase()}%`;
+      const { data: records, error } = await admin
+        .from('business_records')
+        .select(
+          'id, company_name, primary_contact_name, primary_contact_phone, primary_contact_email, address_line1, address_line2, city, state, postal_code',
+        )
+        .eq('tenant_id', tenantId)
+        .eq('record_type', 'customer')
+        .or(`company_name.ilike.${pattern},primary_contact_name.ilike.${pattern}`)
+        .limit(10);
+
+      if (error) {
+        console.error('Error searching companies:', error);
+        return createCorsResponse({ error: 'Failed to search companies' }, 500, req);
+      }
+
+      const results = (records || []).map((r: any) => ({
+        id: r.id,
+        name: r.company_name,
+        phone: r.primary_contact_phone,
+        email: r.primary_contact_email,
+        address: [r.address_line1, r.address_line2, r.city, r.state, r.postal_code]
+          .filter(Boolean)
+          .join(', '),
+      }));
+
+      return createCorsResponse(results, 200, req);
+    }
+
+    // GET /phone-in-tickets/search-contacts/:companyId?q= - Primary contact for a company
+    if (req.method === 'GET' && segment === 'search-contacts') {
+      const companyId = parts[1];
+      if (!companyId) {
+        return createCorsResponse({ error: 'companyId required' }, 400, req);
+      }
+
+      const searchTerm = (url.searchParams.get('q') || '').trim();
+      let query = admin
+        .from('business_records')
+        .select('id, primary_contact_name, primary_contact_phone, primary_contact_email')
+        .eq('tenant_id', tenantId)
+        .eq('id', companyId);
+
+      if (searchTerm.length >= 1) {
+        query = query.ilike('primary_contact_name', `%${searchTerm.toLowerCase()}%`);
+      }
+
+      const { data: records, error } = await query.limit(10);
+
+      if (error) {
+        console.error('Error searching contacts:', error);
+        return createCorsResponse({ error: 'Failed to search contacts' }, 500, req);
+      }
+
+      const results = (records || [])
+        .filter((r: any) => r.primary_contact_name && r.primary_contact_name.trim().length > 0)
+        .map((r: any) => ({
+          id: r.id,
+          name: r.primary_contact_name,
+          phone: r.primary_contact_phone,
+          email: r.primary_contact_email,
+          role: 'Primary Contact',
+        }));
+
+      return createCorsResponse(results, 200, req);
+    }
+
+    // GET /phone-in-tickets/equipment/:companyId - Equipment installed at a company
+    if (req.method === 'GET' && segment === 'equipment') {
+      const companyId = parts[1];
+      if (!companyId) {
+        return createCorsResponse({ error: 'companyId required' }, 400, req);
+      }
+
+      const { data: items, error } = await admin
+        .from('equipment')
+        .select('id, manufacturer, model_number, serial_number, asset_tag')
+        .eq('tenant_id', tenantId)
+        .eq('customer_id', companyId)
+        .limit(50);
+
+      if (error) {
+        console.error('Error fetching equipment:', error);
+        return createCorsResponse({ error: 'Failed to fetch equipment' }, 500, req);
+      }
+
+      const results = (items || []).map((e: any) => ({
+        id: e.id,
+        brand: e.manufacturer,
+        model: e.model_number,
+        serialNumber: e.serial_number,
+        assetNumber: e.asset_tag,
+      }));
+
+      return createCorsResponse(results, 200, req);
+    }
 
     // GET /phone-in-tickets - List all phone-in tickets
     if (req.method === 'GET' && !ticketId) {
