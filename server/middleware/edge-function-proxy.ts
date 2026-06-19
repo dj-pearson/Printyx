@@ -358,6 +358,15 @@ export function registerEdgeFunctionProxy(app: any) {
     // with corrected schema (audit_logs.timestamp not .created_at, etc.).
     '/api/security': 'security',
 
+    // EDGE-002i: audit-logs. The AuditLogViewer page (/admin/audit-logs) is
+    // ProtectedRoute platformOnly, so the caller is platform-admin only — the
+    // edge fn keeps the platform-admin gate (not relaxed to company admin). The
+    // single caller uses apiRequest (getApiUrl), so dev now matches prod (prod
+    // hits functions.printyx.net/audit-logs directly). The fn's platform-admin
+    // detection was fixed to read the canonical app_metadata fields
+    // (isPlatformUser / roleLevel ≥ 8) instead of always-false legacy keys.
+    '/api/audit-logs': 'audit-logs',
+
     // EDGE-005d-remainder: service-products (6 frontend callsites). Distinct
     // table from products/software-products with service-specific pricing
     // tiers; standalone edge fn rather than a merge.

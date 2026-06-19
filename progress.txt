@@ -7332,3 +7332,69 @@ Files Modified:
 - prd.json (EDGE-002h passes:true)
 
 ---
+
+Iteration 17 (06/18/2026 21:00:35): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 18 - EDGE-002i: Audit and fix audit-logs edge function permission gating
+Completed: 2026-06-18
+
+Key Changes:
+- AUDIT RESULT: AuditLogViewer (/admin/audit-logs) is PLATFORM-ADMIN ONLY, not
+  admin-tier. Gated `ProtectedRoute platformOnly` in App.tsx + { platformOnly:
+  true } in navigation-permissions.ts. Decision: KEEP platform-admin gate (do
+  NOT relax to company admin — the route gate already blocks non-platform users
+  from even loading the page, so relaxing the edge gate would be pointless).
+- FIXED A BROKEN GATE: the edge fn checked app_metadata.isPlatformAdmin /
+  .role === 'platform_admin' — NEITHER is a canonical app_metadata key. The JWT
+  actually carries `isPlatformUser` + numeric `roleLevel` (per
+  server/middleware/supabase-auth.ts:213-224, the token minter, and the frontend
+  useSupabaseAuth/transformUser). So the old check was effectively ALWAYS-FALSE
+  and would 403 every legitimate platform admin once proxied. Rewrote
+  isPlatformAdmin() to `isPlatformUser === true || roleLevel >= 8` (matching the
+  frontend platformOnly definition + me/index.ts reference), legacy keys kept as
+  harmless fallbacks.
+- FIXED RESPONSE-SHAPE BUG: frontend AuditLogResponse reads flat total/page/
+  limit/totalPages, but both edge + Express nested them under `pagination` (edge
+  used `pages` not `totalPages`) → page pagination stuck at "Page X of 1 (0
+  total)". Edge fn now returns flat shape + keeps a `pagination` block for
+  back-compat.
+- Added '/api/audit-logs':'audit-logs' to crmProxies. SAFE because the single
+  caller (AuditLogViewer.tsx:118) uses apiRequest/getApiUrl, not raw fetch — so
+  dev now matches prod (prod hits functions.printyx.net/audit-logs directly; it
+  404'd there before this proxy entry).
+
+Gotchas Discovered:
+- The canonical JWT app_metadata platform flag is `isPlatformUser` (+ numeric
+  `roleLevel`), NOT `isPlatformAdmin` and NOT a `role` string. Several edge fns
+  (audit-logs, feature-flags, reports/handlers/executive.ts, blog-*) check the
+  non-canonical `isPlatformAdmin`/`role` keys and are likely similarly
+  always-false — a latent bug class worth a future sweep. The correct read is in
+  supabase/functions/me/index.ts (`app_metadata.isPlatformUser`).
+- Frontend `ProtectedRoute platformOnly` requires usePermissions().isPlatformUser,
+  resolved from app_metadata.isPlatformUser || roleData.level >= 8 || role name
+  includes platform_admin/root_admin (useSupabaseAuth.ts:373-379).
+- Server baseline isPlatformAdmin (utils/auth-helpers.ts) is MUCH more permissive
+  (isPlatformUser flag, roleLevel >= 8, hasAllPermissions, exact role codes incl
+  company_admin) — but it operates on the DB-augmented req.user, which the edge
+  fn doesn't have; the JWT-only read (isPlatformUser || roleLevel >= 8) is the
+  edge-appropriate equivalent.
+
+Gates:
+- deno check supabase/functions/audit-logs/index.ts: clean
+- npx vitest edge-function-proxy.test.ts: 33/33 pass
+- npm run build: green (31.65s)
+- npm run check: no new errors in edge-function-proxy.ts (edge fn not in tsc
+  include)
+- npm run audit:routes: audit-logs → `proxied` (proxied 65→66)
+- prettier --write on the 2 touched files only (NOT format:write)
+- Live page smoke-test (platform vs company admin) is deploy-time only (no edge
+  runtime/DB in sandbox); company admins can't reach the page anyway.
+
+Files Modified:
+- supabase/functions/audit-logs/index.ts (gate fix + response shape)
+- server/middleware/edge-function-proxy.ts (1 crmProxies entry)
+- docs/route-parity-matrix.md + docs/route-divergence.json (regen)
+- prd.json (EDGE-002i passes:true)
+
+---
