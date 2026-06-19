@@ -27,3 +27,10 @@ verify_jwt = true
 # Public marketing print-cost calculator (anonymous lead capture) — no JWT.
 verify_jwt = false
 
+[functions.client-metrics]
+# Agent-ingest path (EDGE-002j). Authenticates via a per-client API key passed
+# as a Bearer token (NOT a Supabase JWT), so the native runtime must not
+# JWT-verify before the handler hashes + looks it up against
+# monitoring_clients.api_key.
+verify_jwt = false
+

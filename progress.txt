@@ -7398,3 +7398,80 @@ Files Modified:
 - prd.json (EDGE-002i passes:true)
 
 ---
+
+Iteration 18 (06/18/2026 21:09:48): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 19 - EDGE-002j: Resolve client-metrics dual-implementation
+Completed: 2026-06-18
+
+DECISION (AC #1/#2): The admin-UI path (/api/monitoring-clients/*) was ALREADY
+migrated to a canonical edge fn (supabase/functions/monitoring-clients/) + proxy
++ frontend (that was the EDGE-013-era work). The remaining dual-implementation
+was the AGENT-INGEST path (/api/client-metrics/*): a DEPRECATED edge fn (x-api-key
+auth, divergent/phantom schema) vs the LIVE Express routes-client-monitoring.ts
+(Bearer-as-API-key + x-tenant-id). Chose to REPURPOSE the client-metrics edge fn
+as the canonical agent-ingest path — a faithful port of the Express ingest — and
+replace the old stub. Companion admin fn stays in monitoring-clients/.
+
+Key Changes:
+- Rewrote supabase/functions/client-metrics/index.ts from the deprecated x-api-key
+  stub into a faithful port of routes-client-monitoring.ts's agent endpoints:
+  POST /submit (multi-device: find/create device_registrations + ensure
+  manufacturer_integrations 'printanista' row + insert device_metrics + client_
+  discovered_devices + client stats + activity log), POST /heartbeat (expire stale
+  + dispatch queued client_commands via .update().select() + activity + auto-update
+  signal), POST /commands/:id/ack, GET /config, POST /install-report.
+- AUTH: Bearer-as-API-key (SHA-256 → monitoring_clients.api_key) + x-tenant-id,
+  NOT Supabase JWT. Added [functions.client-metrics] verify_jwt=false to
+  supabase/config.toml (signup/calculator pattern) so the native runtime doesn't
+  reject the API-key bearer before the handler runs.
+- Ported alert-materializer.ts core (computeDesired + insert/update/resolve over
+  device_alerts) and offline-detector.ts resolveOfflineFor() INLINE. DEGRADED:
+  maybeAutoOrder (Node-only auto-order pipeline over product/inventory/supply-
+  order tables) is skipped with a comment — alerts still materialise so the
+  dashboard is correct; auto-order stays Express until EDGE-011 sunset.
+- Did NOT add /api/client-metrics to crmProxies (per the story note). Agents POST
+  to their configured endpoint = PUBLIC_API_BASE_URL = the Express/app host, NOT
+  getApiUrl/functions.printyx.net, so the live agent path still hits Express; the
+  edge fn is the prod-ready replacement for the sunset. Updated the proxy comment.
+
+Gotchas Discovered:
+- The "frontend calls /clients,/clients/:id,..." in the story description is
+  shorthand — the page (MonitoringClients.tsx) actually calls /api/monitoring-
+  clients/* (admin) which the monitoring-clients edge fn already serves. The
+  /api/client-metrics/* prefix is AGENT-only (printyx-client on customer servers),
+  never browser-called, so it isn't a getApiUrl prod blocker today.
+- TWO Express files split the surface: routes-client-monitoring.ts (agent ingest:
+  submit/heartbeat/config/install-report/commands-ack + fleet dashboards) and
+  routes-client-metrics.ts (admin CRUD/commands/enrollment/installer.zip mounted
+  at /api/client-metrics with /clients/* subpaths). The admin CRUD edge port lives
+  in monitoring-clients/; this story ported only the agent ingest.
+- device_metrics REAL columns are total/bw/color/large_impressions + device_status
+  + toner_levels/paper_levels (jsonb) + error_codes (text[]) + raw_data — the OLD
+  deprecated edge fn wrote client_id/metric_type/value/unit (phantom). Same for
+  discovered_devices→client_discovered_devices, device_alerts schema.
+- materializeAlerts/resolveOfflineFor are portable (plain table ops); only
+  maybeAutoOrder isn't. The agent auto-update signal needs the served bundle
+  version — read from PRINTYX_CLIENT_AGENT_VERSION env or the baked
+  bundle-manifest.json (Deno.readTextFile) instead of the Express fs read.
+
+Gates:
+- deno check supabase/functions/client-metrics/index.ts: clean
+- npx vitest edge-function-proxy.test.ts: 33/33 pass
+- npm run build: green (30.5s)
+- npm run audit:routes: no new prod blockers (client-metrics stays agent-only)
+- prettier --write on the 2 touched code files (NOT format:write)
+- Only TS edit outside edge fns was a comment in edge-function-proxy.ts (no tsc
+  impact; edge fn + config.toml not in tsc include)
+- NOT runtime-verifiable in sandbox (no edge runtime/DB/agent) — live agent
+  ingest smoke-test is a deploy-time step gated on the EDGE-011 sunset.
+
+Files Modified:
+- supabase/functions/client-metrics/index.ts (full rewrite)
+- supabase/config.toml (verify_jwt=false for client-metrics)
+- server/middleware/edge-function-proxy.ts (comment only)
+- docs/route-parity-matrix.md + docs/route-divergence.json (regen)
+- prd.json (EDGE-002j passes:true)
+
+---

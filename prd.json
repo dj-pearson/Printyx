@@ -4180,7 +4180,7 @@
         "Update MonitoringClients.tsx if the URL prefix changed"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "DO NOT add /api/client-metrics to the proxy until this is resolved — would break the live device monitoring page.",
       "category": "edge-migration"
     },

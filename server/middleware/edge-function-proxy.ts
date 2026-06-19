@@ -254,8 +254,11 @@ export function registerEdgeFunctionProxy(app: any) {
   // Tracked exceptions (edge function exists but NOT safe to proxy yet):
   //   - catalog, customer-portal, etc. (RISKY domains tracked in
   //     EDGE-002b-EDGE-002k follow-ups in prd.json)
-  //   - client-metrics (DEPRECATED edge function — frontend uses Express
-  //     `routes-client-monitoring.ts` for the live device-monitoring path)
+  //   - client-metrics (EDGE-002j: now a canonical agent-ingest edge function
+  //     mirroring Express `routes-client-monitoring.ts`, but deliberately NOT
+  //     proxied — agents POST to the Express/app host directly via their
+  //     configured endpoint, not getApiUrl, so dev ingest must stay on Express.
+  //     The edge fn is the prod-ready replacement for the EDGE-011 sunset.)
   //
   // Multipart uploads (CSV imports) and binary downloads (PDFs, ZIPs) are
   // now handled correctly by `forwardToEdgeFunction` (EDGE-002l).
