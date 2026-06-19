@@ -7148,3 +7148,80 @@ Files Modified:
 - prd.json (EDGE-002f passes:true)
 
 ---
+
+Iteration 15 (06/18/2026 20:24:41): Story LAUNCH-011
+Status: Needs Review
+
+## Iteration - EDGE-002g: Port automation-dashboard endpoints to 4 edge functions
+Completed: 2026-06-18
+Status: COMPLETE
+
+Key Changes:
+- auto-lead-routing/index.ts: migrated to normalizePath; added GET /dashboard
+  (REAL queries: lead_assignment_history + lead_score_calculations + rep_capacity
+  from lead-assignment-schema/lead-scoring-schema, all varchar tenant_id),
+  GET+PUT /config (static defaults), POST /route/:leadId (degraded shape with
+  assignedRepName + processingTimeMs). Kept rules CRUD + /route (body) + /stats.
+- auto-supply-replenishment/index.ts: migrated to normalizePath; added GET
+  /dashboard, /low-supplies, /orders, POST /analyze-all. Kept rules/check/
+  trigger/history/settings.
+- contract-renewal/index.ts: added GET /dashboard, /at-risk, /proposals, POST
+  /analyze-all; REPLACED /expiring with the dashboard bare-array shape over
+  contract_renewal_tracking (only caller is ContractRenewalDashboard). Kept
+  upcoming/stats/renew/mark-churned (zero frontend callers).
+- predictive-dispatch/index.ts: migrated to normalizePath; added GET /dashboard
+  (devicesMonitored from real `equipment`; rest degraded), /devices-at-risk,
+  /technician-performance, POST /analyze/:serial, /analyze-all (all degraded —
+  underlying tables don't exist). Kept recommendations/optimize/workload/assign.
+- crmProxies (edge-function-proxy.ts): added /api/auto-lead-routing,
+  /api/auto-supply-replenishment, /api/contract-renewal, /api/predictive-dispatch.
+- Fixed pre-existing getUser(jwt) null→undefined in all four fns.
+
+Gotchas Discovered:
+- INTEGER-vs-UUID tenant_id drift: supply_monitoring, auto_supply_orders,
+  supply_replenishment_analytics, contract_renewal_tracking all declare
+  tenant_id as integer('tenant_id'), but real tenant IDs are UUID varchars. A
+  .eq('tenant_id', <uuid>) errors at the DB layer (invalid input syntax for
+  integer). So every read against those tables is degrade-tolerant: check the
+  supabase-js {error} and return shape-compatible empty/zeros + degraded marker.
+  The dashboards render empty states instead of 500-ing. (auto-lead-routing's
+  tables — lead_assignment_history/lead_score_calculations/rep_capacity in
+  lead-assignment-schema.ts + lead-scoring-schema.ts — correctly use varchar
+  tenant_id, so those queries return real data.)
+- Express route mis-imports: routes-auto-lead-routing.ts imported the platform_*
+  CRM tables (platformLeadAssignmentHistory/platformRepCapacity) but referenced
+  lead-assignment column names (currentActiveLeads, leadsAssignedToday, leadId,
+  tenantId) that exist on the lead-assignment-schema tables, NOT the platform
+  ones — so it was a broken tsc-baseline route. The edge port uses the correct
+  lead-assignment-schema tables.
+- routes-predictive-service-dispatch.ts references serviceCallsEnhanced /
+  technicianResourcesEnhanced / equipmentMetrics which are NOT defined/imported
+  anywhere (undefined identifiers = broken tsc baseline). Those tables don't
+  exist in the Drizzle schema, so predictive-dispatch dashboard endpoints are
+  degraded; devicesMonitored is the one real signal (from the `equipment` table).
+- contract-renewal edge fn already used normalizePath and had upcoming/expiring/
+  stats/renew/mark-churned over the `contracts` table — but ALL contract-renewal
+  frontend callers are ContractRenewalDashboard, which needs the
+  contract_renewal_tracking/renewal_proposals shapes. /expiring was the only
+  overlap and was repointed to the dashboard array shape.
+
+Verification:
+- deno check clean on all 4 edge fns.
+- npm run build: green (34s).
+- 33/33 edge-function-proxy unit tests pass.
+- npm run check: no new tsc errors in edge-function-proxy.ts (edge fns not in include).
+- npm run audit:routes: all four now `proxied` (docs/route-divergence.json).
+- prettier --write on the 5 touched code files only (NOT format:write).
+- NOT runtime-verifiable in sandbox (no edge runtime/DB): live dashboard
+  smoke-test is a deploy-time step.
+
+Files Modified:
+- supabase/functions/auto-lead-routing/index.ts (rewrite)
+- supabase/functions/auto-supply-replenishment/index.ts (path + new endpoints)
+- supabase/functions/contract-renewal/index.ts (new endpoints + /expiring shape)
+- supabase/functions/predictive-dispatch/index.ts (path + new endpoints)
+- server/middleware/edge-function-proxy.ts (4 crmProxies entries)
+- docs/route-parity-matrix.md + docs/route-divergence.json (regen)
+- prd.json (EDGE-002g passes:true)
+
+---

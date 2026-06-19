@@ -453,6 +453,27 @@ export function registerEdgeFunctionProxy(app: any) {
     // /webhooks/stripe. The hooks were migrated off raw cookie `fetch` onto
     // apiRequest (Bearer JWT) so the proxied/edge-routed calls authenticate.
     '/api/subscriptions': 'subscriptions',
+
+    // EDGE-002g: the four "automation dashboard" edge functions. Each gained the
+    // aggregated read endpoints its dashboard page calls (on top of the existing
+    // rules/CRUD), and was migrated onto normalizePath so the new sub-routes are
+    // reachable under Coolify's prefix-stripping dispatcher (they were
+    // pathParts[1] → unreachable in prod). Degraded surfaces are flagged with a
+    // `degraded: true` marker in the response:
+    //  - auto-lead-routing: /dashboard (real lead_assignment_history /
+    //    lead_score_calculations / rep_capacity), /config, /route/:leadId.
+    //  - auto-supply-replenishment: /dashboard, /low-supplies, /orders,
+    //    /analyze-all (supply_* tables declare an INTEGER tenant_id vs the real
+    //    UUID, so reads degrade-tolerate to empty/zeros; /analyze-all degraded).
+    //  - contract-renewal: /dashboard, /at-risk, /expiring (array shape),
+    //    /proposals, /analyze-all (same integer-tenant_id drift → degrade-tolerant).
+    //  - predictive-dispatch: /dashboard (devicesMonitored from real `equipment`),
+    //    /devices-at-risk, /technician-performance, /analyze/:serial, /analyze-all
+    //    (the Express predictive-health tables don't exist → degraded).
+    '/api/auto-lead-routing': 'auto-lead-routing',
+    '/api/auto-supply-replenishment': 'auto-supply-replenishment',
+    '/api/contract-renewal': 'contract-renewal',
+    '/api/predictive-dispatch': 'predictive-dispatch',
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {

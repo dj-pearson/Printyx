@@ -1,7 +1,25 @@
 // Predictive Dispatch Edge Function
-// Handles AI-powered technician dispatch optimization
+// Handles AI-powered technician dispatch optimization + the
+// PredictiveServiceDispatchDashboard read endpoints (/dashboard,
+// /devices-at-risk, /technician-performance, /analyze/:serialNumber,
+// /analyze-all).
+//
+// EDGE-002g: ported the dashboard endpoints the frontend
+// (client/src/pages/PredictiveServiceDispatchDashboard.tsx) calls. The old
+// Express route (server/routes-predictive-service-dispatch.ts) referenced tables
+// that DO NOT EXIST in the Drizzle schema (service_calls_enhanced,
+// technician_resources_enhanced, equipment_metrics) — undefined identifiers, part
+// of the broken tsc baseline — and the analysis paths make Claude API calls
+// (Node-only). So those dashboard endpoints are DEGRADED to shape-compatible
+// empty/zero responses (the dashboard renders empty states instead of 404-ing in
+// prod). The one real signal is devicesMonitored, sourced from the real
+// `equipment` table (varchar tenant_id).
+//
+// Path handling uses normalizePath so it works under BOTH the native Supabase
+// runtime and Coolify's server.ts (which strips the function-name prefix).
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -9,7 +27,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -34,8 +52,87 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1];
+    const { parts } = normalizePath(url.pathname, 'predictive-dispatch');
+    const endpoint = parts[0];
+    const resourceId = parts[1];
+
+    // ---------------------------------------------------------------------
+    // GET /predictive-dispatch/dashboard - dashboard metrics
+    // Degraded: the predictive-health tables don't exist; devicesMonitored is
+    // sourced from the real `equipment` table, the rest are honest zeros.
+    // ---------------------------------------------------------------------
+    if (req.method === 'GET' && endpoint === 'dashboard') {
+      let devicesMonitored = 0;
+      try {
+        const { count, error } = await admin
+          .from('equipment')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId);
+        devicesMonitored = error ? 0 : count || 0;
+      } catch (_e) {
+        devicesMonitored = 0;
+      }
+
+      return createCorsResponse(
+        {
+          overview: {
+            totalPredictiveDispatches: 0,
+            devicesMonitored,
+            devicesAtRisk: 0,
+            devicesCheckedLast24h: 0,
+            downtimePreventedHours: 0,
+            costSavings: 0,
+            uptimeImprovement: '0.00%',
+            partsAutoOrdered: 0,
+            period: '30 days',
+          },
+          upcomingMaintenance: [],
+          degraded: true,
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /predictive-dispatch/devices-at-risk - at-risk device list (degraded)
+    if (req.method === 'GET' && endpoint === 'devices-at-risk') {
+      return createCorsResponse({ devicesAtRisk: [], count: 0, degraded: true }, 200, req);
+    }
+
+    // GET /predictive-dispatch/technician-performance - tech roster (degraded)
+    if (req.method === 'GET' && endpoint === 'technician-performance') {
+      return createCorsResponse({ technicians: [], count: 0, degraded: true }, 200, req);
+    }
+
+    // POST /predictive-dispatch/analyze/:serialNumber - single-device analysis
+    // (Claude-backed in Node; degraded shape here.)
+    if (req.method === 'POST' && endpoint === 'analyze' && resourceId) {
+      return createCorsResponse(
+        {
+          success: true,
+          message: 'Predictive analysis is not available in this environment',
+          data: { serialNumber: resourceId, dispatchCreated: false, degraded: true },
+        },
+        200,
+        req,
+      );
+    }
+
+    // POST /predictive-dispatch/analyze-all - batch device analysis (degraded)
+    if (req.method === 'POST' && endpoint === 'analyze-all') {
+      return createCorsResponse(
+        {
+          success: true,
+          analyzed: 0,
+          failed: 0,
+          dispatchesCreated: 0,
+          results: [],
+          degraded: true,
+        },
+        200,
+        req,
+      );
+    }
 
     // GET /predictive-dispatch/recommendations - Get dispatch recommendations
     if (req.method === 'GET' && endpoint === 'recommendations') {
