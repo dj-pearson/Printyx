@@ -4685,8 +4685,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 17,
-      "passes": false,
-      "notes": "Source PRD: US-006. Use iconv-lite (or Deno-equivalent TextDecoder with shift-jis label) for Shift-JIS decoding. Confirm whether modern bizhub i-series exports default to UTF-8 or Shift-JIS — parser should detect both.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. parseKonica(buffer, password?) → ParseResult at supabase/functions/_shared/address-book/konica/parser.ts (Deno-portable; zero runtime deps, only `import type`). Encoding auto-detect via WHATWG TextDecoder (NOT iconv-lite — Deno has no such pkg): UTF-8 BOM wins; else strict-UTF-8 attempt with {fatal:true}, falling back to TextDecoder('shift-jis') when bytes aren't valid UTF-8 (pure-ASCII decodes identically either way). Node (full ICU) and Deno both support the 'shift-jis' label — verified. Tolerant header matching (case+punctuation-insensitive alias map, not fixed positions) since KM publishes no single canonical schema; detects the header row and skips leading metadata/comment lines. Maps Type=E-mail→canonical email, Type=SMB→canonical smb (builds \\\\host\\path UNC from host+path); fax/FTP/WebDAV + malformed rows reported in errors[] (never silently dropped). SECURITY: the Password column is REDACTED ('') in source_metadata — passwords are never persisted by the parser (credential vault's job); password_was_required flags presence. Added Deno-local types module supabase/functions/_shared/address-book/types.ts (mirrors shared/address-book-types.ts but content:Uint8Array not Buffer so deno check passes — reusable by all ABK vendor adapters). Fixture tests/fixtures/address-book/konica-sample.csv is a representative PageScope-style export (TODO: validate vs a real bizhub capture). Gates: 13/13 vitest (server/tests/unit/konica-parser.test.ts) + deno check clean + npm run check (0 new errors; supabase/functions not in tsc include) + npm run build green. ABK-007 serializer is the round-trip counterpart.",
       "category": "address-book"
     },
     {

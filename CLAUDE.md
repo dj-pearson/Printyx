@@ -219,9 +219,11 @@ Leads edge fn (EDGE-002f, DONE): `/api/leads` is now in `crmProxies` → `supaba
 
 ### Address Book Manager (ABK-###)
 Multi-vendor MFP address book import/edit/export. Source PRD: `tasks/prd-address-book-manager.md`.
-- Schema: `shared/address-book-schema.ts` · Types: `shared/address-book-types.ts`
+- Schema: `shared/address-book-schema.ts` · Types: `shared/address-book-types.ts` (Node side) + `supabase/functions/_shared/address-book/types.ts` (Deno mirror — identical except `SerializeResult.content` is `Uint8Array` not `Buffer`, so `deno check` passes; ALL edge-side vendor adapters import from THIS, never the Node file)
 - Edge function: `supabase/functions/address-books/index.ts`
 - Credential vault (AES-256-GCM): `server/services/address-book/credential-vault.ts` (env: `ADDRESS_BOOK_MASTER_KEY`)
+- Vendor adapters: `supabase/functions/_shared/address-book/<vendor>/parser.ts|serializer.ts`. **Konica (ABK-006, DONE)**: `konica/parser.ts` `parseKonica(buffer, password?)`. Write adapters DEPENDENCY-FREE (only `import type`) so they run under BOTH Deno (edge) and Node (vitest at `server/tests/unit/*-parser.test.ts`, imported via relative path WITHOUT `.ts` ext). Encoding: WHATWG `TextDecoder`, NOT iconv-lite (no such Deno pkg) — `TextDecoder('shift-jis')` works in Node (full ICU) + Deno; detect via UTF-8 BOM → strict UTF-8 `{fatal:true}` → shift-jis fallback. KM has no canonical CSV schema → match a tolerant normalized-alias header map + auto-locate header row, not fixed positions. **SECURITY (all vendor parsers): REDACT any password column to `''` in `source_metadata`** (the "store all source columns" AC collides with "never persist passwords"); use `password_was_required` to flag presence. `npm run check` does NOT typecheck `supabase/functions` (not in tsconfig include) — `deno check <file>` is the real type gate for adapters.
+- **Canon (ABK-004/005) BLOCKED**: Canon Crypto v2 KDF is undocumented; brute-forcing the sample blob `qXiioxBKG3fl7dAwodxTOw==` (pw "1") over sha256/md5/pbkdf2 × many salts/iters/IVs yields no valid PKCS7 — likely a DEVICE key, not the user password. Sample `abook.csv` was removed from the tree; recover via `git show aa50d4cb:abook.csv` if retrying.
 
 ### Platform Admin Blog System (US-BLOG-###)
 Fully autonomous content marketing platform for Printyx's marketing site. Source PRD: `blog-system-prd.json`. Merge tool: `scripts/merge-blog-prd.mjs`.

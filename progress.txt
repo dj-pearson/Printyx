@@ -7475,3 +7475,78 @@ Files Modified:
 - prd.json (EDGE-002j passes:true)
 
 ---
+
+Iteration 19 (06/18/2026 21:19:01): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+Iteration 20 - ABK-006: Konica Minolta address book CSV parser
+Completed: 2026-06-18
+
+DECISION: Highest-priority incomplete ABK story that is actually unblocked.
+ABK-004/005 (Canon parser+serializer, priority 15/16) are BLOCKED on Canon
+Crypto v2 — the KDF is undocumented and a brute-force over common schemes
+(sha256/md5/pbkdf2 × many salts/iters × IV variants) of the sample blob
+qXiioxBKG3fl7dAwodxTOw== with password "1" produced ZERO valid PKCS7 plaintexts,
+strongly suggesting it's a DEVICE key, not the user password. The sample
+abook.csv is also no longer in the working tree (added in commit aa50d4cb "book",
+later removed) — recoverable via `git show aa50d4cb:abook.csv` if a future
+iteration retries Canon. So Canon stays blocked; Konica (no crypto) is the next
+completable story.
+
+Key Changes:
+- NEW supabase/functions/_shared/address-book/konica/parser.ts exports
+  parseKonica(buffer, password?) → ParseResult, plus helpers decodeBuffer() and
+  parseCsv(). Zero runtime deps (only `import type`), so it runs under BOTH Deno
+  (edge fn) and Node (vitest).
+- NEW supabase/functions/_shared/address-book/types.ts — Deno-local mirror of
+  shared/address-book-types.ts with content:Uint8Array (not Node Buffer) so
+  `deno check` passes. This is the canonical types module for ALL future ABK
+  vendor adapters (ABK-005/007/009/011/012) on the edge side.
+- NEW tests/fixtures/address-book/konica-sample.csv — representative PageScope
+  export (TODO: validate vs a real bizhub capture; PRD explicitly allows a
+  placeholder fixture).
+- NEW server/tests/unit/konica-parser.test.ts — 13 vitest tests.
+
+Gotchas Discovered:
+- Encoding: use WHATWG TextDecoder, NOT iconv-lite (the PRD/story mention it but
+  Deno has no such package). TextDecoder('shift-jis') works in BOTH Node (full
+  ICU, default since Node 13) and Deno — verified decoding テスト. Detection
+  strategy: UTF-8 BOM → strict UTF-8 {fatal:true} attempt → shift-jis fallback.
+  Pure-ASCII is valid UTF-8 so it decodes identically; only Japanese names差.
+- SECURITY: "store all source columns in source_metadata" (AC) collides with
+  "never persist passwords". Resolution: REDACT the detected password column to
+  '' in source_metadata; password_was_required flags presence. A test asserts the
+  cleartext 'Secret123' never appears in any serialized entry — this caught a
+  real leak before the redaction was added.
+- KM has no single canonical CSV schema (varies by model/firmware/export tool),
+  so the parser matches a tolerant normalized-alias header map (lowercase, strip
+  non-alnum) and auto-locates the header row (skips leading metadata/# lines)
+  rather than assuming fixed column positions. Type column wins; falls back to
+  inferring email-vs-smb from which destination field is populated.
+- A Deno _shared module is vitest-testable from server/tests/ via a relative
+  import WITHOUT the .ts extension (vite resolves it); the module's internal
+  `import type '../types.ts'` is stripped by esbuild at runtime, so the .ts
+  extension never hits Node's resolver. supabase/functions is NOT in tsconfig
+  include, so `npm run check` won't typecheck the parser — `deno check` is the
+  real type gate for it (CLAUDE.md established this).
+
+Gates:
+- npx vitest run server/tests/unit/konica-parser.test.ts: 13/13 pass
+- deno check supabase/functions/_shared/address-book/{konica/parser,types}.ts: clean
+- npm run check: 0 new errors naming my files (large pre-existing baseline only)
+- npm run build: green (39s)
+- prettier --write on the 4 touched files only (NOT format:write); eslint ignores
+  supabase/functions + server/tests (0 errors, ignore-warnings only)
+
+Files Created:
+- supabase/functions/_shared/address-book/types.ts
+- supabase/functions/_shared/address-book/konica/parser.ts
+- tests/fixtures/address-book/konica-sample.csv
+- server/tests/unit/konica-parser.test.ts
+
+Files Modified:
+- prd.json (ABK-006 passes:true)
+
+---
