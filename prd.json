@@ -4114,8 +4114,8 @@
         "Smoke-test LeadDetail.tsx contact attachment flow + LeadMapViewer.tsx"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": "Express source: routes-leads.ts (or domains/sales.ts). LeadMapViewer is a heavy feature page.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. Rewrote supabase/functions/leads/index.ts: added GET /:id/contacts + POST /:id/contacts (lead_contacts table; firstName/lastName required; isPrimary→is_primary), GET /map-data (camelCase {leads,stats} matching Express routes-lead-map.ts — record_type='lead', leadSource maps to the `source` column, billingPostalCode→billing_zip_code, equipment/brand/UCC meta parsed from notes), POST /geocode (delegates to ../geocode-leads/index.ts handler), and POST /import-eda (multipart req.formData() + a hand-rolled RFC-4180 CSV parser since Deno has no csv-parser; groups by BUYCOMP1, dedups vs existing source='EDA Import', inserts business_records). Added RESERVED set so map-data/geocode/import-eda aren't treated as lead ids. Added '/api/leads':'leads' to crmProxies. Migrated the LeadMapViewer EDA upload off raw cookie fetch onto a Bearer-authenticated getApiUrl() upload (cookie fetch 401s through the JWT-gated edge fn). Fixed geocode-leads getUser(jwt) overload (null→undefined). Gates: deno check (both fns) + npm run build + 33/33 proxy tests + npm run check (no new errors in touched files) + audit:routes→leads `proxied`. Live smoke-test of LeadDetail/LeadMapViewer needs an ops env (no DB/auth in sandbox).",
       "category": "edge-migration"
     },
     {

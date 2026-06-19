@@ -7069,3 +7069,82 @@ Files Modified:
 - server/middleware/edge-function-proxy.ts (crmProxies entry)
 - docs/route-parity-matrix.md + docs/route-divergence.json (regen)
 - prd.json (EDGE-002e passes:true)
+
+Iteration 14 (06/18/2026 20:14:03): Story LAUNCH-011
+Status: Needs Review
+
+## Iteration - EDGE-002f: Port missing endpoints to leads edge function
+Completed: 2026-06-18
+Status: COMPLETE
+
+Key Changes:
+- Rewrote supabase/functions/leads/index.ts to add full frontend parity:
+  * GET/POST /:id/contacts — lead_contacts table (LeadDetail.tsx attach-contact
+    flow). POST requires firstName+lastName; maps isPrimary->is_primary. GET
+    orders is_primary desc, created_at asc.
+  * GET /map-data — ports server/routes-lead-map.ts. Returns camelCase
+    {leads, stats}. record_type='lead' filter. Parses brand/equipment/UCC meta
+    out of the notes blob (regex). Post-query filters source/city/brand/status/
+    hasCoords. Stats: total/geocoded/pending/geocodedPct + brands/cities/
+    uccStatuses histograms.
+  * POST /geocode — delegates to ../geocode-leads/index.ts handler (forwards the
+    original req untouched; that fn owns the Places API + batching).
+  * POST /import-eda — multipart req.formData(); hand-rolled RFC-4180 CSV parser
+    (Deno has no csv-parser dep); groups rows by BUYCOMP1; dedups against
+    existing source='EDA Import' rows; inserts business_records.
+- Added RESERVED = {map-data, geocode, import-eda} so those first segments are
+  NOT mistaken for a lead :id (and isReserved guards every :id branch).
+- Added '/api/leads': 'leads' to crmProxies (edge-function-proxy.ts).
+- Migrated LeadMapViewer.tsx EDA upload off raw `fetch('/api/leads/import-eda',
+  {credentials:'include'})` onto a Bearer-authenticated getApiUrl() multipart
+  upload (getAccessToken() + x-tenant-id from localStorage).
+- Fixed geocode-leads/index.ts getUser(jwt) overload (null -> undefined) so the
+  cross-fn import deno-checks clean.
+
+Gotchas Discovered:
+- SCHEMA DRIFT: businessRecords.leadSource maps to the DB column named `source`
+  (shared/schema.ts:1328 `leadSource: varchar('source')`), NOT `lead_source`.
+  And billingPostalCode -> `billing_zip_code` (1314), assignedSalesRep ->
+  `assigned_sales_rep`. The supabase-js raw queries MUST use the real column
+  names; got these from the Drizzle varchar('...') strings, not the property
+  names. geocode-leads already uses `source='EDA Import'` consistently.
+- Two different lead identifiers coexist: the existing leads list filters
+  status='lead' but map-data/import-eda use record_type='lead' (matching
+  Express). EDA-imported leads have status='new' + record_type='lead', so they
+  show in /map-data but not in the status='lead' list — pre-existing behavior,
+  left unchanged (out of scope to reconcile).
+- supabase-js typed .select() with a runtime-CONCATENATED column string infers
+  GenericStringError and every r.<col> access errors under deno check. Fix: cast
+  the result rows to any[] (let filtered: any[] = (rows as any[]) || []).
+- Multipart through the proxy works (EDGE-002l already landed — see the
+  forwardToEdgeFunction multipart branch), BUT the frontend upload must carry a
+  Bearer token: the edge fn is JWT-gated and a cookie `fetch` 401s through the
+  proxy (same lesson as subscriptions/billing). Rewrapped the upload manually
+  (apiRequest forces application/json, so it can't be used for FormData).
+- Cross-fn import (`import geocodeHandler from '../geocode-leads/index.ts'`) is
+  an accepted idiom and the cleanest geocode reuse (no functions-URL plumbing);
+  it makes deno check follow into geocode-leads, surfacing its pre-existing
+  getUser overload bug — fixed it there too.
+
+Verification:
+- deno check supabase/functions/leads/index.ts: clean (also pulls in
+  geocode-leads, now clean).
+- npm run build: green (29.9s).
+- 33/33 edge-function-proxy unit tests pass.
+- npm run check: no new tsc errors in the touched frontend/server files
+  (LeadMapViewer.tsx, edge-function-proxy.ts); edge fns aren't in tsc include.
+- npm run audit:routes: leads now `proxied` (docs/route-parity-matrix.md;
+  divergence.json proxied includes "leads").
+- prettier --write on the 4 touched files only (NOT format:write).
+- NOT runtime-verifiable in sandbox (no DB/auth/Places key): live smoke-test of
+  LeadDetail contact attach + LeadMapViewer map/geocode/import needs an ops env.
+
+Files Modified:
+- supabase/functions/leads/index.ts (rewrite)
+- supabase/functions/geocode-leads/index.ts (getUser overload fix)
+- client/src/pages/LeadMapViewer.tsx (Bearer-auth EDA upload)
+- server/middleware/edge-function-proxy.ts (crmProxies entry)
+- docs/route-parity-matrix.md + docs/route-divergence.json (regen)
+- prd.json (EDGE-002f passes:true)
+
+---

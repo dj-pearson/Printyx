@@ -5,6 +5,8 @@ import L from 'leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import 'leaflet/dist/leaflet.css';
 import { apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/lib/config';
+import { getAccessToken } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -223,13 +225,24 @@ export default function LeadMapViewer() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('file', file);
-      const response = await fetch('/api/leads/import-eda', {
+      // Multipart upload to the leads edge function — needs a Bearer token
+      // (the edge fn is JWT-gated; a cookie `fetch` 401s through the proxy).
+      const token = await getAccessToken();
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const tenantId =
+        localStorage.getItem('tenant-id') ||
+        localStorage.getItem('printyx-tenant-id') ||
+        localStorage.getItem('x-tenant-id');
+      if (tenantId) headers['x-tenant-id'] = tenantId;
+      const response = await fetch(getApiUrl('/api/leads/import-eda'), {
         method: 'POST',
         body: formData,
+        headers,
         credentials: 'include',
       });
       if (!response.ok) {
-        const err = await response.json();
+        const err = await response.json().catch(() => ({}));
         throw new Error(err.message || 'Import failed');
       }
       return response.json();

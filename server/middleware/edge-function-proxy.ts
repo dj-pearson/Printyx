@@ -433,6 +433,17 @@ export function registerEdgeFunctionProxy(app: any) {
     // and 404 on the edge fn in both dev and prod — out of scope here.
     '/api/seo': 'seo',
 
+    // EDGE-002f: leads. The edge function now covers full frontend parity —
+    // list/create, /:id GET/PUT/DELETE, /:id/contacts GET/POST (LeadDetail
+    // contact attachment), /:id/convert, /:id/qualify, plus the LeadMapViewer
+    // surface: /map-data (geo + equipment metadata from notes), /geocode
+    // (delegates to the geocode-leads edge fn), and /import-eda (multipart CSV
+    // bulk import — relies on the EDGE-002l multipart proxy fix). The
+    // LeadMapViewer EDA upload was migrated off raw cookie `fetch` onto a
+    // Bearer-authenticated getApiUrl upload so it authenticates through the
+    // proxy/edge.
+    '/api/leads': 'leads',
+
     // EDGE-002c: subscriptions. The edge function now has full frontend parity
     // for every path useSubscription.ts calls — current, plans, usage,
     // notifications (+:id/dismiss), create, upgrade, cancel, convert-trial, and
