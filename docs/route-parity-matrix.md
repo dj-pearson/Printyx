@@ -4,7 +4,7 @@
 
 **Architecture:** prod frontend → `functions.printyx.net/<route>` (edge) for ALL `/api/*` via `getApiUrl`. The Express proxy map (47 prefixes) only affects **dev**. Express stays canonical for `/api/client-metrics/*` (agent) and `/install/*`.
 
-**Totals:** 298 domains · 232 edge fns · 159 Express-served · 182 frontend-called · 47 proxied
+**Totals:** 294 domains · 225 edge fns · 159 Express-served · 182 frontend-called · 47 proxied
 
 ## Summary by class
 
@@ -12,10 +12,10 @@
 |---|---|---|
 | `missing-edge` | 32 | Frontend calls it, NO edge function → **PROD BLOCKER** |
 | `both-divergent` | 59 | Express + edge both exist, not proxied → dev ≠ prod (maintenance trap) |
-| `express-only` | 26 | Express handler, no edge function → not yet migrated |
-| `dead-express` | 18 | Express + edge exist, no frontend ref → Express likely dead |
+| `express-only` | 29 | Express handler, no edge function → not yet migrated |
+| `dead-express` | 15 | Express + edge exist, no frontend ref → Express likely dead |
 | `proxied` | 47 | In proxy map → dev forwards to edge (aligned) |
-| `edge-only` | 107 | Edge function only, no Express handler → fully migrated |
+| `edge-only` | 103 | Edge function only, no Express handler → fully migrated |
 | `express-canonical` | 9 | Express is canonical by design (agent ingest) |
 
 ## Action-needed first
@@ -130,6 +130,9 @@
 | `delivery-schedules` | · | · | ✅ | · | `express-only` |
 | `docs` | · | · | ✅ | · | `express-only` |
 | `integration-hub` | · | · | ✅ | · | `express-only` |
+| `lead-assignment-history` | · | · | ✅ | · | `express-only` |
+| `lead-assignment-queue` | · | · | ✅ | · | `express-only` |
+| `lead-assignment-rules` | · | · | ✅ | · | `express-only` |
 | `models` | · | · | ✅ | · | `express-only` |
 | `monitoring` | · | · | ✅ | · | `express-only` |
 | `phone-tickets` | · | · | ✅ | · | `express-only` |
@@ -153,9 +156,6 @@
 | `handoff-task-templates` | · | ✅ | ✅ | · | `dead-express` |
 | `handoff-tasks` | · | ✅ | ✅ | · | `dead-express` |
 | `implementation-projects` | · | ✅ | ✅ | · | `dead-express` |
-| `lead-assignment-history` | · | ✅ | ✅ | · | `dead-express` |
-| `lead-assignment-queue` | · | ✅ | ✅ | · | `dead-express` |
-| `lead-assignment-rules` | · | ✅ | ✅ | · | `dead-express` |
 | `printer-monitoring` | · | ✅ | ✅ | · | `dead-express` |
 | `renewal-activities` | · | ✅ | ✅ | · | `dead-express` |
 | `renewal-playbooks` | · | ✅ | ✅ | · | `dead-express` |
@@ -302,10 +302,6 @@
 | `signup` | · | ✅ | · | · | `edge-only` |
 | `social-media` | ✅ | ✅ | · | · | `edge-only` |
 | `sso` | · | ✅ | · | · | `edge-only` |
-| `task-comments` | · | ✅ | · | · | `edge-only` |
-| `tasks-bulk` | · | ✅ | · | · | `edge-only` |
-| `tasks-enhanced` | · | ✅ | · | · | `edge-only` |
-| `tasks-stats` | · | ✅ | · | · | `edge-only` |
 | `tax-rates` | · | ✅ | · | · | `edge-only` |
 | `team-reports` | · | ✅ | · | · | `edge-only` |
 | `teams` | · | ✅ | · | · | `edge-only` |

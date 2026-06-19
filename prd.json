@@ -4469,8 +4469,8 @@
         "npm run check + npm run build pass"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "Lower priority than the audit-log/audit-logs split because these child functions weren't broken — they just create deployment overhead and code duplication. Deferred from EDGE-006.",
+      "passes": true,
+      "notes": "Lower priority than the audit-log/audit-logs split because these child functions weren't broken — they just create deployment overhead and code duplication. Deferred from EDGE-006. [DONE 2026-06-18: Both parents already had all child handlers merged (tasks/index.ts header lists tasks-{enhanced,bulk,stats}+task-comments as merged; lead-assignment/index.ts dispatches rules/history/queue). Children had ZERO frontend callers (matrix: tasks-* edge-only, lead-assignment-* dead-express), not in crmProxies, not pinned in config.toml/manifests, no cross-imports. Deleted all 7 child edge dirs. deno check on both parents clean; build green; 33/33 proxy tests; audit:routes regenerated (lead-assignment-* now express-only awaiting EDGE-008 sunset, tasks-* gone). Express routes for lead-assignment-* left for EDGE-008/011.]",
       "category": "edge-migration"
     },
     {

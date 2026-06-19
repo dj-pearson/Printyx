@@ -6757,3 +6757,70 @@ Files Modified:
 - client/src/components/calculator/EmailCaptureModal.tsx
 - server/middleware/edge-function-proxy.ts (2 crmProxies entries + 1 special-case)
 - prd.json (EDGE-005f passes:true), docs/route-parity-matrix.md + route-divergence.json (regen)
+
+Iteration 10 (06/18/2026 19:15:15): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+## Iteration - EDGE-006a: Consolidate lead-assignment-{history,queue,rules} and tasks-{bulk,enhanced,stats,task-comments} into parents
+Completed: 2026-06-18
+Status: COMPLETE
+
+Key Changes:
+- Deleted 7 redundant child edge-fn dirs: lead-assignment-{history,queue,rules},
+  tasks-{bulk,enhanced,stats}, task-comments.
+- No handler porting was needed: both parents had ALREADY merged the children in a
+  prior pass. tasks/index.ts header literally lists tasks-{enhanced,bulk,stats} +
+  task-comments as "(merged in)" and dispatches /stats, /bulk/*, /:id/comments,
+  /:id/time-entr*. lead-assignment/index.ts PREFIX_MAP dispatches
+  /lead-assignment-{rules,history,queue} to handlers/{rules,history,queue}.ts.
+- EDGE-006a was therefore the "PR 2 / delete" half of an already-built consolidation
+  (lead-assignment/index.ts header explicitly says "Once PR 2 ships, these auxiliary
+  edge functions get deleted").
+
+Load-bearing checks performed BEFORE deleting (all passed):
+- Frontend callsites: ZERO for every hyphenated child prefix. Frontend only calls the
+  parent slash-forms (/api/tasks/stats, /api/tasks/bulk/*, /api/tasks/:id/comments).
+  No /api/lead-assignment* callsite exists at all.
+- crmProxies: none of the 7 were proxied (proxy is an explicit map, NOT a dir auto-scan,
+  so deleting dirs can't break dev routing).
+- config.toml: only names hello/signup/me/print-cost-calculator (verify_jwt overrides) —
+  no manifest pins child fn names.
+- Cross-imports: none from the child dirs anywhere under supabase/functions.
+- The only references to child names were in stale audit-reports/*.json artifacts (not
+  code/config) — consistent with CLAUDE.md's "stale generated artifacts" note.
+
+Gotchas Discovered:
+- Two runtimes read paths DIFFERENTLY and the parent fns disagree about it:
+  * Coolify server.ts routes by pathParts[0] (the fn dir name) and STRIPS it before
+    calling the fn — so the fn sees the path WITHOUT its own name.
+  * lead-assignment/index.ts's PREFIX_MAP matches the FULL path INCLUDING the prefix
+    (/lead-assignment-rules, /sales-territories, ...) — i.e. native-Supabase style.
+  These are incompatible: under Coolify, lead-assignment's non-/lead-assignment prefixes
+  won't match. This is the same class of bug CLAUDE.md flags for integrations
+  ("OLD pathParts[1] convention ... already broken under Coolify server.ts"). Reconciling
+  that prefix routing is OUT OF SCOPE for EDGE-006a (belongs to the broader EDGE-006/008
+  routing work) — but it's why deleting the children does NOT, by itself, make the merged
+  sub-routes reachable in prod. They were already unreachable-by-frontend (no callers).
+- tasks/index.ts's /stats vs the tasks-stats dir: frontend hits /api/tasks/stats (slash)
+  which routes to the `tasks` fn's /stats handler — the tasks-stats DIR (reached only at
+  /api/tasks-stats) had no caller. Same for bulk/comments.
+- Express still serves /api/lead-assignment-{rules,history,queue} (matrix went
+  dead-express -> express-only after edge deletion). Left for the Express sunset
+  (EDGE-008/EDGE-011); deleting Express is out of scope here.
+
+Verification:
+- deno check supabase/functions/{lead-assignment,tasks}/index.ts: both clean.
+- npm run build: green (39.6s).
+- 33/33 edge-function-proxy unit tests pass.
+- npm run check: untouched (no .ts in tsc's include changed — only edge-fn dir deletions
+  + regenerated audit artifacts).
+- npm run audit:routes regenerated: 7 child rows gone/reclassified; parents intact
+  (tasks `proxied`, lead-assignment `edge-only`).
+
+Files Modified:
+- DELETED: supabase/functions/{lead-assignment-history,lead-assignment-queue,
+  lead-assignment-rules,tasks-bulk,tasks-enhanced,tasks-stats,task-comments}/
+- docs/route-parity-matrix.md + docs/route-divergence.json (regen)
+- prd.json (EDGE-006a passes:true)
