@@ -422,6 +422,17 @@ export function registerEdgeFunctionProxy(app: any) {
     // legacy /api/phone-tickets/* prefix onto canonical /api/phone-in-tickets/*.
     '/api/phone-in-tickets': 'phone-in-tickets',
 
+    // EDGE-002e: seo. The edge function now serves the SEODashboard monitoring
+    // surface (settings, pages, audit/history, keywords, competitors, alerts,
+    // crawl/results, analytics) plus the RootAdminSEO actions (POST settings,
+    // POST pages, regenerate-{sitemap,robots,llms}) and the redirect/sitemap
+    // tooling. Routing was refactored onto normalizePath so it works under
+    // Coolify's prefix-stripping dispatcher (was pathParts[1] → fully broken in
+    // prod). The on-demand analysis POSTs (audit, crawl, images/links/security/
+    // mobile/perf/structured-data/content/semantic) remain Node-seoService-only
+    // and 404 on the edge fn in both dev and prod — out of scope here.
+    '/api/seo': 'seo',
+
     // EDGE-002c: subscriptions. The edge function now has full frontend parity
     // for every path useSubscription.ts calls — current, plans, usage,
     // notifications (+:id/dismiss), create, upgrade, cancel, convert-trial, and

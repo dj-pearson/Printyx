@@ -6990,3 +6990,82 @@ Files Modified:
 - client/src/pages/RootAdminSignupsCRM.tsx (response-shape reads)
 - docs/route-parity-matrix.md + docs/route-divergence.json (regen)
 - prd.json (EDGE-002d passes:true)
+
+Iteration 13 (06/18/2026 20:02:27): Story LAUNCH-011
+Status: Needs Review
+
+## Iteration - EDGE-002e: Port missing endpoints to seo edge function
+Completed: 2026-06-18
+Status: COMPLETE
+
+Key Changes:
+- Rewrote supabase/functions/seo/index.ts. Refactored routing off the
+  Coolify-broken pathParts[1] indexing onto normalizePath(url.pathname,'seo')
+  (parts[0]=resource, parts[1]=id/action) — the OLD fn assumed the 'seo'
+  prefix was present, but Coolify's server.ts STRIPS it, so EVERY existing
+  seo endpoint (settings/pages/analytics/sitemap/redirects) was 404'ing in
+  prod. This port fixes that for the whole fn, not just the new endpoints.
+- Ported the SEODashboard monitoring GETs (bare camelCase arrays via
+  toCamelShallow): /audit/history (seo_audit_history), /keywords (seo_keywords,
+  order by priority desc), /competitors (seo_competitor_analysis), /alerts
+  (seo_alerts, optional ?status), /crawl/results (seo_crawl_results, tenant's
+  recent rows).
+- Ported the RootAdminSEO actions: POST /settings (camelCase→snake whitelist
+  upsert; merged with the pre-existing PUT into one handler), POST /pages
+  (upsert seo_page_scores by url), and POST /regenerate-{sitemap,robots,llms}
+  (trivial {message} ack, matching Express routes-seo-core.ts).
+- camelCased the existing GET /settings + GET/POST/PUT /pages + redirects
+  responses (toCamelShallow) so the React pages read .siteName/.url/etc.
+- Added '/api/seo':'seo' to crmProxies (edge-function-proxy.ts).
+
+Gotchas Discovered:
+- TWO different "pages" concepts collide on /api/seo/pages: RootAdminSEO
+  manages MARKETING pages (path/title/schemaType) while SEODashboard reads
+  PAGE SCORES (url/scores). The marketing `seo_pages` table referenced by
+  server/routes-seo-core.ts DOES NOT EXIST in shared/seo-schema.ts (it's a
+  dynamic `require('@shared/schema').seoPages` that resolves to undefined +
+  a "temporarily disabled" comment) — so RootAdminSEO's page CRUD was already
+  fully broken in BOTH dev and prod. The only real pages table is
+  seo_page_scores, so GET/POST /pages both target it; POST maps the form's
+  `path` → url and persists {url,title}, dropping schemaType/schemaData
+  (no columns). Honest minimal behavior, not a regression (it was broken).
+- The on-demand SEODashboard ANALYSIS tools (POST /audit, /crawl,
+  /images/analyze, /links/analyze, /links/broken, /redirects/check,
+  /content/duplicates, /security/analyze, /mobile/analyze, /performance/check,
+  /structured-data/validate, /content/optimize, /semantic/analyze) are backed
+  by the Node-only server/services/seo-service.ts (real HTTP crawling +
+  PageSpeed API) — NOT portable to Deno here. They 404 on the edge fn. Adding
+  the full /api/seo proxy makes DEV match PROD (both 404 these; they already
+  404'd in prod since the frontend hits functions.printyx.net/seo/* directly).
+  The dashboard's on-MOUNT render (all GETs) works; only the analysis BUTTONS
+  degrade — out of scope per the AC.
+- seo_settings has NO meta_title/og_title/monitoring_frequency columns
+  (SEODashboard's save-settings vocabulary is phantom) — the camelCase→snake
+  whitelist (SETTINGS_COLUMNS) drops them so the upsert never PGRST204s; only
+  RootAdminSEO's real fields (siteName/siteUrl/defaultTitle/defaultDescription/
+  defaultOgImage/twitterHandle) persist.
+- getUser(jwt) overload: jwt must be `string | undefined`, NOT `string | null`
+  — the original fn had `: null` and failed deno check (the repo doesn't gate
+  on deno check, so it shipped broken). Fixed to `: undefined`.
+- queryClient.ts:391 auto-unwraps {data:Array} → bare array, so GET /pages
+  returning {data,total} reaches both pages as a plain array (no .map crash).
+
+Verification:
+- deno check supabase/functions/seo/index.ts: clean.
+- npm run build: green (29.8s).
+- 33/33 edge-function-proxy unit tests pass.
+- npm run check: zero NEW tsc errors (edge-function-proxy.ts clean; remaining
+  errors are the pre-existing shared/ baseline; seo/index.ts isn't in tsc
+  include).
+- npm run audit:routes: seo now `proxied` (docs/route-parity-matrix.md:204;
+  divergence.json proxied:["seo"]).
+- prettier --write on the one touched edge file (did NOT run format:write,
+  which churns the whole repo).
+- NOT runtime-verifiable in sandbox (no DB/auth): live smoke-test of
+  SEODashboard + RootAdminSEO needs an ops env with a migrated DB.
+
+Files Modified:
+- supabase/functions/seo/index.ts (rewrite)
+- server/middleware/edge-function-proxy.ts (crmProxies entry)
+- docs/route-parity-matrix.md + docs/route-divergence.json (regen)
+- prd.json (EDGE-002e passes:true)

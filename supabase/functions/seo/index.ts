@@ -1,7 +1,41 @@
 // SEO Edge Function
-// Handles SEO settings, pages, analytics, sitemaps, and redirects
+// Handles SEO settings, pages, analytics, sitemaps, redirects, and the
+// SEODashboard monitoring surface (audit history, keywords, competitors,
+// alerts, crawl results) plus the RootAdminSEO regenerate-* actions.
+//
+// Routing uses normalizePath so it is robust under BOTH the native Supabase
+// runtime (keeps the `seo` function-name prefix) and Coolify's server.ts
+// dispatcher (strips it). parts[0] = resource, parts[1] = id/action,
+// parts[2] = sub-action.
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
+import { toCamelShallow } from '../_shared/case.ts';
+
+// Real seo_settings columns (snake_case). Frontend speaks camelCase; we snake
+// each incoming key and whitelist against this set so phantom fields (e.g.
+// SEODashboard's metaTitle / monitoringFrequency, which have no column) are
+// dropped instead of triggering a PostgREST PGRST204.
+const SETTINGS_COLUMNS = new Set([
+  'site_url',
+  'site_name',
+  'default_title',
+  'default_description',
+  'default_keywords',
+  'default_og_image',
+  'robots_txt',
+  'llms_txt',
+  'sitemap_url',
+  'twitter_handle',
+  'facebook_app_id',
+  'monitoring_enabled',
+  'google_analytics_id',
+  'gsc_verification',
+]);
+
+function camelToSnake(key: string): string {
+  return key.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase()).replace(/^_+/, '');
+}
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -9,7 +43,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -30,15 +64,14 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    // pathParts[0] = 'seo', pathParts[1] = resource, pathParts[2] = id or action
-    const resource = pathParts[1];
-    const resourceId = pathParts[2];
-    const action = pathParts[3];
+    const { parts } = normalizePath(url.pathname, 'seo');
+    const resource = parts[0];
+    const resourceId = parts[1];
+    const action = parts[2];
 
     // ============= SETTINGS =============
 
-    // GET /seo/settings - Get SEO settings
+    // GET /seo/settings - Get SEO settings (camelCase for RootAdminSEO/SEODashboard)
     if (req.method === 'GET' && resource === 'settings') {
       const { data: settings, error } = await admin
         .from('seo_settings')
@@ -51,44 +84,28 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch SEO settings' }, 500, req);
       }
 
-      return createCorsResponse(settings || {}, 200, req);
+      return createCorsResponse(settings ? toCamelShallow(settings) : {}, 200, req);
     }
 
-    // PUT /seo/settings - Update SEO settings
-    if (req.method === 'PUT' && resource === 'settings') {
+    // PUT or POST /seo/settings - Upsert SEO settings.
+    // Both RootAdminSEO (POST) and SEODashboard (POST) and the older PUT
+    // caller converge here.
+    if ((req.method === 'PUT' || req.method === 'POST') && resource === 'settings') {
       const body = await req.json();
-
-      // Validate allowed fields
-      const allowedFields = [
-        'site_url',
-        'site_name',
-        'default_title',
-        'default_description',
-        'default_keywords',
-        'default_og_image',
-        'robots_txt',
-        'llms_txt',
-        'sitemap_url',
-        'twitter_handle',
-        'facebook_app_id',
-        'monitoring_enabled',
-        'monitoring_frequency',
-        'google_analytics_id',
-        'gsc_verification',
-      ];
 
       const settingsData: Record<string, unknown> = {
         tenant_id: tenantId,
         updated_at: new Date().toISOString(),
       };
 
-      for (const field of allowedFields) {
-        if (body[field] !== undefined) {
-          settingsData[field] = body[field];
+      for (const [key, value] of Object.entries(body)) {
+        if (value === undefined) continue;
+        const column = camelToSnake(key);
+        if (SETTINGS_COLUMNS.has(column)) {
+          settingsData[column] = value;
         }
       }
 
-      // Check if settings exist
       const { data: existing } = await admin
         .from('seo_settings')
         .select('id')
@@ -123,12 +140,12 @@ export default async function handler(req: Request) {
         result = data;
       }
 
-      return createCorsResponse(result, 200, req);
+      return createCorsResponse(toCamelShallow(result), 200, req);
     }
 
     // ============= PAGES =============
 
-    // GET /seo/pages - List SEO pages
+    // GET /seo/pages - List page scores (client auto-unwraps {data:[...]})
     if (req.method === 'GET' && resource === 'pages' && !resourceId) {
       const limit = parseInt(url.searchParams.get('limit') || '50');
       const offset = parseInt(url.searchParams.get('offset') || '0');
@@ -149,7 +166,11 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch SEO pages' }, 500, req);
       }
 
-      return createCorsResponse({ data: pages, total: count }, 200, req);
+      return createCorsResponse(
+        { data: (pages || []).map(toCamelShallow), total: count },
+        200,
+        req,
+      );
     }
 
     // GET /seo/pages/:id - Get page SEO details
@@ -169,7 +190,63 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch page SEO' }, 500, req);
       }
 
-      return createCorsResponse(page, 200, req);
+      return createCorsResponse(toCamelShallow(page), 200, req);
+    }
+
+    // POST /seo/pages - Upsert a page record by URL (RootAdminSEO "Add / Update
+    // Page"). The legacy seo_pages marketing table does not exist; the only real
+    // pages table is seo_page_scores, keyed by url. We accept the page form's
+    // `path` as the url and persist the minimal {url, title} so the list
+    // reflects the add. Fields with no column (schemaType/schemaData) are dropped.
+    if (req.method === 'POST' && resource === 'pages' && !resourceId) {
+      const body = await req.json();
+      const pageUrl = body.url || body.path;
+
+      if (!pageUrl) {
+        return createCorsResponse({ error: 'Page URL/path is required' }, 400, req);
+      }
+
+      const { data: existing } = await admin
+        .from('seo_page_scores')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('url', pageUrl)
+        .maybeSingle();
+
+      const pageData: Record<string, unknown> = {
+        tenant_id: tenantId,
+        url: pageUrl,
+        title: body.title ?? null,
+        updated_at: new Date().toISOString(),
+      };
+
+      let result;
+      if (existing) {
+        const { data, error } = await admin
+          .from('seo_page_scores')
+          .update(pageData)
+          .eq('id', existing.id)
+          .select()
+          .single();
+        if (error) {
+          console.error('Error updating SEO page:', error);
+          return createCorsResponse({ error: 'Failed to save SEO page' }, 500, req);
+        }
+        result = data;
+      } else {
+        const { data, error } = await admin
+          .from('seo_page_scores')
+          .insert(pageData)
+          .select()
+          .single();
+        if (error) {
+          console.error('Error creating SEO page:', error);
+          return createCorsResponse({ error: 'Failed to save SEO page' }, 500, req);
+        }
+        result = data;
+      }
+
+      return createCorsResponse(toCamelShallow(result), 200, req);
     }
 
     // PUT /seo/pages/:id - Update page SEO
@@ -219,7 +296,114 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to update page SEO' }, 500, req);
       }
 
-      return createCorsResponse(page, 200, req);
+      return createCorsResponse(toCamelShallow(page), 200, req);
+    }
+
+    // ============= AUDIT HISTORY =============
+
+    // GET /seo/audit/history - SEODashboard audit history (bare camelCase array)
+    if (req.method === 'GET' && resource === 'audit' && resourceId === 'history') {
+      const limit = parseInt(url.searchParams.get('limit') || '20');
+      const offset = parseInt(url.searchParams.get('offset') || '0');
+
+      const { data: audits, error } = await admin
+        .from('seo_audit_history')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) {
+        console.error('Error fetching audit history:', error);
+        return createCorsResponse({ error: 'Failed to fetch audit history' }, 500, req);
+      }
+
+      return createCorsResponse((audits || []).map(toCamelShallow), 200, req);
+    }
+
+    // ============= KEYWORDS =============
+
+    // GET /seo/keywords - tracked keywords (bare camelCase array)
+    if (req.method === 'GET' && resource === 'keywords' && !resourceId) {
+      const { data: keywords, error } = await admin
+        .from('seo_keywords')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('priority', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching keywords:', error);
+        return createCorsResponse({ error: 'Failed to fetch keywords' }, 500, req);
+      }
+
+      return createCorsResponse((keywords || []).map(toCamelShallow), 200, req);
+    }
+
+    // ============= COMPETITORS =============
+
+    // GET /seo/competitors - competitor analyses (bare camelCase array)
+    if (req.method === 'GET' && resource === 'competitors' && !resourceId) {
+      const { data: competitors, error } = await admin
+        .from('seo_competitor_analysis')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('analyzed_at', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('Error fetching competitors:', error);
+        return createCorsResponse({ error: 'Failed to fetch competitors' }, 500, req);
+      }
+
+      return createCorsResponse((competitors || []).map(toCamelShallow), 200, req);
+    }
+
+    // ============= ALERTS =============
+
+    // GET /seo/alerts - monitoring alerts (bare camelCase array)
+    if (req.method === 'GET' && resource === 'alerts' && !resourceId) {
+      const status = url.searchParams.get('status');
+
+      let query = admin.from('seo_alerts').select('*').eq('tenant_id', tenantId);
+      if (status) {
+        query = query.eq('status', status);
+      }
+
+      const { data: alerts, error } = await query
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) {
+        console.error('Error fetching alerts:', error);
+        return createCorsResponse({ error: 'Failed to fetch alerts' }, 500, req);
+      }
+
+      return createCorsResponse((alerts || []).map(toCamelShallow), 200, req);
+    }
+
+    // ============= CRAWL RESULTS =============
+
+    // GET /seo/crawl/results (or /seo/crawl/:crawlId) - recent crawl results.
+    // SEODashboard queries /crawl/results; we return the tenant's most recent
+    // crawl rows (bare camelCase array) rather than 404.
+    if (req.method === 'GET' && resource === 'crawl') {
+      let query = admin.from('seo_crawl_results').select('*').eq('tenant_id', tenantId);
+
+      // If a real crawl id (not the literal "results") is supplied, scope to it.
+      if (resourceId && resourceId !== 'results') {
+        query = query.eq('crawl_id', resourceId);
+      }
+
+      const { data: results, error } = await query
+        .order('crawled_at', { ascending: false })
+        .limit(200);
+
+      if (error) {
+        console.error('Error fetching crawl results:', error);
+        return createCorsResponse({ error: 'Failed to fetch crawl results' }, 500, req);
+      }
+
+      return createCorsResponse((results || []).map(toCamelShallow), 200, req);
     }
 
     // ============= ANALYTICS =============
@@ -429,6 +613,20 @@ export default async function handler(req: Request) {
       );
     }
 
+    // ============= REGENERATE STATIC FILES (RootAdminSEO) =============
+    // The actual sitemap.xml / robots.txt / llms.txt are served dynamically by
+    // the SPA origin; these endpoints just acknowledge the regenerate action
+    // (parity with the Express routes-seo-core.ts handlers).
+    if (req.method === 'POST' && resource === 'regenerate-sitemap') {
+      return createCorsResponse({ message: 'Sitemap regenerated successfully' }, 200, req);
+    }
+    if (req.method === 'POST' && resource === 'regenerate-robots') {
+      return createCorsResponse({ message: 'Robots.txt regenerated successfully' }, 200, req);
+    }
+    if (req.method === 'POST' && resource === 'regenerate-llms') {
+      return createCorsResponse({ message: 'LLMs.txt regenerated successfully' }, 200, req);
+    }
+
     // ============= REDIRECTS =============
 
     // GET /seo/redirects - Get URL redirects
@@ -457,24 +655,27 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to fetch redirects' }, 500, req);
       }
 
-      return createCorsResponse({ data: redirects, total: count }, 200, req);
+      return createCorsResponse(
+        { data: (redirects || []).map(toCamelShallow), total: count },
+        200,
+        req,
+      );
     }
 
     // POST /seo/redirects - Create redirect (analyze a redirect chain)
     if (req.method === 'POST' && resource === 'redirects' && !resourceId) {
       const body = await req.json();
-      const { sourceUrl, source_url } = body;
-      const url = sourceUrl || source_url;
+      const sourceUrl = body.sourceUrl || body.source_url;
 
-      if (!url) {
+      if (!sourceUrl) {
         return createCorsResponse({ error: 'Source URL is required' }, 400, req);
       }
 
       // Create a redirect analysis entry
       const redirectData = {
         tenant_id: tenantId,
-        source_url: url,
-        destination_url: body.destinationUrl || body.destination_url || url,
+        source_url: sourceUrl,
+        destination_url: body.destinationUrl || body.destination_url || sourceUrl,
         redirect_chain: body.redirectChain || body.redirect_chain || [],
         chain_length: body.chainLength || body.chain_length || 0,
         status_code: body.statusCode || body.status_code || 200,
@@ -497,7 +698,7 @@ export default async function handler(req: Request) {
         return createCorsResponse({ error: 'Failed to create redirect' }, 500, req);
       }
 
-      return createCorsResponse(redirect, 201, req);
+      return createCorsResponse(toCamelShallow(redirect), 201, req);
     }
 
     // DELETE /seo/redirects/:id - Delete redirect
@@ -516,7 +717,15 @@ export default async function handler(req: Request) {
       return createCorsResponse({ success: true }, 200, req);
     }
 
-    return createCorsResponse({ error: 'Invalid SEO endpoint or method' }, 400, req);
+    return createCorsResponse(
+      {
+        error: 'Invalid SEO endpoint or method',
+        resource: resource || null,
+        action: action || null,
+      },
+      404,
+      req,
+    );
   } catch (error) {
     console.error('Error in SEO function:', error);
     return createCorsResponse(

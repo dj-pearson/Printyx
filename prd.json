@@ -4097,7 +4097,7 @@
         "Smoke-test SEODashboard and RootAdminSEO"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Express source: routes-seo-core.ts. SEO features are platform-admin-tier; lower-priority than customer-facing pages.",
       "category": "edge-migration"
     },
