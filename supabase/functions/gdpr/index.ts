@@ -2,6 +2,7 @@
 // Handles GDPR compliance operations
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -9,7 +10,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -34,9 +35,201 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1];
-    const requestId = pathParts[2];
+    // Coolify-safe routing: parts[0] = endpoint, parts[1] = sub/requestId
+    const { parts } = normalizePath(url.pathname, 'gdpr');
+    const endpoint = parts[0];
+    const requestId = parts[1];
+
+    // ========================================================================
+    // STATS / DASHBOARD ROUTES (two-segment, named — handle before catch-alls)
+    // ========================================================================
+
+    // GET /gdpr/consent/stats - Consent statistics for the dashboard
+    if (req.method === 'GET' && endpoint === 'consent' && requestId === 'stats') {
+      const { data: records, error } = await admin
+        .from('consent_records')
+        .select('status, consent_type, withdrawn_at')
+        .eq('tenant_id', tenantId);
+
+      if (error) {
+        return createCorsResponse(
+          {
+            totalRecords: 0,
+            byStatus: {},
+            byType: {},
+            recentWithdrawals: 0,
+            degraded: true,
+          },
+          200,
+          req,
+        );
+      }
+
+      const rows = (records || []) as any[];
+      const byStatus: Record<string, number> = {};
+      const byType: Record<string, number> = {};
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      let recentWithdrawals = 0;
+
+      for (const r of rows) {
+        if (r.status) byStatus[r.status] = (byStatus[r.status] || 0) + 1;
+        if (r.consent_type) byType[r.consent_type] = (byType[r.consent_type] || 0) + 1;
+        if (r.withdrawn_at && new Date(r.withdrawn_at).getTime() >= thirtyDaysAgo) {
+          recentWithdrawals += 1;
+        }
+      }
+
+      return createCorsResponse(
+        {
+          totalRecords: rows.length,
+          byStatus,
+          byType,
+          recentWithdrawals,
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /gdpr/dpa/stats - Data Processing Agreement statistics
+    if (req.method === 'GET' && endpoint === 'dpa' && requestId === 'stats') {
+      const { data: dpas, error } = await admin
+        .from('data_processing_agreements')
+        .select('status, expiration_date')
+        .eq('tenant_id', tenantId);
+
+      if (error) {
+        return createCorsResponse(
+          {
+            totalDpas: 0,
+            byStatus: {},
+            expiringIn30Days: 0,
+            pendingCompliance: 0,
+            degraded: true,
+          },
+          200,
+          req,
+        );
+      }
+
+      const rows = (dpas || []) as any[];
+      const byStatus: Record<string, number> = {};
+      const now = Date.now();
+      const in30Days = now + 30 * 24 * 60 * 60 * 1000;
+      let expiringIn30Days = 0;
+
+      for (const r of rows) {
+        if (r.status) byStatus[r.status] = (byStatus[r.status] || 0) + 1;
+        if (r.expiration_date) {
+          const exp = new Date(r.expiration_date).getTime();
+          if (exp >= now && exp <= in30Days) expiringIn30Days += 1;
+        }
+      }
+
+      // Pending compliance: count DPA compliance checks awaiting review (degrade-tolerant)
+      let pendingCompliance = 0;
+      const { count: pendingCount, error: checkError } = await admin
+        .from('dpa_compliance_checks')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', tenantId)
+        .eq('status', 'pending');
+      if (!checkError) pendingCompliance = pendingCount || 0;
+
+      return createCorsResponse(
+        {
+          totalDpas: rows.length,
+          byStatus,
+          expiringIn30Days,
+          pendingCompliance,
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /gdpr/deduplication/stats - Contact deduplication statistics
+    if (req.method === 'GET' && endpoint === 'deduplication' && requestId === 'stats') {
+      const { data: matches, error } = await admin
+        .from('duplicate_matches')
+        .select('status')
+        .eq('tenant_id', tenantId);
+
+      if (error) {
+        return createCorsResponse(
+          {
+            totalMatches: 0,
+            pendingMatches: 0,
+            mergedRecords: 0,
+            byStatus: {},
+            degraded: true,
+          },
+          200,
+          req,
+        );
+      }
+
+      const rows = (matches || []) as any[];
+      const byStatus: Record<string, number> = {};
+      let pendingMatches = 0;
+      let mergedRecords = 0;
+      for (const r of rows) {
+        if (r.status) byStatus[r.status] = (byStatus[r.status] || 0) + 1;
+        if (r.status === 'pending' || r.status === 'reviewing') pendingMatches += 1;
+        if (r.status === 'merged' || r.status === 'auto_merged') mergedRecords += 1;
+      }
+
+      return createCorsResponse(
+        {
+          totalMatches: rows.length,
+          pendingMatches,
+          mergedRecords,
+          byStatus,
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /gdpr/data-export/requests - Personal data export requests (?status=pending)
+    if (req.method === 'GET' && endpoint === 'data-export' && requestId === 'requests') {
+      const status = url.searchParams.get('status');
+
+      let query = admin
+        .from('personal_data_exports')
+        .select(
+          'id, export_number, subject_type, subject_id, subject_email, format, status, progress, requested_by, created_at',
+        )
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (status) query = query.eq('status', status);
+
+      const { data: exports, error } = await query;
+
+      if (error) {
+        return createCorsResponse({ exports: [], total: 0, degraded: true }, 200, req);
+      }
+
+      const camelized = ((exports || []) as any[]).map((e: any) => ({
+        id: e.id,
+        exportNumber: e.export_number,
+        subjectType: e.subject_type,
+        subjectId: e.subject_id,
+        subjectEmail: e.subject_email,
+        format: e.format,
+        status: e.status,
+        progress: e.progress,
+        requestedBy: e.requested_by,
+        createdAt: e.created_at,
+      }));
+
+      return createCorsResponse({ exports: camelized, total: camelized.length }, 200, req);
+    }
+
+    // ========================================================================
+    // EXISTING ROUTES (migrated to normalizePath)
+    // ========================================================================
 
     // GET /gdpr/requests - List GDPR requests
     if (req.method === 'GET' && endpoint === 'requests' && !requestId) {
@@ -135,7 +328,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /gdpr/data-export - Export user data
-    if (req.method === 'POST' && endpoint === 'data-export') {
+    if (req.method === 'POST' && endpoint === 'data-export' && !requestId) {
       const body = await req.json();
       const subjectEmail = body.email || body.subjectEmail;
 
@@ -260,7 +453,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /gdpr/consent - Record consent
-    if (req.method === 'POST' && endpoint === 'consent') {
+    if (req.method === 'POST' && endpoint === 'consent' && !requestId) {
       const body = await req.json();
 
       const { data: consent, error } = await admin

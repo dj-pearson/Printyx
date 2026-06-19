@@ -2,6 +2,9 @@
 // Manages the sales pipeline for platform-level tenant acquisition (Root Admin only)
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
+
+const RESERVED_ENDPOINTS = new Set(['pipeline', 'stats', 'pipeline-stages']);
 
 const PIPELINE_STAGES = [
   { stage: 'prospecting', order: 1, probability: 10, category: 'pipeline' },
@@ -23,7 +26,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -54,13 +57,13 @@ export default async function handler(req: Request) {
     }
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1]; // /platform-deals, /platform-deals/pipeline, etc.
-    const dealId =
-      pathParts[1] !== 'pipeline' && pathParts[1] !== 'stats' && pathParts[1] !== 'pipeline-stages'
-        ? pathParts[1]
-        : null;
-    const subResource = pathParts[2];
+    // Coolify-safe: server.ts strips the function-name prefix, so the first
+    // path segment is parts[0]. normalizePath also tolerates the native
+    // Supabase runtime (prefix still present).
+    const { parts } = normalizePath(url.pathname, 'platform-deals');
+    const endpoint = parts[0]; // 'pipeline' | 'stats' | 'pipeline-stages' | dealId | undefined
+    const dealId = endpoint && !RESERVED_ENDPOINTS.has(endpoint) ? endpoint : null;
+    const subResource = parts[1]; // 'move-stage' | 'close-won' | 'close-lost' | 'bant'
 
     // GET /platform-deals/pipeline-stages - Get pipeline stage configuration
     if (req.method === 'GET' && endpoint === 'pipeline-stages') {
@@ -219,6 +222,72 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ deal }, 200, req);
+    }
+
+    // GET /platform-deals/:id/bant - BANT qualification breakdown
+    // The platform_deals table stores per-pillar BOOLEAN confirmations
+    // (budget/authority/need/timeline_confirmed) + an integer bant_score, but
+    // NO per-pillar numeric scores, per-pillar notes, or qualification_status
+    // columns. The frontend (PlatformDealDetail.tsx) renders each pillar /25 and
+    // a total /100, so we derive 25-per-confirmed-pillar and degrade the
+    // notes/status that have no backing columns.
+    if (req.method === 'GET' && dealId && subResource === 'bant') {
+      const { data: deal, error } = await admin
+        .from('platform_deals')
+        .select(
+          'id, budget_confirmed, authority_confirmed, need_confirmed, timeline_confirmed, bant_score',
+        )
+        .eq('id', dealId)
+        .single();
+
+      if (error || !deal) {
+        // Degrade honestly: deal/columns missing -> empty assessment.
+        return createCorsResponse(
+          {
+            budgetScore: 0,
+            authorityScore: 0,
+            needScore: 0,
+            timelineScore: 0,
+            totalBantScore: 0,
+            qualificationStatus: 'not_assessed',
+            degraded: true,
+          },
+          200,
+          req,
+        );
+      }
+
+      const d = deal as any;
+      const budgetScore = d.budget_confirmed ? 25 : 0;
+      const authorityScore = d.authority_confirmed ? 25 : 0;
+      const needScore = d.need_confirmed ? 25 : 0;
+      const timelineScore = d.timeline_confirmed ? 25 : 0;
+
+      // Prefer the stored aggregate bant_score (0-100); fall back to the sum of
+      // the confirmed pillars.
+      const derivedTotal = budgetScore + authorityScore + needScore + timelineScore;
+      const totalBantScore =
+        typeof d.bant_score === 'number' && d.bant_score > 0 ? d.bant_score : derivedTotal;
+
+      let qualificationStatus = 'not_assessed';
+      if (totalBantScore >= 75) qualificationStatus = 'highly_qualified';
+      else if (totalBantScore >= 50) qualificationStatus = 'qualified';
+      else if (totalBantScore > 0) qualificationStatus = 'partially_qualified';
+
+      // budgetNotes/authorityNotes/needNotes/timelineNotes have no backing
+      // columns; omitted (the page treats them as optional).
+      return createCorsResponse(
+        {
+          budgetScore,
+          authorityScore,
+          needScore,
+          timelineScore,
+          totalBantScore,
+          qualificationStatus,
+        },
+        200,
+        req,
+      );
     }
 
     // POST /platform-deals - Create new deal

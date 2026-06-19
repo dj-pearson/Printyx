@@ -4,6 +4,11 @@ import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/su
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 
+const num = (v: unknown): number => {
+  const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''));
+  return Number.isFinite(n) ? n : 0;
+};
+
 // Helper: Batch-enrich records with customer names from business_records
 async function enrichWithCustomerNames(admin: any, records: any[]) {
   if (!records || records.length === 0) return records;
@@ -15,7 +20,7 @@ async function enrichWithCustomerNames(admin: any, records: any[]) {
     .select('id, company_name, primary_contact_name')
     .in('id', customerIds);
 
-  const customerMap = new Map((customers || []).map((c: any) => [c.id, c]));
+  const customerMap = new Map<string, any>((customers || []).map((c: any) => [c.id, c]));
   return records.map((r: any) => ({
     ...r,
     customer_name: customerMap.get(r.customer_id)?.company_name || null,
@@ -29,7 +34,9 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt: string | undefined = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -55,6 +62,106 @@ export default async function handler(req: Request) {
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'equipment');
     const equipmentId = parts[0];
+    const subResource = parts[1];
+
+    // GET /equipment/:id/meter-readings - Meter reading history for one machine.
+    // Frontend (components/customer/CustomerEquipment.tsx) reads camelCase:
+    // { id, equipmentId, readingDate, currentMeterCount, previousMeterCount,
+    //   printVolume, colorPages, blackWhitePages, readingType }
+    if (req.method === 'GET' && equipmentId && subResource === 'meter-readings') {
+      const { data: readings, error } = await admin
+        .from('meter_readings')
+        .select('*')
+        .eq('equipment_id', equipmentId)
+        .eq('tenant_id', tenantId)
+        .order('reading_date', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        // Table/columns missing — degrade to empty so the dialog renders cleanly.
+        console.error('Error fetching meter readings:', error);
+        return createCorsResponse([], 200, req);
+      }
+
+      const mapped = ((readings || []) as any[]).map((r) => {
+        const bw = num(r.bw_meter_reading);
+        const color = num(r.color_meter_reading);
+        const prevBw = num(r.previous_black_meter);
+        const prevColor = num(r.previous_color_meter);
+        const blackCopies = num(r.black_copies);
+        const colorCopies = num(r.color_copies);
+        return {
+          id: r.id,
+          equipmentId: r.equipment_id,
+          readingDate: r.reading_date,
+          currentMeterCount: bw + color,
+          previousMeterCount: prevBw + prevColor,
+          printVolume: blackCopies + colorCopies,
+          colorPages: colorCopies,
+          blackWhitePages: blackCopies,
+          readingType: r.reading_method || r.collection_method || 'manual',
+        };
+      });
+
+      return createCorsResponse(mapped, 200, req);
+    }
+
+    // GET /equipment/:id/status - Real-time-ish status poll for one machine.
+    // Frontend (hooks/useRealTimeData.ts useEquipmentStatus) just consumes JSON;
+    // there is no dedicated equipment-status/IoT table keyed by equipment.id, so
+    // we DERIVE status from the equipment row + latest meter reading.
+    if (req.method === 'GET' && equipmentId && subResource === 'status') {
+      const { data: eq, error } = await admin
+        .from('equipment')
+        .select('id, equipment_status, last_service_date, next_service_due_date, updated_at')
+        .eq('id', equipmentId)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (error || !eq) {
+        // No row / table drift — degrade honestly with an "unknown" status payload.
+        return createCorsResponse(
+          {
+            equipmentId,
+            status: 'unknown',
+            online: false,
+            lastReadingDate: null,
+            currentMeterCount: null,
+            lastUpdated: new Date().toISOString(),
+            degraded: true,
+          },
+          200,
+          req,
+        );
+      }
+
+      const { data: latest } = await admin
+        .from('meter_readings')
+        .select('reading_date, bw_meter_reading, color_meter_reading')
+        .eq('equipment_id', equipmentId)
+        .eq('tenant_id', tenantId)
+        .order('reading_date', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const status = (eq as any).equipment_status || 'unknown';
+      const lr = latest as any;
+
+      return createCorsResponse(
+        {
+          equipmentId: (eq as any).id,
+          status,
+          online: status === 'active',
+          lastServiceDate: (eq as any).last_service_date || null,
+          nextServiceDueDate: (eq as any).next_service_due_date || null,
+          lastReadingDate: lr?.reading_date || null,
+          currentMeterCount: lr ? num(lr.bw_meter_reading) + num(lr.color_meter_reading) : null,
+          lastUpdated: (eq as any).updated_at || new Date().toISOString(),
+        },
+        200,
+        req,
+      );
+    }
 
     // GET /equipment - List equipment
     if (req.method === 'GET' && !equipmentId) {

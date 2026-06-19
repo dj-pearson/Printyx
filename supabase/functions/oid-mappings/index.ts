@@ -2,6 +2,7 @@
 // Handles SNMP OID to human-readable name mappings for printer monitoring
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -11,7 +12,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -41,9 +42,11 @@ export default async function handler(req: Request) {
     const admin = createSupabaseServiceClient();
 
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const mappingId = pathParts[1]; // /oid-mappings/:id
-    const subResource = pathParts[2];
+    // Coolify-safe routing: server.ts strips the function-name prefix, so
+    // normalizePath gives parts[0] = first segment after /oid-mappings.
+    const { parts } = normalizePath(url.pathname, 'oid-mappings');
+    const mappingId = parts[0]; // /oid-mappings/:id  (or named route)
+    const subResource = parts[1];
 
     // GET /oid-mappings - List all OID mappings
     if (req.method === 'GET' && !mappingId) {
@@ -135,6 +138,160 @@ export default async function handler(req: Request) {
       return createCorsResponse(mapping, 200, req);
     }
 
+    // POST /oid-mappings/test - Test an OID mapping against a device
+    // Live SNMP polling is not available in the Deno edge runtime, so this
+    // returns a degrade-tolerant, shape-compatible result (per-OID statuses +
+    // summary) that the OidManagement page renders.
+    if (req.method === 'POST' && mappingId === 'test') {
+      let body: any = {};
+      try {
+        body = await req.json();
+      } catch (_e) {
+        body = {};
+      }
+
+      const ipAddress = body.ipAddress || body.ip_address || null;
+      const oids: Record<string, string> =
+        body.oids && typeof body.oids === 'object' ? body.oids : {};
+      const oidEntries = Object.entries(oids);
+
+      const results: Record<string, any> = {};
+      for (const [key, oid] of oidEntries) {
+        results[key] = {
+          oid: oid as string,
+          status: 'error',
+          value: null,
+          error: 'Live SNMP polling is not available in this environment',
+        };
+      }
+
+      const total = oidEntries.length;
+      const successful = 0;
+      const summary = {
+        total,
+        successful,
+        failed: total - successful,
+        successRate: total > 0 ? Math.round((successful / total) * 100) : 0,
+      };
+
+      return createCorsResponse(
+        {
+          success: false,
+          degraded: true,
+          message: 'Live SNMP polling is not available in this environment',
+          mappingId,
+          ipAddress,
+          results,
+          summary,
+          testedAt: new Date().toISOString(),
+        },
+        200,
+        req,
+      );
+    }
+
+    // POST /oid-mappings/export - Export the tenant's mappings as JSON
+    if (req.method === 'POST' && mappingId === 'export') {
+      let body: any = {};
+      try {
+        body = await req.json();
+      } catch (_e) {
+        body = {};
+      }
+      const manufacturer = body.manufacturer || url.searchParams.get('manufacturer');
+
+      let query = admin.from('oid_mappings').select('*').order('name', { ascending: true });
+      if (manufacturer) query = query.eq('manufacturer', manufacturer);
+
+      const { data: exportMappings, error } = await query;
+
+      if (error) {
+        console.error('Error exporting OID mappings:', error);
+        return createCorsResponse(
+          {
+            degraded: true,
+            version: '1.0',
+            exportedAt: new Date().toISOString(),
+            count: 0,
+            mappings: [],
+          },
+          200,
+          req,
+        );
+      }
+
+      return createCorsResponse(
+        {
+          version: '1.0',
+          exportedAt: new Date().toISOString(),
+          count: exportMappings?.length || 0,
+          mappings: exportMappings || [],
+        },
+        200,
+        req,
+      );
+    }
+
+    // POST /oid-mappings/import OR /oid-mappings/bulk - Bulk import OID mappings
+    if (req.method === 'POST' && (mappingId === 'import' || mappingId === 'bulk')) {
+      const body = await req.json();
+      const mappings = body.mappings;
+
+      if (!Array.isArray(mappings)) {
+        return createCorsResponse({ error: 'mappings array required' }, 400, req);
+      }
+
+      const mappingsData = mappings.map((m: any) => ({
+        oid: m.oid,
+        name: m.name,
+        description: m.description,
+        category: m.category,
+        manufacturer: m.manufacturer,
+        data_type: m.dataType || m.data_type || 'string',
+        unit: m.unit,
+        is_global: m.isGlobal || m.is_global || false,
+        tenant_id: m.isGlobal || m.is_global ? null : tenantId,
+        created_by: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+      const { data: inserted, error } = await admin
+        .from('oid_mappings')
+        .upsert(mappingsData, { onConflict: 'oid' })
+        .select();
+
+      if (error) {
+        console.error('Error importing OID mappings:', error);
+        return createCorsResponse(
+          {
+            success: false,
+            degraded: true,
+            summary: { imported: 0, skipped: 0, errors: mappings.length },
+            error: 'Failed to import OID mappings',
+          },
+          200,
+          req,
+        );
+      }
+
+      const importedCount = inserted?.length || 0;
+      return createCorsResponse(
+        {
+          success: true,
+          imported: importedCount,
+          mappings: inserted,
+          summary: {
+            imported: importedCount,
+            skipped: mappings.length - importedCount,
+            errors: 0,
+          },
+        },
+        201,
+        req,
+      );
+    }
+
     // POST /oid-mappings - Create new OID mapping
     if (req.method === 'POST' && !mappingId) {
       const body = await req.json();
@@ -204,51 +361,6 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ success: true, message: 'OID mapping deleted' }, 200, req);
-    }
-
-    // POST /oid-mappings/bulk - Bulk import OID mappings
-    if (req.method === 'POST' && mappingId === 'bulk') {
-      const body = await req.json();
-      const { mappings } = body;
-
-      if (!Array.isArray(mappings)) {
-        return createCorsResponse({ error: 'mappings array required' }, 400, req);
-      }
-
-      const mappingsData = mappings.map((m: any) => ({
-        oid: m.oid,
-        name: m.name,
-        description: m.description,
-        category: m.category,
-        manufacturer: m.manufacturer,
-        data_type: m.dataType || m.data_type || 'string',
-        unit: m.unit,
-        is_global: m.isGlobal || m.is_global || false,
-        tenant_id: m.isGlobal ? null : tenantId,
-        created_by: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }));
-
-      const { data: inserted, error } = await admin
-        .from('oid_mappings')
-        .upsert(mappingsData, { onConflict: 'oid' })
-        .select();
-
-      if (error) {
-        console.error('Error bulk importing OID mappings:', error);
-        return createCorsResponse({ error: 'Failed to import OID mappings' }, 500, req);
-      }
-
-      return createCorsResponse(
-        {
-          success: true,
-          imported: inserted?.length || 0,
-          mappings: inserted,
-        },
-        201,
-        req,
-      );
     }
 
     // Method/endpoint not found

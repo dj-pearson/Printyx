@@ -474,6 +474,43 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/auto-supply-replenishment': 'auto-supply-replenishment',
     '/api/contract-renewal': 'contract-renewal',
     '/api/predictive-dispatch': 'predictive-dispatch',
+
+    // EDGE-002h: small surface-gap ports. Each edge fn gained the sub-routes
+    // its frontend pages call (on top of the existing CRUD), and the
+    // Coolify-broken pathParts[1] dispatchers were migrated onto normalizePath
+    // so the new routes resolve under the prefix-stripping server.ts. Only the
+    // domains whose frontend calls route through getApiUrl/apiRequest (→ edge in
+    // prod) are proxied here, so dev now matches prod:
+    //  - commission: +POST /calculate, GET /analytics, GET /disputes.
+    //  - gdpr: +GET /consent/stats, /dpa/stats, /deduplication/stats,
+    //    /data-export/requests.
+    //  - performance: +GET /health (metrics/alerts already derived/mock).
+    //  - parts-orders: routing migration only (POST /:id/items already served).
+    //  - products: +GET /all (shares the 4-table aggregation with /with-pricing).
+    //  - purchase-orders: +GET /stats/summary, /suggestions/low-stock,
+    //    POST /generate-from-suggestions.
+    //  - quickbooks: +GET /entities, GET /connect (best-effort OAuth URL).
+    //  - remote-monitoring: +GET /equipment-status, /fleet-overview,
+    //    /sensor-data, POST /acknowledge-alert (real device_registrations/
+    //    device_metrics/device_alerts; degrade-tolerant).
+    //  - supplies: +POST /import (multipart CSV bulk import).
+    //  - warehouse-operations: +GET / (operations list), POST /, GET /stats,
+    //    PATCH /:id/status over the real warehouse_operations table.
+    // NOT proxied (edge fns ALSO ported, but their pages use raw relative
+    // `fetch('/api/<d>/…')` → SPA origin = Express in prod, so proxying would
+    // make dev diverge from prod; a frontend rewrap onto getApiUrl is the
+    // follow-up): equipment, manufacturer-integrations, oid-mappings,
+    // platform-deals, rbac, social-media.
+    '/api/commission': 'commission',
+    '/api/gdpr': 'gdpr',
+    '/api/performance': 'performance',
+    '/api/parts-orders': 'parts-orders',
+    '/api/products': 'products',
+    '/api/purchase-orders': 'purchase-orders',
+    '/api/quickbooks': 'quickbooks',
+    '/api/remote-monitoring': 'remote-monitoring',
+    '/api/supplies': 'supplies',
+    '/api/warehouse-operations': 'warehouse-operations',
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {

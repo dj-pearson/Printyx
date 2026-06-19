@@ -10,7 +10,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -47,12 +47,108 @@ export default async function handler(req: Request) {
         .eq('integration_type', 'quickbooks')
         .single();
 
+      const tokenExpires =
+        connection?.metadata?.tokenExpires || connection?.token_expires_at || null;
+      const tokenValid = tokenExpires ? new Date(tokenExpires).getTime() > Date.now() : false;
+
       return createCorsResponse(
         {
           connected: !!connection?.is_active,
-          lastSync: connection?.last_sync_at,
-          companyName: connection?.metadata?.companyName,
+          companyId: connection?.metadata?.realmId || connection?.metadata?.companyId,
           realmId: connection?.metadata?.realmId,
+          companyName: connection?.metadata?.companyName,
+          lastSync: connection?.last_sync_at,
+          tokenValid,
+          tokenExpires,
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /quickbooks/connect - Initialize OAuth connection (returns authorize URL)
+    if (req.method === 'GET' && endpoint === 'connect') {
+      // OAuth client id/secret are Node-only env on the Express server. In the
+      // edge runtime we best-effort build the Intuit authorize URL when a
+      // client id is configured; otherwise degrade honestly so the page can
+      // surface a clear "not configured" state instead of opening a blank popup.
+      const clientId = Deno.env.get('QUICKBOOKS_CLIENT_ID');
+      const redirectUri =
+        Deno.env.get('QUICKBOOKS_REDIRECT_URI') || `${url.origin}/api/quickbooks/callback`;
+      const scopes =
+        Deno.env.get('QUICKBOOKS_SCOPES') ||
+        'com.intuit.quickbooks.accounting com.intuit.quickbooks.payment';
+
+      if (!clientId) {
+        return createCorsResponse(
+          {
+            authUrl: null,
+            connected: false,
+            degraded: true,
+            message:
+              'QuickBooks OAuth is not configured on this environment (missing QUICKBOOKS_CLIENT_ID).',
+          },
+          200,
+          req,
+        );
+      }
+
+      // Generate + persist a CSRF state token tied to the tenant so the
+      // callback can verify it (callback handling stays on the Node server).
+      const state = crypto.randomUUID();
+      await admin
+        .from('integrations')
+        .upsert(
+          {
+            tenant_id: tenantId,
+            integration_type: 'quickbooks',
+            metadata: { oauthState: state },
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'tenant_id,integration_type' },
+        )
+        .then(
+          () => {},
+          () => {},
+        );
+
+      const authUrl = new URL('https://appcenter.intuit.com/connect/oauth2');
+      authUrl.searchParams.set('client_id', clientId);
+      authUrl.searchParams.set('scope', scopes);
+      authUrl.searchParams.set('redirect_uri', redirectUri);
+      authUrl.searchParams.set('response_type', 'code');
+      authUrl.searchParams.set('access_type', 'offline');
+      authUrl.searchParams.set('state', state);
+
+      return createCorsResponse(
+        {
+          authUrl: authUrl.toString(),
+          message: 'Redirect to this URL to connect QuickBooks',
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /quickbooks/entities - List syncable QuickBooks entities + field mappings
+    if (req.method === 'GET' && endpoint === 'entities') {
+      // Mirrors server/quickbooks-mapping.ts (SUPPORTED_QB_ENTITIES +
+      // QUICKBOOKS_FIELD_MAPPINGS keys). Static metadata — no DB needed.
+      const supportedEntities = [
+        'Customer',
+        'Vendor',
+        'Item',
+        'Invoice',
+        'Bill',
+        'Payment',
+        'Account',
+        'Employee',
+      ];
+
+      return createCorsResponse(
+        {
+          supported_entities: supportedEntities,
+          field_mappings: supportedEntities,
         },
         200,
         req,

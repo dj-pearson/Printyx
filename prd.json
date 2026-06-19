@@ -4146,8 +4146,8 @@
         "Smoke-test the affected pages"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": "Bundled because each is a small surface gap (1-3 endpoints). Could be split per domain if a sub-team picks them up.",
+      "passes": true,
+      "notes": "Bundled because each is a small surface gap (1-3 endpoints). Could be split per domain if a sub-team picks them up. DONE 2026-06-18: ported missing endpoints to all 16 edge fns and migrated the Coolify-broken pathParts[1] dispatchers onto normalizePath. Added 10 to crmProxies (commission, gdpr, performance, parts-orders, products, purchase-orders, quickbooks, remote-monitoring, supplies, warehouse-operations) — their pages route via getApiUrl→edge in prod, so dev now matches prod. The other 6 (equipment, manufacturer-integrations, oid-mappings, platform-deals, rbac, social-media) were ALSO ported but NOT proxied: their pages use raw relative fetch('/api/<d>/…') → SPA origin = Express in prod, so proxying would make dev diverge from prod (a frontend rewrap onto getApiUrl is the follow-up). Gates: deno check (16/16), 33/33 proxy tests, build green, audit:routes (10→proxied).",
       "category": "edge-migration"
     },
     {
