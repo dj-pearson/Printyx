@@ -1,0 +1,11 @@
+XrxAddressBookImportFormat:1
+Display Name,First Name,Last Name,Company,Email Address,Fax Number
+Andy Mortenson,Andy,Mortenson,Infomax,amortenson@infomaxoffice.com,
+Nate Ohnemus,Nate,Ohnemus,Infomax,nohnemus@infomaxoffice.com,
+,,,,noname@infomaxoffice.com,
+Front Desk Fax,,,Infomax,,15551234567
+Broken Entry,Broken,,,,
+XrxAddressBookImportFormat:1
+Display Name,Server Name,Share Name,Document Path,Login Name,Password
+Scan to ACH,IOSI-FILESERV,Data,Laserfiche Scan Folders\ACH,scanuser,Secret123
+Accounting Share,192.168.1.50,Shared,Accounting,svc_scan,

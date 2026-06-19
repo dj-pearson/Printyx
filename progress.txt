@@ -7611,3 +7611,49 @@ Files Modified:
 - prd.json (ABK-007 passes:true)
 
 ---
+
+Iteration 21 (06/18/2026 21:38:40): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 22 (06/18/2026): Story ABK-008 — Xerox address book CSV parser
+Status: DONE
+
+Key Changes:
+- parseXerox(buffer, password?) at supabase/functions/_shared/address-book/xerox/parser.ts.
+  Deno-portable, zero runtime deps (only `import type` from ../types.ts). Copies the
+  ABK-006 Konica parser scaffolding (decodeBuffer/parseCsv/normHeader/buildHeaderIndex/
+  findIndex/buildUnc/parseSpeedDial).
+- KEY DIFFERENCE vs Konica: Xerox separates destinations by TYPE (no single Type column);
+  EWS exports email vs scan tabs as SEPARATE files with DIFFERENT column sets. Parser
+  supports MULTI-FILE / concatenated input — walks every row and switches the active
+  header/column map each time a new header row appears. Xerox marker lines
+  (XrxAddressBookImportFormat:N / XrxApi) filtered as metadata.
+- Destination inferred from populated fields (Email Address -> email; Server/Share/Document
+  Path or full-UNC col -> smb via buildUnc \server\share\path; fax -> error; no-dest -> error).
+  Display name = Display Name | First+Last | email fallback.
+- SECURITY: Password column redacted ('') in source_metadata, credential_id null,
+  password_was_required flags presence (same rule as KM parser).
+- Encoding: UTF-8 BOM-aware with lenient fallback (Xerox is UTF-8, not Shift-JIS).
+
+Gotchas:
+- npm run check has a large pre-existing baseline incl. server/services/manufacturer-adapters/
+  xerox-adapter.ts + manufacturer-integration-service.ts errors — UNRELATED to address-book.
+  Grep for 'address-book/xerox|unit/xerox-parser' to confirm my files are clean.
+- supabase/functions not in tsc include; deno check <file> is the real type gate.
+
+Gates:
+- npx vitest run xerox-parser.test.ts: 14/14 pass
+- deno check parser.ts: clean
+- npm run check: 0 new errors naming my files
+- npm run build: green (~32s)
+- prettier --write on the 2 touched .ts files (NOT format:write)
+
+Files Created:
+- supabase/functions/_shared/address-book/xerox/parser.ts
+- server/tests/unit/xerox-parser.test.ts
+- tests/fixtures/address-book/xerox-sample.csv
+
+Files Modified:
+- prd.json (ABK-008 passes:true)
+
+---
