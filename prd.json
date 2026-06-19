@@ -4064,7 +4064,7 @@
         "Smoke-test SubscriptionDashboard, BillingPlanUpgrade, TrialConversion flows"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Express source: routes-subscriptions.ts. Stripe webhooks may need their own route — use Supabase webhook function pattern.",
       "category": "edge-migration"
     },

@@ -6827,3 +6827,84 @@ Files Modified:
 
 Iteration 11 (06/18/2026 19:27:16): Story LAUNCH-011
 Status: Needs Review
+
+---
+
+## Iteration - EDGE-002c: Port Stripe checkout/portal flow to subscriptions edge fn
+Completed: 2026-06-18
+Status: COMPLETE
+
+Key Changes:
+- Rewrote supabase/functions/subscriptions/index.ts to add full frontend parity for
+  every path useSubscription.ts calls. NEW endpoints: GET /current (rich
+  SubscriptionStatus shape), POST /create|/upgrade|/cancel|/convert-trial (SLUG-based,
+  matching the frontend bodies — the pre-existing edge POST / and /change-plan are
+  ID-based and were KEPT alongside), GET /notifications + POST /notifications/:id/
+  dismiss|read, and the Stripe flow: GET /stripe/config, POST /checkout, POST
+  /checkout/addon, GET /checkout/session/:id, POST /portal, POST /setup-intent, GET
+  /preview-upgrade, plus a signature-verified POST /webhooks/stripe.
+- New helper modules in the fn dir: _camel.ts (deep snake->camel) and _stripe.ts
+  (Stripe REST-over-fetch client, no SDK — the billing fn pattern).
+- Rewrapped client/src/hooks/useSubscription.ts off raw cookie fetch onto apiRequest
+  (Bearer JWT + getApiUrl). REQUIRED: the edge fn is JWT-gated, so cookie-only fetch
+  would 401 once proxied. Also removed a dead useQuery onSuccess (invalid in TanStack
+  Query v5; was a latent baseline error in the file).
+- Added '/api/subscriptions': 'subscriptions' to crmProxies (edge-function-proxy.ts).
+
+Schema audit (AC #3):
+- subscription_plans / subscription_features / tenant_subscriptions all real and match
+  shared/schema-subscriptions.ts. Stripe price ids on subscription_plans
+  .stripe_price_id_{monthly,annual}; addon price on subscription_addons.stripe_price_id.
+- There is NO subscription_invoices table — invoices live in billing_history (what
+  /invoices reads). The story's table name is a misnomer.
+- DRIFT: the old StripeService stored the Stripe customer id on
+  tenants.metadata.stripeCustomerId, but the tenants Drizzle table has NO metadata
+  column. The edge fn uses the REAL tenant_subscriptions.stripe_customer_id column
+  instead (getOrCreateCustomer/getExistingCustomerId), and creates Stripe customers
+  with metadata.tenantId so the webhook can backfill.
+
+Gotchas Discovered:
+- camelCase is load-bearing: the frontend reads subscription.billingCycle/isTrialing/
+  isFree and plan.slug; supabase-js returns snake_case, so every Express-shaped response
+  MUST be camelized (toCamel) or the React reads go undefined (same lesson as
+  accounts-payable/signatures). /current camelizes the subscription + plan objects;
+  the computed usage/limits/overageDetails are authored in camelCase directly.
+- Adding to crmProxies forces FULL parity: the dev proxy 404s with no fall-through, so
+  every frontend-called path must exist on the edge fn before flipping crmProxies. The
+  pre-existing edge /plans returned {data:[...]} but the frontend expects {plans,
+  features} — fixed to the Express shape (it was never actually hit before because the
+  frontend used raw fetch to Express).
+- Auth model change: raw fetch used credentials:'include' (cookie session, NO Bearer).
+  The edge fn does getUser(jwt). Proxying a cookie-only request would 401 because the
+  proxy only forwards an Authorization header if present. So the hook rewrap to
+  apiRequest is not optional — it's what makes the proxied path authenticate. Public
+  routes (/plans, /plans/:slug, /stripe/config) and the webhook are dispatched BEFORE
+  the auth gate so logged-out Pricing still works.
+- Stripe in Deno: no SDK — _stripe.ts calls api.stripe.com/v1 with fetch + Bearer +
+  x-www-form-urlencoded (nested params flattened to bracket notation). Webhook
+  signature verified with Web Crypto HMAC-SHA256 over `${t}.${payload}` (no
+  stripe.webhooks.constructEvent). Date.now() is fine in the edge runtime (only banned
+  in deterministic workflow scripts).
+
+Verification:
+- deno check supabase/functions/subscriptions/{index,_stripe,_camel}.ts: all clean.
+- npm run build: green (28.6s).
+- npm run check (tsc): no NEW errors naming changed files (useSubscription.ts +
+  edge-function-proxy.ts clean; the server/routes-subscriptions.ts + routes-admin-
+  subscriptions.ts errors are the pre-existing Express baseline — untouched).
+- 33/33 edge-function-proxy unit tests pass.
+- prettier --check clean on touched non-ignored files; hooks/ is eslint-ignored.
+- npm run audit:routes: `subscriptions` now `proxied` (was both-divergent), zero
+  divergence in route-divergence.json.
+- NOT runtime-verifiable in sandbox: no DB connectivity, no Stripe keys, stale anon key.
+  Live checkout/portal round-trip + SubscriptionDashboard/TrialConversion smoke-tests
+  (AC #4/#6) need an ops env with STRIPE_SECRET_KEY + a migrated DB.
+
+Files Modified:
+- supabase/functions/subscriptions/index.ts (rewrite)
+- supabase/functions/subscriptions/_camel.ts (new)
+- supabase/functions/subscriptions/_stripe.ts (new)
+- client/src/hooks/useSubscription.ts (apiRequest rewrap)
+- server/middleware/edge-function-proxy.ts (crmProxies entry)
+- docs/route-parity-matrix.md + docs/route-divergence.json (regen)
+- prd.json (EDGE-002c passes:true)

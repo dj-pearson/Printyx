@@ -409,6 +409,16 @@ export function registerEdgeFunctionProxy(app: any) {
     // :companyId (PhoneInTicketCreator.tsx). The frontend was migrated off the
     // legacy /api/phone-tickets/* prefix onto canonical /api/phone-in-tickets/*.
     '/api/phone-in-tickets': 'phone-in-tickets',
+
+    // EDGE-002c: subscriptions. The edge function now has full frontend parity
+    // for every path useSubscription.ts calls — current, plans, usage,
+    // notifications (+:id/dismiss), create, upgrade, cancel, convert-trial, and
+    // the Stripe flow (stripe/config, checkout, checkout/addon,
+    // checkout/session/:id, portal, setup-intent, preview-upgrade) plus the
+    // pre-existing invoices/features/change-plan/CRUD and a signature-verified
+    // /webhooks/stripe. The hooks were migrated off raw cookie `fetch` onto
+    // apiRequest (Bearer JWT) so the proxied/edge-routed calls authenticate.
+    '/api/subscriptions': 'subscriptions',
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {
