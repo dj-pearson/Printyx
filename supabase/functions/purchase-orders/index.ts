@@ -17,6 +17,9 @@ const PO_STATUSES = [
 
 type POStatus = (typeof PO_STATUSES)[number];
 
+// First-segment values that are named routes, NOT a purchase-order id.
+const RESERVED = new Set(['stats', 'suggestions', 'generate-from-suggestions']);
+
 export default async function handler(req: Request) {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
@@ -25,7 +28,7 @@ export default async function handler(req: Request) {
   try {
     // Extract and validate JWT
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -56,6 +59,245 @@ export default async function handler(req: Request) {
     const poId = parts[0];
     const subResource = parts[1]; // 'line-items', 'submit', 'approve', 'reject', 'receive'
     const subResourceId = parts[2]; // For line item operations
+    const isReserved = !!poId && RESERVED.has(poId);
+
+    // ============================================================
+    // NAMED ROUTES (must precede :id handling so the first segment
+    // isn't mistaken for a purchase-order id)
+    // ============================================================
+
+    // GET /purchase-orders/stats/summary - Aggregate PO statistics
+    if (req.method === 'GET' && poId === 'stats' && subResource === 'summary') {
+      const { data: pos, error } = await admin
+        .from('purchase_orders')
+        .select('status, total_amount')
+        .eq('tenant_id', tenantId);
+
+      if (error) {
+        console.error('Error fetching purchase order stats:', error);
+        // Degrade honestly: return zeroed summary so the page renders.
+        return createCorsResponse(
+          {
+            total: 0,
+            draft: 0,
+            pending: 0,
+            approved: 0,
+            ordered: 0,
+            received: 0,
+            cancelled: 0,
+            totalValue: 0,
+            pendingValue: 0,
+            degraded: true,
+          },
+          200,
+          req,
+        );
+      }
+
+      const rows = pos || [];
+      const countBy = (s: string) => rows.filter((p: any) => p.status === s).length;
+      // 'pending' is the legacy alias of 'pending_approval'; count both.
+      const pending = rows.filter(
+        (p: any) => p.status === 'pending' || p.status === 'pending_approval',
+      ).length;
+      const totalValue = rows.reduce(
+        (sum: number, p: any) => sum + parseFloat(p.total_amount || '0'),
+        0,
+      );
+      const pendingValue = rows
+        .filter((p: any) =>
+          ['pending', 'pending_approval', 'approved', 'ordered'].includes(p.status),
+        )
+        .reduce((sum: number, p: any) => sum + parseFloat(p.total_amount || '0'), 0);
+
+      return createCorsResponse(
+        {
+          total: rows.length,
+          draft: countBy('draft'),
+          pending,
+          approved: countBy('approved'),
+          ordered: countBy('ordered'),
+          received: countBy('received'),
+          partially_received: countBy('partially_received'),
+          cancelled: countBy('cancelled'),
+          totalValue,
+          // Snake alias the page also accepts (response?.total_value).
+          total_value: totalValue,
+          pendingValue,
+        },
+        200,
+        req,
+      );
+    }
+
+    // GET /purchase-orders/suggestions/low-stock - Reorder suggestions grouped by vendor
+    if (req.method === 'GET' && poId === 'suggestions' && subResource === 'low-stock') {
+      // inventory_items carries reorder thresholds + a primary_vendor name.
+      const { data: items, error } = await admin
+        .from('inventory_items')
+        .select(
+          'id, part_number, manufacturer_part_number, item_description, name, quantity_on_hand, quantity_on_order, reorder_point, reorder_quantity, unit_cost, primary_vendor',
+        )
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('Error fetching low-stock suggestions:', error);
+        return createCorsResponse({ groups: [], degraded: true }, 200, req);
+      }
+
+      // A line is low-stock when on-hand (+ already on-order) is at or below the
+      // reorder point (and a reorder point is actually configured).
+      const lowStock = (items || []).filter((it: any) => {
+        const point = Number(it.reorder_point || 0);
+        if (point <= 0) return false;
+        const effective = Number(it.quantity_on_hand || 0) + Number(it.quantity_on_order || 0);
+        return effective <= point;
+      });
+
+      // Optionally resolve vendor display names from the vendors table.
+      const { data: vendors } = await admin
+        .from('vendors')
+        .select('id, vendor_name')
+        .eq('tenant_id', tenantId);
+      const vendorByName = new Map(
+        (vendors || []).map((v: any) => [String(v.vendor_name || '').toLowerCase(), v]),
+      );
+
+      // Group by primary vendor name (the only vendor signal on inventory_items).
+      const groupMap = new Map<string, any>();
+      for (const it of lowStock) {
+        const vendorName = it.primary_vendor || 'Unassigned';
+        const matched = vendorByName.get(String(vendorName).toLowerCase()) as any;
+        const key = matched?.id || vendorName;
+        if (!groupMap.has(key)) {
+          groupMap.set(key, {
+            vendorId: matched?.id || vendorName,
+            vendorName: matched?.vendor_name || vendorName,
+            items: [],
+          });
+        }
+        const point = Number(it.reorder_point || 0);
+        const onHand = Number(it.quantity_on_hand || 0);
+        const reorderQty = Number(it.reorder_quantity || 0);
+        // Recommend enough to clear the deficit, falling back to reorder_quantity.
+        const recommendedQty = reorderQty > 0 ? reorderQty : Math.max(1, point - onHand);
+        groupMap.get(key).items.push({
+          inventoryItemId: it.id,
+          itemDescription: it.item_description || it.name || it.part_number || 'Item',
+          partNumber: it.part_number || it.manufacturer_part_number || null,
+          quantityOnHand: onHand,
+          reorderPoint: point,
+          recommendedQty,
+          unitCost: parseFloat(it.unit_cost || 0),
+        });
+      }
+
+      return createCorsResponse({ groups: Array.from(groupMap.values()) }, 200, req);
+    }
+
+    // POST /purchase-orders/generate-from-suggestions - Create draft POs per vendor group
+    if (req.method === 'POST' && poId === 'generate-from-suggestions') {
+      const body = await req.json().catch(() => ({}));
+      const groups = Array.isArray(body.groups) ? body.groups : [];
+
+      if (groups.length === 0) {
+        return createCorsResponse({ error: 'No vendor groups provided' }, 400, req);
+      }
+
+      const created: any[] = [];
+      for (const group of groups) {
+        const items = Array.isArray(group.items) ? group.items : [];
+        if (items.length === 0) continue;
+
+        // Only persist a real vendor_id when the group key is a UUID-ish id
+        // that exists in vendors; otherwise leave it null (name-only group).
+        let vendorId: string | null = null;
+        if (group.vendorId) {
+          const { data: vendor } = await admin
+            .from('vendors')
+            .select('id')
+            .eq('id', group.vendorId)
+            .eq('tenant_id', tenantId)
+            .maybeSingle();
+          vendorId = vendor?.id || null;
+        }
+
+        const subtotal = items.reduce(
+          (sum: number, it: any) =>
+            sum +
+            parseFloat(it.quantity || it.recommendedQty || 1) *
+              parseFloat(it.unitCost || it.unit_cost || 0),
+          0,
+        );
+
+        const poData = {
+          tenant_id: tenantId,
+          vendor_id: vendorId,
+          po_number: `PO-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          order_date: new Date().toISOString().split('T')[0],
+          subtotal,
+          tax_amount: 0,
+          shipping_amount: 0,
+          total_amount: subtotal,
+          currency: 'USD',
+          status: 'draft' as POStatus,
+          notes: `Auto-generated from low-stock suggestions${group.vendorName ? ` for ${group.vendorName}` : ''}`,
+          created_by: user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: po, error: poError } = await admin
+          .from('purchase_orders')
+          .insert(poData)
+          .select()
+          .single();
+
+        if (poError || !po) {
+          console.error('Error creating PO from suggestions:', poError);
+          continue;
+        }
+
+        const lineItemsData = items.map((it: any, index: number) => {
+          const qty = parseFloat(it.quantity || it.recommendedQty || 1);
+          const cost = parseFloat(it.unitCost || it.unit_cost || 0);
+          return {
+            tenant_id: tenantId,
+            purchase_order_id: po.id,
+            line_number: index + 1,
+            inventory_item_id: it.inventoryItemId || it.inventory_item_id || null,
+            item_description: it.itemDescription || it.item_description || it.description || 'Item',
+            part_number: it.partNumber || it.part_number || null,
+            quantity_ordered: qty,
+            quantity_received: 0,
+            unit_of_measure: 'EA',
+            unit_cost: cost,
+            total_cost: qty * cost,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+        });
+
+        if (lineItemsData.length > 0) {
+          await admin.from('purchase_order_line_items').insert(lineItemsData);
+        }
+
+        created.push(po);
+      }
+
+      return createCorsResponse(
+        { success: true, created: created.length, purchaseOrders: created },
+        201,
+        req,
+      );
+    }
+
+    // Guard: a reserved first segment that didn't match a named route above
+    // must not fall through to :id handling.
+    if (isReserved) {
+      return createCorsResponse({ error: 'Not found' }, 404, req);
+    }
 
     // ============================================================
     // LINE ITEMS ENDPOINTS

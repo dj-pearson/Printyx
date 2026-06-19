@@ -2,6 +2,9 @@
 // Handles third-party integrations management (e.g., eautomate, quickbooks, salesforce)
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
+
+type Admin = ReturnType<typeof createSupabaseServiceClient>;
 
 // Integration type configuration templates
 const INTEGRATION_CONFIGS: Record<string, { category: string; name: string; fields: string[] }> = {
@@ -48,7 +51,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -69,6 +72,17 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
+
+    // EDGE-005f: Integration Hub dashboard aggregate. Uses normalizePath so it
+    // resolves under both the native Supabase runtime (pathname keeps the fn
+    // name) and the Coolify server.ts dispatcher (fn name stripped). Powers
+    // IntegrationHub.tsx, which was repointed off the orphaned
+    // /api/integration-hub/dashboard prefix onto /api/integrations/dashboard.
+    const normalized = normalizePath(url.pathname, 'integrations');
+    if (req.method === 'GET' && normalized.parts[0] === 'dashboard') {
+      return await getDashboard(admin, tenantId, req);
+    }
+
     const pathParts = url.pathname.split('/').filter(Boolean);
 
     // Parse path: /integrations, /integrations/:id, /integrations/:type/config, etc.
@@ -600,4 +614,123 @@ function generateWebhookSecret(): string {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return result;
+}
+
+// EDGE-005f: Integration Hub dashboard aggregate.
+//
+// Returns the shape IntegrationHub.tsx consumes (integrationOverview,
+// activeIntegrations[], apiMarketplace, webhookManagement, integrationAnalytics).
+// The page renders every field with optional chaining + `|| 0/[]` defaults and
+// its select() coerces date fields, so a partial/zeroed payload renders safely.
+//
+// This replaces the Express DashboardService (server/integrations/dashboard-
+// service.ts), which fabricated most numbers with Math.random(). Here the
+// overview + active-integration list come from the real system_integrations
+// table; per-integration API metrics and the marketplace/webhook/analytics
+// sections are returned as honest zeros/empties rather than invented values
+// (a richer aggregation from integration_metrics is a follow-up).
+async function getDashboard(admin: Admin, tenantId: string, req: Request): Promise<Response> {
+  const { data: rows, error } = await admin
+    .from('system_integrations')
+    .select('id, name, provider, type, status, last_sync, created_at')
+    .eq('tenant_id', tenantId);
+
+  if (error) {
+    console.error('Error loading integrations for dashboard:', error);
+  }
+
+  const integrations = rows ?? [];
+  const isActive = (s?: string) => s === 'active' || s === 'connected';
+
+  const totalIntegrations = integrations.length;
+  const activeCount = integrations.filter((i) => isActive(i.status)).length;
+  const pendingCount = integrations.filter((i) => i.status === 'pending').length;
+  const failedCount = integrations.filter((i) => i.status === 'error').length;
+  const successRate =
+    totalIntegrations > 0 ? Math.round((activeCount / totalIntegrations) * 1000) / 10 : 0;
+
+  const integrationOverview = {
+    totalIntegrations,
+    activeIntegrations: activeCount,
+    pendingIntegrations: pendingCount,
+    failedIntegrations: failedCount,
+    integrationSuccessRate: successRate,
+    apiCallsToday: 0,
+    dataTransferred: 0,
+    webhooksDelivered: 0,
+    integrationUptime: activeCount > 0 ? 100 : 0,
+    averageLatency: 0,
+    errorRate: 0,
+    rateLimitHits: 0,
+    recordsSynced: 0,
+  };
+
+  const activeIntegrations = integrations.map((i) => ({
+    id: i.id,
+    apiId: i.provider,
+    name: i.name,
+    status: i.status,
+    configuredAt: i.created_at,
+    lastSync: i.last_sync,
+    syncFrequency: 'hourly',
+    recordsSynced: 0,
+    apiCallsToday: 0,
+    successRate: isActive(i.status) ? 100 : 0,
+    averageLatency: 0,
+    dataVolume: 0,
+    errorCount: 0,
+    recentActivity: [] as unknown[],
+  }));
+
+  const webhookManagement = {
+    totalWebhooks: 0,
+    activeWebhooks: 0,
+    pausedWebhooks: 0,
+    failedWebhooks: 0,
+    deliverySuccessRate: 0,
+    averageDeliveryTime: 0,
+    retryAttempts: 0,
+    successfulRetries: 0,
+    recentDeliveries: [] as unknown[],
+    deliveryMetrics: {
+      last24Hours: { delivered: 0, failed: 0, successRate: 0 },
+      last7Days: { delivered: 0, failed: 0, successRate: 0 },
+      last30Days: { delivered: 0, failed: 0, successRate: 0 },
+    },
+  };
+
+  const integrationAnalytics = {
+    usageStatistics: {
+      totalApiCalls: 0,
+      totalDataTransferred: 0,
+      totalWebhooksDelivered: 0,
+      averageResponseTime: 0,
+      peakUsageHour: 'N/A',
+      topIntegrationByVolume: integrations[0]?.name ?? 'None',
+      topIntegrationByUsage: integrations[0]?.name ?? 'None',
+    },
+    performanceMetrics: {
+      responseTimePercentiles: { p50: 0, p95: 0, p99: 0 },
+      errorRateByCategory: {},
+      uptimeByIntegration: {},
+    },
+    costAnalysis: {
+      totalMonthlyCost: 0,
+      costByProvider: {},
+      costPerApiCall: 0,
+      estimatedMonthlySavings: 0,
+    },
+  };
+
+  return createCorsResponse(
+    {
+      integrationOverview,
+      activeIntegrations,
+      apiMarketplace: { availableAPIs: [], categories: [], featuredIntegrations: [] },
+      webhookManagement,
+      integrationAnalytics,
+    },
+    200,
+    req,
+  );
 }

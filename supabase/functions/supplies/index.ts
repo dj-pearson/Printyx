@@ -1,7 +1,138 @@
 // Supplies Edge Function
 // Handles supplies and consumables management
+//
+// Routes (function name stripped by Coolify's server.ts; normalizePath handles both):
+//   GET    /              → list supplies
+//   POST   /              → create supply
+//   GET    /low-stock     → low stock alerts
+//   GET    /categories    → distinct categories
+//   POST   /import        → bulk CSV import (multipart upload)
+//   GET    /:id           → single supply
+//   PUT    /:id           → update supply
+//   POST   /:id/adjust    → adjust quantity
+//   DELETE /:id           → delete supply
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
+
+// First-segment reserved words that are NOT supply ids.
+const RESERVED = new Set(['low-stock', 'categories', 'import']);
+
+// Minimal RFC-4180-ish CSV parser (handles quoted fields, embedded commas,
+// "" escapes, CRLF). Deno has no csv-parser, so this stands in for it.
+function parseCSV(text: string): Record<string, string>[] {
+  const rows: string[][] = [];
+  let field = '';
+  let row: string[] = [];
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ',') {
+      row.push(field);
+      field = '';
+    } else if (ch === '\n') {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else if (ch === '\r') {
+      // swallow; \n handles the line break
+    } else {
+      field += ch;
+    }
+  }
+  // flush trailing field/row
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  if (rows.length === 0) return [];
+
+  const headers = rows[0].map((h) => h.trim());
+  const records: Record<string, string>[] = [];
+  for (let r = 1; r < rows.length; r++) {
+    const values = rows[r];
+    // skip fully-empty lines
+    if (values.length === 1 && values[0].trim() === '') continue;
+    const obj: Record<string, string> = {};
+    for (let c = 0; c < headers.length; c++) {
+      obj[headers[c]] = (values[c] ?? '').trim();
+    }
+    records.push(obj);
+  }
+  return records;
+}
+
+// Parse a decimal-ish CSV cell to a number, or null when empty/invalid.
+function parseDecimalCell(raw: string | undefined): number | null {
+  if (raw === undefined || raw === null) return null;
+  const s = String(raw).trim();
+  if (s === '') return null;
+  const n = parseFloat(s.replace(/[$,]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
+// Map one CSV row to a `supplies` table row (mirrors validateSupplyData in
+// server/routes-products-crud.ts). Returns null + errors when invalid.
+function mapSupplyRow(
+  row: Record<string, string>,
+  tenantId: string,
+): { data: Record<string, unknown> | null; errors: string[] } {
+  const errors: string[] = [];
+  const productCode = (row['Product Code'] || '').trim();
+  const productName = (row['Product Name'] || '').trim();
+  if (!productCode) errors.push('Product Code is required');
+  if (!productName) errors.push('Product Name is required');
+  if (errors.length > 0) return { data: null, errors };
+
+  const newRepPrice = parseDecimalCell(row['New Rep Price']);
+  const upgradeRepPrice = parseDecimalCell(row['Upgrade Rep Price']);
+  const lexmarkRepPrice = parseDecimalCell(row['Lexmark Rep Price']);
+  const graphicRepPrice = parseDecimalCell(row['Graphic Rep Price']);
+
+  const now = new Date().toISOString();
+  return {
+    data: {
+      tenant_id: tenantId,
+      product_code: productCode,
+      product_name: productName,
+      product_type: (row['Product Type'] || '').trim() || 'Supplies',
+      dealer_comp: (row['Dealer Comp'] || '').trim() || null,
+      inventory: (row['Inventory'] || '').trim() || null,
+      in_stock: (row['In Stock'] || '').trim() || null,
+      summary: (row['Description'] || '').trim() || null,
+      new_rep_price: newRepPrice,
+      upgrade_rep_price: upgradeRepPrice,
+      lexmark_rep_price: lexmarkRepPrice,
+      graphic_rep_price: graphicRepPrice,
+      new_active: newRepPrice !== null,
+      upgrade_active: upgradeRepPrice !== null,
+      lexmark_active: lexmarkRepPrice !== null,
+      graphic_active: graphicRepPrice !== null,
+      is_active: true,
+      sales_rep_credit: true,
+      funding: true,
+      created_at: now,
+      updated_at: now,
+    },
+    errors: [],
+  };
+}
 
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -38,10 +169,109 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    // Server strips function name, so /supplies/:id becomes /:id
-    const supplyId = pathParts[0];
-    const subResource = pathParts[1];
+    // Coolify strips the function name; normalizePath makes parts[0] the
+    // resource id (or reserved word) and parts[1] the sub-resource.
+    const { parts } = normalizePath(url.pathname, 'supplies');
+    const supplyId = parts[0];
+    const subResource = parts[1];
+    const isReserved = !!supplyId && RESERVED.has(supplyId);
+
+    // POST /supplies/import - Bulk CSV import (multipart upload)
+    if (req.method === 'POST' && supplyId === 'import') {
+      let form: FormData;
+      try {
+        form = await req.formData();
+      } catch (_e) {
+        return createCorsResponse(
+          {
+            success: false,
+            imported: 0,
+            skipped: 0,
+            errors: ['Expected multipart/form-data upload'],
+          },
+          400,
+          req,
+        );
+      }
+      const file = form.get('file');
+      if (!file || typeof (file as File).text !== 'function') {
+        return createCorsResponse(
+          { success: false, imported: 0, skipped: 0, errors: ['No file uploaded'] },
+          400,
+          req,
+        );
+      }
+
+      let rows: Record<string, string>[];
+      try {
+        const text = await (file as File).text();
+        rows = parseCSV(text);
+      } catch (_e) {
+        return createCorsResponse(
+          { success: false, imported: 0, skipped: 0, errors: ['Failed to parse CSV file'] },
+          400,
+          req,
+        );
+      }
+
+      if (rows.length === 0) {
+        return createCorsResponse(
+          { success: false, imported: 0, skipped: 0, errors: ['CSV file is empty'] },
+          400,
+          req,
+        );
+      }
+
+      // Dedup against existing rows (by product_code) for this tenant.
+      const { data: existing } = await admin
+        .from('supplies')
+        .select('product_code')
+        .eq('tenant_id', tenantId);
+      const existingCodes = new Set(
+        ((existing as { product_code?: string }[]) || []).map((r) =>
+          (r.product_code || '').toUpperCase().trim(),
+        ),
+      );
+      // Also dedup within the uploaded file itself.
+      const seenInFile = new Set<string>();
+
+      let imported = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const { data, errors: rowErrors } = mapSupplyRow(rows[i], tenantId);
+        if (!data) {
+          errors.push(`Row ${i + 2}: ${rowErrors.join(', ')}`);
+          skipped++;
+          continue;
+        }
+        const code = String(data.product_code || '')
+          .toUpperCase()
+          .trim();
+        if (existingCodes.has(code) || seenInFile.has(code)) {
+          skipped++;
+          continue;
+        }
+        try {
+          const { error } = await admin.from('supplies').insert(data);
+          if (error) throw new Error(error.message);
+          seenInFile.add(code);
+          imported++;
+        } catch (e) {
+          errors.push(
+            `Row ${i + 2}: Failed to import - ${e instanceof Error ? e.message : 'Unknown error'}`,
+          );
+          skipped++;
+        }
+      }
+
+      return createCorsResponse(
+        { success: errors.length === 0, imported, skipped, errors },
+        200,
+        req,
+      );
+    }
 
     // GET /supplies - List all supplies
     if (req.method === 'GET' && !supplyId) {
@@ -133,7 +363,7 @@ export default async function handler(req: Request) {
     }
 
     // GET /supplies/:id - Get single supply
-    if (req.method === 'GET' && supplyId && !subResource) {
+    if (req.method === 'GET' && supplyId && !isReserved && !subResource) {
       const { data: supply, error } = await admin
         .from('supplies')
         .select('*')
@@ -185,7 +415,7 @@ export default async function handler(req: Request) {
     }
 
     // PUT /supplies/:id - Update supply
-    if (req.method === 'PUT' && supplyId && !subResource) {
+    if (req.method === 'PUT' && supplyId && !isReserved && !subResource) {
       const body = await req.json();
 
       const { data: supply, error } = await admin
@@ -208,7 +438,7 @@ export default async function handler(req: Request) {
     }
 
     // POST /supplies/:id/adjust - Adjust supply quantity
-    if (req.method === 'POST' && supplyId && subResource === 'adjust') {
+    if (req.method === 'POST' && supplyId && !isReserved && subResource === 'adjust') {
       const body = await req.json();
       const { adjustment, reason } = body;
 
@@ -257,7 +487,7 @@ export default async function handler(req: Request) {
     }
 
     // DELETE /supplies/:id - Delete supply
-    if (req.method === 'DELETE' && supplyId) {
+    if (req.method === 'DELETE' && supplyId && !isReserved) {
       const { error } = await admin
         .from('supplies')
         .delete()

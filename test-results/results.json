@@ -1,0 +1,342 @@
+{
+  "config": {
+    "configFile": "C:\\Users\\pears\\Documents\\Printyx\\Printyx\\playwright.config.ts",
+    "rootDir": "C:/Users/pears/Documents/Printyx/Printyx/tests",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {},
+    "preserveOutput": "always",
+    "reporter": [
+      ["html", null],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "test-results/junit.xml"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "C:/Users/pears/Documents/Printyx/Printyx/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/pears/Documents/Printyx/Printyx/tests",
+        "testIgnore": [],
+        "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/pears/Documents/Printyx/Printyx/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "C:/Users/pears/Documents/Printyx/Printyx/tests",
+        "testIgnore": [],
+        "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/pears/Documents/Printyx/Printyx/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/Users/pears/Documents/Printyx/Printyx/tests",
+        "testIgnore": [],
+        "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/pears/Documents/Printyx/Printyx/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "mobile-chrome",
+        "name": "mobile-chrome",
+        "testDir": "C:/Users/pears/Documents/Printyx/Printyx/tests",
+        "testIgnore": [],
+        "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/pears/Documents/Printyx/Printyx/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "mobile-safari",
+        "name": "mobile-safari",
+        "testDir": "C:/Users/pears/Documents/Printyx/Printyx/tests",
+        "testIgnore": [],
+        "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/pears/Documents/Printyx/Printyx/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {},
+        "id": "tablet-safari",
+        "name": "tablet-safari",
+        "testDir": "C:/Users/pears/Documents/Printyx/Printyx/tests",
+        "testIgnore": [],
+        "testMatch": ["**/*.@(spec|test).?(c|m)[jt]s?(x)"],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.57.0",
+    "workers": 12,
+    "webServer": {
+      "command": "npm run dev",
+      "port": 5000,
+      "timeout": 120000,
+      "reuseExistingServer": true
+    }
+  },
+  "suites": [
+    {
+      "title": "proposal-flow.spec.ts",
+      "file": "proposal-flow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Quote builder — overhauled flow",
+          "file": "proposal-flow.spec.ts",
+          "line": 87,
+          "column": 6,
+          "specs": [
+            {
+              "title": "wizard renders the 4 steps and gates Products behind a customer",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b0a13ae3359a41e8a37c-ac05e7f32d6e14b8abcd",
+              "file": "proposal-flow.spec.ts",
+              "line": 96,
+              "column": 3
+            },
+            {
+              "title": "Products step exposes the server-backed product search",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b0a13ae3359a41e8a37c-fa7e26ebe2baae5aeaf8",
+              "file": "proposal-flow.spec.ts",
+              "line": 108,
+              "column": 3
+            },
+            {
+              "title": "autosave persists a draft across reload (recovery)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b0a13ae3359a41e8a37c-600de2184923f0e2f790",
+              "file": "proposal-flow.spec.ts",
+              "line": 126,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Proposal templates",
+          "file": "proposal-flow.spec.ts",
+          "line": 143,
+          "column": 6,
+          "specs": [
+            {
+              "title": "templates page renders with a New Template action",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b0a13ae3359a41e8a37c-4e5f48c3c81ca1208050",
+              "file": "proposal-flow.spec.ts",
+              "line": 149,
+              "column": 3
+            },
+            {
+              "title": "New Template dialog collects a name and type",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b0a13ae3359a41e8a37c-f059f583d50fa4135326",
+              "file": "proposal-flow.spec.ts",
+              "line": 159,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Branding",
+          "file": "proposal-flow.spec.ts",
+          "line": 172,
+          "column": 6,
+          "specs": [
+            {
+              "title": "branding settings page renders the editor",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b0a13ae3359a41e8a37c-0393c2957677894c0a5c",
+              "file": "proposal-flow.spec.ts",
+              "line": 178,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Generate + share actions",
+          "file": "proposal-flow.spec.ts",
+          "line": 187,
+          "column": 6,
+          "specs": [
+            {
+              "title": "quotes row menu exposes Generate Proposal + Copy Share Link",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b0a13ae3359a41e8a37c-d45f63233a411be69a5b",
+              "file": "proposal-flow.spec.ts",
+              "line": 196,
+              "column": 3
+            }
+          ]
+        },
+        {
+          "title": "Public proposal view",
+          "file": "proposal-flow.spec.ts",
+          "line": 238,
+          "column": 6,
+          "specs": [
+            {
+              "title": "an invalid/expired share token shows the unavailable state, not the app",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [],
+                  "status": "skipped"
+                }
+              ],
+              "id": "b0a13ae3359a41e8a37c-a3c5e8e41278309c00d3",
+              "file": "proposal-flow.spec.ts",
+              "line": 243,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-06-18T22:26:39.359Z",
+    "duration": 157.087,
+    "expected": 0,
+    "skipped": 8,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

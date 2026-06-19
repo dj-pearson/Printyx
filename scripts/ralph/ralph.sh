@@ -78,33 +78,39 @@ while [ $CURRENT_ITERATION -lt $MAX_ITERATIONS ]; do
   
   echo "📋 Next story: $NEXT_STORY"
   
-  # Run AI tool with prompt
+  # Lower CPU/IO priority so parallel Ralphs (and your interactive session) stay responsive.
+  NICE=""
+  command -v nice >/dev/null 2>&1 && NICE="nice -n 10"
+  # Cap heap of any node children (npm build/check/test) the agent spawns.
+  export NODE_OPTIONS="--max-old-space-size=${NODE_HEAP_MB:-4096}"
+
+  # Run AI tool with prompt — fed via stdin (no arg escaping), inline in this terminal.
   if [ "$TOOL" = "claude" ]; then
     PROMPT_FILE="scripts/ralph/CLAUDE.md"
     if [ ! -f "$PROMPT_FILE" ]; then
       PROMPT_FILE="CLAUDE.md"
     fi
-    
+
     if [ ! -f "$PROMPT_FILE" ]; then
       echo "❌ Error: CLAUDE.md not found"
       exit 1
     fi
-    
-    echo "🧠 Running Claude Code..."
-    claude-code "$(cat $PROMPT_FILE)"
+
+    echo "🧠 Running Claude Code (inline, throttled)..."
+    $NICE claude -p --dangerously-skip-permissions < "$PROMPT_FILE"
   else
     PROMPT_FILE="scripts/ralph/prompt.md"
     if [ ! -f "$PROMPT_FILE" ]; then
       PROMPT_FILE="prompt.md"
     fi
-    
+
     if [ ! -f "$PROMPT_FILE" ]; then
       echo "❌ Error: prompt.md not found"
       exit 1
     fi
-    
-    echo "🧠 Running Amp..."
-    amp "$(cat $PROMPT_FILE)"
+
+    echo "🧠 Running Amp (inline, throttled)..."
+    $NICE amp < "$PROMPT_FILE"
   fi
   
   # Check if story is now complete
@@ -121,8 +127,10 @@ while [ $CURRENT_ITERATION -lt $MAX_ITERATIONS ]; do
   echo "Iteration $CURRENT_ITERATION ($(date)): Story $NEXT_STORY" >> "$PROGRESS_FILE"
   echo "Status: $([ "$STORY_COMPLETE" = "true" ] && echo "Complete" || echo "Needs Review")" >> "$PROGRESS_FILE"
   
-  # Short pause between iterations
-  sleep 2
+  # Randomized cooldown so parallel Ralphs don't hit heavy build/test phases in lockstep.
+  PAUSE=$(( (RANDOM % 6) + 1 ))
+  echo "   …cooldown ${PAUSE}s"
+  sleep "$PAUSE"
 done
 
 echo ""

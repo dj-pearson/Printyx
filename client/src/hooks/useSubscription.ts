@@ -1,9 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 
 /**
  * Subscription Hook
  *
  * Manages subscription state and operations throughout the app.
+ *
+ * EDGE-002c: all calls go through `apiRequest` (getApiUrl + Bearer JWT + tenant
+ * header) rather than raw `fetch(..., { credentials: 'include' })`. This is what
+ * edge-routes them in production (functions.printyx.net/subscriptions/*) and lets
+ * the dev `/api/subscriptions` proxy forward an Authorization header to the edge
+ * function — raw cookie-only fetches would 401 against the JWT-gated edge fn.
  */
 
 export interface SubscriptionPlan {
@@ -76,17 +83,7 @@ export interface SubscriptionStatus {
 export function useSubscription() {
   return useQuery<SubscriptionStatus>({
     queryKey: ['subscription', 'current'],
-    queryFn: async () => {
-      const response = await fetch('/api/subscriptions/current', {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch subscription');
-      }
-
-      return response.json();
-    },
+    queryFn: () => apiRequest('/api/subscriptions/current'),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: true,
   });
@@ -98,15 +95,7 @@ export function useSubscription() {
 export function useSubscriptionPlans() {
   return useQuery<{ plans: SubscriptionPlan[]; features: SubscriptionFeature[] }>({
     queryKey: ['subscription', 'plans'],
-    queryFn: async () => {
-      const response = await fetch('/api/subscriptions/plans');
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch plans');
-      }
-
-      return response.json();
-    },
+    queryFn: () => apiRequest('/api/subscriptions/plans'),
     staleTime: 30 * 60 * 1000, // 30 minutes (plans change rarely)
   });
 }
@@ -117,17 +106,7 @@ export function useSubscriptionPlans() {
 export function useUsageStats() {
   return useQuery({
     queryKey: ['subscription', 'usage'],
-    queryFn: async () => {
-      const response = await fetch('/api/subscriptions/usage', {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch usage');
-      }
-
-      return response.json();
-    },
+    queryFn: () => apiRequest('/api/subscriptions/usage'),
     staleTime: 2 * 60 * 1000, // 2 minutes
     refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
   });
@@ -139,17 +118,7 @@ export function useUsageStats() {
 export function useSubscriptionNotifications() {
   return useQuery({
     queryKey: ['subscription', 'notifications'],
-    queryFn: async () => {
-      const response = await fetch('/api/subscriptions/notifications', {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch notifications');
-      }
-
-      return response.json();
-    },
+    queryFn: () => apiRequest('/api/subscriptions/notifications'),
     staleTime: 1 * 60 * 1000, // 1 minute
   });
 }
@@ -161,26 +130,12 @@ export function useCreateSubscription() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
+    mutationFn: (data: {
       planSlug: string;
       billingCycle: 'monthly' | 'annual';
       startTrial?: boolean;
       discountCode?: string;
-    }) => {
-      const response = await fetch('/api/subscriptions/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create subscription');
-      }
-
-      return response.json();
-    },
+    }) => apiRequest('/api/subscriptions/create', 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription'] });
     },
@@ -194,25 +149,11 @@ export function useUpgradeSubscription() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
+    mutationFn: (data: {
       newPlanSlug: string;
       billingCycle?: 'monthly' | 'annual';
       immediate?: boolean;
-    }) => {
-      const response = await fetch('/api/subscriptions/upgrade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to upgrade subscription');
-      }
-
-      return response.json();
-    },
+    }) => apiRequest('/api/subscriptions/upgrade', 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription'] });
     },
@@ -226,21 +167,8 @@ export function useCancelSubscription() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (immediate: boolean = false) => {
-      const response = await fetch('/api/subscriptions/cancel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ immediate }),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to cancel subscription');
-      }
-
-      return response.json();
-    },
+    mutationFn: (immediate: boolean = false) =>
+      apiRequest('/api/subscriptions/cancel', 'POST', { immediate }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription'] });
     },
@@ -254,21 +182,8 @@ export function useConvertTrial() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (paymentMethodId?: string) => {
-      const response = await fetch('/api/subscriptions/convert-trial', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentMethodId }),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to convert trial');
-      }
-
-      return response.json();
-    },
+    mutationFn: (paymentMethodId?: string) =>
+      apiRequest('/api/subscriptions/convert-trial', 'POST', { paymentMethodId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription'] });
     },
@@ -282,18 +197,8 @@ export function useDismissNotification() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (notificationId: string) => {
-      const response = await fetch(`/api/subscriptions/notifications/${notificationId}/dismiss`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to dismiss notification');
-      }
-
-      return response.json();
-    },
+    mutationFn: (notificationId: string) =>
+      apiRequest(`/api/subscriptions/notifications/${notificationId}/dismiss`, 'POST'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription', 'notifications'] });
     },
@@ -351,15 +256,7 @@ export function useUsagePercentage(
 export function useStripeConfig() {
   return useQuery<{ publishableKey: string }>({
     queryKey: ['stripe', 'config'],
-    queryFn: async () => {
-      const response = await fetch('/api/subscriptions/stripe/config');
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch Stripe configuration');
-      }
-
-      return response.json();
-    },
+    queryFn: () => apiRequest('/api/subscriptions/stripe/config'),
     staleTime: Infinity, // Config doesn't change
     retry: false, // Don't retry if Stripe is not configured
   });
@@ -370,28 +267,12 @@ export function useStripeConfig() {
  * Redirects user to Stripe's hosted checkout page
  */
 export function useCheckout() {
-  const queryClient = useQueryClient();
-
   return useMutation<
     { sessionId: string; sessionUrl: string },
     Error,
     { planSlug: string; billingCycle: 'monthly' | 'annual'; discountCode?: string }
   >({
-    mutationFn: async (data) => {
-      const response = await fetch('/api/subscriptions/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create checkout session');
-      }
-
-      return response.json();
-    },
+    mutationFn: (data) => apiRequest('/api/subscriptions/checkout', 'POST', data),
     onSuccess: (data) => {
       // Redirect to Stripe Checkout
       if (data.sessionUrl) {
@@ -410,21 +291,7 @@ export function useAddonCheckout() {
     Error,
     { addonSlug: string; quantity?: number }
   >({
-    mutationFn: async (data) => {
-      const response = await fetch('/api/subscriptions/checkout/addon', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create checkout session');
-      }
-
-      return response.json();
-    },
+    mutationFn: (data) => apiRequest('/api/subscriptions/checkout/addon', 'POST', data),
     onSuccess: (data) => {
       // Redirect to Stripe Checkout
       if (data.sessionUrl) {
@@ -439,19 +306,7 @@ export function useAddonCheckout() {
  */
 export function useCustomerPortal() {
   return useMutation<{ url: string }, Error, void>({
-    mutationFn: async () => {
-      const response = await fetch('/api/subscriptions/portal', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create portal session');
-      }
-
-      return response.json();
-    },
+    mutationFn: () => apiRequest('/api/subscriptions/portal', 'POST'),
     onSuccess: (data) => {
       // Redirect to Stripe Customer Portal
       if (data.url) {
@@ -476,22 +331,12 @@ export function usePreviewUpgrade(newPlanSlug: string, billingCycle?: 'monthly' 
     billingCycle: string;
   }>({
     queryKey: ['subscription', 'preview-upgrade', newPlanSlug, billingCycle],
-    queryFn: async () => {
+    queryFn: () => {
       const params = new URLSearchParams({ newPlanSlug });
       if (billingCycle) {
         params.append('billingCycle', billingCycle);
       }
-
-      const response = await fetch(`/api/subscriptions/preview-upgrade?${params}`, {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to preview upgrade');
-      }
-
-      return response.json();
+      return apiRequest(`/api/subscriptions/preview-upgrade?${params}`);
     },
     enabled: !!newPlanSlug,
     staleTime: 1 * 60 * 1000, // 1 minute
@@ -502,8 +347,6 @@ export function usePreviewUpgrade(newPlanSlug: string, billingCycle?: 'monthly' 
  * Verify checkout session success
  */
 export function useVerifyCheckoutSession(sessionId: string | null) {
-  const queryClient = useQueryClient();
-
   return useQuery<{
     id: string;
     status: string;
@@ -512,24 +355,11 @@ export function useVerifyCheckoutSession(sessionId: string | null) {
     subscriptionId?: string;
   }>({
     queryKey: ['stripe', 'checkout-session', sessionId],
-    queryFn: async () => {
+    queryFn: () => {
       if (!sessionId) throw new Error('No session ID provided');
-
-      const response = await fetch(`/api/subscriptions/checkout/session/${sessionId}`, {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to verify checkout session');
-      }
-
-      return response.json();
+      return apiRequest(`/api/subscriptions/checkout/session/${sessionId}`);
     },
     enabled: !!sessionId,
-    onSuccess: () => {
-      // Invalidate subscription data to fetch updated status
-      queryClient.invalidateQueries({ queryKey: ['subscription'] });
-    },
   });
 }
 
@@ -538,17 +368,6 @@ export function useVerifyCheckoutSession(sessionId: string | null) {
  */
 export function useSetupIntent() {
   return useMutation<{ clientSecret: string }, Error, void>({
-    mutationFn: async () => {
-      const response = await fetch('/api/subscriptions/setup-intent', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create setup intent');
-      }
-
-      return response.json();
-    },
+    mutationFn: () => apiRequest('/api/subscriptions/setup-intent', 'POST'),
   });
 }

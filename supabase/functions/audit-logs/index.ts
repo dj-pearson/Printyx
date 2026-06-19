@@ -32,10 +32,32 @@ function stripPrefix(path: string): string {
   );
 }
 
+/**
+ * Platform-admin gate (EDGE-002i).
+ *
+ * The frontend page /admin/audit-logs is `ProtectedRoute platformOnly`, so the
+ * canonical caller is a platform admin (role level 8 / isPlatformUser). This
+ * stays platform-admin only — it is NOT relaxed to company admin, because the
+ * route gate already blocks non-platform users from loading the page.
+ *
+ * Detection reads the fields the JWT actually carries. Per
+ * server/middleware/supabase-auth.ts (the token minter) and the frontend
+ * useSupabaseAuth/transformUser, app_metadata carries `isPlatformUser` (the
+ * canonical platform flag) and a numeric `roleLevel` — NOT `isPlatformAdmin` or
+ * a `role` string. The original check looked only at those non-canonical keys,
+ * so it was effectively always-false and would 403 every legitimate platform
+ * admin once this function is proxied. The legacy keys are kept as harmless
+ * fallbacks.
+ */
 function isPlatformAdmin(auth: Awaited<ReturnType<typeof requireAuth>>): boolean {
+  const meta = (auth.supabaseUser.app_metadata ?? {}) as Record<string, unknown>;
+  const roleLevel = typeof meta.roleLevel === 'number' ? meta.roleLevel : Number(meta.roleLevel);
   return (
-    auth.supabaseUser.app_metadata?.isPlatformAdmin === true ||
-    auth.supabaseUser.app_metadata?.role === 'platform_admin'
+    meta.isPlatformUser === true ||
+    (Number.isFinite(roleLevel) && roleLevel >= 8) ||
+    // Legacy / defensive fallbacks (not canonical app_metadata keys).
+    meta.isPlatformAdmin === true ||
+    meta.role === 'platform_admin'
   );
 }
 
@@ -102,15 +124,22 @@ export default async function handler(req: Request) {
       });
     }
 
+    // Shape matches the frontend AuditLogResponse interface in
+    // client/src/pages/AuditLogViewer.tsx, which reads `total`/`page`/`limit`/
+    // `totalPages` at the top level (the nested `pagination` shape the Express
+    // baseline returned left the page's pagination controls permanently stuck
+    // at "Page X of 1 (0 total)"). A `pagination` block is kept for back-compat.
+    const total = count ?? data?.length ?? 0;
+    const totalPages = total > 0 ? Math.max(1, Math.ceil(total / limit)) : 1;
+
     return jsonResponse(
       {
         logs: data ?? [],
-        pagination: {
-          page,
-          limit,
-          total: count ?? data?.length ?? 0,
-          pages: count ? Math.max(1, Math.ceil(count / limit)) : 1,
-        },
+        total,
+        page,
+        limit,
+        totalPages,
+        pagination: { page, limit, total, totalPages },
         filters: { startDate, endDate, action, userId, category },
       },
       200,

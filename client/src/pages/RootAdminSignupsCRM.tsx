@@ -91,7 +91,7 @@ export default function RootAdminSignupsCRM() {
     queryKey: ['/api/root-admin/high-value-signups'],
   });
 
-  const signups = signupsData?.data || [];
+  const signups = signupsData?.signups || [];
   const pagination = signupsData?.pagination;
 
   return (
@@ -156,7 +156,7 @@ export default function RootAdminSignupsCRM() {
               <CheckCircle className="h-4 w-4 text-purple-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{highValueData?.data?.length || 0}</div>
+              <div className="text-2xl font-bold">{highValueData?.signups?.length || 0}</div>
               <p className="text-xs text-gray-500">Qualified leads (70+)</p>
             </CardContent>
           </Card>
@@ -405,7 +405,7 @@ export default function RootAdminSignupsCRM() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {highValueData?.data?.map((signup: any) => (
+                      {highValueData?.signups?.map((signup: any) => (
                         <TableRow key={signup.id}>
                           <TableCell className="font-medium">{signup.companyName}</TableCell>
                           <TableCell>

@@ -2,6 +2,7 @@
 // Handles performance metrics and alerts
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 // Export handler for use by the main server router
 export default async function handler(req: Request) {
@@ -10,8 +11,10 @@ export default async function handler(req: Request) {
   if (corsResponse) return corsResponse;
 
   const url = new URL(req.url);
-  const pathParts = url.pathname.split('/').filter(Boolean);
-  const endpoint = pathParts[0]; // Will be 'alerts', 'metrics', etc.
+  // Coolify-safe routing: server.ts strips the function-name prefix, so
+  // normalizePath gives parts[0] = first segment after /performance.
+  const { parts } = normalizePath(url.pathname, 'performance');
+  const endpoint = parts[0]; // 'alerts', 'metrics', 'health', etc.
 
   try {
     // Extract JWT from Authorization header
@@ -51,6 +54,32 @@ export default async function handler(req: Request) {
           activeUsers: 24,
         };
         return createCorsResponse(metrics, 200, req);
+      }
+
+      case 'health': {
+        // Overall system health summary.
+        // Mirrors the shape of server PerformanceMonitor.getSystemHealth()
+        // ({ status, score, metrics[], recommendations[], timestamp }). The
+        // edge runtime has no host-level monitoring, so this is a derived
+        // healthy summary consistent with the mock /metrics values above.
+        const now = new Date().toISOString();
+        const memoryUsage = 62;
+        const cpuUsage = 45;
+        const responseTime = 185;
+
+        const health = {
+          status: 'healthy',
+          score: 95,
+          degraded: true,
+          metrics: [
+            { name: 'memory_usage', value: memoryUsage, unit: '%', timestamp: now },
+            { name: 'cpu_usage', value: cpuUsage, unit: '%', timestamp: now },
+            { name: 'database_query_time', value: responseTime, unit: 'ms', timestamp: now },
+          ],
+          recommendations: [],
+          timestamp: now,
+        };
+        return createCorsResponse(health, 200, req);
       }
 
       case 'alerts': {

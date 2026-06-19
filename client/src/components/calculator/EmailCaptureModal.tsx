@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, CheckCircle, Download } from 'lucide-react';
+import { getApiUrl } from '@/lib/config';
 import { USER_ROLES } from './types';
 
 interface EmailCaptureModalProps {
@@ -47,7 +48,7 @@ export function EmailCaptureModal({
 
   const captureMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const response = await fetch('/api/public/calculator/leads', {
+      const response = await fetch(getApiUrl('/api/print-cost-calculator/leads'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -65,7 +66,7 @@ export function EmailCaptureModal({
     onSuccess: () => {
       setSubmitted(true);
       // Track PDF download
-      fetch('/api/public/calculator/track/pdf-download', {
+      fetch(getApiUrl('/api/print-cost-calculator/track/pdf-download'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionKey }),

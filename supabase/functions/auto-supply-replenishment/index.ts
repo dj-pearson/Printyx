@@ -1,7 +1,23 @@
 // Auto Supply Replenishment Edge Function
-// Handles automatic supply ordering based on thresholds
+// Handles automatic supply ordering based on thresholds + the
+// AutoSupplyReplenishmentDashboard read endpoints (/dashboard, /low-supplies,
+// /orders, /analyze-all).
+//
+// EDGE-002g: ported the dashboard endpoints the frontend
+// (client/src/pages/AutoSupplyReplenishmentDashboard.tsx) calls. SCHEMA DRIFT:
+// supply_monitoring / auto_supply_orders / supply_replenishment_analytics
+// (shared/auto-supply-replenishment-schema.ts) declare an INTEGER tenant_id,
+// but real tenant IDs are UUID varchars — so a `.eq('tenant_id', <uuid>)` filter
+// errors at the DB layer. Every dashboard query is therefore degrade-tolerant:
+// on any error (type mismatch, missing table) it returns a shape-compatible
+// zero/empty response so the dashboard renders instead of 500-ing. If/when those
+// tables are reconciled to a varchar tenant_id the same queries return real data.
+//
+// Path handling uses normalizePath so it works under BOTH the native Supabase
+// runtime and Coolify's server.ts (which strips the function-name prefix).
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { normalizePath } from '../_shared/path.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -9,7 +25,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -34,9 +50,170 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const endpoint = pathParts[1];
-    const ruleId = pathParts[2];
+    const { parts } = normalizePath(url.pathname, 'auto-supply-replenishment');
+    const endpoint = parts[0];
+    const ruleId = parts[1];
+
+    // ---------------------------------------------------------------------
+    // GET /auto-supply-replenishment/dashboard - dashboard metrics
+    // ---------------------------------------------------------------------
+    if (req.method === 'GET' && endpoint === 'dashboard') {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      const safeCount = async (table: string, build: (q: any) => any): Promise<number> => {
+        try {
+          const { count, error } = await build(
+            admin.from(table).select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+          );
+          if (error) return 0;
+          return count || 0;
+        } catch (_e) {
+          return 0;
+        }
+      };
+
+      const suppliesTracked = await safeCount('supply_monitoring', (q) => q);
+      const devicesMonitored = suppliesTracked; // distinct-device count not expressible via PostgREST head
+      const lowSupplies = await safeCount('supply_monitoring', (q) => q.lte('current_level', 25));
+      const urgentOrders = await safeCount('auto_supply_orders', (q) =>
+        q.in('priority', ['urgent', 'critical']).neq('status', 'delivered'),
+      );
+      const ordersThisMonth = await safeCount('auto_supply_orders', (q) =>
+        q.gte('order_date', startOfMonth.toISOString()),
+      );
+
+      // Savings / lead-time / emergencies from the analytics table (degrade to 0)
+      let projectedSavings = 0;
+      let emergenciesPrevented = 0;
+      let averageLeadTime = 0;
+      try {
+        const { data, error } = await admin
+          .from('supply_replenishment_analytics')
+          .select(
+            'emergency_cost_savings, bulk_discount_savings, emergency_orders_prevented, average_lead_time',
+          )
+          .eq('tenant_id', tenantId);
+        if (!error) {
+          for (const row of (data as any[]) || []) {
+            projectedSavings +=
+              parseFloat(row.emergency_cost_savings?.toString() || '0') +
+              parseFloat(row.bulk_discount_savings?.toString() || '0');
+            emergenciesPrevented += row.emergency_orders_prevented || 0;
+          }
+          const leadTimes = ((data as any[]) || [])
+            .map((r) => parseFloat(r.average_lead_time?.toString() || '0'))
+            .filter((n) => n > 0);
+          averageLeadTime =
+            leadTimes.length > 0 ? leadTimes.reduce((s, n) => s + n, 0) / leadTimes.length : 0;
+        }
+      } catch (_e) {
+        // degrade to zeros
+      }
+
+      return createCorsResponse(
+        {
+          devicesMonitored,
+          suppliesTracked,
+          lowSupplies,
+          urgentOrders,
+          ordersThisMonth,
+          projectedSavings,
+          emergenciesPrevented,
+          averageLeadTime,
+        },
+        200,
+        req,
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // GET /auto-supply-replenishment/low-supplies - low-supply alerts
+    // ---------------------------------------------------------------------
+    if (req.method === 'GET' && endpoint === 'low-supplies') {
+      try {
+        const { data, error } = await admin
+          .from('supply_monitoring')
+          .select(
+            'id, model, serial_number, supply_name, supply_type, current_level, days_until_depletion, priority, status',
+          )
+          .eq('tenant_id', tenantId)
+          .lte('current_level', 30)
+          .order('current_level', { ascending: true })
+          .limit(100);
+        if (error) return createCorsResponse([], 200, req);
+        const rows = ((data as any[]) || []).map((r) => ({
+          id: r.id,
+          model: r.model,
+          serialNumber: r.serial_number,
+          supplyName: r.supply_name,
+          supplyType: r.supply_type,
+          currentLevel: r.current_level,
+          daysUntilDepletion: r.days_until_depletion,
+          priority: r.priority,
+          status: r.status,
+        }));
+        return createCorsResponse(rows, 200, req);
+      } catch (_e) {
+        return createCorsResponse([], 200, req);
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // GET /auto-supply-replenishment/orders - recent auto-supply orders
+    // ---------------------------------------------------------------------
+    if (req.method === 'GET' && endpoint === 'orders') {
+      const limit = parseInt(url.searchParams.get('limit') || '20');
+      try {
+        const { data, error } = await admin
+          .from('auto_supply_orders')
+          .select(
+            'id, order_number, serial_number, supply_name, part_number, quantity, order_date, estimated_delivery_date, status',
+          )
+          .eq('tenant_id', tenantId)
+          .order('order_date', { ascending: false })
+          .limit(limit);
+        if (error) return createCorsResponse([], 200, req);
+        const rows = ((data as any[]) || []).map((r) => ({
+          id: r.id,
+          orderNumber: r.order_number,
+          serialNumber: r.serial_number,
+          supplyName: r.supply_name,
+          partNumber: r.part_number,
+          quantity: r.quantity,
+          orderDate: r.order_date,
+          estimatedDeliveryDate: r.estimated_delivery_date,
+          status: r.status,
+        }));
+        return createCorsResponse(rows, 200, req);
+      } catch (_e) {
+        return createCorsResponse([], 200, req);
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // POST /auto-supply-replenishment/analyze-all - batch supply analysis
+    // The real analyzer makes per-supply Claude API calls (Node-only). This
+    // returns a shape-compatible summary; analysis is degraded in the edge fn.
+    // ---------------------------------------------------------------------
+    if (req.method === 'POST' && endpoint === 'analyze-all') {
+      let analyzed = 0;
+      try {
+        const { count } = await admin
+          .from('supply_monitoring')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId);
+        analyzed = count || 0;
+      } catch (_e) {
+        analyzed = 0;
+      }
+      return createCorsResponse(
+        { analyzed, ordersCreated: 0, results: [], degraded: true },
+        200,
+        req,
+      );
+    }
 
     // GET /auto-supply-replenishment/rules - List replenishment rules
     if (req.method === 'GET' && endpoint === 'rules' && !ruleId) {

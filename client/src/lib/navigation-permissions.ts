@@ -841,10 +841,6 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     requiredPermissions: ['audit.logs.view_location', 'compliance.reports.view'],
     minLevel: 5,
   },
-  '/customer-access-management': {
-    requiredPermissions: ['admin.user.view'],
-    minLevel: 4,
-  },
 
   // =====================================================================
   // INTEGRATION ADDITIONAL ROUTES

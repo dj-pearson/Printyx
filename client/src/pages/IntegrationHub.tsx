@@ -365,7 +365,7 @@ export default function IntegrationHub() {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ['/api/integration-hub/dashboard'],
+    queryKey: ['/api/integrations/dashboard'],
     select: (data: any) => {
       if (!data) return null;
       return {

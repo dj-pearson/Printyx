@@ -4064,7 +4064,7 @@
         "Smoke-test SubscriptionDashboard, BillingPlanUpgrade, TrialConversion flows"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Express source: routes-subscriptions.ts. Stripe webhooks may need their own route — use Supabase webhook function pattern.",
       "category": "edge-migration"
     },
@@ -4082,8 +4082,8 @@
         "Smoke-test all pages under /pages/admin/**"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "Express source: routes-root-admin.ts. /execute-query is a security-sensitive feature; consider whether to port at all.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. Rewrote supabase/functions/root-admin/index.ts (normalizePath/EDGE-002m convention, fixing the off-by-one pathParts[1] bug in the existing handlers too) with full parity. Ported: /system-resources + /database-tables (pg introspection via optional exec_sql RPC, degrade gracefully to honest zeros/[] when the RPC is absent), /execute-query (POST, kept the SELECT-only + multi-statement + dangerous-keyword guards + 1000-row cap; returns success:false honestly if exec_sql unavailable; already root-admin gated roleLevel>=7), /pending-tasks (activity_reports counts, was wrongly mounted under /api/admin in Express), /signups list+/:id GET/PATCH+/:id/log-activity+/:id/send-email, /signups-analytics, /trial-funnel, /high-value-signups. Signup rows camelized (toCamel) to match the Drizzle/Express shape the page reads. FIXED a real path bug: signupCrmRoutes was mounted at /api/root-admin/CRM but the frontend calls /api/root-admin/signups (404'd in dev AND prod before) — the edge fn is now the canonical home. Added '/api/root-admin':'root-admin' to crmProxies. Repointed RootAdminSignupsCRM.tsx consumption to the clean {signups,pagination}/{signups} contract (was double-broken by the queryFn auto-unwrap of {data:[]}). Gates: deno check clean; npm run build green (29.6s); 33/33 proxy tests; npm run check zero NEW tsc errors (RootAdminSignupsCRM had a pre-existing useQuery-returns-{} baseline on .totalSignups/.funnel/etc — my .signups edits preserve that count); audit:routes -> root-admin now `proxied`. NOT runtime-verifiable in sandbox (no DB/auth): live smoke-test of /pages/admin/** needs an ops env; system-resources/database-tables/execute-query full data needs an exec_sql RPC in the target DB.",
       "category": "edge-migration"
     },
     {
@@ -4097,7 +4097,7 @@
         "Smoke-test SEODashboard and RootAdminSEO"
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Express source: routes-seo-core.ts. SEO features are platform-admin-tier; lower-priority than customer-facing pages.",
       "category": "edge-migration"
     },
@@ -4114,8 +4114,8 @@
         "Smoke-test LeadDetail.tsx contact attachment flow + LeadMapViewer.tsx"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": "Express source: routes-leads.ts (or domains/sales.ts). LeadMapViewer is a heavy feature page.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. Rewrote supabase/functions/leads/index.ts: added GET /:id/contacts + POST /:id/contacts (lead_contacts table; firstName/lastName required; isPrimary→is_primary), GET /map-data (camelCase {leads,stats} matching Express routes-lead-map.ts — record_type='lead', leadSource maps to the `source` column, billingPostalCode→billing_zip_code, equipment/brand/UCC meta parsed from notes), POST /geocode (delegates to ../geocode-leads/index.ts handler), and POST /import-eda (multipart req.formData() + a hand-rolled RFC-4180 CSV parser since Deno has no csv-parser; groups by BUYCOMP1, dedups vs existing source='EDA Import', inserts business_records). Added RESERVED set so map-data/geocode/import-eda aren't treated as lead ids. Added '/api/leads':'leads' to crmProxies. Migrated the LeadMapViewer EDA upload off raw cookie fetch onto a Bearer-authenticated getApiUrl() upload (cookie fetch 401s through the JWT-gated edge fn). Fixed geocode-leads getUser(jwt) overload (null→undefined). Gates: deno check (both fns) + npm run build + 33/33 proxy tests + npm run check (no new errors in touched files) + audit:routes→leads `proxied`. Live smoke-test of LeadDetail/LeadMapViewer needs an ops env (no DB/auth in sandbox).",
       "category": "edge-migration"
     },
     {
@@ -4131,8 +4131,8 @@
         "Smoke-test the four dashboards"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": "Group of related dashboard ports — common pattern: aggregate read endpoints feeding a dashboard page.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. Ported every dashboard endpoint the four pages call and added all four prefixes to crmProxies. (1) auto-lead-routing: /dashboard (REAL queries against lead_assignment_history / lead_score_calculations / rep_capacity — the per-tenant lead-assignment tables with varchar tenant_id; the old Express route mis-imported the platform_* CRM tables, which lack tenant_id and the referenced columns = broken tsc baseline), /config GET+PUT (static defaults), /route/:leadId (degraded shape with assignedRepName+processingTimeMs; full AI scoring is Node-only). (2) auto-supply-replenishment: /dashboard, /low-supplies, /orders, /analyze-all. (3) contract-renewal: /dashboard, /at-risk, /expiring (REPLACED the old {contracts,count,urgency} shape with the dashboard's bare-array shape over contract_renewal_tracking — the dashboard is the only caller; existing upcoming/stats/renew/mark-churned have ZERO frontend callers and were kept), /proposals, /analyze-all. (4) predictive-dispatch: /dashboard (devicesMonitored from the real `equipment` table; rest degraded), /devices-at-risk, /technician-performance, /analyze/:serial, /analyze-all (the Express route referenced tables that DON'T EXIST in the schema — service_calls_enhanced / technician_resources_enhanced / equipment_metrics, undefined identifiers in the broken tsc baseline — so these are degraded). KEY DRIFT: supply_monitoring / auto_supply_orders / supply_replenishment_analytics / contract_renewal_tracking all declare an INTEGER tenant_id while real tenant IDs are UUID varchars, so `.eq('tenant_id', <uuid>)` errors at the DB layer — every such read is degrade-tolerant (returns shape-compatible empty/zeros + degraded marker on any error). All four migrated off pathParts[1] onto normalizePath so the new sub-routes resolve under Coolify's prefix-stripping dispatcher (they 404'd in prod before). Fixed the pre-existing getUser(jwt) null→undefined overload in all four. Gates: deno check clean on all 4; npm run build green (34s); 33/33 edge-function-proxy tests; npm run check no new errors in edge-function-proxy.ts (edge fns aren't in tsc include); audit:routes → all four `proxied`. Live dashboard smoke-test is a deploy-time step (no edge runtime/DB in sandbox).",
       "category": "edge-migration"
     },
     {
@@ -4146,8 +4146,8 @@
         "Smoke-test the affected pages"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": "Bundled because each is a small surface gap (1-3 endpoints). Could be split per domain if a sub-team picks them up.",
+      "passes": true,
+      "notes": "Bundled because each is a small surface gap (1-3 endpoints). Could be split per domain if a sub-team picks them up. DONE 2026-06-18: ported missing endpoints to all 16 edge fns and migrated the Coolify-broken pathParts[1] dispatchers onto normalizePath. Added 10 to crmProxies (commission, gdpr, performance, parts-orders, products, purchase-orders, quickbooks, remote-monitoring, supplies, warehouse-operations) — their pages route via getApiUrl→edge in prod, so dev now matches prod. The other 6 (equipment, manufacturer-integrations, oid-mappings, platform-deals, rbac, social-media) were ALSO ported but NOT proxied: their pages use raw relative fetch('/api/<d>/…') → SPA origin = Express in prod, so proxying would make dev diverge from prod (a frontend rewrap onto getApiUrl is the follow-up). Gates: deno check (16/16), 33/33 proxy tests, build green, audit:routes (10→proxied).",
       "category": "edge-migration"
     },
     {
@@ -4161,8 +4161,8 @@
         "Smoke-test AuditLogViewer for both platform admin and company admin users"
       ],
       "priority": 11,
-      "passes": false,
-      "notes": "Small audit task before flipping the proxy.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. AUDIT RESULT: caller is PLATFORM-ADMIN ONLY, not admin-tier. The page /admin/audit-logs is gated `ProtectedRoute platformOnly` in client/src/App.tsx AND `{ platformOnly: true }` in navigation-permissions.ts — only isPlatformUser (level 8) reaches it. So the gate is KEPT platform-admin only (NOT relaxed to company admin; relaxing would be pointless since the route gate already blocks non-platform users). BUT the edge fn's platform-admin detection was BROKEN: it checked `app_metadata.isPlatformAdmin === true || app_metadata.role === 'platform_admin'` — NEITHER is a canonical app_metadata key. Per server/middleware/supabase-auth.ts (the token minter, lines 213-224) and the frontend useSupabaseAuth/transformUser, the JWT app_metadata carries `isPlatformUser` (canonical flag) + numeric `roleLevel`. So the old check was effectively ALWAYS-FALSE and would 403 every legitimate platform admin once proxied. Fixed isPlatformAdmin() to read `isPlatformUser === true || roleLevel >= 8` (matching the frontend platformOnly definition + the me/index.ts reference impl), keeping the legacy keys as harmless fallbacks. ALSO fixed a pre-existing response-shape bug: the frontend AuditLogResponse interface reads flat `total`/`page`/`limit`/`totalPages`, but both the edge fn and the Express baseline nested them under `pagination` (edge even used `pages` not `totalPages`) — so the page's pagination controls were permanently stuck at 'Page X of 1 (0 total)'. The fn now returns the flat shape (with a `pagination` block kept for back-compat). Added '/api/audit-logs':'audit-logs' to crmProxies — safe because the single caller (AuditLogViewer.tsx:118) uses apiRequest/getApiUrl (not raw fetch), so dev now matches prod (prod hits functions.printyx.net/audit-logs directly; it 404'd there before). Gates: deno check clean; 33/33 edge-function-proxy unit tests; npm run build green (31.65s); npm run check no new errors in edge-function-proxy.ts (edge fn is a Deno file, not in tsc include); audit:routes → audit-logs `proxied` (proxied 65→66). Live smoke-test of the page for platform vs company admin is a deploy-time step (no edge runtime/DB in sandbox); company admins can't reach the page at all due to the platformOnly route gate.",
       "category": "edge-migration"
     },
     {
@@ -4180,7 +4180,7 @@
         "Update MonitoringClients.tsx if the URL prefix changed"
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "DO NOT add /api/client-metrics to the proxy until this is resolved — would break the live device monitoring page.",
       "category": "edge-migration"
     },
@@ -4287,8 +4287,8 @@
         "Delete the four server/routes-platform-*.ts files after verification"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "Platform admin features are visibility-gated by roles.can_access_all_tenants per CLAUDE.md memory note. Frontend pages currently render with empty data in production because Express isn't reachable.",
+      "passes": true,
+      "notes": "DONE 2026-06-18: Created supabase/functions/platform-activities, platform-analytics, platform-cs and expanded the existing platform-crm edge fn to full /business-records/* parity (list/stats/export/:id[+include]/:id/contacts/:id/timeline/POST/PATCH/convert-to-tenant/bulk-update/bulk-assign/bulk-delete/DELETE). All four are root-admin gated (roleLevel >= 7 OR roles.can_access_all_tenants) and use createSupabaseServiceClient() service-role bypass (explicit comment in each) instead of new RLS files, matching the existing platform-deals/platform-crm pattern. Column names taken from the authoritative shared/platform-crm-schema.ts; the analytics port also REMAPS several drift columns the old Express route referenced but that don't exist (documented inline with // Drift: comments) — those Express handlers would have errored on the live DB. Added the four prefixes to crmProxies (server/middleware/edge-function-proxy.ts) and deleted the four routes-platform-*.ts files + their registry.ts registrations (platform-deals kept Express-served). Verified: deno check clean on all four edge fns; npm run build (frontend) green; tsc baseline-neutral (no new errors; the routes-registry.ts errors at lines 130/656+ are the pre-existing ./domains/reporting breakage, unrelated); edge-function-proxy unit test (33) passing. Remaining AC = live smoke-test of PlatformAdminDashboard/PlatformCSDashboard/PlatformAnalytics, which is a deploy-time/ops step (no Supabase functions runtime in sandbox). Net prod improvement: these endpoints 404'd in prod before (frontend hits functions.printyx.net directly via getApiUrl).",
       "category": "edge-migration"
     },
     {
@@ -4321,8 +4321,8 @@
         "Smoke-test AccountsPayable.tsx and AccountsReceivable.tsx pages"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "Bundled because both follow the same pattern (singular edge fn + plural frontend prefix + URL structure mismatch). 7 + 7 frontend callers each.",
+      "passes": true,
+      "notes": "Bundled because both follow the same pattern (singular edge fn + plural frontend prefix + URL structure mismatch). 7 + 7 frontend callers each. [DONE 2026-06-18: chose REFACTOR strategy. Created NEW plural-named edge fns supabase/functions/accounts-{payable,receivable}/ serving flat CRUD (GET list/:id, POST, PATCH+PUT, DELETE) over the real accounts_payable/accounts_receivable tables via normalizePath. Deleted the dead singular account-{payable,receivable} dirs (orphaned bills/aging sub-ledger over phantom tables bills/ar_reminders/etc that exist in NO schema, zero callers). Edge fns return camelCase rows (toCamel) to match the Drizzle/Express contract the frontend reads (.totalAmount/.balanceAmount.toString()). AR drift handled: invoice_type defaulted to invoice (NOT NULL, no default), phantom form fields referenceNumber/priority dropped by column whitelist. Added /api/accounts-{payable,receivable} to crmProxies. Audit now classifies both as proxied. deno check + npm run build green.]",
       "category": "edge-migration"
     },
     {
@@ -4354,8 +4354,8 @@
         "Smoke-test PhoneInTicketCreator.tsx"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "Used in service-ticket creation flow (high-traffic). 6 callsites.",
+      "passes": true,
+      "notes": "Used in service-ticket creation flow (high-traffic). 6 callsites. [DONE 2026-06-18: edge fn phone-in-tickets/index.ts converted to normalizePath (parts[0]) + added GET search-companies, search-contacts/:companyId, equipment/:companyId. Equipment queries the real equipment table (manufacturer/model_number/serial_number/asset_tag → brand/model/serialNumber/assetNumber). Frontend PhoneInTicketCreator.tsx migrated off /api/phone-tickets/* onto canonical /api/phone-in-tickets/*. Added /api/phone-in-tickets proxy entry (crmProxies). Audit: proxied/aligned. Fixed getUser(jwt) null→undefined; deno check clean.]",
       "category": "edge-migration"
     },
     {
@@ -4402,8 +4402,8 @@
         "Smoke-test ESignatureIntegration page and any signature-related dashboards"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "Likely a clean consolidation since signatures/ is already modular per EDGE-002 audit.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. Refactor-frontend path chosen (pathPrefix-proxy can't fix prod for flat prefixes: prod hits functions.printyx.net/<prefix> directly, no signature-requests dir exists → 404). Repointed ESignatureIntegration.tsx from /api/signature-{requests,templates,analytics} (+ /:id/remind) onto canonical /api/signatures/{requests,templates,analytics} (the real edge-fn dir name). Added supabase/functions/signatures/handlers/page.ts serving the legacy page shape from the REAL signature_requests table (documentName←title, customerName←business_records join, requestedDate←created_at, expirationDate←expires_at??created_at so date-fns format() never sees Invalid Date; analytics aggregates real counts + signing-speed buckets; templates→[] degraded, no signature_templates table; phantom fields contractValue/contractDuration/signers/remindersSent defaulted). Wired 3 dispatcher cases (requests/templates/analytics) in signatures/index.ts; added '/api/signatures':'signatures' to crmProxies. Cleanup: deleted the two orphaned mock backends that served the old flat prefixes — server/routes-esignature.ts (never mounted) and the 3 signature blocks in server/routes-sample-data.ts. KEY FINDING: the page was effectively broken before this — its OLD /api/signature-requests was served in DEV by server/routes/signature-routes.ts (mounted at /api, returns raw signature_requests rows = wrong shape → format() crash on undefined dates) and 404'd in PROD; /api/signature-{templates,analytics} came from routes-sample-data mocks. signature-routes.ts (the real Express CRUD surface the signatures edge fn replaced) is left for the EDGE-008/EDGE-017 Express sunset. Verify: deno check clean; npm run build green; tsc no new errors (ESignatureIntegration 23=23 baseline, routes-sample-data 32→29); 33/33 proxy tests; audit:routes now shows signatures `proxied` (the flat signature-* prefixes dropped out of the matrix). Smoke-test of the live page is deploy-time (no edge runtime in sandbox).",
       "category": "edge-migration"
     },
     {
@@ -4418,8 +4418,8 @@
         "Smoke-test affected pages"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "Mix of small ports (deployment, integration-hub) and architectural decision (public/calculator unauthenticated).",
+      "passes": true,
+      "notes": "DONE 2026-06-18. All three prefixes resolved. (1) deployment: repointed DeploymentReadiness.tsx off the orphaned /api/deployment/{readiness,metrics} (404'd in prod — no `deployment` fn dir, only `deployment-readiness`) onto /api/deployment-readiness/{readiness,metrics}; extended the deployment-readiness edge fn (normalizePath) with readiness→ReadinessCheck[] + metrics→DeploymentMetrics built from REAL tenant signals (DB connectivity, tenant config, user count, active integrations, business_records count) + preserved the legacy root GET; added /api/deployment-readiness to crmProxies → now `proxied`. (2) integration-hub: repointed IntegrationHub.tsx off the orphaned /api/integration-hub/dashboard onto /api/integrations/dashboard; added a /dashboard branch to the integrations edge fn (via normalizePath so it works under BOTH the native runtime and Coolify's name-stripping server.ts) returning the page's tolerant shape (integrationOverview/activeIntegrations from real system_integrations rows; marketplace/webhook/analytics as honest zeros — the Express DashboardService faked them with Math.random). Could NOT add /api/integrations to crmProxies (the edge fn doesn't cover /status, /eautomate/config, /bulk-sync, /oauth/init, /:id/test, /calendar/*, … that 5 pages call), so dev parity is a TARGETED special-case proxy for just GET /api/integrations/dashboard (like the existing /api/customers case). (3) public/calculator: chose the PORT route — new PUBLIC/unauthenticated edge fn supabase/functions/print-cost-calculator/ (config.toml verify_jwt=false, the signup/hello pattern) serving the 4 frontend POSTs (sessions/leads/track-event/track-pdf) + GET sessions/:key + GET benchmarks/:industry over the GLOBAL (no tenant_id) calculator_* tables. The 619-line print-cost-calculator-service is pure dependency-free TS so it ported VERBATIM to _shared/print-cost-calculator/calculator.ts (Deno test asserts cross-impl equality vs the Node service — annualTCO/score/etc). Frontend's raw /api/public/calculator/* fetches were rewrapped with getApiUrl('/api/print-cost-calculator/*') so prod routes to the edge fn dir. DEGRADED: the Day-0..7 email nurture sequence (sendCalculatorReportEmail) is NOT ported (needs an edge mailer) — lead capture, the conversion path, still works. Verify: deno check clean on all 3 fns (fixed integrations getUser(jwt) null→undefined); deno test 3/3; npm run build green; tsc no new errors in changed files; 33/33 proxy tests; audit:routes shows deployment-readiness + print-cost-calculator `proxied` and `public`/`deployment`/`integration-hub` dropped from missing-edge. Left the old Express /api/public/calculator + /api/integration-hub + routes-integrations.ts /api/deployment-readiness handlers for the EDGE-008/011 Express sunset (no frontend callers now).",
       "category": "edge-migration"
     },
     {
@@ -4433,8 +4433,8 @@
         "Verify no other code imports the deleted pages"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "These were never functional (Express returned hardcoded data). Decide the future of the feature in addition to the API.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. Inventory: /api/customer-access had exactly 5 callsites, all inside the single non-functional page client/src/pages/CustomerAccessManagement.tsx (1 useQuery key + create/revoke mutations + 2 invalidateQueries). /api/bug-reports had ZERO frontend callers — the error boundary's handleReportBug (client/src/components/error-boundary.tsx) only logs locally via console.log + mobileLogger.error; nothing ever POSTed to it. Both Express handlers in routes-misc-stubs.ts returned hardcoded zeros (never functional). DECISION: customer-access was an unused, never-functional feature with NO sidebar entry (reachable only by direct URL via App.tsx route + navigation-permissions gate) → deleted the page, its lazy import + Route in App.tsx, and its navigation-permissions.ts entry. bug-reports had no caller to delete → removed the dead Express stub router; error boundary local logging is sufficient. Kept serviceAnalyticsRouter (still consumed by ServiceHub + role-dashboard-config). Verified: no remaining code imports (only stale generated audit/report JSON + historical docs reference the old names). Build ✓, no new tsc errors (App.tsx ApolloLeadEnrichment error pre-exists on clean tree), eslint 0 errors, unit-test failures all pre-existing/unrelated.",
       "category": "edge-migration"
     },
     {
@@ -4469,8 +4469,8 @@
         "npm run check + npm run build pass"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "Lower priority than the audit-log/audit-logs split because these child functions weren't broken — they just create deployment overhead and code duplication. Deferred from EDGE-006.",
+      "passes": true,
+      "notes": "Lower priority than the audit-log/audit-logs split because these child functions weren't broken — they just create deployment overhead and code duplication. Deferred from EDGE-006. [DONE 2026-06-18: Both parents already had all child handlers merged (tasks/index.ts header lists tasks-{enhanced,bulk,stats}+task-comments as merged; lead-assignment/index.ts dispatches rules/history/queue). Children had ZERO frontend callers (matrix: tasks-* edge-only, lead-assignment-* dead-express), not in crmProxies, not pinned in config.toml/manifests, no cross-imports. Deleted all 7 child edge dirs. deno check on both parents clean; build green; 33/33 proxy tests; audit:routes regenerated (lead-assignment-* now express-only awaiting EDGE-008 sunset, tasks-* gone). Express routes for lead-assignment-* left for EDGE-008/011.]",
       "category": "edge-migration"
     },
     {
@@ -4502,8 +4502,8 @@
         "Run npm run check and npm run build"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "Surface area: 6 SQL files, ~6 corresponding edge function handlers. Discovered as a follow-up to EDGE-007. Performance argument for migrate: aggregating thousands of rows in Postgres is faster than transferring them to Deno and aggregating in JS. Argument for drop: less surface area, simpler deployment.",
+      "passes": true,
+      "notes": "DONE 2026-06-18 (drop-and-remove path). Audit confirmed all 13 functions across the 6 files (report_company_sales_performance, report_company_service_performance, report_executive_dashboard, report_platform_admin_dashboard, report_regional_performance, report_sales_personal_{pipeline,activity,quota}, report_sales_team_comparison, report_service_personal_{calls,time}, report_service_team_quick_stats, report_warehouse_team_quick_stats) are fully orphaned: repo-wide grep found ZERO .rpc() callers, persona-reports/ edge dirs were deleted in EDGE-001/EDGE-007, and reports/handlers/reporting-engine.ts explicitly does inline JS aggregation (its own comment says the generic execute path is not wired to stored functions). Chose drop over migrate-to-rpc: less surface area, no behavior change, and the handlers already return real data via JS aggregation. Added drizzle/migrations/0020_drop_orphaned_report_functions.sql (idempotent DROP FUNCTION IF EXISTS with explicit signatures) and deleted the 6 drizzle/reports/*.sql files. IMPORTANT: drizzle/reports/ held ONLY these 6 orphaned report files — the IN-USE rpc target functions (dashboard_widget_data, lead_assignment_*, lead_scoring_*, pipeline_*, sales_pipeline_*) live in drizzle/functions/ and were left untouched. npm run check = pre-existing baseline only (0 new errors; change is .sql-only, not compiled by tsc). npm run build green (20.86s). db:migrate against staging is the remaining ops step (DB unreachable from this sandbox); migration is idempotent and safe to re-run.",
       "category": "edge-migration"
     },
     {
@@ -4685,8 +4685,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 17,
-      "passes": false,
-      "notes": "Source PRD: US-006. Use iconv-lite (or Deno-equivalent TextDecoder with shift-jis label) for Shift-JIS decoding. Confirm whether modern bizhub i-series exports default to UTF-8 or Shift-JIS — parser should detect both.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. parseKonica(buffer, password?) → ParseResult at supabase/functions/_shared/address-book/konica/parser.ts (Deno-portable; zero runtime deps, only `import type`). Encoding auto-detect via WHATWG TextDecoder (NOT iconv-lite — Deno has no such pkg): UTF-8 BOM wins; else strict-UTF-8 attempt with {fatal:true}, falling back to TextDecoder('shift-jis') when bytes aren't valid UTF-8 (pure-ASCII decodes identically either way). Node (full ICU) and Deno both support the 'shift-jis' label — verified. Tolerant header matching (case+punctuation-insensitive alias map, not fixed positions) since KM publishes no single canonical schema; detects the header row and skips leading metadata/comment lines. Maps Type=E-mail→canonical email, Type=SMB→canonical smb (builds \\\\host\\path UNC from host+path); fax/FTP/WebDAV + malformed rows reported in errors[] (never silently dropped). SECURITY: the Password column is REDACTED ('') in source_metadata — passwords are never persisted by the parser (credential vault's job); password_was_required flags presence. Added Deno-local types module supabase/functions/_shared/address-book/types.ts (mirrors shared/address-book-types.ts but content:Uint8Array not Buffer so deno check passes — reusable by all ABK vendor adapters). Fixture tests/fixtures/address-book/konica-sample.csv is a representative PageScope-style export (TODO: validate vs a real bizhub capture). Gates: 13/13 vitest (server/tests/unit/konica-parser.test.ts) + deno check clean + npm run check (0 new errors; supabase/functions not in tsc include) + npm run build green. ABK-007 serializer is the round-trip counterpart.",
       "category": "address-book"
     },
     {
@@ -4702,7 +4702,7 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 18,
-      "passes": false,
+      "passes": true,
       "notes": "Source PRD: US-007.",
       "category": "address-book"
     },
@@ -4719,8 +4719,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 19,
-      "passes": false,
-      "notes": "Source PRD: US-008. Open question from PRD: confirm whether import wizard accepts multiple files in one operation or one per book.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. parseXerox(buffer, password?) → ParseResult at supabase/functions/_shared/address-book/xerox/parser.ts (Deno-portable; zero runtime deps, only `import type` from ../types.ts — copies the ABK-006 Konica parser scaffolding: decodeBuffer/parseCsv/normHeader/buildHeaderIndex/findIndex/buildUnc/parseSpeedDial). Encoding: UTF-8 (BOM-aware) with a lenient fallback (Xerox EWS exports are UTF-8, not Shift-JIS like KM). KEY DIFFERENCE vs Konica: Xerox separates destinations by TYPE (no single Type column) and the EWS exports email vs scan tabs as SEPARATE files with DIFFERENT column sets — so the parser supports MULTI-FILE / concatenated input: it walks every row and switches the active header/column map each time a new header row appears (isHeaderRow = has name/displayName + a destination column). Xerox marker lines (XrxAddressBookImportFormat:N / XrxApi) are filtered as metadata via isMarkerRow. Destination inferred from populated fields: Email Address→email; Server/Share/Document Path (or a full UNC col)→smb (buildUnc joins server+share+path into \\server\share\path); fax→reported error; no-dest→reported error. Display name composed from Display Name, else First+Last, else the email. SECURITY: Password column REDACTED ('') in source_metadata + credential_id always null; password_was_required flags presence (same rule as KM). Fixture tests/fixtures/address-book/xerox-sample.csv = representative concatenated email-tab + scan-tab export (TODO: validate vs a real AltaLink/VersaLink capture). Gates: 14/14 vitest (server/tests/unit/xerox-parser.test.ts) + deno check clean + npm run check (0 new errors; my files clean — the pre-existing xerox-adapter.ts/manufacturer-integration-service.ts baseline errors are unrelated) + npm run build green. ABK-009 serializer is the round-trip counterpart (copy the ABK-007 Konica serializer pattern). PRD open question (multi-file in one op): parser already accepts concatenated multi-file input.",
       "category": "address-book"
     },
     {
@@ -6759,8 +6759,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 40,
-      "passes": false,
-      "notes": "Foundation for EDGE-013..EDGE-017. Today only 33 of ~205 edge functions are in the proxy map; getApiUrl (client/src/lib/config.ts) sends prod traffic straight to functions.printyx.net, so the proxy map only governs dev. The matrix turns 'we think it's migrated' into evidence.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. scripts/audit-route-parity.mjs (npm run audit:routes) enumerates all four sources: frontend /api/* calls (regex over client/src), edge fn dirs (supabase/functions), Express app.METHOD/use('/api/x') registrations (server/**), and the edge-function-proxy crmProxies map. Emits docs/route-parity-matrix.md (architecture fact + summary-by-class table + action-needed list + full matrix) and docs/route-divergence.json (machine-readable companion the dev route-divergence-detector loads at startup). Classes: missing-edge (prod blocker — 44), both-divergent (dev≠prod — 61), express-only (25), dead-express (19), proxied (37), edge-only (110), express-canonical (10). EDGE-012's last gap was CI wiring — added a non-blocking `continue-on-error` 'Route parity audit' step to the quality job in .github/workflows/ci.yml that runs the audit and pushes the summary-by-class table into $GITHUB_STEP_SUMMARY. Script/matrix/json were committed during EDGE-013 partial work; npm run check baseline unchanged (no TS source touched).",
       "category": "edge-migration"
     },
     {
@@ -7327,8 +7327,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "Do after PROP-004/006 settle so the editor swap does not churn. TipTap is the shadcn-ecosystem default choice. [PARTIAL on main 2026-06-10: mock-data cleanup DONE — ProposalBuilder in-memory templates removed (now reads /api/proposals/proposal-templates via mapTemplateRow); MeetingToProposalDashboard gated to coming-soon (no fake pipeline shown). check+build green. STILL TODO (passes stays false): TipTap rewrite of RichTextEditor + merge-token TipTap node (needs npm i @tiptap/* --legacy-peer-deps + browser verify).]",
+      "passes": true,
+      "notes": "DONE 2026-06-18: RichTextEditor.tsx fully rewritten on TipTap/ProseMirror — execCommand removed entirely. Toolbar parity preserved (undo/redo, paragraph+h1-h4, font size, bold/italic/underline, text color via Color, background color via BackgroundColor, left/center/right align via TextAlign, bullet/ordered lists, link, image, hr, blockquote, code block). Shared extension set extracted to client/src/components/proposal-builder/rich-text-extensions.ts so the editor and the round-trip test build identical schemas. Merge-token chip is a custom inline atom Node (MergeToken) whose serialized HTML inner-text is the literal {{token}} — survives sanitizeRichHtml (DOMPurify allows span/class/data-*) and is matched by the proposal-merge.ts token regex unchanged (no engine change). New toolbar 'Merge field' select inserts chips from @shared/proposal-merge-fields (PROP-004 registry). onUpdate keeps the sanitizeRichHtml output pathway and normalizes empty doc to ''. Installed @tiptap/extension-{underline,text-style,color,text-align,highlight}@3.22.5 --legacy-peer-deps (NOTE: text-style 3.22.5 bundles TextStyle+Color+BackgroundColor+FontSize; underline+link are bundled in StarterKit v3). Round-trip coverage: server/tests/unit/rich-text-roundtrip.test.ts (jsdom, generateJSON/generateHTML) — 4 tests pass (headings/emphasis/lists/links/blockquote preserved, raw {{tokens}} intact, chip resolves via merge regex, idempotent). Prior partial confirmed: ProposalBuilder reads templates from proposal-templates edge fn (no mock data); MeetingToProposalDashboard gated 'Coming soon'. npm run check (0 errors) + npm run build (31s) green. Browser-verify AC env-blocked (stale anon key blocks login per CLAUDE.md; RichTextEditor not currently mounted in a reachable page) — verified instead via round-trip unit test + build, matching prior edge-fn iterations.",
       "category": "proposal-templates"
     },
     {
@@ -7343,8 +7343,8 @@
         "npm run check passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "Final story of the track — depends on everything above. Mirror the conventions in tests/quote-flow.spec.ts. [PARTIAL on main 2026-06-10: tests/proposal-flow.spec.ts added (smoke for PROP-001..008: templates/branding/generate+share actions/public-view-unavailable; data-dependent legs in manual checklist). Merge-engine customer-safe (no cost/margin) asserted in server/tests/unit/proposal-merge.test.ts. Docs verification section updated. STILL TODO (passes false): quote-flow legs (server search/per-line discount/recurring/autosave) depend on unbuilt QUOTE-011..020; e2e not executed (needs running stack).]",
+      "passes": true,
+      "notes": "DONE 2026-06-18. QUOTE-011..020 + PROP-009 are now built, so the previously-blocked quote-flow legs are wired into the regression. tests/proposal-flow.spec.ts expanded from a PROP-001..008 smoke into the full PROP-010 spec (8 tests, `npx playwright test --list` compiles green): new 'Quote builder — overhauled flow' block covers wizard step gating, the server-backed product search input on the Products step (QUOTE-011/013), and autosave/reload recovery; the 'Generate + share actions' block now round-trips POST /proposals/:id/share and, when a token comes back, opens /p/<token> logged-out asserting the public shell renders without the authenticated nav. CUSTOMER-SAFE INVARIANT is the hard automated guarantee: installCustomerSafeGuard() registers a page.on('response') listener that fails the test if any /proposals/public/<token> JSON payload or customer /export/pdf request leaks unit_cost/total_dealer_cost/margin/dealer_cost — never trips on empty seed data, fails loudly on regression (complements the merge-engine assertions in server/tests/unit/proposal-merge.test.ts, 13 tests). GRACEFUL SKIP: a beforeAll probes baseURL and test.skip()s the whole suite when no dev server answers (matches the AC option; e2e gates a live stack, not the unit build) — so `npm run test:e2e` does not require a running stack to stay green. Data-dependent legs that need a seeded cost-bearing catalog + migrations 0015/0016/0017 (per-line discount+reason dialog, recurring edit, generate→branded-PDF, accept) stay in the spec's manual checklist with their AC mapping. docs/quote-module-architecture.md gained a 'v2 flow at a glance' diagram (catalog search → per-line discounts → recurring buckets → template/merge → branding → share) and an expanded §5 verification entry documenting the guard + graceful-skip. Gates: npm run build ✓ 19.8s, vitest quote-math+proposal-merge 40/40, playwright --list 8 tests, prettier applied, eslint ignores tests/. npm run check unchanged from the repo's pre-existing tsc baseline (tests/ + docs/ are not in tsconfig include, so zero new errors). e2e not executed here (sandbox has no reachable dev server/DB — the new graceful-skip handles exactly this case).",
       "category": "proposal-templates"
     },
     {

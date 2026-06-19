@@ -593,18 +593,13 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerMobileApiRoutes(app);
 
   // ─── Platform CRM ─────────────────────────────────────────────────
-  const platformBusinessRecordsRoutes = (await import('./routes-platform-business-records'))
-    .default;
+  // EDGE-004: /api/platform-crm, /api/platform-activities, /api/platform-cs and
+  // /api/platform-analytics are now served by Supabase edge functions (wired via
+  // crmProxies in middleware/edge-function-proxy.ts). The old Express routers
+  // (routes-platform-business-records/activities/customer-success/analytics.ts)
+  // were deleted. platform-deals remains Express-served in dev.
   const platformDealsRoutes = (await import('./routes-platform-deals')).default;
-  const platformActivitiesRoutes = (await import('./routes-platform-activities')).default;
-  const platformCustomerSuccessRoutes = (await import('./routes-platform-customer-success'))
-    .default;
-  const platformAnalyticsRoutes = (await import('./routes-platform-analytics')).default;
-  app.use('/api/platform-crm', platformBusinessRecordsRoutes);
   app.use('/api/platform-deals', platformDealsRoutes);
-  app.use('/api/platform-activities', platformActivitiesRoutes);
-  app.use('/api/platform-cs', platformCustomerSuccessRoutes);
-  app.use('/api/platform-analytics', platformAnalyticsRoutes);
 
   // ─── Phase 3 Modular Routes ───────────────────────────────────────
   registerContactsRoutes(app);

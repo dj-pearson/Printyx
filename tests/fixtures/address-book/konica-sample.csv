@@ -1,0 +1,9 @@
+# KONICA MINOLTA bizhub C300i Address Book Export (PageScope Data Administrator)
+No,Type,Name,Sort Name,Short Name,E-mail Address,Host Address,File Path,User ID,Password
+1,E-mail,Andy Mortenson,Andy Mortenson,Andy,amortenson@infomaxoffice.com,,,,
+2,E-mail,Nate Ohnemus,Nate Ohnemus,Nate,nohnemus@infomaxoffice.com,,,,
+3,E-mail,,,,noname@infomaxoffice.com,,,,
+10,SMB,Scan to ACH,Scan ACH,ACH,,IOSI-FILESERV,Data\Laserfiche Scan Folders\ACH,scanuser,Secret123
+11,SMB,Accounting Share,Accounting,ACCT,,192.168.1.50,Shared\Accounting,svc_scan,
+20,Fax,Front Desk Fax,Front Desk,FAX,,,,,
+30,E-mail,Broken Entry,Broken,,,,,,

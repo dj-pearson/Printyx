@@ -1,0 +1,36 @@
+<testsuites id="" name="" tests="8" failures="0" skipped="8" errors="0" time="0.15708699999999998">
+<testsuite name="proposal-flow.spec.ts" timestamp="2026-06-18T22:26:39.515Z" hostname="chromium" tests="8" failures="0" skipped="8" time="0" errors="0">
+<testcase name="Quote builder — overhauled flow › wizard renders the 4 steps and gates Products behind a customer" classname="proposal-flow.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Quote builder — overhauled flow › Products step exposes the server-backed product search" classname="proposal-flow.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Quote builder — overhauled flow › autosave persists a draft across reload (recovery)" classname="proposal-flow.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Proposal templates › templates page renders with a New Template action" classname="proposal-flow.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Proposal templates › New Template dialog collects a name and type" classname="proposal-flow.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Branding › branding settings page renders the editor" classname="proposal-flow.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Generate + share actions › quotes row menu exposes Generate Proposal + Copy Share Link" classname="proposal-flow.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+<testcase name="Public proposal view › an invalid/expired share token shows the unavailable state, not the app" classname="proposal-flow.spec.ts" time="0">
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+</testsuites>
