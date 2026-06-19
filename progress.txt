@@ -7550,3 +7550,64 @@ Files Modified:
 - prd.json (ABK-006 passes:true)
 
 ---
+
+Iteration 20 (06/18/2026 21:32:04): Story LAUNCH-011
+Status: Needs Review
+
+Iteration 21 (06/18/2026): Story ABK-007 — Konica Minolta address book CSV serializer
+Status: COMPLETE (passes: true)
+
+Key Changes:
+- NEW supabase/functions/_shared/address-book/konica/serializer.ts exports
+  serializeKonica(book, entries, options) -> SerializeResult. Counterpart to the
+  ABK-006 parser. Dependency-free (only `import type` from ../types.ts) so it runs
+  under BOTH Deno (edge) and Node (vitest).
+- NEW server/tests/unit/konica-serializer.test.ts — 10 vitest tests incl. the
+  load-bearing parse -> serialize -> parse round-trip equality test.
+
+Design / Gotchas:
+- Column order matches the parser fixture EXACTLY (No,Type,Name,Sort Name,Short
+  Name,E-mail Address,Host Address,File Path,User ID,Password) — every header
+  normalizes to an alias the ABK-006 parser already recognizes, which is what
+  makes the round trip lossless.
+- Encoding: UTF-8 with a 3-byte BOM (0xEF 0xBB 0xBF) prepended manually to the
+  TextEncoder output; CRLF line endings (KM is DOS-style; parser handles both).
+- Type values: 'E-mail' and 'SMB' (classifyType in the parser matches these).
+- SECURITY: Password column is ALWAYS empty — canonical SMB entries carry a
+  credential_id reference, not plaintext, so the serializer has nothing to leak.
+  A test asserts 'Secret123' never appears in the output.
+- Index allocation: KM registration range 1..2000. Pass 1 honours valid,
+  non-colliding source speed_dial_index; pass 2 fills the rest from the lowest
+  free slot. Reassignments (out-of-range / duplicate) are recorded as report
+  warnings; when source_vendor != konica the original index is preserved on the
+  entry's source_metadata as km_original_index (AC requirement).
+- ConversionReport.unmappable_fields: group entries are dropped+reported (KM v1 =
+  email+smb only); vendor-specific source_metadata keys (scan resolution, color
+  mode, scan profile, duplex, protocol, i-fax, security options) are reported via
+  a regex pattern table WITHOUT dropping the entry.
+- Round-trip subtlety: compare only the canonical fields the parser can
+  reconstruct (entry_type, display_name, sort/short_name, speed_dial_index,
+  email | smb_full_unc/host/share_path/username). Passwords + credential_id are
+  intentionally not round-trippable.
+- ESTABLISHED THE FIRST VENDOR SERIALIZER PATTERN — ABK-009 (Xerox) and ABK-011
+  (Ricoh) serializers should mirror this file's structure: dep-free import type,
+  csvCell RFC-4180 escaper, allocateIndices, UNMAPPABLE_KEY_PATTERNS table,
+  BOM+CRLF encode, SerializeResult with filename + ConversionReport.
+
+Gates:
+- npx vitest run konica-serializer.test.ts: 10/10 pass
+- konica-parser.test.ts: 13/13 still pass (no regression)
+- deno check serializer.ts: clean
+- npm run check: 0 new errors naming my files (large pre-existing baseline only;
+  grep for konica-serializer/konica/serializer returns empty)
+- npm run build: green (34s)
+- prettier --write on the 2 touched files (NOT format:write)
+
+Files Created:
+- supabase/functions/_shared/address-book/konica/serializer.ts
+- server/tests/unit/konica-serializer.test.ts
+
+Files Modified:
+- prd.json (ABK-007 passes:true)
+
+---
