@@ -10,6 +10,7 @@ import { BusinessContextStep } from '@/components/calculator/BusinessContextStep
 import { CalculatorResults } from '@/components/calculator/CalculatorResults';
 import { EmailCaptureModal } from '@/components/calculator/EmailCaptureModal';
 import type { FleetInputs, CalculatorSession } from '@/components/calculator/types';
+import { getApiUrl } from '@/lib/config';
 import { v4 as uuidv4 } from 'uuid';
 
 const STEPS = [
@@ -37,7 +38,7 @@ export default function PrintCostCalculator() {
   // Calculate results mutation
   const calculateMutation = useMutation({
     mutationFn: async (data: FleetInputs) => {
-      const response = await fetch('/api/public/calculator/sessions', {
+      const response = await fetch(getApiUrl('/api/print-cost-calculator/sessions'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -67,7 +68,7 @@ export default function PrintCostCalculator() {
 
   const trackEvent = async (eventType: string, eventData: Record<string, any>) => {
     try {
-      await fetch('/api/public/calculator/track/event', {
+      await fetch(getApiUrl('/api/print-cost-calculator/track/event'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

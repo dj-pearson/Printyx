@@ -6672,3 +6672,88 @@ Files Modified:
 - server/routes-esignature.ts (deleted — orphaned mock router)
 - prd.json (EDGE-005e passes:true), docs/route-parity-matrix.md + route-divergence.json (regen)
 
+
+Iteration 9 (06/18/2026 18:50:03): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+## Iteration - EDGE-005f: Resolve deployment, integration-hub, public/calculator alias targets
+Completed: 2026-06-18
+Status: COMPLETE
+
+Key Changes:
+- deployment: DeploymentReadiness.tsx repointed /api/deployment/{readiness,metrics}
+  -> /api/deployment-readiness/{readiness,metrics} (the orphaned /api/deployment/*
+  404'd in prod: getApiUrl strips /api/ and there is no `deployment` fn dir, only
+  `deployment-readiness`). Extended supabase/functions/deployment-readiness/index.ts
+  with normalizePath + GET readiness (ReadinessCheck[]) + GET metrics
+  (DeploymentMetrics), both built from REAL tenant signals (DB connectivity, tenant
+  row, user count, active integrations, business_records count); legacy root GET
+  preserved. Added /api/deployment-readiness to crmProxies -> `proxied`.
+- integration-hub: IntegrationHub.tsx repointed /api/integration-hub/dashboard ->
+  /api/integrations/dashboard. Added a /dashboard branch to
+  supabase/functions/integrations/index.ts via normalizePath (robust under BOTH the
+  native runtime AND Coolify's name-stripping server.ts). Returns the page's tolerant
+  shape: integrationOverview + activeIntegrations from real system_integrations rows;
+  marketplace/webhook/analytics as honest zeros (the Express DashboardService faked
+  them with Math.random). Could NOT proxy the whole /api/integrations prefix (edge fn
+  lacks /status, /eautomate/config, /bulk-sync, /oauth/init, /:id/test, /calendar/*
+  that 5 pages call) so dev parity is a TARGETED special-case proxy for just
+  GET /api/integrations/dashboard.
+- public/calculator: NEW PUBLIC edge fn supabase/functions/print-cost-calculator/
+  (config.toml verify_jwt=false). Ports the 4 frontend POSTs + GET sessions/:key +
+  GET benchmarks/:industry over the GLOBAL (no tenant_id) calculator_* tables. The
+  619-line print-cost-calculator-service is pure dependency-free TS -> ported VERBATIM
+  to _shared/print-cost-calculator/calculator.ts. Frontend raw fetches rewrapped with
+  getApiUrl('/api/print-cost-calculator/*'). Added crmProxies entry. DEGRADED: Day-0..7
+  email nurture sequence NOT ported (needs edge mailer); lead capture still works.
+
+Gotchas Discovered:
+- The calculator pages used RAW relative fetch('/api/public/calculator/*'), NOT
+  getApiUrl/apiRequest. Raw relative fetch hits the SPA origin (Express today), so it
+  was never edge-routed and "worked" in dev/prod via Express -> NOT a current prod
+  blocker, but it IS once Express sunsets. Rewrapping with getApiUrl is what makes it
+  edge-routed. (Contrast: useQuery's default fetcher DOES use getApiUrl, so the
+  deployment + integration-hub queries genuinely 404'd in prod.)
+- The integrations edge fn uses the OLD pathParts[1] convention (assumes the fn name
+  is still in the path) -> already broken under Coolify server.ts for its existing
+  routes. New routes here use normalizePath so they survive both runtimes.
+- config.toml: per-function `[functions.<name>] verify_jwt = false` is the established
+  pattern for public fns (signup, hello). Under Coolify server.ts there is no gateway
+  auth anyway; the fn just self-skips auth.
+- Pure dependency-free services port to Deno _shared verbatim and become deno-test-able
+  (assert cross-impl equality against the Node original) -> real in-sandbox verification
+  even without an edge runtime or DB.
+
+PITFALL (cost me time): `npm run format:write` runs prettier across the WHOLE repo and
+reformatted ~1945 files (mostly line-ending-only churn git status flags but git diff
+normalizes away). Do NOT commit that. Revert with: build a keeper list, then
+`git status --porcelain | sed 's/^...//' | grep -vxF -f keepers | xargs -d '\n' git checkout HEAD --`
+(use git STATUS, not git diff --name-only — diff hides the line-ending-only changes).
+Then `npx prettier --check` only your touched files.
+
+Verification:
+- deno check clean on print-cost-calculator, deployment-readiness, integrations
+  (fixed integrations getUser(jwt) null->undefined).
+- deno test supabase/functions/print-cost-calculator/calculator.test.ts: 3/3 pass.
+- npm run build: green (29.6s). tsc: no new errors naming changed files (the 3
+  print-cost-calculator tsc errors are in untouched server/routes-print-cost-calculator.ts
+  + shared/print-cost-calculator-schema.ts = pre-existing baseline).
+- 33/33 edge-function-proxy unit tests pass.
+- audit:routes: deployment-readiness + print-cost-calculator `proxied`;
+  `deployment`/`integration-hub`/`public` dropped out of missing-edge.
+
+Files Modified:
+- supabase/functions/print-cost-calculator/index.ts (new)
+- supabase/functions/print-cost-calculator/calculator.test.ts (new)
+- supabase/functions/_shared/print-cost-calculator/calculator.ts (new)
+- supabase/functions/deployment-readiness/index.ts
+- supabase/functions/integrations/index.ts
+- supabase/config.toml ([functions.print-cost-calculator] verify_jwt=false)
+- client/src/pages/DeploymentReadiness.tsx
+- client/src/pages/IntegrationHub.tsx
+- client/src/pages/PrintCostCalculator.tsx
+- client/src/components/calculator/EmailCaptureModal.tsx
+- server/middleware/edge-function-proxy.ts (2 crmProxies entries + 1 special-case)
+- prd.json (EDGE-005f passes:true), docs/route-parity-matrix.md + route-divergence.json (regen)

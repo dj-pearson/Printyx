@@ -48,11 +48,11 @@ export default function DeploymentReadiness() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const { data: readinessChecks, isLoading } = useQuery<ReadinessCheck[]>({
-    queryKey: ['/api/deployment/readiness'],
+    queryKey: ['/api/deployment-readiness/readiness'],
   });
 
   const { data: metrics } = useQuery<DeploymentMetrics>({
-    queryKey: ['/api/deployment/metrics'],
+    queryKey: ['/api/deployment-readiness/metrics'],
   });
 
   // Mock data for deployment readiness

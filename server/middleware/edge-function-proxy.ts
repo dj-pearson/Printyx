@@ -391,6 +391,18 @@ export function registerEdgeFunctionProxy(app: any) {
     // /api/client-metrics/* stays on Express (routes-client-monitoring.ts).
     '/api/monitoring-clients': 'monitoring-clients',
 
+    // EDGE-005f: print-cost-calculator. Public/unauthenticated marketing
+    // calculator (anonymous lead capture). The frontend was repointed off the
+    // raw /api/public/calculator/* fetches onto /api/print-cost-calculator/*
+    // (via getApiUrl) so prod routes to the edge fn dir of the same name.
+    '/api/print-cost-calculator': 'print-cost-calculator',
+
+    // EDGE-005f: deployment-readiness. The DeploymentReadiness page now calls
+    // /api/deployment-readiness/{readiness,metrics} (was the orphaned
+    // /api/deployment/* prefix, which 404'd in prod). The edge fn dispatcher
+    // serves both sub-paths plus the legacy root GET.
+    '/api/deployment-readiness': 'deployment-readiness',
+
     // EDGE-005c: phone-in-tickets. The edge function now covers full frontend
     // parity — list/:id/create/convert/delete PLUS the ticket-creation flow
     // sub-routes search-companies, search-contacts/:companyId, equipment/
@@ -406,6 +418,22 @@ export function registerEdgeFunctionProxy(app: any) {
   // Special-cased forwards below that aren't in crmProxies but are still
   // edge-served in dev (keep PROXIED_PREFIXES in sync for the divergence check).
   PROXIED_PREFIXES.add('customers');
+
+  // EDGE-005f special case: GET /api/integrations/dashboard → integrations edge
+  // function /dashboard. We can't proxy the whole /api/integrations prefix
+  // (the edge fn doesn't cover /status, /eautomate/config, /bulk-sync, /oauth/init,
+  // /:id/test, /calendar/*, … which many pages call), so only the dashboard
+  // sub-path is forwarded here. The page was repointed off the orphaned
+  // /api/integration-hub/dashboard prefix (which 404'd in prod).
+  PROXIED_PREFIXES.add('integrations/dashboard');
+  app.get(
+    '/api/integrations/dashboard',
+    (req: Request, res: ExpressResponse, next: NextFunction) => {
+      const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+      const edgeUrl = `${EDGE_FUNCTIONS_URL}/integrations/dashboard${queryString}`;
+      void forwardToEdgeFunction(req, res, next, edgeUrl);
+    },
+  );
 
   // Special case: GET /api/customers → companies edge function with recordType=Customer
   // The old mobile app calls /api/customers but there's no "customers" edge function.
