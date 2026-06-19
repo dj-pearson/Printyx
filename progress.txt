@@ -6908,3 +6908,85 @@ Files Modified:
 - server/middleware/edge-function-proxy.ts (crmProxies entry)
 - docs/route-parity-matrix.md + docs/route-divergence.json (regen)
 - prd.json (EDGE-002c passes:true)
+
+Iteration 12 (06/18/2026 19:48:40): Story LAUNCH-011
+Status: Needs Review
+
+---
+
+## Iteration - EDGE-002d: Port missing endpoints to root-admin edge function
+Completed: 2026-06-18
+Status: COMPLETE
+
+Key Changes:
+- Rewrote supabase/functions/root-admin/index.ts. Existing handlers (overview,
+  tenants, security-alerts, users, audit-logs, suspend/activate) preserved but
+  refactored off pathParts[1] onto normalizePath(...,'root-admin') parts[0]
+  (EDGE-002m convention) — the old indexing was the Coolify off-by-one bug, so
+  the existing fn was already broken in prod.
+- Ported NEW endpoints: /system-resources, /database-tables (pg introspection
+  via optional exec_sql RPC w/ graceful degrade), /execute-query (POST,
+  SELECT-only safety guards ported verbatim + 1000-row cap), /pending-tasks,
+  /signups (list + /:id GET/PATCH + /:id/log-activity + /:id/send-email),
+  /signups-analytics, /trial-funnel, /high-value-signups, /roles.
+- Added '/api/root-admin':'root-admin' to crmProxies.
+- Repointed client/src/pages/RootAdminSignupsCRM.tsx to the clean
+  {signups,pagination}/{signups} response contract.
+
+Gotchas Discovered:
+- PATH BUG (the real find): signupCrmRoutes (routes-signup-crm.ts) is mounted at
+  /api/root-admin/CRM in routes-registry.ts:465, but the frontend calls
+  /api/root-admin/signups (no /crm). So /signups, /signups-analytics,
+  /trial-funnel, /high-value-signups 404'd in dev (routed to routes-root-admin
+  which lacks them) AND prod. The edge fn is the canonical fix — it serves them
+  at the path the frontend actually calls. routes-root-admin.ts ALSO never had
+  these (they live in the separate /crm-mounted router).
+- /pending-tasks is served by routes-admin-workflows.ts mounted at /api/admin,
+  but the frontend (AdminCommandCenter.tsx:92) calls /api/root-admin/pending-tasks
+  — another mount/caller mismatch the edge port resolves.
+- exec_sql RPC is referenced only by geocode-leads (with a fallback) and is
+  NOT defined anywhere in the repo — so system-resources/database-tables/
+  execute-query CANNOT assume it exists. tryExecSql() returns null on any
+  error and callers degrade: system-resources -> honest zeros (+ the two
+  hardcoded cache/query metrics Express also hardcoded), database-tables -> [],
+  execute-query -> {success:false, message:'...not available...'}. PostgREST
+  has no way to run pg_database_size / information_schema / pg_tables /
+  arbitrary SELECT, so this is the only path and graceful-degrade is the honest
+  contract (matches the repo's billing/customer-success degraded-stub pattern).
+- queryFn AUTO-UNWRAP bites again: queryClient.ts:391 unwraps any response with
+  a top-level `data` that is an Array, returning just the array. Express
+  returned signups as {data:[],pagination} and high-value as {data:[]}, so the
+  page's signupsData?.data / highValueData?.data were ALWAYS undefined (double
+  unwrap) regardless of backend. Chose a clean non-{data:[]} contract
+  ({signups,pagination} / {signups}) so the unwrap doesn't fire and pagination
+  survives; updated the 3 page reads to .signups. The page was never actually
+  working before (path 404 + double-unwrap) so there was no baseline to regress.
+- Signup rows: Express used db.select().from(platformSignups) -> camelCase keys
+  (companyName, qualificationScore, createdAt). supabase-js returns snake_case,
+  so toCamel() every signup row (same lesson as accounts-payable/signatures).
+- Frontend path-as-queryKey quirk: RootAdminSignupsCRM joins
+  ['/api/root-admin/signups', status, page] with '/', so status/page arrive as
+  PATH SEGMENTS not query params. The /signups list handler reads them from
+  either path segments (numeric -> page, non-uuid/non-'all' -> status) OR query
+  params, and only treats parts[1] as a :id when it's a real UUID. normalizePath
+  collapses // first, so an empty status ('/signups//1') becomes ['signups','1'].
+
+Verification:
+- deno check supabase/functions/root-admin/index.ts: clean.
+- npm run build: green (29.6s).
+- 33/33 edge-function-proxy unit tests pass.
+- npm run check: zero NEW tsc errors — RootAdminSignupsCRM has a pre-existing
+  useQuery-returns-{} baseline (errors on .totalSignups/.conversionRate/.funnel/
+  .bySource/.byStatus on lines I didn't touch); my .data->.signups swaps keep the
+  same error count.
+- npm run audit:routes: root-admin now `proxied` (docs/route-parity-matrix.md:199).
+- NOT runtime-verifiable in sandbox (no DB/auth/exec_sql): live smoke-test of
+  /pages/admin/** and full system-resources/database-tables/execute-query data
+  need an ops env.
+
+Files Modified:
+- supabase/functions/root-admin/index.ts (rewrite)
+- server/middleware/edge-function-proxy.ts (crmProxies entry)
+- client/src/pages/RootAdminSignupsCRM.tsx (response-shape reads)
+- docs/route-parity-matrix.md + docs/route-divergence.json (regen)
+- prd.json (EDGE-002d passes:true)

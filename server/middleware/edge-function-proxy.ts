@@ -380,6 +380,18 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/platform-analytics': 'platform-analytics',
     '/api/platform-cs': 'platform-cs',
 
+    // EDGE-002d: root-admin. The edge function now has full parity for every
+    // path the admin pages call — overview, tenants(+/:id, suspend, activate),
+    // security-alerts, users, roles, audit-logs, plus the newly ported
+    // system-resources, database-tables, execute-query (SELECT-only),
+    // pending-tasks, signups(+/:id, log-activity, send-email),
+    // signups-analytics, trial-funnel, high-value-signups. This also fixes a
+    // dev path bug: the signup-crm Express router was mounted at
+    // /api/root-admin/crm while the frontend calls /api/root-admin/* (404'd in
+    // both dev and prod before). All endpoints are root-admin gated
+    // (roleLevel ≥ 7 OR can_access_all_tenants).
+    '/api/root-admin': 'root-admin',
+
     // EDGE-013: monitoring-clients. Verified parity — the edge function
     // (supabase/functions/monitoring-clients/) handles every path the
     // Monitoring Clients UI calls: list/detail/create/PATCH/delete,

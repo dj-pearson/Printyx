@@ -4082,8 +4082,8 @@
         "Smoke-test all pages under /pages/admin/**"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "Express source: routes-root-admin.ts. /execute-query is a security-sensitive feature; consider whether to port at all.",
+      "passes": true,
+      "notes": "DONE 2026-06-18. Rewrote supabase/functions/root-admin/index.ts (normalizePath/EDGE-002m convention, fixing the off-by-one pathParts[1] bug in the existing handlers too) with full parity. Ported: /system-resources + /database-tables (pg introspection via optional exec_sql RPC, degrade gracefully to honest zeros/[] when the RPC is absent), /execute-query (POST, kept the SELECT-only + multi-statement + dangerous-keyword guards + 1000-row cap; returns success:false honestly if exec_sql unavailable; already root-admin gated roleLevel>=7), /pending-tasks (activity_reports counts, was wrongly mounted under /api/admin in Express), /signups list+/:id GET/PATCH+/:id/log-activity+/:id/send-email, /signups-analytics, /trial-funnel, /high-value-signups. Signup rows camelized (toCamel) to match the Drizzle/Express shape the page reads. FIXED a real path bug: signupCrmRoutes was mounted at /api/root-admin/CRM but the frontend calls /api/root-admin/signups (404'd in dev AND prod before) — the edge fn is now the canonical home. Added '/api/root-admin':'root-admin' to crmProxies. Repointed RootAdminSignupsCRM.tsx consumption to the clean {signups,pagination}/{signups} contract (was double-broken by the queryFn auto-unwrap of {data:[]}). Gates: deno check clean; npm run build green (29.6s); 33/33 proxy tests; npm run check zero NEW tsc errors (RootAdminSignupsCRM had a pre-existing useQuery-returns-{} baseline on .totalSignups/.funnel/etc — my .signups edits preserve that count); audit:routes -> root-admin now `proxied`. NOT runtime-verifiable in sandbox (no DB/auth): live smoke-test of /pages/admin/** needs an ops env; system-resources/database-tables/execute-query full data needs an exec_sql RPC in the target DB.",
       "category": "edge-migration"
     },
     {
