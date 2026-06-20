@@ -8796,6 +8796,12 @@ export * from './blog-distribution-engine-schema';
 export * from './blog-outreach-schema';
 // Blog analytics intelligence (GA4/GSC, cohorts, LLM citations, AEO, knowledge graph — US-BLOG-061,065,067,068,069)
 export * from './blog-analytics-intel-schema';
+// Blog SERP monitor + autonomous auto-refresh agent (US-BLOG-066,070,071)
+export * from './blog-serp-monitor-schema';
+// Blog content platform (CMS publish, programmatic SEO, interactive blocks, multimodal, localization — US-BLOG-042,074,075,076,077)
+export * from './blog-content-platform-schema';
+// Blog platform API (webhooks, public API, backup/export, widget, compliance — US-BLOG-079,080,081,083,084)
+export * from './blog-platform-api-schema';
 
 // ============================================================================
 // MOBILE APP LOGS (cross-tenant diagnostic data)

@@ -82,7 +82,36 @@ DECLARE
     'blog_llm_citations',
     'blog_aeo_scores',
     'blog_kg_entities',
-    'blog_kg_edges'
+    'blog_kg_edges',
+    -- US-BLOG-066,070,071 (SERP monitor + auto-refresh agent)
+    'blog_serp_monitor_config',
+    'blog_serp_volatility_events',
+    'blog_serp_alerts',
+    'blog_competitor_feeds',
+    'blog_competitor_posts',
+    'blog_auto_refresh_config',
+    'blog_auto_refresh_runs',
+    'blog_auto_refresh_reviews',
+    -- US-BLOG-042,074,075,076,077 (content platform)
+    'blog_publish_attempts',
+    'blog_pseo_templates',
+    'blog_pseo_jobs',
+    'blog_pseo_rows',
+    'blog_interactive_blocks',
+    'blog_interactive_events',
+    'blog_media_outputs',
+    'blog_locales',
+    'blog_glossary_terms',
+    'blog_post_translations',
+    -- US-BLOG-079,080,081,083,084 (platform API + compliance)
+    'blog_webhooks',
+    'blog_webhook_deliveries',
+    'blog_api_keys',
+    'blog_api_usage',
+    'blog_backups',
+    'blog_backup_config',
+    'blog_widget_config',
+    'blog_dsar_requests'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP

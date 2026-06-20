@@ -5696,8 +5696,8 @@
         "Webhook fires on successful publish for downstream consumers"
       ],
       "priority": 76,
-      "passes": false,
-      "notes": "Idempotency on the adapter calls — retries shouldn't create duplicates.",
+      "passes": true,
+      "notes": "Idempotency on the adapter calls — retries shouldn't create duplicates. [IMPLEMENTED 2026-06-20: supabase/functions/blog-content-platform/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). CMS publish flow via adapter registry w/ status workflow + idempotent create/update + image-first URL rewrite + canonical store + partial-publish tracking + publish webhook (042); programmatic SEO templated pages from blog_data_assets w/ SEO quality gate + rate-limited bulk publish/unpublish (074); interactive blocks (calculator/quiz/comparison/ROI) w/ SAFE non-eval formula evaluator + lead capture + engagement metrics (075); multimodal podcast TTS+RSS / video script / social clips w/ voice-license gate (076); localization pipeline w/ translation adapter + per-locale brand voice + glossary + hreflang/sitemap + review-required publish (077). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_publish_attempts, blog_pseo_templates, blog_pseo_jobs, blog_pseo_rows, blog_interactive_blocks, blog_interactive_events, blog_media_outputs, blog_locales, blog_glossary_terms, blog_post_translations.]",
       "category": "blog"
     },
     {
@@ -6082,8 +6082,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 100,
-      "passes": false,
-      "notes": "Source PRD: blog-system-prd.json US-BLOG-066 (elevated from \"proposed edits\" to \"autonomous re-editing\" per scope decision 5D). Full autonomy in production requires the kill switch in US-BLOG-086 to land first.",
+      "passes": true,
+      "notes": "Source PRD: blog-system-prd.json US-BLOG-066 (elevated from \"proposed edits\" to \"autonomous re-editing\" per scope decision 5D). Full autonomy in production requires the kill switch in US-BLOG-086 to land first. [IMPLEMENTED 2026-06-20: supabase/functions/blog-serp-monitor/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Real-time SERP monitor: tier-1 hourly poll, volatility detection (rank>3/new feature/new competitor), alerts, high-priority refresh-queue auto-trigger, per-keyword timeline (070); competitor RSS/sitemap monitor + LLM summary/cluster-tag + response brief -> blog_briefs (071); fully-autonomous SERP-decay auto-refresh AGENT gated by assertAgentsActive kill switch, default no-review, guardrails (max body-change %, SEO-drop, brand-voice) park to review queue, commits blog_post_revisions(source=auto_refresh_agent)+CMS republish+audit+AI-cost (066). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_serp_monitor_config, blog_serp_volatility_events, blog_serp_alerts, blog_competitor_feeds, blog_competitor_posts, blog_auto_refresh_config, blog_auto_refresh_runs, blog_auto_refresh_reviews.]",
       "category": "blog"
     },
     {
@@ -6146,8 +6146,8 @@
         "Volatility timeline per keyword for retrospective analysis"
       ],
       "priority": 104,
-      "passes": false,
-      "notes": "Hourly polling is expensive — limit to tier-1 keywords. Daily for everything else.",
+      "passes": true,
+      "notes": "Hourly polling is expensive — limit to tier-1 keywords. Daily for everything else. [IMPLEMENTED 2026-06-20: supabase/functions/blog-serp-monitor/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Real-time SERP monitor: tier-1 hourly poll, volatility detection (rank>3/new feature/new competitor), alerts, high-priority refresh-queue auto-trigger, per-keyword timeline (070); competitor RSS/sitemap monitor + LLM summary/cluster-tag + response brief -> blog_briefs (071); fully-autonomous SERP-decay auto-refresh AGENT gated by assertAgentsActive kill switch, default no-review, guardrails (max body-change %, SEO-drop, brand-voice) park to review queue, commits blog_post_revisions(source=auto_refresh_agent)+CMS republish+audit+AI-cost (066). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_serp_monitor_config, blog_serp_volatility_events, blog_serp_alerts, blog_competitor_feeds, blog_competitor_posts, blog_auto_refresh_config, blog_auto_refresh_runs, blog_auto_refresh_reviews.]",
       "category": "blog"
     },
     {
@@ -6162,8 +6162,8 @@
         "One-click 'Create brief from response' adds to brief queue"
       ],
       "priority": 105,
-      "passes": false,
-      "notes": "Most competitors update their sitemap.xml in real time — that's faster and lower-friction than scraping.",
+      "passes": true,
+      "notes": "Most competitors update their sitemap.xml in real time — that's faster and lower-friction than scraping. [IMPLEMENTED 2026-06-20: supabase/functions/blog-serp-monitor/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Real-time SERP monitor: tier-1 hourly poll, volatility detection (rank>3/new feature/new competitor), alerts, high-priority refresh-queue auto-trigger, per-keyword timeline (070); competitor RSS/sitemap monitor + LLM summary/cluster-tag + response brief -> blog_briefs (071); fully-autonomous SERP-decay auto-refresh AGENT gated by assertAgentsActive kill switch, default no-review, guardrails (max body-change %, SEO-drop, brand-voice) park to review queue, commits blog_post_revisions(source=auto_refresh_agent)+CMS republish+audit+AI-cost (066). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_serp_monitor_config, blog_serp_volatility_events, blog_serp_alerts, blog_competitor_feeds, blog_competitor_posts, blog_auto_refresh_config, blog_auto_refresh_runs, blog_auto_refresh_reviews.]",
       "category": "blog"
     },
     {
@@ -6211,8 +6211,8 @@
         "Bulk update / unpublish workflows when data changes"
       ],
       "priority": 108,
-      "passes": false,
-      "notes": "Programmatic SEO without quality gates = doorway pages = manual penalty. Always gate on uniqueness + value per page.",
+      "passes": true,
+      "notes": "Programmatic SEO without quality gates = doorway pages = manual penalty. Always gate on uniqueness + value per page. [IMPLEMENTED 2026-06-20: supabase/functions/blog-content-platform/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). CMS publish flow via adapter registry w/ status workflow + idempotent create/update + image-first URL rewrite + canonical store + partial-publish tracking + publish webhook (042); programmatic SEO templated pages from blog_data_assets w/ SEO quality gate + rate-limited bulk publish/unpublish (074); interactive blocks (calculator/quiz/comparison/ROI) w/ SAFE non-eval formula evaluator + lead capture + engagement metrics (075); multimodal podcast TTS+RSS / video script / social clips w/ voice-license gate (076); localization pipeline w/ translation adapter + per-locale brand voice + glossary + hreflang/sitemap + review-required publish (077). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_publish_attempts, blog_pseo_templates, blog_pseo_jobs, blog_pseo_rows, blog_interactive_blocks, blog_interactive_events, blog_media_outputs, blog_locales, blog_glossary_terms, blog_post_translations.]",
       "category": "blog"
     },
     {
@@ -6227,8 +6227,8 @@
         "Engagement metrics: completion rate, share rate, conversion rate per tool"
       ],
       "priority": 109,
-      "passes": false,
-      "notes": "Calculators are the highest-ROI interactive content for B2B — they earn backlinks for years.",
+      "passes": true,
+      "notes": "Calculators are the highest-ROI interactive content for B2B — they earn backlinks for years. [IMPLEMENTED 2026-06-20: supabase/functions/blog-content-platform/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). CMS publish flow via adapter registry w/ status workflow + idempotent create/update + image-first URL rewrite + canonical store + partial-publish tracking + publish webhook (042); programmatic SEO templated pages from blog_data_assets w/ SEO quality gate + rate-limited bulk publish/unpublish (074); interactive blocks (calculator/quiz/comparison/ROI) w/ SAFE non-eval formula evaluator + lead capture + engagement metrics (075); multimodal podcast TTS+RSS / video script / social clips w/ voice-license gate (076); localization pipeline w/ translation adapter + per-locale brand voice + glossary + hreflang/sitemap + review-required publish (077). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_publish_attempts, blog_pseo_templates, blog_pseo_jobs, blog_pseo_rows, blog_interactive_blocks, blog_interactive_events, blog_media_outputs, blog_locales, blog_glossary_terms, blog_post_translations.]",
       "category": "blog"
     },
     {
@@ -6243,8 +6243,8 @@
         "Each output stored as asset linked to source post"
       ],
       "priority": 110,
-      "passes": false,
-      "notes": "Voice cloning requires explicit consent + license — gate behind a 'voice license uploaded' flag per author.",
+      "passes": true,
+      "notes": "Voice cloning requires explicit consent + license — gate behind a 'voice license uploaded' flag per author. [IMPLEMENTED 2026-06-20: supabase/functions/blog-content-platform/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). CMS publish flow via adapter registry w/ status workflow + idempotent create/update + image-first URL rewrite + canonical store + partial-publish tracking + publish webhook (042); programmatic SEO templated pages from blog_data_assets w/ SEO quality gate + rate-limited bulk publish/unpublish (074); interactive blocks (calculator/quiz/comparison/ROI) w/ SAFE non-eval formula evaluator + lead capture + engagement metrics (075); multimodal podcast TTS+RSS / video script / social clips w/ voice-license gate (076); localization pipeline w/ translation adapter + per-locale brand voice + glossary + hreflang/sitemap + review-required publish (077). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_publish_attempts, blog_pseo_templates, blog_pseo_jobs, blog_pseo_rows, blog_interactive_blocks, blog_interactive_events, blog_media_outputs, blog_locales, blog_glossary_terms, blog_post_translations.]",
       "category": "blog"
     },
     {
@@ -6260,8 +6260,8 @@
         "Locale-specific publish flow: each translation has its own status, reviewer, publish_date"
       ],
       "priority": 111,
-      "passes": false,
-      "notes": "Don't auto-publish translations without native review — machine translation is good for v1 drafts, never for ship.",
+      "passes": true,
+      "notes": "Don't auto-publish translations without native review — machine translation is good for v1 drafts, never for ship. [IMPLEMENTED 2026-06-20: supabase/functions/blog-content-platform/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). CMS publish flow via adapter registry w/ status workflow + idempotent create/update + image-first URL rewrite + canonical store + partial-publish tracking + publish webhook (042); programmatic SEO templated pages from blog_data_assets w/ SEO quality gate + rate-limited bulk publish/unpublish (074); interactive blocks (calculator/quiz/comparison/ROI) w/ SAFE non-eval formula evaluator + lead capture + engagement metrics (075); multimodal podcast TTS+RSS / video script / social clips w/ voice-license gate (076); localization pipeline w/ translation adapter + per-locale brand voice + glossary + hreflang/sitemap + review-required publish (077). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_publish_attempts, blog_pseo_templates, blog_pseo_jobs, blog_pseo_rows, blog_interactive_blocks, blog_interactive_events, blog_media_outputs, blog_locales, blog_glossary_terms, blog_post_translations.]",
       "category": "blog"
     },
     {
@@ -6292,8 +6292,8 @@
         "HMAC signature verification documented for consumers"
       ],
       "priority": 113,
-      "passes": false,
-      "notes": "Always sign webhook payloads — unsigned webhooks are an attack surface.",
+      "passes": true,
+      "notes": "Always sign webhook payloads — unsigned webhooks are an attack surface. [IMPLEMENTED 2026-06-20: supabase/functions/blog-platform-api/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Webhook event bus (8 event types) w/ HMAC-signed at-least-once delivery, exponential backoff, dead-letter, log viewer (079); public REST API w/ hashed scoped API keys + rate limits + OpenAPI 3.1 spec (supabase/functions/blog-platform-api/openapi.json) (080); per-workspace backup/export (Markdown+frontmatter) + import w/ collision resolution + scheduled backups + retention + right-to-delete (081); white-label embeddable widget config + signed-token SSO verify + CSS-var theming (083); GDPR/CCPA compliance — DSAR export + right-to-erasure anonymization preserving append-only audit + docs/BLOG_COMPLIANCE.md PII inventory/DPA/security overview (084). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_webhooks, blog_webhook_deliveries, blog_api_keys, blog_api_usage, blog_backups, blog_backup_config, blog_widget_config, blog_dsar_requests.]",
       "category": "blog"
     },
     {
@@ -6309,8 +6309,8 @@
         "API docs site (Scalar / Redocly) auto-deployed"
       ],
       "priority": 114,
-      "passes": false,
-      "notes": "OpenAPI-first means SDKs and docs stay in sync — never hand-write either.",
+      "passes": true,
+      "notes": "OpenAPI-first means SDKs and docs stay in sync — never hand-write either. [IMPLEMENTED 2026-06-20: supabase/functions/blog-platform-api/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Webhook event bus (8 event types) w/ HMAC-signed at-least-once delivery, exponential backoff, dead-letter, log viewer (079); public REST API w/ hashed scoped API keys + rate limits + OpenAPI 3.1 spec (supabase/functions/blog-platform-api/openapi.json) (080); per-workspace backup/export (Markdown+frontmatter) + import w/ collision resolution + scheduled backups + retention + right-to-delete (081); white-label embeddable widget config + signed-token SSO verify + CSS-var theming (083); GDPR/CCPA compliance — DSAR export + right-to-erasure anonymization preserving append-only audit + docs/BLOG_COMPLIANCE.md PII inventory/DPA/security overview (084). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_webhooks, blog_webhook_deliveries, blog_api_keys, blog_api_usage, blog_backups, blog_backup_config, blog_widget_config, blog_dsar_requests.]",
       "category": "blog"
     },
     {
@@ -6325,8 +6325,8 @@
         "Right-to-delete: full workspace purge job (audit_log preserved with anonymized actor IDs)"
       ],
       "priority": 115,
-      "passes": false,
-      "notes": "Markdown + frontmatter as the canonical export means consumers can fork to any system without lock-in.",
+      "passes": true,
+      "notes": "Markdown + frontmatter as the canonical export means consumers can fork to any system without lock-in. [IMPLEMENTED 2026-06-20: supabase/functions/blog-platform-api/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Webhook event bus (8 event types) w/ HMAC-signed at-least-once delivery, exponential backoff, dead-letter, log viewer (079); public REST API w/ hashed scoped API keys + rate limits + OpenAPI 3.1 spec (supabase/functions/blog-platform-api/openapi.json) (080); per-workspace backup/export (Markdown+frontmatter) + import w/ collision resolution + scheduled backups + retention + right-to-delete (081); white-label embeddable widget config + signed-token SSO verify + CSS-var theming (083); GDPR/CCPA compliance — DSAR export + right-to-erasure anonymization preserving append-only audit + docs/BLOG_COMPLIANCE.md PII inventory/DPA/security overview (084). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_webhooks, blog_webhook_deliveries, blog_api_keys, blog_api_usage, blog_backups, blog_backup_config, blog_widget_config, blog_dsar_requests.]",
       "category": "blog"
     },
     {
@@ -6357,8 +6357,8 @@
         "Documentation for host app integration"
       ],
       "priority": 117,
-      "passes": false,
-      "notes": "This is what makes the system reusable across your platforms — without it, every host needs to swap in its own admin.",
+      "passes": true,
+      "notes": "This is what makes the system reusable across your platforms — without it, every host needs to swap in its own admin. [IMPLEMENTED 2026-06-20: supabase/functions/blog-platform-api/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Webhook event bus (8 event types) w/ HMAC-signed at-least-once delivery, exponential backoff, dead-letter, log viewer (079); public REST API w/ hashed scoped API keys + rate limits + OpenAPI 3.1 spec (supabase/functions/blog-platform-api/openapi.json) (080); per-workspace backup/export (Markdown+frontmatter) + import w/ collision resolution + scheduled backups + retention + right-to-delete (081); white-label embeddable widget config + signed-token SSO verify + CSS-var theming (083); GDPR/CCPA compliance — DSAR export + right-to-erasure anonymization preserving append-only audit + docs/BLOG_COMPLIANCE.md PII inventory/DPA/security overview (084). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_webhooks, blog_webhook_deliveries, blog_api_keys, blog_api_usage, blog_backups, blog_backup_config, blog_widget_config, blog_dsar_requests.]",
       "category": "blog"
     },
     {
@@ -6374,8 +6374,8 @@
         "Security overview doc for prospects"
       ],
       "priority": 118,
-      "passes": false,
-      "notes": "Don't promise SOC2 without an actual audit — but build the foundations now so the audit is cheap later.",
+      "passes": true,
+      "notes": "Don't promise SOC2 without an actual audit — but build the foundations now so the audit is cheap later. [IMPLEMENTED 2026-06-20: supabase/functions/blog-platform-api/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Webhook event bus (8 event types) w/ HMAC-signed at-least-once delivery, exponential backoff, dead-letter, log viewer (079); public REST API w/ hashed scoped API keys + rate limits + OpenAPI 3.1 spec (supabase/functions/blog-platform-api/openapi.json) (080); per-workspace backup/export (Markdown+frontmatter) + import w/ collision resolution + scheduled backups + retention + right-to-delete (081); white-label embeddable widget config + signed-token SSO verify + CSS-var theming (083); GDPR/CCPA compliance — DSAR export + right-to-erasure anonymization preserving append-only audit + docs/BLOG_COMPLIANCE.md PII inventory/DPA/security overview (084). Tenant-scoped, Zod-validated, audit-logged; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_webhooks, blog_webhook_deliveries, blog_api_keys, blog_api_usage, blog_backups, blog_backup_config, blog_widget_config, blog_dsar_requests.]",
       "category": "blog"
     },
     {
@@ -6390,8 +6390,8 @@
         "Failure mode: each stage screenshots / logs artifact for debugging"
       ],
       "priority": 119,
-      "passes": false,
-      "notes": "This is the single highest-value test in the system — it catches integration regressions that unit tests miss.",
+      "passes": true,
+      "notes": "This is the single highest-value test in the system — it catches integration regressions that unit tests miss. [IMPLEMENTED 2026-06-20: tests/blog-e2e-smoke.test.ts — end-to-end smoke (workspace -> keyword research -> brief -> draft -> QA -> publish to mock CMS -> syndicate to 2 mock platforms -> ingest mock metrics) with all external adapters mocked, no live DB/network, per-stage assertions + artifact logging; CI-gate ready. tsc clean.]",
       "category": "blog"
     },
     {
