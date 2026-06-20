@@ -291,6 +291,7 @@ const ALL_NAVIGATION_SECTIONS: NavigationSection[] = [
       { title: 'Supply Orders', path: '/supply-orders', icon: Activity },
       { title: 'Mobile Field Service', path: '/mobile-field-service', icon: MapPin },
       { title: 'Service Analytics', path: '/service-analytics', icon: BarChart3 },
+      { title: 'Address Books', path: '/service/address-books', icon: BookOpen },
       { title: 'Incident Response', path: '/incident-response-system', icon: AlertTriangle },
     ],
   },

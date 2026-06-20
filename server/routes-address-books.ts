@@ -527,6 +527,32 @@ function readVendor(value: unknown): AddressBookVendor | null {
   return VENDORS.includes(value as AddressBookVendor) ? (value as AddressBookVendor) : null;
 }
 
+function isPreview(req: any): boolean {
+  return req.query?.preview === 'true' || req.body?.preview === 'true';
+}
+
+/** Parse-only response (no persistence) for the import wizard preview step. */
+function previewResponse(
+  res: Response,
+  vendor: AddressBookVendor,
+  buffer: Buffer,
+  password?: string,
+) {
+  const parse = getVendorAdapter(vendor).parse(buffer, password);
+  return res.json({
+    preview: true,
+    entry_count: parse.entries.length,
+    errors: parse.errors,
+    parse: {
+      ...parse,
+      entries: parse.entries.map((e) => ({
+        ...e,
+        source_metadata: sanitizeMetadata(e.source_metadata),
+      })),
+    },
+  });
+}
+
 // POST /import — create a new book from an uploaded file.
 router.post(
   '/import',
@@ -538,6 +564,10 @@ router.post(
     const vendor = readVendor(req.body.vendor);
     if (!vendor) return res.status(400).json({ message: 'Unknown vendor', code: 'VALIDATION' });
     if (!req.file) return res.status(400).json({ message: 'File required', code: 'NO_FILE' });
+    // Preview step: parse only, persist nothing (no book, no customer required).
+    if (isPreview(req)) {
+      return previewResponse(res, vendor, req.file.buffer, req.body.password || undefined);
+    }
     if (!req.body.customer_id)
       return res.status(400).json({ message: 'customer_id required', code: 'VALIDATION' });
 
@@ -601,6 +631,10 @@ router.post(
     if (!vendor) return res.status(400).json({ message: 'Unknown vendor', code: 'VALIDATION' });
     if (!req.file) return res.status(400).json({ message: 'File required', code: 'NO_FILE' });
     const mode = req.body.mode === 'merge' ? 'merge' : 'replace';
+    // Preview step: parse only, persist nothing.
+    if (isPreview(req)) {
+      return previewResponse(res, vendor, req.file.buffer, req.body.password || undefined);
+    }
     try {
       const book = await loadBook(tenantId, req.params.id);
       if (!book) return res.status(404).json({ message: 'Not found', code: 'NOT_FOUND' });

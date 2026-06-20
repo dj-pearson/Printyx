@@ -106,6 +106,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { useBreadcrumbs } from '@/hooks/useBreadcrumbs';
+import { CustomerAddressBooksTab } from '@/components/address-book/CustomerAddressBooksTab';
 
 export default function CustomerDetailHubspot() {
   const { slug } = useParams<{ slug: string }>();
@@ -721,6 +722,13 @@ export default function CustomerDetailHubspot() {
                     >
                       <Activity className="h-4 w-4" />
                       <span className="hidden sm:inline">Integrations</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="address-books"
+                      className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:border-blue-300 border border-transparent rounded-md px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      <BookOpen className="h-4 w-4" />
+                      <span className="hidden sm:inline">Address Books</span>
                     </TabsTrigger>
                   </div>
                 </TabsList>
@@ -2270,6 +2278,12 @@ export default function CustomerDetailHubspot() {
                 <CrossModuleIntegration
                   customerId={customer?.id || ''}
                   equipmentId={customer?.equipment?.[0]?.id}
+                />
+              </TabsContent>
+              <TabsContent value="address-books" className="mt-6">
+                <CustomerAddressBooksTab
+                  customerId={customer?.id || ''}
+                  customerName={customer?.companyName || customer?.name}
                 />
               </TabsContent>
             </Tabs>

@@ -292,6 +292,10 @@ export const ITEM_PERMISSIONS: Record<string, NavigationPermissionRule> = {
     requiredPermissions: ['service.ticket.view_location', 'service.ticket.assign'],
     minLevel: 3,
   },
+  '/service/address-books': {
+    requiredPermissions: ['service.address_book.view_team', 'service.address_book.view_own'],
+    minLevel: 1,
+  },
   '/manufacturer-integration': {
     requiredPermissions: ['service.equipment.view', 'admin.settings.integrations'],
     minLevel: 4,

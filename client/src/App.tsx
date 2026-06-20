@@ -122,6 +122,8 @@ const EnhancedProductModels = React.lazy(() => import('@/pages/EnhancedProductMo
 const EnhancedProductAccessories = React.lazy(() => import('@/pages/EnhancedProductAccessories'));
 const ProfessionalServices = React.lazy(() => import('@/pages/ProfessionalServices'));
 const ServiceProducts = React.lazy(() => import('@/pages/ServiceProducts'));
+const AddressBooksIndex = React.lazy(() => import('@/pages/service/AddressBooksIndex'));
+const AddressBookDetail = React.lazy(() => import('@/pages/service/AddressBookDetail'));
 const SoftwareProducts = React.lazy(() => import('@/pages/SoftwareProducts'));
 const Supplies = React.lazy(() => import('@/pages/Supplies'));
 const ManagedServices = React.lazy(() => import('@/pages/ManagedServices'));
@@ -744,6 +746,28 @@ function Router() {
                 <Route path="/product-accessories" component={EnhancedProductAccessories} />
                 <Route path="/professional-services" component={ProfessionalServices} />
                 <Route path="/service-products" component={ServiceProducts} />
+                <Route path="/service/address-books/:id">
+                  {() => (
+                    <ProtectedRoute
+                      permissions={[
+                        'service.address_book.view_team',
+                        'service.address_book.view_own',
+                      ]}
+                      component={AddressBookDetail}
+                    />
+                  )}
+                </Route>
+                <Route path="/service/address-books">
+                  {() => (
+                    <ProtectedRoute
+                      permissions={[
+                        'service.address_book.view_team',
+                        'service.address_book.view_own',
+                      ]}
+                      component={AddressBooksIndex}
+                    />
+                  )}
+                </Route>
                 <Route path="/software-products" component={SoftwareProducts} />
                 <Route path="/supplies" component={Supplies} />
                 <Route path="/managed-services" component={ManagedServices} />

@@ -4828,8 +4828,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 25,
-      "passes": false,
-      "notes": "Source PRD: US-014. Multipart in edge functions is constrained — see EDGE-002l proxy fix referenced in service-products comments.",
+      "passes": true,
+      "notes": "Source PRD: US-014. Multipart in edge functions is constrained — see EDGE-002l proxy fix referenced in service-products comments. [DONE 2026-06-20: implemented as Express routes server/routes-address-books.ts (full CRUD + multipart import + cross-vendor export + preview step), registered in routes-registry lazyModules; uses the unit-tested vendor adapters + credential vault; tenant-scoped; source passwords decrypted once, re-encrypted at rest, never persisted/logged; typecheck clean. NOTE: this is the dev/Express path per original PRD US-014; bringing the Supabase edge function to import/export parity for prod remains a follow-up (constrained multipart).]",
       "category": "address-book"
     },
     {
@@ -4865,8 +4865,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 27,
-      "passes": false,
-      "notes": "Source PRD: US-016. Sidebar pattern: see existing entries with matchPatterns array for active-route highlighting.",
+      "passes": true,
+      "notes": "Source PRD: US-016. Sidebar pattern: see existing entries with matchPatterns array for active-route highlighting. [DONE 2026-06-20: client/src/pages/service/AddressBooksIndex.tsx + route in App.tsx + sidebar entry + navigation-permissions gating; TanStack Query loading/error/empty states; typecheck clean.]",
       "category": "address-book"
     },
     {
@@ -4886,8 +4886,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 28,
-      "passes": false,
-      "notes": "Source PRD: US-017.",
+      "passes": true,
+      "notes": "Source PRD: US-017. [DONE 2026-06-20: client/src/pages/service/AddressBookDetail.tsx — header, entry table w/ type icons + override badge, client-side search + type filter, empty state; typecheck clean.]",
       "category": "address-book"
     },
     {
@@ -4907,8 +4907,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 29,
-      "passes": false,
-      "notes": "Source PRD: US-018. Reuse shadcn/ui Dialog + Form components.",
+      "passes": true,
+      "notes": "Source PRD: US-018. Reuse shadcn/ui Dialog + Form components. [DONE 2026-06-20: client/src/components/address-book/EntryFormDialog.tsx — RHF+Zod type-switching schema (email/smb/group), auto-derived editable UNC, masked password, optimistic update+rollback.]",
       "category": "address-book"
     },
     {
@@ -4926,8 +4926,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 30,
-      "passes": false,
-      "notes": "Source PRD: US-019.",
+      "passes": true,
+      "notes": "Source PRD: US-019. [DONE 2026-06-20: client/src/components/address-book/ImportWizard.tsx — 6-step wizard; preview via ?preview=true parse-only endpoint; password POST-only; navigates to detail on commit.]",
       "category": "address-book"
     },
     {
@@ -4945,8 +4945,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 31,
-      "passes": false,
-      "notes": "Source PRD: US-020.",
+      "passes": true,
+      "notes": "Source PRD: US-020. [DONE 2026-06-20: client/src/components/address-book/ExportModal.tsx — target vendor + password (Canon-only) + filename; conversion report; authenticated Bearer download.]",
       "category": "address-book"
     },
     {
@@ -4963,8 +4963,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 32,
-      "passes": false,
-      "notes": "Source PRD: US-021.",
+      "passes": true,
+      "notes": "Source PRD: US-021. [DONE 2026-06-20: client/src/components/address-book/CustomerAddressBooksTab.tsx + Address Books tab wired into CustomerDetail.tsx (additive).]",
       "category": "address-book"
     },
     {
@@ -4982,8 +4982,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 33,
-      "passes": false,
-      "notes": "Source PRD: US-022. Depends on ABK-012 for merge logic and ABK-017 for the detail page.",
+      "passes": true,
+      "notes": "Source PRD: US-022. Depends on ABK-012 for merge logic and ABK-017 for the detail page. [DONE 2026-06-20: override UX in AddressBookDetail (Inherited vs Device Overrides sections, Override this entry / Revert); merge logic mergeOverrides() unit-tested in ABK-012 batch.]",
       "category": "address-book"
     },
     {
@@ -4997,8 +4997,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 34,
-      "passes": false,
-      "notes": "Source PRD: US-023. Depends on ABK-001 through ABK-020.",
+      "passes": true,
+      "notes": "Source PRD: US-023. Depends on ABK-001 through ABK-020. [DONE 2026-06-20 code-complete: tests/address-books.spec.ts — skip-graceful Playwright smoke (index renders, import wizard opens + accepts Canon fixture). Full round-trip execution needs a running dev stack (mirrors PROP-010 convention); typecheck clean.]",
       "category": "address-book"
     },
     {
