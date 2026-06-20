@@ -1,10 +1,11 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 22 Drizzle tables for the Universal Blog System integrated into Printyx
+ * 23 Drizzle tables for the Universal Blog System integrated into Printyx
  * (incl. blog_community_sources + blog_community_questions [US-BLOG-017 miner],
- * blog_internal_link_suggestions [US-BLOG-020], and
- * blog_cluster_authority_snapshots [US-BLOG-022 topical authority trend]).
+ * blog_internal_link_suggestions [US-BLOG-020],
+ * blog_cluster_authority_snapshots [US-BLOG-022 topical authority trend], and
+ * blog_distribution_settings [US-BLOG-052/053/054 scheduling]).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -402,6 +403,8 @@ export const blogDistributions = pgTable(
     platformPostUrl: text('platform_post_url'),
     utmParams: jsonb('utm_params'),
     engagementMetrics: jsonb('engagement_metrics'), // likes, shares, clicks (snapshot)
+    // Re-share cadence metadata (US-BLOG-054): { step, base_published_at, paused }.
+    reshareCadence: jsonb('reshare_cadence'),
     errorMessage: text('error_message'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -412,6 +415,34 @@ export const blogDistributions = pgTable(
     tenantIdx: index('blog_distributions_tenant_idx').on(table.tenantId),
     statusIdx: index('blog_distributions_tenant_status_idx').on(table.tenantId, table.status),
     scheduledIdx: index('blog_distributions_scheduled_idx').on(table.scheduledFor),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_distribution_settings — per-workspace distribution config (US-BLOG-052/053/054):
+// UTM template, optimal-time industry defaults, and re-share cadence steps.
+// One row per tenant.
+// ---------------------------------------------------------------------------
+export const blogDistributionSettings = pgTable(
+  'blog_distribution_settings',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull().unique(),
+    // { source: 'platform', medium_by_platform: {...}, campaign: 'post_slug', base_url?: '...' }
+    utmTemplate: jsonb('utm_template'),
+    // { '<platform>': [{ dow: 0-6, hour: 0-23, weight }] } industry defaults for cold start.
+    optimalTimeDefaults: jsonb('optimal_time_defaults'),
+    // [{ offset_days, platforms: [...], label }] cadence schedule (US-BLOG-054).
+    cadenceConfig: jsonb('cadence_config'),
+    // Stop auto-scheduling re-shares when prior re-share engagement is below this.
+    cadenceMinEngagement: integer('cadence_min_engagement').notNull().default(0),
+    // Optional short-link adapter: bitly | rebrandly | null.
+    shortLinkProvider: varchar('short_link_provider', { length: 32 }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index('blog_distribution_settings_tenant_idx').on(table.tenantId),
   }),
 );
 
@@ -997,6 +1028,8 @@ export type BlogInternalLinkSuggestion = typeof blogInternalLinkSuggestions.$inf
 export type NewBlogInternalLinkSuggestion = typeof blogInternalLinkSuggestions.$inferInsert;
 export type BlogClusterAuthoritySnapshot = typeof blogClusterAuthoritySnapshots.$inferSelect;
 export type NewBlogClusterAuthoritySnapshot = typeof blogClusterAuthoritySnapshots.$inferInsert;
+export type BlogDistributionSettings = typeof blogDistributionSettings.$inferSelect;
+export type NewBlogDistributionSettings = typeof blogDistributionSettings.$inferInsert;
 
 export const insertBlogCommunitySourceSchema = createInsertSchema(blogCommunitySources, {
   source: z.enum(['reddit', 'quora', 'stackexchange']),

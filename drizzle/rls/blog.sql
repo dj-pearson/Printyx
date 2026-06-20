@@ -33,7 +33,8 @@ DECLARE
     'blog_community_sources',
     'blog_community_questions',
     'blog_internal_link_suggestions',
-    'blog_cluster_authority_snapshots'
+    'blog_cluster_authority_snapshots',
+    'blog_distribution_settings'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP

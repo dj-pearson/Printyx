@@ -6542,3 +6542,24 @@ Remaining false: 156.
 ### Cumulative this session: EDGE-012 flipped+verified; 17 US-BLOG stories code-complete
 (017,019,020,021,022,025,026,032,043,044,045,046,047,048,049,050,051). 9 commits, all
 schema-typecheck-clean, all NOT flipped per "write code, don't flip". blog-schema 22 tables.
+
+## Iteration (06/20/2026) - US-BLOG-052/053/054 scheduling batch code-complete (NOT flipped)
+**Status**: WRITTEN; schema typechecks clean. passes STAYS false (Deno + running Supabase).
+Remaining false: 156.
+
+### What was built (US-BLOG-052 auto-scheduling, 053 UTM strategy, 054 re-share cadence):
+- shared/blog-schema.ts: +1 table blog_distribution_settings (tenant singleton: utm_template,
+  optimal_time_defaults, cadence_config, cadence_min_engagement, short_link_provider) and
+  +1 column blog_distributions.reshare_cadence (jsonb). ALTER/CREATE backfill migration + RLS.
+  typecheck clean. (blog-schema now 23 tables.)
+- supabase/functions/_shared/blog/distribution-timing.ts: PURE helpers — buildUtmUrl
+  (utm_source=platform, medium-by-platform map, campaign=slug; preserves existing query),
+  optimalSlots (dow×hour engagement buckets from history), nextSlotDate (conflict-aware),
+  DEFAULT_CADENCE (T+0/3/7/30/90/180).
+- supabase/functions/blog-scheduling/index.ts: GET/PUT /settings, GET /optimal-times
+  (historical-or-default per platform), POST /smart-schedule (next optimal slot per draft
+  distribution + 2h conflict avoidance), POST /utm (tag URLs per channel, optional write-back to
+  utm_params + platform_post_url), POST /cadence (lay down T+N scheduled re-share slots),
+  PATCH /cadence/:postId (pause/resume), GET /timeline (past + future shares).
+  blog.distribution.publish gate + audit log. UTM/optimal-time math is pure; GA4 verification +
+  Bitly/Rebrandly short-links noted as future layers.
