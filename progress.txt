@@ -6809,3 +6809,25 @@ a browser-verify pass.
   { prompt, maxTokens } the handover-style brief assumed) — adapted accordingly.
 
 ### US-SUPER tally: 5/16 full-stack code-complete (001, 009, 003, 010, 004). Next: 007 (truck stocking), 008 (deal desk copilot), 015 (briefings), 011 (portal), 012 (toner replenish), then creds-dependent.
+
+### US-SUPER-007 — Predictive truck-stocking optimizer (DONE, full-stack, passes=false pending verify)
+- shared/truck-stock-schema.ts: truck_inventory + truck_stock_settings (per-tech capacity) +
+  truck_stock_recommendations + truck_stock_callbacks. Re-exported. Migration idempotent.
+  (schema committed earlier as wip.)
+- server/routes-truck-stock.ts (registered in routes-registry.ts; 11 tenant-scoped endpoints):
+  POST /generate (cron-callable; per tech via service_tickets.assignedTechnicianId, 90d parts-used
+  frequency, recommendedQty approx trailing-90d, greedy capacity fit, current vs projected fill-rate
+  coverage proxy, part->inventory_items match for cost), GET /recommendations (latest per tech),
+  GET /recommendations/:id (+ /export.csv pick list), POST /:id/pick, POST /:id/receive (applies to
+  truck_inventory via onConflictDoUpdate = tech confirms received), GET /inventory, GET/PUT /settings,
+  POST /callbacks + GET /stats (accuracy). Route ordering verified (export.csv before :id; literals
+  before params).
+- client/src/pages/TruckStocking.tsx at /service/truck-stocking: Generate, stats cards, per-tech
+  table with "X% -> Y%" fill-rate, detail dialog (recommended-items table + CSV pick list + pick/
+  receive workflow + inline capacity settings). Wired in App.tsx.
+- Built via a serial general-purpose subagent after I created the schema; independently verified:
+  tsc 6278, 0 new errors; 11/11 handlers tenant-scoped. STUBS: tech territory derived from assigned
+  tickets; assignedTechnicianId==techUserId; recommendedQty=90d usage; fill rate is a coverage proxy;
+  part->inventory_items fuzzy match. TODO cron (Sunday run); TODO RBAC service.truck_stock.manage.
+
+### US-SUPER tally: 6/16 full-stack code-complete (001, 009, 003, 010, 004, 007). Next: 008 (deal desk copilot), 015 (briefings), 011 (portal), 012 (toner replenish), then creds-dependent (002/005/006/013/014/016).
