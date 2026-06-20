@@ -6539,3 +6539,32 @@ code-complete-only.
 
 ### Session batch total (branch ...-7a3n19): US-BLOG-078, 073, 062, 040, 041, 028 code-complete.
   blog-schema.ts 18 → 25 tables; 7 new edge fns + 1 shared helper (ai-cost.ts). No passes flipped.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-030: Outline A/B variants scored against SERP
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +1 table blog_outline_variants (brief_id, keyword, angle, target_intent,
+  outline jsonb {title,hook,sections,target_word_count}, serp_fit_score, differentiation_score,
+  scoring_rationale, status candidate|selected|archived, ab_test_group, post_id, serp_snapshot_id,
+  soft-delete). Header now 26 tables.
+- drizzle/migrations/_backfill_blog_outline_variants.sql + rls registration.
+- supabase/functions/blog-outline-variants/index.ts (NEW edge fn):
+  - POST /generate: pulls the latest blog_serp_snapshots row for the keyword, summarizes the top-10
+    organic + aggregate (median word count, common H2s) as scoring context, and asks the LLM for N
+    distinct angle variants (default how_to/comparison/deep_dive), each with a serp_fit_score AND a
+    differentiation_score (0-100) + rationale. Quota-gated, cost-logged to blog_ai_costs.
+  - POST /select: marks one selected, archives sibling candidates (same brief, else same keyword) —
+    "rejected variants archived with brief for future reference" — and optionally writes the chosen
+    outline into blog_briefs.outline.
+  - POST /ab-test: A/B mode — requires 2 variants on the SAME keyword with DIFFERENT intents, assigns
+    an ab_test_group, and creates a draft blog_posts per variant ("write two posts on the same
+    keyword cluster targeting different intents").
+  - GET list (filter brief_id/keyword/status) + GET /:id. Gated to blog.post.edit; tenant-scoped;
+    mutations audit-logged.
+  - Honors the story note that differentiation matters more than fit once a topic saturates (both
+    scores stored independently so the UI can rank by differentiation).
+
+### Verifiable: tsc clean (3 pre-existing env errors only). Blocked: Deno/Supabase + DataForSEO. passes=false.

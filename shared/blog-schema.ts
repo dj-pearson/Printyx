@@ -1,14 +1,15 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 25 Drizzle tables for the Universal Blog System integrated into Printyx.
+ * 26 Drizzle tables for the Universal Blog System integrated into Printyx.
  *   Core (US-BLOG-002): blog_brand_voices, blog_style_guides, blog_keyword_clusters,
  *     blog_keywords, blog_briefs, blog_assets, blog_posts, blog_post_revisions,
  *     blog_citations, blog_distribution_targets, blog_distributions,
  *     blog_performance_metrics, blog_refresh_queue, blog_agent_settings, blog_audit_log.
  *   Extensions: blog_jobs (012), blog_serp_snapshots (015), blog_competitor_keywords (018),
  *     blog_ai_costs + blog_ai_quotas (078), blog_pipeline_runs + blog_pipeline_stages (073),
- *     blog_qa_reports (040), blog_rank_forecasts (041), blog_authors (028).
+ *     blog_qa_reports (040), blog_rank_forecasts (041), blog_authors (028),
+ *     blog_outline_variants (030).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -190,6 +191,45 @@ export const blogBriefs = pgTable(
     tenantIdx: index('blog_briefs_tenant_idx').on(table.tenantId),
     statusIdx: index('blog_briefs_tenant_status_idx').on(table.tenantId, table.status),
     assignedIdx: index('blog_briefs_assigned_idx').on(table.assignedToUserId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_outline_variants — A/B outline candidates scored vs SERP (US-BLOG-030)
+// ---------------------------------------------------------------------------
+// The brief generator produces several outline angles for one keyword; each is
+// scored for SERP-fit and differentiation. The editor selects one (siblings are
+// archived for future reference). A/B test mode pairs two variants targeting
+// different intents via ab_test_group.
+export const blogOutlineVariants = pgTable(
+  'blog_outline_variants',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    briefId: uuid('brief_id').references(() => blogBriefs.id, { onDelete: 'set null' }),
+    keyword: varchar('keyword', { length: 500 }).notNull(),
+    angle: varchar('angle', { length: 32 }), // how_to | comparison | deep_dive | listicle | opinion | case_study
+    targetIntent: varchar('target_intent', { length: 20 }), // informational | commercial | transactional | navigational
+    outline: jsonb('outline').notNull(), // { title, sections: [{h2, h3[]}], target_word_count, hook }
+    serpFitScore: numeric('serp_fit_score', { precision: 5, scale: 2 }), // 0-100
+    differentiationScore: numeric('differentiation_score', { precision: 5, scale: 2 }), // 0-100
+    scoringRationale: text('scoring_rationale'),
+    status: varchar('status', { length: 16 }).notNull().default('candidate'), // candidate | selected | archived
+    abTestGroup: uuid('ab_test_group'),
+    postId: uuid('post_id'),
+    serpSnapshotId: uuid('serp_snapshot_id'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
+    createdByUserId: varchar('created_by_user_id'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_outline_variants_tenant_idx').on(table.tenantId),
+    briefIdx: index('blog_outline_variants_brief_idx').on(table.briefId),
+    tenantKeywordIdx: index('blog_outline_variants_tenant_keyword_idx').on(
+      table.tenantId,
+      table.keyword,
+    ),
   }),
 );
 
@@ -1101,6 +1141,8 @@ export type BlogRankForecast = typeof blogRankForecasts.$inferSelect;
 export type NewBlogRankForecast = typeof blogRankForecasts.$inferInsert;
 export type BlogAuthor = typeof blogAuthors.$inferSelect;
 export type NewBlogAuthor = typeof blogAuthors.$inferInsert;
+export type BlogOutlineVariant = typeof blogOutlineVariants.$inferSelect;
+export type NewBlogOutlineVariant = typeof blogOutlineVariants.$inferInsert;
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;
