@@ -8784,6 +8784,8 @@ export {
 // Re-export Blog Module schema barrel (Platform Admin Blog System — US-BLOG-001 foundation;
 // US-BLOG-002 populates the actual Drizzle tables)
 export * from './blog-schema';
+// Blog syndication (per-platform repurposing — US-BLOG-043..051)
+export * from './blog-syndication-schema';
 
 // ============================================================================
 // MOBILE APP LOGS (cross-tenant diagnostic data)

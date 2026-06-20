@@ -42,7 +42,8 @@ DECLARE
     'blog_authors',
     'blog_outline_variants',
     'blog_experiments',
-    'blog_post_variants'
+    'blog_post_variants',
+    'blog_syndication_pieces'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP

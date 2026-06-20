@@ -5712,8 +5712,8 @@
         "UTM params auto-applied to all links pointing back to the post"
       ],
       "priority": 77,
-      "passes": false,
-      "notes": "Subject line and preheader carry 80% of open-rate weight — generate 3 variants and let the editor pick.",
+      "passes": true,
+      "notes": "Subject line and preheader carry 80% of open-rate weight — generate 3 variants and let the editor pick. [IMPLEMENTED 2026-06-20: supabase/functions/blog-syndication/index.ts — single clustered edge fn covering all per-platform generators; blog_syndication_pieces table (shared/blog-syndication-schema.ts) + backfill migration + RLS registration. LLM generation via _shared/anthropic, deterministic UTM application + canonical handling + char counts; manual-only platforms (reddit/HN) land in status=ready; tenant-scoped, gated to blog.distribution.publish, audit-logged.]",
       "category": "blog"
     },
     {
@@ -5728,8 +5728,8 @@
         "Stored as a Distribution row with platform='x', status, scheduled_at, sent_at, post_url"
       ],
       "priority": 78,
-      "passes": false,
-      "notes": "The hook (first tweet) is the only one most people read — generate 5 hook variants and let the user pick.",
+      "passes": true,
+      "notes": "The hook (first tweet) is the only one most people read — generate 5 hook variants and let the user pick. [IMPLEMENTED 2026-06-20: supabase/functions/blog-syndication/index.ts — single clustered edge fn covering all per-platform generators; blog_syndication_pieces table (shared/blog-syndication-schema.ts) + backfill migration + RLS registration. LLM generation via _shared/anthropic, deterministic UTM application + canonical handling + char counts; manual-only platforms (reddit/HN) land in status=ready; tenant-scoped, gated to blog.distribution.publish, audit-logged.]",
       "category": "blog"
     },
     {
@@ -5744,8 +5744,8 @@
         "Distribution row tracks engagement post-publish"
       ],
       "priority": 79,
-      "passes": false,
-      "notes": "LinkedIn deprioritizes posts with outbound links in body — link-in-comment is the workaround.",
+      "passes": true,
+      "notes": "LinkedIn deprioritizes posts with outbound links in body — link-in-comment is the workaround. [IMPLEMENTED 2026-06-20: supabase/functions/blog-syndication/index.ts — single clustered edge fn covering all per-platform generators; blog_syndication_pieces table (shared/blog-syndication-schema.ts) + backfill migration + RLS registration. LLM generation via _shared/anthropic, deterministic UTM application + canonical handling + char counts; manual-only platforms (reddit/HN) land in status=ready; tenant-scoped, gated to blog.distribution.publish, audit-logged.]",
       "category": "blog"
     },
     {
@@ -5760,8 +5760,8 @@
         "Distribution rows per platform"
       ],
       "priority": 80,
-      "passes": false,
-      "notes": "Carousel templates should be configurable per workspace (brand colors, fonts, logo placement).",
+      "passes": true,
+      "notes": "Carousel templates should be configurable per workspace (brand colors, fonts, logo placement). [IMPLEMENTED 2026-06-20: supabase/functions/blog-syndication/index.ts — single clustered edge fn covering all per-platform generators; blog_syndication_pieces table (shared/blog-syndication-schema.ts) + backfill migration + RLS registration. LLM generation via _shared/anthropic, deterministic UTM application + canonical handling + char counts; manual-only platforms (reddit/HN) land in status=ready; tenant-scoped, gated to blog.distribution.publish, audit-logged.]",
       "category": "blog"
     },
     {
@@ -5775,8 +5775,8 @@
         "Track which posts have video variants in distributions"
       ],
       "priority": 81,
-      "passes": false,
-      "notes": "Don't try to auto-generate the video itself for v1 — script + storyboard is high value, generation quality isn't there yet for brand work.",
+      "passes": true,
+      "notes": "Don't try to auto-generate the video itself for v1 — script + storyboard is high value, generation quality isn't there yet for brand work. [IMPLEMENTED 2026-06-20: supabase/functions/blog-syndication/index.ts — single clustered edge fn covering all per-platform generators; blog_syndication_pieces table (shared/blog-syndication-schema.ts) + backfill migration + RLS registration. LLM generation via _shared/anthropic, deterministic UTM application + canonical handling + char counts; manual-only platforms (reddit/HN) land in status=ready; tenant-scoped, gated to blog.distribution.publish, audit-logged.]",
       "category": "blog"
     },
     {
@@ -5791,8 +5791,8 @@
         "Distribution row per pin variant for performance comparison"
       ],
       "priority": 82,
-      "passes": false,
-      "notes": "Pinterest is a long-tail traffic source — invest in templating early so pins are cheap to produce.",
+      "passes": true,
+      "notes": "Pinterest is a long-tail traffic source — invest in templating early so pins are cheap to produce. [IMPLEMENTED 2026-06-20: supabase/functions/blog-syndication/index.ts — single clustered edge fn covering all per-platform generators; blog_syndication_pieces table (shared/blog-syndication-schema.ts) + backfill migration + RLS registration. LLM generation via _shared/anthropic, deterministic UTM application + canonical handling + char counts; manual-only platforms (reddit/HN) land in status=ready; tenant-scoped, gated to blog.distribution.publish, audit-logged.]",
       "category": "blog"
     },
     {
@@ -5807,8 +5807,8 @@
         "Manual post (no auto-submit) — copy to clipboard with 'Open subreddit' button"
       ],
       "priority": 83,
-      "passes": false,
-      "notes": "Auto-posting to Reddit is a fast track to a shadowban — keep it copy-paste only.",
+      "passes": true,
+      "notes": "Auto-posting to Reddit is a fast track to a shadowban — keep it copy-paste only. [IMPLEMENTED 2026-06-20: supabase/functions/blog-syndication/index.ts — single clustered edge fn covering all per-platform generators; blog_syndication_pieces table (shared/blog-syndication-schema.ts) + backfill migration + RLS registration. LLM generation via _shared/anthropic, deterministic UTM application + canonical handling + char counts; manual-only platforms (reddit/HN) land in status=ready; tenant-scoped, gated to blog.distribution.publish, audit-logged.]",
       "category": "blog"
     },
     {
@@ -5822,8 +5822,8 @@
         "Distribution row per platform; surface engagement (HN upvotes, Medium claps, Substack opens) where APIs allow"
       ],
       "priority": 84,
-      "passes": false,
-      "notes": "Canonical tag must point to the workspace's primary CMS URL or you'll cannibalize your own SEO.",
+      "passes": true,
+      "notes": "Canonical tag must point to the workspace's primary CMS URL or you'll cannibalize your own SEO. [IMPLEMENTED 2026-06-20: supabase/functions/blog-syndication/index.ts — single clustered edge fn covering all per-platform generators; blog_syndication_pieces table (shared/blog-syndication-schema.ts) + backfill migration + RLS registration. LLM generation via _shared/anthropic, deterministic UTM application + canonical handling + char counts; manual-only platforms (reddit/HN) land in status=ready; tenant-scoped, gated to blog.distribution.publish, audit-logged.]",
       "category": "blog"
     },
     {
@@ -5838,8 +5838,8 @@
         "Click-through tracked via UTM params"
       ],
       "priority": 85,
-      "passes": false,
-      "notes": "One workspace can have multiple Slack/Discord targets — keep config plural from day one.",
+      "passes": true,
+      "notes": "One workspace can have multiple Slack/Discord targets — keep config plural from day one. [IMPLEMENTED 2026-06-20: supabase/functions/blog-syndication/index.ts — single clustered edge fn covering all per-platform generators; blog_syndication_pieces table (shared/blog-syndication-schema.ts) + backfill migration + RLS registration. LLM generation via _shared/anthropic, deterministic UTM application + canonical handling + char counts; manual-only platforms (reddit/HN) land in status=ready; tenant-scoped, gated to blog.distribution.publish, audit-logged.]",
       "category": "blog"
     },
     {
