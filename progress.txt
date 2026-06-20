@@ -6763,3 +6763,26 @@ a browser-verify pass.
   (default OWNER+PLATFORM_ADMIN); machine-model/location filters + GL reconciliation fixture deferred.
 
 ### US-SUPER tally: 3/16 full-stack code-complete (001, 009, 003). Next per suggested order: 010.
+
+### US-SUPER-010 — Renewal auto-quote 90d out (DONE, full-stack, passes=false pending verify)
+- shared/renewal-autoquote-schema.ts: renewal_auto_quotes (draft + 12-mo actuals + re-tier +
+  prefilled line items + outcome), renewal_autoquote_settings (window/buffer/threshold/expiry/
+  toggle), renewal_suppressions (manual-renewal-only, unique tenant+customer). Re-exported.
+- drizzle/migrations/_backfill_renewal_autoquote.sql: idempotent; FK to contracts guarded.
+- server/routes-renewal-autoquote.ts (registered in routes-registry.ts): POST /generate
+  (cron-callable, ?force; scans active contracts ending in the 90-100d window, skips suppressed +
+  already-drafted, aggregates 12-mo per-machine usage from meter_readings.contract_id, peak month,
+  re-tiers CPC from cpc_rates volume bands + growth buffer, flags underage, prefills line items,
+  NEVER auto-sends), GET / (list + reviewCount widget), GET /stats (auto win rate; manual baseline
+  STUB), GET/PUT /settings, GET/POST/DELETE /suppressions, GET /:id, POST /:id/mark-sent
+  (TODO promote to proposals send flow), /dismiss, /outcome (won|lost).
+- client/src/pages/RenewalAutoQuote.tsx at /renewals: "ready for review" widget + win-rate stats,
+  drafts table (underage flag), detail dialog (machine breakdown + prefilled line items),
+  settings + suppression management, won/lost actions. Wired in App.tsx.
+- tsc: 6278, 0 new errors. STUBS: re-tier matches cpc_rates by tenant+colorMode+volume band
+  (model-specific match TODO; falls back to current rates if no tiers); manual win-rate baseline
+  not tracked; mark-sent flags status only (proposals promotion is a TODO); rep notification is
+  assigned_sales_rep capture + dashboard widget (push/email TODO). TODO RBAC: sales.renewal.manage;
+  daily cron wiring TODO (route is cron-callable).
+
+### US-SUPER tally: 4/16 full-stack code-complete (001, 009, 003, 010). Next per suggested order: 004 (QBR decks).

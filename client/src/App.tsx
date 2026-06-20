@@ -91,6 +91,7 @@ const ServicePredictions = React.lazy(() => import('@/pages/ServicePredictions')
 const CustomerRisk = React.lazy(() => import('@/pages/CustomerRisk'));
 const ContractProfitability = React.lazy(() => import('@/pages/ContractProfitability'));
 const ContractPnlDetail = React.lazy(() => import('@/pages/ContractPnlDetail'));
+const RenewalAutoQuote = React.lazy(() => import('@/pages/RenewalAutoQuote'));
 const WhiteLabelDashboard = React.lazy(() => import('@/pages/WhiteLabelDashboard'));
 const AutoSupplyReplenishmentDashboard = React.lazy(
   () => import('@/pages/AutoSupplyReplenishmentDashboard'),
@@ -701,6 +702,7 @@ function Router() {
                 <Route path="/customers/risk" component={CustomerRisk} />
                 <Route path="/contracts/profitability" component={ContractProfitability} />
                 <Route path="/contracts/:id/pnl" component={ContractPnlDetail} />
+                <Route path="/renewals" component={RenewalAutoQuote} />
                 <Route path="/connect" component={ConnectDashboard} />
                 <Route path="/white-label" component={WhiteLabelDashboard} />
                 <Route
