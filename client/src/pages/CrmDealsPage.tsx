@@ -13,12 +13,7 @@ import MainLayout from '@/components/layout/main-layout';
 import { CrmIndexShell, type CrmViewRenderProps } from '@/components/crm/CrmIndexShell';
 import { EnhancedPipelineBoard } from '@/components/crm/EnhancedPipelineBoard';
 import { CrmDataTable } from '@/components/crm/CrmDataTable';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -85,13 +80,13 @@ export default function CrmDealsPage() {
 
   const createDealMutation = useMutation({
     mutationFn: (data: CreateDealForm) =>
-      apiRequest('/api/deals-management/deals', 'POST', {
+      apiRequest('/api/deals', 'POST', {
         ...data,
         value: data.value ? parseFloat(data.value) : 0,
         probability: parseInt(data.probability, 10),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/deals-management/deals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       setShowCreateDialog(false);
       form.reset();
       toast({ title: 'Deal created successfully' });
@@ -106,36 +101,45 @@ export default function CrmDealsPage() {
   };
 
   // Pipeline selector for header
-  const pipelineSelector = pipelineTemplates?.length > 1 ? (
-    <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
-      <SelectTrigger className="h-7 w-auto min-w-[140px] text-xs">
-        <SelectValue placeholder="Pipeline" />
-      </SelectTrigger>
-      <SelectContent>
-        {pipelineTemplates?.map((p: any) => (
-          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  ) : null;
+  const pipelineSelector =
+    pipelineTemplates?.length > 1 ? (
+      <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
+        <SelectTrigger className="h-7 w-auto min-w-[140px] text-xs">
+          <SelectValue placeholder="Pipeline" />
+        </SelectTrigger>
+        <SelectContent>
+          {pipelineTemplates?.map((p: any) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    ) : null;
 
-  const renderTable = useCallback((props: CrmViewRenderProps) => (
-    <CrmDataTable
-      objectType="deals"
-      search={props.search}
-      activeFilters={props.activeFilters}
-      sortConfig={props.sortConfig}
-    />
-  ), []);
+  const renderTable = useCallback(
+    (props: CrmViewRenderProps) => (
+      <CrmDataTable
+        objectType="deals"
+        search={props.search}
+        activeFilters={props.activeFilters}
+        sortConfig={props.sortConfig}
+      />
+    ),
+    [],
+  );
 
-  const renderBoard = useCallback((props: CrmViewRenderProps) => (
-    <EnhancedPipelineBoard
-      objectType="deals"
-      pipelineId={selectedPipelineId}
-      search={props.search}
-      activeFilters={props.activeFilters}
-    />
-  ), [selectedPipelineId]);
+  const renderBoard = useCallback(
+    (props: CrmViewRenderProps) => (
+      <EnhancedPipelineBoard
+        objectType="deals"
+        pipelineId={selectedPipelineId}
+        search={props.search}
+        activeFilters={props.activeFilters}
+      />
+    ),
+    [selectedPipelineId],
+  );
 
   return (
     <MainLayout>
@@ -161,7 +165,9 @@ export default function CrmDealsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Deal Name</FormLabel>
-                    <FormControl><Input {...field} placeholder="Enter deal name" /></FormControl>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter deal name" />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -173,7 +179,9 @@ export default function CrmDealsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Amount</FormLabel>
-                      <FormControl><Input {...field} type="number" placeholder="0.00" /></FormControl>
+                      <FormControl>
+                        <Input {...field} type="number" placeholder="0.00" />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
@@ -183,7 +191,9 @@ export default function CrmDealsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Probability (%)</FormLabel>
-                      <FormControl><Input {...field} type="number" min="0" max="100" /></FormControl>
+                      <FormControl>
+                        <Input {...field} type="number" min="0" max="100" />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
@@ -196,7 +206,11 @@ export default function CrmDealsPage() {
                     <FormItem>
                       <FormLabel>Stage</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
                         <SelectContent>
                           <SelectItem value="prospecting">Prospecting</SelectItem>
                           <SelectItem value="qualification">Qualification</SelectItem>
@@ -214,7 +228,11 @@ export default function CrmDealsPage() {
                     <FormItem>
                       <FormLabel>Priority</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
                         <SelectContent>
                           <SelectItem value="low">Low</SelectItem>
                           <SelectItem value="medium">Medium</SelectItem>
@@ -232,7 +250,9 @@ export default function CrmDealsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Expected Close Date</FormLabel>
-                    <FormControl><Input {...field} type="date" /></FormControl>
+                    <FormControl>
+                      <Input {...field} type="date" />
+                    </FormControl>
                   </FormItem>
                 )}
               />
@@ -242,7 +262,9 @@ export default function CrmDealsPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Description</FormLabel>
-                    <FormControl><Textarea {...field} rows={3} /></FormControl>
+                    <FormControl>
+                      <Textarea {...field} rows={3} />
+                    </FormControl>
                   </FormItem>
                 )}
               />

@@ -120,7 +120,7 @@ function ActivityTimeline({
 
   const apiPath =
     objectType === 'deals'
-      ? `/api/deals-management/deals/${recordId}/activities`
+      ? `/api/deals/${recordId}/activities`
       : `/api/business-records/${recordId}/activities`;
 
   const { data: activities = [] } = useQuery<ActivityEntry[]>({

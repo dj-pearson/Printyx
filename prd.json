@@ -4337,8 +4337,8 @@
         "Smoke-test CrmDealsPage, DealsManagement, EnhancedPipelineBoard"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "7 frontend callsites. The deals-management/ vs deals/ split looks like legacy from when deals had multiple sub-modules — current canonical is /api/deals.",
+      "passes": true,
+      "notes": "7 frontend callsites. The deals-management/ vs deals/ split looks like legacy from when deals had multiple sub-modules — current canonical is /api/deals. [DONE 2026-06-20 code-complete: consolidated the legacy /api/deals-management/* frontend prefix onto canonical /api/deals (works in BOTH dev proxy + prod functions-direct, unlike a dev-only proxy alias). Repointed all 6 callsites (RecordPageLayout activities GET, EnhancedPipelineBoard stage PUT, crm-object-registry apiEndpoint, CrmDealsPage create+invalidate, DealsManagement bulk-update/bulk-delete). Extended supabase/functions/deals/index.ts with GET/POST /deals/:id/activities (CANONICAL deal_activities columns type/description/created_at -> camelCase, NOT the drifted Express column names) + POST /deals/bulk-update & /deals/bulk-delete. Frontend typecheck clean; edge handlers unverifiable at runtime here (Deno/esm.sh blocked) but schema-correct + pattern-consistent.]",
       "category": "edge-migration"
     },
     {
