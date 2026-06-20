@@ -8797,6 +8797,8 @@ export * from './qbr-schema';
 export * from './truck-stock-schema';
 // Deal desk copilot (US-SUPER-008)
 export * from './deal-desk-copilot-schema';
+// Daily role-based briefings (US-SUPER-015)
+export * from './daily-briefing-schema';
 // Blog syndication (per-platform repurposing — US-BLOG-043..051)
 export * from './blog-syndication-schema';
 // Blog topic intelligence (forum miner, clustering, internal links, authority, citations, readability — US-BLOG-017,019,020,022,025,026)
