@@ -6353,3 +6353,36 @@ code-complete-only.
   repointed to /api/phone-in-tickets/* + dev proxy entry added. Frontend tsc clean.
 - Both edge-fn changes are schema-correct + cross-environment-correct but runtime-unverifiable
   (Deno/esm.sh blocked here). Remaining EDGE false: see prd.json.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-078: AI cost dashboard + per-workspace quotas
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +2 tables — blog_ai_costs (append-only per-call spend ledger:
+  tenant_id/provider/model/feature/prompt+completion+total_tokens/cost_cents/request_id/
+  post_id/pipeline_run_id) and blog_ai_quotas (one row/tenant: monthly_limit_cents NULL=unlimited,
+  warn_threshold_pct=80, hard_stop, anomaly_multiplier=3, alert_email, alert_slack_webhook).
+  $inferSelect/Insert types exported; header table list updated (now 20 tables).
+- drizzle/migrations/_backfill_blog_ai_costs.sql: idempotent CREATE TABLE IF NOT EXISTS +
+  indexes for both tables.
+- drizzle/rls/blog.sql: registered blog_ai_costs + blog_ai_quotas — AND backfilled three
+  pre-existing tenant tables that were missing from the RLS array (blog_jobs,
+  blog_serp_snapshots, blog_competitor_keywords): a real isolation gap, now closed.
+- supabase/functions/_shared/blog/ai-cost.ts (NEW shared helper): logAiCost (never throws —
+  cost logging must not break generation), getQuotaRow (auto-creates default), getQuotaStatus
+  (month-to-date spend vs limit → warn/blocked), getSpendSinceCents (paginated), usdToCents,
+  currentMonthStart. This is the seam US-BLOG-073's pipeline (and other LLM fns) log through.
+- supabase/functions/blog-ai-costs/index.ts (NEW edge fn): POST /log, GET /dashboard
+  (cards + by-feature/model/provider + daily series + prior-period comparison + month forecast
+  from trailing-7d avg + quota status), GET /dashboard.csv (per-view CSV export), GET/PUT /quota
+  (PUT platform-admin only, audit-logged, Slack webhook redacted to *_set marker), GET /anomalies
+  (each day vs mean of prior 7 days × multiplier). Gated to platform admin / blog.analytics.view /
+  blog.refresh.manage; every query tenant-scoped.
+
+### Verifiable here: `npx tsc --noEmit` shows ZERO errors referencing blog-schema/ai-cost.
+### Blocked: Deno typecheck/run impossible (esm.sh 403); no running Supabase; the alert
+  delivery (email/Slack) is left to the worker that reads /anomalies. Cross-workspace
+  (all-tenant) rollups intentionally NOT served — would break tenant isolation; deferred to
+  a future platform-admin endpoint. passes=false.

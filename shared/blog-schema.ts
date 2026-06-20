@@ -1,7 +1,13 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 14 Drizzle tables for the Universal Blog System integrated into Printyx.
+ * 20 Drizzle tables for the Universal Blog System integrated into Printyx.
+ *   Core (US-BLOG-002): blog_brand_voices, blog_style_guides, blog_keyword_clusters,
+ *     blog_keywords, blog_briefs, blog_assets, blog_posts, blog_post_revisions,
+ *     blog_citations, blog_distribution_targets, blog_distributions,
+ *     blog_performance_metrics, blog_refresh_queue, blog_agent_settings, blog_audit_log.
+ *   Extensions: blog_jobs (012), blog_serp_snapshots (015), blog_competitor_keywords (018),
+ *     blog_ai_costs + blog_ai_quotas (078).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -661,6 +667,68 @@ export const blogAuditLog = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// blog_ai_costs — per-call AI spend ledger (US-BLOG-078)
+// ---------------------------------------------------------------------------
+// Append-only log: every adapter/LLM call writes one row so the cost
+// dashboard can slice spend by workspace, feature, and model. cost_cents is
+// an integer (no float drift); USD estimates are converted at write time.
+export const blogAiCosts = pgTable(
+  'blog_ai_costs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(), // the "workspace" in PRD terms
+    provider: varchar('provider', { length: 32 }).notNull(), // anthropic | openai | dataforseo | ...
+    model: varchar('model', { length: 80 }),
+    /** Which feature triggered the call, e.g. 'draft', 'brief', 'pipeline.drafter', 'meta_suggest'. */
+    feature: varchar('feature', { length: 64 }).notNull(),
+    promptTokens: integer('prompt_tokens').notNull().default(0),
+    completionTokens: integer('completion_tokens').notNull().default(0),
+    totalTokens: integer('total_tokens').notNull().default(0),
+    costCents: integer('cost_cents').notNull().default(0),
+    requestId: varchar('request_id', { length: 200 }),
+    /** Optional links back to the entity that incurred the cost. */
+    postId: uuid('post_id'),
+    pipelineRunId: uuid('pipeline_run_id'),
+    createdByUserId: varchar('created_by_user_id'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantCreatedIdx: index('blog_ai_costs_tenant_created_idx').on(table.tenantId, table.createdAt),
+    tenantFeatureIdx: index('blog_ai_costs_tenant_feature_idx').on(table.tenantId, table.feature),
+    tenantModelIdx: index('blog_ai_costs_tenant_model_idx').on(table.tenantId, table.model),
+    postIdx: index('blog_ai_costs_post_idx').on(table.postId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_ai_quotas — per-workspace monthly AI spend cap (US-BLOG-078)
+// ---------------------------------------------------------------------------
+// Exactly one row per tenant; auto-created with defaults on first read.
+// monthly_limit_cents = NULL means unlimited (warn/hard-stop disabled).
+export const blogAiQuotas = pgTable(
+  'blog_ai_quotas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull().unique(),
+    monthlyLimitCents: integer('monthly_limit_cents'), // null = unlimited
+    warnThresholdPct: integer('warn_threshold_pct').notNull().default(80),
+    /** When true, calls are blocked once the month's spend reaches the limit. */
+    hardStop: boolean('hard_stop').notNull().default(true),
+    /** Multiplier vs the trailing 7-day daily average that counts as an anomaly. */
+    anomalyMultiplier: numeric('anomaly_multiplier', { precision: 5, scale: 2 })
+      .notNull()
+      .default('3'),
+    alertEmail: varchar('alert_email', { length: 320 }),
+    alertSlackWebhook: text('alert_slack_webhook'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index('blog_ai_quotas_tenant_idx').on(table.tenantId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // Zod insert schemas (used by edge functions for validation)
 // ---------------------------------------------------------------------------
 
@@ -820,6 +888,10 @@ export type BlogSerpSnapshot = typeof blogSerpSnapshots.$inferSelect;
 export type NewBlogSerpSnapshot = typeof blogSerpSnapshots.$inferInsert;
 export type BlogCompetitorKeyword = typeof blogCompetitorKeywords.$inferSelect;
 export type NewBlogCompetitorKeyword = typeof blogCompetitorKeywords.$inferInsert;
+export type BlogAiCost = typeof blogAiCosts.$inferSelect;
+export type NewBlogAiCost = typeof blogAiCosts.$inferInsert;
+export type BlogAiQuota = typeof blogAiQuotas.$inferSelect;
+export type NewBlogAiQuota = typeof blogAiQuotas.$inferInsert;
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;
