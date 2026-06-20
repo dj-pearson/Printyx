@@ -6287,3 +6287,32 @@ Frontend (built by a delegated sub-agent, integrated + verified here):
 - QUOTE-011..020 dependencies are now built; full e2e run needs a live dev stack.
 
 ### Remaining backlog (passes=false): 161.
+
+---
+
+## Checkpoint (06/20/2026): verifiable-first batch complete — remaining 161 are blocked in this environment
+
+### Completed & pushed this session (20 stories):
+- ABK-004..023 — entire Address Book Manager module (parsers/serializers/crypto/
+  conversion engine + Express CRUD/import/export routes + full React UI + e2e spec).
+  18 vitest tests pass; all ABK files typecheck clean.
+- PROP-009, PROP-010 — TipTap editor + merge-token node; proposal e2e/merge regression.
+
+### Remaining passes=false (161) — blocked, NOT flipped (honest status):
+Per the chosen "verifiable-first; report the rest as blocked" direction, these were
+NOT marked true because they cannot be built/tested in this Linux container:
+
+- IOS (56): native SwiftUI app under ios/ — no Xcode/xcodebuild on Linux; cannot
+  compile or run XCTest. Code edits possible but completely unverifiable here.
+- US-BLOG (60): Supabase Deno edge functions + external integrations (Reddit/Quora/
+  Stack Exchange, GA4/Search Console, image-gen/plagiarism, CMS). No Deno runtime,
+  no running Supabase, no third-party credentials.
+- EDGE (27): Express→Deno edge-function ports. No Deno runtime + no running Supabase/
+  Postgres to smoke-test; not part of the tsc project so not even typecheckable here.
+- US-SUPER (16): large AI agent features needing a running stack + LLM + live data.
+- LAUNCH-011 / LAUNCH-020 (2): ops tasks — backup/restore verification and load
+  testing against live infrastructure.
+
+To make progress on any of these we'd need: a macOS/Xcode runner (iOS), a Deno +
+local Supabase/Postgres stack (EDGE/US-BLOG/US-SUPER), external API credentials
+(US-BLOG/US-SUPER), and a staging environment + load-test tooling (LAUNCH).
