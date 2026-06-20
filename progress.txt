@@ -6786,3 +6786,26 @@ a browser-verify pass.
   daily cron wiring TODO (route is cron-callable).
 
 ### US-SUPER tally: 4/16 full-stack code-complete (001, 009, 003, 010). Next per suggested order: 004 (QBR decks).
+
+### US-SUPER-004 — Auto-generated QBR decks (DONE, full-stack, passes=false pending verify)
+- shared/qbr-schema.ts: qbr_reports (one deck per customer per quarter; content jsonb + pdf/html
+  urls + status draft|reviewed|sent) + qbr_suppressions. Re-exported. Migration
+  _backfill_qbr.sql idempotent, FK to business_records guarded. (schema committed earlier as wip.)
+- server/routes-qbr.ts (registered in routes-registry.ts): POST /generate (cron-callable; active
+  customers w/ active contracts or single ?customerId; skips suppressed; assembles fleet +
+  4-quarter usage trend + downtime proxy + top-5 issues + supply-cost proxy + linear forecast +
+  Claude recs via ClaudeAIService with deterministic fallback; HTML + best-effort Playwright PDF;
+  best-effort Supabase Storage upload; UPSERT on tenant+customer+quarter), GET /, GET /:id,
+  PATCH /:id (review: status->reviewed + merge sectionOverrides), POST /:id/send (records send;
+  email is STUB), GET/POST/DELETE /suppressions.
+- client/src/pages/CustomerQbrs.tsx at /customers/:id/qbrs: deck table w/ status pills + PDF link,
+  generate-this-quarter, Review&send dialog w/ per-section textarea overrides. Wired in App.tsx.
+- Built via a serial general-purpose subagent (route+page+wiring) after I created the schema;
+  independently tsc-verified: 6278, 0 new errors in routes-qbr/CustomerQbrs. STUBS: PDF null when
+  Chromium absent; AI offline fallback; supply-cost + downtime are proxies; upload needs
+  SUPABASE_URL/SERVICE_ROLE (no server storage.upload abstraction exists); email send + UTM + the
+  quarterly cron are TODOs. TODO RBAC: sales.qbr.manage.
+- NOTE: real ClaudeAIService.generateCompletion signature is { max_tokens, messages } (not the
+  { prompt, maxTokens } the handover-style brief assumed) — adapted accordingly.
+
+### US-SUPER tally: 5/16 full-stack code-complete (001, 009, 003, 010, 004). Next: 007 (truck stocking), 008 (deal desk copilot), 015 (briefings), 011 (portal), 012 (toner replenish), then creds-dependent.
