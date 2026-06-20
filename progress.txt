@@ -6568,3 +6568,33 @@ code-complete-only.
     scores stored independently so the UI can rank by differentiation).
 
 ### Verifiable: tsc clean (3 pre-existing env errors only). Blocked: Deno/Supabase + DataForSEO. passes=false.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-064: A/B testing for titles, meta descriptions, CTAs
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +1 table blog_experiments (post_id FK, element_type title|meta_description|cta,
+  variant_a/variant_b jsonb, serving_mode weekly_alternate|split, status, winner, significance jsonb,
+  min_sample, auto_promote, approved_by_user_id, promoted_at, started_at, + per-arm counters
+  a/b_impressions/clicks/assignments/conversions). Header now 27 tables.
+- drizzle/migrations/_backfill_blog_experiments.sql + rls registration.
+- supabase/functions/blog-experiments/index.ts (NEW edge fn):
+  - POST / create: variant A defaults to the post's current meta_title/title or meta_description;
+    title/meta default to weekly_alternate serving, cta to split.
+  - POST /:id/record: accumulates per-arm metrics (impressions/clicks from Search Console for
+    title/meta; assignments/conversions from the client beacon for CTA), recomputes significance.
+  - Significance = two-proportion z-test (CTR for title/meta, conversion rate for CTA) with an
+    Abramowitz-Stegun normal-CDF p-value; winner declared only when both arms clear min_sample AND
+    p<0.05. (Story note: Search Console lag 2-3 days — callers feed lag-adjusted metrics.)
+  - GET /:id/current: weekly-alternating live variant (even week→A, odd→B). GET /:id/assign?visitor=:
+    stable 50/50 hash assignment for split/CTA (cookie handling is client-side; SSR calls this).
+  - POST /:id/promote: writes the winning text into the post (meta_title / meta_description) — editor
+    approval; auto-promote happens inside /record when auto_promote was opted in. PATCH /:id pause/resume.
+  - Gated to blog.post.edit; tenant-scoped; create/promote/auto-promote/status all audit-logged.
+
+### Verifiable: tsc clean (3 pre-existing env errors only). Blocked: Deno/Supabase + live GSC/beacon
+  data to run a real test. passes=false.
+
+### Session batch now: US-BLOG-078,073,062,040,041,028,030,064 code-complete. blog-schema 18→27 tables.

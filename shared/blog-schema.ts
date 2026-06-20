@@ -1,7 +1,7 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 26 Drizzle tables for the Universal Blog System integrated into Printyx.
+ * 27 Drizzle tables for the Universal Blog System integrated into Printyx.
  *   Core (US-BLOG-002): blog_brand_voices, blog_style_guides, blog_keyword_clusters,
  *     blog_keywords, blog_briefs, blog_assets, blog_posts, blog_post_revisions,
  *     blog_citations, blog_distribution_targets, blog_distributions,
@@ -9,7 +9,7 @@
  *   Extensions: blog_jobs (012), blog_serp_snapshots (015), blog_competitor_keywords (018),
  *     blog_ai_costs + blog_ai_quotas (078), blog_pipeline_runs + blog_pipeline_stages (073),
  *     blog_qa_reports (040), blog_rank_forecasts (041), blog_authors (028),
- *     blog_outline_variants (030).
+ *     blog_outline_variants (030), blog_experiments (064).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -860,6 +860,56 @@ export const blogRankForecasts = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// blog_experiments — on-page A/B tests for title/meta/CTA (US-BLOG-064)
+// ---------------------------------------------------------------------------
+// Variant A is the current value; variant B is the proposed challenger.
+// title/meta use serving_mode='weekly_alternate' (compare CTR from Search
+// Console); CTA uses 'split' (cookie-based client assignment + conversions).
+// Per-variant counters accumulate; the winner is computed by a two-proportion
+// z-test and auto-promoted after the threshold (with editor approval).
+export const blogExperiments = pgTable(
+  'blog_experiments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    postId: uuid('post_id')
+      .notNull()
+      .references(() => blogPosts.id, { onDelete: 'cascade' }),
+    elementType: varchar('element_type', { length: 20 }).notNull(), // title | meta_description | cta
+    variantA: jsonb('variant_a').notNull(), // { text } (and CTA extras)
+    variantB: jsonb('variant_b').notNull(),
+    servingMode: varchar('serving_mode', { length: 16 }).notNull().default('weekly_alternate'), // weekly_alternate | split
+    status: varchar('status', { length: 16 }).notNull().default('running'), // running | paused | completed
+    winner: varchar('winner', { length: 8 }), // a | b | none
+    significance: jsonb('significance'), // { metric, a_rate, b_rate, z, p_value, significant, sample_ok }
+    minSample: integer('min_sample').notNull().default(100), // min impressions/assignments per arm
+    autoPromote: boolean('auto_promote').notNull().default(false),
+    approvedByUserId: varchar('approved_by_user_id'),
+    promotedAt: timestamp('promoted_at'),
+    startedAt: timestamp('started_at').notNull().defaultNow(),
+    // Per-arm counters. Impressions/clicks come from Search Console (title/meta);
+    // assignments/conversions come from the client beacon (CTA).
+    aImpressions: integer('a_impressions').notNull().default(0),
+    aClicks: integer('a_clicks').notNull().default(0),
+    aAssignments: integer('a_assignments').notNull().default(0),
+    aConversions: integer('a_conversions').notNull().default(0),
+    bImpressions: integer('b_impressions').notNull().default(0),
+    bClicks: integer('b_clicks').notNull().default(0),
+    bAssignments: integer('b_assignments').notNull().default(0),
+    bConversions: integer('b_conversions').notNull().default(0),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
+    createdByUserId: varchar('created_by_user_id'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_experiments_tenant_idx').on(table.tenantId),
+    postIdx: index('blog_experiments_post_idx').on(table.postId),
+    statusIdx: index('blog_experiments_tenant_status_idx').on(table.tenantId, table.status),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // blog_qa_reports — pre-publish QA results, cached 1h (US-BLOG-040)
 // ---------------------------------------------------------------------------
 // One row per QA run for a post; the latest row (by checked_at) is the active
@@ -1143,6 +1193,8 @@ export type BlogAuthor = typeof blogAuthors.$inferSelect;
 export type NewBlogAuthor = typeof blogAuthors.$inferInsert;
 export type BlogOutlineVariant = typeof blogOutlineVariants.$inferSelect;
 export type NewBlogOutlineVariant = typeof blogOutlineVariants.$inferInsert;
+export type BlogExperiment = typeof blogExperiments.$inferSelect;
+export type NewBlogExperiment = typeof blogExperiments.$inferInsert;
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;

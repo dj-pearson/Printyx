@@ -40,7 +40,8 @@ DECLARE
     'blog_qa_reports',
     'blog_rank_forecasts',
     'blog_authors',
-    'blog_outline_variants'
+    'blog_outline_variants',
+    'blog_experiments'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP
