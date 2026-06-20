@@ -6471,3 +6471,30 @@ Supabase + GA4/Search-Console-fed metrics unavailable here). Remaining false: 15
   coverage, and search_console impressions; also computes a comparative competitor score
   (is_own=false). Stores score + daily snapshot. GET /heatmap (clusters by score),
   GET /clusters/:id/authority (breakdown + 90-day trend). blog.analytics.view gate + audit log.
+
+## Iteration (06/20/2026) - US-BLOG-025 + US-BLOG-026 code-complete (NOT flipped)
+**Status**: both WRITTEN; schema typechecks clean. passes STAYS false (Deno + running
+Supabase + live URL fetch/Anthropic unavailable here). Remaining false: 156.
+
+### US-BLOG-025 — source aggregator + citation capture (+4 columns on blog_citations):
+- shared/blog-schema.ts: blog_citations += excerpt, og_image, retrieved_at, ref_key
+  (link-rot protection: keep the captured quote + when fetched). ALTER-TABLE backfill migration.
+- supabase/functions/blog-citations/index.ts: POST /fetch (HTTP GET the URL, regex og:/meta
+  for title/author/publish-date/og:image/excerpt, auto ref_key like 'smith2023', store
+  retrieved_at; stores URL even if fetch fails), GET ?post_id, PATCH/:id (edit attribution),
+  DELETE/:id, POST /reorder (inline_position), GET /references (generates ## References markdown
+  with [^refKey] + schema.org CreativeWork JSON-LD). Generic HTTP only — no third-party API.
+  blog.post.edit gate + audit log.
+
+### US-BLOG-026 — reading-level + persona targeter (no schema change):
+- supabase/functions/_shared/blog/readability.ts: PURE Flesch-Kincaid grade + reading-ease,
+  syllable heuristic, sentence segmentation, per-sentence highlight levels (ok/hard/very_hard
+  vs target+2/+5), parseTargetGrade. Deterministic, no external calls.
+- supabase/functions/blog-readability/index.ts: POST /analyze (resolves text+persona+target
+  from post/brief/brand-voice, returns overall FK + per-sentence highlights + LLM persona-match
+  0-100 + pre-publish gate: warn if persona<70 or |grade-target|>2), POST /simplify (LLM rewrite
+  one sentence to target grade, reports before/after grade). blog.post.edit gate.
+
+### Cumulative this session (claude/complete-prd-stories-7nztth), all reviewable commits:
+- EDGE-012 FLIPPED true (verified). US-BLOG-017/020/021/022/025/026 code-complete (NOT flipped).
+- blog-schema now 22 tables. Net passes=true unchanged at 298 (only EDGE-012).

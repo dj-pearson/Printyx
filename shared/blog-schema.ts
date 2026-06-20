@@ -1,10 +1,10 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 21 Drizzle tables for the Universal Blog System integrated into Printyx
- * (incl. blog_community_sources + blog_community_questions for the US-BLOG-017
- * forum/community question miner, and blog_internal_link_suggestions for the
- * US-BLOG-020 internal-link opportunity finder).
+ * 22 Drizzle tables for the Universal Blog System integrated into Printyx
+ * (incl. blog_community_sources + blog_community_questions [US-BLOG-017 miner],
+ * blog_internal_link_suggestions [US-BLOG-020], and
+ * blog_cluster_authority_snapshots [US-BLOG-022 topical authority trend]).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -331,6 +331,13 @@ export const blogCitations = pgTable(
     citationText: text('citation_text'),
     inlinePosition: integer('inline_position'),
     verifiedAt: timestamp('verified_at'),
+    // US-BLOG-025: link-rot protection — keep the captured excerpt + OG image and
+    // when it was fetched, so the original quote survives a later 404.
+    excerpt: text('excerpt'),
+    ogImage: text('og_image'),
+    retrievedAt: timestamp('retrieved_at'),
+    // Short stable key for inline [^refKey] markdown references (e.g. 'smith2023').
+    refKey: varchar('ref_key', { length: 64 }),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
   (table) => ({
