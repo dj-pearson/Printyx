@@ -1,13 +1,13 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 20 Drizzle tables for the Universal Blog System integrated into Printyx.
+ * 22 Drizzle tables for the Universal Blog System integrated into Printyx.
  *   Core (US-BLOG-002): blog_brand_voices, blog_style_guides, blog_keyword_clusters,
  *     blog_keywords, blog_briefs, blog_assets, blog_posts, blog_post_revisions,
  *     blog_citations, blog_distribution_targets, blog_distributions,
  *     blog_performance_metrics, blog_refresh_queue, blog_agent_settings, blog_audit_log.
  *   Extensions: blog_jobs (012), blog_serp_snapshots (015), blog_competitor_keywords (018),
- *     blog_ai_costs + blog_ai_quotas (078).
+ *     blog_ai_costs + blog_ai_quotas (078), blog_pipeline_runs + blog_pipeline_stages (073).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -509,6 +509,10 @@ export const blogAgentSettings = pgTable(
     // US-BLOG-039 — run the critic→reviser loop after draft generation.
     // Off by default (costs extra tokens).
     critiqueLoopEnabled: boolean('critique_loop_enabled').notNull().default(false),
+    // US-BLOG-073 — per-workspace multi-agent pipeline stage toggles.
+    // { researcher, outliner, drafter, fact_checker, critic, polisher } booleans.
+    // NULL = run every stage (drafter is always forced on regardless).
+    pipelineStagesConfig: jsonb('pipeline_stages_config'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
@@ -729,6 +733,80 @@ export const blogAiQuotas = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// blog_pipeline_runs — multi-agent draft pipeline runs (US-BLOG-073)
+// ---------------------------------------------------------------------------
+// One row per pipeline invocation. Stage artifacts live in blog_pipeline_stages.
+// Resumable: a halted/failed run re-runs from the first incomplete stage,
+// reusing completed stages' outputs as inputs.
+export const blogPipelineRuns = pgTable(
+  'blog_pipeline_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    briefId: uuid('brief_id').references(() => blogBriefs.id, { onDelete: 'set null' }),
+    /** The post the pipeline writes its draft into (created lazily after the drafter stage). */
+    postId: uuid('post_id').references(() => blogPosts.id, { onDelete: 'set null' }),
+    topic: varchar('topic', { length: 500 }).notNull(),
+    targetKeyword: varchar('target_keyword', { length: 500 }),
+    brandVoiceId: uuid('brand_voice_id'),
+    /** Resolved stage toggles for this run: { researcher, outliner, ... } booleans. */
+    stagesConfig: jsonb('stages_config'),
+    status: varchar('status', { length: 20 }).notNull().default('queued'), // queued | running | completed | failed | halted
+    currentStage: varchar('current_stage', { length: 24 }),
+    totalCostCents: integer('total_cost_cents').notNull().default(0),
+    totalLatencyMs: integer('total_latency_ms').notNull().default(0),
+    error: jsonb('error'), // { stage, message } when halted/failed
+    agentRunId: varchar('agent_run_id', { length: 100 }),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    createdByUserId: varchar('created_by_user_id'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_pipeline_runs_tenant_idx').on(table.tenantId),
+    statusIdx: index('blog_pipeline_runs_tenant_status_idx').on(table.tenantId, table.status),
+    postIdx: index('blog_pipeline_runs_post_idx').on(table.postId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_pipeline_stages — per-stage artifacts for transparency (US-BLOG-073)
+// ---------------------------------------------------------------------------
+// Every stage stores its input + output so an opaque agent chain stays
+// auditable. Cost + latency are logged per stage (also mirrored to blog_ai_costs).
+export const blogPipelineStages = pgTable(
+  'blog_pipeline_stages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => blogPipelineRuns.id, { onDelete: 'cascade' }),
+    tenantId: varchar('tenant_id').notNull(), // denormalized for RLS
+    stage: varchar('stage', { length: 24 }).notNull(), // researcher | outliner | drafter | fact_checker | critic | polisher
+    seq: integer('seq').notNull(),
+    status: varchar('status', { length: 16 }).notNull().default('pending'), // pending | running | completed | failed | skipped
+    input: jsonb('input'),
+    output: jsonb('output'),
+    model: varchar('model', { length: 80 }),
+    promptTokens: integer('prompt_tokens').notNull().default(0),
+    completionTokens: integer('completion_tokens').notNull().default(0),
+    costCents: integer('cost_cents').notNull().default(0),
+    latencyMs: integer('latency_ms').notNull().default(0),
+    error: text('error'),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    runIdx: index('blog_pipeline_stages_run_idx').on(table.runId),
+    tenantIdx: index('blog_pipeline_stages_tenant_idx').on(table.tenantId),
+    runSeqIdx: index('blog_pipeline_stages_run_seq_idx').on(table.runId, table.seq),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // Zod insert schemas (used by edge functions for validation)
 // ---------------------------------------------------------------------------
 
@@ -892,6 +970,10 @@ export type BlogAiCost = typeof blogAiCosts.$inferSelect;
 export type NewBlogAiCost = typeof blogAiCosts.$inferInsert;
 export type BlogAiQuota = typeof blogAiQuotas.$inferSelect;
 export type NewBlogAiQuota = typeof blogAiQuotas.$inferInsert;
+export type BlogPipelineRun = typeof blogPipelineRuns.$inferSelect;
+export type NewBlogPipelineRun = typeof blogPipelineRuns.$inferInsert;
+export type BlogPipelineStage = typeof blogPipelineStages.$inferSelect;
+export type NewBlogPipelineStage = typeof blogPipelineStages.$inferInsert;
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;

@@ -34,7 +34,9 @@ DECLARE
     'blog_serp_snapshots',
     'blog_competitor_keywords',
     'blog_ai_costs',
-    'blog_ai_quotas'
+    'blog_ai_quotas',
+    'blog_pipeline_runs',
+    'blog_pipeline_stages'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP

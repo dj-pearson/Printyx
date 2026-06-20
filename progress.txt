@@ -6386,3 +6386,39 @@ code-complete-only.
   delivery (email/Slack) is left to the worker that reads /anomalies. Cross-workspace
   (all-tenant) rollups intentionally NOT served — would break tenant isolation; deferred to
   a future platform-admin endpoint. passes=false.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-073: Multi-agent draft pipeline
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +2 tables — blog_pipeline_runs (one row/invocation: topic,
+  target_keyword, brief_id, post_id, stages_config jsonb, status queued|running|completed|
+  failed|halted, current_stage, total_cost_cents, total_latency_ms, error jsonb, agent_run_id,
+  soft-delete) and blog_pipeline_stages (per-stage artifact: stage, seq, status, input/output
+  jsonb, model, prompt/completion tokens, cost_cents, latency_ms, error). Plus a
+  pipeline_stages_config jsonb column on blog_agent_settings for per-workspace stage toggles.
+  Types exported; header now 22 tables.
+- drizzle/migrations/_backfill_blog_pipeline.sql: ALTER blog_agent_settings ADD COLUMN +
+  two CREATE TABLE IF NOT EXISTS (with FK cascade on run_id) + indexes. Idempotent.
+- drizzle/rls/blog.sql: registered blog_pipeline_runs + blog_pipeline_stages.
+- supabase/functions/blog-pipeline/index.ts (NEW edge fn, agent entry point):
+  - Six chained stages researcher→outliner→drafter→fact_checker→critic→polisher, each an
+    LLM call via generateCompletionDetailed with a purpose-built system+JSON prompt; outputs
+    parsed by extractJsonObject (drafter/polisher fall back to raw text on bad JSON so a run
+    isn't wasted).
+  - assertAgentsActive kill-switch gate + getQuotaStatus hard-stop check BEFORE every stage's
+    token spend; quota-blocked → run halted with explanation.
+  - Each stage stored as an artifact (input/output/model/tokens/cost/latency); cost mirrored
+    to blog_ai_costs (feature='pipeline.<stage>', pipeline_run_id link) reusing US-BLOG-078.
+  - Failure halts the run (status failed, error={stage,message}); POST /resume resets the
+    failed stage to pending and re-runs from there using completed stages' stored outputs.
+  - drafter (mandatory) result is materialized into a blog_posts draft on completion; existing
+    post_id is updated in place.
+  - Routes: POST /run, POST /resume, GET /:id, GET / (list), GET/PUT /config (per-workspace
+    stage toggles; PUT gated to blog.agent.toggle). All tenant-scoped; mutations audit-logged.
+
+### Verifiable here: `npx tsc --noEmit` ZERO errors referencing blog-schema/pipeline.
+### Blocked: no Deno runtime (esm.sh 403), no running Supabase, no CLAUDE_API_KEY — the actual
+  chained generation can't be executed here. passes=false.
