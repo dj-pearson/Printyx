@@ -6519,3 +6519,26 @@ Supabase + live URL fetch/Anthropic unavailable here). Remaining false: 156.
 
 ### Cumulative this session: EDGE-012 flipped+verified; US-BLOG-017,020,021,022,025,026 +
 043..051 (15 stories) code-complete (NOT flipped). 7 commits, all schema-typecheck-clean.
+
+## Iteration (06/20/2026) - US-BLOG-019 + US-BLOG-032 code-complete (NOT flipped)
+**Status**: both WRITTEN; schema typechecks clean. passes STAYS false (Deno + Anthropic).
+Remaining false: 156.
+
+### US-BLOG-032 — inline AI rewrite toolbar (no schema, stateless):
+- supabase/functions/blog-rewrite/index.ts: POST /blog-rewrite { text, action, tone?,
+  instructions? } where action ∈ shorter|longer|simplify|tone|continue|rephrase. One LLM call,
+  returns the rewrite; editor applies it. blog.post.edit gate. No persistence.
+
+### US-BLOG-019 — topic clustering, pillar-cluster model (+1 column):
+- shared/blog-schema.ts: blog_keyword_clusters += status (planned|in_progress|published|
+  decaying) via ALTER backfill migration. typecheck clean.
+- supabase/functions/blog-clustering/index.ts: POST /cluster (LLM groups blog_keywords into
+  pillar+supporting clusters, picks pillar by volume+intent, creates clusters + assigns
+  cluster_id), GET /clusters (clusters + member keywords for the force-directed graph),
+  PATCH /keywords/:id (drag keyword between clusters), PATCH /clusters/:id (rename/status/pillar),
+  POST /merge (merge clusters, survivor keeps keywords). Embedding-based clustering noted as a
+  future swap behind the same persistence (no OpenAI/Voyage creds here). blog.post.edit + audit.
+
+### Cumulative this session: EDGE-012 flipped+verified; 17 US-BLOG stories code-complete
+(017,019,020,021,022,025,026,032,043,044,045,046,047,048,049,050,051). 9 commits, all
+schema-typecheck-clean, all NOT flipped per "write code, don't flip". blog-schema 22 tables.

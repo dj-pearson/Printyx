@@ -101,6 +101,8 @@ export const blogKeywordClusters = pgTable(
     pillarKeyword: varchar('pillar_keyword', { length: 500 }),
     clusterType: varchar('cluster_type', { length: 16 }), // pillar | supporting
     parentClusterId: uuid('parent_cluster_id'),
+    // Lifecycle for the cluster visualizer (US-BLOG-019): planned | in_progress | published | decaying
+    status: varchar('status', { length: 16 }).default('planned'),
     topicalAuthorityScore: numeric('topical_authority_score', { precision: 5, scale: 2 }),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
