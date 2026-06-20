@@ -6422,3 +6422,25 @@ code-complete-only.
 ### Verifiable here: `npx tsc --noEmit` ZERO errors referencing blog-schema/pipeline.
 ### Blocked: no Deno runtime (esm.sh 403), no running Supabase, no CLAUDE_API_KEY — the actual
   chained generation can't be executed here. passes=false.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-062: Performance dashboard (posts, clusters, channels)
+**Status**: code-complete (read-only edge fn, no schema; Deno-unverifiable here). passes stays false.
+
+### What was built:
+- supabase/functions/blog-performance-dashboard/index.ts (NEW edge fn, read-only):
+  Aggregates blog_performance_metrics (no new tables) into:
+  - cards: total organic clicks (search_console source) with prior-period delta, conversions
+    attributed, top-10 posts by clicks, top-10 declining posts (negative click delta vs prior window).
+  - per-cluster table: clicks/impressions/conversions/avg position (impression-weighted)/post count +
+    cluster topical_authority_score, joined via blog_posts.cluster_id → blog_keyword_clusters.
+  - per-channel table: organic / site / each social platform (mapped via blog_distributions.platform
+    using distribution_id on the metric row), clicks/sessions/conversions.
+  - Default window "last 28 days vs prior 28" (compare defaults ON per the story note); range ∈ 7d|28d|90d.
+  - GET /export.csv?view=posts|clusters|channels reuses the same computation.
+  Gated to blog.analytics.view; every query tenant-scoped + paginated.
+
+### Verifiable: no tsc surface (pure Deno). Logic reviewed against existing metric/cluster/
+  distribution schemas. Blocked: no Deno/Supabase to run; metrics ingestion (GA4/GSC, US-BLOG-061)
+  is a separate blocked story so live data isn't present anyway. passes=false.
