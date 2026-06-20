@@ -1,14 +1,14 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 24 Drizzle tables for the Universal Blog System integrated into Printyx.
+ * 25 Drizzle tables for the Universal Blog System integrated into Printyx.
  *   Core (US-BLOG-002): blog_brand_voices, blog_style_guides, blog_keyword_clusters,
  *     blog_keywords, blog_briefs, blog_assets, blog_posts, blog_post_revisions,
  *     blog_citations, blog_distribution_targets, blog_distributions,
  *     blog_performance_metrics, blog_refresh_queue, blog_agent_settings, blog_audit_log.
  *   Extensions: blog_jobs (012), blog_serp_snapshots (015), blog_competitor_keywords (018),
  *     blog_ai_costs + blog_ai_quotas (078), blog_pipeline_runs + blog_pipeline_stages (073),
- *     blog_qa_reports (040), blog_rank_forecasts (041).
+ *     blog_qa_reports (040), blog_rank_forecasts (041), blog_authors (028).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -222,6 +222,41 @@ export const blogAssets = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// blog_authors — credentialed authors for E-E-A-T + author pages (US-BLOG-028)
+// ---------------------------------------------------------------------------
+export const blogAuthors = pgTable(
+  'blog_authors',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    name: varchar('name', { length: 200 }).notNull(),
+    slug: varchar('slug', { length: 200 }).notNull(),
+    bio: text('bio'),
+    headshotAssetId: uuid('headshot_asset_id').references(() => blogAssets.id, {
+      onDelete: 'set null',
+    }),
+    headshotUrl: text('headshot_url'),
+    credentials: text('credentials'), // e.g. "PhD, 12 yrs in print MSPs"
+    jobTitle: varchar('job_title', { length: 200 }),
+    expertiseTags: text('expertise_tags').array(),
+    socialLinks: jsonb('social_links'), // { twitter, linkedin, github, website, ... }
+    /** Extra schema.org Person fields merged into the author's JSON-LD (sameAs, knowsAbout, etc.). */
+    schemaPerson: jsonb('schema_person'),
+    /** Optional link to the platform user this author represents. */
+    userId: varchar('user_id'),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
+    createdByUserId: varchar('created_by_user_id'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_authors_tenant_idx').on(table.tenantId),
+    tenantSlugIdx: index('blog_authors_tenant_slug_idx').on(table.tenantId, table.slug),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // blog_posts — main post entity (US-BLOG-008..)
 // ---------------------------------------------------------------------------
 export const blogPosts = pgTable(
@@ -249,6 +284,13 @@ export const blogPosts = pgTable(
     // US-BLOG-027 — JSON-LD schema type. NULL is treated as 'BlogPosting'.
     // Article | BlogPosting | NewsArticle | HowTo | Recipe | Review | Product | FAQPage | Event
     schemaType: varchar('schema_type', { length: 20 }),
+    // US-BLOG-028 — E-E-A-T. Credentialed author entity (distinct from author_user_id,
+    // which links to the platform user). reviewed_by_author_id is an optional second
+    // author who reviewed for accuracy. original_research_signal is a forcing function:
+    // 'none' surfaces shallow content during planning (soft warning).
+    authorId: uuid('author_id'),
+    reviewedByAuthorId: uuid('reviewed_by_author_id'),
+    originalResearchSignal: varchar('original_research_signal', { length: 20 }), // survey | internal_data | expert_interview | case_study | none
     status: varchar('status', { length: 20 }).notNull().default('draft'), // draft | in_review | scheduled | published | archived
     publishedAt: timestamp('published_at'),
     scheduledFor: timestamp('scheduled_for'),
@@ -1057,6 +1099,8 @@ export type BlogQaReport = typeof blogQaReports.$inferSelect;
 export type NewBlogQaReport = typeof blogQaReports.$inferInsert;
 export type BlogRankForecast = typeof blogRankForecasts.$inferSelect;
 export type NewBlogRankForecast = typeof blogRankForecasts.$inferInsert;
+export type BlogAuthor = typeof blogAuthors.$inferSelect;
+export type NewBlogAuthor = typeof blogAuthors.$inferInsert;
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;

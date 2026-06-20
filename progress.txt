@@ -6509,3 +6509,33 @@ code-complete-only.
 ### Batch summary (this session, branch ...-7a3n19): US-BLOG-078, 073, 062, 040, 041 code-complete.
   blog-schema.ts 18 → 24 tables; 6 new edge fns + 1 shared helper (ai-cost.ts). Nothing flipped
   to passes=true (cannot build/run Deno+Supabase here, per the chosen mode).
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-028: E-E-A-T authors, bylines, research signal
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +1 table blog_authors (name/slug/bio/headshot_asset_id+url/credentials/
+  job_title/expertise_tags[]/social_links jsonb/schema_person jsonb/user_id link/is_active,
+  soft-delete). Plus 3 columns on blog_posts: author_id (credentialed author, distinct from the
+  existing author_user_id platform-user link), reviewed_by_author_id, original_research_signal
+  (survey|internal_data|expert_interview|case_study|none). Header now 25 tables.
+- drizzle/migrations/_backfill_blog_authors.sql (CREATE + 3 ALTERs) + rls registration.
+- supabase/functions/blog-authors/index.ts (NEW edge fn):
+  - Full author CRUD with per-tenant slug uniqueness + soft delete.
+  - GET /:id and GET /page/:slug return the author + their posts + a schema.org Person object
+    (built from bio/job_title/headshot/expertise→knowsAbout/social→sameAs, merged with the
+    author's schema_person overrides) — this is the structured-data half of the AC's "author
+    page generated per author with all their posts + structured data".
+  - POST /post-signal sets original_research_signal + author_id + reviewed_by_author_id on a
+    post (validating referenced authors belong to the tenant) and returns a soft warning when
+    the signal is 'none' — the forcing function the story calls for.
+  - Gated to blog.post.edit; tenant-scoped; mutations audit-logged.
+  - Note: the visual author page + byline rendering live in the marketing site / admin UI; this
+    fn supplies the data + JSON-LD. It also dovetails with US-BLOG-040's schema author check.
+
+### Verifiable: tsc clean (3 pre-existing env errors only). Blocked: Deno/Supabase to run. passes=false.
+
+### Session batch total (branch ...-7a3n19): US-BLOG-078, 073, 062, 040, 041, 028 code-complete.
+  blog-schema.ts 18 → 25 tables; 7 new edge fns + 1 shared helper (ai-cost.ts). No passes flipped.
