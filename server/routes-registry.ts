@@ -690,6 +690,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
     ['/api/territories', './routes-territory-management', 'Territory Management'],
     ['/api/cross-module', './routes-cross-module', 'Cross-Module Integration'],
     ['/api/oid-mappings', './routes-oid-mappings', 'OID Mappings'],
+    ['/api/address-books', './routes-address-books', 'Address Books (import/export + CRUD)'],
   ];
   for (const [mountPath, modulePath, label] of lazyModules) {
     try {
