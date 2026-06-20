@@ -29,7 +29,9 @@ DECLARE
     'blog_performance_metrics',
     'blog_refresh_queue',
     'blog_audit_log',
-    'blog_agent_settings'
+    'blog_agent_settings',
+    'blog_community_sources',
+    'blog_community_questions'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP

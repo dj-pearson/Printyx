@@ -6389,3 +6389,37 @@ Per the long-standing "verifiable-first; report the rest as blocked" direction:
 
 To advance these we need: a macOS/Xcode runner (iOS), Deno + local Supabase/Postgres
 (EDGE/US-BLOG/US-SUPER), external API credentials, and a staging + load-test environment.
+
+## Iteration (06/20/2026) - US-BLOG-017 code-complete (NOT flipped, per "write code, don't flip")
+**Status**: US-BLOG-017 community-question miner WRITTEN + schema typechecks clean.
+passes STAYS false (Deno/Supabase + Reddit/SE/Quora creds unavailable here → unverifiable).
+Remaining passes=false: 156 (unchanged count — nothing flipped).
+
+### What was built (US-BLOG-017 — forum/community question miner):
+- shared/blog-schema.ts: +2 tables — blog_community_sources (per-workspace seed list:
+  subreddits / SE sites / Quora topics, toggleable) and blog_community_questions (captured
+  questions with source_url [E-E-A-T], external_id dedup key, score/answer_count, theme_cluster
+  + theme_confidence from LLM, optional cluster_id link, soft-delete). Types + insert schema
+  exported; re-exported via shared/schema.ts. **typecheck clean (npm run check shows no new
+  errors — only pre-existing tsconfig baseUrl deprecation).**
+- supabase/functions/_shared/blog/community/: adapter contract + registry +
+  reddit.ts (app-only OAuth, /search or /hot, top-comment capture, 429 backoff, question
+  heuristic), stackexchange.ts (API v2.3, keyless-or-keyed, /search/advanced or /questions by
+  votes, batched answer-body fetch, HTML strip), quora.ts (ToS-safe: routes via configured
+  Bright Data collector, non-fatal skip when unconfigured).
+- supabase/functions/blog-community-questions/index.ts: routes GET/PUT /sources (seed CRUD,
+  drop=deactivate), POST /mine (kill-switch gated via assertAgentsActive; per-platform cred
+  resolution from blog_distribution_targets encrypted_config; dedup on (tenant,source,
+  external_id); LLM theme clustering via generateCompletion+extractJsonArray writing
+  theme_cluster/confidence), GET /list (filter by source/theme + theme histogram),
+  DELETE /clear (soft delete). Auth = blog.post.edit hybrid gate; every mutation writes
+  blog audit log. Matches the blog-paa-miner pattern exactly.
+- drizzle/migrations/_backfill_blog_community_questions.sql: idempotent CREATE TABLE IF NOT
+  EXISTS for both tables + indexes (FKs to blog_community_sources/blog_keyword_clusters).
+- drizzle/rls/blog.sql: registered both tables for apply_tenant_rls().
+
+### Verifiable here: schema TS (clean). NOT verifiable here: the Deno edge fn + adapters
+(esm.sh 403 → no `deno check`/run) and live Reddit/Stack Exchange/Quora/Anthropic calls
+(no creds, no running Supabase). Follow-on integration left as TODO: surface mined
+theme_cluster rows inside the blog-briefs generator (AC line "clusters surface in the brief
+generator") — needs a read in the briefs edge fn; deferred to keep this change reviewable.

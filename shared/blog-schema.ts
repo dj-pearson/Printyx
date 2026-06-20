@@ -1,7 +1,9 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 14 Drizzle tables for the Universal Blog System integrated into Printyx.
+ * 20 Drizzle tables for the Universal Blog System integrated into Printyx
+ * (incl. blog_community_sources + blog_community_questions for the US-BLOG-017
+ * forum/community question miner).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -632,6 +634,94 @@ export const blogCompetitorKeywords = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// blog_community_sources — per-workspace seed list for the community question
+// miner (US-BLOG-017): which subreddits / Quora topics / Stack Exchange sites
+// to crawl. One row per (tenant, source, handle) so the UI can toggle each.
+// ---------------------------------------------------------------------------
+export const blogCommunitySources = pgTable(
+  'blog_community_sources',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    // reddit | quora | stackexchange
+    source: varchar('source', { length: 20 }).notNull(),
+    // Subreddit name (no r/ prefix), Quora topic slug, or SE site api param
+    // (e.g. 'stackoverflow', 'superuser').
+    handle: varchar('handle', { length: 200 }).notNull(),
+    // Optional free-text label shown in the UI.
+    label: varchar('label', { length: 200 }),
+    isActive: boolean('is_active').notNull().default(true),
+    lastMinedAt: timestamp('last_mined_at'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    createdByUserId: varchar('created_by_user_id'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_community_sources_tenant_idx').on(table.tenantId),
+    tenantSourceIdx: index('blog_community_sources_tenant_source_idx').on(
+      table.tenantId,
+      table.source,
+    ),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_community_questions — real user questions mined from forums (US-BLOG-017).
+// Always stores source_url so the citation strengthens E-E-A-T. LLM theme
+// clustering writes theme_cluster + theme_confidence; the brief generator reads
+// these to surface authentic pain points.
+// ---------------------------------------------------------------------------
+export const blogCommunityQuestions = pgTable(
+  'blog_community_questions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    sourceId: uuid('source_id').references(() => blogCommunitySources.id, {
+      onDelete: 'set null',
+    }),
+    // reddit | quora | stackexchange
+    source: varchar('source', { length: 20 }).notNull(),
+    // Stable per-source id (reddit fullname, SE question_id, quora url hash)
+    // used together with tenant_id to dedup re-mined questions.
+    externalId: varchar('external_id', { length: 255 }),
+    sourceUrl: text('source_url').notNull(),
+    questionTitle: text('question_title').notNull(),
+    questionBody: text('question_body'),
+    topAnswer: text('top_answer'),
+    // Upvotes / score from the source (reddit ups, SE score, quora n/a).
+    score: integer('score'),
+    answerCount: integer('answer_count'),
+    // Theme assigned by the LLM clusterer (nullable until clustering runs).
+    themeCluster: varchar('theme_cluster', { length: 200 }),
+    themeConfidence: numeric('theme_confidence', { precision: 4, scale: 3 }),
+    // Linked keyword cluster once the brief generator promotes a theme.
+    clusterId: uuid('cluster_id').references(() => blogKeywordClusters.id, {
+      onDelete: 'set null',
+    }),
+    rawData: jsonb('raw_data'),
+    capturedAt: timestamp('captured_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
+    createdByUserId: varchar('created_by_user_id'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_community_questions_tenant_idx').on(table.tenantId),
+    tenantSourceIdx: index('blog_community_questions_tenant_source_idx').on(
+      table.tenantId,
+      table.source,
+    ),
+    tenantThemeIdx: index('blog_community_questions_tenant_theme_idx').on(
+      table.tenantId,
+      table.themeCluster,
+    ),
+    tenantExternalIdx: index('blog_community_questions_tenant_external_idx').on(
+      table.tenantId,
+      table.externalId,
+    ),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // blog_audit_log — every mutating action (US-BLOG-011, 086)
 // ---------------------------------------------------------------------------
 export const blogAuditLog = pgTable(
@@ -820,6 +910,15 @@ export type BlogSerpSnapshot = typeof blogSerpSnapshots.$inferSelect;
 export type NewBlogSerpSnapshot = typeof blogSerpSnapshots.$inferInsert;
 export type BlogCompetitorKeyword = typeof blogCompetitorKeywords.$inferSelect;
 export type NewBlogCompetitorKeyword = typeof blogCompetitorKeywords.$inferInsert;
+export type BlogCommunitySource = typeof blogCommunitySources.$inferSelect;
+export type NewBlogCommunitySource = typeof blogCommunitySources.$inferInsert;
+export type BlogCommunityQuestion = typeof blogCommunityQuestions.$inferSelect;
+export type NewBlogCommunityQuestion = typeof blogCommunityQuestions.$inferInsert;
+
+export const insertBlogCommunitySourceSchema = createInsertSchema(blogCommunitySources, {
+  source: z.enum(['reddit', 'quora', 'stackexchange']),
+  handle: z.string().min(1).max(200),
+}).omit({ id: true, createdAt: true, updatedAt: true, lastMinedAt: true });
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;
