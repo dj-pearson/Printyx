@@ -6316,3 +6316,32 @@ NOT marked true because they cannot be built/tested in this Linux container:
 To make progress on any of these we'd need: a macOS/Xcode runner (iOS), a Deno +
 local Supabase/Postgres stack (EDGE/US-BLOG/US-SUPER), external API credentials
 (US-BLOG/US-SUPER), and a staging environment + load-test tooling (LAUNCH).
+
+---
+
+## Iteration (06/20/2026) - EDGE domain (Option 1, code-complete): EDGE-005g, EDGE-002i
+**Status**: EDGE-005g DONE+verified; EDGE-002i DONE code-complete (Deno, unverifiable here)
+
+Environment note: confirmed Deno CAN be installed (npm i -g deno → 2.8.3) but `deno check`
+fails because esm.sh (remote import host for every edge fn) returns 403 in this container's
+network. So edge functions can be neither typechecked nor run here — Deno-side stories are
+code-complete-only.
+
+### EDGE-005g — delete dead /api/customer-access + /api/bug-reports frontend/stubs:
+- Removed CustomerAccessManagement page + App.tsx route/lazy-import + navigation-permissions
+  entry; removed customerAccessRouter + bugReportsRouter (hardcoded-data stubs) from
+  server/routes-misc-stubs.ts. No client code calls /api/bug-reports. VERIFIED: no dangling
+  refs, tsc clean (only pre-existing unrelated errors remain).
+
+### EDGE-002i — audit-logs edge fn permission gating:
+- Hardened gate to platform-admin OR app_metadata.permissions[] audit.logs.view* (hybrid model
+  per CLAUDE.md), always tenant-scoped. Code-complete; not runtime-verifiable here.
+
+### EDGE risk assessment (remaining 25):
+- Additive Deno ports (EDGE-002c/d/e/f/g/h, EDGE-004, EDGE-005a/b/c/e/f): doable code-complete
+  but voluminous + unverifiable (no Deno runtime/Supabase/network).
+- Risky-blind infra (EDGE-009 node-cron removal, EDGE-010 WebSocket→Realtime, EDGE-011 server/
+  deletion, EDGE-013/014 proxy-map surgery, EDGE-017 sunset deletions): the PRD itself warns
+  these break prod silently without a test environment — NOT flipped.
+
+### Remaining passes=false: 159.

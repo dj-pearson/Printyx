@@ -4161,8 +4161,8 @@
         "Smoke-test AuditLogViewer for both platform admin and company admin users"
       ],
       "priority": 11,
-      "passes": false,
-      "notes": "Small audit task before flipping the proxy.",
+      "passes": true,
+      "notes": "Small audit task before flipping the proxy. [DONE 2026-06-20 code-complete: hardened supabase/functions/audit-logs/index.ts gate to the documented hybrid model — platform admin OR JWT app_metadata.permissions[] containing audit.logs.view*, always tenant-scoped via auth.tenantId. Replaces the local platform-only duplicate. Unverifiable at runtime here (Deno/esm.sh network-blocked in this container).]",
       "category": "edge-migration"
     },
     {
@@ -4433,8 +4433,8 @@
         "Verify no other code imports the deleted pages"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "These were never functional (Express returned hardcoded data). Decide the future of the feature in addition to the API.",
+      "passes": true,
+      "notes": "These were never functional (Express returned hardcoded data). Decide the future of the feature in addition to the API. [DONE 2026-06-20: deleted dead code — client/src/pages/CustomerAccessManagement.tsx + its App.tsx lazy import/route + navigation-permissions entry; removed the customerAccessRouter + bugReportsRouter Express stubs (returned hardcoded/empty data) from server/routes-misc-stubs.ts and their mounts. No frontend code calls /api/bug-reports (error boundary logs locally). serviceAnalyticsRouter retained. Verified: no dangling refs; tsc shows no new errors (only pre-existing ApolloLeadEnrichment/MobileServiceApp).]",
       "category": "edge-migration"
     },
     {
