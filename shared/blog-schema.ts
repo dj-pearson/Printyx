@@ -1,14 +1,14 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 23 Drizzle tables for the Universal Blog System integrated into Printyx.
+ * 24 Drizzle tables for the Universal Blog System integrated into Printyx.
  *   Core (US-BLOG-002): blog_brand_voices, blog_style_guides, blog_keyword_clusters,
  *     blog_keywords, blog_briefs, blog_assets, blog_posts, blog_post_revisions,
  *     blog_citations, blog_distribution_targets, blog_distributions,
  *     blog_performance_metrics, blog_refresh_queue, blog_agent_settings, blog_audit_log.
  *   Extensions: blog_jobs (012), blog_serp_snapshots (015), blog_competitor_keywords (018),
  *     blog_ai_costs + blog_ai_quotas (078), blog_pipeline_runs + blog_pipeline_stages (073),
- *     blog_qa_reports (040).
+ *     blog_qa_reports (040), blog_rank_forecasts (041).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -514,6 +514,8 @@ export const blogAgentSettings = pgTable(
     // { researcher, outliner, drafter, fact_checker, critic, polisher } booleans.
     // NULL = run every stage (drafter is always forced on regardless).
     pipelineStagesConfig: jsonb('pipeline_stages_config'),
+    // US-BLOG-041 — workspace domain authority (0-100), an input to the rank forecast.
+    domainAuthority: integer('domain_authority'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
@@ -730,6 +732,48 @@ export const blogAiQuotas = pgTable(
   },
   (table) => ({
     tenantIdx: index('blog_ai_quotas_tenant_idx').on(table.tenantId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_rank_forecasts — predicted rank + traffic pre-publish (US-BLOG-041)
+// ---------------------------------------------------------------------------
+// One row per forecast run for a post; latest by checked_at is active. After
+// publish, actual_position / actual_clicks_month are backfilled from
+// blog_performance_metrics so the model calibrates over time.
+export const blogRankForecasts = pgTable(
+  'blog_rank_forecasts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    postId: uuid('post_id')
+      .notNull()
+      .references(() => blogPosts.id, { onDelete: 'cascade' }),
+    keyword: varchar('keyword', { length: 500 }),
+    searchVolume: integer('search_volume'),
+    keywordDifficulty: integer('keyword_difficulty'),
+    domainAuthority: integer('domain_authority'),
+    qualityScore: numeric('quality_score', { precision: 5, scale: 2 }),
+    serpCompetitiveness: numeric('serp_competitiveness', { precision: 5, scale: 2 }),
+    predictedRankLow: integer('predicted_rank_low'),
+    predictedRankHigh: integer('predicted_rank_high'),
+    predictedPosition: numeric('predicted_position', { precision: 6, scale: 2 }),
+    predictedClicksMonth: integer('predicted_clicks_month'),
+    confidence: varchar('confidence', { length: 8 }), // low | medium | high
+    recommendation: varchar('recommendation', { length: 32 }), // publish_now | invest_originality | build_links | pivot_angle
+    rationale: text('rationale'),
+    inputs: jsonb('inputs'),
+    calibration: jsonb('calibration'), // { sample_size, factor, note }
+    actualPosition: numeric('actual_position', { precision: 6, scale: 2 }),
+    actualClicksMonth: integer('actual_clicks_month'),
+    actualsUpdatedAt: timestamp('actuals_updated_at'),
+    checkedAt: timestamp('checked_at').notNull().defaultNow(),
+    createdByUserId: varchar('created_by_user_id'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index('blog_rank_forecasts_tenant_idx').on(table.tenantId),
+    postCheckedIdx: index('blog_rank_forecasts_post_checked_idx').on(table.postId, table.checkedAt),
   }),
 );
 
@@ -1011,6 +1055,8 @@ export type BlogPipelineStage = typeof blogPipelineStages.$inferSelect;
 export type NewBlogPipelineStage = typeof blogPipelineStages.$inferInsert;
 export type BlogQaReport = typeof blogQaReports.$inferSelect;
 export type NewBlogQaReport = typeof blogQaReports.$inferInsert;
+export type BlogRankForecast = typeof blogRankForecasts.$inferSelect;
+export type NewBlogRankForecast = typeof blogRankForecasts.$inferInsert;
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;

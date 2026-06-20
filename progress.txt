@@ -6471,3 +6471,41 @@ code-complete-only.
 
 ### Verifiable: tsc clean. Blocked: Deno/Supabase to run; live link HEADs need network the
   container restricts. passes=false.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-041: Predicted ranking + traffic forecast pre-publish
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +1 table blog_rank_forecasts (inputs: keyword/search_volume/
+  keyword_difficulty/domain_authority/quality_score/serp_competitiveness; outputs:
+  predicted_rank_low/high, predicted_position, predicted_clicks_month, confidence,
+  recommendation, rationale, calibration jsonb; post-publish actuals: actual_position/
+  actual_clicks_month/actuals_updated_at). Plus a domain_authority int column on
+  blog_agent_settings. Header now 24 tables.
+- drizzle/migrations/_backfill_blog_rank_forecasts.sql (ALTER + CREATE) + rls registration.
+- supabase/functions/blog-rank-forecast/index.ts (NEW edge fn):
+  - Deterministic monotonic model: competitiveness (0.7*difficulty + 0.3*SERP signal) vs
+    strength (0.5*domain_authority + 0.5*quality) → net deficit maps to a predicted position
+    (×calibration factor), a spread-based rank range, and clicks/mo via a position→CTR curve.
+  - Inputs resolved with fallbacks: explicit body > blog_keywords row (by id or string) for
+    volume/difficulty; SERP competitiveness from the latest blog_serp_snapshots aggregate
+    (median word count); domain_authority from body > agent settings > 30; quality from body >
+    post.seo_score > 60.
+  - Recommendation enum: pivot_angle (net>30) / invest_originality (quality<50) / build_links
+    (low DA + moderate net) / publish_now, with human labels.
+  - Confidence gated by input completeness + calibration sample size (>=50 posts → high,
+    matching the story note that predictions get reliable only after ~50 posts).
+  - Calibration: mean(actual/predicted position) over posts with backfilled actuals (clamped
+    0.5–2). POST /actuals pulls 28d search_console metrics → impression-weighted actual position
+    + monthly-scaled clicks, stored on the latest forecast to feed calibration.
+  - Optional one-paragraph LLM rationale (quota-gated, cost-logged to blog_ai_costs).
+  - Gated to blog.post.edit; tenant-scoped; mutations audit-logged.
+
+### Verifiable: tsc clean (only 3 pre-existing env/config errors: node/vite type defs, baseUrl
+  deprecation — present at HEAD, unrelated). Blocked: no Deno/Supabase/API key to run. passes=false.
+
+### Batch summary (this session, branch ...-7a3n19): US-BLOG-078, 073, 062, 040, 041 code-complete.
+  blog-schema.ts 18 → 24 tables; 6 new edge fns + 1 shared helper (ai-cost.ts). Nothing flipped
+  to passes=true (cannot build/run Deno+Supabase here, per the chosen mode).
