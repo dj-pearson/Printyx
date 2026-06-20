@@ -1,13 +1,14 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 22 Drizzle tables for the Universal Blog System integrated into Printyx.
+ * 23 Drizzle tables for the Universal Blog System integrated into Printyx.
  *   Core (US-BLOG-002): blog_brand_voices, blog_style_guides, blog_keyword_clusters,
  *     blog_keywords, blog_briefs, blog_assets, blog_posts, blog_post_revisions,
  *     blog_citations, blog_distribution_targets, blog_distributions,
  *     blog_performance_metrics, blog_refresh_queue, blog_agent_settings, blog_audit_log.
  *   Extensions: blog_jobs (012), blog_serp_snapshots (015), blog_competitor_keywords (018),
- *     blog_ai_costs + blog_ai_quotas (078), blog_pipeline_runs + blog_pipeline_stages (073).
+ *     blog_ai_costs + blog_ai_quotas (078), blog_pipeline_runs + blog_pipeline_stages (073),
+ *     blog_qa_reports (040).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -733,6 +734,40 @@ export const blogAiQuotas = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// blog_qa_reports — pre-publish QA results, cached 1h (US-BLOG-040)
+// ---------------------------------------------------------------------------
+// One row per QA run for a post; the latest row (by checked_at) is the active
+// report. link_check is the most expensive check, so a fresh report is reused
+// for 1h unless ?force=true. overridden lets an editor publish despite failures.
+export const blogQaReports = pgTable(
+  'blog_qa_reports',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    postId: uuid('post_id')
+      .notNull()
+      .references(() => blogPosts.id, { onDelete: 'cascade' }),
+    /** True when every gating check passed (or the report is overridden). */
+    overallPass: boolean('overall_pass').notNull().default(false),
+    linkCheck: jsonb('link_check'), // { total, ok, redirects[], broken[], errors[] }
+    ogPreview: jsonb('og_preview'), // { slack, twitter, linkedin, imessage, warnings[] }
+    a11y: jsonb('a11y'), // { violations: [{rule, severity, detail}], passed: bool }
+    schemaCheck: jsonb('schema_check'), // { type, valid, missing[] }
+    summary: jsonb('summary'), // { checks: [{key, status, count}], gating_failures: number }
+    overridden: boolean('overridden').notNull().default(false),
+    overrideReason: text('override_reason'),
+    overrideByUserId: varchar('override_by_user_id'),
+    checkedAt: timestamp('checked_at').notNull().defaultNow(),
+    createdByUserId: varchar('created_by_user_id'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index('blog_qa_reports_tenant_idx').on(table.tenantId),
+    postCheckedIdx: index('blog_qa_reports_post_checked_idx').on(table.postId, table.checkedAt),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // blog_pipeline_runs — multi-agent draft pipeline runs (US-BLOG-073)
 // ---------------------------------------------------------------------------
 // One row per pipeline invocation. Stage artifacts live in blog_pipeline_stages.
@@ -974,6 +1009,8 @@ export type BlogPipelineRun = typeof blogPipelineRuns.$inferSelect;
 export type NewBlogPipelineRun = typeof blogPipelineRuns.$inferInsert;
 export type BlogPipelineStage = typeof blogPipelineStages.$inferSelect;
 export type NewBlogPipelineStage = typeof blogPipelineStages.$inferInsert;
+export type BlogQaReport = typeof blogQaReports.$inferSelect;
+export type NewBlogQaReport = typeof blogQaReports.$inferInsert;
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;

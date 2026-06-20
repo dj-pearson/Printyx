@@ -36,7 +36,8 @@ DECLARE
     'blog_ai_costs',
     'blog_ai_quotas',
     'blog_pipeline_runs',
-    'blog_pipeline_stages'
+    'blog_pipeline_stages',
+    'blog_qa_reports'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP

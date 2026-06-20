@@ -6444,3 +6444,30 @@ code-complete-only.
 ### Verifiable: no tsc surface (pure Deno). Logic reviewed against existing metric/cluster/
   distribution schemas. Blocked: no Deno/Supabase to run; metrics ingestion (GA4/GSC, US-BLOG-061)
   is a separate blocked story so live data isn't present anyway. passes=false.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-040: Pre-publish QA pass
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +1 table blog_qa_reports (post_id FK cascade, overall_pass,
+  link_check/og_preview/a11y/schema_check/summary jsonb, overridden + override_reason +
+  override_by_user_id, checked_at). Latest-by-checked_at row is the active report. Header now 23 tables.
+- drizzle/migrations/_backfill_blog_qa_reports.sql + rls/blog.sql registration.
+- supabase/functions/blog-prepublish-qa/index.ts (NEW edge fn):
+  - Link checker: extracts href/src, HEADs each external URL (GET-with-Range fallback on 405,
+    8s timeout, redirect:manual) → ok / redirects / broken (4xx/5xx) / errors; relative internal
+    links recorded unverified (no live base in the edge runtime).
+  - OG/Twitter card preview: per-platform (slack/twitter/linkedin/imessage) structured card data
+    + length warnings (title>60, description<50/>200, missing image/canonical). Visual render is UI.
+  - a11y: static-HTML heuristics — missing img alt (high), heading-order skips (medium), generic
+    link text (low). Honestly scoped: a full axe-core run needs a real DOM and stays browser-side.
+  - Schema validator: re-checks JSON-LD requirements for the post's schema_type (headline/author/
+    publisher/description + HowTo/FAQPage extras), reusing US-BLOG-027 rules.
+  - Gating: broken links / high-severity a11y / invalid schema → overall_pass=false. POST /override
+    (blog.post.publish only, audit-logged) flips the gate with a required reason. Reports cached 1h
+    (link checks are expensive) unless ?force=true; GET returns the latest + a stale flag.
+
+### Verifiable: tsc clean. Blocked: Deno/Supabase to run; live link HEADs need network the
+  container restricts. passes=false.
