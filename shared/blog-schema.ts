@@ -1,7 +1,15 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 14 Drizzle tables for the Universal Blog System integrated into Printyx.
+ * 28 Drizzle tables for the Universal Blog System integrated into Printyx.
+ *   Core (US-BLOG-002): blog_brand_voices, blog_style_guides, blog_keyword_clusters,
+ *     blog_keywords, blog_briefs, blog_assets, blog_posts, blog_post_revisions,
+ *     blog_citations, blog_distribution_targets, blog_distributions,
+ *     blog_performance_metrics, blog_refresh_queue, blog_agent_settings, blog_audit_log.
+ *   Extensions: blog_jobs (012), blog_serp_snapshots (015), blog_competitor_keywords (018),
+ *     blog_ai_costs + blog_ai_quotas (078), blog_pipeline_runs + blog_pipeline_stages (073),
+ *     blog_qa_reports (040), blog_rank_forecasts (041), blog_authors (028),
+ *     blog_outline_variants (030), blog_experiments (064), blog_post_variants (072).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -187,6 +195,87 @@ export const blogBriefs = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// blog_post_variants — audience-specific variants of one master post (US-BLOG-072)
+// ---------------------------------------------------------------------------
+// One master article, multiple ICP variants (engineer/manager/executive). Each
+// variant overrides the intro, examples, and CTA but shares the core body.
+// Variants are resolved server-side (URL param > cookie segment > referrer >
+// default) and never get their own URL — the post keeps ONE canonical URL to
+// avoid duplicate content. Per-variant performance is counted on the row.
+export const blogPostVariants = pgTable(
+  'blog_post_variants',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    postId: uuid('post_id')
+      .notNull()
+      .references(() => blogPosts.id, { onDelete: 'cascade' }),
+    audienceKey: varchar('audience_key', { length: 64 }).notNull(), // engineer | manager | executive | ...
+    audienceLabel: varchar('audience_label', { length: 200 }),
+    intro: text('intro'),
+    examples: jsonb('examples'), // [{ heading, body }] or freeform
+    cta: jsonb('cta'), // { text, href, style }
+    /** How a request resolves to this variant: { url_param, cookie_segment, referrer_patterns[] }. */
+    matchRules: jsonb('match_rules'),
+    isDefault: boolean('is_default').notNull().default(false),
+    servedCount: integer('served_count').notNull().default(0),
+    conversionCount: integer('conversion_count').notNull().default(0),
+    status: varchar('status', { length: 16 }).notNull().default('active'), // active | paused
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
+    createdByUserId: varchar('created_by_user_id'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_post_variants_tenant_idx').on(table.tenantId),
+    postIdx: index('blog_post_variants_post_idx').on(table.postId),
+    postAudienceIdx: index('blog_post_variants_post_audience_idx').on(
+      table.postId,
+      table.audienceKey,
+    ),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_outline_variants — A/B outline candidates scored vs SERP (US-BLOG-030)
+// ---------------------------------------------------------------------------
+// The brief generator produces several outline angles for one keyword; each is
+// scored for SERP-fit and differentiation. The editor selects one (siblings are
+// archived for future reference). A/B test mode pairs two variants targeting
+// different intents via ab_test_group.
+export const blogOutlineVariants = pgTable(
+  'blog_outline_variants',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    briefId: uuid('brief_id').references(() => blogBriefs.id, { onDelete: 'set null' }),
+    keyword: varchar('keyword', { length: 500 }).notNull(),
+    angle: varchar('angle', { length: 32 }), // how_to | comparison | deep_dive | listicle | opinion | case_study
+    targetIntent: varchar('target_intent', { length: 20 }), // informational | commercial | transactional | navigational
+    outline: jsonb('outline').notNull(), // { title, sections: [{h2, h3[]}], target_word_count, hook }
+    serpFitScore: numeric('serp_fit_score', { precision: 5, scale: 2 }), // 0-100
+    differentiationScore: numeric('differentiation_score', { precision: 5, scale: 2 }), // 0-100
+    scoringRationale: text('scoring_rationale'),
+    status: varchar('status', { length: 16 }).notNull().default('candidate'), // candidate | selected | archived
+    abTestGroup: uuid('ab_test_group'),
+    postId: uuid('post_id'),
+    serpSnapshotId: uuid('serp_snapshot_id'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
+    createdByUserId: varchar('created_by_user_id'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_outline_variants_tenant_idx').on(table.tenantId),
+    briefIdx: index('blog_outline_variants_brief_idx').on(table.briefId),
+    tenantKeywordIdx: index('blog_outline_variants_tenant_keyword_idx').on(
+      table.tenantId,
+      table.keyword,
+    ),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // blog_assets — images, quotes, data, expert contacts (US-BLOG-010)
 // ---------------------------------------------------------------------------
 export const blogAssets = pgTable(
@@ -211,6 +300,41 @@ export const blogAssets = pgTable(
   (table) => ({
     tenantIdx: index('blog_assets_tenant_idx').on(table.tenantId),
     typeIdx: index('blog_assets_tenant_type_idx').on(table.tenantId, table.assetType),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_authors — credentialed authors for E-E-A-T + author pages (US-BLOG-028)
+// ---------------------------------------------------------------------------
+export const blogAuthors = pgTable(
+  'blog_authors',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    name: varchar('name', { length: 200 }).notNull(),
+    slug: varchar('slug', { length: 200 }).notNull(),
+    bio: text('bio'),
+    headshotAssetId: uuid('headshot_asset_id').references(() => blogAssets.id, {
+      onDelete: 'set null',
+    }),
+    headshotUrl: text('headshot_url'),
+    credentials: text('credentials'), // e.g. "PhD, 12 yrs in print MSPs"
+    jobTitle: varchar('job_title', { length: 200 }),
+    expertiseTags: text('expertise_tags').array(),
+    socialLinks: jsonb('social_links'), // { twitter, linkedin, github, website, ... }
+    /** Extra schema.org Person fields merged into the author's JSON-LD (sameAs, knowsAbout, etc.). */
+    schemaPerson: jsonb('schema_person'),
+    /** Optional link to the platform user this author represents. */
+    userId: varchar('user_id'),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
+    createdByUserId: varchar('created_by_user_id'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_authors_tenant_idx').on(table.tenantId),
+    tenantSlugIdx: index('blog_authors_tenant_slug_idx').on(table.tenantId, table.slug),
   }),
 );
 
@@ -242,6 +366,13 @@ export const blogPosts = pgTable(
     // US-BLOG-027 — JSON-LD schema type. NULL is treated as 'BlogPosting'.
     // Article | BlogPosting | NewsArticle | HowTo | Recipe | Review | Product | FAQPage | Event
     schemaType: varchar('schema_type', { length: 20 }),
+    // US-BLOG-028 — E-E-A-T. Credentialed author entity (distinct from author_user_id,
+    // which links to the platform user). reviewed_by_author_id is an optional second
+    // author who reviewed for accuracy. original_research_signal is a forcing function:
+    // 'none' surfaces shallow content during planning (soft warning).
+    authorId: uuid('author_id'),
+    reviewedByAuthorId: uuid('reviewed_by_author_id'),
+    originalResearchSignal: varchar('original_research_signal', { length: 20 }), // survey | internal_data | expert_interview | case_study | none
     status: varchar('status', { length: 20 }).notNull().default('draft'), // draft | in_review | scheduled | published | archived
     publishedAt: timestamp('published_at'),
     scheduledFor: timestamp('scheduled_for'),
@@ -503,6 +634,12 @@ export const blogAgentSettings = pgTable(
     // US-BLOG-039 — run the critic→reviser loop after draft generation.
     // Off by default (costs extra tokens).
     critiqueLoopEnabled: boolean('critique_loop_enabled').notNull().default(false),
+    // US-BLOG-073 — per-workspace multi-agent pipeline stage toggles.
+    // { researcher, outliner, drafter, fact_checker, critic, polisher } booleans.
+    // NULL = run every stage (drafter is always forced on regardless).
+    pipelineStagesConfig: jsonb('pipeline_stages_config'),
+    // US-BLOG-041 — workspace domain authority (0-100), an input to the rank forecast.
+    domainAuthority: integer('domain_authority'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
@@ -657,6 +794,268 @@ export const blogAuditLog = pgTable(
     actionIdx: index('blog_audit_log_tenant_action_idx').on(table.tenantId, table.action),
     targetIdx: index('blog_audit_log_target_idx').on(table.targetType, table.targetId),
     createdIdx: index('blog_audit_log_tenant_created_idx').on(table.tenantId, table.createdAt),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_ai_costs — per-call AI spend ledger (US-BLOG-078)
+// ---------------------------------------------------------------------------
+// Append-only log: every adapter/LLM call writes one row so the cost
+// dashboard can slice spend by workspace, feature, and model. cost_cents is
+// an integer (no float drift); USD estimates are converted at write time.
+export const blogAiCosts = pgTable(
+  'blog_ai_costs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(), // the "workspace" in PRD terms
+    provider: varchar('provider', { length: 32 }).notNull(), // anthropic | openai | dataforseo | ...
+    model: varchar('model', { length: 80 }),
+    /** Which feature triggered the call, e.g. 'draft', 'brief', 'pipeline.drafter', 'meta_suggest'. */
+    feature: varchar('feature', { length: 64 }).notNull(),
+    promptTokens: integer('prompt_tokens').notNull().default(0),
+    completionTokens: integer('completion_tokens').notNull().default(0),
+    totalTokens: integer('total_tokens').notNull().default(0),
+    costCents: integer('cost_cents').notNull().default(0),
+    requestId: varchar('request_id', { length: 200 }),
+    /** Optional links back to the entity that incurred the cost. */
+    postId: uuid('post_id'),
+    pipelineRunId: uuid('pipeline_run_id'),
+    createdByUserId: varchar('created_by_user_id'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantCreatedIdx: index('blog_ai_costs_tenant_created_idx').on(table.tenantId, table.createdAt),
+    tenantFeatureIdx: index('blog_ai_costs_tenant_feature_idx').on(table.tenantId, table.feature),
+    tenantModelIdx: index('blog_ai_costs_tenant_model_idx').on(table.tenantId, table.model),
+    postIdx: index('blog_ai_costs_post_idx').on(table.postId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_ai_quotas — per-workspace monthly AI spend cap (US-BLOG-078)
+// ---------------------------------------------------------------------------
+// Exactly one row per tenant; auto-created with defaults on first read.
+// monthly_limit_cents = NULL means unlimited (warn/hard-stop disabled).
+export const blogAiQuotas = pgTable(
+  'blog_ai_quotas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull().unique(),
+    monthlyLimitCents: integer('monthly_limit_cents'), // null = unlimited
+    warnThresholdPct: integer('warn_threshold_pct').notNull().default(80),
+    /** When true, calls are blocked once the month's spend reaches the limit. */
+    hardStop: boolean('hard_stop').notNull().default(true),
+    /** Multiplier vs the trailing 7-day daily average that counts as an anomaly. */
+    anomalyMultiplier: numeric('anomaly_multiplier', { precision: 5, scale: 2 })
+      .notNull()
+      .default('3'),
+    alertEmail: varchar('alert_email', { length: 320 }),
+    alertSlackWebhook: text('alert_slack_webhook'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index('blog_ai_quotas_tenant_idx').on(table.tenantId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_rank_forecasts — predicted rank + traffic pre-publish (US-BLOG-041)
+// ---------------------------------------------------------------------------
+// One row per forecast run for a post; latest by checked_at is active. After
+// publish, actual_position / actual_clicks_month are backfilled from
+// blog_performance_metrics so the model calibrates over time.
+export const blogRankForecasts = pgTable(
+  'blog_rank_forecasts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    postId: uuid('post_id')
+      .notNull()
+      .references(() => blogPosts.id, { onDelete: 'cascade' }),
+    keyword: varchar('keyword', { length: 500 }),
+    searchVolume: integer('search_volume'),
+    keywordDifficulty: integer('keyword_difficulty'),
+    domainAuthority: integer('domain_authority'),
+    qualityScore: numeric('quality_score', { precision: 5, scale: 2 }),
+    serpCompetitiveness: numeric('serp_competitiveness', { precision: 5, scale: 2 }),
+    predictedRankLow: integer('predicted_rank_low'),
+    predictedRankHigh: integer('predicted_rank_high'),
+    predictedPosition: numeric('predicted_position', { precision: 6, scale: 2 }),
+    predictedClicksMonth: integer('predicted_clicks_month'),
+    confidence: varchar('confidence', { length: 8 }), // low | medium | high
+    recommendation: varchar('recommendation', { length: 32 }), // publish_now | invest_originality | build_links | pivot_angle
+    rationale: text('rationale'),
+    inputs: jsonb('inputs'),
+    calibration: jsonb('calibration'), // { sample_size, factor, note }
+    actualPosition: numeric('actual_position', { precision: 6, scale: 2 }),
+    actualClicksMonth: integer('actual_clicks_month'),
+    actualsUpdatedAt: timestamp('actuals_updated_at'),
+    checkedAt: timestamp('checked_at').notNull().defaultNow(),
+    createdByUserId: varchar('created_by_user_id'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index('blog_rank_forecasts_tenant_idx').on(table.tenantId),
+    postCheckedIdx: index('blog_rank_forecasts_post_checked_idx').on(table.postId, table.checkedAt),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_experiments — on-page A/B tests for title/meta/CTA (US-BLOG-064)
+// ---------------------------------------------------------------------------
+// Variant A is the current value; variant B is the proposed challenger.
+// title/meta use serving_mode='weekly_alternate' (compare CTR from Search
+// Console); CTA uses 'split' (cookie-based client assignment + conversions).
+// Per-variant counters accumulate; the winner is computed by a two-proportion
+// z-test and auto-promoted after the threshold (with editor approval).
+export const blogExperiments = pgTable(
+  'blog_experiments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    postId: uuid('post_id')
+      .notNull()
+      .references(() => blogPosts.id, { onDelete: 'cascade' }),
+    elementType: varchar('element_type', { length: 20 }).notNull(), // title | meta_description | cta
+    variantA: jsonb('variant_a').notNull(), // { text } (and CTA extras)
+    variantB: jsonb('variant_b').notNull(),
+    servingMode: varchar('serving_mode', { length: 16 }).notNull().default('weekly_alternate'), // weekly_alternate | split
+    status: varchar('status', { length: 16 }).notNull().default('running'), // running | paused | completed
+    winner: varchar('winner', { length: 8 }), // a | b | none
+    significance: jsonb('significance'), // { metric, a_rate, b_rate, z, p_value, significant, sample_ok }
+    minSample: integer('min_sample').notNull().default(100), // min impressions/assignments per arm
+    autoPromote: boolean('auto_promote').notNull().default(false),
+    approvedByUserId: varchar('approved_by_user_id'),
+    promotedAt: timestamp('promoted_at'),
+    startedAt: timestamp('started_at').notNull().defaultNow(),
+    // Per-arm counters. Impressions/clicks come from Search Console (title/meta);
+    // assignments/conversions come from the client beacon (CTA).
+    aImpressions: integer('a_impressions').notNull().default(0),
+    aClicks: integer('a_clicks').notNull().default(0),
+    aAssignments: integer('a_assignments').notNull().default(0),
+    aConversions: integer('a_conversions').notNull().default(0),
+    bImpressions: integer('b_impressions').notNull().default(0),
+    bClicks: integer('b_clicks').notNull().default(0),
+    bAssignments: integer('b_assignments').notNull().default(0),
+    bConversions: integer('b_conversions').notNull().default(0),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
+    createdByUserId: varchar('created_by_user_id'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_experiments_tenant_idx').on(table.tenantId),
+    postIdx: index('blog_experiments_post_idx').on(table.postId),
+    statusIdx: index('blog_experiments_tenant_status_idx').on(table.tenantId, table.status),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_qa_reports — pre-publish QA results, cached 1h (US-BLOG-040)
+// ---------------------------------------------------------------------------
+// One row per QA run for a post; the latest row (by checked_at) is the active
+// report. link_check is the most expensive check, so a fresh report is reused
+// for 1h unless ?force=true. overridden lets an editor publish despite failures.
+export const blogQaReports = pgTable(
+  'blog_qa_reports',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    postId: uuid('post_id')
+      .notNull()
+      .references(() => blogPosts.id, { onDelete: 'cascade' }),
+    /** True when every gating check passed (or the report is overridden). */
+    overallPass: boolean('overall_pass').notNull().default(false),
+    linkCheck: jsonb('link_check'), // { total, ok, redirects[], broken[], errors[] }
+    ogPreview: jsonb('og_preview'), // { slack, twitter, linkedin, imessage, warnings[] }
+    a11y: jsonb('a11y'), // { violations: [{rule, severity, detail}], passed: bool }
+    schemaCheck: jsonb('schema_check'), // { type, valid, missing[] }
+    summary: jsonb('summary'), // { checks: [{key, status, count}], gating_failures: number }
+    overridden: boolean('overridden').notNull().default(false),
+    overrideReason: text('override_reason'),
+    overrideByUserId: varchar('override_by_user_id'),
+    checkedAt: timestamp('checked_at').notNull().defaultNow(),
+    createdByUserId: varchar('created_by_user_id'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index('blog_qa_reports_tenant_idx').on(table.tenantId),
+    postCheckedIdx: index('blog_qa_reports_post_checked_idx').on(table.postId, table.checkedAt),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_pipeline_runs — multi-agent draft pipeline runs (US-BLOG-073)
+// ---------------------------------------------------------------------------
+// One row per pipeline invocation. Stage artifacts live in blog_pipeline_stages.
+// Resumable: a halted/failed run re-runs from the first incomplete stage,
+// reusing completed stages' outputs as inputs.
+export const blogPipelineRuns = pgTable(
+  'blog_pipeline_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    briefId: uuid('brief_id').references(() => blogBriefs.id, { onDelete: 'set null' }),
+    /** The post the pipeline writes its draft into (created lazily after the drafter stage). */
+    postId: uuid('post_id').references(() => blogPosts.id, { onDelete: 'set null' }),
+    topic: varchar('topic', { length: 500 }).notNull(),
+    targetKeyword: varchar('target_keyword', { length: 500 }),
+    brandVoiceId: uuid('brand_voice_id'),
+    /** Resolved stage toggles for this run: { researcher, outliner, ... } booleans. */
+    stagesConfig: jsonb('stages_config'),
+    status: varchar('status', { length: 20 }).notNull().default('queued'), // queued | running | completed | failed | halted
+    currentStage: varchar('current_stage', { length: 24 }),
+    totalCostCents: integer('total_cost_cents').notNull().default(0),
+    totalLatencyMs: integer('total_latency_ms').notNull().default(0),
+    error: jsonb('error'), // { stage, message } when halted/failed
+    agentRunId: varchar('agent_run_id', { length: 100 }),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    createdByUserId: varchar('created_by_user_id'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_pipeline_runs_tenant_idx').on(table.tenantId),
+    statusIdx: index('blog_pipeline_runs_tenant_status_idx').on(table.tenantId, table.status),
+    postIdx: index('blog_pipeline_runs_post_idx').on(table.postId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_pipeline_stages — per-stage artifacts for transparency (US-BLOG-073)
+// ---------------------------------------------------------------------------
+// Every stage stores its input + output so an opaque agent chain stays
+// auditable. Cost + latency are logged per stage (also mirrored to blog_ai_costs).
+export const blogPipelineStages = pgTable(
+  'blog_pipeline_stages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => blogPipelineRuns.id, { onDelete: 'cascade' }),
+    tenantId: varchar('tenant_id').notNull(), // denormalized for RLS
+    stage: varchar('stage', { length: 24 }).notNull(), // researcher | outliner | drafter | fact_checker | critic | polisher
+    seq: integer('seq').notNull(),
+    status: varchar('status', { length: 16 }).notNull().default('pending'), // pending | running | completed | failed | skipped
+    input: jsonb('input'),
+    output: jsonb('output'),
+    model: varchar('model', { length: 80 }),
+    promptTokens: integer('prompt_tokens').notNull().default(0),
+    completionTokens: integer('completion_tokens').notNull().default(0),
+    costCents: integer('cost_cents').notNull().default(0),
+    latencyMs: integer('latency_ms').notNull().default(0),
+    error: text('error'),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    runIdx: index('blog_pipeline_stages_run_idx').on(table.runId),
+    tenantIdx: index('blog_pipeline_stages_tenant_idx').on(table.tenantId),
+    runSeqIdx: index('blog_pipeline_stages_run_seq_idx').on(table.runId, table.seq),
   }),
 );
 
@@ -820,6 +1219,26 @@ export type BlogSerpSnapshot = typeof blogSerpSnapshots.$inferSelect;
 export type NewBlogSerpSnapshot = typeof blogSerpSnapshots.$inferInsert;
 export type BlogCompetitorKeyword = typeof blogCompetitorKeywords.$inferSelect;
 export type NewBlogCompetitorKeyword = typeof blogCompetitorKeywords.$inferInsert;
+export type BlogAiCost = typeof blogAiCosts.$inferSelect;
+export type NewBlogAiCost = typeof blogAiCosts.$inferInsert;
+export type BlogAiQuota = typeof blogAiQuotas.$inferSelect;
+export type NewBlogAiQuota = typeof blogAiQuotas.$inferInsert;
+export type BlogPipelineRun = typeof blogPipelineRuns.$inferSelect;
+export type NewBlogPipelineRun = typeof blogPipelineRuns.$inferInsert;
+export type BlogPipelineStage = typeof blogPipelineStages.$inferSelect;
+export type NewBlogPipelineStage = typeof blogPipelineStages.$inferInsert;
+export type BlogQaReport = typeof blogQaReports.$inferSelect;
+export type NewBlogQaReport = typeof blogQaReports.$inferInsert;
+export type BlogRankForecast = typeof blogRankForecasts.$inferSelect;
+export type NewBlogRankForecast = typeof blogRankForecasts.$inferInsert;
+export type BlogAuthor = typeof blogAuthors.$inferSelect;
+export type NewBlogAuthor = typeof blogAuthors.$inferInsert;
+export type BlogOutlineVariant = typeof blogOutlineVariants.$inferSelect;
+export type NewBlogOutlineVariant = typeof blogOutlineVariants.$inferInsert;
+export type BlogExperiment = typeof blogExperiments.$inferSelect;
+export type NewBlogExperiment = typeof blogExperiments.$inferInsert;
+export type BlogPostVariant = typeof blogPostVariants.$inferSelect;
+export type NewBlogPostVariant = typeof blogPostVariants.$inferInsert;
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;

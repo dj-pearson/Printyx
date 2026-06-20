@@ -6353,3 +6353,278 @@ code-complete-only.
   repointed to /api/phone-in-tickets/* + dev proxy entry added. Frontend tsc clean.
 - Both edge-fn changes are schema-correct + cross-environment-correct but runtime-unverifiable
   (Deno/esm.sh blocked here). Remaining EDGE false: see prd.json.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-078: AI cost dashboard + per-workspace quotas
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +2 tables — blog_ai_costs (append-only per-call spend ledger:
+  tenant_id/provider/model/feature/prompt+completion+total_tokens/cost_cents/request_id/
+  post_id/pipeline_run_id) and blog_ai_quotas (one row/tenant: monthly_limit_cents NULL=unlimited,
+  warn_threshold_pct=80, hard_stop, anomaly_multiplier=3, alert_email, alert_slack_webhook).
+  $inferSelect/Insert types exported; header table list updated (now 20 tables).
+- drizzle/migrations/_backfill_blog_ai_costs.sql: idempotent CREATE TABLE IF NOT EXISTS +
+  indexes for both tables.
+- drizzle/rls/blog.sql: registered blog_ai_costs + blog_ai_quotas — AND backfilled three
+  pre-existing tenant tables that were missing from the RLS array (blog_jobs,
+  blog_serp_snapshots, blog_competitor_keywords): a real isolation gap, now closed.
+- supabase/functions/_shared/blog/ai-cost.ts (NEW shared helper): logAiCost (never throws —
+  cost logging must not break generation), getQuotaRow (auto-creates default), getQuotaStatus
+  (month-to-date spend vs limit → warn/blocked), getSpendSinceCents (paginated), usdToCents,
+  currentMonthStart. This is the seam US-BLOG-073's pipeline (and other LLM fns) log through.
+- supabase/functions/blog-ai-costs/index.ts (NEW edge fn): POST /log, GET /dashboard
+  (cards + by-feature/model/provider + daily series + prior-period comparison + month forecast
+  from trailing-7d avg + quota status), GET /dashboard.csv (per-view CSV export), GET/PUT /quota
+  (PUT platform-admin only, audit-logged, Slack webhook redacted to *_set marker), GET /anomalies
+  (each day vs mean of prior 7 days × multiplier). Gated to platform admin / blog.analytics.view /
+  blog.refresh.manage; every query tenant-scoped.
+
+### Verifiable here: `npx tsc --noEmit` shows ZERO errors referencing blog-schema/ai-cost.
+### Blocked: Deno typecheck/run impossible (esm.sh 403); no running Supabase; the alert
+  delivery (email/Slack) is left to the worker that reads /anomalies. Cross-workspace
+  (all-tenant) rollups intentionally NOT served — would break tenant isolation; deferred to
+  a future platform-admin endpoint. passes=false.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-073: Multi-agent draft pipeline
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +2 tables — blog_pipeline_runs (one row/invocation: topic,
+  target_keyword, brief_id, post_id, stages_config jsonb, status queued|running|completed|
+  failed|halted, current_stage, total_cost_cents, total_latency_ms, error jsonb, agent_run_id,
+  soft-delete) and blog_pipeline_stages (per-stage artifact: stage, seq, status, input/output
+  jsonb, model, prompt/completion tokens, cost_cents, latency_ms, error). Plus a
+  pipeline_stages_config jsonb column on blog_agent_settings for per-workspace stage toggles.
+  Types exported; header now 22 tables.
+- drizzle/migrations/_backfill_blog_pipeline.sql: ALTER blog_agent_settings ADD COLUMN +
+  two CREATE TABLE IF NOT EXISTS (with FK cascade on run_id) + indexes. Idempotent.
+- drizzle/rls/blog.sql: registered blog_pipeline_runs + blog_pipeline_stages.
+- supabase/functions/blog-pipeline/index.ts (NEW edge fn, agent entry point):
+  - Six chained stages researcher→outliner→drafter→fact_checker→critic→polisher, each an
+    LLM call via generateCompletionDetailed with a purpose-built system+JSON prompt; outputs
+    parsed by extractJsonObject (drafter/polisher fall back to raw text on bad JSON so a run
+    isn't wasted).
+  - assertAgentsActive kill-switch gate + getQuotaStatus hard-stop check BEFORE every stage's
+    token spend; quota-blocked → run halted with explanation.
+  - Each stage stored as an artifact (input/output/model/tokens/cost/latency); cost mirrored
+    to blog_ai_costs (feature='pipeline.<stage>', pipeline_run_id link) reusing US-BLOG-078.
+  - Failure halts the run (status failed, error={stage,message}); POST /resume resets the
+    failed stage to pending and re-runs from there using completed stages' stored outputs.
+  - drafter (mandatory) result is materialized into a blog_posts draft on completion; existing
+    post_id is updated in place.
+  - Routes: POST /run, POST /resume, GET /:id, GET / (list), GET/PUT /config (per-workspace
+    stage toggles; PUT gated to blog.agent.toggle). All tenant-scoped; mutations audit-logged.
+
+### Verifiable here: `npx tsc --noEmit` ZERO errors referencing blog-schema/pipeline.
+### Blocked: no Deno runtime (esm.sh 403), no running Supabase, no CLAUDE_API_KEY — the actual
+  chained generation can't be executed here. passes=false.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-062: Performance dashboard (posts, clusters, channels)
+**Status**: code-complete (read-only edge fn, no schema; Deno-unverifiable here). passes stays false.
+
+### What was built:
+- supabase/functions/blog-performance-dashboard/index.ts (NEW edge fn, read-only):
+  Aggregates blog_performance_metrics (no new tables) into:
+  - cards: total organic clicks (search_console source) with prior-period delta, conversions
+    attributed, top-10 posts by clicks, top-10 declining posts (negative click delta vs prior window).
+  - per-cluster table: clicks/impressions/conversions/avg position (impression-weighted)/post count +
+    cluster topical_authority_score, joined via blog_posts.cluster_id → blog_keyword_clusters.
+  - per-channel table: organic / site / each social platform (mapped via blog_distributions.platform
+    using distribution_id on the metric row), clicks/sessions/conversions.
+  - Default window "last 28 days vs prior 28" (compare defaults ON per the story note); range ∈ 7d|28d|90d.
+  - GET /export.csv?view=posts|clusters|channels reuses the same computation.
+  Gated to blog.analytics.view; every query tenant-scoped + paginated.
+
+### Verifiable: no tsc surface (pure Deno). Logic reviewed against existing metric/cluster/
+  distribution schemas. Blocked: no Deno/Supabase to run; metrics ingestion (GA4/GSC, US-BLOG-061)
+  is a separate blocked story so live data isn't present anyway. passes=false.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-040: Pre-publish QA pass
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +1 table blog_qa_reports (post_id FK cascade, overall_pass,
+  link_check/og_preview/a11y/schema_check/summary jsonb, overridden + override_reason +
+  override_by_user_id, checked_at). Latest-by-checked_at row is the active report. Header now 23 tables.
+- drizzle/migrations/_backfill_blog_qa_reports.sql + rls/blog.sql registration.
+- supabase/functions/blog-prepublish-qa/index.ts (NEW edge fn):
+  - Link checker: extracts href/src, HEADs each external URL (GET-with-Range fallback on 405,
+    8s timeout, redirect:manual) → ok / redirects / broken (4xx/5xx) / errors; relative internal
+    links recorded unverified (no live base in the edge runtime).
+  - OG/Twitter card preview: per-platform (slack/twitter/linkedin/imessage) structured card data
+    + length warnings (title>60, description<50/>200, missing image/canonical). Visual render is UI.
+  - a11y: static-HTML heuristics — missing img alt (high), heading-order skips (medium), generic
+    link text (low). Honestly scoped: a full axe-core run needs a real DOM and stays browser-side.
+  - Schema validator: re-checks JSON-LD requirements for the post's schema_type (headline/author/
+    publisher/description + HowTo/FAQPage extras), reusing US-BLOG-027 rules.
+  - Gating: broken links / high-severity a11y / invalid schema → overall_pass=false. POST /override
+    (blog.post.publish only, audit-logged) flips the gate with a required reason. Reports cached 1h
+    (link checks are expensive) unless ?force=true; GET returns the latest + a stale flag.
+
+### Verifiable: tsc clean. Blocked: Deno/Supabase to run; live link HEADs need network the
+  container restricts. passes=false.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-041: Predicted ranking + traffic forecast pre-publish
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +1 table blog_rank_forecasts (inputs: keyword/search_volume/
+  keyword_difficulty/domain_authority/quality_score/serp_competitiveness; outputs:
+  predicted_rank_low/high, predicted_position, predicted_clicks_month, confidence,
+  recommendation, rationale, calibration jsonb; post-publish actuals: actual_position/
+  actual_clicks_month/actuals_updated_at). Plus a domain_authority int column on
+  blog_agent_settings. Header now 24 tables.
+- drizzle/migrations/_backfill_blog_rank_forecasts.sql (ALTER + CREATE) + rls registration.
+- supabase/functions/blog-rank-forecast/index.ts (NEW edge fn):
+  - Deterministic monotonic model: competitiveness (0.7*difficulty + 0.3*SERP signal) vs
+    strength (0.5*domain_authority + 0.5*quality) → net deficit maps to a predicted position
+    (×calibration factor), a spread-based rank range, and clicks/mo via a position→CTR curve.
+  - Inputs resolved with fallbacks: explicit body > blog_keywords row (by id or string) for
+    volume/difficulty; SERP competitiveness from the latest blog_serp_snapshots aggregate
+    (median word count); domain_authority from body > agent settings > 30; quality from body >
+    post.seo_score > 60.
+  - Recommendation enum: pivot_angle (net>30) / invest_originality (quality<50) / build_links
+    (low DA + moderate net) / publish_now, with human labels.
+  - Confidence gated by input completeness + calibration sample size (>=50 posts → high,
+    matching the story note that predictions get reliable only after ~50 posts).
+  - Calibration: mean(actual/predicted position) over posts with backfilled actuals (clamped
+    0.5–2). POST /actuals pulls 28d search_console metrics → impression-weighted actual position
+    + monthly-scaled clicks, stored on the latest forecast to feed calibration.
+  - Optional one-paragraph LLM rationale (quota-gated, cost-logged to blog_ai_costs).
+  - Gated to blog.post.edit; tenant-scoped; mutations audit-logged.
+
+### Verifiable: tsc clean (only 3 pre-existing env/config errors: node/vite type defs, baseUrl
+  deprecation — present at HEAD, unrelated). Blocked: no Deno/Supabase/API key to run. passes=false.
+
+### Batch summary (this session, branch ...-7a3n19): US-BLOG-078, 073, 062, 040, 041 code-complete.
+  blog-schema.ts 18 → 24 tables; 6 new edge fns + 1 shared helper (ai-cost.ts). Nothing flipped
+  to passes=true (cannot build/run Deno+Supabase here, per the chosen mode).
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-028: E-E-A-T authors, bylines, research signal
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +1 table blog_authors (name/slug/bio/headshot_asset_id+url/credentials/
+  job_title/expertise_tags[]/social_links jsonb/schema_person jsonb/user_id link/is_active,
+  soft-delete). Plus 3 columns on blog_posts: author_id (credentialed author, distinct from the
+  existing author_user_id platform-user link), reviewed_by_author_id, original_research_signal
+  (survey|internal_data|expert_interview|case_study|none). Header now 25 tables.
+- drizzle/migrations/_backfill_blog_authors.sql (CREATE + 3 ALTERs) + rls registration.
+- supabase/functions/blog-authors/index.ts (NEW edge fn):
+  - Full author CRUD with per-tenant slug uniqueness + soft delete.
+  - GET /:id and GET /page/:slug return the author + their posts + a schema.org Person object
+    (built from bio/job_title/headshot/expertise→knowsAbout/social→sameAs, merged with the
+    author's schema_person overrides) — this is the structured-data half of the AC's "author
+    page generated per author with all their posts + structured data".
+  - POST /post-signal sets original_research_signal + author_id + reviewed_by_author_id on a
+    post (validating referenced authors belong to the tenant) and returns a soft warning when
+    the signal is 'none' — the forcing function the story calls for.
+  - Gated to blog.post.edit; tenant-scoped; mutations audit-logged.
+  - Note: the visual author page + byline rendering live in the marketing site / admin UI; this
+    fn supplies the data + JSON-LD. It also dovetails with US-BLOG-040's schema author check.
+
+### Verifiable: tsc clean (3 pre-existing env errors only). Blocked: Deno/Supabase to run. passes=false.
+
+### Session batch total (branch ...-7a3n19): US-BLOG-078, 073, 062, 040, 041, 028 code-complete.
+  blog-schema.ts 18 → 25 tables; 7 new edge fns + 1 shared helper (ai-cost.ts). No passes flipped.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-030: Outline A/B variants scored against SERP
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +1 table blog_outline_variants (brief_id, keyword, angle, target_intent,
+  outline jsonb {title,hook,sections,target_word_count}, serp_fit_score, differentiation_score,
+  scoring_rationale, status candidate|selected|archived, ab_test_group, post_id, serp_snapshot_id,
+  soft-delete). Header now 26 tables.
+- drizzle/migrations/_backfill_blog_outline_variants.sql + rls registration.
+- supabase/functions/blog-outline-variants/index.ts (NEW edge fn):
+  - POST /generate: pulls the latest blog_serp_snapshots row for the keyword, summarizes the top-10
+    organic + aggregate (median word count, common H2s) as scoring context, and asks the LLM for N
+    distinct angle variants (default how_to/comparison/deep_dive), each with a serp_fit_score AND a
+    differentiation_score (0-100) + rationale. Quota-gated, cost-logged to blog_ai_costs.
+  - POST /select: marks one selected, archives sibling candidates (same brief, else same keyword) —
+    "rejected variants archived with brief for future reference" — and optionally writes the chosen
+    outline into blog_briefs.outline.
+  - POST /ab-test: A/B mode — requires 2 variants on the SAME keyword with DIFFERENT intents, assigns
+    an ab_test_group, and creates a draft blog_posts per variant ("write two posts on the same
+    keyword cluster targeting different intents").
+  - GET list (filter brief_id/keyword/status) + GET /:id. Gated to blog.post.edit; tenant-scoped;
+    mutations audit-logged.
+  - Honors the story note that differentiation matters more than fit once a topic saturates (both
+    scores stored independently so the UI can rank by differentiation).
+
+### Verifiable: tsc clean (3 pre-existing env errors only). Blocked: Deno/Supabase + DataForSEO. passes=false.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-064: A/B testing for titles, meta descriptions, CTAs
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +1 table blog_experiments (post_id FK, element_type title|meta_description|cta,
+  variant_a/variant_b jsonb, serving_mode weekly_alternate|split, status, winner, significance jsonb,
+  min_sample, auto_promote, approved_by_user_id, promoted_at, started_at, + per-arm counters
+  a/b_impressions/clicks/assignments/conversions). Header now 27 tables.
+- drizzle/migrations/_backfill_blog_experiments.sql + rls registration.
+- supabase/functions/blog-experiments/index.ts (NEW edge fn):
+  - POST / create: variant A defaults to the post's current meta_title/title or meta_description;
+    title/meta default to weekly_alternate serving, cta to split.
+  - POST /:id/record: accumulates per-arm metrics (impressions/clicks from Search Console for
+    title/meta; assignments/conversions from the client beacon for CTA), recomputes significance.
+  - Significance = two-proportion z-test (CTR for title/meta, conversion rate for CTA) with an
+    Abramowitz-Stegun normal-CDF p-value; winner declared only when both arms clear min_sample AND
+    p<0.05. (Story note: Search Console lag 2-3 days — callers feed lag-adjusted metrics.)
+  - GET /:id/current: weekly-alternating live variant (even week→A, odd→B). GET /:id/assign?visitor=:
+    stable 50/50 hash assignment for split/CTA (cookie handling is client-side; SSR calls this).
+  - POST /:id/promote: writes the winning text into the post (meta_title / meta_description) — editor
+    approval; auto-promote happens inside /record when auto_promote was opted in. PATCH /:id pause/resume.
+  - Gated to blog.post.edit; tenant-scoped; create/promote/auto-promote/status all audit-logged.
+
+### Verifiable: tsc clean (3 pre-existing env errors only). Blocked: Deno/Supabase + live GSC/beacon
+  data to run a real test. passes=false.
+
+### Session batch now: US-BLOG-078,073,062,040,041,028,030,064 code-complete. blog-schema 18→27 tables.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-072: Audience-specific personalized variants
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +1 table blog_post_variants (post_id FK, audience_key, audience_label,
+  intro text, examples jsonb, cta jsonb, match_rules jsonb {url_param,cookie_segment,
+  referrer_patterns}, is_default, served_count, conversion_count, status, soft-delete). Header now 28.
+- drizzle/migrations/_backfill_blog_post_variants.sql + rls registration.
+- supabase/functions/blog-audience-variants/index.ts (NEW edge fn):
+  - CRUD with one-variant-per-(post,audience_key) uniqueness + single is_default per post.
+  - POST /resolve: server-side personalization — precedence URL param > cookie segment > referrer
+    pattern > is_default; returns the matched variant + the post's SINGLE canonical_url (variants
+    never get their own URL → no duplicate content, per AC).
+  - GET /:id/render: assembles the served payload = variant intro + examples + CTA OVER the shared
+    master body_markdown, with the one canonical_url and index,follow robots.
+  - POST /:id/track {served|conversion}: per-variant performance counters; GET /:id returns the
+    derived conversion_rate.
+  - Gated to blog.post.edit; tenant-scoped; mutations audit-logged. (Note: the actual edge delivery
+    — Cloudflare/Vercel edge per the story note — calls /resolve+/render+/track; this fn is the data
+    + decision layer.)
+
+### Verifiable: tsc clean (3 pre-existing env errors only). Blocked: Deno/Supabase + an SSR/edge
+  delivery layer to exercise it. passes=false.
+
+### Session batch (branch ...-7a3n19): US-BLOG-078,073,062,040,041,028,030,064,072 — 9 stories
+  code-complete. blog-schema.ts 18 → 28 tables; 9 new edge fns + 1 shared helper (ai-cost.ts).
+  Nothing flipped to passes=true (Deno+Supabase not runnable here, per the chosen mode).

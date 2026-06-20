@@ -1,5 +1,5 @@
 -- ============================================================================
--- blog.sql — RLS on the 14 blog module tables (US-BLOG-002).
+-- blog.sql — RLS on the blog module tables (US-BLOG-002 + extensions).
 --
 -- Run order:
 --   1. apply-rls.sql (first time, installs apply_tenant_rls function)
@@ -29,7 +29,20 @@ DECLARE
     'blog_performance_metrics',
     'blog_refresh_queue',
     'blog_audit_log',
-    'blog_agent_settings'
+    'blog_agent_settings',
+    'blog_jobs',
+    'blog_serp_snapshots',
+    'blog_competitor_keywords',
+    'blog_ai_costs',
+    'blog_ai_quotas',
+    'blog_pipeline_runs',
+    'blog_pipeline_stages',
+    'blog_qa_reports',
+    'blog_rank_forecasts',
+    'blog_authors',
+    'blog_outline_variants',
+    'blog_experiments',
+    'blog_post_variants'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP
