@@ -6759,8 +6759,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 40,
-      "passes": false,
-      "notes": "Foundation for EDGE-013..EDGE-017. Today only 33 of ~205 edge functions are in the proxy map; getApiUrl (client/src/lib/config.ts) sends prod traffic straight to functions.printyx.net, so the proxy map only governs dev. The matrix turns 'we think it's migrated' into evidence.",
+      "passes": true,
+      "notes": "DONE (2026-06-20): scripts/audit-route-parity.mjs enumerates all 4 sources and emits docs/route-parity-matrix.md (+ docs/route-divergence.json) with the architecture-fact header and per-route classification (missing-edge/both-divergent/proxied/express-only/dead-express/edge-only/express-canonical). npm script audit:routes runs it; wired into CI as a non-blocking report step (.github/workflows/ci.yml quality job) that uploads the matrix as an artifact. Re-runs clean: 41 missing-edge, 60 both-divergent, 110 edge-only. Foundation for EDGE-013..EDGE-017.",
       "category": "edge-migration"
     },
     {

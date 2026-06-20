@@ -47,6 +47,21 @@ jobs:
         run: npx tsx scripts/dependency-check.ts
       - name: Secret scanning
         run: npm run check:secrets
+      # Non-blocking report (EDGE-012): regenerate the route-parity matrix and
+      # surface it as an artifact. Heuristic worklist — never fails the build.
+      - name: Route-parity audit (report only)
+        continue-on-error: true
+        run: npm run audit:routes
+      - name: Upload route-parity matrix
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: route-parity-matrix
+          path: |
+            docs/route-parity-matrix.md
+            docs/route-divergence.json
+          if-no-files-found: warn
 
   # ─── Unit & Integration Tests ────────────────────────────
   test:

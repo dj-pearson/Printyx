@@ -6353,3 +6353,39 @@ code-complete-only.
   repointed to /api/phone-in-tickets/* + dev proxy entry added. Frontend tsc clean.
 - Both edge-fn changes are schema-correct + cross-environment-correct but runtime-unverifiable
   (Deno/esm.sh blocked here). Remaining EDGE false: see prd.json.
+
+## Iteration (06/20/2026) - EDGE-012 completed + verified (route-parity audit → CI)
+**Status**: EDGE-012 DONE+verified and flipped true. Remaining passes=false: 156.
+
+### EDGE-012 — authoritative route-parity matrix wired into CI:
+- scripts/audit-route-parity.mjs already enumerated all 4 sources (frontend /api callers,
+  supabase/functions/*, Express route registrations, edge-function-proxy crmProxies) and
+  emitted docs/route-parity-matrix.md (+ docs/route-divergence.json) with the architecture-
+  fact header and per-route classification. Re-ran clean and current: 41 missing-edge,
+  60 both-divergent, 26 express-only, 19 dead-express, 38 proxied, 110 edge-only,
+  10 express-canonical (deltas vs last run reflect EDGE-005b/c proxy additions — proof the
+  audit is live).
+- The ONLY unmet AC was "wired into CI as a report (non-blocking initially)". Added a
+  non-blocking `npm run audit:routes` step + matrix artifact upload to the `quality` job in
+  .github/workflows/ci.yml (continue-on-error, always-upload). YAML validated.
+- Verified: script runs, matrix regenerates deterministically, prd.json valid, ci.yml parses.
+
+### Honest status of the remaining 156 (unchanged blockers, NOT flipped):
+Per the long-standing "verifiable-first; report the rest as blocked" direction:
+- IOS (56): native SwiftUI under ios/ — no Xcode/xcodebuild on Linux; cannot compile/XCTest.
+- US-BLOG (60): Deno edge fns + NEW external integrations (Reddit/Quora/SE APIs, GA4/Search
+  Console, image-gen/plagiarism, CMS). blog schema (18 tables) covers SOME infra but the
+  feature handlers + creds + Deno/Supabase runtime are absent here. e.g. US-BLOG-017 needs a
+  community_question table that does not exist. esm.sh 403s in this container, so even written
+  Deno code can't be `deno check`ed or run.
+- EDGE (16 remaining): EDGE-005a/e and EDGE-002g/h etc. are voluminous BLIND Deno ports
+  (some net-new handlers like signature-templates/analytics, or flat-URL prod-blocker fixes
+  that overlap EDGE-014 and "silently break prod" per CLAUDE.md without a smoke-test env).
+  EDGE-009 has an unmigrated `trial` schedule + requires staging db:migrate & cron smoke-test.
+  EDGE-010/011/013/014/016/017 are proxy-map surgery / server deletion the PRD itself says not
+  to do without a manual-test environment.
+- US-SUPER (16): large AI agent features needing a running stack + LLM + live data.
+- LAUNCH-011/020 (2): backup/restore verification + load testing against live infra.
+
+To advance these we need: a macOS/Xcode runner (iOS), Deno + local Supabase/Postgres
+(EDGE/US-BLOG/US-SUPER), external API credentials, and a staging + load-test environment.
