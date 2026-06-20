@@ -4354,8 +4354,8 @@
         "Smoke-test PhoneInTicketCreator.tsx"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "Used in service-ticket creation flow (high-traffic). 6 callsites.",
+      "passes": true,
+      "notes": "Used in service-ticket creation flow (high-traffic). 6 callsites. [DONE 2026-06-20 code-complete: ported the search-companies / search-contacts/:companyId / equipment/:companyId sub-routes (from Express routes-operations-extended.ts, which only existed under the legacy /api/phone-tickets prefix and 404'd in prod) into supabase/functions/phone-in-tickets/index.ts, querying business_records (customers). Repointed PhoneInTicketCreator.tsx /api/phone-tickets/* -> /api/phone-in-tickets/* and added '/api/phone-in-tickets':'phone-in-tickets' to crmProxies so dev matches prod (functions-direct). Frontend + proxy typecheck clean; edge handlers schema-correct, runtime-unverifiable here.]",
       "category": "edge-migration"
     },
     {

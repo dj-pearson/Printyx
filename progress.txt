@@ -6345,3 +6345,11 @@ code-complete-only.
   these break prod silently without a test environment — NOT flipped.
 
 ### Remaining passes=false: 159.
+
+## Iteration (06/20/2026) - EDGE-005b, EDGE-005c (additive Deno ports, Option 1)
+- EDGE-005b: deals-management consolidated onto /api/deals (6 callsites repointed; deals edge fn
+  gained /deals/:id/activities [canonical schema] + bulk-update/bulk-delete). Frontend tsc clean.
+- EDGE-005c: phone-tickets search sub-routes ported into phone-in-tickets edge fn; frontend
+  repointed to /api/phone-in-tickets/* + dev proxy entry added. Frontend tsc clean.
+- Both edge-fn changes are schema-correct + cross-environment-correct but runtime-unverifiable
+  (Deno/esm.sh blocked here). Remaining EDGE false: see prd.json.
