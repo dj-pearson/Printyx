@@ -200,6 +200,7 @@ import { registerRenewalAutoQuoteRoutes } from './routes-renewal-autoquote';
 import { registerQbrRoutes } from './routes-qbr';
 import { registerTruckStockRoutes } from './routes-truck-stock';
 import { registerDealDeskCopilotRoutes } from './routes-deal-desk-copilot';
+import { registerDailyBriefingRoutes } from './routes-daily-briefing';
 import apiKeyRoutes from './routes/api-key-routes';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
@@ -640,6 +641,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerQbrRoutes(app);
   registerTruckStockRoutes(app);
   registerDealDeskCopilotRoutes(app);
+  registerDailyBriefingRoutes(app);
   registerWhiteLabelRoutes(app);
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);

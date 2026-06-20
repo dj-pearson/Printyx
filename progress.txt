@@ -6851,3 +6851,23 @@ a browser-verify pass.
 
 ### US-SUPER tally: 7/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008). Next: 015 (briefings,
 ### schema already staged locally), then 011 (portal), 012 (toner replenish), then creds-dependent.
+
+### US-SUPER-015 — Daily role-based morning briefings (DONE, full-stack, passes=false pending verify)
+- shared/daily-briefing-schema.ts: daily_briefing_preferences (opt-out/frequency/A-B variant/channels)
+  + daily_briefing_log (role/variant/subject/open tracking). Re-exported. In-app badge reuses
+  user_notifications; email reuses email-service sendEmail; content reuses existing data layers
+  (no new data tables per the story note). (schema committed earlier as wip.)
+- server/routes-daily-briefing.ts (registered in routes-registry.ts; 6 tenant-scoped handlers):
+  POST /generate (body {}=self, {userId}=one, {all:true}=cron tenant-wide; derives role from
+  users.role; Claude <400w bulleted A-B-aware summary + deterministic fallback; daily_briefing_log
+  insert; best-effort in-app + email), GET /, GET/PUT /preferences, GET /stats (A-B open rate),
+  POST /:id/open. client/src/pages/DailyBriefings.tsx at /briefings (generate, latest render,
+  preferences panel, A-B stats, history) wired in App.tsx.
+- Built via serial subagent after I created the schema; independently verified: tsc 6278, 0 new
+  errors; 6/6 handlers tenant-scoped; literal paths before /:id/open. STUBS: revenue-vs-target,
+  tech-utilization, win-probability, prospects-engaged are proxies; real data for incidents/churn/
+  contracts/closing-deals/SLA/predicted-failures/parts/callbacks/stuck-deals/renewals. TODO 6am
+  tenant-local cron -> POST /generate {all:true}.
+
+### US-SUPER tally: 8/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015). Next: 011
+### (customer self-service portal), 012 (toner replenish), then creds-dependent (002, 005, 006, 013, 014, 016).
