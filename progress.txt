@@ -6498,3 +6498,24 @@ Supabase + live URL fetch/Anthropic unavailable here). Remaining false: 156.
 ### Cumulative this session (claude/complete-prd-stories-7nztth), all reviewable commits:
 - EDGE-012 FLIPPED true (verified). US-BLOG-017/020/021/022/025/026 code-complete (NOT flipped).
 - blog-schema now 22 tables. Net passes=true unchanged at 298 (only EDGE-012).
+
+## Iteration (06/20/2026) - US-BLOG-043..051 syndication batch code-complete (NOT flipped)
+**Status**: unified syndication generator WRITTEN covering 9 stories. No schema change
+(reuses blog_distributions). passes STAYS false (Deno + Anthropic). Remaining false: 156.
+
+### What was built (US-BLOG-043, 044, 045, 046, 047, 048, 049, 050, 051):
+- supabase/functions/_shared/blog/syndication.ts: declarative SYNDICATION_SPECS registry —
+  one entry per target with platform/variant_type/structured-flag/system-prompt:
+  newsletter(email), x(thread), linkedin(long_form), facebook(post),
+  instagram_carousel(carousel), instagram_reel(reel), tiktok(reel), pinterest(pin x4),
+  reddit(rule-aware post), hackernews, medium, substack, slack(snippet). Adding a platform
+  is a data change, not new control flow.
+- supabase/functions/blog-syndication/index.ts: GET /platforms, POST /generate (one LLM call
+  per requested platform → stores draft blog_distributions rows, structured specs → content_json,
+  replaces prior drafts on re-run), GET ?post_id, PATCH/:id (edit/approve/schedule), DELETE/:id.
+  blog.distribution.publish gate + audit log. GENERATION needs no platform creds (publish does).
+  Maps cleanly to the 9 per-platform stories: 043=newsletter, 044=x, 045=linkedin, 046=fb+ig
+  (post+carousel+reel), 047=tiktok, 048=pinterest, 049=reddit, 050=hn/medium/substack, 051=slack.
+
+### Cumulative this session: EDGE-012 flipped+verified; US-BLOG-017,020,021,022,025,026 +
+043..051 (15 stories) code-complete (NOT flipped). 7 commits, all schema-typecheck-clean.
