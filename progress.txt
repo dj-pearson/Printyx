@@ -6563,3 +6563,29 @@ Remaining false: 156.
   PATCH /cadence/:postId (pause/resume), GET /timeline (past + future shares).
   blog.distribution.publish gate + audit log. UTM/optimal-time math is pure; GA4 verification +
   Bitly/Rebrandly short-links noted as future layers.
+
+## Iteration (06/20/2026) - US-BLOG-037 + US-BLOG-055 code-complete (NOT flipped)
+**Status**: WRITTEN; schema typechecks clean. passes STAYS false (Deno + Anthropic + running
+Supabase). Remaining false: 156.
+
+### US-BLOG-037 — inline fact-checker (+1 table blog_fact_check_claims):
+- supabase/functions/blog-fact-check/index.ts: POST /run?post_id (LLM extracts checkable
+  claims, matches each to a blog_citations row by ref_key or excerpt overlap, LLM judges
+  claim-vs-source → verdict supported|contradicts|not_found|needs_human + confidence; <70%
+  or contradicts flagged needs_review; stores char offsets for inline highlight; caps 25 claims
+  for the sync path, notes blog_jobs for long-post batch). GET ?post_id&run_id fetches a run.
+  blog.post.edit gate + audit log.
+
+### US-BLOG-055 — internal-link auto-injection on publish (+1 column proposed_edit, reuses
+blog_internal_link_suggestions from US-BLOG-020 + blog_post_revisions):
+- supabase/functions/blog-link-injection/index.ts: POST /propose (find published posts NOT
+  already linking to the pillar [slug check], prefer same-cluster, LLM rewrites one sentence to
+  insert a natural link → stores suggestion + proposed_edit {before,after}), GET /diff (PR-style),
+  POST /apply (replace sentence in source body, create a 'link_injection' blog_post_revisions row,
+  update live body, mark applied — CMS re-publish deferred to publish flow), GET /backlinks
+  (applied inbound link count for the pillar stats card). blog.post.edit gate + audit log.
+
+### Cumulative this session (10 commits): EDGE-012 flipped+verified; 22 US-BLOG stories
+code-complete (017,019,020,021,022,025,026,032,037,043,044,045,046,047,048,049,050,051,052,053,
+054,055). blog-schema 24 tables. All schema-typecheck-clean. All NOT flipped per "write code,
+don't flip".

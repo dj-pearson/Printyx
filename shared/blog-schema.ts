@@ -1,11 +1,12 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 23 Drizzle tables for the Universal Blog System integrated into Printyx
+ * 24 Drizzle tables for the Universal Blog System integrated into Printyx
  * (incl. blog_community_sources + blog_community_questions [US-BLOG-017 miner],
- * blog_internal_link_suggestions [US-BLOG-020],
- * blog_cluster_authority_snapshots [US-BLOG-022 topical authority trend], and
- * blog_distribution_settings [US-BLOG-052/053/054 scheduling]).
+ * blog_internal_link_suggestions [US-BLOG-020/055],
+ * blog_cluster_authority_snapshots [US-BLOG-022 topical authority trend],
+ * blog_distribution_settings [US-BLOG-052/053/054 scheduling], and
+ * blog_fact_check_claims [US-BLOG-037 inline fact-checker]).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -785,6 +786,9 @@ export const blogInternalLinkSuggestions = pgTable(
     contextSnippet: text('context_snippet'),
     relevanceScore: numeric('relevance_score', { precision: 4, scale: 3 }),
     rationale: text('rationale'),
+    // US-BLOG-055 auto-injection: PR-style sentence edit { before, after } so the
+    // editor can review/accept the exact insertion that adds the link.
+    proposedEdit: jsonb('proposed_edit'),
     // suggested | accepted | dismissed | applied
     status: varchar('status', { length: 16 }).notNull().default('suggested'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -828,6 +832,38 @@ export const blogClusterAuthoritySnapshots = pgTable(
       table.clusterId,
       table.snapshotDate,
     ),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_fact_check_claims — inline fact-checker results (US-BLOG-037). One row per
+// extracted claim with its verdict against a captured citation.
+// ---------------------------------------------------------------------------
+export const blogFactCheckClaims = pgTable(
+  'blog_fact_check_claims',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    postId: uuid('post_id')
+      .notNull()
+      .references(() => blogPosts.id, { onDelete: 'cascade' }),
+    // Groups all claims from a single fact-check run.
+    runId: uuid('run_id').notNull(),
+    claimText: text('claim_text').notNull(),
+    // The citation used to judge the claim, when one was matched.
+    citationId: uuid('citation_id').references(() => blogCitations.id, { onDelete: 'set null' }),
+    // supported | contradicts | not_found | needs_human
+    verdict: varchar('verdict', { length: 16 }).notNull(),
+    confidence: numeric('confidence', { precision: 4, scale: 3 }),
+    explanation: text('explanation'),
+    // Character offsets into the draft for inline highlighting.
+    charStart: integer('char_start'),
+    charEnd: integer('char_end'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index('blog_fact_check_claims_tenant_idx').on(table.tenantId),
+    postRunIdx: index('blog_fact_check_claims_post_run_idx').on(table.postId, table.runId),
   }),
 );
 
@@ -1030,6 +1066,8 @@ export type BlogClusterAuthoritySnapshot = typeof blogClusterAuthoritySnapshots.
 export type NewBlogClusterAuthoritySnapshot = typeof blogClusterAuthoritySnapshots.$inferInsert;
 export type BlogDistributionSettings = typeof blogDistributionSettings.$inferSelect;
 export type NewBlogDistributionSettings = typeof blogDistributionSettings.$inferInsert;
+export type BlogFactCheckClaim = typeof blogFactCheckClaims.$inferSelect;
+export type NewBlogFactCheckClaim = typeof blogFactCheckClaims.$inferInsert;
 
 export const insertBlogCommunitySourceSchema = createInsertSchema(blogCommunitySources, {
   source: z.enum(['reddit', 'quora', 'stackexchange']),

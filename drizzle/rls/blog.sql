@@ -34,7 +34,8 @@ DECLARE
     'blog_community_questions',
     'blog_internal_link_suggestions',
     'blog_cluster_authority_snapshots',
-    'blog_distribution_settings'
+    'blog_distribution_settings',
+    'blog_fact_check_claims'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP
