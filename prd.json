@@ -5469,8 +5469,8 @@
         "Reviewed-by field: optional second author who reviewed for accuracy"
       ],
       "priority": 62,
-      "passes": false,
-      "notes": "The original_research_signal field is a forcing function — it surfaces shallow content during planning, not after publish.",
+      "passes": true,
+      "notes": "The original_research_signal field is a forcing function — it surfaces shallow content during planning, not after publish. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-authors/index.ts (435 lines) — authors table w/ slug/bio/headshot/credentials/expertise/social/schema.org Person, per-post original_research_signal, reviewed-by; blog_authors table in shared/blog-schema.ts; merged PR #176.]",
       "category": "blog"
     },
     {
@@ -5501,8 +5501,8 @@
         "A/B test mode: write two posts on the same keyword cluster targeting different intents"
       ],
       "priority": 64,
-      "passes": false,
-      "notes": "Differentiation score is more important than fit score after a topic is saturated.",
+      "passes": true,
+      "notes": "Differentiation score is more important than fit score after a topic is saturated. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-outline-variants/index.ts (455 lines) — SERP-scored A/B outline variants; blog_outline_variants table; merged PR #176.]",
       "category": "blog"
     },
     {
@@ -5663,8 +5663,8 @@
         "All checks must pass (or be explicitly overridden) before publish button enables"
       ],
       "priority": 74,
-      "passes": false,
-      "notes": "Cache link-check results for 1h to avoid hammering the same URLs on every save.",
+      "passes": true,
+      "notes": "Cache link-check results for 1h to avoid hammering the same URLs on every save. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-prepublish-qa/index.ts (487 lines) — link/OG/a11y/schema checks; blog_qa_reports table; merged PR #176.]",
       "category": "blog"
     },
     {
@@ -5679,8 +5679,8 @@
         "Stored on post; updated post-publish with actuals"
       ],
       "priority": 75,
-      "passes": false,
-      "notes": "Predictions get reliable only after 50+ published posts feed the calibration model.",
+      "passes": true,
+      "notes": "Predictions get reliable only after 50+ published posts feed the calibration model. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-rank-forecast/index.ts (515 lines) — pre-publish rank+traffic forecast w/ calibration; blog_rank_forecasts table; merged PR #176.]",
       "category": "blog"
     },
     {
@@ -6015,8 +6015,8 @@
         "Export CSV per view"
       ],
       "priority": 96,
-      "passes": false,
-      "notes": "Default the dashboard to 'last 28 days vs prior 28' — that's the comparison most editors want.",
+      "passes": true,
+      "notes": "Default the dashboard to 'last 28 days vs prior 28' — that's the comparison most editors want. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-performance-dashboard/index.ts (443 lines) — unified posts/clusters/channels dashboard over metrics; merged PR #176.]",
       "category": "blog"
     },
     {
@@ -6047,8 +6047,8 @@
         "Winner auto-promoted (with editor approval) after threshold reached"
       ],
       "priority": 98,
-      "passes": false,
-      "notes": "Search Console attribution lags 2-3 days — bake that into significance calc.",
+      "passes": true,
+      "notes": "Search Console attribution lags 2-3 days — bake that into significance calc. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-experiments/index.ts (568 lines) — on-page A/B for title/meta/CTA w/ two-proportion z-test; blog_experiments table; merged PR #176.]",
       "category": "blog"
     },
     {
@@ -6178,8 +6178,8 @@
         "Performance per variant tracked separately"
       ],
       "priority": 106,
-      "passes": false,
-      "notes": "Server-side rendering with edge personalization (Cloudflare Workers, Vercel edge) is the right delivery mechanism. Don't index variant URLs.",
+      "passes": true,
+      "notes": "Server-side rendering with edge personalization (Cloudflare Workers, Vercel edge) is the right delivery mechanism. Don't index variant URLs. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-audience-variants/index.ts (499 lines) — audience-personalized variants over master doc, canonical-URL safe; blog_post_variants table; merged PR #176.]",
       "category": "blog"
     },
     {
@@ -6194,8 +6194,8 @@
         "Per-workspace toggle: which stages to run (cost vs quality tradeoff)"
       ],
       "priority": 107,
-      "passes": false,
-      "notes": "Pipeline output should always be reviewable as artifacts — opaque agent chains are debugging nightmares.",
+      "passes": true,
+      "notes": "Pipeline output should always be reviewable as artifacts — opaque agent chains are debugging nightmares. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-pipeline/index.ts (784 lines) — researcher→outliner→drafter→fact-check→critic→polish, per-stage artifacts/cost/latency, resume; blog_pipeline_runs/stages; merged PR #176.]",
       "category": "blog"
     },
     {
@@ -6276,8 +6276,8 @@
         "Alerts: anomaly detection (sudden 3x spike) → email/Slack"
       ],
       "priority": 112,
-      "passes": false,
-      "notes": "Anomaly detection catches infinite-loop bugs and rogue jobs before they consume the monthly budget.",
+      "passes": true,
+      "notes": "Anomaly detection catches infinite-loop bugs and rogue jobs before they consume the monthly budget. [VERIFIED COMPLETE 2026-06-20: supabase/functions/blog-ai-costs/index.ts (528 lines) — AI cost ledger/dashboard + per-workspace quotas; blog_ai_costs/blog_ai_quotas; merged PR #176.]",
       "category": "blog"
     },
     {
