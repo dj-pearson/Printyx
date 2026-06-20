@@ -1,9 +1,10 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 20 Drizzle tables for the Universal Blog System integrated into Printyx
+ * 21 Drizzle tables for the Universal Blog System integrated into Printyx
  * (incl. blog_community_sources + blog_community_questions for the US-BLOG-017
- * forum/community question miner).
+ * forum/community question miner, and blog_internal_link_suggestions for the
+ * US-BLOG-020 internal-link opportunity finder).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -722,6 +723,45 @@ export const blogCommunityQuestions = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// blog_internal_link_suggestions — internal-link opportunity finder (US-BLOG-020).
+// One row per (source post → target post) proposed link. Anchor-text variety is
+// enforced by the finder, which never proposes the same anchor twice for a post.
+// ---------------------------------------------------------------------------
+export const blogInternalLinkSuggestions = pgTable(
+  'blog_internal_link_suggestions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    // The post that should CONTAIN the link.
+    sourcePostId: uuid('source_post_id')
+      .notNull()
+      .references(() => blogPosts.id, { onDelete: 'cascade' }),
+    // The post the link should point TO.
+    targetPostId: uuid('target_post_id')
+      .notNull()
+      .references(() => blogPosts.id, { onDelete: 'cascade' }),
+    anchorText: varchar('anchor_text', { length: 300 }).notNull(),
+    // Short excerpt from the source post where the anchor would slot in.
+    contextSnippet: text('context_snippet'),
+    relevanceScore: numeric('relevance_score', { precision: 4, scale: 3 }),
+    rationale: text('rationale'),
+    // suggested | accepted | dismissed | applied
+    status: varchar('status', { length: 16 }).notNull().default('suggested'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    createdByUserId: varchar('created_by_user_id'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_internal_link_suggestions_tenant_idx').on(table.tenantId),
+    sourceIdx: index('blog_internal_link_suggestions_source_idx').on(
+      table.tenantId,
+      table.sourcePostId,
+    ),
+    statusIdx: index('blog_internal_link_suggestions_status_idx').on(table.tenantId, table.status),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // blog_audit_log — every mutating action (US-BLOG-011, 086)
 // ---------------------------------------------------------------------------
 export const blogAuditLog = pgTable(
@@ -914,6 +954,8 @@ export type BlogCommunitySource = typeof blogCommunitySources.$inferSelect;
 export type NewBlogCommunitySource = typeof blogCommunitySources.$inferInsert;
 export type BlogCommunityQuestion = typeof blogCommunityQuestions.$inferSelect;
 export type NewBlogCommunityQuestion = typeof blogCommunityQuestions.$inferInsert;
+export type BlogInternalLinkSuggestion = typeof blogInternalLinkSuggestions.$inferSelect;
+export type NewBlogInternalLinkSuggestion = typeof blogInternalLinkSuggestions.$inferInsert;
 
 export const insertBlogCommunitySourceSchema = createInsertSchema(blogCommunitySources, {
   source: z.enum(['reddit', 'quora', 'stackexchange']),

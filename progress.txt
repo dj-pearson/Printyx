@@ -6423,3 +6423,26 @@ Remaining passes=false: 156 (unchanged count — nothing flipped).
 (no creds, no running Supabase). Follow-on integration left as TODO: surface mined
 theme_cluster rows inside the blog-briefs generator (AC line "clusters surface in the brief
 generator") — needs a read in the briefs edge fn; deferred to keep this change reviewable.
+
+## Iteration (06/20/2026) - US-BLOG-020 code-complete (NOT flipped)
+**Status**: US-BLOG-020 internal-link opportunity finder WRITTEN + schema typechecks clean.
+passes STAYS false (Deno + Anthropic + running Supabase unavailable here). Remaining false: 156.
+
+### What was built (US-BLOG-020 — internal link opportunity finder):
+- shared/blog-schema.ts: +1 table blog_internal_link_suggestions (source_post_id →
+  target_post_id, anchor_text, context_snippet, relevance_score, rationale, status
+  suggested|accepted|dismissed|applied; FKs cascade on post delete). Types exported;
+  re-exported via shared/schema.ts. typecheck clean.
+- supabase/functions/blog-internal-links/index.ts: POST /analyze (one post vs the
+  most-recent-200 published corpus, LLM proposes varied anchors + context), POST /analyze-all
+  (cross-link up to N posts), GET /suggestions (filter post_id/status), PATCH /suggestions/:id
+  (accept/dismiss/apply). Enforces the AC note "anchor text variety": dedups anchors
+  case-insensitively + one link per target per source; re-runs replace prior 'suggested' rows.
+  blog.post.edit gate + audit log on every mutation; uses generateCompletion + extractJsonArray.
+- drizzle/migrations/_backfill_blog_internal_link_suggestions.sql + RLS registration.
+
+### Cumulative this session (all on claude/complete-prd-stories-7nztth):
+- EDGE-012: DONE + verified + FLIPPED true (route-parity audit → CI report).
+- US-BLOG-017: community/forum question miner — code-complete, NOT flipped.
+- US-BLOG-020: internal-link opportunity finder — code-complete, NOT flipped.
+Net passes=true: 298 (only EDGE-012 flipped). blog-schema now 21 tables.

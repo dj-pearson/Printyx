@@ -31,7 +31,8 @@ DECLARE
     'blog_audit_log',
     'blog_agent_settings',
     'blog_community_sources',
-    'blog_community_questions'
+    'blog_community_questions',
+    'blog_internal_link_suggestions'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP
