@@ -6831,3 +6831,23 @@ a browser-verify pass.
   part->inventory_items fuzzy match. TODO cron (Sunday run); TODO RBAC service.truck_stock.manage.
 
 ### US-SUPER tally: 6/16 full-stack code-complete (001, 009, 003, 010, 004, 007). Next: 008 (deal desk copilot), 015 (briefings), 011 (portal), 012 (toner replenish), then creds-dependent (002/005/006/013/014/016).
+
+### US-SUPER-008 — Deal desk copilot sidebar (DONE, full-stack, passes=false pending verify)
+- shared/deal-desk-copilot-schema.ts: deal_desk_copilot_settings (per-tenant gp_floor_pct).
+  Re-exported. Migration idempotent. (schema committed earlier as wip.)
+- server/routes-deal-desk-copilot.ts (registered in routes-registry.ts; 6 tenant-scoped handlers;
+  resolves proposal by id+tenant): GET+PUT /settings (first, so 'settings' != quoteId),
+  GET /:quoteId/snapshot (fast Postgres: open tickets by priority, AR aging, last-3 quote outcomes,
+  latest churn score), GET /:quoteId/similar-deals (top-5 closed-won by territory+type+/-50% size,
+  closeRate/avgDiscount/avgDealSize, memoized 1h in-process), GET /:quoteId/margin (revenue=totalAmount,
+  cost=sum(line unitCost x qty), GP%, belowFloor), GET /:quoteId/objections (Claude + deterministic fallback).
+- client/src/components/deal-desk/DealDeskCopilot.tsx: collapsible fixed right drawer, 4 independent
+  useQuery panels w/ skeletons + inline errors (advisory), churn badge links /customers/risk. Mounted
+  non-invasively in QuoteBuilderPage.tsx after <QuoteBuilder/> (no new route).
+- Built via serial subagent after I created the schema; independently verified: tsc 6278, 0 new errors;
+  6/6 handlers tenant-scoped; /settings ordered before /:quoteId/*. STUBS: margin financing+service-cost
+  (cost = line unitCost only); similar-deals headcount+machine-class matching; AI objections fallback.
+  TODO RBAC: sales.quote.view_margin (MANAGER+OWNER) on the margin route.
+
+### US-SUPER tally: 7/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008). Next: 015 (briefings,
+### schema already staged locally), then 011 (portal), 012 (toner replenish), then creds-dependent.
