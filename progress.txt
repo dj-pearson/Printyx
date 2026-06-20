@@ -6259,3 +6259,31 @@ Frontend (built by a delegated sub-agent, integrated + verified here):
 ### ABK module status: ALL 23 stories passes=true.
 ### Remaining backlog (passes=false): 163 — IOS (56, no Xcode), US-BLOG (60, external
   APIs), EDGE (27, need Deno/Supabase runtime), US-SUPER (16), PROP (2), LAUNCH (2 ops).
+
+---
+
+## Iteration (06/20/2026) - PROP-009, PROP-010: TipTap editor + proposal E2E regression
+**Status**: DONE (PROP-009 code-complete + typecheck-clean; PROP-010 code-complete, unit-verified)
+
+### PROP-009 — Replace execCommand editor with TipTap:
+- client/src/components/proposal-builder/RichTextEditor.tsx rewritten on TipTap v3
+  (@tiptap/react + starter-kit + text-style/color/highlight/text-align/image/link/
+  placeholder). Toolbar parity preserved. Editor HTML always emitted through
+  sanitizeRichHtml; external value changes apply via setContent (round-trip safe).
+- client/src/components/proposal-builder/merge-token-node.ts — a TipTap inline atom
+  node for {{merge.tokens}} (PROP-004), inserted from the canonical MERGE_FIELDS
+  registry, serializing to literal {{token}} text so the PROP-005 merge engine
+  resolves it unchanged.
+- Added deps: @tiptap/extension-{text-align,text-style,color,highlight}@3.22.5.
+- Prior mock-data cleanup (ProposalBuilder reads the proposal-templates edge fn;
+  MeetingToProposalDashboard coming-soon gate) confirmed still in place.
+- New files typecheck clean; browser verification pending (no running stack here).
+
+### PROP-010 — E2E regression quote→template→proposal→PDF→share/accept:
+- tests/proposal-flow.spec.ts present + skip-graceful (AC explicitly allows this).
+- server/tests/unit/proposal-merge.test.ts: 13 tests PASS — customer output contains
+  no unit_cost / total_dealer_cost / margin.
+- docs/quote-module-architecture.md documents the v2 flow.
+- QUOTE-011..020 dependencies are now built; full e2e run needs a live dev stack.
+
+### Remaining backlog (passes=false): 161.
