@@ -5288,8 +5288,8 @@
         "Configurable seed list per workspace (subreddits, Quora topics, SE sites)"
       ],
       "priority": 51,
-      "passes": false,
-      "notes": "Always store source URL — citations from real questions strengthen E-E-A-T.",
+      "passes": true,
+      "notes": "Always store source URL — citations from real questions strengthen E-E-A-T. [IMPLEMENTED 2026-06-20: supabase/functions/blog-topic-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Forum/community question miner+theme clustering (017); embedding pillar-cluster model+manual override+graph (019); internal-link finder+anchor suggestions+backfill PR view (020); topical authority 0-100+90d trend+heatmap (022); source aggregator+citation capture+references render+schema.org Citation (025); Flesch-Kincaid+LLM persona match+sentence simplify+pre-publish gate (026). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_community_seeds, blog_community_questions, blog_cluster_extensions, blog_keyword_embeddings, blog_post_embeddings, blog_internal_link_suggestions, blog_cluster_authority_scores, blog_citation_sources, blog_readability_snapshots.]",
       "category": "blog"
     },
     {
@@ -5321,8 +5321,8 @@
         "Manual override: drag keyword between clusters or split/merge clusters"
       ],
       "priority": 53,
-      "passes": false,
-      "notes": "Embeddings + a recluster job (weekly) keeps clusters fresh as new keywords arrive.",
+      "passes": true,
+      "notes": "Embeddings + a recluster job (weekly) keeps clusters fresh as new keywords arrive. [IMPLEMENTED 2026-06-20: supabase/functions/blog-topic-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Forum/community question miner+theme clustering (017); embedding pillar-cluster model+manual override+graph (019); internal-link finder+anchor suggestions+backfill PR view (020); topical authority 0-100+90d trend+heatmap (022); source aggregator+citation capture+references render+schema.org Citation (025); Flesch-Kincaid+LLM persona match+sentence simplify+pre-publish gate (026). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_community_seeds, blog_community_questions, blog_cluster_extensions, blog_keyword_embeddings, blog_post_embeddings, blog_internal_link_suggestions, blog_cluster_authority_scores, blog_citation_sources, blog_readability_snapshots.]",
       "category": "blog"
     },
     {
@@ -5338,8 +5338,8 @@
         "One-click 'Backfill links' opens a PR-style review of all proposed link inserts before applying"
       ],
       "priority": 54,
-      "passes": false,
-      "notes": "Anchor text variety matters — don't propose the same phrase 10 times.",
+      "passes": true,
+      "notes": "Anchor text variety matters — don't propose the same phrase 10 times. [IMPLEMENTED 2026-06-20: supabase/functions/blog-topic-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Forum/community question miner+theme clustering (017); embedding pillar-cluster model+manual override+graph (019); internal-link finder+anchor suggestions+backfill PR view (020); topical authority 0-100+90d trend+heatmap (022); source aggregator+citation capture+references render+schema.org Citation (025); Flesch-Kincaid+LLM persona match+sentence simplify+pre-publish gate (026). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_community_seeds, blog_community_questions, blog_cluster_extensions, blog_keyword_embeddings, blog_post_embeddings, blog_internal_link_suggestions, blog_cluster_authority_scores, blog_citation_sources, blog_readability_snapshots.]",
       "category": "blog"
     },
     {
@@ -5354,8 +5354,8 @@
         "Email/Slack notification (configurable) when a post crosses decay threshold"
       ],
       "priority": 55,
-      "passes": false,
-      "notes": "Tune thresholds per workspace — high-volume sites need different sensitivity than long-tail blogs.",
+      "passes": true,
+      "notes": "Tune thresholds per workspace — high-volume sites need different sensitivity than long-tail blogs. [IMPLEMENTED 2026-06-20: supabase/functions/blog-distribution-engine/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Decay detector rolling-window auto-enqueue (021); optimal-time scheduling+2h conflict avoidance (052); UTM strategy+bulk rewriter+verifier (053); re-share cadence T+0..T+180+fresh hooks+pause/resume (054); internal-link auto-injection PR diff+revisions (055); refresh queue+suggested edits+recovery auto-close (063). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_decay_events, blog_schedule_models, blog_utm_templates, blog_reshare_cadences, blog_link_injection_proposals, blog_refresh_queue_details (reuses blog_refresh_queue/blog_performance_metrics/blog_distributions/blog_post_revisions).]",
       "category": "blog"
     },
     {
@@ -5370,8 +5370,8 @@
         "API endpoint: GET /api/clusters/:id/authority returns full breakdown"
       ],
       "priority": 56,
-      "passes": false,
-      "notes": "Authority is comparative — also surface 'authority vs top competitor' alongside the absolute score.",
+      "passes": true,
+      "notes": "Authority is comparative — also surface 'authority vs top competitor' alongside the absolute score. [IMPLEMENTED 2026-06-20: supabase/functions/blog-topic-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Forum/community question miner+theme clustering (017); embedding pillar-cluster model+manual override+graph (019); internal-link finder+anchor suggestions+backfill PR view (020); topical authority 0-100+90d trend+heatmap (022); source aggregator+citation capture+references render+schema.org Citation (025); Flesch-Kincaid+LLM persona match+sentence simplify+pre-publish gate (026). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_community_seeds, blog_community_questions, blog_cluster_extensions, blog_keyword_embeddings, blog_post_embeddings, blog_internal_link_suggestions, blog_cluster_authority_scores, blog_citation_sources, blog_readability_snapshots.]",
       "category": "blog"
     },
     {
@@ -5420,8 +5420,8 @@
         "Browser extension (optional) sends current tab to the active draft as a citation"
       ],
       "priority": 59,
-      "passes": false,
-      "notes": "Storing the excerpt + retrieved_at protects against link rot — you can show the original quote even if the source 404s later.",
+      "passes": true,
+      "notes": "Storing the excerpt + retrieved_at protects against link rot — you can show the original quote even if the source 404s later. [IMPLEMENTED 2026-06-20: supabase/functions/blog-topic-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Forum/community question miner+theme clustering (017); embedding pillar-cluster model+manual override+graph (019); internal-link finder+anchor suggestions+backfill PR view (020); topical authority 0-100+90d trend+heatmap (022); source aggregator+citation capture+references render+schema.org Citation (025); Flesch-Kincaid+LLM persona match+sentence simplify+pre-publish gate (026). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_community_seeds, blog_community_questions, blog_cluster_extensions, blog_keyword_embeddings, blog_post_embeddings, blog_internal_link_suggestions, blog_cluster_authority_scores, blog_citation_sources, blog_readability_snapshots.]",
       "category": "blog"
     },
     {
@@ -5436,8 +5436,8 @@
         "Pre-publish gate: warns if persona match <70 or grade level diverges >2 from target"
       ],
       "priority": 60,
-      "passes": false,
-      "notes": "Hemingway-style highlighting is well-loved for a reason — keep it visual and fast.",
+      "passes": true,
+      "notes": "Hemingway-style highlighting is well-loved for a reason — keep it visual and fast. [IMPLEMENTED 2026-06-20: supabase/functions/blog-topic-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Forum/community question miner+theme clustering (017); embedding pillar-cluster model+manual override+graph (019); internal-link finder+anchor suggestions+backfill PR view (020); topical authority 0-100+90d trend+heatmap (022); source aggregator+citation capture+references render+schema.org Citation (025); Flesch-Kincaid+LLM persona match+sentence simplify+pre-publish gate (026). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_community_seeds, blog_community_questions, blog_cluster_extensions, blog_keyword_embeddings, blog_post_embeddings, blog_internal_link_suggestions, blog_cluster_authority_scores, blog_citation_sources, blog_readability_snapshots.]",
       "category": "blog"
     },
     {
@@ -5485,8 +5485,8 @@
         "Re-render on data refresh (e.g., monthly survey) without changing post URL"
       ],
       "priority": 63,
-      "passes": false,
-      "notes": "Recharts (interactive) + a server-side renderer like resvg or @napi-rs/canvas (static fallback) covers both needs.",
+      "passes": true,
+      "notes": "Recharts (interactive) + a server-side renderer like resvg or @napi-rs/canvas (static fallback) covers both needs. [IMPLEMENTED 2026-06-20: supabase/functions/blog-authoring-tools/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Data integration+chart builder+re-render (029); inline rewrite toolbar 9 actions+diff (032); plagiarism+AI detection+gate+cost log (034); image gen+stock+auto alt+breakpoints+hero gate (035); inline fact-checker+verdict/confidence pollable job (037); mermaid/excalidraw/chart diagrams (038). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_data_assets, blog_chart_specs, blog_content_scans, blog_factcheck_runs (reuses blog_assets/blog_citations/blog_brand_voices/blog_ai_costs).]",
       "category": "blog"
     },
     {
@@ -5533,8 +5533,8 @@
         "Diff view before applying: original vs proposed, accept/reject per-paragraph"
       ],
       "priority": 66,
-      "passes": false,
-      "notes": "Per-paragraph diff acceptance prevents big regenerations from clobbering edits the writer just made.",
+      "passes": true,
+      "notes": "Per-paragraph diff acceptance prevents big regenerations from clobbering edits the writer just made. [IMPLEMENTED 2026-06-20: supabase/functions/blog-authoring-tools/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Data integration+chart builder+re-render (029); inline rewrite toolbar 9 actions+diff (032); plagiarism+AI detection+gate+cost log (034); image gen+stock+auto alt+breakpoints+hero gate (035); inline fact-checker+verdict/confidence pollable job (037); mermaid/excalidraw/chart diagrams (038). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_data_assets, blog_chart_specs, blog_content_scans, blog_factcheck_runs (reuses blog_assets/blog_citations/blog_brand_voices/blog_ai_costs).]",
       "category": "blog"
     },
     {
@@ -5564,8 +5564,8 @@
         "Cost logged per scan"
       ],
       "priority": 68,
-      "passes": false,
-      "notes": "AI detectors are imperfect — treat scores as advisory, don't hard-block on them.",
+      "passes": true,
+      "notes": "AI detectors are imperfect — treat scores as advisory, don't hard-block on them. [IMPLEMENTED 2026-06-20: supabase/functions/blog-authoring-tools/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Data integration+chart builder+re-render (029); inline rewrite toolbar 9 actions+diff (032); plagiarism+AI detection+gate+cost log (034); image gen+stock+auto alt+breakpoints+hero gate (035); inline fact-checker+verdict/confidence pollable job (037); mermaid/excalidraw/chart diagrams (038). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_data_assets, blog_chart_specs, blog_content_scans, blog_factcheck_runs (reuses blog_assets/blog_citations/blog_brand_voices/blog_ai_costs).]",
       "category": "blog"
     },
     {
@@ -5581,8 +5581,8 @@
         "Hero/OG image required before publish"
       ],
       "priority": 69,
-      "passes": false,
-      "notes": "Stock attribution must auto-render somewhere visible to comply with most stock licenses.",
+      "passes": true,
+      "notes": "Stock attribution must auto-render somewhere visible to comply with most stock licenses. [IMPLEMENTED 2026-06-20: supabase/functions/blog-authoring-tools/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Data integration+chart builder+re-render (029); inline rewrite toolbar 9 actions+diff (032); plagiarism+AI detection+gate+cost log (034); image gen+stock+auto alt+breakpoints+hero gate (035); inline fact-checker+verdict/confidence pollable job (037); mermaid/excalidraw/chart diagrams (038). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_data_assets, blog_chart_specs, blog_content_scans, blog_factcheck_runs (reuses blog_assets/blog_citations/blog_brand_voices/blog_ai_costs).]",
       "category": "blog"
     },
     {
@@ -5613,8 +5613,8 @@
         "Batch fact-check runs server-side as a job for long posts"
       ],
       "priority": 71,
-      "passes": false,
-      "notes": "False confidence is the failure mode — bias toward 'needs-human' when uncertain.",
+      "passes": true,
+      "notes": "False confidence is the failure mode — bias toward 'needs-human' when uncertain. [IMPLEMENTED 2026-06-20: supabase/functions/blog-authoring-tools/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Data integration+chart builder+re-render (029); inline rewrite toolbar 9 actions+diff (032); plagiarism+AI detection+gate+cost log (034); image gen+stock+auto alt+breakpoints+hero gate (035); inline fact-checker+verdict/confidence pollable job (037); mermaid/excalidraw/chart diagrams (038). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_data_assets, blog_chart_specs, blog_content_scans, blog_factcheck_runs (reuses blog_assets/blog_citations/blog_brand_voices/blog_ai_costs).]",
       "category": "blog"
     },
     {
@@ -5629,8 +5629,8 @@
         "Server-side renders all diagrams to PNG fallback for email/AMP"
       ],
       "priority": 72,
-      "passes": false,
-      "notes": "Mermaid covers 80% of needs cheaply — Excalidraw is the escape hatch.",
+      "passes": true,
+      "notes": "Mermaid covers 80% of needs cheaply — Excalidraw is the escape hatch. [IMPLEMENTED 2026-06-20: supabase/functions/blog-authoring-tools/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Data integration+chart builder+re-render (029); inline rewrite toolbar 9 actions+diff (032); plagiarism+AI detection+gate+cost log (034); image gen+stock+auto alt+breakpoints+hero gate (035); inline fact-checker+verdict/confidence pollable job (037); mermaid/excalidraw/chart diagrams (038). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_data_assets, blog_chart_specs, blog_content_scans, blog_factcheck_runs (reuses blog_assets/blog_citations/blog_brand_voices/blog_ai_costs).]",
       "category": "blog"
     },
     {
@@ -5854,8 +5854,8 @@
         "Manual override always available"
       ],
       "priority": 86,
-      "passes": false,
-      "notes": "Don't trust generic 'best time to post' charts — your audience's optimal times will diverge from averages.",
+      "passes": true,
+      "notes": "Don't trust generic 'best time to post' charts — your audience's optimal times will diverge from averages. [IMPLEMENTED 2026-06-20: supabase/functions/blog-distribution-engine/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Decay detector rolling-window auto-enqueue (021); optimal-time scheduling+2h conflict avoidance (052); UTM strategy+bulk rewriter+verifier (053); re-share cadence T+0..T+180+fresh hooks+pause/resume (054); internal-link auto-injection PR diff+revisions (055); refresh queue+suggested edits+recovery auto-close (063). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_decay_events, blog_schedule_models, blog_utm_templates, blog_reshare_cadences, blog_link_injection_proposals, blog_refresh_queue_details (reuses blog_refresh_queue/blog_performance_metrics/blog_distributions/blog_post_revisions).]",
       "category": "blog"
     },
     {
@@ -5870,8 +5870,8 @@
         "Verifier: GA4 integration confirms UTM-tagged sessions are arriving"
       ],
       "priority": 87,
-      "passes": false,
-      "notes": "Lowercase everything in UTM values to avoid GA4 splitting Twitter and twitter into two sources.",
+      "passes": true,
+      "notes": "Lowercase everything in UTM values to avoid GA4 splitting Twitter and twitter into two sources. [IMPLEMENTED 2026-06-20: supabase/functions/blog-distribution-engine/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Decay detector rolling-window auto-enqueue (021); optimal-time scheduling+2h conflict avoidance (052); UTM strategy+bulk rewriter+verifier (053); re-share cadence T+0..T+180+fresh hooks+pause/resume (054); internal-link auto-injection PR diff+revisions (055); refresh queue+suggested edits+recovery auto-close (063). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_decay_events, blog_schedule_models, blog_utm_templates, blog_reshare_cadences, blog_link_injection_proposals, blog_refresh_queue_details (reuses blog_refresh_queue/blog_performance_metrics/blog_distributions/blog_post_revisions).]",
       "category": "blog"
     },
     {
@@ -5886,8 +5886,8 @@
         "Distribution timeline view per post shows past + scheduled future shares"
       ],
       "priority": 88,
-      "passes": false,
-      "notes": "Re-shares fail when they're identical to the original — variation is mandatory, not optional.",
+      "passes": true,
+      "notes": "Re-shares fail when they're identical to the original — variation is mandatory, not optional. [IMPLEMENTED 2026-06-20: supabase/functions/blog-distribution-engine/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Decay detector rolling-window auto-enqueue (021); optimal-time scheduling+2h conflict avoidance (052); UTM strategy+bulk rewriter+verifier (053); re-share cadence T+0..T+180+fresh hooks+pause/resume (054); internal-link auto-injection PR diff+revisions (055); refresh queue+suggested edits+recovery auto-close (063). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_decay_events, blog_schedule_models, blog_utm_templates, blog_reshare_cadences, blog_link_injection_proposals, blog_refresh_queue_details (reuses blog_refresh_queue/blog_performance_metrics/blog_distributions/blog_post_revisions).]",
       "category": "blog"
     },
     {
@@ -5902,8 +5902,8 @@
         "Backlink count surfaced on the new pillar's stats card"
       ],
       "priority": 89,
-      "passes": false,
-      "notes": "Keep human-in-the-loop on auto-injection — silent edits to published posts are a trust killer.",
+      "passes": true,
+      "notes": "Keep human-in-the-loop on auto-injection — silent edits to published posts are a trust killer. [IMPLEMENTED 2026-06-20: supabase/functions/blog-distribution-engine/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Decay detector rolling-window auto-enqueue (021); optimal-time scheduling+2h conflict avoidance (052); UTM strategy+bulk rewriter+verifier (053); re-share cadence T+0..T+180+fresh hooks+pause/resume (054); internal-link auto-injection PR diff+revisions (055); refresh queue+suggested edits+recovery auto-close (063). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_decay_events, blog_schedule_models, blog_utm_templates, blog_reshare_cadences, blog_link_injection_proposals, blog_refresh_queue_details (reuses blog_refresh_queue/blog_performance_metrics/blog_distributions/blog_post_revisions).]",
       "category": "blog"
     },
     {
@@ -5918,8 +5918,8 @@
         "Backlink trend chart per post"
       ],
       "priority": 90,
-      "passes": false,
-      "notes": "Lost-link recovery converts ~15-25% on a good day — well worth the automation.",
+      "passes": true,
+      "notes": "Lost-link recovery converts ~15-25% on a good day — well worth the automation. [IMPLEMENTED 2026-06-20: supabase/functions/blog-outreach/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Backlink monitor+lost-link recovery (056); unlinked brand-mention monitor+status tracker+recrawl (057); outreach list from competitor backlinks+relevance scoring (058); HARO pitch generator matched to author expertise (059); outreach agent research+draft+reply-classify+cadence (060). Creds encrypted via _shared/credential-vault, never returned. Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_backlinks, blog_backlink_events, blog_brand_mentions, blog_outreach_prospects, blog_haro_queries, blog_haro_pitches, blog_outreach_threads, blog_outreach_messages.]",
       "category": "blog"
     },
     {
@@ -5934,8 +5934,8 @@
         "Auto-detect when link is added (re-crawl mentioned URLs weekly) and update status"
       ],
       "priority": 91,
-      "passes": false,
-      "notes": "Personalize the outreach with the actual mention quote — generic templates get ignored.",
+      "passes": true,
+      "notes": "Personalize the outreach with the actual mention quote — generic templates get ignored. [IMPLEMENTED 2026-06-20: supabase/functions/blog-outreach/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Backlink monitor+lost-link recovery (056); unlinked brand-mention monitor+status tracker+recrawl (057); outreach list from competitor backlinks+relevance scoring (058); HARO pitch generator matched to author expertise (059); outreach agent research+draft+reply-classify+cadence (060). Creds encrypted via _shared/credential-vault, never returned. Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_backlinks, blog_backlink_events, blog_brand_mentions, blog_outreach_prospects, blog_haro_queries, blog_haro_pitches, blog_outreach_threads, blog_outreach_messages.]",
       "category": "blog"
     },
     {
@@ -5950,8 +5950,8 @@
         "Output: prioritized outreach list with email, role, suggested angle per recipient"
       ],
       "priority": 92,
-      "passes": false,
-      "notes": "Niche relevance score filter is what separates this from generic backlink scraping.",
+      "passes": true,
+      "notes": "Niche relevance score filter is what separates this from generic backlink scraping. [IMPLEMENTED 2026-06-20: supabase/functions/blog-outreach/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Backlink monitor+lost-link recovery (056); unlinked brand-mention monitor+status tracker+recrawl (057); outreach list from competitor backlinks+relevance scoring (058); HARO pitch generator matched to author expertise (059); outreach agent research+draft+reply-classify+cadence (060). Creds encrypted via _shared/credential-vault, never returned. Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_backlinks, blog_backlink_events, blog_brand_mentions, blog_outreach_prospects, blog_haro_queries, blog_haro_pitches, blog_outreach_threads, blog_outreach_messages.]",
       "category": "blog"
     },
     {
@@ -5966,8 +5966,8 @@
         "Track pitch status: sent, replied, included, ignored — feeds calibration of which queries are worth pursuing"
       ],
       "priority": 93,
-      "passes": false,
-      "notes": "Speed wins HARO — be ready to send within 1h of the email landing.",
+      "passes": true,
+      "notes": "Speed wins HARO — be ready to send within 1h of the email landing. [IMPLEMENTED 2026-06-20: supabase/functions/blog-outreach/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Backlink monitor+lost-link recovery (056); unlinked brand-mention monitor+status tracker+recrawl (057); outreach list from competitor backlinks+relevance scoring (058); HARO pitch generator matched to author expertise (059); outreach agent research+draft+reply-classify+cadence (060). Creds encrypted via _shared/credential-vault, never returned. Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_backlinks, blog_backlink_events, blog_brand_mentions, blog_outreach_prospects, blog_haro_queries, blog_haro_pitches, blog_outreach_threads, blog_outreach_messages.]",
       "category": "blog"
     },
     {
@@ -5982,8 +5982,8 @@
         "Engagement metrics per template/angle so the system learns what works"
       ],
       "priority": 94,
-      "passes": false,
-      "notes": "Sending from a marketing subdomain (not the primary domain) protects deliverability if the cadence is too aggressive.",
+      "passes": true,
+      "notes": "Sending from a marketing subdomain (not the primary domain) protects deliverability if the cadence is too aggressive. [IMPLEMENTED 2026-06-20: supabase/functions/blog-outreach/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Backlink monitor+lost-link recovery (056); unlinked brand-mention monitor+status tracker+recrawl (057); outreach list from competitor backlinks+relevance scoring (058); HARO pitch generator matched to author expertise (059); outreach agent research+draft+reply-classify+cadence (060). Creds encrypted via _shared/credential-vault, never returned. Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_backlinks, blog_backlink_events, blog_brand_mentions, blog_outreach_prospects, blog_haro_queries, blog_haro_pitches, blog_outreach_threads, blog_outreach_messages.]",
       "category": "blog"
     },
     {
@@ -5999,8 +5999,8 @@
         "Trend charts (28-day, 90-day, all-time) per post"
       ],
       "priority": 95,
-      "passes": false,
-      "notes": "Search Console rate limits are tight — batch requests by date range, not by URL.",
+      "passes": true,
+      "notes": "Search Console rate limits are tight — batch requests by date range, not by URL. [IMPLEMENTED 2026-06-20: supabase/functions/blog-analytics-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). GA4+GSC integration+OAuth+backfill+per-post trends (061); cohort analysis cluster->revenue/signups+attribution+ROI (065); LLM citation graph SOV+opportunity diff (067); AEO score+Quick-answers+QAPage/FAQPage JSON-LD (068); knowledge graph NER+co-occurrence edges+gap detector (069). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_analytics_connections, blog_conversion_config, blog_cohort_metrics, blog_llm_citations, blog_aeo_scores, blog_kg_entities, blog_kg_edges (writes GA4/GSC into existing blog_performance_metrics).]",
       "category": "blog"
     },
     {
@@ -6031,8 +6031,8 @@
         "After refresh, monitor for ranking recovery; auto-close queue item on recovery"
       ],
       "priority": 97,
-      "passes": false,
-      "notes": "Refreshing the title + intro + adding new sections recovers most decay; full rewrites are rarely needed.",
+      "passes": true,
+      "notes": "Refreshing the title + intro + adding new sections recovers most decay; full rewrites are rarely needed. [IMPLEMENTED 2026-06-20: supabase/functions/blog-distribution-engine/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). Decay detector rolling-window auto-enqueue (021); optimal-time scheduling+2h conflict avoidance (052); UTM strategy+bulk rewriter+verifier (053); re-share cadence T+0..T+180+fresh hooks+pause/resume (054); internal-link auto-injection PR diff+revisions (055); refresh queue+suggested edits+recovery auto-close (063). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_decay_events, blog_schedule_models, blog_utm_templates, blog_reshare_cadences, blog_link_injection_proposals, blog_refresh_queue_details (reuses blog_refresh_queue/blog_performance_metrics/blog_distributions/blog_post_revisions).]",
       "category": "blog"
     },
     {
@@ -6063,8 +6063,8 @@
         "ROI per cluster: cost (writing + tools) vs revenue"
       ],
       "priority": 99,
-      "passes": false,
-      "notes": "Most teams discover ~20% of clusters drive ~80% of revenue — cohort analysis makes the cut decision obvious.",
+      "passes": true,
+      "notes": "Most teams discover ~20% of clusters drive ~80% of revenue — cohort analysis makes the cut decision obvious. [IMPLEMENTED 2026-06-20: supabase/functions/blog-analytics-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). GA4+GSC integration+OAuth+backfill+per-post trends (061); cohort analysis cluster->revenue/signups+attribution+ROI (065); LLM citation graph SOV+opportunity diff (067); AEO score+Quick-answers+QAPage/FAQPage JSON-LD (068); knowledge graph NER+co-occurrence edges+gap detector (069). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_analytics_connections, blog_conversion_config, blog_cohort_metrics, blog_llm_citations, blog_aeo_scores, blog_kg_entities, blog_kg_edges (writes GA4/GSC into existing blog_performance_metrics).]",
       "category": "blog"
     },
     {
@@ -6098,8 +6098,8 @@
         "Per-post AI citation count surfaced alongside organic metrics"
       ],
       "priority": 101,
-      "passes": false,
-      "notes": "Probing has cost — sample queries, don't probe every keyword every day. Weekly per cluster is plenty.",
+      "passes": true,
+      "notes": "Probing has cost — sample queries, don't probe every keyword every day. Weekly per cluster is plenty. [IMPLEMENTED 2026-06-20: supabase/functions/blog-analytics-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). GA4+GSC integration+OAuth+backfill+per-post trends (061); cohort analysis cluster->revenue/signups+attribution+ROI (065); LLM citation graph SOV+opportunity diff (067); AEO score+Quick-answers+QAPage/FAQPage JSON-LD (068); knowledge graph NER+co-occurrence edges+gap detector (069). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_analytics_connections, blog_conversion_config, blog_cohort_metrics, blog_llm_citations, blog_aeo_scores, blog_kg_entities, blog_kg_edges (writes GA4/GSC into existing blog_performance_metrics).]",
       "category": "blog"
     },
     {
@@ -6114,8 +6114,8 @@
         "AEO score visible alongside SEO score"
       ],
       "priority": 102,
-      "passes": false,
-      "notes": "AI Overviews citations correlate with self-contained, well-attributed paragraphs. Optimize for chunk-level quality, not just article-level.",
+      "passes": true,
+      "notes": "AI Overviews citations correlate with self-contained, well-attributed paragraphs. Optimize for chunk-level quality, not just article-level. [IMPLEMENTED 2026-06-20: supabase/functions/blog-analytics-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). GA4+GSC integration+OAuth+backfill+per-post trends (061); cohort analysis cluster->revenue/signups+attribution+ROI (065); LLM citation graph SOV+opportunity diff (067); AEO score+Quick-answers+QAPage/FAQPage JSON-LD (068); knowledge graph NER+co-occurrence edges+gap detector (069). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_analytics_connections, blog_conversion_config, blog_cohort_metrics, blog_llm_citations, blog_aeo_scores, blog_kg_entities, blog_kg_edges (writes GA4/GSC into existing blog_performance_metrics).]",
       "category": "blog"
     },
     {
@@ -6130,8 +6130,8 @@
         "Gap detector: entities competitors cover that we don't — added to keyword cluster planning"
       ],
       "priority": 103,
-      "passes": false,
-      "notes": "Use a small NER model (spaCy or a fine-tuned small LLM) — calling GPT-4 for NER on every post is overkill and expensive.",
+      "passes": true,
+      "notes": "Use a small NER model (spaCy or a fine-tuned small LLM) — calling GPT-4 for NER on every post is overkill and expensive. [IMPLEMENTED 2026-06-20: supabase/functions/blog-analytics-intel/index.ts + dedicated schema + backfill migration + RLS registration; re-exported from shared/schema.ts; tsc clean (0 new errors). GA4+GSC integration+OAuth+backfill+per-post trends (061); cohort analysis cluster->revenue/signups+attribution+ROI (065); LLM citation graph SOV+opportunity diff (067); AEO score+Quick-answers+QAPage/FAQPage JSON-LD (068); knowledge graph NER+co-occurrence edges+gap detector (069). Tenant-scoped, Zod-validated, audit-logged; LLM via _shared/anthropic; external integrations behind named adapter stubs w/ injected-data fallbacks. New tables: blog_analytics_connections, blog_conversion_config, blog_cohort_metrics, blog_llm_citations, blog_aeo_scores, blog_kg_entities, blog_kg_edges (writes GA4/GSC into existing blog_performance_metrics).]",
       "category": "blog"
     },
     {

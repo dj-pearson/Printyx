@@ -43,7 +43,46 @@ DECLARE
     'blog_outline_variants',
     'blog_experiments',
     'blog_post_variants',
-    'blog_syndication_pieces'
+    'blog_syndication_pieces',
+    -- US-BLOG-017,019,020,022,025,026 (topic intelligence)
+    'blog_community_seeds',
+    'blog_community_questions',
+    'blog_cluster_extensions',
+    'blog_keyword_embeddings',
+    'blog_post_embeddings',
+    'blog_internal_link_suggestions',
+    'blog_cluster_authority_scores',
+    'blog_citation_sources',
+    'blog_readability_snapshots',
+    -- US-BLOG-029,032,034,035,037,038 (authoring tools)
+    'blog_data_assets',
+    'blog_chart_specs',
+    'blog_content_scans',
+    'blog_factcheck_runs',
+    -- US-BLOG-021,052,053,054,055,063 (distribution engine)
+    'blog_decay_events',
+    'blog_schedule_models',
+    'blog_utm_templates',
+    'blog_reshare_cadences',
+    'blog_link_injection_proposals',
+    'blog_refresh_queue_details',
+    -- US-BLOG-056,057,058,059,060 (outreach)
+    'blog_backlinks',
+    'blog_backlink_events',
+    'blog_brand_mentions',
+    'blog_outreach_prospects',
+    'blog_haro_queries',
+    'blog_haro_pitches',
+    'blog_outreach_threads',
+    'blog_outreach_messages',
+    -- US-BLOG-061,065,067,068,069 (analytics intelligence)
+    'blog_analytics_connections',
+    'blog_conversion_config',
+    'blog_cohort_metrics',
+    'blog_llm_citations',
+    'blog_aeo_scores',
+    'blog_kg_entities',
+    'blog_kg_edges'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP

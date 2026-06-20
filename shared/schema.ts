@@ -8786,6 +8786,16 @@ export {
 export * from './blog-schema';
 // Blog syndication (per-platform repurposing — US-BLOG-043..051)
 export * from './blog-syndication-schema';
+// Blog topic intelligence (forum miner, clustering, internal links, authority, citations, readability — US-BLOG-017,019,020,022,025,026)
+export * from './blog-topic-intel-schema';
+// Blog authoring tools (data/charts, rewrite, plagiarism/AI scan, image, fact-check, diagrams — US-BLOG-029,032,034,035,037,038)
+export * from './blog-authoring-tools-schema';
+// Blog distribution engine (decay, scheduling, UTM, re-share, link injection, refresh queue — US-BLOG-021,052,053,054,055,063)
+export * from './blog-distribution-engine-schema';
+// Blog outreach (backlinks, brand mentions, prospect lists, HARO, outreach agent — US-BLOG-056,057,058,059,060)
+export * from './blog-outreach-schema';
+// Blog analytics intelligence (GA4/GSC, cohorts, LLM citations, AEO, knowledge graph — US-BLOG-061,065,067,068,069)
+export * from './blog-analytics-intel-schema';
 
 // ============================================================================
 // MOBILE APP LOGS (cross-tenant diagnostic data)
