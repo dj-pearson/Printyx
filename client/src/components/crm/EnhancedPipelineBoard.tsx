@@ -29,7 +29,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { GripVertical, MoreHorizontal, Eye, User, Building2, DollarSign, Calendar, MapPin } from 'lucide-react';
+import {
+  GripVertical,
+  MoreHorizontal,
+  Eye,
+  User,
+  Building2,
+  DollarSign,
+  Calendar,
+  MapPin,
+} from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -96,7 +105,10 @@ function StageColumn({
       {/* Column Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: stage.color || '#6B7280' }} />
+          <div
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: stage.color || '#6B7280' }}
+          />
           <span className="text-sm font-medium truncate">{stage.displayName || stage.name}</span>
           <Badge variant="secondary" className="text-[10px] h-5 min-w-[20px] justify-center">
             {aggregates.count}
@@ -268,33 +280,62 @@ export function EnhancedPipelineBoard({
     queryFn: async () => {
       if (pipelineId) {
         const result = await apiRequest(`/api/pipeline-config/stages/${pipelineId}`);
-        return Array.isArray(result) ? result : result?.stages ?? [];
+        return Array.isArray(result) ? result : (result?.stages ?? []);
       }
       // Fallback: use templates list and get first default
       const templates = await apiRequest('/api/pipeline-config/templates');
       const defaultTemplate = templates?.find?.((t: any) => t.isDefault) ?? templates?.[0];
       if (defaultTemplate) {
         const result = await apiRequest(`/api/pipeline-config/stages/${defaultTemplate.id}`);
-        return Array.isArray(result) ? result : result?.stages ?? [];
+        return Array.isArray(result) ? result : (result?.stages ?? []);
       }
       // Ultimate fallback: hardcoded stages for deals
       return [
-        { id: 'prospecting', name: 'prospecting', displayName: 'Prospecting', color: '#3B82F6', order: 1 },
-        { id: 'qualification', name: 'qualification', displayName: 'Qualification', color: '#8B5CF6', order: 2 },
+        {
+          id: 'prospecting',
+          name: 'prospecting',
+          displayName: 'Prospecting',
+          color: '#3B82F6',
+          order: 1,
+        },
+        {
+          id: 'qualification',
+          name: 'qualification',
+          displayName: 'Qualification',
+          color: '#8B5CF6',
+          order: 2,
+        },
         { id: 'proposal', name: 'proposal', displayName: 'Proposal', color: '#F59E0B', order: 3 },
-        { id: 'negotiation', name: 'negotiation', displayName: 'Negotiation', color: '#EF4444', order: 4 },
-        { id: 'closed_won', name: 'closed_won', displayName: 'Closed Won', color: '#10B981', order: 5, isClosedWon: true },
-        { id: 'closed_lost', name: 'closed_lost', displayName: 'Closed Lost', color: '#6B7280', order: 6, isClosedLost: true },
+        {
+          id: 'negotiation',
+          name: 'negotiation',
+          displayName: 'Negotiation',
+          color: '#EF4444',
+          order: 4,
+        },
+        {
+          id: 'closed_won',
+          name: 'closed_won',
+          displayName: 'Closed Won',
+          color: '#10B981',
+          order: 5,
+          isClosedWon: true,
+        },
+        {
+          id: 'closed_lost',
+          name: 'closed_lost',
+          displayName: 'Closed Lost',
+          color: '#6B7280',
+          order: 6,
+          isClosedLost: true,
+        },
       ];
     },
     enabled: isAuthenticated,
     staleTime: 300_000,
   });
 
-  const stages = useMemo(
-    () => (stagesData ?? []).sort((a, b) => a.order - b.order),
-    [stagesData],
-  );
+  const stages = useMemo(() => (stagesData ?? []).sort((a, b) => a.order - b.order), [stagesData]);
 
   // Fetch records
   const { data: records = [], isLoading: recordsLoading } = useQuery<DealRecord[]>({
@@ -309,7 +350,7 @@ export function EnhancedPipelineBoard({
         }
       }
       const result = await apiRequest(`${config.apiEndpoint}?${params}`);
-      return Array.isArray(result) ? result : result?.records ?? result?.data ?? [];
+      return Array.isArray(result) ? result : (result?.records ?? result?.data ?? []);
     },
     enabled: isAuthenticated,
     staleTime: 30_000,
@@ -345,7 +386,10 @@ export function EnhancedPipelineBoard({
       const stageRecords = stageGroups[stage.id] ?? [];
       aggs[stage.id] = {
         count: stageRecords.length,
-        totalValue: stageRecords.reduce((sum, r) => sum + (r.value || r.amount || r.estimatedAmount || 0), 0),
+        totalValue: stageRecords.reduce(
+          (sum, r) => sum + (r.value || r.amount || r.estimatedAmount || 0),
+          0,
+        ),
       };
     }
     return aggs;
@@ -356,18 +400,26 @@ export function EnhancedPipelineBoard({
     mutationFn: async ({ recordId, newStageId }: { recordId: string; newStageId: string }) => {
       // Try different endpoints based on object type
       if (objectType === 'deals') {
-        return apiRequest(`/api/deals-management/deals/${recordId}`, 'PUT', { stage: newStageId });
+        return apiRequest(`/api/deals/${recordId}`, 'PUT', { stage: newStageId });
       }
-      return apiRequest(`/api/business-records/${recordId}/status`, 'PATCH', { status: newStageId });
+      return apiRequest(`/api/business-records/${recordId}/status`, 'PATCH', {
+        status: newStageId,
+      });
     },
     onMutate: async ({ recordId, newStageId }) => {
       await queryClient.cancelQueries({ queryKey: [config.apiEndpoint, 'board'] });
-      const previousData = queryClient.getQueryData([config.apiEndpoint, 'board', { search, ...activeFilters }]);
+      const previousData = queryClient.getQueryData([
+        config.apiEndpoint,
+        'board',
+        { search, ...activeFilters },
+      ]);
       queryClient.setQueryData(
         [config.apiEndpoint, 'board', { search, ...activeFilters }],
         (old: DealRecord[] | undefined) =>
           old?.map((r) =>
-            r.id === recordId ? { ...r, stage: newStageId, stageId: newStageId, status: newStageId } : r,
+            r.id === recordId
+              ? { ...r, stage: newStageId, stageId: newStageId, status: newStageId }
+              : r,
           ),
       );
       return { previousData };
@@ -391,25 +443,28 @@ export function EnhancedPipelineBoard({
     setActiveId(String(event.active.id));
   }, []);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setActiveId(null);
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveId(null);
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
 
-    const recordId = String(active.id);
-    const newStageId = String(over.id);
+      const recordId = String(active.id);
+      const newStageId = String(over.id);
 
-    // Find current stage
-    const record = records.find((r) => r.id === recordId);
-    const currentStage = record?.stageId || record?.stage || record?.status;
-    if (currentStage === newStageId) return;
+      // Find current stage
+      const record = records.find((r) => r.id === recordId);
+      const currentStage = record?.stageId || record?.stage || record?.status;
+      if (currentStage === newStageId) return;
 
-    stageChangeMutation.mutate({ recordId, newStageId });
-    toast({
-      title: 'Stage updated',
-      description: `Moved to ${stages.find((s) => s.id === newStageId)?.displayName ?? newStageId}`,
-    });
-  }, [records, stages, stageChangeMutation, toast]);
+      stageChangeMutation.mutate({ recordId, newStageId });
+      toast({
+        title: 'Stage updated',
+        description: `Moved to ${stages.find((s) => s.id === newStageId)?.displayName ?? newStageId}`,
+      });
+    },
+    [records, stages, stageChangeMutation, toast],
+  );
 
   // Active dragging record
   const activeRecord = activeId ? records.find((r) => r.id === activeId) : null;

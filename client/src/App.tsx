@@ -122,6 +122,8 @@ const EnhancedProductModels = React.lazy(() => import('@/pages/EnhancedProductMo
 const EnhancedProductAccessories = React.lazy(() => import('@/pages/EnhancedProductAccessories'));
 const ProfessionalServices = React.lazy(() => import('@/pages/ProfessionalServices'));
 const ServiceProducts = React.lazy(() => import('@/pages/ServiceProducts'));
+const AddressBooksIndex = React.lazy(() => import('@/pages/service/AddressBooksIndex'));
+const AddressBookDetail = React.lazy(() => import('@/pages/service/AddressBookDetail'));
 const SoftwareProducts = React.lazy(() => import('@/pages/SoftwareProducts'));
 const Supplies = React.lazy(() => import('@/pages/Supplies'));
 const ManagedServices = React.lazy(() => import('@/pages/ManagedServices'));
@@ -269,7 +271,6 @@ const IntegrationHub = React.lazy(() => import('@/pages/IntegrationHub'));
 const WorkflowAutomation = React.lazy(() => import('@/pages/WorkflowAutomation'));
 const PredictiveAnalytics = React.lazy(() => import('@/pages/PredictiveAnalytics'));
 const ERPIntegration = React.lazy(() => import('@/pages/ERPIntegration'));
-const CustomerAccessManagement = React.lazy(() => import('@/pages/CustomerAccessManagement'));
 const ServiceHub = React.lazy(() => import('@/pages/ServiceHub'));
 const ApolloLeadEnrichment = React.lazy(() => import('@/pages/ApolloLeadEnrichment'));
 const OnboardingDashboard = React.lazy(() => import('@/pages/OnboardingDashboard'));
@@ -744,6 +745,28 @@ function Router() {
                 <Route path="/product-accessories" component={EnhancedProductAccessories} />
                 <Route path="/professional-services" component={ProfessionalServices} />
                 <Route path="/service-products" component={ServiceProducts} />
+                <Route path="/service/address-books/:id">
+                  {() => (
+                    <ProtectedRoute
+                      permissions={[
+                        'service.address_book.view_team',
+                        'service.address_book.view_own',
+                      ]}
+                      component={AddressBookDetail}
+                    />
+                  )}
+                </Route>
+                <Route path="/service/address-books">
+                  {() => (
+                    <ProtectedRoute
+                      permissions={[
+                        'service.address_book.view_team',
+                        'service.address_book.view_own',
+                      ]}
+                      component={AddressBooksIndex}
+                    />
+                  )}
+                </Route>
                 <Route path="/software-products" component={SoftwareProducts} />
                 <Route path="/supplies" component={Supplies} />
                 <Route path="/managed-services" component={ManagedServices} />
@@ -1076,7 +1099,6 @@ function Router() {
                   {() => <ProtectedRoute component={AuditLogViewer} platformOnly />}
                 </Route>
                 <Route path="/erp-integration" component={ERPIntegration} />
-                <Route path="/customer-access-management" component={CustomerAccessManagement} />
                 <Route path="/manufacturer-integration" component={ManufacturerIntegration} />
                 <Route
                   path="/manufacturer-integration/devices"

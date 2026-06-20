@@ -32,11 +32,21 @@ function stripPrefix(path: string): string {
   );
 }
 
-function isPlatformAdmin(auth: Awaited<ReturnType<typeof requireAuth>>): boolean {
-  return (
-    auth.supabaseUser.app_metadata?.isPlatformAdmin === true ||
-    auth.supabaseUser.app_metadata?.role === 'platform_admin'
-  );
+/**
+ * EDGE-002i — audit-logs access gate.
+ *
+ * The Express predecessor was platform-admin-only. This hardens to the
+ * documented hybrid model (CLAUDE.md): platform admins, OR users whose JWT
+ * `app_metadata.permissions[]` includes an `audit.logs.view*` permission
+ * (e.g. company/compliance admins). Either way the query is tenant-scoped via
+ * `auth.tenantId`, so a permitted non-platform user only ever sees their own
+ * tenant's logs.
+ */
+function canViewAuditLogs(auth: Awaited<ReturnType<typeof requireAuth>>): boolean {
+  const meta = auth.supabaseUser.app_metadata ?? {};
+  if (meta.isPlatformAdmin === true || meta.role === 'platform_admin') return true;
+  const permissions = Array.isArray(meta.permissions) ? (meta.permissions as string[]) : [];
+  return permissions.some((p) => p === 'audit.logs.view' || p.startsWith('audit.logs.view'));
 }
 
 export default async function handler(req: Request) {
@@ -62,11 +72,16 @@ export default async function handler(req: Request) {
       });
     }
 
-    if (!isPlatformAdmin(auth)) {
-      return errorResponse(403, 'Forbidden: platform admin access required', req, {
-        code: 'FORBIDDEN',
-        requestId,
-      });
+    if (!canViewAuditLogs(auth)) {
+      return errorResponse(
+        403,
+        'Forbidden: audit log access requires platform admin or audit.logs.view permission',
+        req,
+        {
+          code: 'FORBIDDEN',
+          requestId,
+        },
+      );
     }
 
     const q = url.searchParams;

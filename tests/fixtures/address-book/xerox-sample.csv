@@ -1,0 +1,4 @@
+Display Name,Email Address,(SMB) Server,(SMB) Share,(SMB) Document Path,(SMB) Login Name,(SMB) Password
+Jane Doe,jane.doe@acme.example,,,,,
+John Smith,john.smith@acme.example,,,,,
+Scans Folder,,IOSI-FILESERV,Data,Scans,scanuser,s3cret

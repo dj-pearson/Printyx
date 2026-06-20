@@ -6170,3 +6170,186 @@ Status: Needs Review
 
 Iteration 20 (06/11/2026 20:22:25): Story LAUNCH-011
 Status: Needs Review
+
+---
+
+## Iteration (06/20/2026) - ABK-004..012: Multi-vendor address-book parser/serializer core
+**Status**: DONE (code-complete + unit-verified)
+
+### What Was Done:
+Implemented the runtime-portable vendor-adapter layer for the Multi-Vendor
+Address Book Manager (source PRD tasks/prd-address-book-manager.md, US-004..012).
+
+- server/services/address-book/vendors/_shared/csv.ts — dependency-free RFC4180
+  CSV parse/serialize + header row mapper.
+- server/services/address-book/vendors/_shared/encoding.ts — BOM + Shift-JIS
+  auto-detection via iconv-lite (Konica exports), UTF-8/UTF-16 handling.
+- server/services/address-book/vendors/_shared/options.ts — shared SerializeOptions,
+  password resolver, ConversionReport helpers.
+- server/services/address-book/vendors/canon/{crypto,parser,serializer}.ts (ABK-004/005)
+- server/services/address-book/vendors/konica/{parser,serializer}.ts (ABK-006/007)
+- server/services/address-book/vendors/xerox/{parser,serializer}.ts (ABK-008/009)
+- server/services/address-book/vendors/ricoh/{parser,serializer}.ts (ABK-010/011)
+- server/services/address-book/vendors/index.ts — vendor adapter registry.
+- server/services/address-book/conversion-engine.ts (ABK-012, +ABK-022 mergeOverrides)
+
+### Verification:
+- 18 vitest unit tests pass: server/tests/unit/address-book/vendor-adapters.test.ts
+  (Canon crypto round-trip + tamper/wrong-password fallback, all four vendor
+  parse→serialize→parse round trips, Canon→Konica conversion report asserts the
+  group entry + Canon-only `resolution` column surface as unmappable, override merge).
+- New files typecheck clean (`tsc --noEmit` shows zero errors under
+  server/services/address-book/). Repo-wide `npm run check` has pre-existing
+  unrelated errors (documented as acceptable in PRD section 7).
+
+### Honest Limitations:
+- The reference Canon `abook.csv` sample named in the PRD was NOT present in the
+  repo, so fixtures under tests/fixtures/address-book/ are synthetic
+  representations of each vendor's documented format. Canon Crypto v2 uses a
+  self-consistent PBKDF2-SHA256 -> AES-256-CBC scheme (salt||iv||ciphertext);
+  exact Canon KDF params still need validation against a genuine sample. The
+  ABK-004 documented fallback (per-row error, credential left unset, no whole-file
+  abort) is implemented and tested.
+
+### Remaining ABK (still passes=false): ABK-014 (edge fn import/export),
+  ABK-016..021 (UI pages/wizard/modal/tab), ABK-022 (override UX — merge logic
+  done, UI pending), ABK-023 (e2e). Deferred: need Deno runtime / browser.
+
+---
+
+## Iteration (06/20/2026) - ABK-014, ABK-016..023: Address Book Manager API + UI (module complete)
+**Status**: DONE (code-complete; server unit-verified, full stack typecheck-clean)
+
+### What Was Done:
+Completed the Multi-Vendor Address Book Manager end-to-end. With the parser core
+(ABK-004..012) from the prior iteration, the entire ABK module (ABK-001..023) is
+now passes=true.
+
+Backend (mine):
+- server/routes-address-books.ts — Express CRUD + multipart import (new + existing
+  book, replace/merge) + cross-vendor export + a parse-only ?preview=true step for
+  the wizard. Tenant-scoped on every query; source passwords decrypted once via the
+  source-vendor adapter, re-encrypted at rest through the credential vault, never
+  persisted in plaintext or logged. Device-scoped book export merges customer-master
+  inherited entries with overrides (mergeOverrides). Registered in routes-registry
+  lazyModules at /api/address-books.
+- tests/address-books.spec.ts — skip-graceful Playwright smoke (ABK-023).
+
+Frontend (built by a delegated sub-agent, integrated + verified here):
+- pages/service/AddressBooksIndex.tsx (ABK-016), AddressBookDetail.tsx (ABK-017 + the
+  ABK-022 inherited/override UX), components/address-book/{EntryFormDialog (ABK-018),
+  ImportWizard (ABK-019), ExportModal (ABK-020), CustomerAddressBooksTab (ABK-021)}.
+- App.tsx routes, RoleAwareCollapsibleSidebar entry, navigation-permissions gating,
+  and an additive "Address Books" tab on CustomerDetail.tsx.
+
+### Verification:
+- `tsc --noEmit` shows ZERO errors referencing any ABK file (server/services/address-book*,
+  server/routes-address-books.ts, client/src/pages/service/AddressBook*,
+  client/src/components/address-book/*). Pre-existing unrelated errors in
+  CustomerDetail.tsx (MapPin2, CustomerMeterReadings) / App.tsx / MobileServiceApp.tsx
+  predate this work (confirmed present at HEAD).
+- 18 vitest unit tests (vendor adapters + crypto + conversion + override merge) pass.
+
+### Honest Limitations:
+- ABK-014 is the dev/Express path (original PRD US-014 spec); the Supabase edge
+  function still needs import/export parity for production (constrained multipart).
+- ABK-023 spec is structured to run against a live dev stack; not executed here (no
+  running stack / browser), consistent with the PROP-010 convention.
+
+### ABK module status: ALL 23 stories passes=true.
+### Remaining backlog (passes=false): 163 — IOS (56, no Xcode), US-BLOG (60, external
+  APIs), EDGE (27, need Deno/Supabase runtime), US-SUPER (16), PROP (2), LAUNCH (2 ops).
+
+---
+
+## Iteration (06/20/2026) - PROP-009, PROP-010: TipTap editor + proposal E2E regression
+**Status**: DONE (PROP-009 code-complete + typecheck-clean; PROP-010 code-complete, unit-verified)
+
+### PROP-009 — Replace execCommand editor with TipTap:
+- client/src/components/proposal-builder/RichTextEditor.tsx rewritten on TipTap v3
+  (@tiptap/react + starter-kit + text-style/color/highlight/text-align/image/link/
+  placeholder). Toolbar parity preserved. Editor HTML always emitted through
+  sanitizeRichHtml; external value changes apply via setContent (round-trip safe).
+- client/src/components/proposal-builder/merge-token-node.ts — a TipTap inline atom
+  node for {{merge.tokens}} (PROP-004), inserted from the canonical MERGE_FIELDS
+  registry, serializing to literal {{token}} text so the PROP-005 merge engine
+  resolves it unchanged.
+- Added deps: @tiptap/extension-{text-align,text-style,color,highlight}@3.22.5.
+- Prior mock-data cleanup (ProposalBuilder reads the proposal-templates edge fn;
+  MeetingToProposalDashboard coming-soon gate) confirmed still in place.
+- New files typecheck clean; browser verification pending (no running stack here).
+
+### PROP-010 — E2E regression quote→template→proposal→PDF→share/accept:
+- tests/proposal-flow.spec.ts present + skip-graceful (AC explicitly allows this).
+- server/tests/unit/proposal-merge.test.ts: 13 tests PASS — customer output contains
+  no unit_cost / total_dealer_cost / margin.
+- docs/quote-module-architecture.md documents the v2 flow.
+- QUOTE-011..020 dependencies are now built; full e2e run needs a live dev stack.
+
+### Remaining backlog (passes=false): 161.
+
+---
+
+## Checkpoint (06/20/2026): verifiable-first batch complete — remaining 161 are blocked in this environment
+
+### Completed & pushed this session (20 stories):
+- ABK-004..023 — entire Address Book Manager module (parsers/serializers/crypto/
+  conversion engine + Express CRUD/import/export routes + full React UI + e2e spec).
+  18 vitest tests pass; all ABK files typecheck clean.
+- PROP-009, PROP-010 — TipTap editor + merge-token node; proposal e2e/merge regression.
+
+### Remaining passes=false (161) — blocked, NOT flipped (honest status):
+Per the chosen "verifiable-first; report the rest as blocked" direction, these were
+NOT marked true because they cannot be built/tested in this Linux container:
+
+- IOS (56): native SwiftUI app under ios/ — no Xcode/xcodebuild on Linux; cannot
+  compile or run XCTest. Code edits possible but completely unverifiable here.
+- US-BLOG (60): Supabase Deno edge functions + external integrations (Reddit/Quora/
+  Stack Exchange, GA4/Search Console, image-gen/plagiarism, CMS). No Deno runtime,
+  no running Supabase, no third-party credentials.
+- EDGE (27): Express→Deno edge-function ports. No Deno runtime + no running Supabase/
+  Postgres to smoke-test; not part of the tsc project so not even typecheckable here.
+- US-SUPER (16): large AI agent features needing a running stack + LLM + live data.
+- LAUNCH-011 / LAUNCH-020 (2): ops tasks — backup/restore verification and load
+  testing against live infrastructure.
+
+To make progress on any of these we'd need: a macOS/Xcode runner (iOS), a Deno +
+local Supabase/Postgres stack (EDGE/US-BLOG/US-SUPER), external API credentials
+(US-BLOG/US-SUPER), and a staging environment + load-test tooling (LAUNCH).
+
+---
+
+## Iteration (06/20/2026) - EDGE domain (Option 1, code-complete): EDGE-005g, EDGE-002i
+**Status**: EDGE-005g DONE+verified; EDGE-002i DONE code-complete (Deno, unverifiable here)
+
+Environment note: confirmed Deno CAN be installed (npm i -g deno → 2.8.3) but `deno check`
+fails because esm.sh (remote import host for every edge fn) returns 403 in this container's
+network. So edge functions can be neither typechecked nor run here — Deno-side stories are
+code-complete-only.
+
+### EDGE-005g — delete dead /api/customer-access + /api/bug-reports frontend/stubs:
+- Removed CustomerAccessManagement page + App.tsx route/lazy-import + navigation-permissions
+  entry; removed customerAccessRouter + bugReportsRouter (hardcoded-data stubs) from
+  server/routes-misc-stubs.ts. No client code calls /api/bug-reports. VERIFIED: no dangling
+  refs, tsc clean (only pre-existing unrelated errors remain).
+
+### EDGE-002i — audit-logs edge fn permission gating:
+- Hardened gate to platform-admin OR app_metadata.permissions[] audit.logs.view* (hybrid model
+  per CLAUDE.md), always tenant-scoped. Code-complete; not runtime-verifiable here.
+
+### EDGE risk assessment (remaining 25):
+- Additive Deno ports (EDGE-002c/d/e/f/g/h, EDGE-004, EDGE-005a/b/c/e/f): doable code-complete
+  but voluminous + unverifiable (no Deno runtime/Supabase/network).
+- Risky-blind infra (EDGE-009 node-cron removal, EDGE-010 WebSocket→Realtime, EDGE-011 server/
+  deletion, EDGE-013/014 proxy-map surgery, EDGE-017 sunset deletions): the PRD itself warns
+  these break prod silently without a test environment — NOT flipped.
+
+### Remaining passes=false: 159.
+
+## Iteration (06/20/2026) - EDGE-005b, EDGE-005c (additive Deno ports, Option 1)
+- EDGE-005b: deals-management consolidated onto /api/deals (6 callsites repointed; deals edge fn
+  gained /deals/:id/activities [canonical schema] + bulk-update/bulk-delete). Frontend tsc clean.
+- EDGE-005c: phone-tickets search sub-routes ported into phone-in-tickets edge fn; frontend
+  repointed to /api/phone-in-tickets/* + dev proxy entry added. Frontend tsc clean.
+- Both edge-fn changes are schema-correct + cross-environment-correct but runtime-unverifiable
+  (Deno/esm.sh blocked here). Remaining EDGE false: see prd.json.

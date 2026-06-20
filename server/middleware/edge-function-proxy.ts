@@ -361,6 +361,13 @@ export function registerEdgeFunctionProxy(app: any) {
     // the /api/monitoring-clients prefix — the agent ingest path
     // /api/client-metrics/* stays on Express (routes-client-monitoring.ts).
     '/api/monitoring-clients': 'monitoring-clients',
+
+    // EDGE-005c: phone-in-tickets. The search-companies/search-contacts/
+    // equipment sub-routes the PhoneInTicketCreator calls were ported into the
+    // phone-in-tickets edge fn (previously Express-only under the legacy
+    // /api/phone-tickets prefix, which 404'd in prod). Frontend now calls
+    // /api/phone-in-tickets/*; proxying here makes dev match prod (functions-direct).
+    '/api/phone-in-tickets': 'phone-in-tickets',
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {

@@ -1,0 +1,4 @@
+index,name,key display,mail address,folder protocol,folder path,folder user name,folder password
+1,Jane Doe,Jane,jane.doe@acme.example,,,,
+2,John Smith,John,john.smith@acme.example,,,,
+3,Scans Folder,Scans,,SMB,\\IOSI-FILESERV\Data\Scans,scanuser,s3cret

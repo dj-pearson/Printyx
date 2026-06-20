@@ -45,6 +45,70 @@ export default async function handler(req: Request) {
     const ticketId = pathParts[1]; // /phone-in-tickets/:id
     const subResource = pathParts[2]; // /phone-in-tickets/:id/convert
 
+    // ─── Customer / contact / equipment search (EDGE-005c) ─────────────────
+    // Ported from Express /api/phone-tickets/{search-companies,search-contacts,
+    // equipment}. Now served here so dev (proxy) and prod (functions-direct)
+    // resolve to the same handler. Searches business_records (customers only).
+    if (req.method === 'GET' && ticketId === 'search-companies') {
+      const term = (url.searchParams.get('q') || '').trim();
+      if (term.length < 2) return createCorsResponse([], 200, req);
+      const pat = `%${term.toLowerCase().replace(/[,()]/g, ' ')}%`;
+      const { data, error } = await admin
+        .from('business_records')
+        .select(
+          'id, company_name, primary_contact_name, primary_contact_phone, primary_contact_email, address_line1, address_line2, city, state, postal_code',
+        )
+        .eq('tenant_id', tenantId)
+        .eq('record_type', 'customer')
+        .or(`company_name.ilike.${pat},primary_contact_name.ilike.${pat},status.ilike.${pat}`)
+        .limit(10);
+      if (error) {
+        console.error('Error searching companies:', error);
+        return createCorsResponse({ error: 'Failed to search companies' }, 500, req);
+      }
+      const results = (data ?? []).map((r: Record<string, any>) => ({
+        id: r.id,
+        name: r.company_name,
+        phone: r.primary_contact_phone,
+        email: r.primary_contact_email,
+        address: [r.address_line1, r.address_line2, r.city, r.state, r.postal_code]
+          .filter(Boolean)
+          .join(', '),
+      }));
+      return createCorsResponse(results, 200, req);
+    }
+
+    if (req.method === 'GET' && ticketId === 'search-contacts') {
+      const companyId = subResource;
+      if (!companyId) return createCorsResponse([], 200, req);
+      const { data, error } = await admin
+        .from('business_records')
+        .select('id, primary_contact_name, primary_contact_phone, primary_contact_email')
+        .eq('tenant_id', tenantId)
+        .eq('id', companyId)
+        .limit(10);
+      if (error) {
+        console.error('Error searching contacts:', error);
+        return createCorsResponse({ error: 'Failed to search contacts' }, 500, req);
+      }
+      const results = (data ?? [])
+        .filter((r: Record<string, any>) => r.primary_contact_name?.trim())
+        .map((r: Record<string, any>) => ({
+          id: r.id,
+          name: r.primary_contact_name,
+          phone: r.primary_contact_phone,
+          email: r.primary_contact_email,
+          role: 'Primary Contact',
+        }));
+      return createCorsResponse(results, 200, req);
+    }
+
+    if (req.method === 'GET' && ticketId === 'equipment') {
+      // Parity with the Express handler, which returned an empty list (the
+      // per-customer equipment lookup was never wired up).
+      return createCorsResponse([], 200, req);
+    }
+
     // GET /phone-in-tickets - List all phone-in tickets
     if (req.method === 'GET' && !ticketId) {
       const limit = parseInt(url.searchParams.get('limit') || '50');

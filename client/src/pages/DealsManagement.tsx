@@ -973,7 +973,7 @@ export default function DealsManagement() {
   // Bulk update mutation
   const bulkDealUpdateMutation = useMutation({
     mutationFn: async ({ ids, updates }: { ids: string[]; updates: Record<string, any> }) =>
-      apiRequest('/api/deals-management/deals/bulk-update', 'POST', { dealIds: ids, updates }),
+      apiRequest('/api/deals/bulk-update', 'POST', { dealIds: ids, updates }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       bulkSelection.clearSelection();
@@ -987,7 +987,7 @@ export default function DealsManagement() {
   // Bulk delete mutation
   const bulkDealDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) =>
-      apiRequest('/api/deals-management/deals/bulk-delete', 'POST', { dealIds: ids }),
+      apiRequest('/api/deals/bulk-delete', 'POST', { dealIds: ids }),
     onSuccess: (_, ids) => {
       queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
       bulkSelection.clearSelection();

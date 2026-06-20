@@ -52,6 +52,139 @@ export default async function handler(req: Request) {
     // Normalize: strip function name from path if the relay preserved it
     const pathParts = rawParts[0] === 'deals' ? rawParts.slice(1) : rawParts;
     const dealId = pathParts[0];
+    const subResource = pathParts[1]; // e.g. /deals/:id/activities
+
+    // ─── /deals/:id/activities (EDGE-005b) ─────────────────────────────────
+    // Ported from the legacy Express /api/deals-management/deals/:id/activities.
+    // Uses the CANONICAL deal_activities schema (type/description/created_at) —
+    // the old Express handler referenced drifted column names (activity_type/
+    // created_by/follow_up_date) that do not exist on the table. Response is
+    // mapped to camelCase to match the frontend ActivityEntry shape.
+    if (dealId && subResource === 'activities') {
+      if (req.method === 'GET') {
+        const { data, error } = await admin
+          .from('deal_activities')
+          .select('*')
+          .eq('deal_id', dealId)
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching deal activities:', error);
+          return createCorsResponse({ error: 'Failed to fetch deal activities' }, 500, req);
+        }
+
+        const activities = (data ?? []).map((a: Record<string, any>) => ({
+          id: a.id,
+          dealId: a.deal_id,
+          type: a.type,
+          subject: a.subject,
+          description: a.description,
+          outcome: a.outcome,
+          duration: a.duration,
+          userId: a.user_id,
+          createdAt: a.created_at,
+        }));
+        return createCorsResponse(activities, 200, req);
+      }
+
+      if (req.method === 'POST') {
+        const body = await req.json();
+        const activityData = {
+          tenant_id: tenantId,
+          deal_id: dealId,
+          type: body.type || body.activityType || 'note',
+          subject: body.subject ?? null,
+          description: body.description ?? null,
+          outcome: body.outcome ?? null,
+          duration: body.duration ?? null,
+          user_id: user.id,
+          created_at: new Date().toISOString(),
+        };
+        const { data: created, error } = await admin
+          .from('deal_activities')
+          .insert(activityData)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error creating deal activity:', error);
+          return createCorsResponse({ error: 'Failed to create deal activity' }, 500, req);
+        }
+        return createCorsResponse(
+          {
+            id: created.id,
+            dealId: created.deal_id,
+            type: created.type,
+            subject: created.subject,
+            description: created.description,
+            outcome: created.outcome,
+            duration: created.duration,
+            userId: created.user_id,
+            createdAt: created.created_at,
+          },
+          201,
+          req,
+        );
+      }
+
+      return createCorsResponse({ error: 'Method not allowed' }, 405, req);
+    }
+
+    // ─── Bulk ops (EDGE-005b) — POST /deals/bulk-update | /deals/bulk-delete ──
+    // Ported from legacy Express /api/deals-management/deals/bulk-{update,delete}.
+    const BULK_FIELD_MAP: Record<string, string> = {
+      dealName: 'deal_name',
+      description: 'description',
+      dealValue: 'deal_value',
+      value: 'deal_value',
+      stage: 'stage',
+      status: 'status',
+      probability: 'probability',
+      expectedCloseDate: 'expected_close_date',
+      ownerId: 'owner_id',
+      source: 'source',
+      nextStep: 'next_step',
+    };
+
+    if (req.method === 'POST' && dealId === 'bulk-update') {
+      const body = await req.json();
+      const ids: string[] = Array.isArray(body.dealIds) ? body.dealIds : [];
+      const updates: Record<string, any> = body.updates ?? {};
+      if (ids.length === 0) {
+        return createCorsResponse({ error: 'dealIds required' }, 400, req);
+      }
+      const updateData: Record<string, any> = { updated_at: new Date().toISOString() };
+      for (const [camelKey, snakeKey] of Object.entries(BULK_FIELD_MAP)) {
+        if (updates[camelKey] !== undefined) updateData[snakeKey] = updates[camelKey];
+        else if (updates[snakeKey] !== undefined) updateData[snakeKey] = updates[snakeKey];
+      }
+      const { data, error } = await admin
+        .from('deals')
+        .update(updateData)
+        .in('id', ids)
+        .eq('tenant_id', tenantId)
+        .select('id');
+      if (error) {
+        console.error('Error bulk-updating deals:', error);
+        return createCorsResponse({ error: 'Failed to bulk-update deals' }, 500, req);
+      }
+      return createCorsResponse({ success: true, updated: data?.length ?? 0 }, 200, req);
+    }
+
+    if (req.method === 'POST' && dealId === 'bulk-delete') {
+      const body = await req.json();
+      const ids: string[] = Array.isArray(body.dealIds) ? body.dealIds : [];
+      if (ids.length === 0) {
+        return createCorsResponse({ error: 'dealIds required' }, 400, req);
+      }
+      const { error } = await admin.from('deals').delete().in('id', ids).eq('tenant_id', tenantId);
+      if (error) {
+        console.error('Error bulk-deleting deals:', error);
+        return createCorsResponse({ error: 'Failed to bulk-delete deals' }, 500, req);
+      }
+      return createCorsResponse({ success: true, deleted: ids.length }, 200, req);
+    }
 
     // GET /deals - List deals
     if (req.method === 'GET' && !dealId) {

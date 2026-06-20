@@ -1,0 +1,4 @@
+No.,Name,Index,Type,E-mail Address,Host Address,File Path,User ID,Password
+1,Jane Doe,1,E-mail,jane.doe@acme.example,,,,
+2,John Smith,2,E-mail,john.smith@acme.example,,,,
+3,Scans Folder,3,SMB,,IOSI-FILESERV,Data/Scans,scanuser,s3cret
