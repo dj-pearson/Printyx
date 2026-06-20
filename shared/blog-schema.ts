@@ -1,7 +1,7 @@
 /**
  * Blog Module Schema — Platform Admin Blog System
  *
- * 27 Drizzle tables for the Universal Blog System integrated into Printyx.
+ * 28 Drizzle tables for the Universal Blog System integrated into Printyx.
  *   Core (US-BLOG-002): blog_brand_voices, blog_style_guides, blog_keyword_clusters,
  *     blog_keywords, blog_briefs, blog_assets, blog_posts, blog_post_revisions,
  *     blog_citations, blog_distribution_targets, blog_distributions,
@@ -9,7 +9,7 @@
  *   Extensions: blog_jobs (012), blog_serp_snapshots (015), blog_competitor_keywords (018),
  *     blog_ai_costs + blog_ai_quotas (078), blog_pipeline_runs + blog_pipeline_stages (073),
  *     blog_qa_reports (040), blog_rank_forecasts (041), blog_authors (028),
- *     blog_outline_variants (030), blog_experiments (064).
+ *     blog_outline_variants (030), blog_experiments (064), blog_post_variants (072).
  * Source PRD: blog-system-prd.json (US-BLOG-002 implementation).
  *
  * Conventions:
@@ -191,6 +191,48 @@ export const blogBriefs = pgTable(
     tenantIdx: index('blog_briefs_tenant_idx').on(table.tenantId),
     statusIdx: index('blog_briefs_tenant_status_idx').on(table.tenantId, table.status),
     assignedIdx: index('blog_briefs_assigned_idx').on(table.assignedToUserId),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// blog_post_variants — audience-specific variants of one master post (US-BLOG-072)
+// ---------------------------------------------------------------------------
+// One master article, multiple ICP variants (engineer/manager/executive). Each
+// variant overrides the intro, examples, and CTA but shares the core body.
+// Variants are resolved server-side (URL param > cookie segment > referrer >
+// default) and never get their own URL — the post keeps ONE canonical URL to
+// avoid duplicate content. Per-variant performance is counted on the row.
+export const blogPostVariants = pgTable(
+  'blog_post_variants',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    postId: uuid('post_id')
+      .notNull()
+      .references(() => blogPosts.id, { onDelete: 'cascade' }),
+    audienceKey: varchar('audience_key', { length: 64 }).notNull(), // engineer | manager | executive | ...
+    audienceLabel: varchar('audience_label', { length: 200 }),
+    intro: text('intro'),
+    examples: jsonb('examples'), // [{ heading, body }] or freeform
+    cta: jsonb('cta'), // { text, href, style }
+    /** How a request resolves to this variant: { url_param, cookie_segment, referrer_patterns[] }. */
+    matchRules: jsonb('match_rules'),
+    isDefault: boolean('is_default').notNull().default(false),
+    servedCount: integer('served_count').notNull().default(0),
+    conversionCount: integer('conversion_count').notNull().default(0),
+    status: varchar('status', { length: 16 }).notNull().default('active'), // active | paused
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
+    createdByUserId: varchar('created_by_user_id'),
+  },
+  (table) => ({
+    tenantIdx: index('blog_post_variants_tenant_idx').on(table.tenantId),
+    postIdx: index('blog_post_variants_post_idx').on(table.postId),
+    postAudienceIdx: index('blog_post_variants_post_audience_idx').on(
+      table.postId,
+      table.audienceKey,
+    ),
   }),
 );
 
@@ -1195,6 +1237,8 @@ export type BlogOutlineVariant = typeof blogOutlineVariants.$inferSelect;
 export type NewBlogOutlineVariant = typeof blogOutlineVariants.$inferInsert;
 export type BlogExperiment = typeof blogExperiments.$inferSelect;
 export type NewBlogExperiment = typeof blogExperiments.$inferInsert;
+export type BlogPostVariant = typeof blogPostVariants.$inferSelect;
+export type NewBlogPostVariant = typeof blogPostVariants.$inferInsert;
 
 // Suppress unused-import warning for drizzle-orm sql helper (kept for future raw fragments)
 void sql;

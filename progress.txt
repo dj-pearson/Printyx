@@ -6598,3 +6598,33 @@ code-complete-only.
   data to run a real test. passes=false.
 
 ### Session batch now: US-BLOG-078,073,062,040,041,028,030,064 code-complete. blog-schema 18→27 tables.
+
+---
+
+## Iteration (06/20/2026) - US-BLOG-072: Audience-specific personalized variants
+**Status**: code-complete (schema tsc-verified; edge fn Deno, unverifiable here). passes stays false.
+
+### What was built:
+- shared/blog-schema.ts: +1 table blog_post_variants (post_id FK, audience_key, audience_label,
+  intro text, examples jsonb, cta jsonb, match_rules jsonb {url_param,cookie_segment,
+  referrer_patterns}, is_default, served_count, conversion_count, status, soft-delete). Header now 28.
+- drizzle/migrations/_backfill_blog_post_variants.sql + rls registration.
+- supabase/functions/blog-audience-variants/index.ts (NEW edge fn):
+  - CRUD with one-variant-per-(post,audience_key) uniqueness + single is_default per post.
+  - POST /resolve: server-side personalization — precedence URL param > cookie segment > referrer
+    pattern > is_default; returns the matched variant + the post's SINGLE canonical_url (variants
+    never get their own URL → no duplicate content, per AC).
+  - GET /:id/render: assembles the served payload = variant intro + examples + CTA OVER the shared
+    master body_markdown, with the one canonical_url and index,follow robots.
+  - POST /:id/track {served|conversion}: per-variant performance counters; GET /:id returns the
+    derived conversion_rate.
+  - Gated to blog.post.edit; tenant-scoped; mutations audit-logged. (Note: the actual edge delivery
+    — Cloudflare/Vercel edge per the story note — calls /resolve+/render+/track; this fn is the data
+    + decision layer.)
+
+### Verifiable: tsc clean (3 pre-existing env errors only). Blocked: Deno/Supabase + an SSR/edge
+  delivery layer to exercise it. passes=false.
+
+### Session batch (branch ...-7a3n19): US-BLOG-078,073,062,040,041,028,030,064,072 — 9 stories
+  code-complete. blog-schema.ts 18 → 28 tables; 9 new edge fns + 1 shared helper (ai-cost.ts).
+  Nothing flipped to passes=true (Deno+Supabase not runnable here, per the chosen mode).
