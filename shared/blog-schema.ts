@@ -762,6 +762,36 @@ export const blogInternalLinkSuggestions = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// blog_cluster_authority_snapshots — daily topical-authority history per cluster
+// (US-BLOG-022). The current score also lives on blog_keyword_clusters; this
+// table keeps the 90-day trend line and the component breakdown.
+// ---------------------------------------------------------------------------
+export const blogClusterAuthoritySnapshots = pgTable(
+  'blog_cluster_authority_snapshots',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: varchar('tenant_id').notNull(),
+    clusterId: uuid('cluster_id')
+      .notNull()
+      .references(() => blogKeywordClusters.id, { onDelete: 'cascade' }),
+    snapshotDate: date('snapshot_date').notNull(),
+    authorityScore: numeric('authority_score', { precision: 5, scale: 2 }).notNull(),
+    // Best competitor authority for the same cluster (US-BLOG-022 note).
+    competitorScore: numeric('competitor_score', { precision: 5, scale: 2 }),
+    // { top10_pct, coverage_pct, avg_rank, total_impressions } for the breakdown UI.
+    components: jsonb('components'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    tenantIdx: index('blog_cluster_authority_snapshots_tenant_idx').on(table.tenantId),
+    clusterDateIdx: index('blog_cluster_authority_snapshots_cluster_date_idx').on(
+      table.clusterId,
+      table.snapshotDate,
+    ),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // blog_audit_log — every mutating action (US-BLOG-011, 086)
 // ---------------------------------------------------------------------------
 export const blogAuditLog = pgTable(
@@ -956,6 +986,8 @@ export type BlogCommunityQuestion = typeof blogCommunityQuestions.$inferSelect;
 export type NewBlogCommunityQuestion = typeof blogCommunityQuestions.$inferInsert;
 export type BlogInternalLinkSuggestion = typeof blogInternalLinkSuggestions.$inferSelect;
 export type NewBlogInternalLinkSuggestion = typeof blogInternalLinkSuggestions.$inferInsert;
+export type BlogClusterAuthoritySnapshot = typeof blogClusterAuthoritySnapshots.$inferSelect;
+export type NewBlogClusterAuthoritySnapshot = typeof blogClusterAuthoritySnapshots.$inferInsert;
 
 export const insertBlogCommunitySourceSchema = createInsertSchema(blogCommunitySources, {
   source: z.enum(['reddit', 'quora', 'stackexchange']),

@@ -32,7 +32,8 @@ DECLARE
     'blog_agent_settings',
     'blog_community_sources',
     'blog_community_questions',
-    'blog_internal_link_suggestions'
+    'blog_internal_link_suggestions',
+    'blog_cluster_authority_snapshots'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP

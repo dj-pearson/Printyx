@@ -6446,3 +6446,28 @@ passes STAYS false (Deno + Anthropic + running Supabase unavailable here). Remai
 - US-BLOG-017: community/forum question miner — code-complete, NOT flipped.
 - US-BLOG-020: internal-link opportunity finder — code-complete, NOT flipped.
 Net passes=true: 298 (only EDGE-012 flipped). blog-schema now 21 tables.
+
+## Iteration (06/20/2026) - US-BLOG-021 + US-BLOG-022 code-complete (NOT flipped)
+**Status**: both WRITTEN; schema typechecks clean. passes STAYS false (Deno + running
+Supabase + GA4/Search-Console-fed metrics unavailable here). Remaining false: 156.
+
+### US-BLOG-021 — content decay detector (no schema change; reuses existing tables):
+- supabase/functions/blog-content-decay/index.ts: POST /detect compares each published
+  post's last-28-day vs prior-28-day search_console window from blog_performance_metrics;
+  flags decay when clicks down >20% / impressions >25% / position +3 (thresholds configurable
+  per call). Writes blog_posts.decay_score + last_decay_check_at, auto-enqueues decaying posts
+  into blog_refresh_queue (reason=performance_drop, priority=severity, dedup vs queued/in_progress).
+  GET /dashboard returns decaying posts + 8-week click sparkline. Decay MATH is deterministic
+  over already-persisted metrics (GA4/SC INGESTION is a separate cron concern, noted).
+  blog.refresh.manage gate + audit log.
+
+### US-BLOG-022 — topical authority scorer (+1 table):
+- shared/blog-schema.ts: blog_cluster_authority_snapshots (daily history: authority_score,
+  competitor_score, components jsonb) for the 90-day trend. Current score still lives on
+  blog_keyword_clusters.topical_authority_score. typecheck clean.
+- supabase/functions/blog-topical-authority/index.ts: POST /score blends top10_pct (40) +
+  coverage_pct (25) + rank-quality (20) + log-impressions (15) → 0-100 per cluster, using
+  blog_competitor_keywords (is_own=true) for our ranks, published posts carrying cluster_id for
+  coverage, and search_console impressions; also computes a comparative competitor score
+  (is_own=false). Stores score + daily snapshot. GET /heatmap (clusters by score),
+  GET /clusters/:id/authority (breakdown + 90-day trend). blog.analytics.view gate + audit log.
