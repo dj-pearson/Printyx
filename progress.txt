@@ -6871,3 +6871,23 @@ a browser-verify pass.
 
 ### US-SUPER tally: 8/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015). Next: 011
 ### (customer self-service portal), 012 (toner replenish), then creds-dependent (002, 005, 006, 013, 014, 016).
+
+### US-SUPER-011 — Customer self-service portal NL service requests (DONE, full-stack, passes=false pending verify)
+- Extends existing customer-portal scaffolding. Net-new shared/portal-service-classification-schema.ts
+  (portal_service_classifications) re-exported from shared/schema.ts (also exported the existing-but-
+  unexported customerServiceRequestStatusHistory). Migration idempotent. (schema committed earlier as wip.)
+- server/routes-portal-service.ts (registered in routes-registry.ts; 4 tenant-scoped handlers):
+  POST /classify (Claude classify -> category/priority/parts/playbook/confidence + keyword fallback;
+  when requestId given creates internal service_tickets row, sets request priority/serviceTicketId/
+  status=assigned, inserts status-history; dispatch writes wrapped -> dispatch:skipped on missing table),
+  GET /classifications/:requestId, POST /rate (1..5 -> customerRating/Feedback; TODO churn feed),
+  GET /timeline/:requestId (Uber 5-step from status history).
+- client/src/pages/CustomerPortalService.tsx at /portal: fleet cards, NL request form -> create+classify,
+  My Requests -> detail dialog with vertical Uber stepper + 5-star rating. Wired in App.tsx.
+- Built via serial subagent after I created the schema; independently verified: tsc 6278, 0 new errors;
+  4/4 handlers tenant-scoped; schema re-export change is a clean addition. STUBS: photo upload
+  (filename only); per-location RBAC; suggestedTechId null (no matcher); GPS/map live tracking deferred;
+  rating->churn TODO.
+
+### US-SUPER tally: 9/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011). Next: 012
+### (multi-vendor toner auto-replenish), then creds-dependent (002, 005, 006, 013, 014, 016).

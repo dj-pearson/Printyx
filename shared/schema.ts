@@ -688,6 +688,7 @@ export {
 export {
   customerPortalAccess,
   customerServiceRequests,
+  customerServiceRequestStatusHistory,
   customerMeterSubmissions,
   customerSupplyOrders,
   customerSupplyOrderItems,
