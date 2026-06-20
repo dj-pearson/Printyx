@@ -6598,7 +6598,7 @@
       ],
       "priority": 129,
       "passes": false,
-      "notes": "Builds on shared/customer-success-schema.ts. Email sentiment requires inbound email sync \u2014 confirm shared/email-parser-schema.ts coverage or scope sentiment as v2 if email sync is incomplete.",
+      "notes": "Builds on shared/customer-success-schema.ts. Email sentiment requires inbound email sync \u2014 confirm shared/email-parser-schema.ts coverage or scope sentiment as v2 if email sync is incomplete. [FULL-STACK CODE-COMPLETE 2026-06-20, pending browser verification (passes stays false per bar): schema shared/churn-risk-schema.ts (customer_churn_scores + churn_risk_settings) + migration; Express server/routes-churn-risk.ts (weekly scoring over 4 real signals \u2014 ticket-delta, AR days-past-due, meter trend, days-to-renewal; configurable weights/thresholds; scores list, 52-week history, save-plan, settings, digest preview) registered in routes-registry.ts; client/src/pages/CustomerRisk.tsx at /customers/risk in App.tsx. tsc 0 new errors. Stubs: email-sentiment signal omitted (v2, no email sync), save-plan uses deterministic template (LLM swap-in noted), digest assembly real / send TODO to existing email infra. TODO RBAC: customer.churn.view.]",
       "category": "super-app"
     },
     {

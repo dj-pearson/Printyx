@@ -88,6 +88,7 @@ const PredictiveServiceDispatchDashboard = React.lazy(
   () => import('@/pages/PredictiveServiceDispatchDashboard'),
 );
 const ServicePredictions = React.lazy(() => import('@/pages/ServicePredictions'));
+const CustomerRisk = React.lazy(() => import('@/pages/CustomerRisk'));
 const WhiteLabelDashboard = React.lazy(() => import('@/pages/WhiteLabelDashboard'));
 const AutoSupplyReplenishmentDashboard = React.lazy(
   () => import('@/pages/AutoSupplyReplenishmentDashboard'),
@@ -695,6 +696,7 @@ function Router() {
                   component={PredictiveServiceDispatchDashboard}
                 />
                 <Route path="/service/predictions" component={ServicePredictions} />
+                <Route path="/customers/risk" component={CustomerRisk} />
                 <Route path="/connect" component={ConnectDashboard} />
                 <Route path="/white-label" component={WhiteLabelDashboard} />
                 <Route
