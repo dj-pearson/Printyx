@@ -195,6 +195,7 @@ import {
 import { registerHealthRoutes } from './routes/health-routes';
 import { registerPredictiveFailureDispatchRoutes } from './routes-predictive-failure-dispatch';
 import { registerChurnRiskRoutes } from './routes-churn-risk';
+import { registerContractPnlRoutes } from './routes-contract-pnl';
 import apiKeyRoutes from './routes/api-key-routes';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
@@ -630,6 +631,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerPredictiveServiceDispatchRoutes(app);
   registerPredictiveFailureDispatchRoutes(app);
   registerChurnRiskRoutes(app);
+  registerContractPnlRoutes(app);
   registerWhiteLabelRoutes(app);
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);

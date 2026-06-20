@@ -6730,3 +6730,36 @@ Same slice recipe applies. 002/005/013 need Twilio/Whisper/ElevenLabs creds (cre
 - US-SUPER: 2/16 full-stack code-complete (staged false pending browser-verify).
 - Untouched this session: EDGE (23), IOS (56), LAUNCH (2) — see prior entry for feasibility notes
   (IOS needs Xcode; LAUNCH needs prod infra; EDGE is the interdependent Express→edge migration).
+
+## Iteration (06/20/2026, cont.) — US-SUPER-003 Contract P&L X-ray (full-stack; passes stays false pending browser-verify)
+Branch claude/us-super-prd-stories-xlylzg (US-SUPER-001/009 merged via PR #177). Bar unchanged:
+full-stack vertical slice, tsc-verified 0 new errors over the 6278 baseline, passes=false until
+a browser-verify pass.
+
+### US-SUPER-003 — Contract P&L X-ray (DONE, full-stack, passes=false pending verify)
+- shared/contract-pnl-schema.ts: contract_pnl_settings (tech_burdened_rate, avg_part_cost,
+  financing_rate, gp_alert_threshold, digest_enabled, last_refreshed_at) re-exported from schema.ts.
+- drizzle/migrations/_backfill_contract_pnl.sql: idempotent settings table + TWO Postgres
+  MATERIALIZED VIEWS holding RAW trailing-12-month aggregates — contract_pnl_v (one row/contract)
+  and contract_pnl_monthly_v (one row/contract/month). Dollar costs applied at READ time (labor =
+  hours x burdened rate, parts = parts_used count x avg cost, supplies = real, financing = base x
+  rate) so rate edits never need a refresh. Revenue = meter_readings black/color copies x contract
+  black/color rate (attributed via meter_readings.contract_id) + monthly_base. Service attributed
+  via the (contract_id, equipment_id) pairs in meter_readings. Supplies join GUARDED (to_regclass)
+  for the optional auto_supply_orders table and matched by globally-unique equipment.serial_number
+  to sidestep that table's integer tenant_id drift.
+- server/routes-contract-pnl.ts (registered in routes-registry.ts): GET /api/contract-pnl (sort by
+  GP%, filters status/industry/salesRep/territory/search, 12-mo GP% sparkline, viewMissing
+  tolerance via 42P01 catch), GET /export.csv, GET/PUT /settings, POST /refresh (per-tenant 60s
+  cooldown; REFRESH both MVs; 503 if not migrated), POST /digest/preview (below-threshold
+  contracts), GET /:contractId (12-mo per-category breakdown for the stacked bar).
+- client/src/pages/ContractProfitability.tsx at /contracts/profitability (table + filters +
+  settings panel + refresh + CSV export + margin-alert digest) and ContractPnlDetail.tsx at
+  /contracts/:id/pnl (recharts ComposedChart: stacked labor/parts/supplies/financing + revenue
+  line, monthly table). Both wired in App.tsx.
+- tsc: 6278, 0 new errors. STUBS: parts cost = count x avg-cost config (no per-part catalog cost);
+  financing default 0 (no contract financing column); digest email send + nightly refresh cron are
+  TODOs (assembly + route are real/cron-callable). TODO RBAC: finance.contract.view_pnl
+  (default OWNER+PLATFORM_ADMIN); machine-model/location filters + GL reconciliation fixture deferred.
+
+### US-SUPER tally: 3/16 full-stack code-complete (001, 009, 003). Next per suggested order: 010.
