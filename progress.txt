@@ -6170,3 +6170,47 @@ Status: Needs Review
 
 Iteration 20 (06/11/2026 20:22:25): Story LAUNCH-011
 Status: Needs Review
+
+---
+
+## Iteration (06/20/2026) - ABK-004..012: Multi-vendor address-book parser/serializer core
+**Status**: DONE (code-complete + unit-verified)
+
+### What Was Done:
+Implemented the runtime-portable vendor-adapter layer for the Multi-Vendor
+Address Book Manager (source PRD tasks/prd-address-book-manager.md, US-004..012).
+
+- server/services/address-book/vendors/_shared/csv.ts — dependency-free RFC4180
+  CSV parse/serialize + header row mapper.
+- server/services/address-book/vendors/_shared/encoding.ts — BOM + Shift-JIS
+  auto-detection via iconv-lite (Konica exports), UTF-8/UTF-16 handling.
+- server/services/address-book/vendors/_shared/options.ts — shared SerializeOptions,
+  password resolver, ConversionReport helpers.
+- server/services/address-book/vendors/canon/{crypto,parser,serializer}.ts (ABK-004/005)
+- server/services/address-book/vendors/konica/{parser,serializer}.ts (ABK-006/007)
+- server/services/address-book/vendors/xerox/{parser,serializer}.ts (ABK-008/009)
+- server/services/address-book/vendors/ricoh/{parser,serializer}.ts (ABK-010/011)
+- server/services/address-book/vendors/index.ts — vendor adapter registry.
+- server/services/address-book/conversion-engine.ts (ABK-012, +ABK-022 mergeOverrides)
+
+### Verification:
+- 18 vitest unit tests pass: server/tests/unit/address-book/vendor-adapters.test.ts
+  (Canon crypto round-trip + tamper/wrong-password fallback, all four vendor
+  parse→serialize→parse round trips, Canon→Konica conversion report asserts the
+  group entry + Canon-only `resolution` column surface as unmappable, override merge).
+- New files typecheck clean (`tsc --noEmit` shows zero errors under
+  server/services/address-book/). Repo-wide `npm run check` has pre-existing
+  unrelated errors (documented as acceptable in PRD section 7).
+
+### Honest Limitations:
+- The reference Canon `abook.csv` sample named in the PRD was NOT present in the
+  repo, so fixtures under tests/fixtures/address-book/ are synthetic
+  representations of each vendor's documented format. Canon Crypto v2 uses a
+  self-consistent PBKDF2-SHA256 -> AES-256-CBC scheme (salt||iv||ciphertext);
+  exact Canon KDF params still need validation against a genuine sample. The
+  ABK-004 documented fallback (per-row error, credential left unset, no whole-file
+  abort) is implemented and tested.
+
+### Remaining ABK (still passes=false): ABK-014 (edge fn import/export),
+  ABK-016..021 (UI pages/wizard/modal/tab), ABK-022 (override UX — merge logic
+  done, UI pending), ABK-023 (e2e). Deferred: need Deno runtime / browser.
