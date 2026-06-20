@@ -6692,3 +6692,41 @@ never returned (return *_set booleans).
 - IOS-* (56): native SwiftUI app fixes (ios/). Codeable but NOT compile/test-verifiable from this
   Linux sandbox (no Xcode); deferred to an environment with xcodebuild.
 - LAUNCH-011, LAUNCH-020: ops tasks (backup/restore drill, load test) requiring live prod infra.
+
+---
+
+## Iteration (06/20/2026, cont.) — US-SUPER full-stack slices (bar: full-stack; passes stays false pending browser-verify)
+Per user decision: build US-SUPER as full-stack vertical slices (schema + Express route +
+RBAC + frontend page), tsc-verified on BOTH server and client (client/src is in tsconfig),
+but keep passes=false until a browser-verify pass — code is staged, notes annotated.
+Each slice runs as a single serial subagent (they edit central files routes-registry.ts +
+App.tsx, so no parallelism) and is verified to add 0 errors over the 6278 tsc baseline.
+
+### US-SUPER-001 — Predictive failure dispatch (DONE, full-stack, passes=false pending verify)
+- shared/predictive-failure-schema.ts (equipment_failure_predictions + predictive_dispatch_settings)
+  + drizzle/migrations/_backfill_predictive_failure.sql, re-exported from shared/schema.ts.
+- server/routes-predictive-failure-dispatch.ts (rules-based scoring over 5 signals; kill switch;
+  threshold-gated pending_review draft-ticket creation; list/approve/snooze/dismiss/settings/accuracy)
+  registered in server/routes-registry.ts.
+- client/src/pages/ServicePredictions.tsx at /service/predictions (App.tsx).
+- Follow-ups: RBAC perm service.prediction.manage; Deno cron edge fn (EDGE epic); deeper
+  enhanced-service dispatch integration (currently status-transition fallback).
+
+### US-SUPER-009 — Customer churn-risk scoring + Monday digest (DONE, full-stack, passes=false pending verify)
+- shared/churn-risk-schema.ts (customer_churn_scores + churn_risk_settings) + migration, re-exported.
+- server/routes-churn-risk.ts (weekly score 0-100 over 4 real signals: ticket-delta, AR days-past-due,
+  meter trend, days-to-renewal; configurable weights/thresholds; scores list, 52-week history,
+  save-plan, settings, digest preview) registered in routes-registry.ts.
+- client/src/pages/CustomerRisk.tsx at /customers/risk (App.tsx).
+- Stubs: email-sentiment signal (v2 — no email sync), save-plan deterministic template (LLM swap-in
+  noted), digest send TODO (assembly is real). RBAC TODO: customer.churn.view.
+
+### US-SUPER remaining (14): 002,003,004,005,006,007,008,010,011,012,013,014,015,016.
+Same slice recipe applies. 002/005/013 need Twilio/Whisper/ElevenLabs creds (credential-vault);
+006 needs pgvector; 003 is a Postgres materialized view (contract_pnl_v) + nightly refresh.
+
+### Session tally: 357 passes=true / 97 passes=false (was 297/157 at session start).
+- US-BLOG: 65/65 complete (60 flipped this session).
+- US-SUPER: 2/16 full-stack code-complete (staged false pending browser-verify).
+- Untouched this session: EDGE (23), IOS (56), LAUNCH (2) — see prior entry for feasibility notes
+  (IOS needs Xcode; LAUNCH needs prod infra; EDGE is the interdependent Express→edge migration).
