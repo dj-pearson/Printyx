@@ -1,0 +1,182 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Printyx Universal Blog System — Public API",
+    "version": "1.0.0",
+    "summary": "API-key-authenticated read access to blog domain objects (US-BLOG-080).",
+    "description": "Public REST API for the Printyx Universal Blog System.\n\n## Authentication\nEvery request authenticates with a workspace-scoped API key sent in the `X-Api-Key` header. The key is created via the admin endpoint `POST /api-keys` (JWT-gated) and is shown exactly once at creation; only a SHA-256 hash and a non-secret prefix are stored. The key resolves to a single tenant (workspace) and a set of read scopes.\n\n## Rate limiting\nEach key has a `rate_limit_per_minute`. Responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`. When the limit is exceeded the API returns `429` with `Retry-After: 60`.\n\n## Scopes\nKeys carry a subset of `keywords:read`, `briefs:read`, `posts:read`, `distributions:read`, `performance:read`. A request to a resource whose scope the key lacks returns `403`.\n\n## Webhook HMAC verification (US-BLOG-079)\nWebhook deliveries are POSTed to the configured consumer URL with headers:\n- `X-Blog-Event`: the event type (e.g. `post.published`).\n- `X-Blog-Delivery`: the delivery id (idempotency key — deliveries are at-least-once, so consumers MUST dedupe on this).\n- `X-Blog-Signature`: `sha256=<hex>` where `<hex>` = HMAC-SHA256(webhook_secret, rawRequestBody).\n\nConsumers verify by recomputing the HMAC over the raw body with their stored secret and comparing in constant time:\n```ts\nconst expected = 'sha256=' + hmacSha256Hex(secret, rawBody);\nif (!timingSafeEqual(expected, req.headers['x-blog-signature'])) reject();\n```\n\n## SDK generation\nThe TypeScript SDK is generated from this spec — it is not hand-written:\n```bash\nnpx openapi-typescript supabase/functions/blog-platform-api/openapi.json \\\n  -o packages/blog-sdk/src/schema.d.ts\n```\nA thin `openapi-fetch` client wraps the generated types. Interactive docs deploy from this same file via Scalar (`@scalar/cli`) or Redocly (`redocly build-docs openapi.json`).",
+    "contact": { "name": "Printyx Platform", "url": "https://printyx.net" },
+    "license": { "name": "Proprietary" }
+  },
+  "servers": [
+    {
+      "url": "https://functions.printyx.net/blog-platform-api",
+      "description": "Production edge function"
+    }
+  ],
+  "security": [{ "ApiKeyAuth": [] }],
+  "tags": [
+    { "name": "Public Read API", "description": "API-key-authenticated read access (US-BLOG-080)." }
+  ],
+  "paths": {
+    "/public/keywords": {
+      "get": {
+        "tags": ["Public Read API"],
+        "summary": "List keywords",
+        "operationId": "listKeywords",
+        "security": [{ "ApiKeyAuth": ["keywords:read"] }],
+        "parameters": [{ "$ref": "#/components/parameters/Limit" }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/ListResponse" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/public/briefs": {
+      "get": {
+        "tags": ["Public Read API"],
+        "summary": "List briefs",
+        "operationId": "listBriefs",
+        "security": [{ "ApiKeyAuth": ["briefs:read"] }],
+        "parameters": [{ "$ref": "#/components/parameters/Limit" }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/ListResponse" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/public/posts": {
+      "get": {
+        "tags": ["Public Read API"],
+        "summary": "List published/draft posts",
+        "operationId": "listPosts",
+        "security": [{ "ApiKeyAuth": ["posts:read"] }],
+        "parameters": [{ "$ref": "#/components/parameters/Limit" }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/ListResponse" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/public/distributions": {
+      "get": {
+        "tags": ["Public Read API"],
+        "summary": "List distributions",
+        "operationId": "listDistributions",
+        "security": [{ "ApiKeyAuth": ["distributions:read"] }],
+        "parameters": [{ "$ref": "#/components/parameters/Limit" }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/ListResponse" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/public/performance": {
+      "get": {
+        "tags": ["Public Read API"],
+        "summary": "List performance metrics",
+        "operationId": "listPerformance",
+        "security": [{ "ApiKeyAuth": ["performance:read"] }],
+        "parameters": [{ "$ref": "#/components/parameters/Limit" }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/ListResponse" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Api-Key",
+        "description": "Workspace-scoped API key (prefix `blogk_live_…`). Created via the JWT-gated admin endpoint; shown once. Resolves to a tenant + scopes."
+      }
+    },
+    "parameters": {
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "description": "Max rows to return (1–200, default 50).",
+        "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 }
+      }
+    },
+    "headers": {
+      "XRateLimitLimit": {
+        "description": "Requests allowed per minute for this key.",
+        "schema": { "type": "integer" }
+      },
+      "XRateLimitRemaining": {
+        "description": "Requests remaining in the current minute window.",
+        "schema": { "type": "integer" }
+      },
+      "RetryAfter": {
+        "description": "Seconds to wait before retrying (present on 429).",
+        "schema": { "type": "integer" }
+      }
+    },
+    "responses": {
+      "ListResponse": {
+        "description": "A page of records for the requested resource.",
+        "headers": {
+          "X-RateLimit-Limit": { "$ref": "#/components/headers/XRateLimitLimit" },
+          "X-RateLimit-Remaining": { "$ref": "#/components/headers/XRateLimitRemaining" }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": ["data", "resource"],
+              "properties": {
+                "resource": { "type": "string" },
+                "data": {
+                  "type": "array",
+                  "items": { "type": "object", "additionalProperties": true }
+                }
+              }
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing or invalid API key.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "Forbidden": {
+        "description": "API key lacks the required scope.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "RateLimited": {
+        "description": "Per-key rate limit exceeded.",
+        "headers": {
+          "X-RateLimit-Limit": { "$ref": "#/components/headers/XRateLimitLimit" },
+          "X-RateLimit-Remaining": { "$ref": "#/components/headers/XRateLimitRemaining" },
+          "Retry-After": { "$ref": "#/components/headers/RetryAfter" }
+        },
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": { "type": "string" },
+          "code": { "type": "string" }
+        }
+      }
+    }
+  }
+}

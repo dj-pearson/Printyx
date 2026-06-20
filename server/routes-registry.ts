@@ -193,6 +193,8 @@ import {
 
 // ─── Non-domain imports ──────────────────────────────────���──────────────
 import { registerHealthRoutes } from './routes/health-routes';
+import { registerPredictiveFailureDispatchRoutes } from './routes-predictive-failure-dispatch';
+import { registerChurnRiskRoutes } from './routes-churn-risk';
 import apiKeyRoutes from './routes/api-key-routes';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
@@ -626,6 +628,8 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerLeadMapRoutes(app);
   registerAutoLeadRoutingRoutes(app);
   registerPredictiveServiceDispatchRoutes(app);
+  registerPredictiveFailureDispatchRoutes(app);
+  registerChurnRiskRoutes(app);
   registerWhiteLabelRoutes(app);
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);
