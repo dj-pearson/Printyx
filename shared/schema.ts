@@ -8784,6 +8784,8 @@ export {
 // Re-export Blog Module schema barrel (Platform Admin Blog System — US-BLOG-001 foundation;
 // US-BLOG-002 populates the actual Drizzle tables)
 export * from './blog-schema';
+// Predictive failure dispatch agent (US-SUPER-001)
+export * from './predictive-failure-schema';
 // Blog syndication (per-platform repurposing — US-BLOG-043..051)
 export * from './blog-syndication-schema';
 // Blog topic intelligence (forum miner, clustering, internal links, authority, citations, readability — US-BLOG-017,019,020,022,025,026)
