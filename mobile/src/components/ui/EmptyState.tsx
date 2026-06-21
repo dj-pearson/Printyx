@@ -17,14 +17,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import {
-  borderRadius,
-  colors,
-  gradients,
-  motion,
-  spacing,
-  typography,
-} from '@/theme';
+import { borderRadius, colors, gradients, motion, spacing, typography } from '@/theme';
 import { Button } from './Button';
 
 interface EmptyStateProps {
@@ -48,10 +41,7 @@ export function EmptyState({
 
   useEffect(() => {
     float.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1800 }),
-        withTiming(0, { duration: 1800 }),
-      ),
+      withSequence(withTiming(1, { duration: 1800 }), withTiming(0, { duration: 1800 })),
       -1,
       false,
     );
@@ -78,7 +68,7 @@ export function EmptyState({
     >
       <Animated.View style={floatStyle}>
         <LinearGradient
-          colors={gradients.brandSoft as unknown as string[]}
+          colors={gradients.brandSoft as readonly [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.iconBubble}
@@ -97,12 +87,7 @@ export function EmptyState({
       </View>
 
       {actionLabel && onAction ? (
-        <Button
-          title={actionLabel}
-          onPress={onAction}
-          variant="gradient"
-          size="md"
-        />
+        <Button title={actionLabel} onPress={onAction} variant="gradient" size="md" />
       ) : null}
     </Animated.View>
   );

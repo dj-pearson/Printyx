@@ -6,40 +6,26 @@
  */
 
 import React, { useCallback, useState } from 'react';
-import {
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  Badge,
-  EmptyState,
-  GlassCard,
-  SearchBar,
-} from '@/components/ui';
-import {
-  borderRadius,
-  colors,
-  gradients,
-  shadows,
-  spacing,
-  typography,
-} from '@/theme';
+import { Badge, EmptyState, GlassCard, SearchBar } from '@/components/ui';
+import { borderRadius, colors, gradients, shadows, spacing, typography } from '@/theme';
 
 export default function EquipmentScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
 
-  const { data: equipment, isLoading, refetch, isRefetching } = useQuery<any[]>({
+  const {
+    data: equipment,
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useQuery<any[]>({
     queryKey: ['/api/equipment', `?search=${search}&limit=50`],
   });
 
@@ -59,7 +45,7 @@ export default function EquipmentScreen() {
       >
         <View style={styles.equipmentRow}>
           <LinearGradient
-            colors={gradients.brandSoft as unknown as string[]}
+            colors={gradients.brandSoft as readonly [string, string, ...string[]]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.iconBox}
@@ -99,9 +85,7 @@ export default function EquipmentScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Fleet</Text>
-        <Text style={styles.subtitle}>
-          Search, scan, and manage your installed equipment.
-        </Text>
+        <Text style={styles.subtitle}>Search, scan, and manage your installed equipment.</Text>
       </View>
 
       <View style={styles.searchRow}>
@@ -123,16 +107,12 @@ export default function EquipmentScreen() {
           accessibilityRole="button"
         >
           <LinearGradient
-            colors={gradients.brand as unknown as string[]}
+            colors={gradients.brand as readonly [string, string, ...string[]]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.scanInner}
           >
-            <MaterialCommunityIcons
-              name="barcode-scan"
-              size={22}
-              color="#ffffff"
-            />
+            <MaterialCommunityIcons name="barcode-scan" size={22} color="#ffffff" />
           </LinearGradient>
         </Pressable>
       </View>
@@ -178,9 +158,7 @@ function getEquipmentIcon(type?: string): keyof typeof MaterialCommunityIcons.gl
   }
 }
 
-function getStatusVariant(
-  status?: string,
-): 'success' | 'warning' | 'error' | 'default' {
+function getStatusVariant(status?: string): 'success' | 'warning' | 'error' | 'default' {
   switch (status?.toLowerCase()) {
     case 'active':
       return 'success';

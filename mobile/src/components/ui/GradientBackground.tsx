@@ -40,7 +40,7 @@ export function GradientBackground({
   return (
     <View style={[styles.container, style]}>
       <LinearGradient
-        colors={palette as unknown as string[]}
+        colors={palette as readonly [string, string, ...string[]]}
         start={start}
         end={end}
         style={StyleSheet.absoluteFillObject}

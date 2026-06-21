@@ -7,13 +7,9 @@
  */
 
 import React, { useCallback } from 'react';
-import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { borderRadius, colors, motion, shadows, spacing } from '@/theme';
 import { GlassSurface, GlassTone } from './GlassSurface';
 
@@ -65,7 +61,12 @@ export function Card({
 
   if (variant === 'glass') {
     const inner = (
-      <GlassSurface tone={tone} radius={radius} elevation="md" style={padded ? styles.padded : undefined}>
+      <GlassSurface
+        tone={tone}
+        radius={radius}
+        elevation="md"
+        style={padded ? styles.padded : undefined}
+      >
         {children}
       </GlassSurface>
     );
@@ -85,7 +86,7 @@ export function Card({
     );
   }
 
-  const containerStyle: ViewStyle[] = [
+  const containerStyle: StyleProp<ViewStyle>[] = [
     styles.card,
     VARIANT_STYLES[variant],
     { borderRadius: radius },

@@ -2,6 +2,13 @@
 #
 # Runs on pushes/PRs that touch mobile/ directory.
 # Validates code quality, runs tests, and triggers EAS builds.
+#
+# The EAS build/update jobs require an Expo account credential (EXPO_TOKEN).
+# Their EAS steps are gated on `env.EXPO_TOKEN != ''` so that, when the secret
+# is not configured, the jobs succeed with those steps skipped instead of
+# failing every PR. Real builds resume automatically once EXPO_TOKEN is set.
+# (GitHub does not allow the `secrets` context in job-level `if`, so the token
+# is surfaced as a job-level env var and the steps are gated individually.)
 
 name: Mobile CI
 
@@ -74,12 +81,19 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: EAS credentials not configured
+        if: env.EXPO_TOKEN == ''
+        run: echo "EXPO_TOKEN is not set — skipping the EAS preview build. Add the EXPO_TOKEN secret to enable it."
+
       - name: Setup Node.js
+        if: env.EXPO_TOKEN != ''
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -87,15 +101,18 @@ jobs:
           cache-dependency-path: mobile/package-lock.json
 
       - name: Setup Expo & EAS
+        if: env.EXPO_TOKEN != ''
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
+        if: env.EXPO_TOKEN != ''
         run: npm ci
 
       - name: Build preview (iOS + Android)
+        if: env.EXPO_TOKEN != ''
         run: eas build --profile preview --platform all --non-interactive
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
@@ -112,12 +129,19 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: EAS credentials not configured
+        if: env.EXPO_TOKEN == ''
+        run: echo "EXPO_TOKEN is not set — skipping the EAS production build. Add the EXPO_TOKEN secret to enable it."
+
       - name: Setup Node.js
+        if: env.EXPO_TOKEN != ''
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -125,15 +149,18 @@ jobs:
           cache-dependency-path: mobile/package-lock.json
 
       - name: Setup Expo & EAS
+        if: env.EXPO_TOKEN != ''
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
+        if: env.EXPO_TOKEN != ''
         run: npm ci
 
       - name: Build production (iOS + Android)
+        if: env.EXPO_TOKEN != ''
         run: eas build --profile production --platform all --non-interactive --auto-submit
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
@@ -150,12 +177,19 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: EAS credentials not configured
+        if: env.EXPO_TOKEN == ''
+        run: echo "EXPO_TOKEN is not set — skipping the EAS OTA update. Add the EXPO_TOKEN secret to enable it."
+
       - name: Setup Node.js
+        if: env.EXPO_TOKEN != ''
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -163,15 +197,18 @@ jobs:
           cache-dependency-path: mobile/package-lock.json
 
       - name: Setup Expo & EAS
+        if: env.EXPO_TOKEN != ''
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Install dependencies
+        if: env.EXPO_TOKEN != ''
         run: npm ci
 
       - name: Publish OTA update
+        if: env.EXPO_TOKEN != ''
         run: eas update --branch production --message "$(git log -1 --pretty=%B)"
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}

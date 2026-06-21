@@ -65,10 +65,7 @@ export function StatCard({
   const scale = useSharedValue(1);
 
   useEffect(() => {
-    enter.value = withDelay(
-      delay,
-      withTiming(1, { duration: motion.duration.base }),
-    );
+    enter.value = withDelay(delay, withTiming(1, { duration: motion.duration.base }));
   }, [enter, delay]);
 
   const enterStyle = useAnimatedStyle(() => ({
@@ -104,17 +101,11 @@ export function StatCard({
           style={[
             styles.iconContainer,
             {
-              backgroundColor: isHero
-                ? 'rgba(255,255,255,0.2)'
-                : iconColor + '15',
+              backgroundColor: isHero ? 'rgba(255,255,255,0.2)' : iconColor + '15',
             },
           ]}
         >
-          <MaterialCommunityIcons
-            name={icon}
-            size={22}
-            color={isHero ? '#ffffff' : iconColor}
-          />
+          <MaterialCommunityIcons name={icon} size={22} color={isHero ? '#ffffff' : iconColor} />
         </View>
         {trend ? (
           <View
@@ -128,11 +119,7 @@ export function StatCard({
               name={trend.isPositive ? 'trending-up' : 'trending-down'}
               size={12}
               color={
-                isHero
-                  ? '#ffffff'
-                  : trend.isPositive
-                  ? colors.success.dark
-                  : colors.error.dark
+                isHero ? '#ffffff' : trend.isPositive ? colors.success.dark : colors.error.dark
               }
             />
             <Text
@@ -142,8 +129,8 @@ export function StatCard({
                   color: isHero
                     ? '#ffffff'
                     : trend.isPositive
-                    ? colors.success.dark
-                    : colors.error.dark,
+                      ? colors.success.dark
+                      : colors.error.dark,
                 },
               ]}
             >
@@ -178,7 +165,7 @@ export function StatCard({
         style={[wrapStyle, shadows.glow]}
       >
         <LinearGradient
-          colors={gradients[gradient] as unknown as string[]}
+          colors={gradients[gradient] as readonly [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.surface}

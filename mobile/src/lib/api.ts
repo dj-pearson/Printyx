@@ -337,11 +337,11 @@ export function createQueryFn<T>(on401: 'returnNull' | 'throw' = 'throw') {
     queryKey,
     signal,
   }: {
-    queryKey: readonly string[];
+    queryKey: readonly unknown[];
     signal?: AbortSignal;
   }): Promise<T | null> => {
     try {
-      const url = queryKey.join('/');
+      const url = queryKey.map(String).join('/');
       return await apiRequest<T>(url.startsWith('/') ? url : `/${url}`, { signal });
     } catch (error) {
       if (error instanceof ApiError && error.status === 401 && on401 === 'returnNull') {
