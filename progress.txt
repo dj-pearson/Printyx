@@ -7159,3 +7159,12 @@ US-SUPER none remaining.
   major bumps need per-dep testing).
 - Generate mobile/package-lock.json so mobile-ci.yml can run.
 - EDGE-*/IOS-*/LAUNCH-* backlog unchanged.
+
+### UPDATE — security-scan.yml partial remediation (per user: non-breaking only)
+Ran `npm audit fix` (no --force). Cleared all 8 critical + 10 high prod
+advisories (24 high+critical -> 7 high / 0 critical). Lockfile-only; no declared
+package.json versions changed. Re-verified npm ci + lint + build + 1204 tests +
+all 3 quality-gate security scripts green. Remaining 7 high need SemVer-major
+bumps (drizzle-orm; node-quickbooks -> form-data/underscore; imap -> semver/utf7)
+— deferred. security-scan.yml's high-level audit gate is therefore REDUCED but
+not yet fully green; full green requires the major-version remediation pass.
