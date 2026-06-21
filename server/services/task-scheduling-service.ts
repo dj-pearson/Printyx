@@ -364,7 +364,11 @@ Provide 3-5 optimization insights as a JSON array of strings.`;
     // Due date urgency
     if (task.dueDate) {
       const daysUntilDue = (task.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-      if (daysUntilDue < 1) score += 30;
+      if (daysUntilDue < 0) {
+        // Already overdue — escalate above the "due within a day" tier so
+        // overdue work is consistently prioritized ahead of merely-imminent work.
+        score += 40;
+      } else if (daysUntilDue < 1) score += 30;
       else if (daysUntilDue < 3) score += 20;
       else if (daysUntilDue < 7) score += 10;
     }

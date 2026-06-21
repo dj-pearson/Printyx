@@ -27,7 +27,10 @@ class ReportCacheService {
       parameters: params.parameters || {},
       userId,
     };
-    return crypto.createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
+    // Namespace the key with the report code so invalidate(reportCode) can
+    // match all entries for a given report (the hash alone hides the code).
+    const hash = crypto.createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
+    return `${reportCode}:${hash}`;
   }
 
   static get(cacheKey: string): any[] | null {

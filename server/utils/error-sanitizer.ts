@@ -36,9 +36,14 @@ const INTERNAL_IPV4_RE =
 /** Internal hostnames (*.internal, *.local, *.localdomain, *.private) */
 const INTERNAL_HOSTNAME_RE = /\b[\w-]+\.(?:internal|local|localdomain|private)\b/gi;
 
-/** SQL fragments: keyword followed by identifiers */
+/**
+ * SQL fragments: keyword followed by identifiers.
+ * The `(?!on\s+table\b)` guard avoids matching the English phrase
+ * "...update on table ..." (e.g. PG "insert or update on table" errors),
+ * so the table-name redaction performed earlier is preserved.
+ */
 const SQL_FRAGMENT_RE =
-  /\b(SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM|WHERE|(?:INNER|LEFT|RIGHT|FULL|CROSS)\s+JOIN|JOIN)\s+["`]?[\w.*]+["`]?(?:\s+(?:AS\s+)?["`]?[\w]+["`]?)?/gi;
+  /\b(SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM|WHERE|(?:INNER|LEFT|RIGHT|FULL|CROSS)\s+JOIN|JOIN)\s+(?!on\s+table\b)["`]?[\w.*]+["`]?(?:\s+(?:AS\s+)?["`]?[\w]+["`]?)?/gi;
 
 /** Stack trace lines */
 const STACK_TRACE_RE = /\bat\s+(?:Function|Object|Module|async|new\s+\w+|[\w$.]+)\.[^\n]*/g;
@@ -51,8 +56,7 @@ const FRAMEWORK_VERSION_RE =
 const PG_ERROR_CODE_RE = /\berror:\s+[A-Z_]+\s+\(\d{5}\)/gi;
 
 /** Connection strings */
-const CONNECTION_STRING_RE =
-  /(?:postgres(?:ql)?|mysql|mongodb|redis):\/\/[^\s"')]+/gi;
+const CONNECTION_STRING_RE = /(?:postgres(?:ql)?|mysql|mongodb|redis):\/\/[^\s"')]+/gi;
 
 // ─── Core Sanitization ──────────────────────────────────────────────
 
@@ -110,10 +114,7 @@ export function sanitizeErrorMessage(message: string): string {
  */
 export function sanitizeErrorForProduction(error: Error): { message: string; code: string } {
   const isProduction = process.env.NODE_ENV === 'production';
-  const errCode =
-    (error as any).code ||
-    (error as any).statusCode?.toString() ||
-    'INTERNAL_ERROR';
+  const errCode = (error as any).code || (error as any).statusCode?.toString() || 'INTERNAL_ERROR';
 
   if (!isProduction) {
     // Development: return full details but still scrub the most dangerous leaks
@@ -134,9 +135,7 @@ export function sanitizeErrorForProduction(error: Error): { message: string; cod
  * Strip sensitive headers before logging.
  * Removes Authorization, Cookie, and X-CSRF-Token headers.
  */
-export function stripSensitiveHeaders(
-  headers: Record<string, string>,
-): Record<string, string> {
+export function stripSensitiveHeaders(headers: Record<string, string>): Record<string, string> {
   if (!headers || typeof headers !== 'object') {
     return {};
   }

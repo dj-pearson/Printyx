@@ -165,7 +165,9 @@ describe('HierarchicalQueryBuilder', () => {
         tenantId: 'tenant-1',
         territoryScope: 'team',
         teamId: null,
-        managerId: null, // This user IS a manager
+        // This user has no explicit team but sits in a management chain
+        // (managerId set), so the builder filters by their direct reports.
+        managerId: 'director-1',
       });
 
       const builder = new SimpleHierarchicalQueryBuilder(user);

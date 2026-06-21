@@ -21,7 +21,10 @@ router.get('/health', async (req, res) => {
     });
     res.json({ status: 'healthy', ai: 'available', response: response.substring(0, 50) });
   } catch (error) {
-    res.status(500).json({ status: 'unhealthy', error: 'Claude API unavailable' });
+    // A health endpoint should still respond successfully while reporting that
+    // the dependency is degraded — return 200 with an "unavailable" AI status
+    // rather than failing the request itself with a 500.
+    res.json({ status: 'unhealthy', ai: 'unavailable', error: 'Claude API unavailable' });
   }
 });
 

@@ -11,7 +11,16 @@ config();
 
 // Set test environment
 process.env.NODE_ENV = 'test';
-process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+// Prefer an explicit test DB (CI sets TEST_DATABASE_URL), then any provided
+// DATABASE_URL, and finally fall back to a dummy local URL so that importing
+// server/db.ts does not throw at module-load time. Modules that only exercise
+// pure logic against mocks (rbac middleware, tenant isolation, etc.) must be
+// importable without a live database; pg connects lazily, so the dummy URL is
+// never actually dialed unless a test issues a real query.
+process.env.DATABASE_URL =
+  process.env.TEST_DATABASE_URL ||
+  process.env.DATABASE_URL ||
+  'postgresql://postgres:postgres@localhost:5432/printyx_test';
 
 // Global test setup
 beforeAll(async () => {

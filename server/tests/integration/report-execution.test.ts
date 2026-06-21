@@ -82,6 +82,39 @@ const mockReportDefinitions = {
 // MOCK REPORT ENGINE
 // =====================================================================
 
+// Scope hierarchy for permissions of the form `<module>.<resource>.<action>_<scope>`.
+// A broader scope satisfies any required narrower scope for the same
+// module.resource.action (e.g. holding `sales.lead.view_company` grants a report
+// that only requires `sales.lead.view_own`).
+const SCOPE_RANK: Record<string, number> = {
+  own: 0,
+  team: 1,
+  location: 2,
+  regional: 3,
+  company: 4,
+};
+
+function splitScopedPermission(perm: string): { base: string; scope: string | null } {
+  const idx = perm.lastIndexOf('_');
+  if (idx === -1) return { base: perm, scope: null };
+  const scope = perm.slice(idx + 1);
+  if (!(scope in SCOPE_RANK)) return { base: perm, scope: null };
+  return { base: perm.slice(0, idx), scope };
+}
+
+/** True if the user holds the required permission directly or via a broader scope. */
+function userSatisfiesPermission(userPermissions: string[], required: string): boolean {
+  if (userPermissions.includes(required)) return true;
+
+  const req = splitScopedPermission(required);
+  if (req.scope === null) return false;
+
+  return userPermissions.some((held) => {
+    const h = splitScopedPermission(held);
+    return h.base === req.base && h.scope !== null && SCOPE_RANK[h.scope] >= SCOPE_RANK[req.scope];
+  });
+}
+
 class MockReportEngine {
   static async executeReport(
     reportCode: string,
@@ -95,14 +128,18 @@ class MockReportEngine {
       return { success: false, error: 'Report not found' };
     }
 
-    // Check permissions
-    if (user.roleLevel < report.requiredLevel) {
-      return { success: false, error: 'Insufficient role level' };
-    }
-
-    const hasPermission = report.requiredPermissions.some((p) => user.permissions?.includes(p));
+    // Check permissions first (scope-hierarchy aware), then role level. A user
+    // lacking the required permission (or a broader-scoped equivalent) is denied
+    // on permission grounds even if their role level would otherwise suffice.
+    const hasPermission = report.requiredPermissions.some((p) =>
+      userSatisfiesPermission(user.permissions ?? [], p),
+    );
     if (!hasPermission) {
       return { success: false, error: 'Missing required permissions' };
+    }
+
+    if (user.roleLevel < report.requiredLevel) {
+      return { success: false, error: 'Insufficient role level' };
     }
 
     // Simulate SQL execution with mock data
