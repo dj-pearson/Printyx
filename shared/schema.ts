@@ -8810,6 +8810,8 @@ export * from './meter-read-vision-schema';
 export * from './service-knowledge-schema';
 // Voice-first field tech ticket close (US-SUPER-005)
 export * from './voice-ticket-close-schema';
+// Sales rep email autopilot (US-SUPER-016)
+export * from './email-autopilot-schema';
 // Blog syndication (per-platform repurposing — US-BLOG-043..051)
 export * from './blog-syndication-schema';
 // Blog topic intelligence (forum miner, clustering, internal links, authority, citations, readability — US-BLOG-017,019,020,022,025,026)
