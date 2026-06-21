@@ -7000,3 +7000,22 @@ a browser-verify pass.
 
 ### US-SUPER tally: 14/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012, 002, 006, 005, 016).
 ### Remaining 2 (creds/infra-dependent): 014 (Slack/Teams read-only bot), 013 (voice phone agent).
+
+### US-SUPER-014 — Slack/Teams NL Printyx bot, READ-ONLY v1 (DONE, full-stack, passes=false pending verify)
+- shared/chatbot-schema.ts: chatbot_connections + chatbot_user_links + chatbot_query_log. Re-exported.
+  Migration idempotent. (schema committed as wip.)
+- server/routes-chatbot.ts (registered in routes-registry.ts; 9 tenant-scoped handlers; READ-ONLY,
+  only chatbot_* tables written): read-only tool registry (account_summary, rep_activity,
+  pipeline_status, this_week_deltas, at_risk_customers, predicted_failures), selectTool+composeAnswer
+  via ClaudeAIService + keyword fallback, postReply stub. POST /api/chatbot/query (resolve Printyx user
+  via verified link else caller; 403+logged when unresolved; tool exec tenant-scoped; answer+citations;
+  audit log), GET/POST/PUT/DELETE /connections, GET/POST/DELETE /links, GET /query-log.
+- client/src/pages/ChatbotConsole.tsx at /integrations/chatbot: try-a-query + example chips +
+  answer/citations, connections (write-only token), user-links (verified badge), audit-log table.
+  Wired in App.tsx.
+- Built via serial subagent after I created the schema. Verified: tsc 6278, 0 new errors; 9/9 handlers
+  tenant-scoped; NO business-data writes; literal paths before /:id. STUBS: real OAuth + in-thread
+  postReply; token obfuscation TODO(vault); per-user RBAC TODO (hierarchical-query-builder); Claude +
+  fallback; predicted_failures absent-table tolerant. TODO RBAC: integrations.chatbot.manage.
+
+### US-SUPER tally: 15/16 full-stack code-complete (all except 013). LAST: 013 (voice phone agent).
