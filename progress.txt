@@ -6959,3 +6959,23 @@ a browser-verify pass.
 ### US-SUPER tally: 12/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012, 002, 006).
 ### Remaining 4 (creds/infra-dependent): 005 (voice ticket close), 013 (voice phone agent),
 ### 014 (Slack/Teams bot), 016 (email autopilot).
+
+### US-SUPER-005 — Voice-first field tech ticket close (DONE, full-stack, passes=false pending verify)
+- shared/voice-ticket-close-schema.ts: voice_ticket_closes (transcript + extracted + sku resolutions +
+  drafted invoice items + 30d audio purge + client dedupe). Re-exported. Migration idempotent +
+  partial-unique tenant+dedupe. (schema committed as wip.)
+- server/routes-voice-ticket-close.ts (registered in routes-registry.ts; 6 tenant-scoped handlers):
+  transcribeAudio (Whisper via fetch + transcript-passthrough fallback), extractCloseFields (Claude +
+  fallback), resolveSku (fuzzy vs inventory_items). POST /:ticketId/transcribe (dedupe, pipeline, draft),
+  GET /:ticketId, PATCH /draft/:id, POST /draft/:id/confirm (db.transaction: close ticket + deduct
+  truck_inventory + mark confirmed; per-step graceful degrade), GET /skus/search, POST /purge-audio.
+- client/src/pages/VoiceTicketClose.tsx at /m/service/:ticketId/close-voice: MediaRecorder button +
+  type-instead fallback, IndexedDB offline queue (drains on online, server dedupes), editable review
+  form (parts w/ SKU select), confirm-and-close. Wired in App.tsx.
+- Built via serial subagent after I created the schema. Verified: tsc 6278, 0 new errors; 6/6 handlers
+  tenant-scoped; transactional confirm; literal paths before /:ticketId. STUBS: Whisper fetch + fallback;
+  Claude extraction fallback; SKU fuzzy (pg_trgm TODO); invoice items drafted-only (persist TODO);
+  IndexedDB offline; audio purge cron. TODO RBAC: service.ticket.close.
+
+### US-SUPER tally: 13/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012, 002, 006, 005).
+### Remaining 3 (creds/infra-dependent): 013 (voice phone agent), 014 (Slack/Teams bot), 016 (email autopilot).

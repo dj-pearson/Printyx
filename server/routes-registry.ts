@@ -205,6 +205,7 @@ import { registerPortalServiceRoutes } from './routes-portal-service';
 import { registerTonerReplenishRoutes } from './routes-toner-replenish';
 import { registerMeterReadVisionRoutes } from './routes-meter-read-vision';
 import { registerServiceKnowledgeRoutes } from './routes-service-knowledge';
+import { registerVoiceTicketCloseRoutes } from './routes-voice-ticket-close';
 import apiKeyRoutes from './routes/api-key-routes';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
@@ -650,6 +651,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerTonerReplenishRoutes(app);
   registerMeterReadVisionRoutes(app);
   registerServiceKnowledgeRoutes(app);
+  registerVoiceTicketCloseRoutes(app);
   registerWhiteLabelRoutes(app);
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);
