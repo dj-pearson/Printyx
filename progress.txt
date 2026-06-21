@@ -6938,3 +6938,24 @@ a browser-verify pass.
 ### US-SUPER tally: 11/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012, 002).
 ### Remaining 5 (creds/infra-dependent): 005 (voice ticket close), 006 (tech knowledge RAG/pgvector),
 ### 013 (voice phone agent), 014 (Slack/Teams bot), 016 (email autopilot).
+
+### US-SUPER-006 — Tech knowledge graph RAG over service tickets (DONE, full-stack, passes=false pending verify)
+- SINGLE-TENANT v1 (federated cross-tenant pool deferred to v2 per story). shared/service-knowledge-schema.ts
+  (service_ticket_embeddings jsonb sidecar + service_knowledge_settings). Re-exported. Migration guarded
+  pgvector extension + vector(1536) column for prod; v1 uses jsonb + JS cosine. (schema committed as wip.)
+- server/routes-service-knowledge.ts (registered in routes-registry.ts; 6 tenant-scoped handlers):
+  embedText (OpenAI text-embedding-3-small via fetch + deterministic offline fallback), cosineSimilarity.
+  POST /api/service/knowledge-search (embed query, cosine over tenant embeddings, join tickets ->
+  summary/parts/meanResolution/fixSuccessRate), POST /backfill (24mo closed, capped, upsert), POST
+  /embed/:ticketId, GET /stats, GET/PUT /settings (federation opt-in consent).
+- client/src/pages/KnowledgeSearch.tsx at /service/knowledge: mobile-first search bar + model/error
+  inputs, result cards (relevance bar, parts chips, "worked X% on this model"), admin strip (backfill,
+  indexed stat, federation switch). Wired in App.tsx.
+- Built via serial subagent after I created the schema; consulted claude-api skill earlier for AI shape.
+  Verified: tsc 6278, 0 new errors; 6/6 handlers tenant-scoped. STUBS: OpenAI via fetch + offline
+  fallback; pgvector prod vs jsonb v1; meanResolution + fixSuccessRate are model proxies; re-embed
+  trigger TODO; federated pool + PII redaction v2 TODO. TODO RBAC: service.knowledge.search.
+
+### US-SUPER tally: 12/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012, 002, 006).
+### Remaining 4 (creds/infra-dependent): 005 (voice ticket close), 013 (voice phone agent),
+### 014 (Slack/Teams bot), 016 (email autopilot).
