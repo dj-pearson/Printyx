@@ -8804,6 +8804,8 @@ export * from './daily-briefing-schema';
 export * from './portal-service-classification-schema';
 // Multi-vendor toner auto-replenish (US-SUPER-012)
 export * from './toner-replenish-schema';
+// SMS/photo meter reads with vision extraction (US-SUPER-002)
+export * from './meter-read-vision-schema';
 // Blog syndication (per-platform repurposing — US-BLOG-043..051)
 export * from './blog-syndication-schema';
 // Blog topic intelligence (forum miner, clustering, internal links, authority, citations, readability — US-BLOG-017,019,020,022,025,026)
