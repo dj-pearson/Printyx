@@ -8808,6 +8808,8 @@ export * from './toner-replenish-schema';
 export * from './meter-read-vision-schema';
 // Tech knowledge graph RAG over service tickets (US-SUPER-006)
 export * from './service-knowledge-schema';
+// Voice-first field tech ticket close (US-SUPER-005)
+export * from './voice-ticket-close-schema';
 // Blog syndication (per-platform repurposing — US-BLOG-043..051)
 export * from './blog-syndication-schema';
 // Blog topic intelligence (forum miner, clustering, internal links, authority, citations, readability — US-BLOG-017,019,020,022,025,026)
