@@ -8812,6 +8812,8 @@ export * from './service-knowledge-schema';
 export * from './voice-ticket-close-schema';
 // Sales rep email autopilot (US-SUPER-016)
 export * from './email-autopilot-schema';
+// Slack/Teams NL Printyx bot (US-SUPER-014)
+export * from './chatbot-schema';
 // Blog syndication (per-platform repurposing — US-BLOG-043..051)
 export * from './blog-syndication-schema';
 // Blog topic intelligence (forum miner, clustering, internal links, authority, citations, readability — US-BLOG-017,019,020,022,025,026)
