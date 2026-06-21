@@ -96,6 +96,7 @@ const DailyBriefings = React.lazy(() => import('@/pages/DailyBriefings'));
 const CustomerPortalService = React.lazy(() => import('@/pages/CustomerPortalService'));
 const CustomerQbrs = React.lazy(() => import('@/pages/CustomerQbrs'));
 const TruckStocking = React.lazy(() => import('@/pages/TruckStocking'));
+const TonerReplenish = React.lazy(() => import('@/pages/TonerReplenish'));
 const WhiteLabelDashboard = React.lazy(() => import('@/pages/WhiteLabelDashboard'));
 const AutoSupplyReplenishmentDashboard = React.lazy(
   () => import('@/pages/AutoSupplyReplenishmentDashboard'),
@@ -711,6 +712,7 @@ function Router() {
                 <Route path="/portal" component={CustomerPortalService} />
                 <Route path="/customers/:id/qbrs" component={CustomerQbrs} />
                 <Route path="/service/truck-stocking" component={TruckStocking} />
+                <Route path="/service/toner-replenish" component={TonerReplenish} />
                 <Route path="/connect" component={ConnectDashboard} />
                 <Route path="/white-label" component={WhiteLabelDashboard} />
                 <Route

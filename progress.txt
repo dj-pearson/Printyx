@@ -6891,3 +6891,26 @@ a browser-verify pass.
 
 ### US-SUPER tally: 9/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011). Next: 012
 ### (multi-vendor toner auto-replenish), then creds-dependent (002, 005, 006, 013, 014, 016).
+
+### US-SUPER-012 — Multi-vendor toner auto-replenish (DONE, full-stack, passes=false pending verify)
+- shared/toner-replenish-schema.ts: machine_supply_levels + supply_orders + tenant_supply_settings
+  + machine_supply_settings (varchar tenant, distinct from legacy integer-tenant auto_supply_orders).
+  Re-exported. Migration idempotent. (schema committed earlier as wip.)
+- server/routes-toner-replenish.ts (registered in routes-registry.ts; 12 tenant-scoped handlers):
+  POST /capture (fetchVendorSupplyLevels STUB -> levels; k/c/m/y per isColorCapable), POST /evaluate
+  (14-day least-squares regression -> predicted depletion; creates supply_orders pending_approval/
+  auto_ship by cost vs threshold/ceiling; skips customer_managed; dedupes open orders), POST /run,
+  GET /levels (DISTINCT ON latest + predicted depletion), GET /orders, POST /orders/:id/ship (tracking
+  stub + best-effort email), /orders/:id/cancel, POST /machines/:machineId/ship-now (emergency),
+  GET/PUT /settings, GET/PUT /machines/:machineId/settings (auto-ship/ceiling/override/customer_managed).
+- client/src/pages/TonerReplenish.tsx at /service/toner-replenish (Run now, per-machine color bars +
+  predicted depletion + ship-now + settings popover, orders table approve/ship/cancel, tenant settings).
+  Wired in App.tsx.
+- Built via serial subagent after I created the schema; independently verified: tsc 6278, 0 new errors;
+  12/12 handlers tenant-scoped; literals before param routes. STUBS: vendor reads injected synthetic
+  with TODO(ABK) address-book adapters + credential vault; per-color toner cost proxy; tracking/carrier
+  stub; SMS + calendar event TODO; daily cron TODO. TODO RBAC: service.supply.manage.
+
+### US-SUPER tally: 10/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012).
+### Remaining 6 are credential/infra-dependent: 002 (SMS/photo meter reads), 005 (voice ticket close),
+### 006 (tech knowledge RAG/pgvector), 013 (voice phone agent), 014 (Slack/Teams bot), 016 (email autopilot).
