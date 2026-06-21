@@ -6979,3 +6979,24 @@ a browser-verify pass.
 
 ### US-SUPER tally: 13/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012, 002, 006, 005).
 ### Remaining 3 (creds/infra-dependent): 013 (voice phone agent), 014 (Slack/Teams bot), 016 (email autopilot).
+
+### US-SUPER-016 — Sales rep email autopilot, DRAFT MODE (DONE, full-stack, passes=false pending verify)
+- shared/email-autopilot-schema.ts: email_autopilot_accounts + email_autopilot_drafts +
+  email_autopilot_suppressions. Re-exported. Migration idempotent. (schema committed as wip.)
+- server/routes-email-autopilot.ts (registered in routes-registry.ts; 12 handlers, all tenant+user
+  scoped): NO SEND CAPABILITY (verified 0 send refs). connect (base64 tokens, never echoed), PUT
+  /settings (opt-in flag), POST /scan (fetchInbox stub -> classify -> draftReply -> createProviderDraft
+  stub -> draft rows; skips suppressed/fyi/spam), GET /drafts ?status=, GET /drafts/:id, POST
+  /:id/accept (Levenshtein editDistancePct, tone-miss>50; records only, never sends), /:id/reject,
+  GET/POST/DELETE /suppressions, GET /stats. Claude classify/draft + offline fallback; audit per AC.
+- client/src/pages/EmailAutopilot.tsx at /sales/email-autopilot: connect (read+create-draft-only
+  banner, write-only tokens), enable switch, run-scan, stats, drafts review dialog (editable + tone-miss
+  + Accept-saved-as-draft/Reject), suppression mgmt. Wired in App.tsx.
+- Built via serial subagent after I created the schema. Verified: tsc 6278, 0 new errors; 12/12
+  handlers tenant+user scoped; NO send path; literal paths before /:id. STUBS: real OAuth (read+
+  create-draft scope only); inbox/fingerprint/create-draft stubbed; Claude + fallback; token
+  obfuscation TODO(vault); CRM match best-effort; feature-flag enable default off (beta-with-5-reps).
+  TODO RBAC: sales.email_autopilot.use.
+
+### US-SUPER tally: 14/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012, 002, 006, 005, 016).
+### Remaining 2 (creds/infra-dependent): 014 (Slack/Teams read-only bot), 013 (voice phone agent).

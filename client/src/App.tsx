@@ -92,6 +92,7 @@ const CustomerRisk = React.lazy(() => import('@/pages/CustomerRisk'));
 const ContractProfitability = React.lazy(() => import('@/pages/ContractProfitability'));
 const ContractPnlDetail = React.lazy(() => import('@/pages/ContractPnlDetail'));
 const RenewalAutoQuote = React.lazy(() => import('@/pages/RenewalAutoQuote'));
+const EmailAutopilot = React.lazy(() => import('@/pages/EmailAutopilot'));
 const DailyBriefings = React.lazy(() => import('@/pages/DailyBriefings'));
 const CustomerPortalService = React.lazy(() => import('@/pages/CustomerPortalService'));
 const CustomerQbrs = React.lazy(() => import('@/pages/CustomerQbrs'));
@@ -711,6 +712,7 @@ function Router() {
                 <Route path="/contracts/profitability" component={ContractProfitability} />
                 <Route path="/contracts/:id/pnl" component={ContractPnlDetail} />
                 <Route path="/renewals" component={RenewalAutoQuote} />
+                <Route path="/sales/email-autopilot" component={EmailAutopilot} />
                 <Route path="/briefings" component={DailyBriefings} />
                 <Route path="/portal" component={CustomerPortalService} />
                 <Route path="/customers/:id/qbrs" component={CustomerQbrs} />
