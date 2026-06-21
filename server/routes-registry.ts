@@ -203,6 +203,7 @@ import { registerDealDeskCopilotRoutes } from './routes-deal-desk-copilot';
 import { registerDailyBriefingRoutes } from './routes-daily-briefing';
 import { registerPortalServiceRoutes } from './routes-portal-service';
 import { registerTonerReplenishRoutes } from './routes-toner-replenish';
+import { registerMeterReadVisionRoutes } from './routes-meter-read-vision';
 import apiKeyRoutes from './routes/api-key-routes';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
@@ -646,6 +647,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerDailyBriefingRoutes(app);
   registerPortalServiceRoutes(app);
   registerTonerReplenishRoutes(app);
+  registerMeterReadVisionRoutes(app);
   registerWhiteLabelRoutes(app);
   app.use('/api/auto-supply-replenishment', autoSupplyReplenishmentRoutes);
   app.use('/api/contract-renewal', contractRenewalRoutes);

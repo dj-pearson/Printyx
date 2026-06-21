@@ -6914,3 +6914,27 @@ a browser-verify pass.
 ### US-SUPER tally: 10/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012).
 ### Remaining 6 are credential/infra-dependent: 002 (SMS/photo meter reads), 005 (voice ticket close),
 ### 006 (tech knowledge RAG/pgvector), 013 (voice phone agent), 014 (Slack/Teams bot), 016 (email autopilot).
+
+### US-SUPER-002 — SMS/photo meter reads with vision extraction (DONE, full-stack, passes=false pending verify)
+- shared/meter-read-vision-schema.ts: meter_read_submissions + meter_read_settings. Re-exported.
+  Migration idempotent. (schema committed earlier as wip.)
+- server/routes-meter-read-vision.ts (registered in routes-registry.ts; 8 tenant-scoped handlers):
+  extractMeterFromImage Claude-vision adapter (Anthropic SDK, claude-opus-4-8, base64/URL image
+  block -> JSON counters; offline fallback), sendOutboundSms Twilio stub, sha256 dedup,
+  processSubmission (resolve machine/customer, validate vs rolling 90-day avg, auto_approve+insert
+  meter_readings else flag, unresolved->pending+clarify). Endpoints: POST /inbound (simulated webhook),
+  /submit, GET /submissions ?status=, GET /:id, POST /:id/approve (reviewer edits + insert read),
+  /:id/reject, GET/PUT /settings (write-only Twilio creds -> *_set booleans).
+- client/src/pages/MeterReadReview.tsx at /service/meter-reads/review: review queue + filters,
+  side-by-side image + editable counters approve/reject dialog, submit-a-photo (URL), settings.
+  Wired in App.tsx.
+- Built via serial subagent after I created the schema; consulted the claude-api skill for the current
+  vision API shape. Independently verified: tsc 6278, 0 new errors; 8/8 handlers tenant-scoped; raw
+  creds never echoed (GET returns only *_set markers). STUBS: Twilio inbound webhook + tenant-by-number
+  + send; credential vault NOT used (throws without ADDRESS_BOOK_MASTER_KEY) -> creds base64-obfuscated
+  in encrypted_config w/ TODO(vault); vision offline fallback (fallback reads always flagged, never
+  auto-billed); image upload URL-only; phone match best-effort. TODO RBAC: billing.meter_read.review.
+
+### US-SUPER tally: 11/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012, 002).
+### Remaining 5 (creds/infra-dependent): 005 (voice ticket close), 006 (tech knowledge RAG/pgvector),
+### 013 (voice phone agent), 014 (Slack/Teams bot), 016 (email autopilot).
