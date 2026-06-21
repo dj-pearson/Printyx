@@ -8806,6 +8806,8 @@ export * from './portal-service-classification-schema';
 export * from './toner-replenish-schema';
 // SMS/photo meter reads with vision extraction (US-SUPER-002)
 export * from './meter-read-vision-schema';
+// Tech knowledge graph RAG over service tickets (US-SUPER-006)
+export * from './service-knowledge-schema';
 // Blog syndication (per-platform repurposing — US-BLOG-043..051)
 export * from './blog-syndication-schema';
 // Blog topic intelligence (forum miner, clustering, internal links, authority, citations, readability — US-BLOG-017,019,020,022,025,026)
