@@ -17,11 +17,7 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import {
   borderRadius,
   colors,
@@ -144,7 +140,7 @@ export function Button({
         style={[animatedStyle, fullWidth && styles.fullWidth, shadows.glow, style]}
       >
         <LinearGradient
-          colors={gradients.brand as unknown as string[]}
+          colors={gradients.brand as readonly [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[

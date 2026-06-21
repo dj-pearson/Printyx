@@ -16,13 +16,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import {
-  borderRadius,
-  colors,
-  gradients,
-  spacing,
-  typography,
-} from '@/theme';
+import { borderRadius, colors, gradients, spacing, typography } from '@/theme';
 
 interface LoadingScreenProps {
   message?: string;
@@ -66,7 +60,7 @@ export function LoadingScreen({ message }: LoadingScreenProps) {
         <Animated.View style={[styles.glow, glowStyle]} />
         <Animated.View style={pulseStyle}>
           <LinearGradient
-            colors={gradients.brand as unknown as string[]}
+            colors={gradients.brand as readonly [string, string, ...string[]]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.logo}

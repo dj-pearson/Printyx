@@ -10,7 +10,7 @@
  */
 
 import React from 'react';
-import { Platform, StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
+import { Platform, StyleProp, StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { borderRadius, glass, gradients, shadows } from '@/theme';
@@ -32,7 +32,7 @@ interface GlassSurfaceProps extends ViewProps {
   /** Draw the thin highlight border common to iOS glass surfaces. */
   withBorder?: boolean;
   children?: React.ReactNode;
-  style?: ViewStyle | ViewStyle[];
+  style?: StyleProp<ViewStyle>;
 }
 
 const toneToTint = (tone: GlassTone) => {
@@ -118,10 +118,7 @@ export function GlassSurface({
   }
 
   return (
-    <View
-      {...rest}
-      style={[styles.container, shadowStyle, { borderRadius: radius }, style]}
-    >
+    <View {...rest} style={[styles.container, shadowStyle, { borderRadius: radius }, style]}>
       <BlurView
         intensity={intensity}
         tint={toneToTint(tone)}
@@ -138,11 +135,7 @@ export function GlassSurface({
       {borderStyle && (
         <View
           pointerEvents="none"
-          style={[
-            StyleSheet.absoluteFillObject,
-            { borderRadius: radius },
-            borderStyle,
-          ]}
+          style={[StyleSheet.absoluteFillObject, { borderRadius: radius }, borderStyle]}
         />
       )}
       <View style={styles.content}>{children}</View>

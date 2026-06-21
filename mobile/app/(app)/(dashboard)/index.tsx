@@ -8,13 +8,7 @@
  */
 
 import React, { useMemo } from 'react';
-import {
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   Extrapolation,
@@ -39,14 +33,7 @@ import {
   Skeleton,
   StatCard,
 } from '@/components/ui';
-import {
-  borderRadius,
-  colors,
-  gradients,
-  shadows,
-  spacing,
-  typography,
-} from '@/theme';
+import { borderRadius, colors, gradients, shadows, spacing, typography } from '@/theme';
 
 interface DashboardData {
   openLeads?: number | string;
@@ -62,7 +49,12 @@ export default function DashboardScreen() {
   const router = useRouter();
   const scrollY = useSharedValue(0);
 
-  const { data: dashboardData, isLoading, refetch, isRefetching } = useQuery<DashboardData>({
+  const {
+    data: dashboardData,
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useQuery<DashboardData>({
     queryKey: ['/api/mobile/dashboard'],
     enabled: !!user,
   });
@@ -73,10 +65,7 @@ export default function DashboardScreen() {
   });
 
   const firstName = useMemo(
-    () =>
-      user?.user_metadata?.firstName ||
-      user?.email?.split('@')[0] ||
-      'there',
+    () => user?.user_metadata?.firstName || user?.email?.split('@')[0] || 'there',
     [user],
   );
   const fullName =
@@ -93,39 +82,19 @@ export default function DashboardScreen() {
   const heroStyle = useAnimatedStyle(() => ({
     transform: [
       {
-        translateY: interpolate(
-          scrollY.value,
-          [0, 240],
-          [0, -60],
-          Extrapolation.CLAMP,
-        ),
+        translateY: interpolate(scrollY.value, [0, 240], [0, -60], Extrapolation.CLAMP),
       },
       {
-        scale: interpolate(
-          scrollY.value,
-          [-120, 0, 240],
-          [1.15, 1, 1],
-          Extrapolation.CLAMP,
-        ),
+        scale: interpolate(scrollY.value, [-120, 0, 240], [1.15, 1, 1], Extrapolation.CLAMP),
       },
     ],
   }));
 
   const greetingStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      scrollY.value,
-      [0, 80],
-      [1, 0],
-      Extrapolation.CLAMP,
-    ),
+    opacity: interpolate(scrollY.value, [0, 80], [1, 0], Extrapolation.CLAMP),
     transform: [
       {
-        translateY: interpolate(
-          scrollY.value,
-          [0, 80],
-          [0, -10],
-          Extrapolation.CLAMP,
-        ),
+        translateY: interpolate(scrollY.value, [0, 80], [0, -10], Extrapolation.CLAMP),
       },
     ],
   }));
@@ -140,10 +109,7 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.root}>
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.hero, heroStyle]}
-      >
+      <Animated.View pointerEvents="none" style={[styles.hero, heroStyle]}>
         <GradientBackground variant="hero" withOrbs />
       </Animated.View>
 
@@ -156,18 +122,12 @@ export default function DashboardScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
-              tintColor="#ffffff"
-            />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#ffffff" />
           }
         >
           <Animated.View style={[styles.greetingRow, greetingStyle]}>
             <View style={styles.greetingText}>
-              <Text style={styles.greetingLabel}>
-                Good {getTimeOfDay()},
-              </Text>
+              <Text style={styles.greetingLabel}>Good {getTimeOfDay()},</Text>
               <Text style={styles.greetingName} numberOfLines={1}>
                 {firstName}
               </Text>
@@ -249,10 +209,7 @@ export default function DashboardScreen() {
           </View>
 
           <View style={styles.section}>
-            <SectionHeader
-              title="Quick Actions"
-              overline="Jump back in"
-            />
+            <SectionHeader title="Quick Actions" overline="Jump back in" />
             <View style={styles.actionsGrid}>
               <QuickAction
                 icon="account-plus-outline"
@@ -290,23 +247,14 @@ export default function DashboardScreen() {
             <GlassCard tone="light" padded={false}>
               {activity.length === 0 ? (
                 <View style={styles.emptyActivity}>
-                  <MaterialCommunityIcons
-                    name="bell-outline"
-                    size={28}
-                    color={colors.gray[400]}
-                  />
-                  <Text style={styles.emptyActivityText}>
-                    No recent activity yet
-                  </Text>
+                  <MaterialCommunityIcons name="bell-outline" size={28} color={colors.gray[400]} />
+                  <Text style={styles.emptyActivityText}>No recent activity yet</Text>
                 </View>
               ) : (
                 activity.slice(0, 5).map((item: any, index: number) => (
                   <View
                     key={item.id || index}
-                    style={[
-                      styles.activityRow,
-                      index > 0 && styles.activityDivider,
-                    ]}
+                    style={[styles.activityRow, index > 0 && styles.activityDivider]}
                   >
                     <View style={styles.activityDot} />
                     <View style={styles.activityContent}>
@@ -315,16 +263,10 @@ export default function DashboardScreen() {
                       </Text>
                       <View style={styles.activityMeta}>
                         {item.type ? (
-                          <Badge
-                            label={String(item.type)}
-                            variant="info"
-                            size="sm"
-                          />
+                          <Badge label={String(item.type)} variant="info" size="sm" />
                         ) : null}
                         <Text style={styles.activityTime}>
-                          {item.createdAt
-                            ? formatRelative(new Date(item.createdAt))
-                            : ''}
+                          {item.createdAt ? formatRelative(new Date(item.createdAt)) : ''}
                         </Text>
                       </View>
                     </View>
@@ -360,14 +302,10 @@ function HeroRevenueCard({
       }}
       accessibilityRole="button"
       accessibilityLabel={`Revenue month to date ${value}`}
-      style={({ pressed }) => [
-        styles.revenueCard,
-        shadows.glow,
-        pressed && { opacity: 0.92 },
-      ]}
+      style={({ pressed }) => [styles.revenueCard, shadows.glow, pressed && { opacity: 0.92 }]}
     >
       <LinearGradient
-        colors={gradients.brandDawn as unknown as string[]}
+        colors={gradients.brandDawn as readonly [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.revenueSurface}
@@ -383,7 +321,12 @@ function HeroRevenueCard({
           />
         </View>
         {isLoading ? (
-          <Skeleton height={38} width="60%" radius={10} style={{ backgroundColor: 'rgba(255,255,255,0.18)' }} />
+          <Skeleton
+            height={38}
+            width="60%"
+            radius={10}
+            style={{ backgroundColor: 'rgba(255,255,255,0.18)' }}
+          />
         ) : (
           <Text style={styles.revenueValue} numberOfLines={1}>
             {value}
@@ -395,9 +338,7 @@ function HeroRevenueCard({
             size={16}
             color="rgba(255,255,255,0.85)"
           />
-          <Text style={styles.revenueFooterText}>
-            Tap to view revenue reports
-          </Text>
+          <Text style={styles.revenueFooterText}>Tap to view revenue reports</Text>
         </View>
       </LinearGradient>
     </Pressable>

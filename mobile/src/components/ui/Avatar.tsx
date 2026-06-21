@@ -29,17 +29,16 @@ function getInitials(name: string): string {
 }
 
 export function Avatar({ uri, name = '?', size = 40, withRing = false }: AvatarProps) {
-  const ring = withRing ? { padding: 2, backgroundColor: '#fff', ...shadows.sm, borderRadius: size } : null;
+  const ring = withRing
+    ? { padding: 2, backgroundColor: '#fff', ...shadows.sm, borderRadius: size }
+    : null;
 
   if (uri) {
     return (
       <View style={ring}>
         <Image
           source={{ uri }}
-          style={[
-            styles.image,
-            { width: size, height: size, borderRadius: size / 2 },
-          ]}
+          style={[styles.image, { width: size, height: size, borderRadius: size / 2 }]}
           contentFit="cover"
           accessibilityLabel={`${name} avatar`}
         />
@@ -52,13 +51,10 @@ export function Avatar({ uri, name = '?', size = 40, withRing = false }: AvatarP
   return (
     <View style={ring}>
       <LinearGradient
-        colors={gradients.brand as unknown as string[]}
+        colors={gradients.brand as readonly [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[
-          styles.initialsContainer,
-          { width: size, height: size, borderRadius: size / 2 },
-        ]}
+        style={[styles.initialsContainer, { width: size, height: size, borderRadius: size / 2 }]}
         accessibilityLabel={`${name} avatar`}
       >
         <Text style={[styles.initials, { fontSize: size * 0.38 }]}>{initials}</Text>

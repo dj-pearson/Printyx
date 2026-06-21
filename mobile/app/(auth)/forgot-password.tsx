@@ -24,26 +24,10 @@ import * as Haptics from 'expo-haptics';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useAuth } from '@/hooks/useAuth';
-import {
-  Button,
-  GlassSurface,
-  GradientBackground,
-  Input,
-} from '@/components/ui';
-import {
-  borderRadius,
-  colors,
-  gradients,
-  motion,
-  spacing,
-  typography,
-} from '@/theme';
+import { Button, GlassSurface, GradientBackground, Input } from '@/components/ui';
+import { borderRadius, colors, gradients, motion, spacing, typography } from '@/theme';
 
 const schema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -118,18 +102,12 @@ export default function ForgotPasswordScreen() {
                 hitSlop={10}
                 style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.6 }]}
               >
-                <MaterialCommunityIcons
-                  name="chevron-left"
-                  size={24}
-                  color="#ffffff"
-                />
+                <MaterialCommunityIcons name="chevron-left" size={24} color="#ffffff" />
               </Pressable>
             </Animated.View>
 
             <Animated.View style={[styles.hero, entranceStyle]}>
-              <Text style={styles.heroTitle}>
-                {sent ? 'Check your email' : 'Reset password'}
-              </Text>
+              <Text style={styles.heroTitle}>{sent ? 'Check your email' : 'Reset password'}</Text>
               <Text style={styles.heroSubtitle}>
                 {sent
                   ? "We've sent you a secure reset link. It will expire in 30 minutes."
@@ -147,23 +125,17 @@ export default function ForgotPasswordScreen() {
                   style={styles.successCard}
                 >
                   <LinearGradient
-                    colors={gradients.success as unknown as string[]}
+                    colors={gradients.success as readonly [string, string, ...string[]]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.successIcon}
                   >
-                    <MaterialCommunityIcons
-                      name="email-check-outline"
-                      size={36}
-                      color="#ffffff"
-                    />
+                    <MaterialCommunityIcons name="email-check-outline" size={36} color="#ffffff" />
                   </LinearGradient>
-                  <Text style={styles.successTitle}>
-                    Reset link sent
-                  </Text>
+                  <Text style={styles.successTitle}>Reset link sent</Text>
                   <Text style={styles.successDescription}>
-                    Follow the instructions in the email to create a new password.
-                    Didn't see it? Check your spam folder or try again.
+                    Follow the instructions in the email to create a new password. Didn't see it?
+                    Check your spam folder or try again.
                   </Text>
                   <Button
                     title="Back to sign in"

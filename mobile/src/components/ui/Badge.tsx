@@ -10,23 +10,9 @@ import React from 'react';
 import { StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import {
-  borderRadius,
-  colors,
-  GradientKey,
-  gradients,
-  spacing,
-  typography,
-} from '@/theme';
+import { borderRadius, colors, GradientKey, gradients, spacing, typography } from '@/theme';
 
-type BadgeVariant =
-  | 'default'
-  | 'success'
-  | 'warning'
-  | 'error'
-  | 'info'
-  | 'outline'
-  | 'gradient';
+type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'outline' | 'gradient';
 
 interface BadgeProps {
   label: string;
@@ -45,13 +31,13 @@ export function Badge({
   withDot = false,
   gradient = 'brand',
 }: BadgeProps) {
-  const v = VARIANT_STYLES[variant];
+  const v = VARIANT_STYLES[variant === 'gradient' ? 'default' : variant];
   const s = SIZE_STYLES[size];
 
   if (variant === 'gradient') {
     return (
       <LinearGradient
-        colors={gradients[gradient] as unknown as string[]}
+        colors={gradients[gradient] as readonly [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.base, s.container]}
@@ -86,15 +72,9 @@ function renderInner({
   const textColor = tintOverride ?? (v.text.color as string);
   return (
     <>
-      {withDot ? (
-        <View style={[styles.dot, { backgroundColor: textColor }]} />
-      ) : null}
-      {icon ? (
-        <MaterialCommunityIcons name={icon} size={12} color={textColor} />
-      ) : null}
-      <Text style={[s.text, v.text, tintOverride ? { color: tintOverride } : null]}>
-        {label}
-      </Text>
+      {withDot ? <View style={[styles.dot, { backgroundColor: textColor }]} /> : null}
+      {icon ? <MaterialCommunityIcons name={icon} size={12} color={textColor} /> : null}
+      <Text style={[s.text, v.text, tintOverride ? { color: tintOverride } : null]}>{label}</Text>
     </>
   );
 }
@@ -114,7 +94,10 @@ const styles = StyleSheet.create({
   },
 });
 
-const VARIANT_STYLES: Record<Exclude<BadgeVariant, 'gradient'>, { container: ViewStyle; text: TextStyle }> = {
+const VARIANT_STYLES: Record<
+  Exclude<BadgeVariant, 'gradient'>,
+  { container: ViewStyle; text: TextStyle }
+> = {
   default: {
     container: { backgroundColor: colors.gray[100] },
     text: { color: colors.gray[700] },

@@ -11,30 +11,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/hooks/useAuth';
-import {
-  Avatar,
-  Badge,
-  Button,
-  Card,
-  GlassCard,
-  ListItem,
-  SectionHeader,
-} from '@/components/ui';
-import {
-  borderRadius,
-  colors,
-  gradients,
-  spacing,
-  typography,
-} from '@/theme';
+import { Avatar, Badge, Button, Card, GlassCard, ListItem, SectionHeader } from '@/components/ui';
+import { borderRadius, colors, gradients, spacing, typography } from '@/theme';
 
 export default function SettingsScreen() {
   const { user, logout } = useAuth();
 
   const fullName =
-    [user?.user_metadata?.firstName, user?.user_metadata?.lastName]
-      .filter(Boolean)
-      .join(' ') || 'User';
+    [user?.user_metadata?.firstName, user?.user_metadata?.lastName].filter(Boolean).join(' ') ||
+    'User';
 
   const role = user?.app_metadata?.role || 'Team member';
   const tenant = user?.app_metadata?.tenantName as string | undefined;
@@ -69,14 +54,11 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.screenTitle}>Settings</Text>
 
         <LinearGradient
-          colors={gradients.brand as unknown as string[]}
+          colors={gradients.brand as readonly [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.profileCard}
@@ -92,9 +74,7 @@ export default function SettingsScreen() {
               </Text>
               <View style={styles.profileBadges}>
                 <Badge label={String(role)} variant="gradient" gradient="success" size="sm" />
-                {tenant ? (
-                  <Badge label={tenant} variant="outline" size="sm" />
-                ) : null}
+                {tenant ? <Badge label={tenant} variant="outline" size="sm" /> : null}
               </View>
             </View>
           </View>
@@ -166,9 +146,7 @@ export default function SettingsScreen() {
               iconColor={colors.error.main}
               iconBackground={colors.error.light}
               onPress={() =>
-                Linking.openURL(
-                  'mailto:bugs@printyx.net?subject=Bug%20Report%20-%20Mobile%20App',
-                )
+                Linking.openURL('mailto:bugs@printyx.net?subject=Bug%20Report%20-%20Mobile%20App')
               }
             />
           </GlassCard>
@@ -228,9 +206,7 @@ export default function SettingsScreen() {
           />
         </View>
 
-        <Text style={styles.version}>
-          Printyx · v{Constants.expoConfig?.version || '1.0.0'}
-        </Text>
+        <Text style={styles.version}>Printyx · v{Constants.expoConfig?.version || '1.0.0'}</Text>
       </ScrollView>
     </SafeAreaView>
   );
