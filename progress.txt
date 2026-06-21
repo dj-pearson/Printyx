@@ -6730,3 +6730,347 @@ Same slice recipe applies. 002/005/013 need Twilio/Whisper/ElevenLabs creds (cre
 - US-SUPER: 2/16 full-stack code-complete (staged false pending browser-verify).
 - Untouched this session: EDGE (23), IOS (56), LAUNCH (2) — see prior entry for feasibility notes
   (IOS needs Xcode; LAUNCH needs prod infra; EDGE is the interdependent Express→edge migration).
+
+## Iteration (06/20/2026, cont.) — US-SUPER-003 Contract P&L X-ray (full-stack; passes stays false pending browser-verify)
+Branch claude/us-super-prd-stories-xlylzg (US-SUPER-001/009 merged via PR #177). Bar unchanged:
+full-stack vertical slice, tsc-verified 0 new errors over the 6278 baseline, passes=false until
+a browser-verify pass.
+
+### US-SUPER-003 — Contract P&L X-ray (DONE, full-stack, passes=false pending verify)
+- shared/contract-pnl-schema.ts: contract_pnl_settings (tech_burdened_rate, avg_part_cost,
+  financing_rate, gp_alert_threshold, digest_enabled, last_refreshed_at) re-exported from schema.ts.
+- drizzle/migrations/_backfill_contract_pnl.sql: idempotent settings table + TWO Postgres
+  MATERIALIZED VIEWS holding RAW trailing-12-month aggregates — contract_pnl_v (one row/contract)
+  and contract_pnl_monthly_v (one row/contract/month). Dollar costs applied at READ time (labor =
+  hours x burdened rate, parts = parts_used count x avg cost, supplies = real, financing = base x
+  rate) so rate edits never need a refresh. Revenue = meter_readings black/color copies x contract
+  black/color rate (attributed via meter_readings.contract_id) + monthly_base. Service attributed
+  via the (contract_id, equipment_id) pairs in meter_readings. Supplies join GUARDED (to_regclass)
+  for the optional auto_supply_orders table and matched by globally-unique equipment.serial_number
+  to sidestep that table's integer tenant_id drift.
+- server/routes-contract-pnl.ts (registered in routes-registry.ts): GET /api/contract-pnl (sort by
+  GP%, filters status/industry/salesRep/territory/search, 12-mo GP% sparkline, viewMissing
+  tolerance via 42P01 catch), GET /export.csv, GET/PUT /settings, POST /refresh (per-tenant 60s
+  cooldown; REFRESH both MVs; 503 if not migrated), POST /digest/preview (below-threshold
+  contracts), GET /:contractId (12-mo per-category breakdown for the stacked bar).
+- client/src/pages/ContractProfitability.tsx at /contracts/profitability (table + filters +
+  settings panel + refresh + CSV export + margin-alert digest) and ContractPnlDetail.tsx at
+  /contracts/:id/pnl (recharts ComposedChart: stacked labor/parts/supplies/financing + revenue
+  line, monthly table). Both wired in App.tsx.
+- tsc: 6278, 0 new errors. STUBS: parts cost = count x avg-cost config (no per-part catalog cost);
+  financing default 0 (no contract financing column); digest email send + nightly refresh cron are
+  TODOs (assembly + route are real/cron-callable). TODO RBAC: finance.contract.view_pnl
+  (default OWNER+PLATFORM_ADMIN); machine-model/location filters + GL reconciliation fixture deferred.
+
+### US-SUPER tally: 3/16 full-stack code-complete (001, 009, 003). Next per suggested order: 010.
+
+### US-SUPER-010 — Renewal auto-quote 90d out (DONE, full-stack, passes=false pending verify)
+- shared/renewal-autoquote-schema.ts: renewal_auto_quotes (draft + 12-mo actuals + re-tier +
+  prefilled line items + outcome), renewal_autoquote_settings (window/buffer/threshold/expiry/
+  toggle), renewal_suppressions (manual-renewal-only, unique tenant+customer). Re-exported.
+- drizzle/migrations/_backfill_renewal_autoquote.sql: idempotent; FK to contracts guarded.
+- server/routes-renewal-autoquote.ts (registered in routes-registry.ts): POST /generate
+  (cron-callable, ?force; scans active contracts ending in the 90-100d window, skips suppressed +
+  already-drafted, aggregates 12-mo per-machine usage from meter_readings.contract_id, peak month,
+  re-tiers CPC from cpc_rates volume bands + growth buffer, flags underage, prefills line items,
+  NEVER auto-sends), GET / (list + reviewCount widget), GET /stats (auto win rate; manual baseline
+  STUB), GET/PUT /settings, GET/POST/DELETE /suppressions, GET /:id, POST /:id/mark-sent
+  (TODO promote to proposals send flow), /dismiss, /outcome (won|lost).
+- client/src/pages/RenewalAutoQuote.tsx at /renewals: "ready for review" widget + win-rate stats,
+  drafts table (underage flag), detail dialog (machine breakdown + prefilled line items),
+  settings + suppression management, won/lost actions. Wired in App.tsx.
+- tsc: 6278, 0 new errors. STUBS: re-tier matches cpc_rates by tenant+colorMode+volume band
+  (model-specific match TODO; falls back to current rates if no tiers); manual win-rate baseline
+  not tracked; mark-sent flags status only (proposals promotion is a TODO); rep notification is
+  assigned_sales_rep capture + dashboard widget (push/email TODO). TODO RBAC: sales.renewal.manage;
+  daily cron wiring TODO (route is cron-callable).
+
+### US-SUPER tally: 4/16 full-stack code-complete (001, 009, 003, 010). Next per suggested order: 004 (QBR decks).
+
+### US-SUPER-004 — Auto-generated QBR decks (DONE, full-stack, passes=false pending verify)
+- shared/qbr-schema.ts: qbr_reports (one deck per customer per quarter; content jsonb + pdf/html
+  urls + status draft|reviewed|sent) + qbr_suppressions. Re-exported. Migration
+  _backfill_qbr.sql idempotent, FK to business_records guarded. (schema committed earlier as wip.)
+- server/routes-qbr.ts (registered in routes-registry.ts): POST /generate (cron-callable; active
+  customers w/ active contracts or single ?customerId; skips suppressed; assembles fleet +
+  4-quarter usage trend + downtime proxy + top-5 issues + supply-cost proxy + linear forecast +
+  Claude recs via ClaudeAIService with deterministic fallback; HTML + best-effort Playwright PDF;
+  best-effort Supabase Storage upload; UPSERT on tenant+customer+quarter), GET /, GET /:id,
+  PATCH /:id (review: status->reviewed + merge sectionOverrides), POST /:id/send (records send;
+  email is STUB), GET/POST/DELETE /suppressions.
+- client/src/pages/CustomerQbrs.tsx at /customers/:id/qbrs: deck table w/ status pills + PDF link,
+  generate-this-quarter, Review&send dialog w/ per-section textarea overrides. Wired in App.tsx.
+- Built via a serial general-purpose subagent (route+page+wiring) after I created the schema;
+  independently tsc-verified: 6278, 0 new errors in routes-qbr/CustomerQbrs. STUBS: PDF null when
+  Chromium absent; AI offline fallback; supply-cost + downtime are proxies; upload needs
+  SUPABASE_URL/SERVICE_ROLE (no server storage.upload abstraction exists); email send + UTM + the
+  quarterly cron are TODOs. TODO RBAC: sales.qbr.manage.
+- NOTE: real ClaudeAIService.generateCompletion signature is { max_tokens, messages } (not the
+  { prompt, maxTokens } the handover-style brief assumed) — adapted accordingly.
+
+### US-SUPER tally: 5/16 full-stack code-complete (001, 009, 003, 010, 004). Next: 007 (truck stocking), 008 (deal desk copilot), 015 (briefings), 011 (portal), 012 (toner replenish), then creds-dependent.
+
+### US-SUPER-007 — Predictive truck-stocking optimizer (DONE, full-stack, passes=false pending verify)
+- shared/truck-stock-schema.ts: truck_inventory + truck_stock_settings (per-tech capacity) +
+  truck_stock_recommendations + truck_stock_callbacks. Re-exported. Migration idempotent.
+  (schema committed earlier as wip.)
+- server/routes-truck-stock.ts (registered in routes-registry.ts; 11 tenant-scoped endpoints):
+  POST /generate (cron-callable; per tech via service_tickets.assignedTechnicianId, 90d parts-used
+  frequency, recommendedQty approx trailing-90d, greedy capacity fit, current vs projected fill-rate
+  coverage proxy, part->inventory_items match for cost), GET /recommendations (latest per tech),
+  GET /recommendations/:id (+ /export.csv pick list), POST /:id/pick, POST /:id/receive (applies to
+  truck_inventory via onConflictDoUpdate = tech confirms received), GET /inventory, GET/PUT /settings,
+  POST /callbacks + GET /stats (accuracy). Route ordering verified (export.csv before :id; literals
+  before params).
+- client/src/pages/TruckStocking.tsx at /service/truck-stocking: Generate, stats cards, per-tech
+  table with "X% -> Y%" fill-rate, detail dialog (recommended-items table + CSV pick list + pick/
+  receive workflow + inline capacity settings). Wired in App.tsx.
+- Built via a serial general-purpose subagent after I created the schema; independently verified:
+  tsc 6278, 0 new errors; 11/11 handlers tenant-scoped. STUBS: tech territory derived from assigned
+  tickets; assignedTechnicianId==techUserId; recommendedQty=90d usage; fill rate is a coverage proxy;
+  part->inventory_items fuzzy match. TODO cron (Sunday run); TODO RBAC service.truck_stock.manage.
+
+### US-SUPER tally: 6/16 full-stack code-complete (001, 009, 003, 010, 004, 007). Next: 008 (deal desk copilot), 015 (briefings), 011 (portal), 012 (toner replenish), then creds-dependent (002/005/006/013/014/016).
+
+### US-SUPER-008 — Deal desk copilot sidebar (DONE, full-stack, passes=false pending verify)
+- shared/deal-desk-copilot-schema.ts: deal_desk_copilot_settings (per-tenant gp_floor_pct).
+  Re-exported. Migration idempotent. (schema committed earlier as wip.)
+- server/routes-deal-desk-copilot.ts (registered in routes-registry.ts; 6 tenant-scoped handlers;
+  resolves proposal by id+tenant): GET+PUT /settings (first, so 'settings' != quoteId),
+  GET /:quoteId/snapshot (fast Postgres: open tickets by priority, AR aging, last-3 quote outcomes,
+  latest churn score), GET /:quoteId/similar-deals (top-5 closed-won by territory+type+/-50% size,
+  closeRate/avgDiscount/avgDealSize, memoized 1h in-process), GET /:quoteId/margin (revenue=totalAmount,
+  cost=sum(line unitCost x qty), GP%, belowFloor), GET /:quoteId/objections (Claude + deterministic fallback).
+- client/src/components/deal-desk/DealDeskCopilot.tsx: collapsible fixed right drawer, 4 independent
+  useQuery panels w/ skeletons + inline errors (advisory), churn badge links /customers/risk. Mounted
+  non-invasively in QuoteBuilderPage.tsx after <QuoteBuilder/> (no new route).
+- Built via serial subagent after I created the schema; independently verified: tsc 6278, 0 new errors;
+  6/6 handlers tenant-scoped; /settings ordered before /:quoteId/*. STUBS: margin financing+service-cost
+  (cost = line unitCost only); similar-deals headcount+machine-class matching; AI objections fallback.
+  TODO RBAC: sales.quote.view_margin (MANAGER+OWNER) on the margin route.
+
+### US-SUPER tally: 7/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008). Next: 015 (briefings,
+### schema already staged locally), then 011 (portal), 012 (toner replenish), then creds-dependent.
+
+### US-SUPER-015 — Daily role-based morning briefings (DONE, full-stack, passes=false pending verify)
+- shared/daily-briefing-schema.ts: daily_briefing_preferences (opt-out/frequency/A-B variant/channels)
+  + daily_briefing_log (role/variant/subject/open tracking). Re-exported. In-app badge reuses
+  user_notifications; email reuses email-service sendEmail; content reuses existing data layers
+  (no new data tables per the story note). (schema committed earlier as wip.)
+- server/routes-daily-briefing.ts (registered in routes-registry.ts; 6 tenant-scoped handlers):
+  POST /generate (body {}=self, {userId}=one, {all:true}=cron tenant-wide; derives role from
+  users.role; Claude <400w bulleted A-B-aware summary + deterministic fallback; daily_briefing_log
+  insert; best-effort in-app + email), GET /, GET/PUT /preferences, GET /stats (A-B open rate),
+  POST /:id/open. client/src/pages/DailyBriefings.tsx at /briefings (generate, latest render,
+  preferences panel, A-B stats, history) wired in App.tsx.
+- Built via serial subagent after I created the schema; independently verified: tsc 6278, 0 new
+  errors; 6/6 handlers tenant-scoped; literal paths before /:id/open. STUBS: revenue-vs-target,
+  tech-utilization, win-probability, prospects-engaged are proxies; real data for incidents/churn/
+  contracts/closing-deals/SLA/predicted-failures/parts/callbacks/stuck-deals/renewals. TODO 6am
+  tenant-local cron -> POST /generate {all:true}.
+
+### US-SUPER tally: 8/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015). Next: 011
+### (customer self-service portal), 012 (toner replenish), then creds-dependent (002, 005, 006, 013, 014, 016).
+
+### US-SUPER-011 — Customer self-service portal NL service requests (DONE, full-stack, passes=false pending verify)
+- Extends existing customer-portal scaffolding. Net-new shared/portal-service-classification-schema.ts
+  (portal_service_classifications) re-exported from shared/schema.ts (also exported the existing-but-
+  unexported customerServiceRequestStatusHistory). Migration idempotent. (schema committed earlier as wip.)
+- server/routes-portal-service.ts (registered in routes-registry.ts; 4 tenant-scoped handlers):
+  POST /classify (Claude classify -> category/priority/parts/playbook/confidence + keyword fallback;
+  when requestId given creates internal service_tickets row, sets request priority/serviceTicketId/
+  status=assigned, inserts status-history; dispatch writes wrapped -> dispatch:skipped on missing table),
+  GET /classifications/:requestId, POST /rate (1..5 -> customerRating/Feedback; TODO churn feed),
+  GET /timeline/:requestId (Uber 5-step from status history).
+- client/src/pages/CustomerPortalService.tsx at /portal: fleet cards, NL request form -> create+classify,
+  My Requests -> detail dialog with vertical Uber stepper + 5-star rating. Wired in App.tsx.
+- Built via serial subagent after I created the schema; independently verified: tsc 6278, 0 new errors;
+  4/4 handlers tenant-scoped; schema re-export change is a clean addition. STUBS: photo upload
+  (filename only); per-location RBAC; suggestedTechId null (no matcher); GPS/map live tracking deferred;
+  rating->churn TODO.
+
+### US-SUPER tally: 9/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011). Next: 012
+### (multi-vendor toner auto-replenish), then creds-dependent (002, 005, 006, 013, 014, 016).
+
+### US-SUPER-012 — Multi-vendor toner auto-replenish (DONE, full-stack, passes=false pending verify)
+- shared/toner-replenish-schema.ts: machine_supply_levels + supply_orders + tenant_supply_settings
+  + machine_supply_settings (varchar tenant, distinct from legacy integer-tenant auto_supply_orders).
+  Re-exported. Migration idempotent. (schema committed earlier as wip.)
+- server/routes-toner-replenish.ts (registered in routes-registry.ts; 12 tenant-scoped handlers):
+  POST /capture (fetchVendorSupplyLevels STUB -> levels; k/c/m/y per isColorCapable), POST /evaluate
+  (14-day least-squares regression -> predicted depletion; creates supply_orders pending_approval/
+  auto_ship by cost vs threshold/ceiling; skips customer_managed; dedupes open orders), POST /run,
+  GET /levels (DISTINCT ON latest + predicted depletion), GET /orders, POST /orders/:id/ship (tracking
+  stub + best-effort email), /orders/:id/cancel, POST /machines/:machineId/ship-now (emergency),
+  GET/PUT /settings, GET/PUT /machines/:machineId/settings (auto-ship/ceiling/override/customer_managed).
+- client/src/pages/TonerReplenish.tsx at /service/toner-replenish (Run now, per-machine color bars +
+  predicted depletion + ship-now + settings popover, orders table approve/ship/cancel, tenant settings).
+  Wired in App.tsx.
+- Built via serial subagent after I created the schema; independently verified: tsc 6278, 0 new errors;
+  12/12 handlers tenant-scoped; literals before param routes. STUBS: vendor reads injected synthetic
+  with TODO(ABK) address-book adapters + credential vault; per-color toner cost proxy; tracking/carrier
+  stub; SMS + calendar event TODO; daily cron TODO. TODO RBAC: service.supply.manage.
+
+### US-SUPER tally: 10/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012).
+### Remaining 6 are credential/infra-dependent: 002 (SMS/photo meter reads), 005 (voice ticket close),
+### 006 (tech knowledge RAG/pgvector), 013 (voice phone agent), 014 (Slack/Teams bot), 016 (email autopilot).
+
+### US-SUPER-002 — SMS/photo meter reads with vision extraction (DONE, full-stack, passes=false pending verify)
+- shared/meter-read-vision-schema.ts: meter_read_submissions + meter_read_settings. Re-exported.
+  Migration idempotent. (schema committed earlier as wip.)
+- server/routes-meter-read-vision.ts (registered in routes-registry.ts; 8 tenant-scoped handlers):
+  extractMeterFromImage Claude-vision adapter (Anthropic SDK, claude-opus-4-8, base64/URL image
+  block -> JSON counters; offline fallback), sendOutboundSms Twilio stub, sha256 dedup,
+  processSubmission (resolve machine/customer, validate vs rolling 90-day avg, auto_approve+insert
+  meter_readings else flag, unresolved->pending+clarify). Endpoints: POST /inbound (simulated webhook),
+  /submit, GET /submissions ?status=, GET /:id, POST /:id/approve (reviewer edits + insert read),
+  /:id/reject, GET/PUT /settings (write-only Twilio creds -> *_set booleans).
+- client/src/pages/MeterReadReview.tsx at /service/meter-reads/review: review queue + filters,
+  side-by-side image + editable counters approve/reject dialog, submit-a-photo (URL), settings.
+  Wired in App.tsx.
+- Built via serial subagent after I created the schema; consulted the claude-api skill for the current
+  vision API shape. Independently verified: tsc 6278, 0 new errors; 8/8 handlers tenant-scoped; raw
+  creds never echoed (GET returns only *_set markers). STUBS: Twilio inbound webhook + tenant-by-number
+  + send; credential vault NOT used (throws without ADDRESS_BOOK_MASTER_KEY) -> creds base64-obfuscated
+  in encrypted_config w/ TODO(vault); vision offline fallback (fallback reads always flagged, never
+  auto-billed); image upload URL-only; phone match best-effort. TODO RBAC: billing.meter_read.review.
+
+### US-SUPER tally: 11/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012, 002).
+### Remaining 5 (creds/infra-dependent): 005 (voice ticket close), 006 (tech knowledge RAG/pgvector),
+### 013 (voice phone agent), 014 (Slack/Teams bot), 016 (email autopilot).
+
+### US-SUPER-006 — Tech knowledge graph RAG over service tickets (DONE, full-stack, passes=false pending verify)
+- SINGLE-TENANT v1 (federated cross-tenant pool deferred to v2 per story). shared/service-knowledge-schema.ts
+  (service_ticket_embeddings jsonb sidecar + service_knowledge_settings). Re-exported. Migration guarded
+  pgvector extension + vector(1536) column for prod; v1 uses jsonb + JS cosine. (schema committed as wip.)
+- server/routes-service-knowledge.ts (registered in routes-registry.ts; 6 tenant-scoped handlers):
+  embedText (OpenAI text-embedding-3-small via fetch + deterministic offline fallback), cosineSimilarity.
+  POST /api/service/knowledge-search (embed query, cosine over tenant embeddings, join tickets ->
+  summary/parts/meanResolution/fixSuccessRate), POST /backfill (24mo closed, capped, upsert), POST
+  /embed/:ticketId, GET /stats, GET/PUT /settings (federation opt-in consent).
+- client/src/pages/KnowledgeSearch.tsx at /service/knowledge: mobile-first search bar + model/error
+  inputs, result cards (relevance bar, parts chips, "worked X% on this model"), admin strip (backfill,
+  indexed stat, federation switch). Wired in App.tsx.
+- Built via serial subagent after I created the schema; consulted claude-api skill earlier for AI shape.
+  Verified: tsc 6278, 0 new errors; 6/6 handlers tenant-scoped. STUBS: OpenAI via fetch + offline
+  fallback; pgvector prod vs jsonb v1; meanResolution + fixSuccessRate are model proxies; re-embed
+  trigger TODO; federated pool + PII redaction v2 TODO. TODO RBAC: service.knowledge.search.
+
+### US-SUPER tally: 12/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012, 002, 006).
+### Remaining 4 (creds/infra-dependent): 005 (voice ticket close), 013 (voice phone agent),
+### 014 (Slack/Teams bot), 016 (email autopilot).
+
+### US-SUPER-005 — Voice-first field tech ticket close (DONE, full-stack, passes=false pending verify)
+- shared/voice-ticket-close-schema.ts: voice_ticket_closes (transcript + extracted + sku resolutions +
+  drafted invoice items + 30d audio purge + client dedupe). Re-exported. Migration idempotent +
+  partial-unique tenant+dedupe. (schema committed as wip.)
+- server/routes-voice-ticket-close.ts (registered in routes-registry.ts; 6 tenant-scoped handlers):
+  transcribeAudio (Whisper via fetch + transcript-passthrough fallback), extractCloseFields (Claude +
+  fallback), resolveSku (fuzzy vs inventory_items). POST /:ticketId/transcribe (dedupe, pipeline, draft),
+  GET /:ticketId, PATCH /draft/:id, POST /draft/:id/confirm (db.transaction: close ticket + deduct
+  truck_inventory + mark confirmed; per-step graceful degrade), GET /skus/search, POST /purge-audio.
+- client/src/pages/VoiceTicketClose.tsx at /m/service/:ticketId/close-voice: MediaRecorder button +
+  type-instead fallback, IndexedDB offline queue (drains on online, server dedupes), editable review
+  form (parts w/ SKU select), confirm-and-close. Wired in App.tsx.
+- Built via serial subagent after I created the schema. Verified: tsc 6278, 0 new errors; 6/6 handlers
+  tenant-scoped; transactional confirm; literal paths before /:ticketId. STUBS: Whisper fetch + fallback;
+  Claude extraction fallback; SKU fuzzy (pg_trgm TODO); invoice items drafted-only (persist TODO);
+  IndexedDB offline; audio purge cron. TODO RBAC: service.ticket.close.
+
+### US-SUPER tally: 13/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012, 002, 006, 005).
+### Remaining 3 (creds/infra-dependent): 013 (voice phone agent), 014 (Slack/Teams bot), 016 (email autopilot).
+
+### US-SUPER-016 — Sales rep email autopilot, DRAFT MODE (DONE, full-stack, passes=false pending verify)
+- shared/email-autopilot-schema.ts: email_autopilot_accounts + email_autopilot_drafts +
+  email_autopilot_suppressions. Re-exported. Migration idempotent. (schema committed as wip.)
+- server/routes-email-autopilot.ts (registered in routes-registry.ts; 12 handlers, all tenant+user
+  scoped): NO SEND CAPABILITY (verified 0 send refs). connect (base64 tokens, never echoed), PUT
+  /settings (opt-in flag), POST /scan (fetchInbox stub -> classify -> draftReply -> createProviderDraft
+  stub -> draft rows; skips suppressed/fyi/spam), GET /drafts ?status=, GET /drafts/:id, POST
+  /:id/accept (Levenshtein editDistancePct, tone-miss>50; records only, never sends), /:id/reject,
+  GET/POST/DELETE /suppressions, GET /stats. Claude classify/draft + offline fallback; audit per AC.
+- client/src/pages/EmailAutopilot.tsx at /sales/email-autopilot: connect (read+create-draft-only
+  banner, write-only tokens), enable switch, run-scan, stats, drafts review dialog (editable + tone-miss
+  + Accept-saved-as-draft/Reject), suppression mgmt. Wired in App.tsx.
+- Built via serial subagent after I created the schema. Verified: tsc 6278, 0 new errors; 12/12
+  handlers tenant+user scoped; NO send path; literal paths before /:id. STUBS: real OAuth (read+
+  create-draft scope only); inbox/fingerprint/create-draft stubbed; Claude + fallback; token
+  obfuscation TODO(vault); CRM match best-effort; feature-flag enable default off (beta-with-5-reps).
+  TODO RBAC: sales.email_autopilot.use.
+
+### US-SUPER tally: 14/16 full-stack code-complete (001, 009, 003, 010, 004, 007, 008, 015, 011, 012, 002, 006, 005, 016).
+### Remaining 2 (creds/infra-dependent): 014 (Slack/Teams read-only bot), 013 (voice phone agent).
+
+### US-SUPER-014 — Slack/Teams NL Printyx bot, READ-ONLY v1 (DONE, full-stack, passes=false pending verify)
+- shared/chatbot-schema.ts: chatbot_connections + chatbot_user_links + chatbot_query_log. Re-exported.
+  Migration idempotent. (schema committed as wip.)
+- server/routes-chatbot.ts (registered in routes-registry.ts; 9 tenant-scoped handlers; READ-ONLY,
+  only chatbot_* tables written): read-only tool registry (account_summary, rep_activity,
+  pipeline_status, this_week_deltas, at_risk_customers, predicted_failures), selectTool+composeAnswer
+  via ClaudeAIService + keyword fallback, postReply stub. POST /api/chatbot/query (resolve Printyx user
+  via verified link else caller; 403+logged when unresolved; tool exec tenant-scoped; answer+citations;
+  audit log), GET/POST/PUT/DELETE /connections, GET/POST/DELETE /links, GET /query-log.
+- client/src/pages/ChatbotConsole.tsx at /integrations/chatbot: try-a-query + example chips +
+  answer/citations, connections (write-only token), user-links (verified badge), audit-log table.
+  Wired in App.tsx.
+- Built via serial subagent after I created the schema. Verified: tsc 6278, 0 new errors; 9/9 handlers
+  tenant-scoped; NO business-data writes; literal paths before /:id. STUBS: real OAuth + in-thread
+  postReply; token obfuscation TODO(vault); per-user RBAC TODO (hierarchical-query-builder); Claude +
+  fallback; predicted_failures absent-table tolerant. TODO RBAC: integrations.chatbot.manage.
+
+### US-SUPER tally: 15/16 full-stack code-complete (all except 013). LAST: 013 (voice phone agent).
+
+### US-SUPER-013 — Voice phone agent for after-hours intake (DONE, full-stack, passes=false pending verify)
+- shared/voice-agent-schema.ts: voice_agent_settings (kill switch, after-hours-only, languages, PII,
+  encrypted creds) + voice_agent_calls (transcript/recording/priority/ticket/escalation/cost). Re-exported.
+  Migration idempotent. (schema committed as wip.)
+- server/routes-voice-agent.ts (registered in routes-registry.ts; 7 tenant-scoped handlers): POST /intake
+  (kill switch returns handled:false when disabled; after-hours gate; ANI lookup; summarizeIntake Claude +
+  fallback; classifyPriority keywords; redactPii; create service_tickets VOICE-* tolerant; P1 ->
+  sendOnCallPage best-effort via team-alerts; estimateCost proxy; insert call recordingPurgeAt+90d),
+  GET /calls ?priority=, GET /calls/:id, GET/PUT /settings (write-only creds -> set markers), GET /cost
+  (monthly tally), POST /purge-recordings. client/src/pages/VoiceAgent.tsx at /service/voice-agent:
+  settings (kill switch + toggles + write-only creds), monthly cost card, simulate-intake panel, call log
+  + detail dialog. Wired in App.tsx.
+- Built via serial subagent after I created the schema. Verified: tsc 6278, 0 new errors; 7/7 handlers
+  tenant-scoped; kill switch enforced. STUBS: real-time Twilio Media Streams + Claude streaming +
+  ElevenLabs; on-call rotation + SMS (team-alerts best-effort); Claude summarize + fallback; cost proxy
+  rates; recording purge cron; token obfuscation TODO(vault). TODO RBAC: service.voice_agent.manage.
+
+## ============================================================================
+## US-SUPER EPIC COMPLETE — 16/16 full-stack code-complete (passes=false per the agreed bar)
+## ============================================================================
+All 16 US-SUPER stories shipped as full-stack vertical slices this session
+(001/009 were pre-session; 003,010,004,007,008,015,011,012,002,006,005,016,014,013 this session):
+shared schema + idempotent backfill migration (re-exported from shared/schema.ts) + Express route
+(requireAuth + tenant scoping + Zod + [AUDIT]) registered in routes-registry.ts + frontend page wired
+into App.tsx. EVERY slice verified to add 0 new tsc errors over the 6278 PRE-EXISTING baseline
+(client/src + shared + server are all in tsconfig). passes stays FALSE for all 16 per the agreed bar
+(no browser run possible in this sandbox); each story's prd.json note carries the
+"[FULL-STACK CODE-COMPLETE ...]" annotation with what was built, the 0-new-errors confirmation, and
+the stub/TODO list.
+
+### Cross-cutting STUB/TODO themes (intentional, documented per story):
+- Credential-dependent vendor calls (Twilio, OpenAI Whisper/embeddings, ElevenLabs, Gmail/Outlook,
+  Slack/Teams) sit behind NAMED ADAPTER STUBS with offline-safe deterministic fallbacks so every
+  pipeline is exercisable without live keys. Creds base64-obfuscated under encrypted_config with
+  TODO(vault) — the address-book credential vault was deliberately avoided because it THROWS when
+  ADDRESS_BOOK_MASTER_KEY is unset (would break dev writes). Creds never returned (only *_set markers).
+- AI calls use ClaudeAIService.generateCompletion (signature {max_tokens, messages}) or the Anthropic
+  SDK for vision (claude-opus-4-8), all with deterministic fallbacks; embeddings via OpenAI fetch +
+  local hash fallback (006). Model id confirmed via the claude-api skill.
+- RBAC: every new route uses requireAuth + tenant scoping with a TODO(rbac) for the story-specific
+  permission string (none of the new service.*/sales.*/finance.*/billing.*/integrations.* perms exist
+  in the matrix yet).
+- Cron wiring (nightly/weekly/Sunday/6am/daily) is a TODO on every cron-callable route (the routes ARE
+  cron-callable; the schedulers are not wired).
+- Several compute-heavy paths use documented proxies (contract P&L cost categories, fill-rate coverage,
+  win-probability, resolution-time/fix-success, per-call cost rates).
+
+### NEXT (for a follow-up pass, NOT done here):
+- Browser-verify each US-SUPER page (dev-browser) and flip passes=true once confirmed.
+- Run the _backfill_*.sql migrations against the DB (drizzle/migrations/_backfill_*.sql, all idempotent).
+- Add the TODO(rbac) permission strings to the RBAC matrix + seed grants.
+- Wire the crons (Deno edge fns / scheduler) and the live vendor adapters (replace stubs + real vault).
+- Remaining non-US-SUPER backlog (unchanged): EDGE-* (23, Express->edge migration), IOS-* (56, needs
+  Xcode), LAUNCH-011/020 (prod infra). Session tally still 357 passes=true / 97 passes=false.

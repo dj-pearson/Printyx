@@ -688,6 +688,7 @@ export {
 export {
   customerPortalAccess,
   customerServiceRequests,
+  customerServiceRequestStatusHistory,
   customerMeterSubmissions,
   customerSupplyOrders,
   customerSupplyOrderItems,
@@ -8787,6 +8788,34 @@ export * from './blog-schema';
 // Predictive failure dispatch agent (US-SUPER-001)
 export * from './predictive-failure-schema';
 export * from './churn-risk-schema';
+// Contract P&L X-ray (US-SUPER-003)
+export * from './contract-pnl-schema';
+// Renewal auto-quote generator (US-SUPER-010)
+export * from './renewal-autoquote-schema';
+// Quarterly Business Review decks (US-SUPER-004)
+export * from './qbr-schema';
+// Predictive truck-stocking optimizer (US-SUPER-007)
+export * from './truck-stock-schema';
+// Deal desk copilot (US-SUPER-008)
+export * from './deal-desk-copilot-schema';
+// Daily role-based briefings (US-SUPER-015)
+export * from './daily-briefing-schema';
+// Portal NL service-request classification (US-SUPER-011)
+export * from './portal-service-classification-schema';
+// Multi-vendor toner auto-replenish (US-SUPER-012)
+export * from './toner-replenish-schema';
+// SMS/photo meter reads with vision extraction (US-SUPER-002)
+export * from './meter-read-vision-schema';
+// Tech knowledge graph RAG over service tickets (US-SUPER-006)
+export * from './service-knowledge-schema';
+// Voice-first field tech ticket close (US-SUPER-005)
+export * from './voice-ticket-close-schema';
+// Sales rep email autopilot (US-SUPER-016)
+export * from './email-autopilot-schema';
+// Slack/Teams NL Printyx bot (US-SUPER-014)
+export * from './chatbot-schema';
+// Voice phone agent for after-hours intake (US-SUPER-013)
+export * from './voice-agent-schema';
 // Blog syndication (per-platform repurposing — US-BLOG-043..051)
 export * from './blog-syndication-schema';
 // Blog topic intelligence (forum miner, clustering, internal links, authority, citations, readability — US-BLOG-017,019,020,022,025,026)

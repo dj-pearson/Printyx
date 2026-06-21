@@ -7,6 +7,7 @@ import { Calculator, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
 import PageAlerts from '@/components/contextual/PageAlerts';
+import DealDeskCopilot from '@/components/deal-desk/DealDeskCopilot';
 
 export default function QuoteBuilderPage() {
   const [, setLocation] = useLocation();
@@ -76,6 +77,9 @@ export default function QuoteBuilderPage() {
           onCancel={handleCancel}
           onCreateProposal={handleCreateProposal}
         />
+
+        {/* Deal Desk Copilot (US-SUPER-008) — advisory drawer; positions itself fixed. */}
+        {isEditing && quoteId && <DealDeskCopilot quoteId={quoteId} />}
       </div>
     </MainLayout>
   );

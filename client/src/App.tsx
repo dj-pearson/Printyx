@@ -89,6 +89,20 @@ const PredictiveServiceDispatchDashboard = React.lazy(
 );
 const ServicePredictions = React.lazy(() => import('@/pages/ServicePredictions'));
 const CustomerRisk = React.lazy(() => import('@/pages/CustomerRisk'));
+const ContractProfitability = React.lazy(() => import('@/pages/ContractProfitability'));
+const ContractPnlDetail = React.lazy(() => import('@/pages/ContractPnlDetail'));
+const RenewalAutoQuote = React.lazy(() => import('@/pages/RenewalAutoQuote'));
+const EmailAutopilot = React.lazy(() => import('@/pages/EmailAutopilot'));
+const ChatbotConsole = React.lazy(() => import('@/pages/ChatbotConsole'));
+const DailyBriefings = React.lazy(() => import('@/pages/DailyBriefings'));
+const CustomerPortalService = React.lazy(() => import('@/pages/CustomerPortalService'));
+const CustomerQbrs = React.lazy(() => import('@/pages/CustomerQbrs'));
+const TruckStocking = React.lazy(() => import('@/pages/TruckStocking'));
+const TonerReplenish = React.lazy(() => import('@/pages/TonerReplenish'));
+const MeterReadReview = React.lazy(() => import('@/pages/MeterReadReview'));
+const KnowledgeSearch = React.lazy(() => import('@/pages/KnowledgeSearch'));
+const VoiceAgent = React.lazy(() => import('@/pages/VoiceAgent'));
+const VoiceTicketClose = React.lazy(() => import('@/pages/VoiceTicketClose'));
 const WhiteLabelDashboard = React.lazy(() => import('@/pages/WhiteLabelDashboard'));
 const AutoSupplyReplenishmentDashboard = React.lazy(
   () => import('@/pages/AutoSupplyReplenishmentDashboard'),
@@ -697,6 +711,20 @@ function Router() {
                 />
                 <Route path="/service/predictions" component={ServicePredictions} />
                 <Route path="/customers/risk" component={CustomerRisk} />
+                <Route path="/contracts/profitability" component={ContractProfitability} />
+                <Route path="/contracts/:id/pnl" component={ContractPnlDetail} />
+                <Route path="/renewals" component={RenewalAutoQuote} />
+                <Route path="/sales/email-autopilot" component={EmailAutopilot} />
+                <Route path="/integrations/chatbot" component={ChatbotConsole} />
+                <Route path="/briefings" component={DailyBriefings} />
+                <Route path="/portal" component={CustomerPortalService} />
+                <Route path="/customers/:id/qbrs" component={CustomerQbrs} />
+                <Route path="/service/truck-stocking" component={TruckStocking} />
+                <Route path="/service/toner-replenish" component={TonerReplenish} />
+                <Route path="/service/meter-reads/review" component={MeterReadReview} />
+                <Route path="/service/voice-agent" component={VoiceAgent} />
+                <Route path="/service/knowledge" component={KnowledgeSearch} />
+                <Route path="/m/service/:ticketId/close-voice" component={VoiceTicketClose} />
                 <Route path="/connect" component={ConnectDashboard} />
                 <Route path="/white-label" component={WhiteLabelDashboard} />
                 <Route
