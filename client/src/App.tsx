@@ -101,6 +101,7 @@ const TruckStocking = React.lazy(() => import('@/pages/TruckStocking'));
 const TonerReplenish = React.lazy(() => import('@/pages/TonerReplenish'));
 const MeterReadReview = React.lazy(() => import('@/pages/MeterReadReview'));
 const KnowledgeSearch = React.lazy(() => import('@/pages/KnowledgeSearch'));
+const VoiceAgent = React.lazy(() => import('@/pages/VoiceAgent'));
 const VoiceTicketClose = React.lazy(() => import('@/pages/VoiceTicketClose'));
 const WhiteLabelDashboard = React.lazy(() => import('@/pages/WhiteLabelDashboard'));
 const AutoSupplyReplenishmentDashboard = React.lazy(
@@ -721,6 +722,7 @@ function Router() {
                 <Route path="/service/truck-stocking" component={TruckStocking} />
                 <Route path="/service/toner-replenish" component={TonerReplenish} />
                 <Route path="/service/meter-reads/review" component={MeterReadReview} />
+                <Route path="/service/voice-agent" component={VoiceAgent} />
                 <Route path="/service/knowledge" component={KnowledgeSearch} />
                 <Route path="/m/service/:ticketId/close-voice" component={VoiceTicketClose} />
                 <Route path="/connect" component={ConnectDashboard} />

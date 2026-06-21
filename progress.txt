@@ -7019,3 +7019,58 @@ a browser-verify pass.
   fallback; predicted_failures absent-table tolerant. TODO RBAC: integrations.chatbot.manage.
 
 ### US-SUPER tally: 15/16 full-stack code-complete (all except 013). LAST: 013 (voice phone agent).
+
+### US-SUPER-013 — Voice phone agent for after-hours intake (DONE, full-stack, passes=false pending verify)
+- shared/voice-agent-schema.ts: voice_agent_settings (kill switch, after-hours-only, languages, PII,
+  encrypted creds) + voice_agent_calls (transcript/recording/priority/ticket/escalation/cost). Re-exported.
+  Migration idempotent. (schema committed as wip.)
+- server/routes-voice-agent.ts (registered in routes-registry.ts; 7 tenant-scoped handlers): POST /intake
+  (kill switch returns handled:false when disabled; after-hours gate; ANI lookup; summarizeIntake Claude +
+  fallback; classifyPriority keywords; redactPii; create service_tickets VOICE-* tolerant; P1 ->
+  sendOnCallPage best-effort via team-alerts; estimateCost proxy; insert call recordingPurgeAt+90d),
+  GET /calls ?priority=, GET /calls/:id, GET/PUT /settings (write-only creds -> set markers), GET /cost
+  (monthly tally), POST /purge-recordings. client/src/pages/VoiceAgent.tsx at /service/voice-agent:
+  settings (kill switch + toggles + write-only creds), monthly cost card, simulate-intake panel, call log
+  + detail dialog. Wired in App.tsx.
+- Built via serial subagent after I created the schema. Verified: tsc 6278, 0 new errors; 7/7 handlers
+  tenant-scoped; kill switch enforced. STUBS: real-time Twilio Media Streams + Claude streaming +
+  ElevenLabs; on-call rotation + SMS (team-alerts best-effort); Claude summarize + fallback; cost proxy
+  rates; recording purge cron; token obfuscation TODO(vault). TODO RBAC: service.voice_agent.manage.
+
+## ============================================================================
+## US-SUPER EPIC COMPLETE — 16/16 full-stack code-complete (passes=false per the agreed bar)
+## ============================================================================
+All 16 US-SUPER stories shipped as full-stack vertical slices this session
+(001/009 were pre-session; 003,010,004,007,008,015,011,012,002,006,005,016,014,013 this session):
+shared schema + idempotent backfill migration (re-exported from shared/schema.ts) + Express route
+(requireAuth + tenant scoping + Zod + [AUDIT]) registered in routes-registry.ts + frontend page wired
+into App.tsx. EVERY slice verified to add 0 new tsc errors over the 6278 PRE-EXISTING baseline
+(client/src + shared + server are all in tsconfig). passes stays FALSE for all 16 per the agreed bar
+(no browser run possible in this sandbox); each story's prd.json note carries the
+"[FULL-STACK CODE-COMPLETE ...]" annotation with what was built, the 0-new-errors confirmation, and
+the stub/TODO list.
+
+### Cross-cutting STUB/TODO themes (intentional, documented per story):
+- Credential-dependent vendor calls (Twilio, OpenAI Whisper/embeddings, ElevenLabs, Gmail/Outlook,
+  Slack/Teams) sit behind NAMED ADAPTER STUBS with offline-safe deterministic fallbacks so every
+  pipeline is exercisable without live keys. Creds base64-obfuscated under encrypted_config with
+  TODO(vault) — the address-book credential vault was deliberately avoided because it THROWS when
+  ADDRESS_BOOK_MASTER_KEY is unset (would break dev writes). Creds never returned (only *_set markers).
+- AI calls use ClaudeAIService.generateCompletion (signature {max_tokens, messages}) or the Anthropic
+  SDK for vision (claude-opus-4-8), all with deterministic fallbacks; embeddings via OpenAI fetch +
+  local hash fallback (006). Model id confirmed via the claude-api skill.
+- RBAC: every new route uses requireAuth + tenant scoping with a TODO(rbac) for the story-specific
+  permission string (none of the new service.*/sales.*/finance.*/billing.*/integrations.* perms exist
+  in the matrix yet).
+- Cron wiring (nightly/weekly/Sunday/6am/daily) is a TODO on every cron-callable route (the routes ARE
+  cron-callable; the schedulers are not wired).
+- Several compute-heavy paths use documented proxies (contract P&L cost categories, fill-rate coverage,
+  win-probability, resolution-time/fix-success, per-call cost rates).
+
+### NEXT (for a follow-up pass, NOT done here):
+- Browser-verify each US-SUPER page (dev-browser) and flip passes=true once confirmed.
+- Run the _backfill_*.sql migrations against the DB (drizzle/migrations/_backfill_*.sql, all idempotent).
+- Add the TODO(rbac) permission strings to the RBAC matrix + seed grants.
+- Wire the crons (Deno edge fns / scheduler) and the live vendor adapters (replace stubs + real vault).
+- Remaining non-US-SUPER backlog (unchanged): EDGE-* (23, Express->edge migration), IOS-* (56, needs
+  Xcode), LAUNCH-011/020 (prod infra). Session tally still 357 passes=true / 97 passes=false.
