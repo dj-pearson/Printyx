@@ -6,6 +6,11 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./server/tests/setup.ts'],
+    // Vitest owns the server unit/integration suites only. Playwright e2e specs
+    // (tests/**) and the standalone mobile/ and printyx-client/ packages have
+    // their own runners and must not be collected here.
+    include: ['server/tests/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['node_modules/**', 'dist/**', 'tests/**', 'mobile/**', 'printyx-client/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

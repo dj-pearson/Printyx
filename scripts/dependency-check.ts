@@ -63,6 +63,7 @@ const TRUSTED_SCOPES = [
   '@uppy',
   '@vitest',
   '@jridgewell',
+  '@tiptap',
 ];
 
 // ============================================================================
@@ -247,7 +248,9 @@ export function checkLockfileIntegrity(rootDir: string): CheckResult {
         // Check if it might be nested
         const found = Object.keys(lockPackages).some((k) => k.endsWith(`/${depName}`));
         if (!found) {
-          findings.push(`Dependency "${depName}" declared in package.json but not found in lockfile`);
+          findings.push(
+            `Dependency "${depName}" declared in package.json but not found in lockfile`,
+          );
         }
       }
     }
@@ -414,12 +417,7 @@ export function runDependencyCheck(rootDir: string): DependencyCheckReport {
 
 function printReport(report: DependencyCheckReport): void {
   console.log(
-    '\n' +
-      '='.repeat(64) +
-      '\n' +
-      '  SEC-007: Dependency Security Check\n' +
-      '='.repeat(64) +
-      '\n',
+    '\n' + '='.repeat(64) + '\n' + '  SEC-007: Dependency Security Check\n' + '='.repeat(64) + '\n',
   );
 
   for (const result of report.results) {

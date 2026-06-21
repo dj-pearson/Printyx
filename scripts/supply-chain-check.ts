@@ -120,6 +120,12 @@ function checkTyposquatting(depNames: string[]): SupplyChainIssue[] {
       const depName = dep.startsWith('@') ? dep : dep;
       const critName = critical.startsWith('@') ? critical : critical;
 
+      // Skip very short critical names (e.g. "pg", "zod"): a Levenshtein
+      // distance of <=2 against a 2-3 char name matches almost any short
+      // package, producing false positives (e.g. "ws" vs "pg"). This mirrors
+      // the length guard in scripts/dependency-check.ts.
+      if (critName.length <= 3) continue;
+
       const distance = levenshteinDistance(depName, critName);
 
       // Flag if within Levenshtein distance of 2 (but not 0, which is exact match)
@@ -162,7 +168,13 @@ function checkLifecycleScripts(lockfilePath: string): SupplyChainIssue[] {
     return issues;
   }
 
-  const dangerousScripts = ['preinstall', 'postinstall', 'install', 'preuninstall', 'postuninstall'];
+  const dangerousScripts = [
+    'preinstall',
+    'postinstall',
+    'install',
+    'preuninstall',
+    'postuninstall',
+  ];
 
   // Check packages in lockfile v2/v3 format
   if (lockfile.packages) {
@@ -266,7 +278,9 @@ function runSupplyChainCheck(): SupplyChainResult {
   if (allIssues.length === 0) {
     console.log('  Status: SAFE - No supply chain issues detected\n');
   } else {
-    console.log(`  Status: ${hasCritical ? 'UNSAFE' : 'WARNINGS'} - ${allIssues.length} issue(s) found\n`);
+    console.log(
+      `  Status: ${hasCritical ? 'UNSAFE' : 'WARNINGS'} - ${allIssues.length} issue(s) found\n`,
+    );
 
     // Group by type
     if (typosquattingIssues.length > 0) {
