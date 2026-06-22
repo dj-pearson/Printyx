@@ -285,9 +285,13 @@ router.post('/schedule', async (req, res) => {
       ...preferences,
     };
 
+    // Only schedule the tasks that were actually requested. An empty taskIds
+    // array means there is nothing to schedule.
+    const tasksToSchedule = mockTasks.filter((task) => taskIds.includes(task.id));
+
     // Schedule tasks with AI
     const schedulingResult = await TaskSchedulingService.scheduleTasksWithAI(
-      mockTasks,
+      tasksToSchedule,
       defaultPreferences,
       existingEvents,
       startDate ? new Date(startDate) : new Date(),

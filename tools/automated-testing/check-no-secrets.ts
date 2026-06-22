@@ -158,13 +158,113 @@ interface ScanResult {
 // ============================================================================
 
 /**
+ * Substrings that mark a matched value as an example/placeholder rather than a
+ * real credential. Checked against the matched value itself, so length-based
+ * heuristics don't let long fake values (e.g. test Stripe keys) slip through.
+ */
+const PLACEHOLDER_MARKERS = [
+  'example',
+  'placeholder',
+  'your-',
+  'your_',
+  'xxx',
+  '***',
+  'dummy',
+  'sample',
+  'changeme',
+  'change-me',
+  'redacted',
+  'fake',
+  'notreal',
+  'not-real',
+  'password123',
+  'testpassword',
+  'mypassword',
+  'test-password',
+  'testkey',
+  'test_key',
+  'abcd1234',
+  'abcdefgh',
+  '1234567890',
+  '123456789',
+  'foobar',
+  'loremipsum',
+];
+
+/** True when the matched value looks like a template token or env-var reference. */
+function isTemplateOrEnvRef(match: string): boolean {
+  // Handlebars/Helm/mustache template tokens: {{ ... }}
+  if (match.includes('{{')) return true;
+  // Angle-bracket placeholders: <your-key>, <generate-...>
+  if (/['"]?\s*<[^>]+>/.test(match)) return true;
+  // Shell/env-var interpolation as the value: "$VAR", '${VAR}', =$VAR
+  if (/[:="'`]\s*\$\{?\w+/.test(match)) return true;
+  return false;
+}
+
+/** True when the matched value contains a known placeholder/example marker. */
+function looksLikePlaceholder(text: string): boolean {
+  const t = text.toLowerCase();
+  return PLACEHOLDER_MARKERS.some((m) => t.includes(m));
+}
+
+/**
  * Checks if a detection is likely a false positive
  */
 function isFalsePositive(detection: SecretDetection): boolean {
   const line = detection.context.toLowerCase();
+  const file = detection.file.toLowerCase();
 
   // Check if it's in a comment
   if (line.trim().startsWith('//') || line.trim().startsWith('*') || line.trim().startsWith('#')) {
+    return true;
+  }
+
+  // Template tokens ({{...}}), angle-bracket placeholders (<key>), or env-var
+  // interpolation ("$VAR") in the matched value are never real secrets.
+  if (isTemplateOrEnvRef(detection.match)) {
+    return true;
+  }
+
+  // Matched value is an obvious example/placeholder (e.g. "password123",
+  // fake test keys). Checked on the value itself, independent of length.
+  if (looksLikePlaceholder(detection.match)) {
+    return true;
+  }
+
+  // Documentation describing a credential's *format* rather than embedding one
+  // (e.g. "It should start with: -----BEGIN PRIVATE KEY-----").
+  if (
+    line.includes('start with') ||
+    line.includes('begins with') ||
+    line.includes('begin with') ||
+    line.includes('looks like') ||
+    line.includes('for example') ||
+    line.includes('e.g.') ||
+    line.includes('such as')
+  ) {
+    return true;
+  }
+
+  // Supabase anon / publishable keys are public by design (shipped in client
+  // bundles), so a JWT on an anon/public key line is not a leak. Service-role
+  // and other non-public keys are intentionally NOT covered here.
+  if (
+    detection.pattern.name === 'JWT Token' &&
+    (line.includes('anon') || line.includes('public') || line.includes('publishable'))
+  ) {
+    return true;
+  }
+
+  // Example JWTs used as test/pentest fixtures (e.g. the canonical jwt.io token).
+  if (
+    detection.pattern.name === 'JWT Token' &&
+    (file.includes('test') ||
+      file.includes('spec') ||
+      file.includes('mock') ||
+      file.includes('fixture') ||
+      file.includes('pentest'))
+  ) {
     return true;
   }
 

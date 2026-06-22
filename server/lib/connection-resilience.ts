@@ -54,6 +54,10 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
     '08000', // PostgreSQL: connection exception
     '08003', // PostgreSQL: connection does not exist
     '08006', // PostgreSQL: connection failure
+    'connection does not exist', // PostgreSQL: 08003 message form
+    'connection failure', // PostgreSQL: 08006 message form
+    'terminating connection', // PostgreSQL: admin/crash shutdown message form
+    'server closed the connection', // PostgreSQL: unexpected connection drop
   ],
 };
 

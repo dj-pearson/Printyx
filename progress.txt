@@ -7074,3 +7074,97 @@ the stub/TODO list.
 - Wire the crons (Deno edge fns / scheduler) and the live vendor adapters (replace stubs + real vault).
 - Remaining non-US-SUPER backlog (unchanged): EDGE-* (23, Express->edge migration), IOS-* (56, needs
   Xcode), LAUNCH-011/020 (prod infra). Session tally still 357 passes=true / 97 passes=false.
+
+## ============================================================================
+## Session 2026-06-21 — CI pipeline unblocked + US-SUPER epic flipped to passing
+## ============================================================================
+
+### Problem discovered
+GitHub Actions CI (ci.yml) had failed on EVERY run for a long time — including
+on `main` (runs #659–#670 all red). Root cause: both the `quality` and `test`
+jobs died at `npm ci` in ~1s with `EBADENGINE`. The runners pinned Node 20 while
+`rollup-plugin-visualizer@7` requires Node >=22, and `.npmrc` has
+`engine-strict=true`. Because `npm ci` never succeeded, NOTHING downstream
+(lint, build, security checks, tests) had ever actually run in CI. "Verify by
+GitHub Actions" was impossible until this was fixed.
+
+### Fixes (commit 87b4396 — ci infra)
+1. Node 20 -> 22 in ci.yml, security-scan.yml, and all 3 Dockerfile stages
+   (matches local dev, already on Node 22).
+2. Quality-gate false positives that would have been the NEXT blocker once
+   npm ci worked:
+   - scripts/dependency-check.ts + scripts/supply-chain-check.ts: typosquat
+     heuristics flagged `ws` vs `pg` (2-char critical name) and `@tiptap/core`
+     vs `cors`. Added a length guard + trusted the `@tiptap` scope.
+   - tools/automated-testing/check-no-secrets.ts: 40 false positives (example
+     passwords, {{template}} tokens, fake test keys, doc "starts with" format
+     descriptions, $env refs, public anon JWTs). Hardened the FP heuristics.
+   - SECURITY: redacted a REAL service_role JWT (signed with a custom, non-
+     default secret) that was committed in
+     documents/COOLIFY_SETUP_EDGE_FUNCTIONS.md. (anon keys left in place —
+     public by design.)
+3. vitest.config.ts: scoped to server/tests/** so vitest stops trying to
+   collect Playwright e2e specs (tests/**) and the standalone mobile/ and
+   printyx-client/ packages (own runners).
+
+### Fixes (commit eda155e — 15 pre-existing test failures)
+Once vitest was correctly scoped, 15 genuine failures surfaced (long masked
+because npm ci failed before tests ran). Each root-caused as a real source bug
+or test/fixture drift — no weakened/skipped assertions:
+- SOURCE: error-sanitizer SQL-redaction regex, connection-resilience retryable
+  PG message matching, task-scheduling overdue-priority tier, ai-routes /health
+  200-degraded, task-routes /schedule honoring taskIds, navigation-permissions
+  CRM section now sales-permission-gated (was always-visible — leaked to
+  service-only users).
+- TEST/INFRA: tests/setup.ts dummy DATABASE_URL fallback (CI's
+  TEST_DATABASE_URL still wins; pg connects lazily), report-execution /
+  report-cache / hierarchical-query-builder / api-endpoints fixtures + a .ts
+  ESM import.
+Result: `npx vitest run` = 46 files / 1204 tests, 0 failed, 0 skipped.
+
+### Verified GREEN on GitHub Actions — PR #179, ci.yml run #671 (commit eda155e)
+- Lint & Typecheck job: npm ci, lint, build, dependency audit, supply-chain,
+  dependency-integrity, secret-scan — ALL success (Node 22).
+- Tests job: npm ci, npm run test, npm run test:integration — ALL success.
+This is the first green ci.yml run in the repo's recent history.
+
+### mobile-ci.yml — reverted to base
+mobile-ci.yml is fundamentally broken (no mobile/package-lock.json exists, so
+its npm cache + npm ci can never work). It is pre-existing breakage unrelated to
+this work; it only ran because the node bump edited the workflow file. Reverted
+that edit so this PR no longer triggers the broken mobile workflow.
+
+### security-scan.yml — KNOWN RED (pre-existing, out of scope)
+With npm ci now working, security-scan.yml's `dependency-audit` job reaches and
+fails at `npm audit --audit-level=high --omit=dev`: 24 high/critical CVEs in
+PROD deps (axios, express, multer, lodash, handlebars, basic-ftp, request/
+form-data/fast-xml-parser via node-quickbooks, imap chain, drizzle-orm, ...).
+Several require SemVer-MAJOR bumps (drizzle-orm, node-quickbooks, imap) with
+real breakage risk. This is a separate dependency-remediation initiative — NOT
+attempted here. ci.yml (the main pipeline) treats npm audit as advisory
+(`|| true`); security-scan.yml does not.
+
+### prd.json — US-SUPER epic flipped to passes=true (16 stories)
+Per the user's CI-green acceptance bar (this session), flipped US-SUPER-001..016
+to passes=true now that ci.yml verifies the full-stack slices green on GitHub
+Actions. Each note carries a [CI-VERIFIED 2026-06-21] stamp recording that the
+slice compiles/builds/lints/tests green, while vendor integrations remain
+documented v1 stubs with deterministic fallbacks.
+Tally: 373 / 454 passes=true (was 357). Remaining 81 false: EDGE-* (Express->
+edge migration), IOS-* (needs Xcode), LAUNCH-011/020 (ops/load testing),
+US-SUPER none remaining.
+
+### NEXT (not done here)
+- Dependency CVE remediation for security-scan.yml green (separate effort;
+  major bumps need per-dep testing).
+- Generate mobile/package-lock.json so mobile-ci.yml can run.
+- EDGE-*/IOS-*/LAUNCH-* backlog unchanged.
+
+### UPDATE — security-scan.yml partial remediation (per user: non-breaking only)
+Ran `npm audit fix` (no --force). Cleared all 8 critical + 10 high prod
+advisories (24 high+critical -> 7 high / 0 critical). Lockfile-only; no declared
+package.json versions changed. Re-verified npm ci + lint + build + 1204 tests +
+all 3 quality-gate security scripts green. Remaining 7 high need SemVer-major
+bumps (drizzle-orm; node-quickbooks -> form-data/underscore; imap -> semver/utf7)
+— deferred. security-scan.yml's high-level audit gate is therefore REDUCED but
+not yet fully green; full green requires the major-version remediation pass.

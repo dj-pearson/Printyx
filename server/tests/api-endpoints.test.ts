@@ -6,15 +6,24 @@
 import request from 'supertest';
 import express from 'express';
 
+// Use ESM imports — bare `require()` of a TypeScript module fails under
+// vitest's ESM runtime (the CommonJS resolver can't resolve the `.ts` source).
+import aiRoutes from '../routes/ai-routes-simple';
+import calendarRoutes from '../routes/calendar-routes';
+import taskRoutes from '../routes/task-routes';
+
 // Mock app setup for testing
 const createTestApp = () => {
   const app = express();
   app.use(express.json());
 
-  // Import routes
-  const aiRoutes = require('../routes/ai-routes-simple').default;
-  const calendarRoutes = require('../routes/calendar-routes').default;
-  const taskRoutes = require('../routes/task-routes').default;
+  // Inject a mock authenticated user. The calendar/task routes read
+  // req.user.{id,tenantId}; without an auth middleware these would throw and
+  // surface as 500s. This mirrors the auth context the real app provides.
+  app.use((req, _res, next) => {
+    (req as any).user = { id: 'user-1', tenantId: 'tenant-1' };
+    next();
+  });
 
   app.use('/api/ai', aiRoutes);
   app.use('/api/calendar', calendarRoutes);

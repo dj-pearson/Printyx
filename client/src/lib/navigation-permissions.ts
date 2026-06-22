@@ -51,8 +51,18 @@ export const SECTION_PERMISSIONS: Record<string, NavigationPermissionRule> = {
   'system-operations': { platformOnly: true },
   'platform-features': { platformOnly: true },
 
-  // Sales Hub - always visible (core CRM functionality)
-  crm: { alwaysVisible: true },
+  // Sales Hub (CRM) - visible to users with any sales permission
+  crm: {
+    requiredPermissions: [
+      'sales.lead.view_own',
+      'sales.lead.view_team',
+      'sales.lead.view_location',
+      'sales.customer.view_own',
+      'sales.customer.view_location',
+      'sales.opportunity.view_own',
+      'sales.quote.create',
+    ],
+  },
   service: {
     requiredPermissions: [
       'service.ticket.view_own',
