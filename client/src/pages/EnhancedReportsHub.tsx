@@ -45,7 +45,6 @@ import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { KPIWidget, KPIGrid } from '@/components/reports/KPIWidget';
 import { ReportViewer } from '@/components/reports/ReportViewer';
-import { DashboardCharts } from '@/components/charts/InteractiveCharts';
 import { getThemeForCategory, THEME_CONFIG } from '@/lib/brandTheme';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -329,46 +328,17 @@ export default function EnhancedReportsHub() {
                   dashboardState.selectedCategory.slice(1)}{' '}
                 Analytics
               </h2>
-              <Badge
-                variant="outline"
-                style={{
-                  backgroundColor:
-                    getThemeForCategory(dashboardState.selectedCategory).primary + '20',
-                  borderColor: getThemeForCategory(dashboardState.selectedCategory).primary,
-                  color: getThemeForCategory(dashboardState.selectedCategory).primary,
-                }}
-              >
-                Interactive Charts
-              </Badge>
             </div>
-            <DashboardCharts
-              charts={[
-                {
-                  id: 'trend-analysis',
-                  title: 'Performance Trends',
-                  data: generateMockChartData('trend'),
-                  type: 'line',
-                  category: dashboardState.selectedCategory,
-                  span: 2,
-                },
-                {
-                  id: 'distribution',
-                  title: 'Distribution Analysis',
-                  data: generateMockChartData('distribution'),
-                  type: 'pie',
-                  category: dashboardState.selectedCategory,
-                },
-                {
-                  id: 'comparison',
-                  title: 'Period Comparison',
-                  data: generateMockChartData('comparison'),
-                  type: 'bar',
-                  category: dashboardState.selectedCategory,
-                },
-              ]}
-              onChartDrillDown={() => {}}
-              loading={reportsLoading}
-            />
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+                <BarChart3 className="h-8 w-8 text-muted-foreground" />
+                <p className="text-sm font-medium">Chart visualizations coming soon</p>
+                <p className="text-sm text-muted-foreground">
+                  Run a report below to view its results. Live trend, distribution, and comparison
+                  charts will appear here once reporting data is wired up.
+                </p>
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -621,36 +591,6 @@ function ReportCard({ report, viewMode, onClick }: ReportCardProps) {
     </Card>
   );
 }
-
-// Generate mock chart data for dashboard
-const generateMockChartData = (type: string) => {
-  switch (type) {
-    case 'trend':
-      return Array.from({ length: 12 }, (_, i) => ({
-        name: new Date(2024, i, 1).toLocaleDateString('en-US', { month: 'short' }),
-        value: Math.floor(Math.random() * 50000) + 10000,
-        target: 40000,
-        location: ['New York', 'Chicago', 'LA'][Math.floor(Math.random() * 3)],
-        region: ['East', 'Central', 'West'][Math.floor(Math.random() * 3)],
-      }));
-    case 'distribution':
-      return [
-        { name: 'New Customers', value: 400, location: 'All', region: 'All' },
-        { name: 'Existing Customers', value: 300, location: 'All', region: 'All' },
-        { name: 'Renewals', value: 200, location: 'All', region: 'All' },
-        { name: 'Upgrades', value: 100, location: 'All', region: 'All' },
-      ];
-    case 'comparison':
-      return [
-        { name: 'Q1', value: 45000, comparison: 42000, location: 'NYC', region: 'East' },
-        { name: 'Q2', value: 52000, comparison: 48000, location: 'CHI', region: 'Central' },
-        { name: 'Q3', value: 48000, comparison: 45000, location: 'LA', region: 'West' },
-        { name: 'Q4', value: 61000, comparison: 55000, location: 'NYC', region: 'East' },
-      ];
-    default:
-      return [];
-  }
-};
 
 const categoryIcons = {
   sales: Target,

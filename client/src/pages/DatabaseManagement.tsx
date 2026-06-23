@@ -84,7 +84,7 @@ interface BackupInfo {
 interface QueryLog {
   id: string;
   query: string;
-  duration: number;
+  duration: number | null;
   timestamp: string;
   user: string;
   database: string;
@@ -340,7 +340,7 @@ export default function DatabaseManagement() {
   const queryLogs: QueryLog[] = logs.slice(0, 20).map((log: any) => ({
     id: log.id,
     query: `${log.action} on ${log.tableName}${log.recordId ? ` (ID: ${log.recordId})` : ''}`,
-    duration: Math.floor(Math.random() * 1000) + 10, // Would be real timing data
+    duration: null, // Audit logs do not capture query timing; show "—" rather than fabricated data
     timestamp: log.timestamp,
     user: log.userName || 'System',
     database: 'printyx_main',
@@ -1139,7 +1139,9 @@ export default function DatabaseManagement() {
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
                               <Badge className={getStatusColor(log.status)}>{log.status}</Badge>
-                              <Badge variant="outline">{log.duration}ms</Badge>
+                              <Badge variant="outline">
+                                {log.duration != null ? `${log.duration}ms` : '—'}
+                              </Badge>
                               <span className="text-sm text-gray-500">
                                 {format(new Date(log.timestamp), 'MMM dd, HH:mm:ss')}
                               </span>

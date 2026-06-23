@@ -125,6 +125,7 @@ router.get('/api/content/blog/:slug', optionalAuth, async (req: any, res) => {
     await db
       .update(blogPosts)
       .set({ viewCount: sql`${blogPosts.viewCount} + 1` })
+      // Keyed by globally-unique UUID; this is public marketing content (tenantId nullable / platform-level).
       .where(eq(blogPosts.id, post.id));
 
     // Get FAQs

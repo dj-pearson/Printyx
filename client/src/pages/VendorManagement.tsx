@@ -470,6 +470,13 @@ export default function VendorManagement() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {filteredVendors.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        No vendors found.
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {filteredVendors.map((vendor: Vendor) => (
                     <TableRow key={vendor.id}>
                       <TableCell>

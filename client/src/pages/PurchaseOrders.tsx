@@ -953,6 +953,13 @@ export default function PurchaseOrders() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {filteredPOs.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                        No purchase orders found.
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {filteredPOs.map((po: PurchaseOrder) => {
                     const StatusIcon = statusIcons[po.status as keyof typeof statusIcons] || Clock;
                     const vendor = vendors.find((v) => v.id === po.vendorId);

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import { IntelligentAlertsService } from './services/intelligent-alerts-service';
 import { db } from './db';
 import { createModuleLogger } from './lib/logger';
@@ -14,14 +14,26 @@ import {
   resolutionSuggestionFeedback,
 } from '@shared/schema';
 import { eq, and, desc, sql, gte, inArray } from 'drizzle-orm';
+import { requireAuth } from './replitAuth';
+import { enhanceUserContext } from './middleware/rbac-route-helper';
+import { getTenantId } from './utils/auth-helpers';
 
 /**
  * INTELLIGENT ALERTS & INCIDENT RESPONSE ROUTES
  *
  * AI-powered security alert management with automated triage, containment, and resolution.
+ *
+ * SECURITY NOTE: This router is not currently mounted anywhere. Before mounting it, keep the
+ * router-level requireAuth + enhanceUserContext guards below and ensure EVERY handler scopes
+ * its queries by the authenticated tenant (getTenantId(req)) — several handlers below still
+ * key off body/path ids only and must be tenant-scoped before exposure.
  */
 
 const router = Router();
+
+// Defensive guards so this router is never anonymous/cross-tenant if it gets mounted.
+router.use(requireAuth as RequestHandler);
+router.use(enhanceUserContext as RequestHandler);
 
 // ============================================================================
 // ALERT TRIAGE
@@ -79,8 +91,15 @@ router.post('/alerts/triage', async (req, res) => {
  */
 router.get('/alerts/:alertId/triage', async (req, res) => {
   try {
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
     const triage = await db.query.alertTriageResults.findFirst({
-      where: eq(alertTriageResults.alertId, req.params.alertId),
+      where: and(
+        eq(alertTriageResults.alertId, req.params.alertId),
+        eq(alertTriageResults.tenantId, tenantId),
+      ),
       orderBy: desc(alertTriageResults.createdAt),
     });
 
@@ -109,6 +128,11 @@ router.put('/alerts/:alertId/triage/:triageId/review', async (req, res) => {
       });
     }
 
+    const tenantId = getTenantId(req);
+    if (!tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+
     const [updated] = await db
       .update(alertTriageResults)
       .set({
@@ -118,8 +142,17 @@ router.put('/alerts/:alertId/triage/:triageId/review', async (req, res) => {
         classificationAccurate,
         reviewNotes,
       })
-      .where(eq(alertTriageResults.id, req.params.triageId))
+      .where(
+        and(
+          eq(alertTriageResults.id, req.params.triageId),
+          eq(alertTriageResults.tenantId, tenantId),
+        ),
+      )
       .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Triage result not found' });
+    }
 
     res.json({
       success: true,

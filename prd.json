@@ -8095,8 +8095,8 @@
         "Build passes: npm run build"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "HIGH/MEDIUM (dead-UI audit). Fake metrics presented as live dashboards erode trust."
+      "passes": true,
+      "notes": "HIGH/MEDIUM (dead-UI audit). Fake metrics presented as live dashboards erode trust. [DONE: removed generateMockChartData() (Math.random fabricated trend metrics) from EnhancedReportsHub and the now-dead DashboardCharts import \u2014 replaced with a labeled \"Chart visualizations coming soon\" empty state. DatabaseManagement query-log duration no longer fabricated with Math.random \u2014 set to null (audit logs have no timing) and rendered as \"\u2014\". 0 net new tsc errors (total held at 6278); build passes.]"
     },
     {
       "id": "NEW-UX-005",
@@ -8109,8 +8109,8 @@
         "Build passes: npm run build"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "MEDIUM (dead-UI audit). Tables go from isLoading spinner straight to .map with no length===0 branch."
+      "passes": true,
+      "notes": "MEDIUM (dead-UI audit). Tables go from isLoading spinner straight to .map with no length===0 branch. [DONE: added length===0 empty-state rows to PurchaseOrders, VendorManagement, ProductManagementHub, ProductHubUnified (pricing table), enhanced-crm list view, and CustomerFinancials payment-history + contracts tables. 0 net new tsc errors; build passes.]"
     },
     {
       "id": "NEW-SEC-003",
@@ -8137,8 +8137,8 @@
         "Build passes: npm run build"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": "MEDIUM/LOW (security audit). Dead router not exploitable until mounted but should be cleaned up."
+      "passes": true,
+      "notes": "MEDIUM/LOW (security audit). Dead router not exploitable until mounted but should be cleaned up. [DONE (with documented scope decision): hardened the orphaned, never-mounted routes-intelligent-alerts.ts \u2014 added router-level requireAuth + enhanceUserContext guards, tenant-scoped the flagged GET/PUT triage handlers (alertTriageResults has tenant_id) with 404-on-not-found, and a top-of-file SECURITY NOTE requiring tenant scoping before any future mount (0 errors added to that already-broken dead file; it carries 37 pre-existing errors incl. a missing z import). View-count increments were deliberately NOT tenant-scoped: blog/guides/case-studies/landing pages are public marketing content with a NULLABLE/platform-level tenant_id, keyed by globally-unique UUID, so cross-tenant collision is impossible and scoping would both break types and wrongly drop platform-content increments. 0 net new tsc errors; build passes.]"
     }
   ]
 }

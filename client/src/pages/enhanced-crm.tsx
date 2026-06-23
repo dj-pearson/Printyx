@@ -442,6 +442,13 @@ export default function EnhancedCRM() {
                     </tr>
                   </thead>
                   <tbody>
+                    {pipelineRecords.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                          No records found.
+                        </td>
+                      </tr>
+                    )}
                     {pipelineRecords.map((record) => (
                       <tr key={record.id} className="border-b hover:bg-muted/50">
                         <td className="p-4">

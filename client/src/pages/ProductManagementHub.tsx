@@ -302,6 +302,16 @@ export default function ProductManagementHub() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+                  {filteredProducts.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={isCompanyAdmin ? 8 : 7}
+                        className="text-center text-muted-foreground py-8"
+                      >
+                        No products found.
+                      </TableCell>
+                    </TableRow>
+                  )}
                   {filteredProducts.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell className="font-medium">{product.name}</TableCell>

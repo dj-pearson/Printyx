@@ -1053,6 +1053,16 @@ export default function ProductHubUnified() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
+                      {filteredPricingProducts.length === 0 && (
+                        <TableRow>
+                          <TableCell
+                            colSpan={isCompanyAdmin ? 8 : 7}
+                            className="text-center text-muted-foreground py-8"
+                          >
+                            No products found.
+                          </TableCell>
+                        </TableRow>
+                      )}
                       {filteredPricingProducts.map((product) => (
                         <TableRow key={product.id}>
                           <TableCell className="font-medium">{product.name}</TableCell>

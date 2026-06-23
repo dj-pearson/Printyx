@@ -406,6 +406,13 @@ export function CustomerFinancials({ customerId, customerName }: CustomerFinanci
                       </TableRow>
                     </TableHeader>
                     <TableBody>
+                      {paymentHistory.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            No payment history yet.
+                          </TableCell>
+                        </TableRow>
+                      )}
                       {paymentHistory.map((payment) => (
                         <TableRow key={payment.id}>
                           <TableCell>{formatDate(payment.paymentDate)}</TableCell>
@@ -461,6 +468,13 @@ export function CustomerFinancials({ customerId, customerName }: CustomerFinanci
                       </TableRow>
                     </TableHeader>
                     <TableBody>
+                      {contracts.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                            No service contracts yet.
+                          </TableCell>
+                        </TableRow>
+                      )}
                       {contracts.map((contract) => (
                         <TableRow key={contract.id}>
                           <TableCell className="font-mono text-sm">
