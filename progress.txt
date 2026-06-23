@@ -7124,3 +7124,39 @@ state (with Retry) keyed off the summary query's isLoading/isError.
   FinancialIntelligence, PerformanceMonitoring, PlatformAnalytics, SecurityDashboard, etc.).
 - NEW-SEC-003 (HIGH): Zod validation on PUT /api/leads/:id + document-template PUT.
 - NEW-UX-004/005, NEW-SEC-004.
+
+## ============================================================================
+## SESSION (cont.): next 3 new audit stories shipped — NEW-SEC-003, NEW-UX-003, NEW-UX-002
+## ============================================================================
+NEW-SEC-003 (HIGH — mass-assignment): PUT /api/leads/:id (server/routes-crm-core.ts) now
+validates with insertLeadSchema.partial().parse and strips tenantId/id/createdBy before
+storage.updateLead. PUT /api/document-templates/:id (server/routes-document-automation.ts)
+validates with insertDocumentTemplateSchema.partial() and casts the .set payload to
+Partial<typeof documentTemplates.$inferInsert>.
+
+NEW-UX-003 (HIGH — misleading no-op buttons): PlatformBusinessRecords bulk Delete/Assign
+no longer confirm()-then-toast (which falsely implied records were deleted) — disabled with
+a "(soon)" affordance. AdvancedWorkflowsDashboard (workflow builder / execute),
+role-dashboards (Clock In / Report Issue / Schedule Call), context-panel (Update Status /
+Add Note), and AIEmployeeDashboard (Assign Task) replaced silent console.log handlers with
+honest "not available yet" toasts (added useToast to each). DatabaseManagement "Create
+Backup" + SEO "Submit to Google" already showed honest "coming soon" toasts — left as-is.
+
+NEW-UX-002 (MED/HIGH — missing loading/error states): created a reusable
+client/src/components/ui/dashboard-state.tsx (DashboardSkeleton + DashboardError-with-Retry)
+and wired loading + error guards into AdvancedReporting, FinancialIntelligenceDashboard,
+PerformanceMonitoring (now uses its previously-unused isLoading), PlatformAnalytics,
+SecurityDashboard, and SalesCommandCenter — each keyed off the page's primary query. The
+error state also stops fabricated-default numbers from rendering on failure. Full removal of
+the hardcoded fallback constants in PlatformAnalytics (e.g. ltvCacRatio || 5.67) remains a
+follow-up.
+
+### Verification (sandbox bar): npx tsc --noEmit total held at the 6278 pre-existing baseline
+(0 net new errors; the new dashboard-state.tsx is error-free); npm run build PASS (~31s);
+prettier applied to all changed files. passes=true for NEW-SEC-003/UX-002/UX-003.
+Session tally: 363 passes=true / 463 total.
+
+### NEXT new backlog: NEW-UX-004 (remove Math.random mock metrics in EnhancedReportsHub +
+DatabaseManagement), NEW-UX-005 (empty-state rows for PurchaseOrders/VendorManagement/
+ProductManagementHub/enhanced-crm/CustomerFinancials tables), NEW-SEC-004 (tenant-scope
+view-count writes + retire unmounted routes-intelligent-alerts.ts).

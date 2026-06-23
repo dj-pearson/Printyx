@@ -1,6 +1,7 @@
 // client/src/pages/AIEmployeeDashboard.tsx
 import React, { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/main-layout';
+import { useToast } from '@/hooks/use-toast';
 import {
   Card,
   CardHeader,
@@ -206,6 +207,7 @@ const mockAnalytics: AnalyticsData = {
 };
 
 const AIEmployeeDashboard: React.FC = () => {
+  const { toast } = useToast();
   const [employees, setEmployees] = useState<AIEmployee[]>(mockEmployees);
   const [analytics, setAnalytics] = useState<AnalyticsData>(mockAnalytics);
   const [selectedEmployee, setSelectedEmployee] = useState<AIEmployee | null>(null);
@@ -254,9 +256,11 @@ const AIEmployeeDashboard: React.FC = () => {
     }
   };
 
-  const handleAssignTask = (employeeId: string) => {
-    // Mock task assignment
-    console.log('Assigning task to employee:', employeeId);
+  const handleAssignTask = (_employeeId: string) => {
+    toast({
+      title: 'Task assignment not available yet',
+      description: 'Assigning tasks to AI employees is coming soon.',
+    });
   };
 
   const handleToggleEmployee = (employeeId: string) => {

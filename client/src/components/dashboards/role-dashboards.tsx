@@ -21,6 +21,7 @@ import {
   QuickActions,
 } from './dashboard-widgets';
 import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 // ============================================================================
 // SERVICE MANAGER DASHBOARD
@@ -190,6 +191,7 @@ export function ServiceManagerDashboard() {
 // ============================================================================
 
 export function SalesRepDashboard() {
+  const { toast } = useToast();
   const { data, isLoading } = useQuery({
     queryKey: ['/api/dashboards/sales-rep'],
     queryFn: async () => {
@@ -307,7 +309,11 @@ export function SalesRepDashboard() {
               {
                 label: 'Schedule Call',
                 icon: <Calendar className="h-5 w-5" />,
-                onClick: () => console.log('Schedule call'),
+                onClick: () =>
+                  toast({
+                    title: 'Scheduling not available yet',
+                    description: 'Call scheduling is coming soon.',
+                  }),
               },
             ]}
           />
@@ -333,6 +339,7 @@ export function SalesRepDashboard() {
 // ============================================================================
 
 export function TechnicianDashboard() {
+  const { toast } = useToast();
   const { data, isLoading } = useQuery({
     queryKey: ['/api/dashboards/technician'],
     queryFn: async () => {
@@ -420,7 +427,11 @@ export function TechnicianDashboard() {
             label: 'Clock In',
             icon: <CheckCircle className="h-5 w-5" />,
             variant: 'default',
-            onClick: () => console.log('Clock in'),
+            onClick: () =>
+              toast({
+                title: 'Clock-in not available yet',
+                description: 'Time clock is coming soon.',
+              }),
           },
           {
             label: 'View Route',
@@ -435,7 +446,11 @@ export function TechnicianDashboard() {
           {
             label: 'Report Issue',
             icon: <AlertCircle className="h-5 w-5" />,
-            onClick: () => console.log('Report issue'),
+            onClick: () =>
+              toast({
+                title: 'Issue reporting not available yet',
+                description: 'Reporting an issue is coming soon.',
+              }),
           },
         ]}
       />

@@ -14,6 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
 import {
   Workflow,
   Zap,
@@ -303,6 +304,7 @@ const mockIndustryTemplates: Record<string, WorkflowTemplate[]> = {
 };
 
 const AdvancedWorkflowsDashboard: React.FC = () => {
+  const { toast } = useToast();
   const [dashboardData, setDashboardData] = useState<DashboardData>(mockDashboardData);
   const [selectedIndustry, setSelectedIndustry] = useState<string>('all');
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
@@ -370,14 +372,18 @@ const AdvancedWorkflowsDashboard: React.FC = () => {
     }
   };
 
-  const handleExecuteWorkflow = (templateId: string) => {
-    console.log('Executing workflow:', templateId);
-    // In real implementation, this would call the API
+  const handleExecuteWorkflow = (_templateId: string) => {
+    toast({
+      title: 'Workflow execution not available yet',
+      description: 'Running workflow templates is coming soon.',
+    });
   };
 
   const handleCreateCustomWorkflow = () => {
-    console.log('Opening workflow builder');
-    // In real implementation, this would open the workflow builder
+    toast({
+      title: 'Workflow Builder not available yet',
+      description: 'The custom workflow builder is coming soon.',
+    });
   };
 
   return (

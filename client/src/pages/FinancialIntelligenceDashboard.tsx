@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DashboardSkeleton, DashboardError } from '@/components/ui/dashboard-state';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -138,7 +139,12 @@ export default function FinancialIntelligenceDashboard() {
   const [alertFilter, setAlertFilter] = useState<'all' | 'critical' | 'overdue'>('all');
 
   // Fetch financial summary
-  const { data: financialSummary } = useQuery<FinancialSummary>({
+  const {
+    data: financialSummary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+    refetch: refetchSummary,
+  } = useQuery<FinancialSummary>({
     queryKey: ['/api/reports/financial-summary', selectedPeriod, selectedTerritory],
     queryFn: () =>
       apiRequest(
@@ -212,6 +218,31 @@ export default function FinancialIntelligenceDashboard() {
   // Get trend color and icon
   const getTrendColor = (value: number) => (value >= 0 ? 'text-green-600' : 'text-red-600');
   const getTrendIcon = (value: number) => (value >= 0 ? ArrowUp : ArrowDown);
+
+  if (summaryLoading) {
+    return (
+      <MainLayout
+        title="Financial Intelligence"
+        description="Comprehensive financial analytics with payment monitoring and cash flow insights"
+      >
+        <DashboardSkeleton />
+      </MainLayout>
+    );
+  }
+
+  if (summaryError) {
+    return (
+      <MainLayout
+        title="Financial Intelligence"
+        description="Comprehensive financial analytics with payment monitoring and cash flow insights"
+      >
+        <DashboardError
+          onRetry={() => refetchSummary()}
+          message="Failed to load financial data. Please try again."
+        />
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout

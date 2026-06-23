@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { DashboardSkeleton, DashboardError } from '@/components/ui/dashboard-state';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +54,12 @@ export default function PlatformAnalytics() {
   const [activeTab, setActiveTab] = useState('overview');
 
   // Fetch analytics data
-  const { data: revenueMetrics } = useQuery({
+  const {
+    data: revenueMetrics,
+    isLoading: revenueLoading,
+    isError: revenueError,
+    refetch: refetchRevenue,
+  } = useQuery({
     queryKey: [`/api/platform-analytics/revenue-metrics?timeframe=${timeframe}`],
   });
 
@@ -125,6 +131,25 @@ export default function PlatformAnalytics() {
   const formatPercent = (value: number) => {
     return `${value.toFixed(1)}%`;
   };
+
+  if (revenueLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <DashboardSkeleton />
+      </div>
+    );
+  }
+
+  if (revenueError) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <DashboardError
+          onRetry={() => refetchRevenue()}
+          message="Failed to load platform analytics. Please try again."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">

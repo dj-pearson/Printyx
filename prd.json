@@ -8064,8 +8064,8 @@
         "Build passes: npm run build"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "MEDIUM/HIGH (UI/UX audit). ~10 dashboards destructure {data} only; no isLoading/isError UI."
+      "passes": true,
+      "notes": "MEDIUM/HIGH (UI/UX audit). ~10 dashboards destructure {data} only; no isLoading/isError UI. [DONE: added loading skeleton + error state (Retry) to AdvancedReporting, FinancialIntelligence, PerformanceMonitoring, PlatformAnalytics, SecurityDashboard, SalesCommandCenter, keyed off each page primary query, via new shared client/src/components/ui/dashboard-state.tsx (DashboardSkeleton/DashboardError). PerformanceMonitoring now uses its previously-unused isLoading. Error state prevents fabricated-default values from rendering on failure; full removal of hardcoded fallback constants in PlatformAnalytics remains a follow-up. 0 new tsc errors; build passes.]"
     },
     {
       "id": "NEW-UX-003",
@@ -8080,8 +8080,8 @@
         "Build passes: npm run build"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "HIGH (dead-UI audit). confirm() dialog actively misleads users that records were deleted."
+      "passes": true,
+      "notes": "HIGH (dead-UI audit). confirm() dialog actively misleads users that records were deleted. [DONE: PlatformBusinessRecords bulk Delete/Assign no longer confirm-then-noop (disabled with \"(soon)\" label); AdvancedWorkflows builder/execute, role-dashboards Clock In/Report Issue/Schedule Call, context-panel Update Status/Add Note, and AIEmployeeDashboard Assign Task now toast an honest \"not available yet\" instead of silent console.log. DatabaseManagement \"Create Backup\" and SEO \"Submit to Google\" already show honest \"coming soon\" toasts (left as-is). 0 new tsc errors; build passes.]"
     },
     {
       "id": "NEW-UX-004",
@@ -8123,8 +8123,8 @@
         "Build passes: npm run build"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "HIGH (security audit). Create handlers validate; updates spread raw req.body. Document-template cross-tenant is already mitigated by a prior tenant-scoped findFirst -- validation only."
+      "passes": true,
+      "notes": "HIGH (security audit). Create handlers validate; updates spread raw req.body. Document-template cross-tenant is already mitigated by a prior tenant-scoped findFirst -- validation only. [DONE: PUT /api/leads/:id now validates with insertLeadSchema.partial() (strips tenantId/id/createdBy); PUT /api/document-templates/:id validates with insertDocumentTemplateSchema.partial() + casts set payload to Partial<$inferInsert>. 0 new tsc errors over baseline (total held at 6278); build passes.]"
     },
     {
       "id": "NEW-SEC-004",

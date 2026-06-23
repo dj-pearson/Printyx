@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import MainLayout from '@/components/layout/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DashboardSkeleton, DashboardError } from '@/components/ui/dashboard-state';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -65,7 +66,12 @@ export default function PerformanceMonitoring() {
     to: new Date(),
   });
 
-  const { data: performanceMetrics, isLoading } = useQuery<PerformanceMetrics>({
+  const {
+    data: performanceMetrics,
+    isLoading,
+    isError,
+    refetch: refetchMetrics,
+  } = useQuery<PerformanceMetrics>({
     queryKey: ['/api/performance/metrics'],
   });
 
@@ -172,6 +178,31 @@ export default function PerformanceMonitoring() {
   };
 
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+
+  if (isLoading) {
+    return (
+      <MainLayout
+        title="Performance Monitoring"
+        description="Monitor system performance, resource usage, and application health"
+      >
+        <DashboardSkeleton />
+      </MainLayout>
+    );
+  }
+
+  if (isError) {
+    return (
+      <MainLayout
+        title="Performance Monitoring"
+        description="Monitor system performance, resource usage, and application health"
+      >
+        <DashboardError
+          onRetry={() => refetchMetrics()}
+          message="Failed to load performance metrics. Please try again."
+        />
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout

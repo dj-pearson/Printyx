@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import MainLayout from '@/components/layout/main-layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { DashboardSkeleton, DashboardError } from '@/components/ui/dashboard-state';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -100,7 +101,12 @@ export default function SalesCommandCenter() {
   });
 
   // Pipeline forecast summary (deals + quotes + proposals)
-  const { data: forecastData } = useQuery<ForecastData>({
+  const {
+    data: forecastData,
+    isLoading: forecastLoading,
+    isError: forecastError,
+    refetch: refetchForecast,
+  } = useQuery<ForecastData>({
     queryKey: ['/api/pipeline-forecast', selectedForecast, period, ownerScope],
     queryFn: () => {
       let url = `/api/pipeline-forecast`;
@@ -167,6 +173,31 @@ export default function SalesCommandCenter() {
     quotes: FileText,
     proposals: Users,
   };
+
+  if (forecastLoading) {
+    return (
+      <MainLayout
+        title="Sales Command Center"
+        description="Unified KPIs, goals, pipeline, and forecasting for managers and reps"
+      >
+        <DashboardSkeleton />
+      </MainLayout>
+    );
+  }
+
+  if (forecastError) {
+    return (
+      <MainLayout
+        title="Sales Command Center"
+        description="Unified KPIs, goals, pipeline, and forecasting for managers and reps"
+      >
+        <DashboardError
+          onRetry={() => refetchForecast()}
+          message="Failed to load sales forecast. Please try again."
+        />
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout

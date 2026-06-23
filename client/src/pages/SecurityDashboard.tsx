@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DashboardSkeleton, DashboardError } from '@/components/ui/dashboard-state';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -49,7 +50,12 @@ interface SecurityEvent {
 }
 
 export default function SecurityDashboard() {
-  const { data: overview } = useQuery<SecurityOverview>({
+  const {
+    data: overview,
+    isLoading: overviewLoading,
+    isError: overviewError,
+    refetch: refetchOverview,
+  } = useQuery<SecurityOverview>({
     queryKey: ['/api/security/overview'],
     queryFn: () => apiRequest('/api/security/overview'),
     refetchInterval: 30000, // Refresh every 30s
@@ -68,6 +74,25 @@ export default function SecurityDashboard() {
   });
 
   const stats = overview?.overview;
+
+  if (overviewLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        <DashboardSkeleton />
+      </div>
+    );
+  }
+
+  if (overviewError) {
+    return (
+      <div className="p-6 space-y-6">
+        <DashboardError
+          onRetry={() => refetchOverview()}
+          message="Failed to load security data. Please try again."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -177,7 +202,9 @@ export default function SecurityDashboard() {
                           {login.lockType === 'permanent' ? 'Locked (Admin)' : 'Locked'}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-xs">Active</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          Active
+                        </Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -222,13 +249,9 @@ export default function SecurityDashboard() {
                     <TableCell className="font-mono text-xs">
                       {event.userId ? `${event.userId.slice(0, 8)}...` : '-'}
                     </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {event.ipAddress ?? '-'}
-                    </TableCell>
+                    <TableCell className="font-mono text-xs">{event.ipAddress ?? '-'}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {event.createdAt
-                        ? new Date(event.createdAt).toLocaleTimeString()
-                        : '-'}
+                      {event.createdAt ? new Date(event.createdAt).toLocaleTimeString() : '-'}
                     </TableCell>
                   </TableRow>
                 )) ?? (

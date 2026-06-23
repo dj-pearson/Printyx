@@ -23,6 +23,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { Link } from 'wouter';
 
@@ -68,6 +69,7 @@ interface RelatedRecord {
 }
 
 export function ContextPanel({ entityType, entityId, entityName, onClose }: ContextPanelProps) {
+  const { toast } = useToast();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Fetch context data
@@ -222,12 +224,20 @@ export function ContextPanel({ entityType, entityId, entityName, onClose }: Cont
           {
             label: 'Update Status',
             icon: <AlertCircle className="h-4 w-4" />,
-            onClick: () => console.log('Update status'),
+            onClick: () =>
+              toast({
+                title: 'Status update not available here yet',
+                description: 'Open the ticket to change its status.',
+              }),
           },
           {
             label: 'Add Note',
             icon: <FileText className="h-4 w-4" />,
-            onClick: () => console.log('Add note'),
+            onClick: () =>
+              toast({
+                title: 'Adding notes not available here yet',
+                description: 'Open the ticket to add a note.',
+              }),
           },
           {
             label: 'View Customer',

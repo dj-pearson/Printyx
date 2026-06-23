@@ -140,12 +140,16 @@ router.put('/api/document-templates/:id', async (req: Request, res: Response) =>
       return res.status(404).json({ error: 'Template not found' });
     }
 
+    // Validate + strip immutable/ownership fields (no mass-assignment)
+    const { tenantId: _t, id: _id, createdBy: _c, ...rest } = req.body ?? {};
+    const validatedData = insertDocumentTemplateSchema.partial().parse(rest);
+
     const [updated] = await db
       .update(documentTemplates)
       .set({
-        ...req.body,
+        ...validatedData,
         updatedAt: new Date(),
-      })
+      } as Partial<typeof documentTemplates.$inferInsert>)
       .where(eq(documentTemplates.id, parseInt(id)))
       .returning();
 
