@@ -175,7 +175,12 @@ export default function ExecutiveDashboard() {
   const [selectedView, setSelectedView] = useState<'overview' | 'detailed'>('overview');
 
   // Fetch executive summary
-  const { data: executiveSummary } = useQuery<ExecutiveSummary>({
+  const {
+    data: executiveSummary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+    refetch: refetchSummary,
+  } = useQuery<ExecutiveSummary>({
     queryKey: ['/api/reports/executive-summary', selectedPeriod],
     queryFn: () => apiRequest(`/api/reports/executive-summary?period=${selectedPeriod}`),
   });
@@ -254,6 +259,45 @@ export default function ExecutiveDashboard() {
         return 'border-blue-200 bg-blue-50';
     }
   };
+
+  if (summaryLoading) {
+    return (
+      <MainLayout
+        title="Executive Dashboard"
+        description="Strategic insights and cross-functional performance metrics"
+      >
+        <div className="space-y-6">
+          <div className="h-24 bg-muted animate-pulse rounded-lg" />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-40 bg-muted animate-pulse rounded-lg" />
+            ))}
+          </div>
+          <div className="h-80 bg-muted animate-pulse rounded-lg" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (summaryError) {
+    return (
+      <MainLayout
+        title="Executive Dashboard"
+        description="Strategic insights and cross-functional performance metrics"
+      >
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>Failed to load executive summary. Please try again.</span>
+            <Button variant="outline" size="sm" onClick={() => refetchSummary()}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout
@@ -344,39 +388,39 @@ export default function ExecutiveDashboard() {
                   <DollarSign className="h-8 w-8 text-green-600" />
                   <Badge
                     variant={
-                      (executiveSummary?.revenue.attainment || 0) >= 100
+                      (executiveSummary?.revenue?.attainment || 0) >= 100
                         ? 'default'
-                        : (executiveSummary?.revenue.attainment || 0) >= 85
+                        : (executiveSummary?.revenue?.attainment || 0) >= 85
                           ? 'secondary'
                           : 'destructive'
                     }
                   >
-                    {executiveSummary?.revenue.attainment.toFixed(0) || 0}%
+                    {executiveSummary?.revenue?.attainment?.toFixed(0) || 0}%
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Revenue</p>
                   <p className="text-2xl font-bold">
-                    ${executiveSummary?.revenue.total?.toLocaleString() || '0'}
+                    ${executiveSummary?.revenue?.total?.toLocaleString() || '0'}
                   </p>
                   <div className="flex items-center text-xs mt-1">
-                    {(executiveSummary?.revenue.growth || 0) >= 0 ? (
+                    {(executiveSummary?.revenue?.growth || 0) >= 0 ? (
                       <ArrowUp className="h-3 w-3 mr-1 text-green-600" />
                     ) : (
                       <ArrowDown className="h-3 w-3 mr-1 text-red-600" />
                     )}
                     <span
                       className={
-                        (executiveSummary?.revenue.growth || 0) >= 0
+                        (executiveSummary?.revenue?.growth || 0) >= 0
                           ? 'text-green-600'
                           : 'text-red-600'
                       }
                     >
-                      {(executiveSummary?.revenue.growth || 0) >= 0 ? '+' : ''}
-                      {executiveSummary?.revenue.growth?.toFixed(1) || 0}%
+                      {(executiveSummary?.revenue?.growth || 0) >= 0 ? '+' : ''}
+                      {executiveSummary?.revenue?.growth?.toFixed(1) || 0}%
                     </span>
                   </div>
-                  <Progress value={executiveSummary?.revenue.attainment || 0} className="mt-2" />
+                  <Progress value={executiveSummary?.revenue?.attainment || 0} className="mt-2" />
                 </div>
               </CardContent>
             </Card>
@@ -389,19 +433,19 @@ export default function ExecutiveDashboard() {
                 <div className="flex items-center justify-between mb-4">
                   <Target className="h-8 w-8 text-blue-600" />
                   <Badge variant="outline">
-                    {executiveSummary?.sales.closeRate.toFixed(1) || 0}%
+                    {executiveSummary?.sales?.closeRate?.toFixed(1) || 0}%
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Sales Pipeline</p>
                   <p className="text-2xl font-bold">
-                    ${executiveSummary?.sales.pipelineValue?.toLocaleString() || '0'}
+                    ${executiveSummary?.sales?.pipelineValue?.toLocaleString() || '0'}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {executiveSummary?.sales.dealsWon || 0} deals won this period
+                    {executiveSummary?.sales?.dealsWon || 0} deals won this period
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Avg cycle: {executiveSummary?.sales.salesCycleTime || 0} days
+                    Avg cycle: {executiveSummary?.sales?.salesCycleTime || 0} days
                   </p>
                 </div>
               </CardContent>
@@ -416,24 +460,24 @@ export default function ExecutiveDashboard() {
                   <Users className="h-8 w-8 text-purple-600" />
                   <Badge
                     variant={
-                      (executiveSummary?.service.customerSatisfaction || 0) >= 4.5
+                      (executiveSummary?.service?.customerSatisfaction || 0) >= 4.5
                         ? 'default'
-                        : (executiveSummary?.service.customerSatisfaction || 0) >= 4.0
+                        : (executiveSummary?.service?.customerSatisfaction || 0) >= 4.0
                           ? 'secondary'
                           : 'destructive'
                     }
                   >
-                    {executiveSummary?.service.customerSatisfaction.toFixed(1) || 0}/5
+                    {executiveSummary?.service?.customerSatisfaction?.toFixed(1) || 0}/5
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Customer Satisfaction</p>
                   <p className="text-2xl font-bold">
-                    {executiveSummary?.service.firstCallResolution.toFixed(0) || 0}%
+                    {executiveSummary?.service?.firstCallResolution?.toFixed(0) || 0}%
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">First call resolution rate</p>
                   <p className="text-xs text-muted-foreground">
-                    Avg response: {executiveSummary?.service.avgResponseTime.toFixed(1) || 0}h
+                    Avg response: {executiveSummary?.service?.avgResponseTime?.toFixed(1) || 0}h
                   </p>
                 </div>
               </CardContent>
@@ -448,24 +492,24 @@ export default function ExecutiveDashboard() {
                   <BarChart3 className="h-8 w-8 text-orange-600" />
                   <Badge
                     variant={
-                      (executiveSummary?.financial.grossMargin || 0) >= 35
+                      (executiveSummary?.financial?.grossMargin || 0) >= 35
                         ? 'default'
-                        : (executiveSummary?.financial.grossMargin || 0) >= 25
+                        : (executiveSummary?.financial?.grossMargin || 0) >= 25
                           ? 'secondary'
                           : 'destructive'
                     }
                   >
-                    {executiveSummary?.financial.grossMargin.toFixed(1) || 0}%
+                    {executiveSummary?.financial?.grossMargin?.toFixed(1) || 0}%
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Gross Margin</p>
                   <p className="text-2xl font-bold">
-                    {executiveSummary?.financial.collectionRate.toFixed(0) || 0}%
+                    {executiveSummary?.financial?.collectionRate?.toFixed(0) || 0}%
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Collection rate</p>
                   <p className="text-xs text-muted-foreground">
-                    DSO: {executiveSummary?.financial.daysOutstanding || 0} days
+                    DSO: {executiveSummary?.financial?.daysOutstanding || 0} days
                   </p>
                 </div>
               </CardContent>
@@ -480,24 +524,24 @@ export default function ExecutiveDashboard() {
                   <Activity className="h-8 w-8 text-indigo-600" />
                   <Badge
                     variant={
-                      (executiveSummary?.customers.churnRate || 0) <= 5
+                      (executiveSummary?.customers?.churnRate || 0) <= 5
                         ? 'default'
-                        : (executiveSummary?.customers.churnRate || 0) <= 10
+                        : (executiveSummary?.customers?.churnRate || 0) <= 10
                           ? 'secondary'
                           : 'destructive'
                     }
                   >
-                    {executiveSummary?.customers.churnRate.toFixed(1) || 0}%
+                    {executiveSummary?.customers?.churnRate?.toFixed(1) || 0}%
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Customer Churn</p>
                   <p className="text-2xl font-bold">
-                    {executiveSummary?.customers.totalActive?.toLocaleString() || '0'}
+                    {executiveSummary?.customers?.totalActive?.toLocaleString() || '0'}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Active customers</p>
                   <p className="text-xs text-green-600">
-                    +{executiveSummary?.customers.newAcquisitions || 0} new this period
+                    +{executiveSummary?.customers?.newAcquisitions || 0} new this period
                   </p>
                 </div>
               </CardContent>
@@ -791,7 +835,7 @@ export default function ExecutiveDashboard() {
                         <div>
                           <p className="text-muted-foreground">CSAT</p>
                           <p className="font-semibold">
-                            {territory.customerSatisfaction.toFixed(1)}/5
+                            {territory.customerSatisfaction?.toFixed(1)}/5
                           </p>
                         </div>
                         <div>

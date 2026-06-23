@@ -8002,6 +8002,143 @@
       "priority": 180,
       "passes": false,
       "notes": "My own finding + security audit L2. Low risk but a real release-config inconsistency."
+    },
+    {
+      "id": "NEW-SEC-001",
+      "title": "Add requireRootAdmin to unguarded root-admin security routes (privilege escalation)",
+      "description": "As a platform operator, I need the account-unlock and locked-accounts root-admin endpoints to enforce root-admin authorization so a low-privilege authenticated user cannot unlock accounts (defeating brute-force lockout) or read locked-account emails/IPs.",
+      "acceptanceCriteria": [
+        "GET /api/root-admin/security/locked-accounts (server/routes-root-admin.ts:769) has requireRootAdmin in its handler chain",
+        "POST /api/root-admin/security/unlock-account (server/routes-root-admin.ts:807) has requireRootAdmin in its handler chain",
+        "Pattern matches every other route in the router (e.g. lines 769->use requireRootAdmin like 452/769)",
+        "Typecheck passes: npm run check (no new errors)",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "CRITICAL (security audit). Every other route in routes-root-admin.ts has requireRootAdmin; only these two security routes lack it, allowing any authenticated user (Guest/level 1) to unlock any account by email and read locked-account emails/IPs/attempt counts. [DONE: implemented + verified \u2014 npx tsc adds 0 new errors over the pre-existing baseline (server files back to 48; ExecutiveDashboard 0); npm run build passes; prettier applied. Browser run not performed in sandbox.]"
+    },
+    {
+      "id": "NEW-SEC-002",
+      "title": "Secure blog post update/delete: RBAC + tenant scoping + input validation",
+      "description": "As a tenant admin, I need PUT/DELETE blog post endpoints to enforce permissions, scope writes to my tenant, and validate input so no authenticated user in any tenant can edit or delete another tenant's blog posts via mass-assignment.",
+      "acceptanceCriteria": [
+        "PUT /api/content/blog/:id (server/routes-content-marketing.ts:201) requires requireAuth + requirePermission(['blog.post.edit'])",
+        "DELETE /api/content/blog/:id (server/routes-content-marketing.ts:217) requires requireAuth + requirePermission(['blog.post.delete'])",
+        "Both queries filter by tenantId (and(eq(blogPosts.id,id), eq(blogPosts.tenantId,tenantId)))",
+        "PUT validates body with insertBlogPostSchema.partial() (no raw req.body spread); tenantId/id/authorId not client-overridable",
+        "Returns 404 when the post is not found within the tenant",
+        "Typecheck passes: npm run check (no new errors)",
+        "Build passes: npm run build"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "CRITICAL (security audit). PUT/DELETE spread raw req.body into db.update with where(eq(blogPosts.id,id)) only -- no auth/RBAC, no tenant filter, no Zod. blog.post.edit/blog.post.delete already exist in rbac-seeder.ts. [DONE: implemented + verified \u2014 npx tsc adds 0 new errors over the pre-existing baseline (server files back to 48; ExecutiveDashboard 0); npm run build passes; prettier applied. Browser run not performed in sandbox.]"
+    },
+    {
+      "id": "NEW-UX-001",
+      "title": "Fix ExecutiveDashboard crash-on-bad-data + add loading/error states",
+      "description": "As an executive, I need the Executive Dashboard to render safely when the summary API returns partial data and to show loading/error feedback, instead of a white-screen crash from unguarded optional chains.",
+      "acceptanceCriteria": [
+        "All executiveSummary?.X.Y.toFixed()/.toLocaleString() chains in client/src/pages/ExecutiveDashboard.tsx are fully optional-chained (e.g. executiveSummary?.revenue?.attainment?.toFixed(0) ?? 0) -- 8 sites incl. lines 354,392,426,432,436,458,464,490",
+        "The page renders a loading skeleton while the primary summary query isLoading",
+        "The page renders an error state when the summary query isError",
+        "No crash when executiveSummary is missing nested revenue/sales/service/financial/customers objects",
+        "Typecheck passes: npm run check (no new errors)",
+        "Build passes: npm run build"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "HIGH (UI/UX audit). The only confirmed crash-on-bad-data: optional chain stops at executiveSummary? then .revenue.attainment.toFixed() is unguarded. Page also has zero loading/error UI. [DONE: implemented + verified \u2014 npx tsc adds 0 new errors over the pre-existing baseline (server files back to 48; ExecutiveDashboard 0); npm run build passes; prettier applied. Browser run not performed in sandbox.]"
+    },
+    {
+      "id": "NEW-UX-002",
+      "title": "Add loading/error states to data dashboards missing them",
+      "description": "As a user, I need dashboards that fetch via TanStack Query to show loading and error feedback instead of blank screens or misleading zeros/fabricated defaults.",
+      "acceptanceCriteria": [
+        "AdvancedReporting.tsx, FinancialIntelligenceDashboard.tsx, PerformanceMonitoring.tsx, PlatformAnalytics.tsx, SecurityDashboard.tsx, SalesCommandCenter.tsx render a loading skeleton/spinner when primary queries isLoading",
+        "Each renders an error banner/card when a primary query isError",
+        "PerformanceMonitoring.tsx uses its already-destructured isLoading",
+        "Remove fabricated constant fallbacks that masquerade as real data (e.g. PlatformAnalytics ltvCacRatio || 5.67) in favor of loading/empty handling",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "MEDIUM/HIGH (UI/UX audit). ~10 dashboards destructure {data} only; no isLoading/isError UI."
+    },
+    {
+      "id": "NEW-UX-003",
+      "title": "Fix misleading no-op action buttons (disable or wire up)",
+      "description": "As a user, I should never see a button that confirms a destructive action then does nothing. Misleading no-op buttons must be wired to real handlers or visibly disabled with an accurate label.",
+      "acceptanceCriteria": [
+        "PlatformBusinessRecords.tsx bulk Delete (445) and Assign (431) no longer confirm-then-toast 'coming soon'; either wired or disabled with clear label",
+        "AdvancedWorkflowsDashboard.tsx console.log-only buttons (workflow builder 396, execute 596) wired or disabled",
+        "DatabaseManagement.tsx 'Create Backup' (1043) and SEODashboard.tsx 'Submit to Google' (1320) relabeled/disabled until implemented",
+        "Layout/dashboard console.log-only quick actions either wired or removed (context-panel.tsx 225/230, role-dashboards.tsx 308/419/435, AIEmployeeDashboard.tsx 257)",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "HIGH (dead-UI audit). confirm() dialog actively misleads users that records were deleted."
+    },
+    {
+      "id": "NEW-UX-004",
+      "title": "Remove mock/random data rendered as real metrics",
+      "description": "As a user, I must not see fabricated random numbers presented as live business metrics. Replace mock generators with real queries or clearly-labeled empty states.",
+      "acceptanceCriteria": [
+        "EnhancedReportsHub.tsx generateMockChartData() (626) removed; charts driven by a real reporting useQuery or a labeled empty state",
+        "DatabaseManagement.tsx query-log random duration (343) replaced with real timing or column hidden",
+        "No Math.random()-derived values rendered as business metrics anywhere in client/src/pages",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "HIGH/MEDIUM (dead-UI audit). Fake metrics presented as live dashboards erode trust."
+    },
+    {
+      "id": "NEW-UX-005",
+      "title": "Add empty-state rows to data tables that render blank when empty",
+      "description": "As a user, an empty list should show a helpful empty state, not a header-only table with a blank body.",
+      "acceptanceCriteria": [
+        "PurchaseOrders.tsx (956), VendorManagement.tsx (473), ProductManagementHub.tsx (305)/ProductHubUnified.tsx, enhanced-crm.tsx list view (445), CustomerFinancials.tsx payment/contracts tabs (409/464) render an empty-state row when their list length is 0",
+        "Empty states use the shared EmptyState component or a TableRow with a clear message",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "MEDIUM (dead-UI audit). Tables go from isLoading spinner straight to .map with no length===0 branch."
+    },
+    {
+      "id": "NEW-SEC-003",
+      "title": "Add Zod validation to lead and document-template update handlers",
+      "description": "As an API consumer, update endpoints must validate request bodies to prevent mass-assignment, matching their create counterparts.",
+      "acceptanceCriteria": [
+        "PUT /api/leads/:id (server/routes-crm-core.ts:162) validates req.body with insertLeadSchema.partial().parse before storage.updateLead",
+        "PUT /api/document-templates/:id (server/routes-document-automation.ts:143) validates body with a Zod schema before db.update (do not spread raw req.body)",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "HIGH (security audit). Create handlers validate; updates spread raw req.body. Document-template cross-tenant is already mitigated by a prior tenant-scoped findFirst -- validation only."
+    },
+    {
+      "id": "NEW-SEC-004",
+      "title": "Tenant-scope or harden view-count writes and retire dead vulnerable router",
+      "description": "As a platform operator, content view-count increments should not collide across tenants, and an unmounted router with a cross-tenant write should be removed.",
+      "acceptanceCriteria": [
+        "View-count update writes in routes-content-marketing.ts (127,301,419,469) are tenant-scoped where the content is not globally public",
+        "server/routes-intelligent-alerts.ts (unmounted; PUT triage review at 102 has no tenant scoping) is either deleted or tenant-scoped",
+        "Typecheck passes: npm run check",
+        "Build passes: npm run build"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "MEDIUM/LOW (security audit). Dead router not exploitable until mounted but should be cleaned up."
     }
   ]
 }

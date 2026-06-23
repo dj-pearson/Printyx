@@ -7074,3 +7074,53 @@ the stub/TODO list.
 - Wire the crons (Deno edge fns / scheduler) and the live vendor adapters (replace stubs + real vault).
 - Remaining non-US-SUPER backlog (unchanged): EDGE-* (23, Express->edge migration), IOS-* (56, needs
   Xcode), LAUNCH-011/020 (prod infra). Session tally still 357 passes=true / 97 passes=false.
+
+## ============================================================================
+## SESSION: Platform deep-dive — security + UI/UX audit → new stories + top 3 shipped
+## ============================================================================
+The remaining 97 passes=false stories were all sandbox-blocked (IOS-* need Xcode,
+LAUNCH-011/020 need prod infra, EDGE-* are large Express->edge migrations, US-SUPER-*
+are code-complete pending browser verification). Per the request, ran a deep dive
+(3 parallel audit agents: security, UI/UX loading/error states, dead-UI/empty-states)
+and wrote 9 NEW actionable stories to prd.json (NEW-SEC-001..004, NEW-UX-001..005).
+
+### Top 3 implemented + verified this session (passes=true):
+
+NEW-SEC-001 (CRITICAL — privilege escalation): server/routes-root-admin.ts. Added the
+missing `requireRootAdmin` guard to GET /security/locked-accounts (was leaking locked
+account emails/IPs/attempt counts to any authenticated user) and POST
+/security/unlock-account (any Guest-level user could unlock any account, defeating
+brute-force lockout). Every other route in the router already had requireRootAdmin.
+
+NEW-SEC-002 (CRITICAL — cross-tenant write): server/routes-content-marketing.ts. The
+blog PUT/DELETE handlers spread raw req.body into db.update with where(eq(id)) only — no
+auth, no RBAC, no tenant filter, no validation. Now: requireAuth + enhanceUserContext +
+requirePermission(['blog.post.edit'/'blog.post.delete']) (both perms already in
+rbac-seeder), tenant-scoped where(and(eq(id), eq(tenantId))), insertBlogPostSchema.partial()
+validation with tenantId/id/authorId stripped (no mass-assignment), 404 on not-found.
+Typed RBAC middlewares cast `as express.RequestHandler` and the .set payload cast to
+Partial<typeof blogPosts.$inferInsert> to avoid new tsc errors (pre-existing schema quirk).
+
+NEW-UX-001 (HIGH — crash-on-bad-data): client/src/pages/ExecutiveDashboard.tsx. Fixed 8
+unguarded optional chains (e.g. executiveSummary?.revenue.attainment.toFixed() — the `?.`
+stopped at executiveSummary, so a partial API payload crashed the page). All
+executiveSummary?.{revenue,sales,service,financial,customers}.X chains are now fully
+optional-chained and leaf .toFixed() calls guarded. Added a loading skeleton and an error
+state (with Retry) keyed off the summary query's isLoading/isError.
+
+### Verification (sandbox bar — no browser run):
+- npx tsc --noEmit: 0 NEW errors. Server files (routes-content-marketing + routes-root-admin)
+  back to the 48-error pre-edit baseline; ExecutiveDashboard 0 errors. Overall total held at
+  the ~6278 pre-existing baseline.
+- npm run build: PASS (built in ~30s).
+- prettier applied to all 3 changed files.
+- passes=true for NEW-SEC-001/002 and NEW-UX-001; remaining 6 new stories stay passes=false.
+
+### NEXT (remaining new backlog, ranked):
+- NEW-UX-003 (HIGH): misleading no-op destructive buttons (PlatformBusinessRecords bulk
+  delete confirms-then-does-nothing; AdvancedWorkflows/DatabaseManagement/SEO console-log/
+  "coming soon" buttons).
+- NEW-UX-002 (HIGH/MED): add loading/error states to ~10 dashboards (AdvancedReporting,
+  FinancialIntelligence, PerformanceMonitoring, PlatformAnalytics, SecurityDashboard, etc.).
+- NEW-SEC-003 (HIGH): Zod validation on PUT /api/leads/:id + document-template PUT.
+- NEW-UX-004/005, NEW-SEC-004.

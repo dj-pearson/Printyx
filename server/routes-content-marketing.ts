@@ -197,33 +197,73 @@ router.post('/api/content/blog', async (req: any, res) => {
   }
 });
 
-// Update blog post (admin only)
-router.put('/api/content/blog/:id', async (req: any, res) => {
-  try {
-    const [post] = await db
-      .update(blogPosts)
-      .set({ ...req.body, updatedAt: new Date() })
-      .where(eq(blogPosts.id, req.params.id))
-      .returning();
+// Update blog post (requires blog.post.edit, tenant-scoped)
+router.put(
+  '/api/content/blog/:id',
+  requireAuth,
+  enhanceUserContext as express.RequestHandler,
+  requirePermission(['blog.post.edit']) as express.RequestHandler,
+  async (req: any, res) => {
+    try {
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant context required' });
+      }
 
-    res.json(post);
-  } catch (error: any) {
-    log.error('Error updating blog post:', error);
-    res.status(500).json({ message: 'An internal error occurred' });
-  }
-});
+      // Validate + strip non-client-controllable fields (no mass-assignment)
+      const { tenantId: _t, id: _id, authorId: _a, ...rest } = req.body ?? {};
+      const validatedData = insertBlogPostSchema.partial().parse(rest);
 
-// Delete blog post (admin only)
-router.delete('/api/content/blog/:id', async (req: any, res) => {
-  try {
-    await db.delete(blogPosts).where(eq(blogPosts.id, req.params.id));
+      const [post] = await db
+        .update(blogPosts)
+        .set({ ...validatedData, updatedAt: new Date() } as Partial<typeof blogPosts.$inferInsert>)
+        .where(and(eq(blogPosts.id, req.params.id), eq(blogPosts.tenantId, tenantId)))
+        .returning();
 
-    res.json({ success: true });
-  } catch (error: any) {
-    log.error('Error deleting blog post:', error);
-    res.status(500).json({ message: 'An internal error occurred' });
-  }
-});
+      if (!post) {
+        return res.status(404).json({ message: 'Blog post not found' });
+      }
+
+      res.json(post);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid input', details: error.errors });
+      }
+      log.error('Error updating blog post:', error);
+      res.status(500).json({ message: 'An internal error occurred' });
+    }
+  },
+);
+
+// Delete blog post (requires blog.post.delete, tenant-scoped)
+router.delete(
+  '/api/content/blog/:id',
+  requireAuth,
+  enhanceUserContext as express.RequestHandler,
+  requirePermission(['blog.post.delete']) as express.RequestHandler,
+  async (req: any, res) => {
+    try {
+      const tenantId = getTenantId(req);
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant context required' });
+      }
+
+      const [deleted] = await db
+        .delete(blogPosts)
+        .where(and(eq(blogPosts.id, req.params.id), eq(blogPosts.tenantId, tenantId)))
+        .returning();
+
+      if (!deleted) {
+        return res.status(404).json({ message: 'Blog post not found' });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      log.error('Error deleting blog post:', error);
+      res.status(500).json({ message: 'An internal error occurred' });
+    }
+  },
+);
 
 // ============= GUIDES =============
 
