@@ -20,56 +20,76 @@ struct TaskListView: View {
     // expression ("unable to type-check in reasonable time").
     var body: some View {
         NavigationStack {
-            mainContent
-                .navigationTitle("Tasks")
-                .toolbar { toolbarContent }
-                .refreshable { await viewModel.refresh() }
-                .sheet(isPresented: $showingCreateTask) {
-                    TaskFormView(
-                        taskService: TaskService(apiClient: apiClient),
-                        onCreated: { _ in
-                            Task { await viewModel.refresh() }
-                        }
-                    )
-                }
-                .sheet(isPresented: $showingFilters) {
-                    TaskFilterSheet(viewModel: viewModel)
-                        .presentationDetents([.medium])
-                }
-                .sheet(item: $selectedTask) { task in
-                    TaskDetailView(taskService: TaskService(apiClient: apiClient), taskId: task.id)
-                }
-                .task {
-                    if viewModel.tasks.isEmpty {
-                        await viewModel.loadInitial()
-                    }
-                }
-                .onChange(of: viewModel.selectedStatus) { _, _ in
-                    Task { await viewModel.refresh() }
-                }
-                .onChange(of: viewModel.selectedPriority) { _, _ in
-                    Task { await viewModel.refresh() }
-                }
-                .onChange(of: viewModel.showMyTasksOnly) { _, _ in
-                    Task { await viewModel.refresh() }
-                }
-                .confirmationDialog(
-                    "Delete this task?",
-                    isPresented: Binding(
-                        get: { taskPendingDelete != nil },
-                        set: { if !$0 { taskPendingDelete = nil } }
-                    ),
-                    presenting: taskPendingDelete
-                ) { task in
-                    Button("Delete", role: .destructive) {
-                        Task { await viewModel.deleteTask(task) }
-                        taskPendingDelete = nil
-                    }
-                    Button("Cancel", role: .cancel) { taskPendingDelete = nil }
-                } message: { task in
-                    Text("\(task.displayName) will be permanently deleted. This can't be undone.")
-                }
+            contentWithEvents
         }
+    }
+
+    // The body's modifier chain is split across several `some View` properties
+    // so the Swift type-checker resolves each opaque type independently — one
+    // long chain in `body` times out ("unable to type-check in reasonable
+    // time"). Order: navigationContent → contentWithSheets → contentWithEvents.
+    private var navigationContent: some View {
+        mainContent
+            .navigationTitle("Tasks")
+            .toolbar { toolbarContent }
+            .refreshable { await viewModel.refresh() }
+    }
+
+    private var contentWithSheets: some View {
+        navigationContent
+            .sheet(isPresented: $showingCreateTask) {
+                TaskFormView(
+                    taskService: TaskService(apiClient: apiClient),
+                    onCreated: { _ in
+                        Task { await viewModel.refresh() }
+                    }
+                )
+            }
+            .sheet(isPresented: $showingFilters) {
+                TaskFilterSheet(viewModel: viewModel)
+                    .presentationDetents([.medium])
+            }
+            .sheet(item: $selectedTask) { task in
+                TaskDetailView(taskService: TaskService(apiClient: apiClient), taskId: task.id)
+            }
+    }
+
+    private var contentWithEvents: some View {
+        contentWithSheets
+            .task {
+                if viewModel.tasks.isEmpty {
+                    await viewModel.loadInitial()
+                }
+            }
+            .onChange(of: viewModel.selectedStatus) { _, _ in
+                Task { await viewModel.refresh() }
+            }
+            .onChange(of: viewModel.selectedPriority) { _, _ in
+                Task { await viewModel.refresh() }
+            }
+            .onChange(of: viewModel.showMyTasksOnly) { _, _ in
+                Task { await viewModel.refresh() }
+            }
+            .confirmationDialog(
+                "Delete this task?",
+                isPresented: deletePendingBinding,
+                presenting: taskPendingDelete
+            ) { task in
+                Button("Delete", role: .destructive) {
+                    Task { await viewModel.deleteTask(task) }
+                    taskPendingDelete = nil
+                }
+                Button("Cancel", role: .cancel) { taskPendingDelete = nil }
+            } message: { task in
+                Text("\(task.displayName) will be permanently deleted. This can't be undone.")
+            }
+    }
+
+    private var deletePendingBinding: Binding<Bool> {
+        Binding(
+            get: { taskPendingDelete != nil },
+            set: { if !$0 { taskPendingDelete = nil } }
+        )
     }
 
     private var mainContent: some View {

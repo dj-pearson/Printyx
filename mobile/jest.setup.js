@@ -8,7 +8,6 @@
 // the suite. React Native supplies WebSocket at runtime; provide the standard
 // `ws` polyfill here so the client loads under jest on any Node version.
 if (typeof globalThis.WebSocket === 'undefined') {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   globalThis.WebSocket = require('ws');
 }
 
