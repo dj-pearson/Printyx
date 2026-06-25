@@ -7482,3 +7482,30 @@ Cumulative QUALITY-002: 6176 → 3775 (−2401, −39%).
 ### Files
 - server/seed-manufacturer-orders.ts
 - docs/typecheck-baseline.json (3831 → 3775), prd.json (QUALITY-002 notes)
+
+---
+
+## Iteration — QUALITY-002 batch 7: onboarding undeclared tenantId (real bug)
+**Date**: 2026-06-25 · Branch: claude/prd-stories-progress-cmilm3
+
+server/routes-onboarding.ts: 5 handlers (PUT/DELETE /onboarding/sections/:id,
+POST/PUT/DELETE onboarding tasks) had an incomplete auth refactor — `// Fixed
+auth above` followed by uses of an UNDECLARED `tenantId`. Every call would throw
+ReferenceError → 500. Replaced the marker with
+`const tenantId = getRequestTenantId(req);` (helper already imported).
+
+tsc 3775 → 3765 (−10), 0 residual tenantId errors. Baseline 3765.
+Cumulative QUALITY-002: 6176 → 3765 (−2411, −39%).
+
+### Clean mechanical wins now exhausted
+Surveyed the remaining 3765: dominated by per-site drizzle insert/query drift
+(TS2769 "no overload", TS2339 on query results), untyped useQuery `{}`/unknown,
+undefined tables (serviceCallsEnhanced, equipmentMetrics — need schema), and
+seed field-name mismatches. These require schema-aware, per-domain work with
+unmasking risk and ~3 min/file verification — no remaining one-shot codemod
+levers. Recommend treating further QUALITY-002 burndown as a deliberate
+per-domain effort rather than continued opportunistic batches.
+
+### Files
+- server/routes-onboarding.ts
+- docs/typecheck-baseline.json (3775 → 3765), prd.json (QUALITY-002 notes)
