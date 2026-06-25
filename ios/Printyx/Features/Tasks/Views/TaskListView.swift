@@ -8,6 +8,8 @@ struct TaskListView: View {
     @State private var showingFilters = false
     @State private var showingArchive = false
     @State private var selectedTask: PrintyxTask?
+    /// Task awaiting delete confirmation (IOS-033).
+    @State private var taskPendingDelete: PrintyxTask?
 
     init(taskService: TaskService) {
         _viewModel = StateObject(wrappedValue: TaskListViewModel(taskService: taskService))
@@ -114,6 +116,22 @@ struct TaskListView: View {
             .onChange(of: viewModel.showMyTasksOnly) { _, _ in
                 Task { await viewModel.refresh() }
             }
+            .confirmationDialog(
+                "Delete this task?",
+                isPresented: Binding(
+                    get: { taskPendingDelete != nil },
+                    set: { if !$0 { taskPendingDelete = nil } }
+                ),
+                presenting: taskPendingDelete
+            ) { task in
+                Button("Delete", role: .destructive) {
+                    Task { await viewModel.deleteTask(task) }
+                    taskPendingDelete = nil
+                }
+                Button("Cancel", role: .cancel) { taskPendingDelete = nil }
+            } message: { task in
+                Text("\(task.displayName) will be permanently deleted. This can't be undone.")
+            }
         }
     }
 
@@ -128,7 +146,7 @@ struct TaskListView: View {
                         TaskRowView(task: task)
                             .contentShape(Rectangle())
                             .onTapGesture { selectedTask = task }
-                            .swipeActions(edge: .trailing) {
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 swipeActions(for: task)
                             }
                     }
@@ -146,7 +164,7 @@ struct TaskListView: View {
                         TaskRowView(task: task)
                             .contentShape(Rectangle())
                             .onTapGesture { selectedTask = task }
-                            .swipeActions(edge: .trailing) {
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 swipeActions(for: task)
                             }
                     }
@@ -163,7 +181,7 @@ struct TaskListView: View {
                         TaskRowView(task: task)
                             .contentShape(Rectangle())
                             .onTapGesture { selectedTask = task }
-                            .swipeActions(edge: .trailing) {
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 swipeActions(for: task)
                             }
                             .swipeActions(edge: .leading) {
@@ -241,7 +259,7 @@ struct TaskListView: View {
     @ViewBuilder
     private func swipeActions(for task: PrintyxTask) -> some View {
         Button(role: .destructive) {
-            Task { await viewModel.deleteTask(task) }
+            taskPendingDelete = task
         } label: {
             Label("Delete", systemImage: "trash")
         }

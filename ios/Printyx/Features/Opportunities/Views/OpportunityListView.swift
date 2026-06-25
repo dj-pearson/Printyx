@@ -78,7 +78,7 @@ struct OpportunityListView: View {
                 await viewModel.refresh()
             }
             .sheet(isPresented: $showingCreate) {
-                OpportunityFormView(opportunityService: nil) { _ in
+                OpportunityFormView(opportunityService: OpportunityService(apiClient: apiClient)) { _ in
                     Task { await viewModel.refresh() }
                 }
             }

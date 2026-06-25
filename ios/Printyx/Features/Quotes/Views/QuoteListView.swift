@@ -2,6 +2,9 @@ import SwiftUI
 
 /// Combined Proposals & Quotes list view.
 struct QuoteListView: View {
+    // Shared environment client so Create flows + detail use the real,
+    // authenticated APIClient rather than a nil / throwaway one (IOS-032).
+    @EnvironmentObject private var apiClient: APIClient
     @StateObject private var viewModel: QuoteListViewModel
     @State private var showingCreateProposal = false
     @State private var showingCreateQuote = false
@@ -76,18 +79,18 @@ struct QuoteListView: View {
                 await viewModel.refresh()
             }
             .sheet(isPresented: $showingCreateProposal) {
-                ProposalFormView(quoteService: nil) { _ in
+                ProposalFormView(quoteService: QuoteService(apiClient: apiClient)) { _ in
                     Task { await viewModel.refresh() }
                 }
             }
             .sheet(isPresented: $showingCreateQuote) {
-                QuoteFormView(quoteService: nil) { _ in
+                QuoteFormView(quoteService: QuoteService(apiClient: apiClient)) { _ in
                     Task { await viewModel.refresh() }
                 }
             }
             .sheet(item: $selectedProposal) { proposal in
                 ProposalDetailView(
-                    quoteService: QuoteService(apiClient: APIClient()),
+                    quoteService: QuoteService(apiClient: apiClient),
                     proposalId: proposal.id
                 )
             }

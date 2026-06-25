@@ -39,6 +39,6 @@ final class DashboardService {
 
     func search(query: String) async throws -> [SearchResult] {
         let response: SearchResponse = try await apiClient.request(.globalSearch(query: query))
-        return response.results ?? []
+        return response.results
     }
 }

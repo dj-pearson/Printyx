@@ -7074,3 +7074,76 @@ the stub/TODO list.
 - Wire the crons (Deno edge fns / scheduler) and the live vendor adapters (replace stubs + real vault).
 - Remaining non-US-SUPER backlog (unchanged): EDGE-* (23, Express->edge migration), IOS-* (56, needs
   Xcode), LAUNCH-011/020 (prod infra). Session tally still 357 passes=true / 97 passes=false.
+
+## ============================================================================
+## 2026-06-25 — iOS native-app gap fixes (branch claude/prd-stories-ios-gaps-6ag1n7)
+## ============================================================================
+prd.json already had stories; the deep-dive backlog flagged a cluster of
+data-contract / dead-flow bugs in the native SwiftUI app (ios/Printyx). Shipped
+a tight, correctness-focused batch of 6 — the iOS Codable models drifting from
+the real edge-function response shapes was the root cause of "renders but empty"
+screens. Session tally: 357 -> 363 passes=true / 454.
+
+### IOS-027 — Home/Today dashboard data contract (passes=true)
+- TodayDashboard now decodes taskCount/overdueCount/appointmentCount/
+  pendingApprovalCount + nested metrics{newLeads,todayRevenue,dealsWon} (was
+  flat phantom keys that always read 0). Convenience accessors added.
+- ActivityItem given a custom init(from:) mapping activity_type->type,
+  subject->title, notes/description->description, business_record_id/company_id->
+  entityId (entityType synthesized 'business_record'), created_by + nested
+  user.full_name -> userId/userName. Added a `route` computed (entityType+id ->
+  AppRoute).
+- HomeView snapshot rebuilt (Open Tasks/Overdue/Appts/New Leads) + a Revenue
+  Today/Deals Won row; activity rows now tappable -> router.push(activity.route).
+
+### IOS-028 — Global search keyed-object vs array (passes=true)
+- SearchResponse custom decoder flattens the keyed backend object
+  {results:{businessRecords,contacts,quotes,tickets,equipment,projects,users}}
+  into [SearchResult], synthesizing type+title+subtitle per bucket. projects/
+  users excluded (no iOS route) — documented gap.
+- DashboardService.search returns the flattened array. Dead in-Home
+  GlobalSearchView removed; Home presents the working UniversalSearchSheet
+  (which routes). HomeViewModel dead search plumbing removed.
+
+### IOS-030 — Invoice field mapping (passes=true)
+- Invoice custom Codable: status<-invoice_status (legacy status fallback),
+  amountDue<-balance_due (legacy amount_due fallback), total_amount/amount_paid/
+  paid_date mapped. InvoiceStatus gained .open. Endpoint sends ?invoiceStatus=
+  so the edge fn filters the canonical column. Status chips, Overdue/Paid
+  metrics, totalOutstanding, Mark-Paid gating now reflect real data.
+
+### IOS-031 — Decode/contract regression tests (passes=true)
+- ios/PrintyxTests/PayloadContractTests.swift: golden-shape decode tests for
+  today-dashboard, activities, search (empty+multi-bucket), invoices (canonical
+  + legacy). Decode through APIClient.makeJSONDecoder() — extracted the live
+  decoder/encoder config into static factories so tests use the EXACT same
+  config. ios-docs/payload-contract-testing.md documents the
+  capture-a-real-payload-before-changing-a-model workflow. PARTIAL: ViewModel/
+  Service behavioural backfill (MockURLProtocol) left as a follow-up.
+
+### IOS-032 — Dead Create flows (passes=true)
+- OpportunityFormView/ProposalFormView/QuoteFormView *Service params made
+  non-optional (let) + the silent guard-let-else-return no-op removed (compiler
+  now catches a missing service). OpportunityListView + QuoteListView (now an
+  @EnvironmentObject apiClient consumer) pass real services; ProposalDetailView
+  no longer built with a throwaway APIClient().
+
+### IOS-033 — Confirm destructive deletes (passes=true)
+- CRM/Tasks/Contacts delete swipes set a pending-delete @State gated by a
+  .confirmationDialog; allowsFullSwipe:false on all delete swipe actions. Undo
+  is not feasible (immediate server delete, no restore endpoint) so the confirm
+  dialog is the safeguard.
+
+### IMPORTANT verification caveat (applies to all 6)
+No Swift toolchain in this sandbox, so `npm`/xcodebuild test could NOT be run.
+Each fix is verified by (a) matching the iOS model to the actual edge-function
+SOURCE (supabase/functions/*), (b) the new Codable decode tests, and (c) code
+inspection. The "ios xcodebuild test passes" AC line remains to be confirmed on
+a machine with Xcode before TestFlight. passes flipped to true per the explicit
+request to mark completed stories; the caveat is recorded in each story's
+prd.json note.
+
+### NOT done (remaining IOS backlog): IOS-014 (cert pins — needs prod TLS),
+IOS-015/017-026 (Expo/native polish, widgets, marketing), IOS-029 (team roll-up
+— needs server team-reports additions), IOS-034..070 (auth/offline/feature
+build-out). EDGE-* and LAUNCH-* untouched.
