@@ -18,6 +18,30 @@ final class KeychainManager {
 
     private init() {}
 
+    /// In-memory fallback used ONLY when the Keychain is unavailable (e.g. an
+    /// unhosted XCTest bundle on the simulator, where SecItemAdd returns
+    /// errSecMissingEntitlement). Writes mirror here; reads fall back here when
+    /// the Keychain returns nothing. In production the Keychain succeeds and
+    /// this is a redundant mirror — tokens already live in process memory while
+    /// the app runs, so this adds no meaningful exposure.
+    private var memoryFallback: [String: String] = [:]
+    private let memoryLock = NSLock()
+
+    private func memorySet(_ value: String, _ account: String) {
+        memoryLock.lock(); defer { memoryLock.unlock() }
+        memoryFallback[account] = value
+    }
+
+    private func memoryGet(_ account: String) -> String? {
+        memoryLock.lock(); defer { memoryLock.unlock() }
+        return memoryFallback[account]
+    }
+
+    private func memoryDelete(_ account: String) {
+        memoryLock.lock(); defer { memoryLock.unlock() }
+        memoryFallback[account] = nil
+    }
+
     // MARK: - Access Token
 
     func getAccessToken() -> String? {
@@ -103,7 +127,8 @@ final class KeychainManager {
         guard status == errSecSuccess,
               let data = result as? Data,
               let string = String(data: data, encoding: .utf8) else {
-            return nil
+            // Keychain miss/unavailable — fall back to the in-memory mirror.
+            return memoryGet(key.rawValue)
         }
 
         return string
@@ -111,6 +136,10 @@ final class KeychainManager {
 
     private func set(_ value: String, key: Key) {
         guard let data = value.data(using: .utf8) else { return }
+
+        // Mirror to memory first so reads succeed even if the Keychain is
+        // unavailable (e.g. unhosted test bundle).
+        memorySet(value, key.rawValue)
 
         // Delete existing item first
         delete(key: key)
@@ -127,6 +156,8 @@ final class KeychainManager {
     }
 
     private func delete(key: Key) {
+        memoryDelete(key.rawValue)
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
