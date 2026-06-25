@@ -8054,8 +8054,8 @@
         "CI is green on the current branch"
       ],
       "priority": 179,
-      "passes": false,
-      "notes": "My own finding + networking H5/security C1. Complements IOS-014 (populate pins) with enforcement."
+      "passes": true,
+      "notes": "My own finding + networking H5/security C1. Complements IOS-014 (populate pins) with enforcement. | IMPLEMENTED: added .github/workflows/ios-ci.yml — PR-gated (paths: ios/**) native CI on macos-15/Xcode 26.2: build-test job runs xcodegen + xcodebuild test (Debug, simulator, no signing) over the full PrintyxTests target, which includes the IOS-031 PayloadContractTests fixtures and the IOS-071 token-refresh tests. Added CertificatePinnerTests + internal trackedHosts/hostsWithEmptyPins accessors on CertificatePinner; the release-pin-guard job runs that test in Release config and fails on any empty SPKI pin set (continue-on-error until IOS-014 populates pins, then drop it to make it blocking). project.yml: PrintyxTests now sets SWIFT_ACTIVE_COMPILATION_CONDITIONS (DEBUG/'') so the test's #if DEBUG skip resolves correctly. NOTE: marking the build-test job a REQUIRED status check is a branch-protection setting the maintainer must enable in repo settings (cannot be set from the workflow file). This CI job also gives the first real compile of this branch's Swift changes."
     },
     {
       "id": "IOS-070",

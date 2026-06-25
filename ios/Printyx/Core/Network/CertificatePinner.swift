@@ -37,6 +37,21 @@ final class CertificatePinner: NSObject, URLSessionDelegate {
         "functions.printyx.net": [],
     ]
 
+    // MARK: - CI guard (IOS-069)
+
+    /// Hosts the pinner is configured to enforce. Surfaced for tests/CI.
+    var trackedHosts: [String] {
+        pinsByHost.keys.sorted()
+    }
+
+    /// Tracked hosts whose SPKI pin set is still empty. In Release an empty set
+    /// fails the TLS handshake (fail-closed), so this MUST be empty before
+    /// shipping. CI (IOS-069) asserts this in a Release configuration; IOS-014
+    /// populates the pins.
+    var hostsWithEmptyPins: [String] {
+        pinsByHost.filter { $0.value.isEmpty }.map(\.key).sorted()
+    }
+
     func urlSession(
         _ session: URLSession,
         didReceive challenge: URLAuthenticationChallenge,
