@@ -101,12 +101,22 @@ function levenshteinDistance(a: string, b: string): number {
 // Typosquatting Detection
 // ============================================================================
 
+// Legitimate, well-known packages that must not be flagged as typosquatting.
+// Short critical names (e.g. "pg", 2 chars) otherwise false-positive on any
+// 2-char package — "ws" is distance 2 from "pg" but is a top-tier WebSocket lib.
+const KNOWN_SAFE_PACKAGES = new Set<string>(['ws']);
+
 function checkTyposquatting(depNames: string[]): SupplyChainIssue[] {
   const issues: SupplyChainIssue[] = [];
 
   for (const dep of depNames) {
     // Skip if this IS a critical dependency (exact match)
     if (CRITICAL_DEPENDENCIES.includes(dep)) {
+      continue;
+    }
+
+    // Skip known-legitimate packages (avoids short-name false positives).
+    if (KNOWN_SAFE_PACKAGES.has(dep)) {
       continue;
     }
 
