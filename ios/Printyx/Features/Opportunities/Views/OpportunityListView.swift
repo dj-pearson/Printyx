@@ -184,7 +184,13 @@ struct OpportunityListView: View {
     // MARK: - Pipeline View (Kanban-style horizontal scroll)
 
     private var pipelineView: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        // Drive pagination from the longest column's last card.
+        let paginationTriggerId = viewModel.pipelineStages
+            .map(\.opportunities)
+            .max(by: { $0.count < $1.count })?
+            .last?.id
+
+        return ScrollView(.horizontal, showsIndicators: false) {
             HStack(alignment: .top, spacing: AppTheme.Spacing.md) {
                 ForEach(viewModel.pipelineStages, id: \.stage) { stageData in
                     PipelineColumn(
@@ -200,7 +206,8 @@ struct OpportunityListView: View {
                         },
                         onReachedEnd: {
                             Task { await viewModel.loadMore() }
-                        }
+                        },
+                        paginationTriggerId: paginationTriggerId
                     )
                 }
             }
@@ -273,6 +280,9 @@ struct PipelineColumn: View {
     let onSelect: (Opportunity) -> Void
     let onMoveForward: (Opportunity) -> Void
     var onReachedEnd: (() -> Void)? = nil
+    /// Pagination is driven by a single column (the longest one) so that short
+    /// columns don't fire `loadMore` the moment their last card is visible.
+    var paginationTriggerId: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
@@ -308,10 +318,11 @@ struct PipelineColumn: View {
                             }
                         }
                         .onAppear {
-                            // When the last card in this column appears, nudge
-                            // the view-model to fetch the next page. Safe no-op
-                            // if another fetch is already in flight.
-                            if opp.id == opportunities.last?.id {
+                            // Only the designated (longest) column drives
+                            // pagination, so short columns don't fetch the next
+                            // page the moment their last card is visible.
+                            if opp.id == opportunities.last?.id,
+                               opp.id == paginationTriggerId {
                                 onReachedEnd?()
                             }
                         }

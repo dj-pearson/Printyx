@@ -8145,7 +8145,7 @@
       ],
       "priority": 185,
       "passes": false,
-      "notes": "Deep-dive Service #1; CRM #14,#16,#17; Quotes #7,#12. Verified ServiceTicketListView has no loadMore trigger while loadMore()/isLoadingMore exist. | PARTIAL (pending iOS CI build): added last-row onAppear loadMore() triggers to ServiceTicketListView, CRMListView, ContactListView (were capped at first page). Remaining: opportunity per-column pagination fix, tappable QuoteRowView, search-active paging."
+      "notes": "Deep-dive Service #1; CRM #14,#16,#17; Quotes #7,#12. Verified ServiceTicketListView has no loadMore trigger while loadMore()/isLoadingMore exist. | PARTIAL (pending iOS CI build): added last-row onAppear loadMore() triggers to ServiceTicketListView, CRMListView, ContactListView (were capped at first page). Remaining: opportunity per-column pagination fix, tappable QuoteRowView, search-active paging. | + quote rows now tappable (selectedQuote sheet -> QuoteDeepLinkDetail) and kanban pagination now driven only by the longest column (paginationTriggerId) so short columns don't page prematurely. Core P1 (truly-capped ticket/CRM/contacts lists + dead quote rows) done; search-active paging deferred to IOS-078."
     },
     {
       "id": "IOS-076",

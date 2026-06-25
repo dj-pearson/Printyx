@@ -100,6 +100,16 @@ struct QuoteListView: View {
                     proposalId: proposal.id
                 )
             }
+            .sheet(item: $selectedQuote) { quote in
+                NavigationStack {
+                    QuoteDeepLinkDetail(quote: quote)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Done") { selectedQuote = nil }
+                            }
+                        }
+                }
+            }
             .task {
                 if viewModel.proposals.isEmpty && viewModel.quotes.isEmpty {
                     await viewModel.loadInitial()
@@ -230,6 +240,7 @@ struct QuoteListView: View {
                     ForEach(viewModel.filteredQuotes) { quote in
                         QuoteRowView(quote: quote)
                             .contentShape(Rectangle())
+                            .onTapGesture { selectedQuote = quote }
                             .onAppear {
                                 if quote.id == viewModel.filteredQuotes.last?.id {
                                     Task { await viewModel.loadMoreQuotes() }
