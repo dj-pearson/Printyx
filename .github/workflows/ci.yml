@@ -48,6 +48,37 @@ jobs:
       - name: Secret scanning
         run: npm run check:secrets
 
+  # ─── Route Parity Report (non-blocking, EDGE-012) ────────
+  route-parity:
+    name: Route Parity Report
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Regenerate route-parity matrix
+        run: npm run audit:routes
+      - name: Publish matrix to job summary
+        run: cat docs/route-parity-matrix.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Flag stale committed matrix (non-blocking)
+        run: |
+          if ! git diff --quiet -- docs/route-parity-matrix.md docs/route-divergence.json; then
+            echo "::warning::Committed route-parity matrix is stale. Run 'npm run audit:routes' and commit docs/route-parity-matrix.md + docs/route-divergence.json."
+          else
+            echo "Route-parity matrix is up to date."
+          fi
+      - name: Upload matrix artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: route-parity-matrix
+          path: |
+            docs/route-parity-matrix.md
+            docs/route-divergence.json
+
   # ─── Unit & Integration Tests ────────────────────────────
   test:
     name: Tests

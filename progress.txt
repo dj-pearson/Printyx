@@ -7147,3 +7147,54 @@ prd.json note.
 IOS-015/017-026 (Expo/native polish, widgets, marketing), IOS-029 (team roll-up
 — needs server team-reports additions), IOS-034..070 (auth/offline/feature
 build-out). EDGE-* and LAUNCH-* untouched.
+
+---
+
+## Iteration — EDGE-012: Route-parity matrix (passes=true)
+**Date**: 2026-06-25
+**Branch**: claude/prd-stories-progress-cmilm3
+
+### Story
+EDGE-012 (P40) — Build authoritative route-parity matrix (frontend ↔ edge ↔
+Express ↔ proxy map). Foundation for EDGE-013..017.
+
+### What was done
+- scripts/audit-route-parity.mjs already existed from a prior pass but was NOT
+  wired into CI and its generated docs were stale (last gen Jun 20). Completed
+  the remaining acceptance criteria:
+  1. Re-ran `npm run audit:routes` to regenerate docs/route-parity-matrix.md +
+     docs/route-divergence.json against current source. The script enumerates
+     all four required sources: (a) frontend /api/* segments grepped from
+     client/src, (b) every supabase/functions/* directory, (c) Express
+     app.get/post/put/patch/delete/use/all('/api/x') registrations, (d) the
+     edge-function-proxy.ts crmProxies prefixes + known multi-segment redirects.
+  2. Classifies every domain: missing-edge (prod blocker), both-divergent
+     (dev≠prod), express-only, dead-express, proxied, edge-only,
+     express-canonical. Matrix header documents the architecture fact (prod
+     frontend → functions.printyx.net for ALL /api/* via getApiUrl; the proxy
+     map only governs dev; Express canonical for client-metrics + install).
+  3. Wired into CI as a NON-BLOCKING report: new `route-parity` job in
+     .github/workflows/ci.yml (continue-on-error: true) regenerates the matrix,
+     publishes it to $GITHUB_STEP_SUMMARY, emits a ::warning:: (non-blocking) if
+     the committed copy is stale, and uploads the matrix+json as an artifact.
+
+### Current snapshot (heuristic)
+337 domains · 246 edge fns · 182 Express-served · 200 frontend-called · 38
+proxied. Classes: missing-edge 56, both-divergent 60, express-only 26,
+dead-express 19, proxied 38, edge-only 128, express-canonical 10. The 56
+missing-edge domains are the candidate prod-blocker worklist for EDGE-014.
+
+### Verification
+- `npm run audit:routes` runs clean and regenerates both artifacts.
+- EDGE-012 touches only yaml/markdown/json — zero TypeScript changed, so it
+  introduces no new type errors. `npm run check` has PRE-EXISTING, unrelated
+  errors (server/utils/apiErrorHandler*, error-sanitizer, websocket-service,
+  shared/platform-crm-schema, shared/product-pricing-schema, shared/schema.ts
+  line 2685, shared/user-lifecycle-schema, print-cost-calculator-schema) that
+  predate this branch and are out of scope for EDGE-012.
+
+### Files
+- .github/workflows/ci.yml (new route-parity job)
+- docs/route-parity-matrix.md (regenerated)
+- docs/route-divergence.json (regenerated)
+- prd.json (EDGE-012 passes=true + note)
