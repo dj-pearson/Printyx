@@ -1,5 +1,18 @@
 import Foundation
 
+// MARK: - Ticket Stats
+
+/// Server-side ticket counts across ALL tickets (IOS-074), so the dashboard
+/// cards don't understate by only counting the loaded page. Fields are optional
+/// for decode resilience; missing values fall back to page-derived counts.
+struct TicketStats: Decodable, Equatable {
+    let total: Int?
+    let open: Int?
+    let inProgress: Int?
+    let urgent: Int?
+    let resolved: Int?
+}
+
 // MARK: - Service Ticket
 
 struct ServiceTicket: Identifiable, Codable, Equatable {

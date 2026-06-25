@@ -14,6 +14,9 @@ final class ServiceTicketListViewModel: ObservableObject {
     @Published var searchText = ""
     @Published var selectedStatus: TicketStatus?
     @Published var selectedPriority: TicketPriority?
+    /// Server-side counts across ALL tickets (IOS-074). Nil until loaded; the
+    /// stat cards fall back to page-derived counts in the meantime.
+    @Published var stats: TicketStats?
 
     // MARK: - Pagination
 
@@ -44,10 +47,11 @@ final class ServiceTicketListViewModel: ObservableObject {
 
     // MARK: - Computed
 
-    var openCount: Int { tickets.filter { $0.status == "open" }.count }
-    var inProgressCount: Int { tickets.filter { $0.status == "in_progress" }.count }
-    var urgentCount: Int { tickets.filter { $0.priority == "urgent" || $0.priority == "critical" }.count }
-    var resolvedCount: Int { tickets.filter { $0.status == "resolved" || $0.status == "closed" }.count }
+    // Prefer server-side totals; fall back to page-derived counts until loaded.
+    var openCount: Int { stats?.open ?? tickets.filter { $0.status == "open" }.count }
+    var inProgressCount: Int { stats?.inProgress ?? tickets.filter { $0.status == "in_progress" }.count }
+    var urgentCount: Int { stats?.urgent ?? tickets.filter { $0.priority == "urgent" || $0.priority == "critical" }.count }
+    var resolvedCount: Int { stats?.resolved ?? tickets.filter { $0.status == "resolved" || $0.status == "closed" }.count }
 
     var filteredTickets: [ServiceTicket] {
         var filtered = tickets
@@ -87,6 +91,16 @@ final class ServiceTicketListViewModel: ObservableObject {
         }
 
         isLoading = false
+        // Refresh the global stat-card counts (don't block the list / fail it).
+        Task { await loadStats() }
+    }
+
+    /// Loads server-side counts for the stat cards. Best-effort: a failure
+    /// leaves the page-derived fallback in place rather than erroring the list.
+    func loadStats() async {
+        if let stats = try? await ticketService.fetchStats() {
+            self.stats = stats
+        }
     }
 
     func loadMore() async {

@@ -390,6 +390,12 @@ extension APIEndpoint {
         APIEndpoint(path: "/api/service-tickets/\(id)")
     }
 
+    /// Server-side counts across ALL tickets (not just the loaded page) for the
+    /// dashboard stat cards (IOS-074).
+    static func serviceTicketStats() -> APIEndpoint {
+        APIEndpoint(path: "/api/service-tickets/stats")
+    }
+
     static func createServiceTicket(body: Encodable) -> APIEndpoint {
         APIEndpoint(path: "/api/service-tickets", method: .post, body: body)
     }

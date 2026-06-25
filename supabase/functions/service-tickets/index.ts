@@ -64,6 +64,34 @@ export default async function handler(req: Request) {
     const ticketId = parts[0]; // /service-tickets/:id
     const subResource = parts[1]; // /service-tickets/:id/updates
 
+    // GET /service-tickets/stats - status/priority counts across ALL tickets
+    // (not just the current page) for the dashboard stat cards.
+    if (req.method === 'GET' && ticketId === 'stats') {
+      const base = () =>
+        admin
+          .from('service_tickets')
+          .select('*', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId);
+      const [total, open, inProgress, urgent, resolved] = await Promise.all([
+        base(),
+        base().eq('status', 'open'),
+        base().eq('status', 'in_progress'),
+        base().in('priority', ['urgent', 'critical']),
+        base().in('status', ['resolved', 'closed']),
+      ]);
+      return createCorsResponse(
+        {
+          total: total.count || 0,
+          open: open.count || 0,
+          in_progress: inProgress.count || 0,
+          urgent: urgent.count || 0,
+          resolved: resolved.count || 0,
+        },
+        200,
+        req,
+      );
+    }
+
     // GET /service-tickets - List all tickets with filters
     if (req.method === 'GET' && !ticketId) {
       const status = url.searchParams.get('status');

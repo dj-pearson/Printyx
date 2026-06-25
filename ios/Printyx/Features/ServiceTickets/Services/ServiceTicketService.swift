@@ -24,6 +24,11 @@ final class ServiceTicketService {
         )
     }
 
+    /// Server-side counts across ALL tickets for the dashboard cards (IOS-074).
+    func fetchStats() async throws -> TicketStats {
+        try await apiClient.request(.serviceTicketStats())
+    }
+
     // MARK: - CRUD
 
     func fetchTicket(id: String) async throws -> ServiceTicket {
