@@ -20,13 +20,23 @@ struct CardModifier: ViewModifier {
         content
             .background(Color(.systemBackground))
             .cornerRadius(12)
-            .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 2)
+            .cardShadow()
     }
 }
 
 extension View {
     func cardStyle() -> some View {
         modifier(CardModifier())
+    }
+
+    /// Standard subtle card shadow built from `AppTheme.Shadow` tokens.
+    func cardShadow() -> some View {
+        shadow(
+            color: AppTheme.Shadow.smallColor,
+            radius: AppTheme.Shadow.smallRadius,
+            x: AppTheme.Shadow.smallX,
+            y: AppTheme.Shadow.smallY
+        )
     }
 }
 

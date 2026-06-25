@@ -162,6 +162,38 @@ export function registerOpportunitiesRoutes(app: Express) {
     }
   });
 
+  // PATCH /api/opportunities/:id/stage - move an opportunity to a new pipeline
+  // stage. Mirrors the production opportunities edge function, which folds the
+  // app's `stage` (kanban "Move Forward") or `sales_stage`/`salesStage`
+  // (detail Save) field into the persisted stage. Returns `salesStage` so the
+  // iOS pipeline decoder populates the column it groups by.
+  app.patch('/api/opportunities/:id/stage', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const opportunityId = req.params.id;
+      const incomingStage = req.body?.stage ?? req.body?.sales_stage ?? req.body?.salesStage;
+      if (incomingStage === undefined || incomingStage === null || incomingStage === '') {
+        return res.status(400).json({ error: 'stage is required' });
+      }
+      const stage = String(incomingStage).toLowerCase();
+
+      const [updated] = await db
+        .update(businessRecords)
+        .set({ stage, updatedAt: new Date() })
+        .where(and(eq(businessRecords.id, opportunityId), eq(businessRecords.tenantId, tenantId)))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ error: 'Opportunity not found' });
+      }
+
+      res.json({ ...updated, salesStage: updated.stage });
+    } catch (error) {
+      log.error('Error updating opportunity stage:', error);
+      res.status(500).json({ error: 'Failed to update opportunity stage' });
+    }
+  });
+
   // Convert opportunity to deal
   app.post('/api/opportunities/:id/convert-to-deal', isAuthenticated, async (req: any, res) => {
     try {

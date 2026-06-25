@@ -270,6 +270,25 @@ final class APIClient: ObservableObject {
             throw APIError.invalidResponse
         }
 
+        return try await handleResponse(
+            data: data,
+            http: httpResponse,
+            for: endpoint,
+            allowRefresh: true
+        )
+    }
+
+    /// Maps an HTTP response to `Data` or a typed `APIError`. Extracted so the
+    /// 401 → refresh → retry path can re-run the *full* status handling on the
+    /// retry response (a post-refresh 403/404/422/500 surfaces as that error,
+    /// not a misleading `unauthorized`). `allowRefresh` is set false on the
+    /// retry so a second 401 can't loop.
+    private func handleResponse(
+        data: Data,
+        http httpResponse: HTTPURLResponse,
+        for endpoint: APIEndpoint,
+        allowRefresh: Bool
+    ) async throws -> Data {
         switch httpResponse.statusCode {
         case 200...299:
             if endpoint.method == .get {
@@ -296,17 +315,27 @@ final class APIClient: ObservableObject {
             )
 
         case 401:
-            // Attempt token refresh, then retry
-            if endpoint.requiresAuth {
+            // Attempt token refresh, then retry once. `refreshAccessToken`
+            // throws if the refresh itself fails, propagating to the caller.
+            if endpoint.requiresAuth, allowRefresh {
                 try await refreshAccessToken()
                 let retryRequest = try buildRequest(for: endpoint)
                 let (retryData, retryResponse) = try await performRequest(retryRequest)
-                guard let retryHTTP = retryResponse as? HTTPURLResponse,
-                      (200...299).contains(retryHTTP.statusCode) else {
-                    self.isAuthenticated = false
-                    throw APIError.unauthorized
+                guard let retryHTTP = retryResponse as? HTTPURLResponse else {
+                    throw APIError.invalidResponse
                 }
-                return retryData
+                // Re-run full handling so non-2xx retries map to their real
+                // error; allowRefresh=false prevents a refresh/retry loop.
+                return try await handleResponse(
+                    data: retryData,
+                    http: retryHTTP,
+                    for: endpoint,
+                    allowRefresh: false
+                )
+            }
+            // A 401 even after a successful refresh means the session is dead.
+            if !allowRefresh {
+                self.isAuthenticated = false
             }
             throw APIError.unauthorized
 
@@ -506,41 +535,59 @@ final class APIClient: ObservableObject {
         }
 
         isRefreshingToken = true
+        // Outcome shared with parked waiters: nil = success. On failure the
+        // waiters MUST be resumed by throwing — previously they were always
+        // resumed with `.resume(returning: Data())`, so a failed refresh told
+        // every parked 401 caller it had succeeded and they retried with the
+        // still-dead token.
+        var refreshError: Error?
         defer {
             isRefreshingToken = false
-            pendingRequests.forEach { $0.resume(returning: Data()) }
+            let waiters = pendingRequests
             pendingRequests.removeAll()
+            if let refreshError {
+                waiters.forEach { $0.resume(throwing: refreshError) }
+            } else {
+                waiters.forEach { $0.resume(returning: Data()) }
+            }
         }
 
-        guard let refreshToken = keychain.getRefreshToken() else {
-            throw APIError.tokenRefreshFailed
+        do {
+            guard let refreshToken = keychain.getRefreshToken() else {
+                throw APIError.tokenRefreshFailed
+            }
+
+            struct RefreshBody: Encodable {
+                let refreshToken: String
+            }
+
+            let endpoint = APIEndpoint.refreshToken(body: RefreshBody(refreshToken: refreshToken))
+            let request = try buildRequest(for: endpoint)
+            let (data, response) = try await performRequest(request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode) else {
+                keychain.clearAll()
+                isAuthenticated = false
+                throw APIError.tokenRefreshFailed
+            }
+
+            struct TokenResponse: Decodable {
+                let accessToken: String
+                let refreshToken: String
+                let expiresIn: Int
+                let user: SupabaseUser?
+            }
+
+            let tokenResponse = try decoder.decode(TokenResponse.self, from: data)
+            keychain.setAccessToken(tokenResponse.accessToken)
+            keychain.setRefreshToken(tokenResponse.refreshToken)
+        } catch {
+            // Record the failure so the defer fails parked waiters, then
+            // propagate to the leader's caller.
+            refreshError = error
+            throw error
         }
-
-        struct RefreshBody: Encodable {
-            let refreshToken: String
-        }
-
-        let endpoint = APIEndpoint.refreshToken(body: RefreshBody(refreshToken: refreshToken))
-        let request = try buildRequest(for: endpoint)
-        let (data, response) = try await performRequest(request)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            keychain.clearAll()
-            isAuthenticated = false
-            throw APIError.tokenRefreshFailed
-        }
-
-        struct TokenResponse: Decodable {
-            let accessToken: String
-            let refreshToken: String
-            let expiresIn: Int
-            let user: SupabaseUser?
-        }
-
-        let tokenResponse = try decoder.decode(TokenResponse.self, from: data)
-        keychain.setAccessToken(tokenResponse.accessToken)
-        keychain.setRefreshToken(tokenResponse.refreshToken)
     }
 }
 

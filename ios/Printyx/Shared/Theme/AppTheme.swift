@@ -26,10 +26,14 @@ enum AppTheme {
 
     // MARK: - Shadows
 
+    /// Shadow design tokens. Apply with `View.cardShadow()` (see ViewExtensions).
+    /// Previously `Shadow.small(_:)` returned an `EmptyView()` and silently
+    /// dropped the shadow at every call site — these tokens replace it.
     enum Shadow {
-        static func small(_ color: Color = .black.opacity(0.06)) -> some View {
-            EmptyView()
-        }
+        static let smallColor = Color.black.opacity(0.06)
+        static let smallRadius: CGFloat = 8
+        static let smallX: CGFloat = 0
+        static let smallY: CGFloat = 2
     }
 
     // MARK: - Icon Sizes

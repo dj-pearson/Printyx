@@ -1,5 +1,18 @@
 import Foundation
 
+// MARK: - Ticket Stats
+
+/// Server-side ticket counts across ALL tickets (IOS-074), so the dashboard
+/// cards don't understate by only counting the loaded page. Fields are optional
+/// for decode resilience; missing values fall back to page-derived counts.
+struct TicketStats: Decodable, Equatable {
+    let total: Int?
+    let open: Int?
+    let inProgress: Int?
+    let urgent: Int?
+    let resolved: Int?
+}
+
 // MARK: - Service Ticket
 
 struct ServiceTicket: Identifiable, Codable, Equatable {
@@ -146,6 +159,18 @@ enum TicketPriority: String, CaseIterable, Identifiable {
         case .high: 2
         case .medium: 3
         case .low: 4
+        }
+    }
+
+    /// The next-higher priority when escalating, or nil if already at the top.
+    /// Used so escalating never DEMOTES a ticket (e.g. critical -> urgent).
+    var escalated: TicketPriority? {
+        switch self {
+        case .low: return .medium
+        case .medium: return .high
+        case .high: return .urgent
+        case .urgent: return .critical
+        case .critical: return nil
         }
     }
 }

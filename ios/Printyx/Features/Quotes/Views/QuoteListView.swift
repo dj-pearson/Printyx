@@ -5,6 +5,7 @@ struct QuoteListView: View {
     // Shared environment client so Create flows + detail use the real,
     // authenticated APIClient rather than a nil / throwaway one (IOS-032).
     @EnvironmentObject private var apiClient: APIClient
+    @EnvironmentObject private var router: AppRouter
     @StateObject private var viewModel: QuoteListViewModel
     @State private var showingCreateProposal = false
     @State private var showingCreateQuote = false
@@ -16,7 +17,9 @@ struct QuoteListView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        // Bind the shared Sales tab path so deep links / search results for
+        // quotes, proposals, contracts (and any AppRoute) push here.
+        NavigationStack(path: router.pathBinding(for: .sales)) {
             VStack(spacing: 0) {
                 // Metrics
                 metricsBar
@@ -54,6 +57,9 @@ struct QuoteListView: View {
                 }
             }
             .navigationTitle("Quotes & Proposals")
+            .navigationDestination(for: AppRoute.self) { route in
+                AppRouteDestination(route: route, apiClient: apiClient)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
@@ -93,6 +99,16 @@ struct QuoteListView: View {
                     quoteService: QuoteService(apiClient: apiClient),
                     proposalId: proposal.id
                 )
+            }
+            .sheet(item: $selectedQuote) { quote in
+                NavigationStack {
+                    QuoteDeepLinkDetail(quote: quote)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Done") { selectedQuote = nil }
+                            }
+                        }
+                }
             }
             .task {
                 if viewModel.proposals.isEmpty && viewModel.quotes.isEmpty {
@@ -224,6 +240,7 @@ struct QuoteListView: View {
                     ForEach(viewModel.filteredQuotes) { quote in
                         QuoteRowView(quote: quote)
                             .contentShape(Rectangle())
+                            .onTapGesture { selectedQuote = quote }
                             .onAppear {
                                 if quote.id == viewModel.filteredQuotes.last?.id {
                                     Task { await viewModel.loadMoreQuotes() }

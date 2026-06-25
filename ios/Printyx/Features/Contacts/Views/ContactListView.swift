@@ -107,6 +107,13 @@ struct ContactListView: View {
                             .tint(.green)
                         }
                     }
+                    // Pagination: load the next page on the last row (the
+                    // contacts list previously never called loadMore()).
+                    .onAppear {
+                        if contact.id == viewModel.filteredContacts.last?.id {
+                            Task { await viewModel.loadMore() }
+                        }
+                    }
             }
         }
         .listStyle(.insetGrouped)

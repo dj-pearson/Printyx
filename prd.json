@@ -8054,8 +8054,8 @@
         "CI is green on the current branch"
       ],
       "priority": 179,
-      "passes": false,
-      "notes": "My own finding + networking H5/security C1. Complements IOS-014 (populate pins) with enforcement."
+      "passes": true,
+      "notes": "My own finding + networking H5/security C1. Complements IOS-014 (populate pins) with enforcement. | IMPLEMENTED: added .github/workflows/ios-ci.yml — PR-gated (paths: ios/**) native CI on macos-15/Xcode 26.2: build-test job runs xcodegen + xcodebuild test (Debug, simulator, no signing) over the full PrintyxTests target, which includes the IOS-031 PayloadContractTests fixtures and the IOS-071 token-refresh tests. Added CertificatePinnerTests + internal trackedHosts/hostsWithEmptyPins accessors on CertificatePinner; the release-pin-guard job runs that test in Release config and fails on any empty SPKI pin set (continue-on-error until IOS-014 populates pins, then drop it to make it blocking). project.yml: PrintyxTests now sets SWIFT_ACTIVE_COMPILATION_CONDITIONS (DEBUG/'') so the test's #if DEBUG skip resolves correctly. NOTE: marking the build-test job a REQUIRED status check is a branch-protection setting the maintainer must enable in repo settings (cannot be set from the workflow file). This CI job also gives the first real compile of this branch's Swift changes."
     },
     {
       "id": "IOS-070",
@@ -8069,6 +8069,227 @@
       "priority": 180,
       "passes": false,
       "notes": "My own finding + security audit L2. Low risk but a real release-config inconsistency."
+    },
+    {
+      "id": "IOS-071",
+      "title": "Token-refresh single-flight correctness: fail parked waiters, don't collapse non-401 retries",
+      "description": "As a user on a flaky connection, when my access token expires the app's single-flight refresh must propagate the real outcome to every parked request and not misreport unrelated errors as auth failures, so I'm neither logged out spuriously nor left hanging.",
+      "acceptanceCriteria": [
+        "refreshAccessToken parks waiters as Result/typed continuations; on refresh FAILURE all waiters are resumed by throwing (not .resume(returning: Data())) so they do not retry with a dead token (ios/Printyx/Core/Network/APIClient.swift:509-513)",
+        "The defer that resumes pendingRequests distinguishes success vs thrown failure (capture outcome, resume accordingly)",
+        "401-retry path (APIClient.swift:298-310) re-runs the full status handling for the retry response so a post-refresh 403/404/422/500 surfaces as that error, not APIError.unauthorized, and does not force isAuthenticated=false",
+        "A successful authed GET fetched on the post-refresh retry path is written to the response cache",
+        "Parked refresh waiters have a bounded wait / cancellation handling so a hung refresh cannot suspend requests indefinitely",
+        "Unit tests in ios/PrintyxTests/APIClientTests.swift cover: refresh-failure fails all waiters; post-refresh 500 maps to serverError not unauthorized; concurrent 401s trigger exactly one refresh"
+      ],
+      "priority": 181,
+      "passes": false,
+      "notes": "Deep-dive Network audit P1 #1-3,#7. Adjacent to IOS-034 (single-flight existence/terminal-401 keychain clear) but these are the resume-with-wrong-result, error-collapse, no-timeout, and missing-cache-write defects WITHIN the machinery. Verified: defer at APIClient.swift:509-513 resumes waiters with .resume(returning: Data()) on every exit incl. the throws at 516/531. | IMPLEMENTED (pending iOS CI build, IOS-069): refactored APIClient response handling into handleResponse(allowRefresh:) so the 401->refresh->retry path re-runs full status mapping (post-refresh 5xx/4xx surface correctly, GET retry is cached, no refresh loop); refreshAccessToken now fails parked waiters via resume(throwing:) instead of fake resume(returning: Data()). Added 3 APIClientTests (refresh-failure no-retry, post-refresh-500=serverError, concurrent single-flight). Not yet compiled (no macOS/Xcode in this env)."
+    },
+    {
+      "id": "IOS-072",
+      "title": "Global search & deep links are dead for 8 of 10 record types (Sales/More tabs never bind router path)",
+      "description": "As a user, when I tap a search result or a push deep link for a quote, proposal, contract, invoice, task, or contact, the app must actually open that record instead of switching to a tab that pushes nothing or shows 'Unknown route'.",
+      "acceptanceCriteria": [
+        "SalesHubView binds router.pathBinding(for: .sales) at the hub level (not only inside the Pipeline segment) and registers navigationDestination(for: AppRoute.self) for .opportunity/.quote/.proposal/.contract",
+        "MoreView binds router.pathBinding(for: .more) and registers navigationDestination for .invoice and .task",
+        "CRMListView's navigationDestination handles .contact (routes to a contact detail), not just .businessRecord",
+        "Tapping each of the 10 AppRoute cases from UniversalSearchSheet opens a real destination view (no 'Unknown route' placeholder, no no-op tab switch)",
+        "Equipment route lands on the real equipment detail rather than EquipmentDetailPlaceholder where reachable",
+        "Manual route table documented; adding an AppRoute case still requires a destination branch (keep AppRoute.swift comment accurate)"
+      ],
+      "priority": 182,
+      "passes": false,
+      "notes": "Deep-dive Quotes audit P1 #1-3 + Auth #8 + Service #11. Verified: only ServiceTicketListView(.service), CRMListView(.crm), OpportunityListView(.sales) call pathBinding+navigationDestination; OpportunityListView is mounted only on the Pipeline segment. .more tab (MoreView) and Quotes/Contracts segments use plain NavigationStack{} with no path binding. Overlaps IOS-048 scope but concrete mechanism here is the unbound Sales/More paths. | IMPLEMENTED (pending iOS CI build, IOS-069): added App/AppRouteDestinations.swift — a single AppRouteDestination view mapping ALL 10 AppRoute cases to a real destination, plus RecordLoaderView (id->fetch) and push-native deep-link detail screens for quote/contact/invoice/contract (no nested NavigationStack). Bound the shared router path in the Sales sub-views (Opportunity/Quote/Contract list views now all bind .sales + use the shared destination), MoreView (binds .more, opens invoice/task), and CRMListView (now opens .contact). Eliminates the 'Unknown route'/no-op dead-ends for the 6 previously-unrouted types. Equipment still lands on EquipmentDetailPlaceholder (full equipment detail = IOS-056). Not compiled (no macOS/Xcode here)."
+    },
+    {
+      "id": "IOS-073",
+      "title": "Opportunity stage changes silently no-op against the edge function",
+      "description": "As a sales rep, moving a deal to a new pipeline stage (kanban 'Move Forward' or detail Save) must persist, instead of being silently dropped because the backend ignores the field the app sends.",
+      "acceptanceCriteria": [
+        "The opportunities edge function PATCH handler maps stage / sales_stage (and salesStage) into the deals.status update (supabase/functions/opportunities/index.ts fieldMap ~204-222)",
+        "iOS UpdateStageRequest sends a field the backend honors (status), and CRM/Opportunity detail Save maps salesStage->status consistently (ios/Printyx/Features/Opportunities/Models/OpportunityModels.swift:130,139)",
+        "Mirror the same field mapping in the Express dev route if one exists so dev and prod behave identically (CLAUDE.md: endpoints must exist on both backends)",
+        "After a stage move, GET opportunity returns the new stage (mapDealToOpportunity sales_stage reflects deals.status)",
+        "A regression note/test asserts kanban move + detail save both change persisted stage"
+      ],
+      "priority": 183,
+      "passes": true,
+      "notes": "Deep-dive CRM audit P1 #4, VERIFIED against supabase/functions/opportunities/index.ts: PATCH fieldMap has only 'status' (no stage/sales_stage), and stage is derived from deals.status via mapDealToOpportunity. iOS kanban sends {stage}, detail sends {sales_stage} -> both ignored -> no-op. Backend+iOS fix. | IMPLEMENTED: opportunities edge fn folds stage/sales_stage/salesStage into deals.status (supabase/functions/opportunities/index.ts); added matching PATCH /api/opportunities/:id/stage Express route (server/routes-opportunities.ts) returning salesStage. iOS already sends stage(kanban)/sales_stage(detail) so no client change needed. tsc clean."
+    },
+    {
+      "id": "IOS-074",
+      "title": "List KPI/stat cards count only the loaded page and are mislabeled as totals",
+      "description": "As a user, the headline metric cards on list screens (tickets, equipment, quotes, invoices, contracts, CRM) must reflect true totals (or be clearly scoped), not just the first 25 rows currently in memory, so I don't misread the state of the business.",
+      "acceptanceCriteria": [
+        "Stat cards source counts/sums from server-provided aggregates (total counts per status/sum) rather than reducing over the in-memory paged array",
+        "Where a server aggregate is unavailable, the card is relabeled to reflect its scope (e.g. 'Loaded') or removed, and never grows as the user scrolls",
+        "Cards do not contradict the active filter (selecting 'Paid' must not make 'Overdue' read 0 due to the filtered set) — compute from unfiltered aggregates",
+        "Applies to ServiceTicketListViewModel, EquipmentListViewModel, QuoteListViewModel, InvoiceListViewModel, ContractListViewModel, plus Opportunity weighted/total metrics",
+        "Opportunity weightedValue stops defaulting nil probability to 50% (OpportunityModels.swift:42) or documents the assumption in the card"
+      ],
+      "priority": 184,
+      "passes": false,
+      "notes": "Deep-dive Service audit #5,#8; Quotes audit #5,#6; CRM audit #21. May need a small backend counts endpoint or use existing list 'total'/grouped-count responses. iOS + backend. | IMPLEMENTED for Service Tickets (flagship): added GET /service-tickets/stats (edge fn: 5 head/count queries in one round-trip for total/open/in_progress/urgent/resolved across ALL tickets; Express /api/service-tickets/stats extended with urgent/resolved/total). iOS TicketStats model + ServiceTicketService.fetchStats() + VM @Published stats; openCount/inProgressCount/urgentCount/resolvedCount now prefer server totals with page-derived fallback. Same single-request /stats pattern to extend to invoices/contracts/quotes/equipment/CRM (all confirmed to return total counts). Not compiled (no macOS/Xcode); backend tsc clean."
+    },
+    {
+      "id": "IOS-075",
+      "title": "Dead/missing list pagination triggers (tickets, CRM, contacts, pipeline columns, quote rows)",
+      "description": "As a user, every list must let me scroll past the first page; today several lists silently cap at 25 records and some rows aren't even tappable.",
+      "acceptanceCriteria": [
+        "ServiceTicketListView calls viewModel.loadMore() from a last-row onAppear (parity with Equipment/Tasks) so hasMore tickets load",
+        "CRMListView and ContactListView trigger loadMore() on the last row; pagination errors surface a retry affordance instead of silent truncation",
+        "Opportunity pipeline pagination no longer keys solely off the global last id per column (fix premature/stalled paging across 7 columns)",
+        "QuoteRowView rows are tappable and present quote detail (selectedQuote state is wired, QuoteListView.swift:12,224-231)",
+        "Pagination 'load more' triggers compare against the same (filtered vs raw) collection the loader fetches so paging doesn't stall while searching"
+      ],
+      "priority": 185,
+      "passes": false,
+      "notes": "Deep-dive Service #1; CRM #14,#16,#17; Quotes #7,#12. Verified ServiceTicketListView has no loadMore trigger while loadMore()/isLoadingMore exist. | PARTIAL (pending iOS CI build): added last-row onAppear loadMore() triggers to ServiceTicketListView, CRMListView, ContactListView (were capped at first page). Remaining: opportunity per-column pagination fix, tappable QuoteRowView, search-active paging. | + quote rows now tappable (selectedQuote sheet -> QuoteDeepLinkDetail) and kanban pagination now driven only by the longest column (paginationTriggerId) so short columns don't page prematurely. Core P1 (truly-capped ticket/CRM/contacts lists + dead quote rows) done; search-active paging deferred to IOS-078."
+    },
+    {
+      "id": "IOS-076",
+      "title": "Detail edits silently drop cleared fields and mangle money values",
+      "description": "As a user editing a CRM record, opportunity, or quote, I must be able to clear a field and reliably set numeric/currency amounts, and quotes I create must be linked to a customer.",
+      "acceptanceCriteria": [
+        "Editing a field to empty persists the cleared value (send explicit null / use a representation the backend treats as clear) instead of omitting the key on PUT (CRMDetailViewModel.save 106-126; OpportunityDetailView.save 216-227)",
+        "Currency/number inputs parse locale-correctly and reject non-numeric input with inline validation rather than silently nulling (estimatedAmount CRMDetailViewModel:117, OpportunityDetailView:220; populateFields formatting :84)",
+        "ProposalFormView/QuoteFormView collect a customer (and/or lead) and populate customerId/leadId so created quotes/proposals are not orphaned (CreateQuoteRequest/CreateProposalRequest)",
+        "Round-trip test: open record, blank an optional field, save, reload -> field is empty"
+      ],
+      "priority": 186,
+      "passes": false,
+      "notes": "Deep-dive CRM audit #2,#3,#8; Quotes audit #8. Backend must accept explicit clears; confirm PUT vs PATCH semantics on the business-records/customers and proposals edge functions."
+    },
+    {
+      "id": "IOS-077",
+      "title": "Service-ticket priority integrity: escalate must not demote, expose priority filter, wire quick-close",
+      "description": "As a technician/CSR, escalating a ticket must raise (never lower) its priority, I should be able to filter by priority, and the one-swipe resolve should be reachable.",
+      "acceptanceCriteria": [
+        "escalateTicket raises priority by sortOrder and never demotes a critical ticket to urgent (ServiceTicketService.swift:59-61; TicketPriority.sortOrder :144); escalate is hidden/disabled at the top priority",
+        "The ticket list exposes a priority filter control bound to selectedPriority (currently sent to the API but unsettable in UI; ServiceTicketListViewModel:16,49,99 vs ServiceTicketListView:109-124)",
+        "closeTicket(_:resolution:) is reachable from the UI (swipe action / detail) instead of being dead VM code (ServiceTicketListViewModel:120-129)",
+        "urgentCount and escalate use a consistent definition of the urgent/critical buckets"
+      ],
+      "priority": 187,
+      "passes": false,
+      "notes": "Deep-dive Service audit #4,#6,#7,#8. Distinct from IOS-052 (full status/assign/resolve form): these are integrity bugs in already-built actions. | PARTIAL (pending iOS CI build): fixed the escalate-demotes-critical bug — TicketPriority now has an `escalated` step, ServiceTicketService.escalateTicket(id:from:) steps UP from the current priority (never down) and re-affirms critical at the top, and the Escalate swipe is hidden once a ticket is at top priority. Remaining: expose the priority filter control (selectedPriority is sent to the API but unsettable in UI), wire closeTicket quick-action into a swipe/detail."
+    },
+    {
+      "id": "IOS-078",
+      "title": "Sort & search correctness across list screens (global order, re-sort on change, real server search)",
+      "description": "As a user, sorting and searching long lists must produce correct, complete results rather than per-page-only ordering and first-page-only matches.",
+      "acceptanceCriteria": [
+        "Sorting is applied to the full result set (server-side sort param or stable client re-sort of the whole accumulated list), not per fetched page (CRMListViewModel.sortRecords; TaskListViewModel.sortTasks)",
+        "Changing the sort selection re-orders the already-loaded list immediately via onChange(of: sortBy) (CRM/Tasks have no such handler today)",
+        "Search either passes searchText to endpoints that support it (invoices/contracts) or is debounced client-side without a wasted full server refetch where the endpoint has no search param (proposals/quotes)",
+        "Pagination while a search term is active continues to load further pages (don't key load-more off the filtered last item against an unfiltered fetch)"
+      ],
+      "priority": 188,
+      "passes": false,
+      "notes": "Deep-dive CRM audit #12,#13; Quotes audit #11,#12,#13. Overlaps IOS-068 (list search/sort/filter completeness) — this captures the concrete mechanisms."
+    },
+    {
+      "id": "IOS-079",
+      "title": "Cut re-fetch storms and move decode/formatting off the main thread",
+      "description": "As a user, toggling filters and performing row actions should not trigger redundant network round-trips, and scrolling long lists should stay smooth.",
+      "acceptanceCriteria": [
+        "Task list filter/sort/segment changes don't each fire a full list+stats reload; client-only operations (sort) stay client-side (TaskListView onChange 110-118; TaskListViewModel loadInitial)",
+        "completeTask/deleteTask update stats locally instead of a full fetchTaskStats per row action (TaskListViewModel:127,148)",
+        "addComment/logTime append to local state or fetch only the thread instead of full task reload that clobbers in-progress edits (TaskDetailViewModel:153,174)",
+        "Per-row currency/date formatting uses cached/static formatters (CRMRowView:90; OpportunityListView formatCurrency; DateExtensions allocate-per-call 13-34) — consolidate via Formatters",
+        "Large array JSON decode is moved off the @MainActor service hop where it currently runs (services annotated @MainActor)",
+        "PersistentResponseCache total-cap enforcement scan no longer runs synchronously on the main actor on every cached GET (PersistentResponseCache.swift:69,76-97)"
+      ],
+      "priority": 189,
+      "passes": false,
+      "notes": "Deep-dive CRM audit #9,#10,#11,#22,#23; Network audit #12; Auth audit #10,#13,#15. Performance bundle; complements IOS-044/049."
+    },
+    {
+      "id": "IOS-080",
+      "title": "QuickLog field-quality fixes: first-run location, audio session cleanup, dictation edit safety, missing record() call-sites",
+      "description": "As a field rep, the one-tap activity logger must capture location on the very first use, release the mic/audio session when I dismiss it, preserve text I type while dictating, and let me log against the record I'm actually looking at.",
+      "acceptanceCriteria": [
+        "QuickLogLocationProvider requests authorization and waits for the grant before calling requestLocation (don't request location in the same .notDetermined pass; QuickLogLocationProvider:28-46) so the first quick-log after install captures location",
+        "Dismissing the QuickLog sheet while recording stops SpeechTranscriber and restores the AVAudioSession (onDisappear { transcriber.stop() }; SpeechTranscriber:71,125; QuickLogSheet:9)",
+        "Manual keystrokes during dictation are not overwritten by the next partial transcript (fold edits into the dictation base; QuickLogSheet:191-197)",
+        "Ticket/Opportunity/Quote/Equipment detail views call LastViewedRecordStore.record(...) so QuickLog can attach to non-CRM records (only CRMDetailView calls it today; LastViewedRecordStore:23)"
+      ],
+      "priority": 190,
+      "passes": false,
+      "notes": "Deep-dive Service/QuickLog audit #2,#9,#10,#13. Distinct from IOS-036 (audio-thread race / continuation leak) and IOS-067 (picker + non-lead API routing): these are first-run, lifecycle-cleanup, edit-preservation, and missing call-sites."
+    },
+    {
+      "id": "IOS-081",
+      "title": "Auth state & cold-launch robustness (login backoff/single-flight, splash hang, logout ordering, biometric prompts)",
+      "description": "As a user, the app must not hang on the splash screen when a refresh stalls, must not stack retry storms on rapid taps, must revoke my session server-side on logout, and must not stack biometric prompts.",
+      "acceptanceCriteria": [
+        "Cold launch cannot get stuck on the launch screen if attemptTokenRefresh hangs — bound the refresh / resolve loading state with a timeout and a clear failure path (AuthManager:51-54)",
+        "Login retries use real backoff and are single-flight so rapid double-taps don't spawn stacked retry loops on the MainActor (AuthManager:114)",
+        "logout() revokes server-side BEFORE clearing the keychain (or captures the refresh token first) so the refresh token is actually revoked (AuthManager:136-146)",
+        "Biometric unlock guards against concurrent evaluatePolicy calls / stacked system prompts (BiometricLockView:44-50; BiometricLockManager:90-100)",
+        "JWT decode hardening: a token with empty sub is not treated as an authenticated user; verify app_metadata claim casing (snake vs camel) so roleLevel/tenantId aren't always nil (AuthModels:64-72)"
+      ],
+      "priority": 191,
+      "passes": false,
+      "notes": "Deep-dive Auth audit P1 #1,#2,#3,#4 + #6,#7. Claim-casing (#7) must be verified against a real Supabase JWT before changing decode. Distinct from IOS-034/040."
+    },
+    {
+      "id": "IOS-082",
+      "title": "UI consistency & dead-API cleanup (OfflineBanner animation, Shadow.small EmptyView, formatRevenue, currency 'K', nav consistency)",
+      "description": "As a user, the UI should be visually consistent and free of dead/misleading helpers and incorrect numeric formatting.",
+      "acceptanceCriteria": [
+        "OfflineBanner animation is keyed on networkMonitor.isConnected / pendingCount, not a fresh UUID() that re-evaluates every render (MainTabView.swift:40)",
+        "AppTheme.Shadow.small no longer returns EmptyView(); either implement a real shadow helper or remove it and its callers (AppTheme.swift:30-32)",
+        "formatRevenue and the list 'K' currency formatters stop mis-rounding (e.g. $1,500 -> '$2K') and present consistent precision app-wide (HomeView:197-206; InvoiceListView:152-161; ContractListView:134-142)",
+        "PriorityIndicator and StatusBadge.priority share one priority vocabulary/icon set incl. 'critical' (PriorityIndicator:18-24 vs StatusBadge:71-77)",
+        "Equipment detail uses router-based NavigationStack navigation instead of .sheet(item:) so it participates in deep links, and ServiceHub avoids nested NavigationStacks (EquipmentListView:48; ServiceHubView:16-45)",
+        "ShimmerModifier stops its repeatForever animation when the skeleton disappears (ViewExtensions:46-52); Color(hex:) malformed-input fallback is sensible (ColorExtensions:45-46)"
+      ],
+      "priority": 192,
+      "passes": false,
+      "notes": "Deep-dive Auth audit #9,#11,#13,#14,#12,#16; Service audit #12,#14,#15; Quotes audit #15. Low-risk polish bundle. | PARTIAL (pending iOS CI build): fixed OfflineBanner animation (now keyed on connectivity/pendingCount via animationToken, dropped UUID() key in MainTabView), replaced dead AppTheme.Shadow.small EmptyView with real Shadow tokens + View.cardShadow() (dogfooded in CardModifier), fixed HomeView.formatRevenue rounding/K-M abbreviation. Remaining: PriorityIndicator/StatusBadge vocab merge, invoice/contract 'K' formatting, Color(hex) fallback, ShimmerModifier stop, equipment sheet->router, ServiceHub nested NavigationStack. | + consolidated compact currency formatting into Formatters.currencyAbbreviated (\\$1.5K not \\$2K, \\$1.2M); InvoiceListView, ContractListView, and HomeView now use it (was duplicated, all with the same divide-then-round bug)."
+    },
+    {
+      "id": "IOS-083",
+      "title": "Offline write-queue body integrity + cache fallback on server/timeout errors",
+      "description": "As a user making changes offline or on a degraded connection, queued writes must not lose their body and reads should fall back to cache on 5xx/timeout, not only when fully offline.",
+      "acceptanceCriteria": [
+        "enqueueForOffline never queues a body-less mutation when encoding fails — surface the error / drop the enqueue instead of replaying an empty body that creates a blank record (APIClient.swift:374-379)",
+        "Replayed writes only set Content-Type: application/json when a body is present (APIClient replayQueuedWrite ~397-407)",
+        "Offline GET cache fallback also triggers on server 5xx and request timeouts, not just NetworkMonitor.isConnected==false (APIClient:233-241 vs 247-258)",
+        "NetworkMonitor's initial isConnected does not optimistically assume online before the first path update on a cold airplane-mode launch (NetworkMonitor:9)"
+      ],
+      "priority": 193,
+      "passes": false,
+      "notes": "Deep-dive Network audit #5,#6,#8,#11. The body-drop and 5xx/timeout fallback are new beyond IOS-035 (dedup/idempotency/ordering)."
+    },
+    {
+      "id": "IOS-084",
+      "title": "Push notification lifecycle: clear badge, don't record transient errors as denial, retry registration",
+      "description": "As a user, the app icon badge should clear when I engage notifications, transient authorization errors shouldn't be recorded as a hard denial, and a failed APNs registration shouldn't silently disable push until relaunch.",
+      "acceptanceCriteria": [
+        "App badge count is cleared on notification open / app foreground (PushNotificationManager presents .badge but never clears; whole file + :132)",
+        "requestAuthorizationIfNeeded distinguishes a thrown/transient error from an explicit user denial and doesn't persist .denied on error (PushNotificationManager:55-56)",
+        "APNs registration failure schedules a retry and/or surfaces state instead of silently doing nothing in Release until next launch (PushNotificationManager:90-96)"
+      ],
+      "priority": 194,
+      "passes": false,
+      "notes": "Deep-dive Network audit #9,#10,#15. Distinct from IOS-041 (payload validation / PII logging)."
+    },
+    {
+      "id": "IOS-085",
+      "title": "Read-only detail dead-ends + stale-after-mutation across Invoice/Contract/Proposal/CRM-customer",
+      "description": "As a user, detail panes should offer the actions implied by the data and stay in sync after I change status, instead of being static 'Done'-only sheets that drift from the list.",
+      "acceptanceCriteria": [
+        "InvoiceDetailView and ContractDetailView provide an action surface or clear navigation into the IOS-062/063 flows rather than a static List with only Done (InvoiceListView:254-316; ContractListView:234-303)",
+        "ProposalDetailView status transitions (send/markAccepted) notify the list VM so the row reflects the new status without a manual refresh (ProposalDetailView:233-249)",
+        "CRM activity logging is available for customers, not only leads/prospects, and doesn't disappear when a lead is loaded via the customers route (CRMDetailView:181; CRMDetailViewModel activities)",
+        "Lead detail load/save use the correct unified business-records path so lead-only fields and activities persist (verify /api/customers/:id resolves lead ids on the unified business_records table before changing; CRMDetailViewModel:56,129)"
+      ],
+      "priority": 195,
+      "passes": false,
+      "notes": "Deep-dive CRM audit #1,#6; Quotes audit #10,#14. NOTE: CLAUDE.md says leads+customers share business_records, so /api/customers/:id may resolve lead ids — VERIFY against server/routes-business-records.ts before treating #1 as a hard break. Complements IOS-062/063/064."
     }
   ]
 }

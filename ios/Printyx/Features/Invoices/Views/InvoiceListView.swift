@@ -150,14 +150,7 @@ struct InvoiceListView: View {
     }
 
     private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        if value >= 1_000 {
-            return formatter.string(from: NSNumber(value: value / 1_000)).map { "\($0)K" } ?? "$\(Int(value))"
-        }
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
+        Formatters.currencyAbbreviated(value)
     }
 }
 

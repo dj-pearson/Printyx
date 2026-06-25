@@ -145,13 +145,26 @@ struct ServiceTicketListView: View {
                     .contentShape(Rectangle())
                     .onTapGesture { router.push(.serviceTicket(id: ticket.id)) }
                     .swipeActions(edge: .trailing) {
-                        if ticket.status != "resolved" && ticket.status != "closed" {
+                        // Hide escalate on closed/resolved tickets and when the
+                        // ticket is already at the top priority (escalating must
+                        // never demote a critical ticket).
+                        if ticket.status != "resolved" && ticket.status != "closed"
+                            && ticket.priorityEnum.escalated != nil {
                             Button {
                                 Task { await viewModel.escalateTicket(ticket) }
                             } label: {
                                 Label("Escalate", systemImage: "arrow.up.circle")
                             }
                             .tint(.orange)
+                        }
+                    }
+                    // Pagination: load the next page when the last row appears
+                    // (parity with Equipment/Tasks lists). Without this the
+                    // ticket list was capped at the first page even though
+                    // loadMore()/hasMore existed.
+                    .onAppear {
+                        if ticket.id == viewModel.filteredTickets.last?.id {
+                            Task { await viewModel.loadMore() }
                         }
                     }
             }

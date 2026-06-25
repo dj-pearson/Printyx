@@ -55,4 +55,33 @@ enum Formatters {
         guard let value else { return "—" }
         return currencyUSD.string(from: NSNumber(value: value)) ?? "—"
     }
+
+    /// Compact USD for metric cards: "$1.5K", "$2K", "$1.2M". Returns "—" for
+    /// nil. Fixes the old per-screen formatters that divided by 1,000 and then
+    /// rounded to whole units, so $1,500 rendered as "$2K".
+    static func currencyAbbreviated(_ value: Double?) -> String {
+        guard let value else { return "—" }
+
+        func scaled(_ v: Double, _ suffix: String) -> String {
+            let hasFraction = v.truncatingRemainder(dividingBy: 1) != 0
+            let f = (v < 10 && hasFraction) ? currencyUSDOneFraction : currencyUSDNoFraction
+            let base = f.string(from: NSNumber(value: v)) ?? "$\(Int(v))"
+            return "\(base)\(suffix)"
+        }
+
+        let magnitude = abs(value)
+        if magnitude >= 1_000_000 { return scaled(value / 1_000_000, "M") }
+        if magnitude >= 1_000 { return scaled(value / 1_000, "K") }
+        return currencyUSDNoFraction.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
+    }
+
+    /// USD currency with a single fractional digit — used by the abbreviated
+    /// formatter for values like $1.5K.
+    static let currencyUSDOneFraction: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = "USD"
+        f.maximumFractionDigits = 1
+        return f
+    }()
 }

@@ -134,4 +134,130 @@ final class APIClientTests: XCTestCase {
 
         XCTAssertEqual(OfflineWriteQueue.shared.pendingCount, before + 1)
     }
+
+    // MARK: - Token refresh correctness (IOS-071)
+
+    /// A failed refresh must propagate as an error and must NOT retry the
+    /// original request with the still-dead token. Regression guard for the
+    /// defer that previously resumed everything with `.resume(returning: Data())`.
+    func testRefreshFailureDoesNotRetryWithDeadTokenAndThrows() async throws {
+        let keychain = KeychainManager.shared
+        keychain.setAccessToken("expired-token")
+        keychain.setRefreshToken("refresh-token-abc")
+
+        var tasksCallCount = 0
+        MockURLProtocol.handler = { request in
+            let path = request.url?.path ?? ""
+            if path.hasSuffix("/mobile-auth/refresh") {
+                // Refresh itself fails.
+                let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+                return (response, Data())
+            }
+            if path.contains("tasks") {
+                tasksCallCount += 1
+                let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+                return (response, Data())
+            }
+            let response = HTTPURLResponse(url: request.url!, statusCode: 404, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        struct Dummy: Decodable { let ok: Bool }
+        let client = MockAPIClientFactory.make(keychain: keychain)
+        do {
+            let _: Dummy = try await client.request(APIEndpoint(path: "/api/tasks"))
+            XCTFail("Expected the request to throw after a failed refresh")
+        } catch {
+            // Expected.
+        }
+
+        XCTAssertEqual(tasksCallCount, 1, "The original request must not be retried when refresh fails")
+    }
+
+    /// After a successful refresh, a non-401 retry response must surface as its
+    /// real error (e.g. serverError), not be collapsed into `.unauthorized`.
+    func testPostRefreshServerErrorIsNotReportedAsUnauthorized() async throws {
+        let keychain = KeychainManager.shared
+        keychain.setAccessToken("expired-token")
+        keychain.setRefreshToken("refresh-token-abc")
+
+        var tasksCallCount = 0
+        MockURLProtocol.handler = { request in
+            let path = request.url?.path ?? ""
+            if path.hasSuffix("/mobile-auth/refresh") {
+                let body: [String: Any] = [
+                    "access_token": "fresh-access",
+                    "refresh_token": "fresh-refresh",
+                    "expires_in": 3600,
+                ]
+                let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                return (response, try JSONSerialization.data(withJSONObject: body))
+            }
+            if path.contains("tasks") {
+                tasksCallCount += 1
+                let code = tasksCallCount == 1 ? 401 : 500
+                let response = HTTPURLResponse(url: request.url!, statusCode: code, httpVersion: nil, headerFields: nil)!
+                return (response, Data(#"{"message":"boom"}"#.utf8))
+            }
+            let response = HTTPURLResponse(url: request.url!, statusCode: 404, httpVersion: nil, headerFields: nil)!
+            return (response, Data())
+        }
+
+        struct Dummy: Decodable { let ok: Bool }
+        let client = MockAPIClientFactory.make(keychain: keychain)
+        do {
+            let _: Dummy = try await client.request(APIEndpoint(path: "/api/tasks"))
+            XCTFail("Expected a serverError to be thrown")
+        } catch let apiError as APIError {
+            guard case .serverError(let statusCode, _) = apiError else {
+                XCTFail("Expected .serverError, got \(apiError)")
+                return
+            }
+            XCTAssertEqual(statusCode, 500)
+        }
+        XCTAssertEqual(tasksCallCount, 2, "Expected initial 401 + one retry")
+    }
+
+    /// Concurrent 401s should trigger exactly one refresh (single-flight); all
+    /// parked callers then retry successfully.
+    func testConcurrentUnauthorizedTriggersSingleRefresh() async throws {
+        let keychain = KeychainManager.shared
+        keychain.setAccessToken("expired-token")
+        keychain.setRefreshToken("refresh-token-abc")
+
+        var refreshCallCount = 0
+        var tasksFirstHits = 0
+        MockURLProtocol.handler = { request in
+            let path = request.url?.path ?? ""
+            if path.hasSuffix("/mobile-auth/refresh") {
+                refreshCallCount += 1
+                let body: [String: Any] = [
+                    "access_token": "fresh-access",
+                    "refresh_token": "fresh-refresh",
+                    "expires_in": 3600,
+                ]
+                let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+                return (response, try JSONSerialization.data(withJSONObject: body))
+            }
+            // First time each path is seen, return 401; afterwards 200.
+            let isAuthed = request.value(forHTTPHeaderField: "Authorization") == "Bearer fresh-access"
+            if !isAuthed {
+                tasksFirstHits += 1
+                let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+                return (response, Data())
+            }
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data(#"{"ok":true}"#.utf8))
+        }
+
+        struct Dummy: Decodable { let ok: Bool }
+        let client = MockAPIClientFactory.make(keychain: keychain)
+        async let a: Dummy = client.request(APIEndpoint(path: "/api/tasks"))
+        async let b: Dummy = client.request(APIEndpoint(path: "/api/contacts"))
+        let (ra, rb) = try await (a, b)
+
+        XCTAssertTrue(ra.ok)
+        XCTAssertTrue(rb.ok)
+        XCTAssertEqual(refreshCallCount, 1, "Concurrent 401s must single-flight one refresh")
+    }
 }

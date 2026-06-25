@@ -4,6 +4,7 @@ import SwiftUI
 struct MoreView: View {
     let apiClient: APIClient
     @ObservedObject var authManager: AuthManager
+    @EnvironmentObject private var router: AppRouter
 
     // Services
     private var taskService: TaskService { TaskService(apiClient: apiClient) }
@@ -11,7 +12,9 @@ struct MoreView: View {
     private var contactService: ContactService { ContactService(apiClient: apiClient) }
 
     var body: some View {
-        NavigationStack {
+        // Bind the shared More tab path so deep links / search results for
+        // invoices and tasks push here instead of landing on the static menu.
+        NavigationStack(path: router.pathBinding(for: .more)) {
             List {
                 // Work
                 Section("Work") {
@@ -50,6 +53,9 @@ struct MoreView: View {
                 }
             }
             .navigationTitle("More")
+            .navigationDestination(for: AppRoute.self) { route in
+                AppRouteDestination(route: route, apiClient: apiClient)
+            }
         }
     }
 }

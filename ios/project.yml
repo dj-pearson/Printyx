@@ -66,6 +66,14 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: net.printyx.mainapp.tests
         GENERATE_INFOPLIST_FILE: "YES"
+      configs:
+        # Mirror the app target so `#if DEBUG` in tests resolves correctly
+        # (xcodegen does not add the default DEBUG flag). The IOS-069 cert-pin
+        # guard test relies on this to skip in Debug and enforce in Release.
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+        Release:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
 
   PrintyxUITests:
     type: bundle.ui-testing

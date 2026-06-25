@@ -24,6 +24,11 @@ final class ServiceTicketService {
         )
     }
 
+    /// Server-side counts across ALL tickets for the dashboard cards (IOS-074).
+    func fetchStats() async throws -> TicketStats {
+        try await apiClient.request(.serviceTicketStats())
+    }
+
     // MARK: - CRUD
 
     func fetchTicket(id: String) async throws -> ServiceTicket {
@@ -56,7 +61,13 @@ final class ServiceTicketService {
         try await updateTicket(id: id, UpdateServiceTicketRequest(status: "resolved", resolution: resolution))
     }
 
-    func escalateTicket(id: String) async throws -> ServiceTicket {
-        try await updateTicket(id: id, UpdateServiceTicketRequest(priority: "urgent"))
+    /// Escalate a ticket to the NEXT-higher priority based on its current one.
+    /// Previously this hard-set "urgent", which DEMOTED an already-critical
+    /// ticket. Pass the ticket's current priority so we step up, never down.
+    func escalateTicket(id: String, from currentPriority: String?) async throws -> ServiceTicket {
+        let current = TicketPriority(rawValue: (currentPriority ?? "").lowercased()) ?? .medium
+        // Already at the top — re-affirm critical rather than lower it.
+        let target = current.escalated ?? .critical
+        return try await updateTicket(id: id, UpdateServiceTicketRequest(priority: target.rawValue))
     }
 }

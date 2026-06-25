@@ -228,6 +228,16 @@ export default async function handler(req: Request) {
         }
       }
 
+      // Pipeline stage moves: the app sends `stage` (kanban "Move Forward")
+      // or `sales_stage`/`salesStage` (detail Save). Stage is persisted on
+      // deals.status — sales_stage is derived from it in mapDealToOpportunity
+      // and the list filter matches on status — so fold any of these into
+      // status (lowercased to match the stage-name filter convention).
+      const incomingStage = body.stage ?? body.sales_stage ?? body.salesStage;
+      if (incomingStage !== undefined && incomingStage !== null && incomingStage !== '') {
+        updateData.status = String(incomingStage).toLowerCase();
+      }
+
       // Handle isWon/isClosed by mapping to status
       if (body.isWon === true || body.is_won === true) {
         updateData.status = 'won';

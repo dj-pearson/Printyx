@@ -105,9 +105,48 @@ router.get('/api/service-tickets/stats', async (req: any, res) => {
         ),
       );
 
+    const [urgentCount] = await db
+      .select({ count: count() })
+      .from(serviceTickets)
+      .where(
+        and(
+          eq(serviceTickets.tenantId, tenantId),
+          or(
+            eq(serviceTickets.priority, 'urgent'),
+            eq(serviceTickets.priority, 'critical'),
+          ),
+        ),
+      );
+
+    const [resolvedCount] = await db
+      .select({ count: count() })
+      .from(serviceTickets)
+      .where(
+        and(
+          eq(serviceTickets.tenantId, tenantId),
+          or(
+            eq(serviceTickets.status, 'resolved'),
+            eq(serviceTickets.status, 'closed'),
+            eq(serviceTickets.status, 'completed'),
+          ),
+        ),
+      );
+
+    const [totalCount] = await db
+      .select({ count: count() })
+      .from(serviceTickets)
+      .where(eq(serviceTickets.tenantId, tenantId));
+
+    // iOS dashboard cards (IOS-074) read open/inProgress/urgent/resolved/total
+    // (real totals, not page-scoped). `inProgress` (camelCase) is left as-is by
+    // the client's convertFromSnakeCase decoder — do NOT also emit `in_progress`
+    // or the two keys collide after conversion.
     res.json({
       open: openCount?.count ?? 0,
       inProgress: inProgressCount?.count ?? 0,
+      urgent: urgentCount?.count ?? 0,
+      resolved: resolvedCount?.count ?? 0,
+      total: totalCount?.count ?? 0,
       completedToday: completedTodayCount?.count ?? 0,
       overdue: overdueCount?.count ?? 0,
     });
