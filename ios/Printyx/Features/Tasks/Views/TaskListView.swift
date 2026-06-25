@@ -92,7 +92,7 @@ struct TaskListView: View {
 
     private var deleteConfirmationMessage: String {
         guard let task = taskPendingDelete else { return "" }
-        return "\(task.displayName) will be permanently deleted. This can't be undone."
+        return "\(task.title) will be permanently deleted. This can't be undone."
     }
 
     private var deletePendingBinding: Binding<Bool> {
