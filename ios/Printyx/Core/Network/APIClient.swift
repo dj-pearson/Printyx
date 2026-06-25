@@ -77,8 +77,28 @@ final class APIClient: ObservableObject {
             delegateQueue: nil
         )
 
-        self.decoder = JSONDecoder()
-        self.decoder.dateDecodingStrategy = .custom { decoder in
+        self.decoder = APIClient.makeJSONDecoder()
+        self.encoder = APIClient.makeJSONEncoder()
+
+        self.isAuthenticated = keychain.getAccessToken() != nil
+
+        // Hand the write-queue a replay closure so it can re-submit queued
+        // mutations once connectivity returns without depending on this class.
+        OfflineWriteQueue.shared.configure { [weak self] write in
+            guard let self else { return }
+            try await self.replayQueuedWrite(write)
+        }
+    }
+
+    // MARK: - Codec Factories
+
+    /// Builds the JSONDecoder used for every API response. Exposed as a static
+    /// factory (rather than buried in `init`) so contract/decode regression
+    /// tests (PrintyxTests) decode captured payloads with the *exact* same
+    /// configuration the live client uses — see IOS-031.
+    static func makeJSONDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
 
@@ -127,20 +147,17 @@ final class APIClient: ObservableObject {
 
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date: \(dateString)")
         }
-        self.decoder.keyDecodingStrategy = .convertFromSnakeCase
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }
 
-        self.encoder = JSONEncoder()
-        self.encoder.dateEncodingStrategy = .iso8601
-        self.encoder.keyEncodingStrategy = .convertToSnakeCase
-
-        self.isAuthenticated = keychain.getAccessToken() != nil
-
-        // Hand the write-queue a replay closure so it can re-submit queued
-        // mutations once connectivity returns without depending on this class.
-        OfflineWriteQueue.shared.configure { [weak self] write in
-            guard let self else { return }
-            try await self.replayQueuedWrite(write)
-        }
+    /// Builds the JSONEncoder used for every API request body. Static for the
+    /// same testability reason as `makeJSONDecoder()`.
+    static func makeJSONEncoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        return encoder
     }
 
     // MARK: - Public API

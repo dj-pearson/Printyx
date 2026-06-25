@@ -7,6 +7,9 @@ struct CRMListView: View {
     @StateObject private var viewModel: CRMListViewModel
     @State private var showingCreateRecord = false
     @State private var showingSearch = false
+    /// Record awaiting delete confirmation (IOS-033). A mis-swipe must not
+    /// permanently delete a customer without an explicit confirm.
+    @State private var recordPendingDelete: BusinessRecord?
 
     init(crmService: CRMService) {
         _viewModel = StateObject(wrappedValue: CRMListViewModel(crmService: crmService))
@@ -111,6 +114,22 @@ struct CRMListView: View {
             .onChange(of: viewModel.selectedSegment) { _, _ in
                 Task { await viewModel.refresh() }
             }
+            .confirmationDialog(
+                "Delete this record?",
+                isPresented: Binding(
+                    get: { recordPendingDelete != nil },
+                    set: { if !$0 { recordPendingDelete = nil } }
+                ),
+                presenting: recordPendingDelete
+            ) { record in
+                Button("Delete", role: .destructive) {
+                    Task { await viewModel.deleteRecord(record) }
+                    recordPendingDelete = nil
+                }
+                Button("Cancel", role: .cancel) { recordPendingDelete = nil }
+            } message: { record in
+                Text("\(record.displayName) will be permanently deleted. This can't be undone.")
+            }
         }
     }
 
@@ -139,9 +158,9 @@ struct CRMListView: View {
                     CRMRowView(record: record)
                         .contentShape(Rectangle())
                         .onTapGesture { router.push(.businessRecord(id: record.id)) }
-                        .swipeActions(edge: .trailing) {
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button(role: .destructive) {
-                                Task { await viewModel.deleteRecord(record) }
+                                recordPendingDelete = record
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }

@@ -3,6 +3,7 @@ import SwiftUI
 /// Home dashboard tab with today's snapshot, quick actions, activity feed, and notifications.
 struct HomeView: View {
     @EnvironmentObject private var apiClient: APIClient
+    @EnvironmentObject private var router: AppRouter
     @StateObject private var viewModel: HomeViewModel
     @ObservedObject var authManager: AuthManager
     @State private var activeQuickAction: HomeQuickAction?
@@ -65,7 +66,10 @@ struct HomeView: View {
                 await viewModel.refresh()
             }
             .sheet(isPresented: $viewModel.showingSearch) {
-                GlobalSearchView(viewModel: viewModel)
+                // Present the working, routing search sheet (IOS-028). The old
+                // in-Home GlobalSearchView whose rows never routed has been
+                // removed.
+                UniversalSearchSheet(apiClient: apiClient)
             }
             .task {
                 if viewModel.dashboard == nil {
@@ -147,30 +151,58 @@ struct HomeView: View {
             ], spacing: AppTheme.Spacing.sm) {
                 MetricCard(
                     label: "Open Tasks",
-                    value: "\(dashboard.openTasks ?? 0)",
+                    value: "\(dashboard.openTasks)",
                     icon: "checklist",
                     color: .printyxPrimary
                 )
                 MetricCard(
-                    label: "Due Today",
-                    value: "\(dashboard.dueTodayTasks ?? 0)",
+                    label: "Overdue",
+                    value: "\(dashboard.overdueTaskCount)",
                     icon: "clock.badge.exclamationmark",
-                    color: .statusPending
+                    color: .statusOverdue
                 )
                 MetricCard(
-                    label: "Tickets",
-                    value: "\(dashboard.openTickets ?? 0)",
-                    icon: "wrench.and.screwdriver",
+                    label: "Appts",
+                    value: "\(dashboard.appointments)",
+                    icon: "calendar",
                     color: .printyxAccent
                 )
                 MetricCard(
                     label: "New Leads",
-                    value: "\(dashboard.newLeadsToday ?? 0)",
+                    value: "\(dashboard.newLeads)",
                     icon: "person.badge.plus",
                     color: .statusNew
                 )
             }
+
+            // Revenue + deals-won the backend already returns (previously
+            // dropped on the floor by the old data contract — IOS-027).
+            HStack(spacing: AppTheme.Spacing.md) {
+                MetricCard(
+                    label: "Revenue Today",
+                    value: formatRevenue(dashboard.todayRevenue),
+                    icon: "dollarsign.circle",
+                    color: .statusCompleted
+                )
+                MetricCard(
+                    label: "Deals Won",
+                    value: "\(dashboard.dealsWon)",
+                    icon: "trophy",
+                    color: .printyxSecondary
+                )
+            }
         }
+    }
+
+    private func formatRevenue(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = "USD"
+        formatter.maximumFractionDigits = 0
+        if value >= 1_000 {
+            return formatter.string(from: NSNumber(value: value / 1_000)).map { "\($0)K" } ?? "$\(Int(value))"
+        }
+        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
     }
 
     // MARK: - Quick Actions
@@ -283,7 +315,13 @@ struct HomeView: View {
 
             VStack(spacing: 0) {
                 ForEach(viewModel.activities.prefix(8)) { activity in
-                    ActivityRow(activity: activity)
+                    Button {
+                        if let route = activity.route { router.push(route) }
+                    } label: {
+                        ActivityRow(activity: activity)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(activity.route == nil)
 
                     if activity.id != viewModel.activities.prefix(8).last?.id {
                         Divider().padding(.leading, 44)
@@ -422,63 +460,7 @@ struct ActivityRow: View {
     }
 }
 
-// MARK: - Global Search View
-
-struct GlobalSearchView: View {
-    @ObservedObject var viewModel: HomeViewModel
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                SearchBar(text: $viewModel.searchText, placeholder: "Search customers, tickets, quotes...")
-                    .padding(.horizontal, AppTheme.Spacing.lg)
-                    .padding(.vertical, AppTheme.Spacing.sm)
-
-                if viewModel.isSearching {
-                    LoadingView(message: "Searching...")
-                } else if viewModel.searchResults.isEmpty && !viewModel.searchText.isEmpty {
-                    EmptyStateView(
-                        icon: "magnifyingglass",
-                        title: "No Results",
-                        message: "Try a different search term."
-                    )
-                } else {
-                    List(viewModel.searchResults) { result in
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            Image(systemName: result.icon)
-                                .font(.system(size: 16))
-                                .foregroundStyle(Color.printyxPrimary)
-                                .frame(width: 28)
-
-                            VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
-                                Text(result.title ?? "")
-                                    .font(.printyxSubheadline)
-                                    .lineLimit(1)
-                                HStack(spacing: AppTheme.Spacing.sm) {
-                                    if let type = result.type {
-                                        StatusBadge(type.capitalized, color: .printyxPrimary)
-                                    }
-                                    if let subtitle = result.subtitle {
-                                        Text(subtitle)
-                                            .font(.printyxSmall)
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(1)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .listStyle(.insetGrouped)
-                }
-            }
-            .navigationTitle("Search")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-    }
-}
+// The former in-Home `GlobalSearchView` was removed (IOS-028): its rows didn't
+// route anywhere, duplicating the working `UniversalSearchSheet` which Home now
+// presents directly. Keeping a single search implementation prevents the two
+// from drifting apart again.

@@ -11,7 +11,8 @@ struct ProposalFormView: View {
     @State private var isSaving = false
     @State private var error: String?
 
-    var quoteService: QuoteService?
+    // Non-optional: a nil service silently no-op'd Create (IOS-032).
+    let quoteService: QuoteService
     var onCreated: ((Proposal) -> Void)?
 
     var body: some View {
@@ -60,7 +61,6 @@ struct ProposalFormView: View {
     }
 
     private func create() async {
-        guard let quoteService else { return }
         isSaving = true
         error = nil
 
@@ -104,7 +104,8 @@ struct QuoteFormView: View {
         var unitPrice = ""
     }
 
-    var quoteService: QuoteService?
+    // Non-optional: a nil service silently no-op'd Create (IOS-032).
+    let quoteService: QuoteService
     var onCreated: ((Quote) -> Void)?
 
     var body: some View {
@@ -195,7 +196,6 @@ struct QuoteFormView: View {
     }
 
     private func create() async {
-        guard let quoteService else { return }
         isSaving = true
         error = nil
 

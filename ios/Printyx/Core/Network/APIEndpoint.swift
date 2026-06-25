@@ -510,7 +510,9 @@ extension APIEndpoint {
             URLQueryItem(name: "page", value: "\(page)"),
             URLQueryItem(name: "limit", value: "\(limit)"),
         ]
-        if let status { items.append(URLQueryItem(name: "status", value: status)) }
+        // Filter on the canonical `invoice_status` column — the edge function
+        // treats `?status=` as the legacy phantom column (IOS-030).
+        if let status { items.append(URLQueryItem(name: "invoiceStatus", value: status)) }
         if let customerId { items.append(URLQueryItem(name: "customerId", value: customerId)) }
         if let search { items.append(URLQueryItem(name: "search", value: search)) }
         return APIEndpoint(path: "/api/invoices", queryItems: items)

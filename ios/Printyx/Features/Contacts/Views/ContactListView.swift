@@ -5,6 +5,8 @@ struct ContactListView: View {
     @StateObject private var viewModel: ContactListViewModel
     @State private var showingCreate = false
     @State private var selectedContact: Contact?
+    /// Contact awaiting delete confirmation (IOS-033).
+    @State private var contactPendingDelete: Contact?
 
     init(contactService: ContactService) {
         _viewModel = StateObject(wrappedValue: ContactListViewModel(contactService: contactService))
@@ -64,6 +66,22 @@ struct ContactListView: View {
                     await viewModel.loadInitial()
                 }
             }
+            .confirmationDialog(
+                "Delete this contact?",
+                isPresented: Binding(
+                    get: { contactPendingDelete != nil },
+                    set: { if !$0 { contactPendingDelete = nil } }
+                ),
+                presenting: contactPendingDelete
+            ) { contact in
+                Button("Delete", role: .destructive) {
+                    Task { await viewModel.deleteContact(contact) }
+                    contactPendingDelete = nil
+                }
+                Button("Cancel", role: .cancel) { contactPendingDelete = nil }
+            } message: { contact in
+                Text("\(contact.displayName) will be permanently deleted. This can't be undone.")
+            }
         }
     }
 
@@ -75,7 +93,7 @@ struct ContactListView: View {
                     .onTapGesture { selectedContact = contact }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
-                            Task { await viewModel.deleteContact(contact) }
+                            contactPendingDelete = contact
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }

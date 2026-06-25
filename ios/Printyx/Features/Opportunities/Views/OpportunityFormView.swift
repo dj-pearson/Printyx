@@ -16,7 +16,9 @@ struct OpportunityFormView: View {
     @State private var isSaving = false
     @State private var error: String?
 
-    var opportunityService: OpportunityService?
+    // Non-optional: a nil service silently no-op'd the Create button (IOS-032).
+    // Keeping it required means the compiler catches a missing service.
+    let opportunityService: OpportunityService
     var onCreated: ((Opportunity) -> Void)?
 
     var body: some View {
@@ -97,7 +99,6 @@ struct OpportunityFormView: View {
     }
 
     private func create() async {
-        guard let opportunityService else { return }
         isSaving = true
         error = nil
 
