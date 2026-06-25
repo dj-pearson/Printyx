@@ -137,12 +137,13 @@ final class KeychainManager {
     private func set(_ value: String, key: Key) {
         guard let data = value.data(using: .utf8) else { return }
 
-        // Mirror to memory first so reads succeed even if the Keychain is
-        // unavailable (e.g. unhosted test bundle).
-        memorySet(value, key.rawValue)
-
-        // Delete existing item first
+        // Delete existing item first (this also clears the memory mirror).
         delete(key: key)
+
+        // Mirror to memory AFTER the delete, so the delete's memoryDelete
+        // doesn't wipe the value we're about to store. Reads fall back here
+        // when the Keychain is unavailable (e.g. unhosted test bundle).
+        memorySet(value, key.rawValue)
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
