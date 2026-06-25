@@ -154,6 +154,15 @@ struct ServiceTicketListView: View {
                             .tint(.orange)
                         }
                     }
+                    // Pagination: load the next page when the last row appears
+                    // (parity with Equipment/Tasks lists). Without this the
+                    // ticket list was capped at the first page even though
+                    // loadMore()/hasMore existed.
+                    .onAppear {
+                        if ticket.id == viewModel.filteredTickets.last?.id {
+                            Task { await viewModel.loadMore() }
+                        }
+                    }
             }
 
             if viewModel.isLoadingMore {

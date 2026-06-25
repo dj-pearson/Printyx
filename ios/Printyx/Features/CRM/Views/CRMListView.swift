@@ -174,6 +174,14 @@ struct CRMListView: View {
                                 .tint(.green)
                             }
                         }
+                        // Pagination: trigger the next page on the last row.
+                        // Previously the CRM list was capped at the first page
+                        // because nothing ever called loadMore().
+                        .onAppear {
+                            if record.id == viewModel.filteredRecords.last?.id {
+                                Task { await viewModel.loadMore() }
+                            }
+                        }
                 }
 
                 if viewModel.isLoadingMore {

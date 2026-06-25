@@ -37,7 +37,6 @@ struct MainTabView: View {
             VStack {
                 Spacer()
                 OfflineBanner()
-                    .animation(.easeInOut(duration: 0.2), value: UUID())
                     .padding(.bottom, AppTheme.Spacing.xxl + AppTheme.Spacing.sm)
             }
             .allowsHitTesting(false)

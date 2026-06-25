@@ -8084,7 +8084,7 @@
       ],
       "priority": 181,
       "passes": false,
-      "notes": "Deep-dive Network audit P1 #1-3,#7. Adjacent to IOS-034 (single-flight existence/terminal-401 keychain clear) but these are the resume-with-wrong-result, error-collapse, no-timeout, and missing-cache-write defects WITHIN the machinery. Verified: defer at APIClient.swift:509-513 resumes waiters with .resume(returning: Data()) on every exit incl. the throws at 516/531."
+      "notes": "Deep-dive Network audit P1 #1-3,#7. Adjacent to IOS-034 (single-flight existence/terminal-401 keychain clear) but these are the resume-with-wrong-result, error-collapse, no-timeout, and missing-cache-write defects WITHIN the machinery. Verified: defer at APIClient.swift:509-513 resumes waiters with .resume(returning: Data()) on every exit incl. the throws at 516/531. | IMPLEMENTED (pending iOS CI build, IOS-069): refactored APIClient response handling into handleResponse(allowRefresh:) so the 401->refresh->retry path re-runs full status mapping (post-refresh 5xx/4xx surface correctly, GET retry is cached, no refresh loop); refreshAccessToken now fails parked waiters via resume(throwing:) instead of fake resume(returning: Data()). Added 3 APIClientTests (refresh-failure no-retry, post-refresh-500=serverError, concurrent single-flight). Not yet compiled (no macOS/Xcode in this env)."
     },
     {
       "id": "IOS-072",
@@ -8114,8 +8114,8 @@
         "A regression note/test asserts kanban move + detail save both change persisted stage"
       ],
       "priority": 183,
-      "passes": false,
-      "notes": "Deep-dive CRM audit P1 #4, VERIFIED against supabase/functions/opportunities/index.ts: PATCH fieldMap has only 'status' (no stage/sales_stage), and stage is derived from deals.status via mapDealToOpportunity. iOS kanban sends {stage}, detail sends {sales_stage} -> both ignored -> no-op. Backend+iOS fix."
+      "passes": true,
+      "notes": "Deep-dive CRM audit P1 #4, VERIFIED against supabase/functions/opportunities/index.ts: PATCH fieldMap has only 'status' (no stage/sales_stage), and stage is derived from deals.status via mapDealToOpportunity. iOS kanban sends {stage}, detail sends {sales_stage} -> both ignored -> no-op. Backend+iOS fix. | IMPLEMENTED: opportunities edge fn folds stage/sales_stage/salesStage into deals.status (supabase/functions/opportunities/index.ts); added matching PATCH /api/opportunities/:id/stage Express route (server/routes-opportunities.ts) returning salesStage. iOS already sends stage(kanban)/sales_stage(detail) so no client change needed. tsc clean."
     },
     {
       "id": "IOS-074",
@@ -8145,7 +8145,7 @@
       ],
       "priority": 185,
       "passes": false,
-      "notes": "Deep-dive Service #1; CRM #14,#16,#17; Quotes #7,#12. Verified ServiceTicketListView has no loadMore trigger while loadMore()/isLoadingMore exist."
+      "notes": "Deep-dive Service #1; CRM #14,#16,#17; Quotes #7,#12. Verified ServiceTicketListView has no loadMore trigger while loadMore()/isLoadingMore exist. | PARTIAL (pending iOS CI build): added last-row onAppear loadMore() triggers to ServiceTicketListView, CRMListView, ContactListView (were capped at first page). Remaining: opportunity per-column pagination fix, tappable QuoteRowView, search-active paging."
     },
     {
       "id": "IOS-076",
@@ -8248,7 +8248,7 @@
       ],
       "priority": 192,
       "passes": false,
-      "notes": "Deep-dive Auth audit #9,#11,#13,#14,#12,#16; Service audit #12,#14,#15; Quotes audit #15. Low-risk polish bundle."
+      "notes": "Deep-dive Auth audit #9,#11,#13,#14,#12,#16; Service audit #12,#14,#15; Quotes audit #15. Low-risk polish bundle. | PARTIAL (pending iOS CI build): fixed OfflineBanner animation (now keyed on connectivity/pendingCount via animationToken, dropped UUID() key in MainTabView), replaced dead AppTheme.Shadow.small EmptyView with real Shadow tokens + View.cardShadow() (dogfooded in CardModifier), fixed HomeView.formatRevenue rounding/K-M abbreviation. Remaining: PriorityIndicator/StatusBadge vocab merge, invoice/contract 'K' formatting, Color(hex) fallback, ShimmerModifier stop, equipment sheet->router, ServiceHub nested NavigationStack."
     },
     {
       "id": "IOS-083",

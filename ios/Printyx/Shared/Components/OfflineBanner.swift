@@ -23,6 +23,16 @@ struct OfflineBanner: View {
                 )
             }
         }
+        // Animate only when the values that drive the banner actually change.
+        // (Previously keyed on `UUID()` in MainTabView, which re-evaluated the
+        // animation on every render and produced no stable transition.)
+        .animation(.easeInOut(duration: 0.2), value: animationToken)
+    }
+
+    /// Stable token combining the two inputs that decide what the banner shows,
+    /// so `.animation(value:)` fires exactly on connectivity / queue changes.
+    private var animationToken: String {
+        "\(networkMonitor.isConnected)-\(writeQueue.pendingCount)"
     }
 
     private var pendingMessage: String {

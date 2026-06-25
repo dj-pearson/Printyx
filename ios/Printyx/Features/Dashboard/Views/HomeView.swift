@@ -198,10 +198,24 @@ struct HomeView: View {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        if value >= 1_000 {
-            return formatter.string(from: NSNumber(value: value / 1_000)).map { "\($0)K" } ?? "$\(Int(value))"
+
+        // Abbreviate with one decimal in the low range so $1,500 reads "$1.5K"
+        // (not "$2K" — the old code divided then rounded to whole units), and
+        // drop a trailing ".0" so $2,000 reads "$2K".
+        func abbreviated(_ scaled: Double, _ suffix: String) -> String {
+            let hasFraction = scaled.truncatingRemainder(dividingBy: 1) != 0
+            formatter.maximumFractionDigits = (scaled < 10 && hasFraction) ? 1 : 0
+            let base = formatter.string(from: NSNumber(value: scaled)) ?? "$\(Int(scaled))"
+            return "\(base)\(suffix)"
         }
+
+        let magnitude = abs(value)
+        if magnitude >= 1_000_000 {
+            return abbreviated(value / 1_000_000, "M")
+        } else if magnitude >= 1_000 {
+            return abbreviated(value / 1_000, "K")
+        }
+        formatter.maximumFractionDigits = 0
         return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
     }
 
