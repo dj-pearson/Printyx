@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/main-layout';
-import { Search, Globe, FileText, Bot, Brain, Refresh } from 'lucide-react';
+import { Search, Globe, FileText, Bot, Brain } from 'lucide-react';
 
 export default function RootAdminSEO() {
   const qc = useQueryClient();

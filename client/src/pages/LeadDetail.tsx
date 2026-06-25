@@ -76,7 +76,6 @@ import {
   BarChart3,
   FileCheck,
   Clock3,
-  MapPin2,
   CheckSquare,
   BookOpen,
   Quote,

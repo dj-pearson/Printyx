@@ -136,8 +136,8 @@ import {
   quotePricing,
   quotePricingLineItems,
   userSettings,
-  type CompanyPricingSetting,
-  type InsertCompanyPricingSetting,
+  type CompanyPricingSettings,
+  type InsertCompanyPricingSettings,
   type ProductPricing,
   type InsertProductPricing,
   type QuotePricing,
@@ -727,11 +727,11 @@ export interface IStorage {
   deleteManagedService(id: string, tenantId: string): Promise<boolean>;
 
   // Pricing System
-  getCompanyPricingSettings(tenantId: string): Promise<CompanyPricingSetting | undefined>;
+  getCompanyPricingSettings(tenantId: string): Promise<CompanyPricingSettings | undefined>;
   updateCompanyPricingSettings(
     tenantId: string,
-    settings: InsertCompanyPricingSetting,
-  ): Promise<CompanyPricingSetting>;
+    settings: InsertCompanyPricingSettings,
+  ): Promise<CompanyPricingSettings>;
 
   getProductPricing(tenantId: string): Promise<ProductPricing[]>;
   getProductPricingByProductId(
@@ -4678,7 +4678,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Pricing System Implementation
-  async getCompanyPricingSettings(tenantId: string): Promise<CompanyPricingSetting | undefined> {
+  async getCompanyPricingSettings(tenantId: string): Promise<CompanyPricingSettings | undefined> {
     const [settings] = await db
       .select()
       .from(companyPricingSettings)
@@ -4693,8 +4693,8 @@ export class DatabaseStorage implements IStorage {
 
   async updateCompanyPricingSettings(
     tenantId: string,
-    settingsData: InsertCompanyPricingSetting,
-  ): Promise<CompanyPricingSetting> {
+    settingsData: InsertCompanyPricingSettings,
+  ): Promise<CompanyPricingSettings> {
     // Try to update existing settings first
     const existing = await this.getCompanyPricingSettings(tenantId);
 

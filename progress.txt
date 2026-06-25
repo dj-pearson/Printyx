@@ -7380,3 +7380,34 @@ Next big target: TS2339 (1897) `{}` response-shape drift on useQuery defaults.
 - server/routes-intelligent-alerts.ts + 13 client files (imports)
 - docs/typecheck-baseline.json (3921 → 3871)
 - prd.json (QUALITY-002 notes)
+
+---
+
+## Iteration — QUALITY-002 batch 3: broken/dead imports
+**Date**: 2026-06-25 · Branch: claude/prd-stories-progress-cmilm3
+
+- Removed unused-but-broken lucide imports: MapPin2 (CustomerDetail, LeadDetail),
+  Refresh (RootAdminSEO) — imported, never used, and not valid lucide exports.
+- Renamed broken type imports CompanyPricingSetting -> CompanyPricingSettings
+  (+ Insert*) in PricingManagement.tsx and storage.ts via word-boundary regex
+  (the singular type never existed; only the plural $inferSelect/$inferInsert do).
+  Verified no getCompanyPricingSettings() method-name corruption.
+- Added missing `vi` to the vitest import in server/tests/setup.ts (used 5x).
+
+tsc 3871 -> 3864 (-7). Baseline updated. Verified 0 residual vi/MapPin2/Refresh/
+CompanyPricingSetting-singular errors; all changed files transpile under esbuild.
+
+CAVEAT: the (correct) pricing rename unmasked ~5 pre-existing schema-drift errors
+the broken import had hidden — frontend reads companySettings.allowSalespersonOverride
+/ minimumGrossProfitPercentage and storage queries companyPricingSettings.isActive,
+none of which are columns on company_pricing_settings. Real bugs, deferred to a
+schema-aware fix (not a type-only change).
+
+Cumulative QUALITY-002: 6176 -> 3864 (-2312, -37%). The import-resolution codemod
+wins (logger, apiRequest, z, dead/broken imports) are now largely exhausted; the
+remaining bulk is TS2339 response-shape drift needing per-site typing.
+
+### Files
+- client/src/pages/{CustomerDetail,LeadDetail,RootAdminSEO,PricingManagement}.tsx
+- server/storage.ts, server/tests/setup.ts
+- docs/typecheck-baseline.json (3871 -> 3864), prd.json (QUALITY-002 notes)
