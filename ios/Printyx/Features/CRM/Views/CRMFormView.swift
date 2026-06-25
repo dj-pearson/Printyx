@@ -24,87 +24,117 @@ struct CRMFormView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                if let error {
-                    Section {
-                        ErrorBanner(message: error, onDismiss: { self.error = nil })
-                    }
-                }
+            navigationContent
+        }
+    }
 
-                Section("Record Type") {
-                    Picker("Type", selection: $recordType) {
-                        Text("Lead").tag(RecordType.lead)
-                        Text("Prospect").tag(RecordType.prospect)
-                        Text("Customer").tag(RecordType.customer)
-                    }
-                    .pickerStyle(.segmented)
-                }
-
-                Section("Company") {
-                    TextField("Company Name *", text: $companyName)
-                    TextField("Phone", text: $phone)
-                        .keyboardType(.phonePad)
-                    TextField("Website", text: $website)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                    TextField("Industry", text: $industry)
-                }
-
-                Section("Primary Contact") {
-                    TextField("Name", text: $contactName)
-                    TextField("Title", text: $contactTitle)
-                    TextField("Email", text: $contactEmail)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                    TextField("Phone", text: $contactPhone)
-                        .keyboardType(.phonePad)
-                }
-
-                if recordType == .lead || recordType == .prospect {
-                    Section("Lead Info") {
-                        Picker("Source", selection: $source) {
-                            ForEach(LeadSource.allCases) { s in
-                                Text(s.displayName).tag(s)
-                            }
-                        }
-
-                        Picker("Interest", selection: $interestLevel) {
-                            Text("Hot").tag("hot")
-                            Text("Warm").tag("warm")
-                            Text("Cold").tag("cold")
-                        }
-
-                        TextField("Estimated Amount", text: $estimatedAmount)
-                            .keyboardType(.decimalPad)
-                    }
-                }
-
-                Section("Notes") {
-                    TextField("Notes", text: $notes, axis: .vertical)
-                        .lineLimit(3...6)
+    private var formContent: some View {
+        Form {
+            if let error {
+                Section {
+                    ErrorBanner(message: error, onDismiss: { self.error = nil })
                 }
             }
+
+            recordTypeSection
+
+            companySection
+
+            contactSection
+
+            if recordType == .lead || recordType == .prospect {
+                leadInfoSection
+            }
+
+            notesSection
+        }
+    }
+
+    private var recordTypeSection: some View {
+        Section("Record Type") {
+            Picker("Type", selection: $recordType) {
+                Text("Lead").tag(RecordType.lead)
+                Text("Prospect").tag(RecordType.prospect)
+                Text("Customer").tag(RecordType.customer)
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    private var companySection: some View {
+        Section("Company") {
+            TextField("Company Name *", text: $companyName)
+            TextField("Phone", text: $phone)
+                .keyboardType(.phonePad)
+            TextField("Website", text: $website)
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+            TextField("Industry", text: $industry)
+        }
+    }
+
+    private var contactSection: some View {
+        Section("Primary Contact") {
+            TextField("Name", text: $contactName)
+            TextField("Title", text: $contactTitle)
+            TextField("Email", text: $contactEmail)
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
+            TextField("Phone", text: $contactPhone)
+                .keyboardType(.phonePad)
+        }
+    }
+
+    private var leadInfoSection: some View {
+        Section("Lead Info") {
+            Picker("Source", selection: $source) {
+                ForEach(LeadSource.allCases) { s in
+                    Text(s.displayName).tag(s)
+                }
+            }
+
+            Picker("Interest", selection: $interestLevel) {
+                Text("Hot").tag("hot")
+                Text("Warm").tag("warm")
+                Text("Cold").tag("cold")
+            }
+
+            TextField("Estimated Amount", text: $estimatedAmount)
+                .keyboardType(.decimalPad)
+        }
+    }
+
+    private var notesSection: some View {
+        Section("Notes") {
+            TextField("Notes", text: $notes, axis: .vertical)
+                .lineLimit(3...6)
+        }
+    }
+
+    @ToolbarContentBuilder private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button("Cancel") { dismiss() }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Task { await createRecord() }
+            } label: {
+                if isSaving {
+                    ProgressView()
+                } else {
+                    Text("Create")
+                        .fontWeight(.semibold)
+                }
+            }
+            .disabled(companyName.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
+        }
+    }
+
+    private var navigationContent: some View {
+        formContent
             .navigationTitle("New Record")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await createRecord() }
-                    } label: {
-                        if isSaving {
-                            ProgressView()
-                        } else {
-                            Text("Create")
-                                .fontWeight(.semibold)
-                        }
-                    }
-                    .disabled(companyName.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
-                }
-            }
-        }
+            .toolbar { toolbarContent }
     }
 
     private func createRecord() async {

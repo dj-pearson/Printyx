@@ -24,49 +24,61 @@ struct ProposalDetailView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if isLoading {
-                    LoadingView()
-                } else if let error, proposal == nil {
-                    ErrorView(message: error) { await load() }
-                } else {
-                    content
+            navigationContent
+        }
+    }
+
+    @ViewBuilder
+    private var mainContent: some View {
+        if isLoading {
+            LoadingView()
+        } else if let error, proposal == nil {
+            ErrorView(message: error) { await load() }
+        } else {
+            content
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button("Close") { dismiss() }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Button {
+                    Task { await save() }
+                } label: {
+                    Label("Save", systemImage: "square.and.arrow.down")
                 }
-            }
-            .navigationTitle("Proposal")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button {
-                            Task { await save() }
-                        } label: {
-                            Label("Save", systemImage: "square.and.arrow.down")
-                        }
-                        if proposal?.status == .draft {
-                            Button {
-                                Task { await send() }
-                            } label: {
-                                Label("Send to Customer", systemImage: "paperplane")
-                            }
-                        }
-                        if proposal?.status == .sent {
-                            Button {
-                                Task { await markAccepted() }
-                            } label: {
-                                Label("Mark Accepted", systemImage: "checkmark.seal")
-                            }
-                        }
+                if proposal?.status == .draft {
+                    Button {
+                        Task { await send() }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Label("Send to Customer", systemImage: "paperplane")
                     }
                 }
+                if proposal?.status == .sent {
+                    Button {
+                        Task { await markAccepted() }
+                    } label: {
+                        Label("Mark Accepted", systemImage: "checkmark.seal")
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
             }
-            .task { await load() }
         }
+    }
+
+    private var navigationContent: some View {
+        Group {
+            mainContent
+        }
+        .navigationTitle("Proposal")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { toolbarContent }
+        .task { await load() }
     }
 
     private var content: some View {

@@ -20,67 +20,84 @@ struct QuoteListView: View {
         // Bind the shared Sales tab path so deep links / search results for
         // quotes, proposals, contracts (and any AppRoute) push here.
         NavigationStack(path: router.pathBinding(for: .sales)) {
-            VStack(spacing: 0) {
-                // Metrics
-                metricsBar
+            contentWithEvents
+        }
+    }
 
-                // Tab selector
-                Picker("Type", selection: $viewModel.selectedTab) {
-                    ForEach(QuoteListViewModel.QuoteTab.allCases) { tab in
-                        Text(tab.rawValue).tag(tab)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.vertical, AppTheme.Spacing.sm)
+    @ViewBuilder
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            // Metrics
+            metricsBar
 
-                // Search
-                SearchBar(text: $viewModel.searchText, placeholder: "Search \(viewModel.selectedTab.rawValue.lowercased())...")
-                    .padding(.horizontal, AppTheme.Spacing.lg)
-                    .padding(.bottom, AppTheme.Spacing.sm)
-
-                // Status filter chips
-                statusFilterChips
-
-                // Content
-                if viewModel.isLoading && viewModel.proposals.isEmpty {
-                    LoadingView(message: "Loading...")
-                } else if let error = viewModel.error, viewModel.proposals.isEmpty && viewModel.quotes.isEmpty {
-                    ErrorView(message: error, retryAction: { await viewModel.refresh() })
-                } else {
-                    switch viewModel.selectedTab {
-                    case .proposals:
-                        proposalsList
-                    case .quotes:
-                        quotesList
-                    }
+            // Tab selector
+            Picker("Type", selection: $viewModel.selectedTab) {
+                ForEach(QuoteListViewModel.QuoteTab.allCases) { tab in
+                    Text(tab.rawValue).tag(tab)
                 }
             }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.vertical, AppTheme.Spacing.sm)
+
+            // Search
+            SearchBar(text: $viewModel.searchText, placeholder: "Search \(viewModel.selectedTab.rawValue.lowercased())...")
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.bottom, AppTheme.Spacing.sm)
+
+            // Status filter chips
+            statusFilterChips
+
+            // Content
+            if viewModel.isLoading && viewModel.proposals.isEmpty {
+                LoadingView(message: "Loading...")
+            } else if let error = viewModel.error, viewModel.proposals.isEmpty && viewModel.quotes.isEmpty {
+                ErrorView(message: error, retryAction: { await viewModel.refresh() })
+            } else {
+                switch viewModel.selectedTab {
+                case .proposals:
+                    proposalsList
+                case .quotes:
+                    quotesList
+                }
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Button {
+                    showingCreateProposal = true
+                } label: {
+                    Label("New Proposal", systemImage: "doc.text")
+                }
+                Button {
+                    showingCreateQuote = true
+                } label: {
+                    Label("New Quote", systemImage: "doc.richtext")
+                }
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(Color.printyxPrimary)
+            }
+            .accessibilityLabel("Create proposal or quote")
+        }
+    }
+
+    private var navigationContent: some View {
+        mainContent
             .navigationTitle("Quotes & Proposals")
             .navigationDestination(for: AppRoute.self) { route in
                 AppRouteDestination(route: route, apiClient: apiClient)
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button {
-                            showingCreateProposal = true
-                        } label: {
-                            Label("New Proposal", systemImage: "doc.text")
-                        }
-                        Button {
-                            showingCreateQuote = true
-                        } label: {
-                            Label("New Quote", systemImage: "doc.richtext")
-                        }
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundStyle(Color.printyxPrimary)
-                    }
-                    .accessibilityLabel("Create proposal or quote")
-                }
-            }
+            .toolbar { toolbarContent }
+    }
+
+    private var contentWithSheets: some View {
+        navigationContent
             .refreshable {
                 await viewModel.refresh()
             }
@@ -110,6 +127,10 @@ struct QuoteListView: View {
                         }
                 }
             }
+    }
+
+    private var contentWithEvents: some View {
+        contentWithSheets
             .task {
                 if viewModel.proposals.isEmpty && viewModel.quotes.isEmpty {
                     await viewModel.loadInitial()
@@ -118,7 +139,6 @@ struct QuoteListView: View {
             .onChange(of: viewModel.selectedStatus) { _, _ in
                 Task { await viewModel.refresh() }
             }
-        }
     }
 
     // MARK: - Metrics

@@ -17,47 +17,58 @@ struct ProposalFormView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                if let error {
-                    Section {
-                        ErrorBanner(message: error, onDismiss: { self.error = nil })
-                    }
-                }
+            navigationContent
+        }
+    }
 
-                Section("Proposal") {
-                    TextField("Title *", text: $title)
-                    TextField("Total Amount", text: $totalAmount)
-                        .keyboardType(.decimalPad)
-                    DatePicker("Valid Until", selection: $validUntil, displayedComponents: .date)
-                }
-
-                Section("Terms") {
-                    TextField("Terms & Conditions", text: $terms, axis: .vertical)
-                        .lineLimit(3...8)
-                }
-
-                Section("Notes") {
-                    TextField("Internal notes", text: $notes, axis: .vertical)
-                        .lineLimit(3...6)
+    private var formContent: some View {
+        Form {
+            if let error {
+                Section {
+                    ErrorBanner(message: error, onDismiss: { self.error = nil })
                 }
             }
-            .navigationTitle("New Proposal")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await create() }
-                    } label: {
-                        if isSaving { ProgressView() }
-                        else { Text("Create").fontWeight(.semibold) }
-                    }
-                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
-                }
+
+            Section("Proposal") {
+                TextField("Title *", text: $title)
+                TextField("Total Amount", text: $totalAmount)
+                    .keyboardType(.decimalPad)
+                DatePicker("Valid Until", selection: $validUntil, displayedComponents: .date)
+            }
+
+            Section("Terms") {
+                TextField("Terms & Conditions", text: $terms, axis: .vertical)
+                    .lineLimit(3...8)
+            }
+
+            Section("Notes") {
+                TextField("Internal notes", text: $notes, axis: .vertical)
+                    .lineLimit(3...6)
             }
         }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button("Cancel") { dismiss() }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Task { await create() }
+            } label: {
+                if isSaving { ProgressView() }
+                else { Text("Create").fontWeight(.semibold) }
+            }
+            .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
+        }
+    }
+
+    private var navigationContent: some View {
+        formContent
+            .navigationTitle("New Proposal")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbarContent }
     }
 
     private func create() async {
@@ -110,83 +121,94 @@ struct QuoteFormView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                if let error {
-                    Section {
-                        ErrorBanner(message: error, onDismiss: { self.error = nil })
-                    }
-                }
+            navigationContent
+        }
+    }
 
-                Section("Quote") {
-                    TextField("Title *", text: $title)
-                    DatePicker("Valid Until", selection: $validUntil, displayedComponents: .date)
+    private var formContent: some View {
+        Form {
+            if let error {
+                Section {
+                    ErrorBanner(message: error, onDismiss: { self.error = nil })
                 }
+            }
 
-                Section("Line Items") {
-                    ForEach($lineItems) { $item in
-                        VStack(spacing: AppTheme.Spacing.sm) {
-                            TextField("Description", text: $item.description)
-                            HStack {
-                                TextField("Qty", text: $item.quantity)
-                                    .keyboardType(.numberPad)
-                                    .frame(width: 60)
-                                TextField("Unit Price", text: $item.unitPrice)
-                                    .keyboardType(.decimalPad)
-                                Spacer()
-                                let total = (Double(item.quantity) ?? 0) * (Double(item.unitPrice) ?? 0)
-                                Text("$\(Int(total))")
-                                    .font(.printyxCaption)
-                                    .fontWeight(.bold)
-                            }
+            Section("Quote") {
+                TextField("Title *", text: $title)
+                DatePicker("Valid Until", selection: $validUntil, displayedComponents: .date)
+            }
+
+            Section("Line Items") {
+                ForEach($lineItems) { $item in
+                    VStack(spacing: AppTheme.Spacing.sm) {
+                        TextField("Description", text: $item.description)
+                        HStack {
+                            TextField("Qty", text: $item.quantity)
+                                .keyboardType(.numberPad)
+                                .frame(width: 60)
+                            TextField("Unit Price", text: $item.unitPrice)
+                                .keyboardType(.decimalPad)
+                            Spacer()
+                            let total = (Double(item.quantity) ?? 0) * (Double(item.unitPrice) ?? 0)
+                            Text("$\(Int(total))")
+                                .font(.printyxCaption)
+                                .fontWeight(.bold)
                         }
                     }
-                    .onDelete { offsets in
-                        lineItems.remove(atOffsets: offsets)
-                    }
-
-                    Button {
-                        lineItems.append(EditableLineItem())
-                    } label: {
-                        Label("Add Line Item", systemImage: "plus.circle")
-                    }
-
-                    HStack {
-                        Text("Total")
-                            .font(.printyxSubheadline)
-                        Spacer()
-                        Text("$\(calculatedTotal)")
-                            .font(.printyxHeadline)
-                            .foregroundStyle(Color.printyxPrimary)
-                    }
+                }
+                .onDelete { offsets in
+                    lineItems.remove(atOffsets: offsets)
                 }
 
-                Section("Terms") {
-                    TextField("Terms", text: $terms, axis: .vertical)
-                        .lineLimit(3...6)
+                Button {
+                    lineItems.append(EditableLineItem())
+                } label: {
+                    Label("Add Line Item", systemImage: "plus.circle")
                 }
 
-                Section("Notes") {
-                    TextField("Notes", text: $notes, axis: .vertical)
-                        .lineLimit(3...6)
+                HStack {
+                    Text("Total")
+                        .font(.printyxSubheadline)
+                    Spacer()
+                    Text("$\(calculatedTotal)")
+                        .font(.printyxHeadline)
+                        .foregroundStyle(Color.printyxPrimary)
                 }
             }
-            .navigationTitle("New Quote")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await create() }
-                    } label: {
-                        if isSaving { ProgressView() }
-                        else { Text("Create").fontWeight(.semibold) }
-                    }
-                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
-                }
+
+            Section("Terms") {
+                TextField("Terms", text: $terms, axis: .vertical)
+                    .lineLimit(3...6)
+            }
+
+            Section("Notes") {
+                TextField("Notes", text: $notes, axis: .vertical)
+                    .lineLimit(3...6)
             }
         }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button("Cancel") { dismiss() }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Task { await create() }
+            } label: {
+                if isSaving { ProgressView() }
+                else { Text("Create").fontWeight(.semibold) }
+            }
+            .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
+        }
+    }
+
+    private var navigationContent: some View {
+        formContent
+            .navigationTitle("New Quote")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbarContent }
     }
 
     private var calculatedTotal: Int {

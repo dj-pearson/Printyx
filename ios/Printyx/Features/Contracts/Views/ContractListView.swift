@@ -14,39 +14,49 @@ struct ContractListView: View {
     var body: some View {
         // Bind the shared Sales tab path so deep links / search results push here.
         NavigationStack(path: router.pathBinding(for: .sales)) {
-            VStack(spacing: 0) {
-                // Stats
-                HStack(spacing: AppTheme.Spacing.md) {
-                    MetricCard(label: "Active", value: "\(viewModel.activeCount)", icon: "checkmark.seal.fill", color: .statusActive)
-                    MetricCard(label: "Expiring", value: "\(viewModel.expiringCount)", icon: "clock.badge.exclamationmark", color: .statusPending)
-                    MetricCard(label: "Annual Value", value: formatCurrency(viewModel.totalAnnualValue), icon: "dollarsign.circle", color: .printyxPrimary)
-                }
-                .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.vertical, AppTheme.Spacing.sm)
+            contentWithEvents
+        }
+    }
 
-                // Status filter
-                statusFilterChips
-
-                // Search
-                SearchBar(text: $viewModel.searchText, placeholder: "Search contracts...")
-                    .padding(.horizontal, AppTheme.Spacing.lg)
-                    .padding(.bottom, AppTheme.Spacing.sm)
-
-                // Content
-                if viewModel.isLoading && viewModel.contracts.isEmpty {
-                    LoadingView(message: "Loading contracts...")
-                } else if let error = viewModel.error, viewModel.contracts.isEmpty {
-                    ErrorView(message: error, retryAction: { await viewModel.refresh() })
-                } else if viewModel.filteredContracts.isEmpty {
-                    EmptyStateView(
-                        icon: "doc.badge.ellipsis",
-                        title: "No Contracts",
-                        message: "Contracts will appear here once created."
-                    )
-                } else {
-                    contractList
-                }
+    @ViewBuilder
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            // Stats
+            HStack(spacing: AppTheme.Spacing.md) {
+                MetricCard(label: "Active", value: "\(viewModel.activeCount)", icon: "checkmark.seal.fill", color: .statusActive)
+                MetricCard(label: "Expiring", value: "\(viewModel.expiringCount)", icon: "clock.badge.exclamationmark", color: .statusPending)
+                MetricCard(label: "Annual Value", value: formatCurrency(viewModel.totalAnnualValue), icon: "dollarsign.circle", color: .printyxPrimary)
             }
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.vertical, AppTheme.Spacing.sm)
+
+            // Status filter
+            statusFilterChips
+
+            // Search
+            SearchBar(text: $viewModel.searchText, placeholder: "Search contracts...")
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.bottom, AppTheme.Spacing.sm)
+
+            // Content
+            if viewModel.isLoading && viewModel.contracts.isEmpty {
+                LoadingView(message: "Loading contracts...")
+            } else if let error = viewModel.error, viewModel.contracts.isEmpty {
+                ErrorView(message: error, retryAction: { await viewModel.refresh() })
+            } else if viewModel.filteredContracts.isEmpty {
+                EmptyStateView(
+                    icon: "doc.badge.ellipsis",
+                    title: "No Contracts",
+                    message: "Contracts will appear here once created."
+                )
+            } else {
+                contractList
+            }
+        }
+    }
+
+    private var navigationContent: some View {
+        mainContent
             .navigationTitle("Contracts")
             .navigationDestination(for: AppRoute.self) { route in
                 AppRouteDestination(route: route, apiClient: apiClient)
@@ -54,9 +64,17 @@ struct ContractListView: View {
             .refreshable {
                 await viewModel.refresh()
             }
+    }
+
+    private var contentWithSheets: some View {
+        navigationContent
             .sheet(item: $selectedContract) { contract in
                 ContractDetailView(contract: contract)
             }
+    }
+
+    private var contentWithEvents: some View {
+        contentWithSheets
             .task {
                 if viewModel.contracts.isEmpty {
                     await viewModel.loadInitial()
@@ -65,7 +83,6 @@ struct ContractListView: View {
             .onChange(of: viewModel.selectedStatus) { _, _ in
                 Task { await viewModel.refresh() }
             }
-        }
     }
 
     // MARK: - Status Filter

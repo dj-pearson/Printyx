@@ -23,79 +23,90 @@ struct OpportunityFormView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                if let error {
-                    Section {
-                        ErrorBanner(message: error, onDismiss: { self.error = nil })
-                    }
-                }
+            navigationContent
+        }
+    }
 
-                Section("Company") {
-                    TextField("Company Name *", text: $companyName)
-                    TextField("Contact Name", text: $contactName)
-                    TextField("Contact Email", text: $contactEmail)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                }
-
-                Section("Deal") {
-                    TextField("Estimated Amount", text: $estimatedAmount)
-                        .keyboardType(.decimalPad)
-
-                    HStack {
-                        Text("Probability")
-                        Spacer()
-                        TextField("50", text: $probability)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 50)
-                        Text("%")
-                    }
-
-                    DatePicker("Expected Close", selection: $closeDate, displayedComponents: .date)
-
-                    Picker("Stage", selection: $salesStage) {
-                        ForEach(DealStage.allCases) { stage in
-                            Text(stage.displayName).tag(stage)
-                        }
-                    }
-
-                    Picker("Source", selection: $source) {
-                        ForEach(LeadSource.allCases) { s in
-                            Text(s.displayName).tag(s)
-                        }
-                    }
-
-                    Picker("Priority", selection: $priority) {
-                        Text("Low").tag("low")
-                        Text("Medium").tag("medium")
-                        Text("High").tag("high")
-                        Text("Urgent").tag("urgent")
-                    }
-                }
-
-                Section("Notes") {
-                    TextField("Notes", text: $notes, axis: .vertical)
-                        .lineLimit(3...6)
+    private var formContent: some View {
+        Form {
+            if let error {
+                Section {
+                    ErrorBanner(message: error, onDismiss: { self.error = nil })
                 }
             }
-            .navigationTitle("New Opportunity")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
+
+            Section("Company") {
+                TextField("Company Name *", text: $companyName)
+                TextField("Contact Name", text: $contactName)
+                TextField("Contact Email", text: $contactEmail)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+            }
+
+            Section("Deal") {
+                TextField("Estimated Amount", text: $estimatedAmount)
+                    .keyboardType(.decimalPad)
+
+                HStack {
+                    Text("Probability")
+                    Spacer()
+                    TextField("50", text: $probability)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 50)
+                    Text("%")
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await create() }
-                    } label: {
-                        if isSaving { ProgressView() }
-                        else { Text("Create").fontWeight(.semibold) }
+
+                DatePicker("Expected Close", selection: $closeDate, displayedComponents: .date)
+
+                Picker("Stage", selection: $salesStage) {
+                    ForEach(DealStage.allCases) { stage in
+                        Text(stage.displayName).tag(stage)
                     }
-                    .disabled(companyName.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
                 }
+
+                Picker("Source", selection: $source) {
+                    ForEach(LeadSource.allCases) { s in
+                        Text(s.displayName).tag(s)
+                    }
+                }
+
+                Picker("Priority", selection: $priority) {
+                    Text("Low").tag("low")
+                    Text("Medium").tag("medium")
+                    Text("High").tag("high")
+                    Text("Urgent").tag("urgent")
+                }
+            }
+
+            Section("Notes") {
+                TextField("Notes", text: $notes, axis: .vertical)
+                    .lineLimit(3...6)
             }
         }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button("Cancel") { dismiss() }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Task { await create() }
+            } label: {
+                if isSaving { ProgressView() }
+                else { Text("Create").fontWeight(.semibold) }
+            }
+            .disabled(companyName.trimmingCharacters(in: .whitespaces).isEmpty || isSaving)
+        }
+    }
+
+    private var navigationContent: some View {
+        formContent
+            .navigationTitle("New Opportunity")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbarContent }
     }
 
     private func create() async {

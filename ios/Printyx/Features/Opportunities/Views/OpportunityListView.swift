@@ -14,66 +14,83 @@ struct OpportunityListView: View {
 
     var body: some View {
         NavigationStack(path: router.pathBinding(for: .sales)) {
-            VStack(spacing: 0) {
-                // Pipeline metrics
-                pipelineMetrics
+            contentWithEvents
+        }
+    }
 
-                // View mode toggle
-                Picker("View", selection: $viewModel.viewMode) {
-                    ForEach(OpportunityListViewModel.ViewMode.allCases) { mode in
-                        Text(mode.rawValue).tag(mode)
-                    }
+    @ViewBuilder
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            // Pipeline metrics
+            pipelineMetrics
+
+            // View mode toggle
+            Picker("View", selection: $viewModel.viewMode) {
+                ForEach(OpportunityListViewModel.ViewMode.allCases) { mode in
+                    Text(mode.rawValue).tag(mode)
                 }
-                .pickerStyle(.segmented)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.vertical, AppTheme.Spacing.sm)
+
+            // Assigned-to filter chips (managers only — renders nothing
+            // when the signed-in user has no direct reports).
+            assignedToFilterRow
+
+            // Search
+            SearchBar(text: $viewModel.searchText, placeholder: "Search opportunities...")
                 .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.vertical, AppTheme.Spacing.sm)
+                .padding(.bottom, AppTheme.Spacing.sm)
 
-                // Assigned-to filter chips (managers only — renders nothing
-                // when the signed-in user has no direct reports).
-                assignedToFilterRow
-
-                // Search
-                SearchBar(text: $viewModel.searchText, placeholder: "Search opportunities...")
-                    .padding(.horizontal, AppTheme.Spacing.lg)
-                    .padding(.bottom, AppTheme.Spacing.sm)
-
-                // Content
-                if viewModel.isLoading && viewModel.opportunities.isEmpty {
-                    LoadingView(message: "Loading pipeline...")
-                } else if let error = viewModel.error, viewModel.opportunities.isEmpty {
-                    ErrorView(message: error, retryAction: { await viewModel.refresh() })
-                } else if viewModel.filteredOpportunities.isEmpty {
-                    EmptyStateView(
-                        icon: "chart.line.uptrend.xyaxis",
-                        title: "No Opportunities",
-                        message: "Your sales pipeline is empty.",
-                        actionTitle: "Add Opportunity",
-                        action: { showingCreate = true }
-                    )
-                } else {
-                    switch viewModel.viewMode {
-                    case .pipeline:
-                        pipelineView
-                    case .list:
-                        listView
-                    }
+            // Content
+            if viewModel.isLoading && viewModel.opportunities.isEmpty {
+                LoadingView(message: "Loading pipeline...")
+            } else if let error = viewModel.error, viewModel.opportunities.isEmpty {
+                ErrorView(message: error, retryAction: { await viewModel.refresh() })
+            } else if viewModel.filteredOpportunities.isEmpty {
+                EmptyStateView(
+                    icon: "chart.line.uptrend.xyaxis",
+                    title: "No Opportunities",
+                    message: "Your sales pipeline is empty.",
+                    actionTitle: "Add Opportunity",
+                    action: { showingCreate = true }
+                )
+            } else {
+                switch viewModel.viewMode {
+                case .pipeline:
+                    pipelineView
+                case .list:
+                    listView
                 }
             }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        GlobalSearchToolbarButton(isPresented: $showingSearch)
+
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                showingCreate = true
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(Color.printyxPrimary)
+            }
+            .accessibilityLabel("Add opportunity")
+        }
+    }
+
+    private var navigationContent: some View {
+        mainContent
             .navigationTitle("Opportunities")
-            .toolbar {
-                GlobalSearchToolbarButton(isPresented: $showingSearch)
+            .toolbar { toolbarContent }
+    }
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showingCreate = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundStyle(Color.printyxPrimary)
-                    }
-                    .accessibilityLabel("Add opportunity")
-                }
-            }
+    private var contentWithSheets: some View {
+        navigationContent
             .refreshable {
                 await viewModel.refresh()
             }
@@ -88,6 +105,10 @@ struct OpportunityListView: View {
             .navigationDestination(for: AppRoute.self) { route in
                 AppRouteDestination(route: route, apiClient: apiClient)
             }
+    }
+
+    private var contentWithEvents: some View {
+        contentWithSheets
             .task {
                 if viewModel.opportunities.isEmpty {
                     await viewModel.loadInitial()
@@ -97,7 +118,6 @@ struct OpportunityListView: View {
             .onChange(of: viewModel.assignedToUserId) { _, _ in
                 Task { await viewModel.refresh() }
             }
-        }
     }
 
     // MARK: - Assigned-to chips
