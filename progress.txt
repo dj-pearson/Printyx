@@ -7462,3 +7462,23 @@ Cumulative QUALITY-002: 6176 → 3831 (−2345, −38%).
 ### Files
 - client/src/pages/AdvancedBillingEngine.tsx
 - docs/typecheck-baseline.json (3838 → 3831), prd.json (QUALITY-002 notes)
+
+---
+
+## Iteration — QUALITY-002 batch 6: seed-manufacturer-orders decimals
+**Date**: 2026-06-25 · Branch: claude/prd-stories-progress-cmilm3
+
+server/seed-manufacturer-orders.ts (56 errors → 0). All 56 were TS2322
+"number not assignable to string": the seed passed numeric literals
+(subtotal: 12500.0, taxAmount: 1000.0, ...) for decimal/numeric columns, which
+Drizzle types as string. A line-targeted codemod quoted the literal on exactly
+the 56 tsc-flagged lines (all plain `key: number,`; integer columns left alone).
+The seed is a standalone dev script (imported nowhere); string numerics are the
+form Drizzle + pg expect, so this is the correct fix, not a workaround.
+
+tsc 3831 → 3775 (−56); file clean; no new errors. Baseline 3775.
+Cumulative QUALITY-002: 6176 → 3775 (−2401, −39%).
+
+### Files
+- server/seed-manufacturer-orders.ts
+- docs/typecheck-baseline.json (3831 → 3775), prd.json (QUALITY-002 notes)
