@@ -50,6 +50,24 @@ jobs:
       - name: Secret scanning
         run: npm run check:secrets
 
+  # ─── TypeScript Error Ratchet (QUALITY-002) ──────────────
+  # The repo has thousands of pre-existing tsc errors, so we can't gate on a
+  # clean typecheck yet. This fails only when the error count GROWS above the
+  # committed baseline (docs/typecheck-baseline.json) — debt can shrink, never
+  # grow. Lower the baseline as errors are fixed: npm run check:types -- --update-baseline.
+  typecheck-ratchet:
+    name: TypeScript Error Ratchet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Assert tsc error count did not grow
+        run: npm run check:types
+
   # ─── Route Parity Report (non-blocking, EDGE-012) ────────
   route-parity:
     name: Route Parity Report

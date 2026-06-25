@@ -7312,3 +7312,38 @@ SPECIFIC errors are gone, without over-claiming.
 ### Follow-up
 QUALITY-002 tracks driving npm run check to green (6176 errors), starting with a
 ratchet baseline + a logger codemod for the repeated message-first pattern.
+
+---
+
+## Iteration — QUALITY-003 (ratchet) + QUALITY-002 first batch (logger root cause)
+**Date**: 2026-06-25
+**Branch**: claude/prd-stories-progress-cmilm3
+
+### QUALITY-003 — TypeScript-error ratchet (passes=true)
+- scripts/check-types.mjs runs `tsc --noEmit`, counts errors, and FAILS only
+  when the count grows above docs/typecheck-baseline.json. Mirrors the EDGE-018
+  ratchet. --update-baseline lowers it as debt is fixed. npm run check:types.
+- Wired into CI as a blocking `typecheck-ratchet` job in ci.yml.
+- Baseline captured at 3921 (post-logger-fix).
+
+### QUALITY-002 — first burn-down batch: logger root cause (passes still false)
+- Root-cause finding from QUALITY-001: the structured logger
+  (server/lib/logger.ts) dropped the 2nd argument on message-first calls
+  `log.error("msg", errOrMeta)` — a type error AND a latent prod bug (errors
+  never logged). Refactored both `log` and `createModuleLogger` onto a shared
+  buildLogger() that, for message-first calls, merges the 2nd arg (Error -> {err},
+  object -> spread, primitive -> {detail}) and widens it to `unknown`.
+- IMPACT: this ONE file fixed every message-first call site repo-wide —
+  tsc errors 6176 -> 3921 (-2255, -37%) in a single change. Verified logger.ts
+  has 0 errors after the refactor and introduced no new errors; transpiles
+  under esbuild.
+- QUALITY-002 stays open (3921 ≠ 0). Next batches: implicit-any callback params,
+  useQuery<T> generics on bare {} query defaults, frontend response-shape drift.
+  Top remaining offenders: server/storage.ts (109), routes-customer-portal.ts
+  (77), routes/email-marketing-routes.ts (76).
+
+### Files
+- scripts/check-types.mjs (new), docs/typecheck-baseline.json (new, total=3921)
+- server/lib/logger.ts (root-cause refactor)
+- package.json (check:types), .github/workflows/ci.yml (typecheck-ratchet job)
+- prd.json (QUALITY-003 passes=true; QUALITY-002 notes updated)

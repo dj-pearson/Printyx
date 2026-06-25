@@ -72,7 +72,22 @@
       ],
       "priority": 2,
       "passes": false,
-      "notes": "Opened 2026-06-25 from the QUALITY-001 deep dive. Top offenders by count: server/storage.ts (119), routes/advanced-billing-routes.ts (113), routes/email-marketing-routes.ts (111), routes-customer-portal.ts (103), routes/gps-tracking-routes.ts (94). A large, batched effort — NOT a single iteration. The message-first logger pattern log.error('msg', err) recurs in many route files and is both a type error AND a latent log-data-drop bug; a codemod is the right tool."
+      "notes": "Opened 2026-06-25 from the QUALITY-001 deep dive. PROGRESS 2026-06-25: (1) tsc-error ratchet built + CI-wired (QUALITY-003). (2) Root-cause logger fix landed — server/lib/logger.ts now handles message-first calls (log.error(\"msg\", errOrMeta)) by merging the previously-DROPPED 2nd arg and widening it to unknown; this fixed BOTH the type errors and a latent prod log-data-drop bug across the whole codebase, cutting tsc errors 6176 -> 3921 (-2255). Baseline now 3921. Remaining top offenders: server/storage.ts (109), routes-customer-portal.ts (77), routes/email-marketing-routes.ts (76), routes-predictive-service-dispatch.ts (69), routes/field-service-routes.ts (65). Next batches: implicit-any callback params, useQuery<T> generics on bare {} defaults, response-shape drift. A large batched effort — still NOT done (passes stays false until tsc is green)."
+    },
+    {
+      "id": "QUALITY-003",
+      "title": "TypeScript-error ratchet guard wired into CI",
+      "description": "As a maintainer driving the codebase toward a clean typecheck, I need CI to guarantee the tsc error count can only shrink, never grow — so partial progress (QUALITY-002) is protected and no PR silently adds new type errors. A hard 'tsc exits 0' gate is impossible today (thousands of pre-existing errors), so use a ratchet against a committed baseline.",
+      "acceptanceCriteria": [
+        "scripts/check-types.mjs runs tsc --noEmit, counts errors, and fails (exit 1) only when the count exceeds docs/typecheck-baseline.json total",
+        "--update-baseline records the current count (lower it as debt is fixed)",
+        "npm script check:types; baseline committed",
+        "Wired into CI as a blocking job (fails on increase only)",
+        "Baseline reflects the post-QUALITY-001/logger-fix count"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "DONE 2026-06-25 (QUALITY-003). scripts/check-types.mjs is a ratchet mirroring EDGE-018: runs tsc (NODE_OPTIONS max-old-space 8192), parses the error count, fails CI only when it grows above docs/typecheck-baseline.json. Baseline captured at 3921 AFTER the QUALITY-002 logger root-cause fix (was 6176 before — the message-first logger pattern alone accounted for 2255 errors / 37%). npm run check:types; blocking `typecheck-ratchet` job added to .github/workflows/ci.yml. Verified: logger.ts has 0 errors post-refactor and introduced no new errors. tsc summary line is TTY-only so the script falls back to counting ': error TS' lines (consistent 6176 then 3921 across runs)."
     },
     {
       "id": "US-003",
