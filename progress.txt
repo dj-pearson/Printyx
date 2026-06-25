@@ -7147,3 +7147,294 @@ prd.json note.
 IOS-015/017-026 (Expo/native polish, widgets, marketing), IOS-029 (team roll-up
 — needs server team-reports additions), IOS-034..070 (auth/offline/feature
 build-out). EDGE-* and LAUNCH-* untouched.
+
+---
+
+## Iteration — EDGE-012: Route-parity matrix (passes=true)
+**Date**: 2026-06-25
+**Branch**: claude/prd-stories-progress-cmilm3
+
+### Story
+EDGE-012 (P40) — Build authoritative route-parity matrix (frontend ↔ edge ↔
+Express ↔ proxy map). Foundation for EDGE-013..017.
+
+### What was done
+- scripts/audit-route-parity.mjs already existed from a prior pass but was NOT
+  wired into CI and its generated docs were stale (last gen Jun 20). Completed
+  the remaining acceptance criteria:
+  1. Re-ran `npm run audit:routes` to regenerate docs/route-parity-matrix.md +
+     docs/route-divergence.json against current source. The script enumerates
+     all four required sources: (a) frontend /api/* segments grepped from
+     client/src, (b) every supabase/functions/* directory, (c) Express
+     app.get/post/put/patch/delete/use/all('/api/x') registrations, (d) the
+     edge-function-proxy.ts crmProxies prefixes + known multi-segment redirects.
+  2. Classifies every domain: missing-edge (prod blocker), both-divergent
+     (dev≠prod), express-only, dead-express, proxied, edge-only,
+     express-canonical. Matrix header documents the architecture fact (prod
+     frontend → functions.printyx.net for ALL /api/* via getApiUrl; the proxy
+     map only governs dev; Express canonical for client-metrics + install).
+  3. Wired into CI as a NON-BLOCKING report: new `route-parity` job in
+     .github/workflows/ci.yml (continue-on-error: true) regenerates the matrix,
+     publishes it to $GITHUB_STEP_SUMMARY, emits a ::warning:: (non-blocking) if
+     the committed copy is stale, and uploads the matrix+json as an artifact.
+
+### Current snapshot (heuristic)
+337 domains · 246 edge fns · 182 Express-served · 200 frontend-called · 38
+proxied. Classes: missing-edge 56, both-divergent 60, express-only 26,
+dead-express 19, proxied 38, edge-only 128, express-canonical 10. The 56
+missing-edge domains are the candidate prod-blocker worklist for EDGE-014.
+
+### Verification
+- `npm run audit:routes` runs clean and regenerates both artifacts.
+- EDGE-012 touches only yaml/markdown/json — zero TypeScript changed, so it
+  introduces no new type errors. `npm run check` has PRE-EXISTING, unrelated
+  errors (server/utils/apiErrorHandler*, error-sanitizer, websocket-service,
+  shared/platform-crm-schema, shared/product-pricing-schema, shared/schema.ts
+  line 2685, shared/user-lifecycle-schema, print-cost-calculator-schema) that
+  predate this branch and are out of scope for EDGE-012.
+
+### Files
+- .github/workflows/ci.yml (new route-parity job)
+- docs/route-parity-matrix.md (regenerated)
+- docs/route-divergence.json (regenerated)
+- prd.json (EDGE-012 passes=true + note)
+
+---
+
+## Iteration — EDGE-018 (new): Ambiguous-route-ownership CI ratchet guard (passes=true)
+**Date**: 2026-06-25
+**Branch**: claude/prd-stories-progress-cmilm3
+
+### Why a new story
+EDGE-017 bundles two things: (a) soak-gated Bucket A Express-handler deletions
+(need 48h soak + per-domain edge-parity proof — not safely doable in this
+sandbox) and (b) a CI guard against ambiguous route ownership (AC #2). The guard
+is independently shippable AND fully verifiable here (pure repo tooling, no edge
+runtime/browser), so I split it into EDGE-018, completed it, and left EDGE-017
+open for the deletions. EDGE-005e was evaluated and SKIPPED — its note claims a
+"clean consolidation" but the edge signatures `requests` handler returns
+snake_case DB rows while the frontend expects the camelCase sample shape, and
+there's no /remind or templates/analytics handler, so repointing would break the
+page; can't browser-verify edge parity in this sandbox (project bar).
+
+### What was done
+1. Extracted the route classification out of scripts/audit-route-parity.mjs into
+   scripts/lib/route-parity.mjs (exported computeParity()), so the EDGE-012 audit
+   and the new guard share ONE source of truth. Verified the refactor is
+   behavior-preserving: regenerated docs/route-parity-matrix.md +
+   route-divergence.json are byte-identical to the committed copies (added a
+   trailing newline to the json write to match prettier so the EDGE-012 "stale
+   matrix" CI check doesn't flap).
+2. scripts/check-route-ownership.mjs — a RATCHET guard. It recomputes the live
+   both-divergent (ambiguous Express+edge, unproxied) and missing-edge (frontend
+   calls it, no edge fn → prod 404) sets and exits 1 if any domain appears that
+   is NOT in docs/route-ownership-baseline.json. Baseline grandfathers today's
+   debt (60 both-divergent + 56 missing-edge) so CI stays green now; the guard
+   trips only on NEW regressions. --update-baseline regenerates it (idempotent).
+3. npm script `check:routes`; wired into ci.yml quality job as a BLOCKING step
+   (safe — only fails on regressions).
+
+### Verification (all in-sandbox)
+- npm run check:routes → green on baseline.
+- Injected regression (removed warehouse-operations + workflow-automation from
+  the baseline) → guard exits 1, prints `/api/warehouse-operations` (ambiguous)
+  and `/api/workflow-automation` (missing-edge) with fix hints. Restored → green.
+- node scripts/check-route-ownership.mjs --update-baseline → idempotent (same md5
+  across runs).
+- npm run audit:routes → docs still byte-identical after the shared-lib refactor.
+- prettier --write applied to the two new mjs files. No TypeScript touched
+  (mjs/json/yaml only) → zero impact on npm run check.
+
+### Files
+- scripts/lib/route-parity.mjs (new — shared classification)
+- scripts/check-route-ownership.mjs (new — ratchet guard)
+- scripts/audit-route-parity.mjs (refactored to import the shared lib)
+- docs/route-ownership-baseline.json (new — grandfathered baseline)
+- .github/workflows/ci.yml (blocking check:routes in quality job)
+- package.json (check:routes script)
+- prd.json (EDGE-018 added passes=true; EDGE-017 note cross-referenced)
+
+---
+
+## Iteration — QUALITY-001: Fix type-safety bug cluster in server/shared (passes=true)
+**Date**: 2026-06-25
+**Branch**: claude/prd-stories-progress-cmilm3
+
+### Important scope correction
+While investigating "Typecheck passes: npm run check" (an AC on nearly every
+story), I found the gate was never actually green. An earlier `npm run check |
+tail` had hidden the true count behind the pipe's exit status. A full `tsc
+--noEmit` run reports **6176 errors** repo-wide (5013 server/, 1163 client/).
+The build (vite + esbuild) transpiles WITHOUT typechecking, so these never
+blocked shipping. Global-green is a large batched effort — opened as QUALITY-002.
+This iteration fixes the highest-value correctness cluster and verifies those
+SPECIFIC errors are gone, without over-claiming.
+
+### Fixes (all root-cause, verified 0 remaining in these files via the tsc log)
+- **Logger silently dropped errors (latent prod bug).** server/lib/logger's
+  log.error(obj|string, msg?) ignores the 2nd arg when called message-first, so
+  `log.error('msg', err)` logged the message and DROPPED the error. Converted
+  the flagged sites to pino object-first `log.error({ err }, 'msg')` so the error
+  is actually recorded: apiErrorHandler.ts, error-sanitizer.ts,
+  company-id-generator.ts, websocket-service.ts (7 sites). (The same pattern
+  recurs in many route files → QUALITY-002 codemod.)
+- **Real async-return bug:** websocket-service.isRealTimeReport was
+  `async ...: boolean` → `Promise<boolean>`.
+- **Malformed Zod:** marginAnalysisReport was a raw object literal, so
+  `z.infer<typeof marginAnalysisReport>` produced an error type — wrapped in
+  z.object({...}). Removed a bogus `email` refinement key from
+  insertCalculatorSessionSchema (email lives on calculatorLeads, not
+  calculatorSessions).
+- **Self-referencing FK:** platform-crm reportsToId typed via AnyPgColumn.
+- **Index signature:** user-lifecycle transferDetails `[key: string]: number`
+  → `number | undefined` to match its optional members.
+- **decimal default:** schema.ts totalPaid `.default(0)` → `.default('0')`
+  (every other decimal default in the file already uses the string form).
+- **tsconfig:** added `downlevelIteration` (Set iteration in websocket-service)
+  and excluded illustrative `**/*.example.ts` from the typecheck scope.
+
+### Verification
+- Fresh full `tsc --noEmit` log: grep shows 0 remaining errors in all nine
+  touched files. Changes are non-additive (relaxing tsconfig + type-correcting
+  code). The 2 errors still in routes-print-cost-calculator.ts are pre-existing
+  and unrelated (a different untouched logger call + an insert overload).
+- All 9 changed TS files transpile cleanly under esbuild.
+- No shipped behavior changes except the corrected/improved logging.
+
+### Files
+- tsconfig.json, server/websocket-service.ts, server/utils/apiErrorHandler.ts,
+  server/utils/error-sanitizer.ts, server/utils/company-id-generator.ts,
+  shared/platform-crm-schema.ts, shared/print-cost-calculator-schema.ts,
+  shared/product-pricing-schema.ts, shared/user-lifecycle-schema.ts,
+  shared/schema.ts
+- prd.json (QUALITY-001 passes=true; QUALITY-002 added passes=false)
+
+### Follow-up
+QUALITY-002 tracks driving npm run check to green (6176 errors), starting with a
+ratchet baseline + a logger codemod for the repeated message-first pattern.
+
+---
+
+## Iteration — QUALITY-003 (ratchet) + QUALITY-002 first batch (logger root cause)
+**Date**: 2026-06-25
+**Branch**: claude/prd-stories-progress-cmilm3
+
+### QUALITY-003 — TypeScript-error ratchet (passes=true)
+- scripts/check-types.mjs runs `tsc --noEmit`, counts errors, and FAILS only
+  when the count grows above docs/typecheck-baseline.json. Mirrors the EDGE-018
+  ratchet. --update-baseline lowers it as debt is fixed. npm run check:types.
+- Wired into CI as a blocking `typecheck-ratchet` job in ci.yml.
+- Baseline captured at 3921 (post-logger-fix).
+
+### QUALITY-002 — first burn-down batch: logger root cause (passes still false)
+- Root-cause finding from QUALITY-001: the structured logger
+  (server/lib/logger.ts) dropped the 2nd argument on message-first calls
+  `log.error("msg", errOrMeta)` — a type error AND a latent prod bug (errors
+  never logged). Refactored both `log` and `createModuleLogger` onto a shared
+  buildLogger() that, for message-first calls, merges the 2nd arg (Error -> {err},
+  object -> spread, primitive -> {detail}) and widens it to `unknown`.
+- IMPACT: this ONE file fixed every message-first call site repo-wide —
+  tsc errors 6176 -> 3921 (-2255, -37%) in a single change. Verified logger.ts
+  has 0 errors after the refactor and introduced no new errors; transpiles
+  under esbuild.
+- QUALITY-002 stays open (3921 ≠ 0). Next batches: implicit-any callback params,
+  useQuery<T> generics on bare {} query defaults, frontend response-shape drift.
+  Top remaining offenders: server/storage.ts (109), routes-customer-portal.ts
+  (77), routes/email-marketing-routes.ts (76).
+
+### Files
+- scripts/check-types.mjs (new), docs/typecheck-baseline.json (new, total=3921)
+- server/lib/logger.ts (root-cause refactor)
+- package.json (check:types), .github/workflows/ci.yml (typecheck-ratchet job)
+- prd.json (QUALITY-003 passes=true; QUALITY-002 notes updated)
+
+---
+
+## Iteration — QUALITY-002 batch 2: missing-import runtime bugs (TS2304)
+**Date**: 2026-06-25
+**Branch**: claude/prd-stories-progress-cmilm3
+
+Fixed undefined-name references (TS2304) — these are REAL runtime bugs
+(ReferenceError if the code path runs), not just type noise:
+- server/routes-intelligent-alerts.ts: `z` (zod) used 16x but never imported →
+  added `import { z } from 'zod'`.
+- 13 client files called `apiRequest(...)` without importing it → added
+  `import { apiRequest } from '@/lib/queryClient'` (RootAdminSEO, CompanyIdsTest,
+  LeadProposals, CustomerProposals, BillingAnalytics, ServiceTicketAnalysis,
+  CustomerSupplies, KnowledgeBase, LeadQuotes, my-tasks, my-approvals,
+  BusinessProcessOptimization, MultipleContactsForm). apiRequest supports both
+  positional (url, 'POST', body) and options-object signatures and returns any,
+  so call sites match and nothing downstream changes type.
+
+Verified: all 14 files transpile under esbuild; tsc 3921 → 3871 (−50) with 0
+residual apiRequest/z errors and no new errors (net drop equals the resolved
+count). Baseline lowered to 3871. The residual errors still in a few of these
+files (RootAdminSEO {} response-shape, a Refresh→RefreshCw import typo,
+intelligent-alerts db-insert overloads, LeadQuotes implicit-any) are
+pre-existing and unrelated — future batches.
+
+QUALITY-002 still open. Cumulative: 6176 → 3871 (−2305, −37%).
+Next big target: TS2339 (1897) `{}` response-shape drift on useQuery defaults.
+
+### Files
+- server/routes-intelligent-alerts.ts + 13 client files (imports)
+- docs/typecheck-baseline.json (3921 → 3871)
+- prd.json (QUALITY-002 notes)
+
+---
+
+## Iteration — QUALITY-002 batch 3: broken/dead imports
+**Date**: 2026-06-25 · Branch: claude/prd-stories-progress-cmilm3
+
+- Removed unused-but-broken lucide imports: MapPin2 (CustomerDetail, LeadDetail),
+  Refresh (RootAdminSEO) — imported, never used, and not valid lucide exports.
+- Renamed broken type imports CompanyPricingSetting -> CompanyPricingSettings
+  (+ Insert*) in PricingManagement.tsx and storage.ts via word-boundary regex
+  (the singular type never existed; only the plural $inferSelect/$inferInsert do).
+  Verified no getCompanyPricingSettings() method-name corruption.
+- Added missing `vi` to the vitest import in server/tests/setup.ts (used 5x).
+
+tsc 3871 -> 3864 (-7). Baseline updated. Verified 0 residual vi/MapPin2/Refresh/
+CompanyPricingSetting-singular errors; all changed files transpile under esbuild.
+
+CAVEAT: the (correct) pricing rename unmasked ~5 pre-existing schema-drift errors
+the broken import had hidden — frontend reads companySettings.allowSalespersonOverride
+/ minimumGrossProfitPercentage and storage queries companyPricingSettings.isActive,
+none of which are columns on company_pricing_settings. Real bugs, deferred to a
+schema-aware fix (not a type-only change).
+
+Cumulative QUALITY-002: 6176 -> 3864 (-2312, -37%). The import-resolution codemod
+wins (logger, apiRequest, z, dead/broken imports) are now largely exhausted; the
+remaining bulk is TS2339 response-shape drift needing per-site typing.
+
+### Files
+- client/src/pages/{CustomerDetail,LeadDetail,RootAdminSEO,PricingManagement}.tsx
+- server/storage.ts, server/tests/setup.ts
+- docs/typecheck-baseline.json (3871 -> 3864), prd.json (QUALITY-002 notes)
+
+---
+
+## Iteration — QUALITY-002 batch 4: customer-transformer type fix
+**Date**: 2026-06-25 · Branch: claude/prd-stories-progress-cmilm3
+
+client/src/lib/transformers/customer-transformer.ts (26 errors → 0):
+- Removed unused, broken `import type { Database } from '@/types/supabase'`
+  (module doesn't exist → TS2307).
+- The nested-object fallbacks `const company = raw.companies || {}` and
+  `primaryContact = contacts.find(...) || contacts[0] || {}` collapsed the
+  type to `{}`, so every `company.business_name` / `.phone` / `primaryContact.*`
+  access was TS2339. Cast the empty fallbacks to
+  `NonNullable<RawCustomerAPI['companies']>` and `(typeof contacts)[number]`.
+  Runtime unchanged (all accesses are `|| null` tolerant).
+
+tsc 3864 → 3838 (−26), 0 residual in the file, no new errors. Baseline 3838.
+Cumulative QUALITY-002: 6176 → 3838 (−2338, −38%).
+
+NOTE on remaining TS2339 (378 are the untyped-useQuery `{}` pattern in pages):
+those need a per-call response-type generic that mostly doesn't exist as a
+shared type yet, so they are genuine per-site work, not a codemod. The
+transformer was tractable because its input type (RawCustomerAPI) is local.
+
+### Files
+- client/src/lib/transformers/customer-transformer.ts
+- docs/typecheck-baseline.json (3864 → 3838), prd.json (QUALITY-002 notes)

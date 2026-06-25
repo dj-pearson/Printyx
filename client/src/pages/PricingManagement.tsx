@@ -36,9 +36,9 @@ import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import MainLayout from '@/components/layout/main-layout';
 import type {
-  CompanyPricingSetting,
+  CompanyPricingSettings,
   ProductPricing,
-  InsertCompanyPricingSetting,
+  InsertCompanyPricingSettings,
   InsertProductPricing,
 } from '@shared/schema';
 
@@ -70,7 +70,7 @@ export default function PricingManagement() {
   const queryClient = useQueryClient();
 
   // Fetch company pricing settings
-  const { data: companySettings, isLoading: isLoadingSettings } = useQuery<CompanyPricingSetting>({
+  const { data: companySettings, isLoading: isLoadingSettings } = useQuery<CompanyPricingSettings>({
     queryKey: ['/api/pricing/company-settings'],
     queryFn: async () => {
       const response = await apiRequest('/api/pricing/company-settings', 'GET');

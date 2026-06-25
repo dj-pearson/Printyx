@@ -74,7 +74,7 @@ async function verifyWsToken(
       },
     };
   } catch (error) {
-    log.error('WebSocket JWT verification error:', error);
+    log.error({ err: error }, 'WebSocket JWT verification error');
     return null;
   }
 }
@@ -262,7 +262,7 @@ export class WebSocketService {
     });
 
     socket.on('error', (error) => {
-      log.error(`WebSocket error for client ${clientId}:`, error);
+      log.error({ err: error }, `WebSocket error for client ${clientId}`);
       this.clients.delete(clientId);
     });
   }
@@ -297,7 +297,7 @@ export class WebSocketService {
           });
       }
     } catch (error) {
-      log.error('Error parsing client message:', error);
+      log.error({ err: error }, 'Error parsing client message');
       this.sendToClient(client, {
         type: 'error',
         error: 'Invalid message format',
@@ -409,7 +409,7 @@ export class WebSocketService {
         });
       }
     } catch (error) {
-      log.error('Error sending current data:', error);
+      log.error({ err: error }, 'Error sending current data');
       this.sendToClient(client, {
         type: 'error',
         channel,
@@ -444,7 +444,7 @@ export class WebSocketService {
       try {
         client.socket.send(JSON.stringify(message));
       } catch (error) {
-        log.error(`Failed to send message to client ${client.id}:`, error);
+        log.error({ err: error }, `Failed to send message to client ${client.id}`);
       }
     }
   }
@@ -516,7 +516,7 @@ export class WebSocketService {
           this.broadcastDataUpdate(channel, kpiData);
         }
       } catch (error) {
-        log.error(`Error updating KPI ${channel}:`, error);
+        log.error({ err: error }, `Error updating KPI ${channel}`);
       }
     }
   }
@@ -554,7 +554,7 @@ export class WebSocketService {
           }
         }
       } catch (error) {
-        log.error(`Error updating report ${channel}:`, error);
+        log.error({ err: error }, `Error updating report ${channel}`);
       }
     }
   }
@@ -633,7 +633,7 @@ export class WebSocketService {
     };
   }
 
-  private async isRealTimeReport(reportId: string): boolean {
+  private async isRealTimeReport(reportId: string): Promise<boolean> {
     // Check if report is configured for real-time updates
     // For now, assume reports with 'sla' or 'real_time' in the ID are real-time
     return reportId.includes('sla') || reportId.includes('real_time');

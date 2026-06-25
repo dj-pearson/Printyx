@@ -192,158 +192,78 @@ export function createContextualLogger(module?: string): Logger {
  * Log with automatic context injection
  * This function checks AsyncLocalStorage for request context
  */
-export const log = {
-  trace: (obj: object | string, msg?: string) => {
-    const context = getRequestContext() || {};
-    if (typeof obj === 'string') {
-      logger.trace(context, obj);
-    } else {
-      logger.trace({ ...context, ...obj }, msg);
-    }
-  },
-  debug: (obj: object | string, msg?: string) => {
-    const context = getRequestContext() || {};
-    if (typeof obj === 'string') {
-      logger.debug(context, obj);
-    } else {
-      logger.debug({ ...context, ...obj }, msg);
-    }
-  },
-  info: (obj: object | string, msg?: string) => {
-    const context = getRequestContext() || {};
-    if (typeof obj === 'string') {
-      logger.info(context, obj);
-    } else {
-      logger.info({ ...context, ...obj }, msg);
-    }
-  },
-  warn: (obj: object | string, msg?: string) => {
-    const context = getRequestContext() || {};
-    if (typeof obj === 'string') {
-      logger.warn(context, obj);
-    } else {
-      logger.warn({ ...context, ...obj }, msg);
-    }
-  },
-  error: (obj: object | string | Error, msg?: string) => {
-    const context = getRequestContext() || {};
-    if (obj instanceof Error) {
-      logger.error({ ...context, err: obj }, msg || obj.message);
-    } else if (typeof obj === 'string') {
-      logger.error(context, obj);
-    } else {
-      logger.error({ ...context, ...obj }, msg);
-    }
-  },
-  fatal: (obj: object | string | Error, msg?: string) => {
-    const context = getRequestContext() || {};
-    if (obj instanceof Error) {
-      logger.fatal({ ...context, err: obj }, msg || obj.message);
-    } else if (typeof obj === 'string') {
-      logger.fatal(context, obj);
-    } else {
-      logger.fatal({ ...context, ...obj }, msg);
-    }
-  },
-  audit: (obj: object | string, msg?: string) => {
-    const context = getRequestContext() || {};
-    const auditLogger = logger as ExtendedLogger;
-    if (typeof obj === 'string') {
-      auditLogger.audit(context, obj);
-    } else {
-      auditLogger.audit({ ...context, ...obj }, msg);
-    }
-  },
-  metric: (obj: object | string, msg?: string) => {
-    const context = getRequestContext() || {};
-    const metricLogger = logger as ExtendedLogger;
-    if (typeof obj === 'string') {
-      metricLogger.metric(context, obj);
-    } else {
-      metricLogger.metric({ ...context, ...obj }, msg);
-    }
-  },
-};
+/**
+ * Structured logger surface. Supports BOTH calling conventions:
+ *   log.error({ userId }, 'message')   — pino object-first (mergingObject, msg)
+ *   log.error('message', errOrMeta)    — message-first; errOrMeta was previously
+ *                                        SILENTLY DROPPED and is now merged so it
+ *                                        actually reaches the logs.
+ */
+export interface StructuredLogger {
+  trace: (obj: object | string, msg?: unknown) => void;
+  debug: (obj: object | string, msg?: unknown) => void;
+  info: (obj: object | string, msg?: unknown) => void;
+  warn: (obj: object | string, msg?: unknown) => void;
+  error: (obj: object | string | Error, msg?: unknown) => void;
+  fatal: (obj: object | string | Error, msg?: unknown) => void;
+  audit: (obj: object | string, msg?: unknown) => void;
+  metric: (obj: object | string, msg?: unknown) => void;
+}
+
+/** Normalize a (legacy message-first) second argument into a mergeable object. */
+function metaToObject(meta: unknown): Record<string, unknown> {
+  if (meta == null) return {};
+  if (meta instanceof Error) return { err: meta };
+  if (typeof meta === 'object') return meta as Record<string, unknown>;
+  return { detail: meta };
+}
 
 /**
- * Module-specific logger factory
- * Creates a logger with a predefined module context
+ * Build a logger surface over a pino instance, resolving request context lazily.
+ * `out` is the underlying pino level fn (so custom levels audit/metric work too).
  */
-export function createModuleLogger(moduleName: string): typeof log {
-  const moduleContext = { module: moduleName };
-
-  return {
-    trace: (obj: object | string, msg?: string) => {
-      const context = { ...moduleContext, ...(getRequestContext() || {}) };
-      if (typeof obj === 'string') {
-        logger.trace(context, obj);
-      } else {
-        logger.trace({ ...context, ...obj }, msg);
-      }
-    },
-    debug: (obj: object | string, msg?: string) => {
-      const context = { ...moduleContext, ...(getRequestContext() || {}) };
-      if (typeof obj === 'string') {
-        logger.debug(context, obj);
-      } else {
-        logger.debug({ ...context, ...obj }, msg);
-      }
-    },
-    info: (obj: object | string, msg?: string) => {
-      const context = { ...moduleContext, ...(getRequestContext() || {}) };
-      if (typeof obj === 'string') {
-        logger.info(context, obj);
-      } else {
-        logger.info({ ...context, ...obj }, msg);
-      }
-    },
-    warn: (obj: object | string, msg?: string) => {
-      const context = { ...moduleContext, ...(getRequestContext() || {}) };
-      if (typeof obj === 'string') {
-        logger.warn(context, obj);
-      } else {
-        logger.warn({ ...context, ...obj }, msg);
-      }
-    },
-    error: (obj: object | string | Error, msg?: string) => {
-      const context = { ...moduleContext, ...(getRequestContext() || {}) };
-      if (obj instanceof Error) {
-        logger.error({ ...context, err: obj }, msg || obj.message);
-      } else if (typeof obj === 'string') {
-        logger.error(context, obj);
-      } else {
-        logger.error({ ...context, ...obj }, msg);
-      }
-    },
-    fatal: (obj: object | string | Error, msg?: string) => {
-      const context = { ...moduleContext, ...(getRequestContext() || {}) };
-      if (obj instanceof Error) {
-        logger.fatal({ ...context, err: obj }, msg || obj.message);
-      } else if (typeof obj === 'string') {
-        logger.fatal(context, obj);
-      } else {
-        logger.fatal({ ...context, ...obj }, msg);
-      }
-    },
-    audit: (obj: object | string, msg?: string) => {
-      const context = { ...moduleContext, ...(getRequestContext() || {}) };
-      const auditLogger = logger as ExtendedLogger;
-      if (typeof obj === 'string') {
-        auditLogger.audit(context, obj);
-      } else {
-        auditLogger.audit({ ...context, ...obj }, msg);
-      }
-    },
-    metric: (obj: object | string, msg?: string) => {
-      const context = { ...moduleContext, ...(getRequestContext() || {}) };
-      const metricLogger = logger as ExtendedLogger;
-      if (typeof obj === 'string') {
-        metricLogger.metric(context, obj);
-      } else {
-        metricLogger.metric({ ...context, ...obj }, msg);
-      }
-    },
+function buildLogger(getContext: () => object): StructuredLogger {
+  const ext = logger as ExtendedLogger;
+  const run = (
+    out: (o: object, m?: string) => void,
+    obj: object | string | Error,
+    msg?: unknown,
+  ): void => {
+    const context = getContext();
+    if (obj instanceof Error) {
+      out({ ...context, err: obj }, typeof msg === 'string' && msg ? msg : obj.message);
+    } else if (typeof obj === 'string') {
+      // message-first: obj is the message, msg is optional metadata (was dropped).
+      out({ ...context, ...metaToObject(msg) }, obj);
+    } else {
+      out({ ...context, ...obj }, typeof msg === 'string' ? msg : undefined);
+    }
   };
+  return {
+    trace: (obj, msg) => run((o, m) => logger.trace(o, m), obj, msg),
+    debug: (obj, msg) => run((o, m) => logger.debug(o, m), obj, msg),
+    info: (obj, msg) => run((o, m) => logger.info(o, m), obj, msg),
+    warn: (obj, msg) => run((o, m) => logger.warn(o, m), obj, msg),
+    error: (obj, msg) => run((o, m) => logger.error(o, m), obj, msg),
+    fatal: (obj, msg) => run((o, m) => logger.fatal(o, m), obj, msg),
+    audit: (obj, msg) => run((o, m) => ext.audit(o, m), obj, msg),
+    metric: (obj, msg) => run((o, m) => ext.metric(o, m), obj, msg),
+  };
+}
+
+/**
+ * Log with automatic context injection.
+ * Checks AsyncLocalStorage for request context.
+ */
+export const log: StructuredLogger = buildLogger(() => getRequestContext() || {});
+
+/**
+ * Module-specific logger factory.
+ * Creates a logger with a predefined module context.
+ */
+export function createModuleLogger(moduleName: string): StructuredLogger {
+  const moduleContext = { module: moduleName };
+  return buildLogger(() => ({ ...moduleContext, ...(getRequestContext() || {}) }));
 }
 
 // Export default logger for backward compatibility

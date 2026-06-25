@@ -3,7 +3,7 @@
  * Global setup for Vitest unit and integration tests
  */
 
-import { beforeAll, afterAll, afterEach } from 'vitest';
+import { beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { config } from 'dotenv';
 
 // Load environment variables

@@ -337,7 +337,7 @@ export const priceChangeApprovals = pgTable('price_change_approvals', {
 
 // Sales Manager Report - Margin Analysis
 // This view would be generated via API endpoint for managers/admins only
-export const marginAnalysisReport = {
+export const marginAnalysisReport = z.object({
   // Quote level
   quoteNumber: z.string(),
   salesRep: z.string(),
@@ -364,7 +364,7 @@ export const marginAnalysisReport = {
       lineMarginPercentage: z.number(),
     }),
   ),
-};
+});
 
 // Zod Schemas for Validation
 export const insertCompanyPricingSettingsSchema = createInsertSchema(companyPricingSettings);

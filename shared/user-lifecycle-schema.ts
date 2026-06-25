@@ -279,7 +279,7 @@ export const offboardingWorkflows = pgTable('offboarding_workflows', {
     leads?: number;
     opportunities?: number;
     serviceTickets?: number;
-    [key: string]: number;
+    [key: string]: number | undefined;
   }>(),
 
   // Data Export

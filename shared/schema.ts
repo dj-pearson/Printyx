@@ -2682,7 +2682,7 @@ export const leases = pgTable(
     // Analytics & Health
     paymentsCompleted: integer('payments_completed').default(0),
     paymentsRemaining: integer('payments_remaining'),
-    totalPaid: decimal('total_paid', { precision: 12, scale: 2 }).default(0),
+    totalPaid: decimal('total_paid', { precision: 12, scale: 2 }).default('0'),
     balanceRemaining: decimal('balance_remaining', { precision: 12, scale: 2 }),
     daysUntilExpiry: integer('days_until_expiry'),
     paymentHealth: varchar('payment_health').default('good'), // good, warning, critical

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { apiRequest } from '@/lib/queryClient';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/main-layout';
-import { Search, Globe, FileText, Bot, Brain, Refresh } from 'lucide-react';
+import { Search, Globe, FileText, Bot, Brain } from 'lucide-react';
 
 export default function RootAdminSEO() {
   const qc = useQueryClient();

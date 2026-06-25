@@ -51,8 +51,7 @@ const FRAMEWORK_VERSION_RE =
 const PG_ERROR_CODE_RE = /\berror:\s+[A-Z_]+\s+\(\d{5}\)/gi;
 
 /** Connection strings */
-const CONNECTION_STRING_RE =
-  /(?:postgres(?:ql)?|mysql|mongodb|redis):\/\/[^\s"')]+/gi;
+const CONNECTION_STRING_RE = /(?:postgres(?:ql)?|mysql|mongodb|redis):\/\/[^\s"')]+/gi;
 
 // ─── Core Sanitization ──────────────────────────────────────────────
 
@@ -110,10 +109,7 @@ export function sanitizeErrorMessage(message: string): string {
  */
 export function sanitizeErrorForProduction(error: Error): { message: string; code: string } {
   const isProduction = process.env.NODE_ENV === 'production';
-  const errCode =
-    (error as any).code ||
-    (error as any).statusCode?.toString() ||
-    'INTERNAL_ERROR';
+  const errCode = (error as any).code || (error as any).statusCode?.toString() || 'INTERNAL_ERROR';
 
   if (!isProduction) {
     // Development: return full details but still scrub the most dangerous leaks
@@ -134,9 +130,7 @@ export function sanitizeErrorForProduction(error: Error): { message: string; cod
  * Strip sensitive headers before logging.
  * Removes Authorization, Cookie, and X-CSRF-Token headers.
  */
-export function stripSensitiveHeaders(
-  headers: Record<string, string>,
-): Record<string, string> {
+export function stripSensitiveHeaders(headers: Record<string, string>): Record<string, string> {
   if (!headers || typeof headers !== 'object') {
     return {};
   }
@@ -221,12 +215,15 @@ export function sendErrorResponse(
   const sanitized = sanitizeError(error, isDevelopment);
 
   // Always log the full error server-side
-  log.error('[ERROR]', {
-    requestId,
-    error: error?.message || error,
-    stack: error?.stack,
-    code: error?.code,
-  });
+  log.error(
+    {
+      requestId,
+      error: error?.message || error,
+      stack: error?.stack,
+      code: error?.code,
+    },
+    '[ERROR]',
+  );
 
   // Send sanitized response to client
   res.status(statusCode).json({

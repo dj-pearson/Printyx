@@ -186,7 +186,7 @@ export async function backfillExistingRecords(tenantId: string, limit = 100): Pr
       );
       updatedCount++;
     } catch (error) {
-      log.error(`Failed to update record ${record.id}:`, error);
+      log.error({ err: error }, `Failed to update record ${record.id}`);
     }
   }
 
