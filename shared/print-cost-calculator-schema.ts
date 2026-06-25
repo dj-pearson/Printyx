@@ -372,7 +372,6 @@ export const insertCalculatorSessionSchema = createInsertSchema(calculatorSessio
   monthlyPageVolume: z.number().int().min(0).max(10000000),
   colorRatio: z.number().min(0).max(100),
   employeeCount: z.number().int().min(1).max(100000),
-  email: z.string().email().optional(),
 });
 
 export const insertCalculatorLeadSchema = createInsertSchema(calculatorLeads, {

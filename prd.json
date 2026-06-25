@@ -40,6 +40,41 @@
       "notes": "Currently only ~13 unit test files in server/tests/unit/. vitest is configured. This infrastructure is prerequisite for US-008 through US-010 and US-028/US-039."
     },
     {
+      "id": "QUALITY-001",
+      "title": "Fix a cluster of type-safety bugs in server/shared core files",
+      "description": "As a maintainer, several core server + shared-schema files contain real type-safety bugs that tsc flags (and that mask runtime defects). Fix the highest-value cluster: the structured logger silently DROPPED the error/meta argument when called message-first (errors never reached the logs in prod); an async method was typed boolean instead of Promise<boolean>; two Zod schemas were malformed (marginAnalysisReport was a raw object so z.infer produced an error type; insertCalculatorSessionSchema refined a non-existent email column); a self-referencing FK was untyped; and Set iteration needed downlevelIteration.",
+      "acceptanceCriteria": [
+        "Logger calls of the form log.error(\"msg\", errOrMeta) converted to pino object-first form so the error/meta is actually logged (fixes silent log-data-drop) and types pass — apiErrorHandler, error-sanitizer, company-id-generator, websocket-service (7 sites)",
+        "websocket-service.isRealTimeReport typed Promise<boolean> (was async ...: boolean — a real bug)",
+        "marginAnalysisReport wrapped in z.object so z.infer<MarginAnalysisReport> resolves (was an error type)",
+        "Bogus email refinement removed from insertCalculatorSessionSchema (email is on calculatorLeads, not calculatorSessions)",
+        "platform-crm self-referencing reportsToId FK typed via AnyPgColumn",
+        "user-lifecycle transferDetails index signature widened to number | undefined to match optional members",
+        "schema.ts totalPaid decimal default corrected to string (.default(\"0\")) matching every other decimal default in the file",
+        "downlevelIteration enabled + illustrative *.example.ts excluded from typecheck scope",
+        "All targeted tsc errors in these specific files resolved (verified: 0 remaining) with no new errors introduced in them",
+        "NOTE: this does NOT make npm run check globally green — see QUALITY-002 (6176 pre-existing errors repo-wide)"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "DONE 2026-06-25 (QUALITY-001). Scope corrected mid-flight: an earlier `npm run check | tail` had hidden the true error count — the full tsc run shows 6176 pre-existing errors repo-wide (5013 server/shared + 1163 client), so this codebase has never typechecked clean and global-green is a large separate effort (tracked as QUALITY-002). This story fixes the highest-value correctness cluster I found and VERIFIES those specific errors are gone (grep of the fresh tsc log shows 0 remaining in websocket-service.ts, utils/apiErrorHandler.ts, error-sanitizer.ts, company-id-generator.ts, platform-crm-schema.ts, print-cost-calculator-schema.ts, product-pricing-schema.ts, user-lifecycle-schema.ts, schema.ts:2685). Most valuable fixes: (1) the structured logger silently dropped the 2nd arg on message-first calls, so caught errors never reached logs in prod — now logged via {err}; (2) marginAnalysisReport z.infer was broken; (3) isRealTimeReport async-return-type bug. Changes are non-additive (relaxing tsconfig + type-correcting code). Build (vite/esbuild) was never gated on tsc so this changes no shipped behavior except the corrected/improved logging."
+    },
+    {
+      "id": "QUALITY-002",
+      "title": "Drive npm run check to green (6176 pre-existing TypeScript errors)",
+      "description": "Deep-dive finding (2026-06-25): npm run check (tsc --noEmit) reports 6176 errors — 5013 in server/, 1163 in client/. The codebase has never typechecked clean; the build (vite + esbuild) transpiles without typechecking so these never blocked shipping. This makes the 'Typecheck passes: npm run check' acceptance criterion on every other story unverifiable. Burn this down (likely many shared root causes: the message-first logger pattern repeated across route files, implicit-any handler params, drift between frontend response shapes and {} query defaults, chart prop names).",
+      "acceptanceCriteria": [
+        "Establish a total tsc-error baseline and a ratchet so the count cannot grow (mirror the EDGE-018 pattern)",
+        "Fix shared root causes first: repo-wide message-first log.error/warn calls, implicit-any callback params, useQuery<T> generics on bare {} defaults",
+        "Reduce total error count toward zero in tracked batches; npm run check progress recorded each batch",
+        "Eventually: npm run check exits 0; then wire it blocking into CI",
+        "No runtime/behavior regressions per batch (build + smoke)"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Opened 2026-06-25 from the QUALITY-001 deep dive. Top offenders by count: server/storage.ts (119), routes/advanced-billing-routes.ts (113), routes/email-marketing-routes.ts (111), routes-customer-portal.ts (103), routes/gps-tracking-routes.ts (94). A large, batched effort — NOT a single iteration. The message-first logger pattern log.error('msg', err) recurs in many route files and is both a type error AND a latent log-data-drop bug; a codemod is the right tool."
+    },
+    {
       "id": "US-003",
       "title": "Create standardized API error classes and global error handler",
       "description": "As an API consumer, I need consistent error response format across all endpoints so error handling is predictable. The format must be: { message, code, details, requestId }.",

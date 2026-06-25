@@ -82,11 +82,14 @@ export function handleApiError(
   const errorId = generateErrorId();
 
   // Log the error with context for debugging (keep console.error for server logs)
-  log.error(`[${errorId}] [${finalErrorCode}] ${context}:`, {
-    error: errorMessage,
-    stack: error instanceof Error ? error.stack : undefined,
-    timestamp: new Date().toISOString(),
-  });
+  log.error(
+    {
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString(),
+    },
+    `[${errorId}] [${finalErrorCode}] ${context}`,
+  );
 
   return res.status(statusCode).json({
     success: false,

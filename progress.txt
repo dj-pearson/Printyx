@@ -7253,3 +7253,62 @@ page; can't browser-verify edge parity in this sandbox (project bar).
 - .github/workflows/ci.yml (blocking check:routes in quality job)
 - package.json (check:routes script)
 - prd.json (EDGE-018 added passes=true; EDGE-017 note cross-referenced)
+
+---
+
+## Iteration — QUALITY-001: Fix type-safety bug cluster in server/shared (passes=true)
+**Date**: 2026-06-25
+**Branch**: claude/prd-stories-progress-cmilm3
+
+### Important scope correction
+While investigating "Typecheck passes: npm run check" (an AC on nearly every
+story), I found the gate was never actually green. An earlier `npm run check |
+tail` had hidden the true count behind the pipe's exit status. A full `tsc
+--noEmit` run reports **6176 errors** repo-wide (5013 server/, 1163 client/).
+The build (vite + esbuild) transpiles WITHOUT typechecking, so these never
+blocked shipping. Global-green is a large batched effort — opened as QUALITY-002.
+This iteration fixes the highest-value correctness cluster and verifies those
+SPECIFIC errors are gone, without over-claiming.
+
+### Fixes (all root-cause, verified 0 remaining in these files via the tsc log)
+- **Logger silently dropped errors (latent prod bug).** server/lib/logger's
+  log.error(obj|string, msg?) ignores the 2nd arg when called message-first, so
+  `log.error('msg', err)` logged the message and DROPPED the error. Converted
+  the flagged sites to pino object-first `log.error({ err }, 'msg')` so the error
+  is actually recorded: apiErrorHandler.ts, error-sanitizer.ts,
+  company-id-generator.ts, websocket-service.ts (7 sites). (The same pattern
+  recurs in many route files → QUALITY-002 codemod.)
+- **Real async-return bug:** websocket-service.isRealTimeReport was
+  `async ...: boolean` → `Promise<boolean>`.
+- **Malformed Zod:** marginAnalysisReport was a raw object literal, so
+  `z.infer<typeof marginAnalysisReport>` produced an error type — wrapped in
+  z.object({...}). Removed a bogus `email` refinement key from
+  insertCalculatorSessionSchema (email lives on calculatorLeads, not
+  calculatorSessions).
+- **Self-referencing FK:** platform-crm reportsToId typed via AnyPgColumn.
+- **Index signature:** user-lifecycle transferDetails `[key: string]: number`
+  → `number | undefined` to match its optional members.
+- **decimal default:** schema.ts totalPaid `.default(0)` → `.default('0')`
+  (every other decimal default in the file already uses the string form).
+- **tsconfig:** added `downlevelIteration` (Set iteration in websocket-service)
+  and excluded illustrative `**/*.example.ts` from the typecheck scope.
+
+### Verification
+- Fresh full `tsc --noEmit` log: grep shows 0 remaining errors in all nine
+  touched files. Changes are non-additive (relaxing tsconfig + type-correcting
+  code). The 2 errors still in routes-print-cost-calculator.ts are pre-existing
+  and unrelated (a different untouched logger call + an insert overload).
+- All 9 changed TS files transpile cleanly under esbuild.
+- No shipped behavior changes except the corrected/improved logging.
+
+### Files
+- tsconfig.json, server/websocket-service.ts, server/utils/apiErrorHandler.ts,
+  server/utils/error-sanitizer.ts, server/utils/company-id-generator.ts,
+  shared/platform-crm-schema.ts, shared/print-cost-calculator-schema.ts,
+  shared/product-pricing-schema.ts, shared/user-lifecycle-schema.ts,
+  shared/schema.ts
+- prd.json (QUALITY-001 passes=true; QUALITY-002 added passes=false)
+
+### Follow-up
+QUALITY-002 tracks driving npm run check to green (6176 errors), starting with a
+ratchet baseline + a logger codemod for the repeated message-first pattern.

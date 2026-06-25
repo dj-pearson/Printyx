@@ -29,6 +29,7 @@ import {
   index,
   pgEnum,
   unique,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { tenants, users } from './schema';
@@ -305,7 +306,7 @@ export const platformContacts = pgTable(
     role: varchar('role', { length: 50 }), // decision_maker, influencer, champion, end_user, gatekeeper
 
     // Contact Hierarchy
-    reportsToId: varchar('reports_to_id').references(() => platformContacts.id),
+    reportsToId: varchar('reports_to_id').references((): AnyPgColumn => platformContacts.id),
     isDecisionMaker: boolean('is_decision_maker').default(false),
     isPrimaryContact: boolean('is_primary_contact').default(false),
 
