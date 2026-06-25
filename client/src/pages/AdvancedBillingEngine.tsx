@@ -58,7 +58,7 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
-import { type Invoice, type BillingEntry, type BusinessRecord } from '@shared/schema';
+import { type Invoice, type BusinessRecord } from '@shared/schema';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
 import PageAlerts from '@/components/contextual/PageAlerts';
 import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
@@ -82,8 +82,8 @@ interface BillingInvoice extends Invoice {
   business_record_name?: string;
 }
 
-// Using BillingEntry from schema - BillingConfiguration extends BillingEntry with configuration-specific fields
-interface BillingConfiguration extends Omit<BillingEntry, 'id'> {
+// Standalone shape for the billing_configurations drift table (no Drizzle schema/type exists for it).
+interface BillingConfiguration {
   id: string;
   configuration_name: string;
   billing_type: string;
@@ -315,7 +315,7 @@ export default function AdvancedBillingEngine() {
     createAdjustmentMutation.mutate(data);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | null) => {
     switch (status) {
       case 'draft':
         return 'secondary';
@@ -342,7 +342,7 @@ export default function AdvancedBillingEngine() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string | null) => {
     switch (status) {
       case 'paid':
       case 'completed':
@@ -1233,7 +1233,7 @@ export default function AdvancedBillingEngine() {
                           </div>
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium">
-                              ${invoice.totalAmount.toFixed(2)}
+                              ${Number(invoice.totalAmount).toFixed(2)}
                             </span>
                             <Badge variant={getStatusColor(invoice.status)} className="text-xs">
                               {getStatusIcon(invoice.status)}
@@ -1604,7 +1604,7 @@ export default function AdvancedBillingEngine() {
                               className="text-xl font-bold text-green-600"
                               data-testid={`invoice-amount-${invoice.id}`}
                             >
-                              ${invoice.totalAmount.toFixed(2)}
+                              ${Number(invoice.totalAmount).toFixed(2)}
                             </p>
                             {invoice.balance_due > 0 && (
                               <p className="text-sm text-red-600 font-medium">
@@ -1738,10 +1738,10 @@ export default function AdvancedBillingEngine() {
                                 </Badge>
                               )}
                               <Badge
-                                variant={config.isActive ? 'default' : 'secondary'}
+                                variant={config.is_active ? 'default' : 'secondary'}
                                 className="text-xs"
                               >
-                                {config.isActive ? 'Active' : 'Inactive'}
+                                {config.is_active ? 'Active' : 'Inactive'}
                               </Badge>
                             </div>
                           </div>

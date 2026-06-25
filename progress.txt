@@ -7438,3 +7438,27 @@ transformer was tractable because its input type (RawCustomerAPI) is local.
 ### Files
 - client/src/lib/transformers/customer-transformer.ts
 - docs/typecheck-baseline.json (3864 → 3838), prd.json (QUALITY-002 notes)
+
+---
+
+## Iteration — QUALITY-002 batch 5: AdvancedBillingEngine (3 real bugs)
+**Date**: 2026-06-25 · Branch: claude/prd-stories-progress-cmilm3
+
+client/src/pages/AdvancedBillingEngine.tsx (7 errors → 0). Fixed 3 REAL bugs:
+- invoice.totalAmount.toFixed(2): .toFixed on a string (decimal cols are
+  strings) → TypeError at runtime. Wrapped in Number() (2 sites).
+- config.isActive: read a camelCase field that doesn't exist; the drift-table
+  field is is_active → always undefined. Renamed (2 sites).
+- getStatusColor/getStatusIcon(status: string) received invoice.status
+  (string|null) → widened the param to string|null (switch has a default).
+Also removed the broken `interface BillingConfiguration extends
+Omit<BillingEntry,'id'>` (no such type/table — billing_configurations is a
+raw-SQL drift table) + the dead BillingEntry import; making BillingConfiguration
+stand on its own 13 fields is what surfaced the isActive bug.
+
+tsc 3838 → 3831 (−7); file clean; no new errors. Baseline 3831.
+Cumulative QUALITY-002: 6176 → 3831 (−2345, −38%).
+
+### Files
+- client/src/pages/AdvancedBillingEngine.tsx
+- docs/typecheck-baseline.json (3838 → 3831), prd.json (QUALITY-002 notes)
