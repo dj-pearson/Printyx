@@ -8248,7 +8248,7 @@
       ],
       "priority": 192,
       "passes": false,
-      "notes": "Deep-dive Auth audit #9,#11,#13,#14,#12,#16; Service audit #12,#14,#15; Quotes audit #15. Low-risk polish bundle. | PARTIAL (pending iOS CI build): fixed OfflineBanner animation (now keyed on connectivity/pendingCount via animationToken, dropped UUID() key in MainTabView), replaced dead AppTheme.Shadow.small EmptyView with real Shadow tokens + View.cardShadow() (dogfooded in CardModifier), fixed HomeView.formatRevenue rounding/K-M abbreviation. Remaining: PriorityIndicator/StatusBadge vocab merge, invoice/contract 'K' formatting, Color(hex) fallback, ShimmerModifier stop, equipment sheet->router, ServiceHub nested NavigationStack."
+      "notes": "Deep-dive Auth audit #9,#11,#13,#14,#12,#16; Service audit #12,#14,#15; Quotes audit #15. Low-risk polish bundle. | PARTIAL (pending iOS CI build): fixed OfflineBanner animation (now keyed on connectivity/pendingCount via animationToken, dropped UUID() key in MainTabView), replaced dead AppTheme.Shadow.small EmptyView with real Shadow tokens + View.cardShadow() (dogfooded in CardModifier), fixed HomeView.formatRevenue rounding/K-M abbreviation. Remaining: PriorityIndicator/StatusBadge vocab merge, invoice/contract 'K' formatting, Color(hex) fallback, ShimmerModifier stop, equipment sheet->router, ServiceHub nested NavigationStack. | + consolidated compact currency formatting into Formatters.currencyAbbreviated (\\$1.5K not \\$2K, \\$1.2M); InvoiceListView, ContractListView, and HomeView now use it (was duplicated, all with the same divide-then-round bug)."
     },
     {
       "id": "IOS-083",
