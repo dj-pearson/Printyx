@@ -93,18 +93,7 @@ struct CRMListView: View {
                 UniversalSearchSheet(apiClient: apiClient)
             }
             .navigationDestination(for: AppRoute.self) { route in
-                switch route {
-                case .businessRecord(let id):
-                    CRMDetailView(
-                        crmService: CRMService(apiClient: apiClient),
-                        recordId: id
-                    )
-                    .environmentObject(apiClient)
-                default:
-                    // Routes handled by other tabs shouldn't land here, but
-                    // if one does we render a harmless fallback.
-                    Text("Unknown route")
-                }
+                AppRouteDestination(route: route, apiClient: apiClient)
             }
             .task {
                 if viewModel.records.isEmpty {

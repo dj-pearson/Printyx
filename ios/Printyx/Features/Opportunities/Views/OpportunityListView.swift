@@ -86,15 +86,7 @@ struct OpportunityListView: View {
                 UniversalSearchSheet(apiClient: apiClient)
             }
             .navigationDestination(for: AppRoute.self) { route in
-                switch route {
-                case .opportunity(let id):
-                    OpportunityDetailView(
-                        opportunityService: OpportunityService(apiClient: apiClient),
-                        opportunityId: id
-                    )
-                default:
-                    Text("Unknown route")
-                }
+                AppRouteDestination(route: route, apiClient: apiClient)
             }
             .task {
                 if viewModel.opportunities.isEmpty {

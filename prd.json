@@ -8100,7 +8100,7 @@
       ],
       "priority": 182,
       "passes": false,
-      "notes": "Deep-dive Quotes audit P1 #1-3 + Auth #8 + Service #11. Verified: only ServiceTicketListView(.service), CRMListView(.crm), OpportunityListView(.sales) call pathBinding+navigationDestination; OpportunityListView is mounted only on the Pipeline segment. .more tab (MoreView) and Quotes/Contracts segments use plain NavigationStack{} with no path binding. Overlaps IOS-048 scope but concrete mechanism here is the unbound Sales/More paths."
+      "notes": "Deep-dive Quotes audit P1 #1-3 + Auth #8 + Service #11. Verified: only ServiceTicketListView(.service), CRMListView(.crm), OpportunityListView(.sales) call pathBinding+navigationDestination; OpportunityListView is mounted only on the Pipeline segment. .more tab (MoreView) and Quotes/Contracts segments use plain NavigationStack{} with no path binding. Overlaps IOS-048 scope but concrete mechanism here is the unbound Sales/More paths. | IMPLEMENTED (pending iOS CI build, IOS-069): added App/AppRouteDestinations.swift — a single AppRouteDestination view mapping ALL 10 AppRoute cases to a real destination, plus RecordLoaderView (id->fetch) and push-native deep-link detail screens for quote/contact/invoice/contract (no nested NavigationStack). Bound the shared router path in the Sales sub-views (Opportunity/Quote/Contract list views now all bind .sales + use the shared destination), MoreView (binds .more, opens invoice/task), and CRMListView (now opens .contact). Eliminates the 'Unknown route'/no-op dead-ends for the 6 previously-unrouted types. Equipment still lands on EquipmentDetailPlaceholder (full equipment detail = IOS-056). Not compiled (no macOS/Xcode here)."
     },
     {
       "id": "IOS-073",

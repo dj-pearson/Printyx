@@ -2,6 +2,8 @@ import SwiftUI
 
 /// List view for contracts with status filters and renewal alerts.
 struct ContractListView: View {
+    @EnvironmentObject private var apiClient: APIClient
+    @EnvironmentObject private var router: AppRouter
     @StateObject private var viewModel: ContractListViewModel
     @State private var selectedContract: Contract?
 
@@ -10,7 +12,8 @@ struct ContractListView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        // Bind the shared Sales tab path so deep links / search results push here.
+        NavigationStack(path: router.pathBinding(for: .sales)) {
             VStack(spacing: 0) {
                 // Stats
                 HStack(spacing: AppTheme.Spacing.md) {
@@ -45,6 +48,9 @@ struct ContractListView: View {
                 }
             }
             .navigationTitle("Contracts")
+            .navigationDestination(for: AppRoute.self) { route in
+                AppRouteDestination(route: route, apiClient: apiClient)
+            }
             .refreshable {
                 await viewModel.refresh()
             }
