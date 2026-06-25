@@ -3,8 +3,6 @@
  * Flattens nested API responses into clean, flat structures for components
  */
 
-import type { Database } from '@/types/supabase';
-
 // Raw API response types (nested structure from Supabase)
 export interface RawCustomerAPI {
   id: string;
@@ -129,7 +127,7 @@ export interface FlatCustomer {
  */
 export function transformCustomer(raw: RawCustomerAPI): FlatCustomer {
   // Extract nested company data
-  const company = raw.companies || {};
+  const company = raw.companies ?? ({} as NonNullable<RawCustomerAPI['companies']>);
 
   // Extract primary contact (handle both array and single object)
   const contacts = Array.isArray(raw.company_contacts)
@@ -138,7 +136,8 @@ export function transformCustomer(raw: RawCustomerAPI): FlatCustomer {
       ? [raw.company_contacts]
       : [];
 
-  const primaryContact = contacts.find((c) => c.is_primary) || contacts[0] || {};
+  const primaryContact =
+    contacts.find((c) => c.is_primary) || contacts[0] || ({} as (typeof contacts)[number]);
 
   // Build flattened structure
   const flat: FlatCustomer = {
@@ -214,13 +213,14 @@ export function transformCustomers(rawCustomers: RawCustomerAPI[]): FlatCustomer
  * Transform for list view (lighter version)
  */
 export function transformCustomerForList(raw: RawCustomerAPI): Partial<FlatCustomer> {
-  const company = raw.companies || {};
+  const company = raw.companies ?? ({} as NonNullable<RawCustomerAPI['companies']>);
   const contacts = Array.isArray(raw.company_contacts)
     ? raw.company_contacts
     : raw.company_contacts
       ? [raw.company_contacts]
       : [];
-  const primaryContact = contacts.find((c) => c.is_primary) || contacts[0] || {};
+  const primaryContact =
+    contacts.find((c) => c.is_primary) || contacts[0] || ({} as (typeof contacts)[number]);
 
   return {
     id: raw.id,

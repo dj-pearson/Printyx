@@ -7411,3 +7411,30 @@ remaining bulk is TS2339 response-shape drift needing per-site typing.
 - client/src/pages/{CustomerDetail,LeadDetail,RootAdminSEO,PricingManagement}.tsx
 - server/storage.ts, server/tests/setup.ts
 - docs/typecheck-baseline.json (3871 -> 3864), prd.json (QUALITY-002 notes)
+
+---
+
+## Iteration — QUALITY-002 batch 4: customer-transformer type fix
+**Date**: 2026-06-25 · Branch: claude/prd-stories-progress-cmilm3
+
+client/src/lib/transformers/customer-transformer.ts (26 errors → 0):
+- Removed unused, broken `import type { Database } from '@/types/supabase'`
+  (module doesn't exist → TS2307).
+- The nested-object fallbacks `const company = raw.companies || {}` and
+  `primaryContact = contacts.find(...) || contacts[0] || {}` collapsed the
+  type to `{}`, so every `company.business_name` / `.phone` / `primaryContact.*`
+  access was TS2339. Cast the empty fallbacks to
+  `NonNullable<RawCustomerAPI['companies']>` and `(typeof contacts)[number]`.
+  Runtime unchanged (all accesses are `|| null` tolerant).
+
+tsc 3864 → 3838 (−26), 0 residual in the file, no new errors. Baseline 3838.
+Cumulative QUALITY-002: 6176 → 3838 (−2338, −38%).
+
+NOTE on remaining TS2339 (378 are the untyped-useQuery `{}` pattern in pages):
+those need a per-call response-type generic that mostly doesn't exist as a
+shared type yet, so they are genuine per-site work, not a codemod. The
+transformer was tractable because its input type (RawCustomerAPI) is local.
+
+### Files
+- client/src/lib/transformers/customer-transformer.ts
+- docs/typecheck-baseline.json (3864 → 3838), prd.json (QUALITY-002 notes)
