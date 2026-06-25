@@ -8173,7 +8173,7 @@
       ],
       "priority": 187,
       "passes": false,
-      "notes": "Deep-dive Service audit #4,#6,#7,#8. Distinct from IOS-052 (full status/assign/resolve form): these are integrity bugs in already-built actions."
+      "notes": "Deep-dive Service audit #4,#6,#7,#8. Distinct from IOS-052 (full status/assign/resolve form): these are integrity bugs in already-built actions. | PARTIAL (pending iOS CI build): fixed the escalate-demotes-critical bug — TicketPriority now has an `escalated` step, ServiceTicketService.escalateTicket(id:from:) steps UP from the current priority (never down) and re-affirms critical at the top, and the Escalate swipe is hidden once a ticket is at top priority. Remaining: expose the priority filter control (selectedPriority is sent to the API but unsettable in UI), wire closeTicket quick-action into a swipe/detail."
     },
     {
       "id": "IOS-078",

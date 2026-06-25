@@ -130,7 +130,7 @@ final class ServiceTicketListViewModel: ObservableObject {
 
     func escalateTicket(_ ticket: ServiceTicket) async {
         do {
-            let updated = try await ticketService.escalateTicket(id: ticket.id)
+            let updated = try await ticketService.escalateTicket(id: ticket.id, from: ticket.priority)
             if let index = tickets.firstIndex(where: { $0.id == ticket.id }) {
                 tickets[index] = updated
             }

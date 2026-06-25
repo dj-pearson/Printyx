@@ -148,6 +148,18 @@ enum TicketPriority: String, CaseIterable, Identifiable {
         case .low: 4
         }
     }
+
+    /// The next-higher priority when escalating, or nil if already at the top.
+    /// Used so escalating never DEMOTES a ticket (e.g. critical -> urgent).
+    var escalated: TicketPriority? {
+        switch self {
+        case .low: return .medium
+        case .medium: return .high
+        case .high: return .urgent
+        case .urgent: return .critical
+        case .critical: return nil
+        }
+    }
 }
 
 // MARK: - Ticket Update (Timeline entry)

@@ -145,7 +145,11 @@ struct ServiceTicketListView: View {
                     .contentShape(Rectangle())
                     .onTapGesture { router.push(.serviceTicket(id: ticket.id)) }
                     .swipeActions(edge: .trailing) {
-                        if ticket.status != "resolved" && ticket.status != "closed" {
+                        // Hide escalate on closed/resolved tickets and when the
+                        // ticket is already at the top priority (escalating must
+                        // never demote a critical ticket).
+                        if ticket.status != "resolved" && ticket.status != "closed"
+                            && ticket.priorityEnum.escalated != nil {
                             Button {
                                 Task { await viewModel.escalateTicket(ticket) }
                             } label: {
