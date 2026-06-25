@@ -6835,8 +6835,25 @@
       ],
       "priority": 44,
       "passes": false,
-      "notes": "Turns the audit (EDGE-012) into enforcement so the divergence can't silently come back. Sequenced last — only delete Express handlers once EDGE-013/014 prove the edge side has parity.",
+      "notes": "Turns the audit (EDGE-012) into enforcement so the divergence can't silently come back. Sequenced last — only delete Express handlers once EDGE-013/014 prove the edge side has parity. | UPDATE 2026-06-25: AC #2 (CI guard against ambiguous route ownership) is DELIVERED by EDGE-018 (scripts/check-route-ownership.mjs ratchet, wired blocking into ci.yml quality job). EDGE-017 remains open for the soak-gated Bucket A Express-handler deletions only.",
       "category": "edge-migration"
+    },
+    {
+      "id": "EDGE-018",
+      "title": "Ambiguous-route-ownership CI ratchet guard",
+      "description": "As a maintainer, I need CI to FAIL when a PR introduces a NEW /api/* route that the frontend calls but that resolves ambiguously (both an Express handler and an edge function, not proxied) or has no edge function at all (prod 404), so route divergence can no longer silently creep back in. This delivers the enforcement half of EDGE-017 (AC #2) independently of the soak-gated Express deletions.",
+      "acceptanceCriteria": [
+        "Shared classification extracted to scripts/lib/route-parity.mjs so the audit (EDGE-012) and the guard use ONE source of truth",
+        "scripts/check-route-ownership.mjs computes the live both-divergent + missing-edge sets and fails (exit 1) on any domain NOT in the grandfathered baseline",
+        "docs/route-ownership-baseline.json grandfathers the current debt (60 both-divergent + 56 missing-edge) so CI stays green today — guard fails only on NEW regressions",
+        "--update-baseline flag regenerates the baseline (idempotent) when debt is resolved",
+        "npm script check:routes wired into the CI quality gate (blocking, since it only trips on regressions)",
+        "Guard verified: passes on baseline, fails with actionable output on an injected new divergence, passes again after restore",
+        "audit-route-parity.mjs output (docs/route-parity-matrix.md + route-divergence.json) byte-identical after the shared-lib refactor"
+      ],
+      "priority": 45,
+      "passes": true,
+      "notes": "DONE 2026-06-25 (EDGE-018). Completes EDGE-017 AC #2 (ambiguous-ownership CI guard) as a standalone, fully-verifiable-in-CI slice; EDGE-017 itself stays open for the soak-gated Bucket A Express deletions (need 48h soak + per-domain edge-parity proof). Extracted computeParity() into scripts/lib/route-parity.mjs (shared by audit + guard; audit output verified byte-identical). scripts/check-route-ownership.mjs is a RATCHET: docs/route-ownership-baseline.json grandfathers the existing 60 both-divergent + 56 missing-edge domains, and the guard exits 1 only when a NEW one appears (with a clear fix hint). Wired into .github/workflows/ci.yml quality job as `npm run check:routes` (blocking). Verified locally: green on baseline, red on injected regression (e.g. removing warehouse-operations from baseline → flagged), green after restore; --update-baseline is idempotent. No TypeScript touched (mjs/json/yaml only)."
     },
     {
       "id": "QUOTE-001",
