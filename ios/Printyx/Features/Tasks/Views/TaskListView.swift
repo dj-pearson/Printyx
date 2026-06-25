@@ -54,7 +54,7 @@ struct TaskListView: View {
             }
     }
 
-    private var contentWithEvents: some View {
+    private var contentWithLifecycle: some View {
         contentWithSheets
             .task {
                 if viewModel.tasks.isEmpty {
@@ -70,19 +70,29 @@ struct TaskListView: View {
             .onChange(of: viewModel.showMyTasksOnly) { _, _ in
                 Task { await viewModel.refresh() }
             }
-            .confirmationDialog(
-                "Delete this task?",
-                isPresented: deletePendingBinding,
-                presenting: taskPendingDelete
-            ) { task in
+    }
+
+    private var contentWithEvents: some View {
+        // Plain `confirmationDialog(isPresented:)` (no `presenting:` generic) so
+        // the type-checker isn't inferring the generic + two ViewBuilder
+        // closures in this already-long chain.
+        contentWithLifecycle
+            .confirmationDialog("Delete this task?", isPresented: deletePendingBinding) {
                 Button("Delete", role: .destructive) {
-                    Task { await viewModel.deleteTask(task) }
+                    if let task = taskPendingDelete {
+                        Task { await viewModel.deleteTask(task) }
+                    }
                     taskPendingDelete = nil
                 }
                 Button("Cancel", role: .cancel) { taskPendingDelete = nil }
-            } message: { task in
-                Text("\(task.displayName) will be permanently deleted. This can't be undone.")
+            } message: {
+                Text(deleteConfirmationMessage)
             }
+    }
+
+    private var deleteConfirmationMessage: String {
+        guard let task = taskPendingDelete else { return "" }
+        return "\(task.displayName) will be permanently deleted. This can't be undone."
     }
 
     private var deletePendingBinding: Binding<Bool> {
