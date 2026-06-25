@@ -7347,3 +7347,36 @@ ratchet baseline + a logger codemod for the repeated message-first pattern.
 - server/lib/logger.ts (root-cause refactor)
 - package.json (check:types), .github/workflows/ci.yml (typecheck-ratchet job)
 - prd.json (QUALITY-003 passes=true; QUALITY-002 notes updated)
+
+---
+
+## Iteration — QUALITY-002 batch 2: missing-import runtime bugs (TS2304)
+**Date**: 2026-06-25
+**Branch**: claude/prd-stories-progress-cmilm3
+
+Fixed undefined-name references (TS2304) — these are REAL runtime bugs
+(ReferenceError if the code path runs), not just type noise:
+- server/routes-intelligent-alerts.ts: `z` (zod) used 16x but never imported →
+  added `import { z } from 'zod'`.
+- 13 client files called `apiRequest(...)` without importing it → added
+  `import { apiRequest } from '@/lib/queryClient'` (RootAdminSEO, CompanyIdsTest,
+  LeadProposals, CustomerProposals, BillingAnalytics, ServiceTicketAnalysis,
+  CustomerSupplies, KnowledgeBase, LeadQuotes, my-tasks, my-approvals,
+  BusinessProcessOptimization, MultipleContactsForm). apiRequest supports both
+  positional (url, 'POST', body) and options-object signatures and returns any,
+  so call sites match and nothing downstream changes type.
+
+Verified: all 14 files transpile under esbuild; tsc 3921 → 3871 (−50) with 0
+residual apiRequest/z errors and no new errors (net drop equals the resolved
+count). Baseline lowered to 3871. The residual errors still in a few of these
+files (RootAdminSEO {} response-shape, a Refresh→RefreshCw import typo,
+intelligent-alerts db-insert overloads, LeadQuotes implicit-any) are
+pre-existing and unrelated — future batches.
+
+QUALITY-002 still open. Cumulative: 6176 → 3871 (−2305, −37%).
+Next big target: TS2339 (1897) `{}` response-shape drift on useQuery defaults.
+
+### Files
+- server/routes-intelligent-alerts.ts + 13 client files (imports)
+- docs/typecheck-baseline.json (3921 → 3871)
+- prd.json (QUALITY-002 notes)
