@@ -1,4 +1,4 @@
 {
-  "note": "QUALITY-002 tsc-error ratchet baseline. scripts/check-types.mjs fails CI only when the error count grows above `total`. Lower it (never raise it) as debt is fixed: node scripts/check-types.mjs --update-baseline. EDGE-005f 2026-06-26: reconciled 3840->3910 to absorb PRE-EXISTING main-HEAD drift — clean main (8cdee6d8, post PR #184 merges) measures 3910 with the EDGE-005f tree both stashed AND restored (both = 3910), so the +70 is upstream merge debt, not from this story (EDGE-005f only adds supabase/functions/* [outside tsc scope] + 3 type-valid edge-function-proxy.ts entries). Same situation EDGE-005a flagged.",
-  "total": 3910
+  "note": "QUALITY-002 tsc-error ratchet baseline. scripts/check-types.mjs fails CI only when the error count grows above `total`. Lower it (never raise it) as debt is fixed: node scripts/check-types.mjs --update-baseline.",
+  "total": 3795
 }

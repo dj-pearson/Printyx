@@ -4337,8 +4337,8 @@
         "Delete the four server/routes-platform-*.ts files after verification"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "Platform admin features are visibility-gated by roles.can_access_all_tenants per CLAUDE.md memory note. Frontend pages currently render with empty data in production because Express isn't reachable.",
+      "passes": true,
+      "notes": "Platform admin features are visibility-gated by roles.can_access_all_tenants per CLAUDE.md memory note. Frontend pages currently render with empty data in production because Express isn't reachable. [DONE 2026-06-26] Created platform-activities/, platform-analytics/, platform-cs/ edge fns (platform-crm already existed); each gates root-admin (role level>=7 OR can_access_all_tenants) via service client, normalizePath, snake_case PostgREST against canonical platform_* tables (shared/platform-crm-schema.ts). Computed analytics endpoints return exact camelCase keys the frontend reads. Adapted legacy sales-performance/cohort-analysis/revenue-metrics handlers that referenced PHANTOM columns (report_date/rep_id/customers_at_start/last_mrr_change) to real schema columns. Added all 5 platform prefixes to crmProxies (dir name==prefix, no server.ts override). Deleted routes-platform-{business-records,activities,analytics,customer-success}.ts + registrations (platform-deals kept, out of scope). deno check clean x3; tsc ratchet 3910->3795 (-115, deleted phantom-col files), baseline tightened; route-ownership baseline tightened (bothDivergent 61->59, missingEdge 48->45, 5 platform domains resolved). NOTE: PlatformCustomerSuccess.tsx TenantHealth contract diverges from real health_scores columns (separate data-contract story); endpoints now RESOLVE in prod (were 404).",
       "category": "edge-migration"
     },
     {

@@ -7912,3 +7912,37 @@ an interrupted `git pull --rebase` here can leave UNRESOLVED markers `git add`ed
 
 Iteration 8 (06/26/2026 12:57:18): Story QUALITY-002
 Status: Needs Review
+
+---
+
+## Iteration - EDGE-004: Port platform admin endpoints (platform-activities/analytics/cs)
+**Completed**: 2026-06-26
+**Status**: COMPLETE — passes: true
+
+### What Was Done:
+- Created 3 edge fns (platform-crm already existed): supabase/functions/platform-activities/,
+  platform-analytics/, platform-cs/ — each gates root admin (role level>=7 OR
+  can_access_all_tenants) via service-role client, normalizePath, snake_case PostgREST
+  against canonical platform_* tables (shared/platform-crm-schema.ts).
+- Computed analytics endpoints return EXACT camelCase keys the pages read
+  (revenueData/funnelData/distributionData/sourceData/metrics.*). List endpoints return
+  raw rows like the platform-crm sibling.
+- Adapted 3 legacy handlers that referenced PHANTOM columns (sales-performance,
+  cohort-analysis, revenue-metrics/growth-trends last_mrr_change) to real schema columns.
+- Added all 5 platform prefixes to crmProxies (server/middleware/edge-function-proxy.ts);
+  dir name == prefix so NO server.ts override needed.
+- Deleted routes-platform-{business-records,activities,analytics,customer-success}.ts +
+  their registrations in routes-registry.ts (kept platform-deals, out of scope).
+
+### Quality:
+- deno check clean x3 (platform-activities/analytics/cs).
+- tsc ratchet 3910 -> 3795 (-115; deleted phantom-col files were TS errors); baseline tightened.
+- route-ownership: bothDivergent 61->59, missingEdge 48->45 (5 platform domains resolved);
+  baseline tightened (clean story-scoped diff).
+- vitest: all platform tests pass; 30 pre-existing failures in unrelated suites
+  (report-cache, duplicated database-exports/ backup tree) — not caused by this change.
+- npm run build pre-existing-broken (missing @sentry/react); no frontend changes here.
+
+### Known debt (separate story):
+- PlatformCustomerSuccess.tsx TenantHealth interface diverges from real platform_health_scores
+  columns; endpoints now RESOLVE (was prod 404) but field-by-field render needs a contract rewrite.

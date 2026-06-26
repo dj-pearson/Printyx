@@ -403,6 +403,17 @@ export function registerEdgeFunctionProxy(app: any) {
     // /api/phone-tickets prefix, which 404'd in prod). Frontend now calls
     // /api/phone-in-tickets/*; proxying here makes dev match prod (functions-direct).
     '/api/phone-in-tickets': 'phone-in-tickets',
+
+    // EDGE-004: platform-admin CRM endpoints. Only /api/platform-deals had an
+    // edge function before; the other four 404'd in prod where the frontend
+    // bypasses Express. New edge fns (platform-crm already existed) serve the
+    // root-admin platform CRM / activities / analytics / customer-success pages.
+    // Dir name == prefix segment, so no server.ts override is needed.
+    '/api/platform-crm': 'platform-crm',
+    '/api/platform-deals': 'platform-deals',
+    '/api/platform-activities': 'platform-activities',
+    '/api/platform-analytics': 'platform-analytics',
+    '/api/platform-cs': 'platform-cs',
   };
 
   for (const [prefix, functionName] of Object.entries(crmProxies)) {
