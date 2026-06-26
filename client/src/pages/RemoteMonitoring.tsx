@@ -135,6 +135,59 @@ interface EquipmentStatus {
   };
 }
 
+interface FleetOverview {
+  summary: {
+    totalEquipment: number;
+    equipmentWithAlerts: number;
+    averageUptime: number;
+    fleetUtilization: number;
+    energyEfficiency: string;
+  };
+  statusDistribution: Record<string, number>;
+  performanceTrends: {
+    weeklyUptime: number[];
+    weeklyUtilization: number[];
+    weeklyEfficiency: number[];
+  };
+  topPerformers: Array<{
+    equipmentId: string;
+    model: string;
+    customerName: string;
+    uptime: number;
+    efficiency: number;
+    utilizationRate: number;
+  }>;
+  attentionRequired: Array<{
+    equipmentId: string;
+    model: string;
+    customerName: string;
+    priority: string;
+    issues: string[];
+    estimatedRevenueLoss: number;
+  }>;
+}
+
+interface SensorData {
+  historicalData: {
+    temperature: Array<{ timestamp: string; value: number }>;
+    powerConsumption: Array<{ timestamp: string; value: number }>;
+  };
+  predictions: {
+    recommendedActions: Array<{
+      action: string;
+      preventsPotentialIssue: string;
+      priority: string;
+      estimatedCost: number;
+    }>;
+    probabilityOfFailure: {
+      next7Days: number;
+      next30Days: number;
+      next90Days: number;
+    };
+    estimatedTonerReplacementDates: Record<string, string>;
+  };
+}
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'operational':
@@ -237,12 +290,12 @@ export default function RemoteMonitoring() {
   });
 
   // Fetch fleet overview
-  const { data: fleetOverview } = useQuery({
+  const { data: fleetOverview } = useQuery<FleetOverview>({
     queryKey: ['/api/remote-monitoring/fleet-overview'],
   });
 
   // Fetch sensor data for selected equipment
-  const { data: sensorData } = useQuery({
+  const { data: sensorData } = useQuery<SensorData>({
     queryKey: ['/api/remote-monitoring/sensor-data', selectedEquipment],
     enabled: !!selectedEquipment,
   });

@@ -8169,3 +8169,13 @@ Status: Needs Review
 
 ### Story Status
 - QUALITY-002: passes stays false (tsc not green yet; cumulative 6176 -> 3603, -42%)
+
+Iteration 4 (06/26/2026 14:36:57): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 12: RemoteMonitoring.tsx untyped-useQuery fix
+**Completed**: 2026-06-26
+- Typed fleet-overview + sensor-data useQuery calls (FleetOverview/SensorData interfaces)
+- 26 TS2339/TS7006 errors -> 0; type-only, zero runtime change
+- tsc ratchet baseline 3603 -> 3577 (-26), no new errors
+- passes stays false (tsc not yet green)
