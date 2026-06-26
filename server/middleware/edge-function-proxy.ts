@@ -371,6 +371,14 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/accounts-payable': 'account-payable',
     '/api/accounts-receivable': 'account-receivable',
 
+    // EDGE-005e: signatures. The frontend was consolidated off the three flat
+    // /api/signature-{requests,templates,analytics} prefixes onto sub-paths of
+    // the existing modular signatures edge fn (/api/signatures/{requests,
+    // templates,analytics}). The dispatcher accepts both the bare and the
+    // legacy signature-prefixed resource names. Proxying here makes dev match
+    // prod (functions-direct, where server.ts resolves the `signatures` dir).
+    '/api/signatures': 'signatures',
+
     // EDGE-005c: phone-in-tickets. The search-companies/search-contacts/
     // equipment sub-routes the PhoneInTicketCreator calls were ported into the
     // phone-in-tickets edge fn (previously Express-only under the legacy

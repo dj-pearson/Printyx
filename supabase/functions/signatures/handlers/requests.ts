@@ -60,6 +60,12 @@ export async function handleRequests(req: Request, ctx: HandlerCtx): Promise<Res
     return await voidRequest(req, ctx, first);
   }
 
+  // POST /:id/remind (stub — no provider envelope; records the reminder in the
+  // audit log and bumps updated_at so the UI reflects the action).
+  if (method === 'POST' && first && second === 'remind') {
+    return await remindRequest(req, ctx, first);
+  }
+
   // GET /
   if (method === 'GET' && !first) {
     const status = ctx.url.searchParams.get('status');
@@ -222,6 +228,46 @@ async function voidRequest(req: Request, ctx: HandlerCtx, id: string): Promise<R
   });
 
   return jsonResponse(data, 200, req, requestId);
+}
+
+// STUB — reminders are dispatched by the e-sign provider, which isn't wired yet
+// (mirrors the /send stub). We record the reminder request in the audit log and
+// touch updated_at; no email is actually sent until provider integration lands.
+async function remindRequest(req: Request, ctx: HandlerCtx, id: string): Promise<Response> {
+  const { auth, db, requestId } = ctx;
+  const body = (await req.json().catch(() => ({}))) as { customMessage?: string };
+
+  const { data, error } = await db
+    .from('signature_requests')
+    .update({ updated_by: auth.userId, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('tenant_id', auth.tenantId)
+    .select()
+    .maybeSingle();
+  if (error) return dbErr(req, requestId, 'Failed to record reminder', error);
+  if (!data) return errorResponse(404, 'Request not found', req, { code: 'NOT_FOUND', requestId });
+
+  await appendAudit(db, auth.tenantId, {
+    request_id: id,
+    event_type: 'reminder_sent_stub',
+    event_description:
+      body.customMessage?.trim() ||
+      'Stub reminder: recorded in audit log, but no provider email was dispatched.',
+    actor_type: 'user',
+    actor_id: auth.userId,
+  });
+
+  return jsonResponse(
+    {
+      success: true,
+      stub: true,
+      message: 'Reminder recorded. Provider integration pending — no email dispatched.',
+      request: data,
+    },
+    200,
+    req,
+    requestId,
+  );
 }
 
 function mapRequest(body: Record<string, unknown>): Record<string, unknown> {

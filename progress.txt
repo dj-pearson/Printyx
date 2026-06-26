@@ -7544,3 +7544,82 @@ client/src/components/customer-portal/EquipmentHealthDashboard.tsx (26 errors �
 - docs/typecheck-baseline.json (3910 → 3886, method reconciled), prd.json (QUALITY-002 notes)
 
 QUALITY-002 stays passes=false (3886 ≠ 0). Cumulative 6176 → 3886.
+
+Iteration 2 (06/26/2026 11:27:24): Story QUALITY-002
+Status: Needs Review
+
+---
+
+## Iteration — EDGE-005e: consolidate signature-{requests,templates,analytics} into signatures edge fn (passes=true)
+**Date**: 2026-06-26 · Branch: claude/edge-005a-accounts-flat-url (Ralph)
+
+### Story
+Frontend called the three FLAT prefixes /api/signature-{requests,templates,analytics}
+with NO edge function behind them (server.ts has no `signature-requests` dir →
+404 in prod). The modular `signatures/` edge fn already existed. Consolidate the
+frontend onto sub-paths of it.
+
+### Decision: refactor frontend (NOT a plain server.ts override)
+A plain server.ts alias (the EDGE-005a accounts-payable→account-payable idiom)
+does NOT work here: server.ts STRIPS the matched function-name segment before
+calling the handler, but the signatures dispatcher keys off that very segment
+(the sub-resource). Stripping `signature-requests` would hand the dispatcher
+`/:id/...` with no resource discriminator. So the clean fix is the AC's other
+option: move the frontend onto /api/signatures/<sub> (the function dir already
+resolves in prod; server.ts strips `signatures`, leaving /requests for the
+dispatcher's stripPrefix).
+
+### Implementation
+- client/src/pages/ESignatureIntegration.tsx: 4 URLs → /api/signatures/{requests,
+  templates,analytics} + /api/signatures/requests/:id/remind (the ONLY callers
+  repo-wide; mobile has none).
+- supabase/functions/signatures/index.ts: dispatcher now strips an optional
+  leading `signature-` (`const resource = first.startsWith('signature-') ?
+  first.slice(10) : first`) so BOTH bare (`requests`) and legacy
+  (`signature-requests`) forms resolve — backward-compatible for mobile/older
+  callers. Added `templates`/`analytics` cases. The `audit-logs` sub-path check
+  (parts[2]==='audit-logs') is form-agnostic so it still works.
+- NEW handlers/analytics.ts: real tenant-scoped aggregate over signature_requests
+  (totalRequests/pendingRequests[=not in terminal statuses]/completedRequests/
+  completionRate/averageSigningTime[sent_at→completed_at days]/signingSpeedAnalysis
+  buckets/byDocumentType grouped by `provider`). totalContractValue=0 — the table
+  has NO contract-value column; reported honestly. There is NO document_type
+  column either, hence grouping by provider.
+- NEW handlers/templates.ts: returns [] — there is NO signature_templates table in
+  any schema/migration (only signature_requests/signers/documents exist). 200+[]
+  beats the prior prod 404; page renders empty Templates tab gracefully.
+- handlers/requests.ts: added POST /:id/remind stub (audit log `reminder_sent_stub`
+  + updated_at bump; no provider email — mirrors the existing /send stub. NB the
+  table has no remindersSent/lastReminderDate columns).
+- server/middleware/edge-function-proxy.ts: crmProxies gains
+  '/api/signatures':'signatures' (plain, no pathPrefix) so DEV matches prod.
+
+### Pre-existing, OUT OF SCOPE (flagged, not fixed)
+ESignatureIntegration.tsx was written against a MOCK data shape: it reads
+camelCase fields requestedDate/documentName/customerName/remindersSent that DO
+NOT EXIST on the real snake_case signature_requests schema (request_number/title/
+expires_at/sent_at/...). So the page's request list/detail won't render correctly
+against the live backend regardless of routing. That data-contract rewrite is a
+separate concern from this routing-consolidation story.
+
+### Verification
+- deno check + deno lint clean: index.ts + analytics/templates/requests handlers.
+- npm run audit:routes: the 3 signature-* rows flip missing-edge → proxied
+  (proxied 41, missing-edge 51). Regenerated docs/route-parity-matrix.md.
+- check:routes ratchet green; baseline tightened missingEdge 54 → 51 (dropped
+  signature-analytics/requests/templates) via --update-baseline.
+- typecheck ratchet holds at 3886 (0 new errors). supabase/functions/** is outside
+  tsc include scope (Deno-checked above). ESLint: both Node/client files are in the
+  ignore set (0 errors).
+- npm run build still pre-existing-broken (@sentry/react missing from node_modules,
+  fails at main.tsx import) — unrelated; main.tsx untouched. Runtime unverifiable
+  in sandbox (Deno/esm.sh + live DB blocked).
+
+### Files
+- client/src/pages/ESignatureIntegration.tsx
+- supabase/functions/signatures/index.ts
+- supabase/functions/signatures/handlers/{analytics,templates}.ts (new)
+- supabase/functions/signatures/handlers/requests.ts (remind stub)
+- server/middleware/edge-function-proxy.ts
+- docs/route-parity-matrix.md, docs/route-ownership-baseline.json (regenerated/tightened)
+- prd.json (EDGE-005e passes=true)
