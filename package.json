@@ -53,6 +53,7 @@
     "db:migrate": "tsx server/lib/migrate.ts",
     "db:migrate:status": "tsx server/lib/migrate.ts status",
     "db:migrate:baseline": "tsx server/lib/migrate.ts baseline",
+    "db:backfill": "tsx server/lib/run-backfills.ts",
     "db:push": "drizzle-kit push",
     "db:push:forecast": "drizzle-kit push --config=drizzle.forecasting.config.ts",
     "db:backup": "bash scripts/db-backup.sh --all --retention",

@@ -399,6 +399,37 @@ export default function QuoteBuilder({
     }
   }, [existingQuote, quoteLoading, businessRecords, form]);
 
+  // Refetch the cached detail query for a quote so it reflects the latest server
+  // state. CRITICAL: the detail key is the FULL string `/api/proposals/{id}` —
+  // invalidating `['/api/proposals']` (the list key) does NOT match it (TanStack
+  // compares the whole first element), so without this the just-created EMPTY
+  // draft stays cached and a remount re-hydrates from it, blanking line items even
+  // though they persisted. Use invalidate (not remove) here so a mounted observer
+  // refetches in the BACKGROUND without dropping `data` — removing it would flip
+  // `quoteLoading` true and flash the whole builder to a spinner mid-autosave.
+  const invalidateQuoteDetail = (id?: string) => {
+    if (!id || id === 'new') return;
+    queryClient.invalidateQueries({ queryKey: [`/api/proposals/${id}`], exact: true });
+  };
+
+  // Track the live quote id so the unmount cleanup below targets the right key.
+  const currentQuoteIdRef = useRef<string | undefined>(savedQuoteId);
+  currentQuoteIdRef.current = savedQuoteId ?? initialQuoteId;
+
+  // Guarantee: when the builder unmounts (navigating away from the deal), drop the
+  // detail cache entirely. The next visit then has nothing stale to hydrate from
+  // and loads fresh from the server (which has the persisted line items). Doing
+  // this on unmount avoids any spinner flash while editing.
+  useEffect(() => {
+    return () => {
+      const id = currentQuoteIdRef.current;
+      if (id && id !== 'new') {
+        queryClient.removeQueries({ queryKey: [`/api/proposals/${id}`], exact: true });
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Create or update quote mutation
   const saveQuoteMutation = useMutation({
     mutationFn: async (data: { quote: QuoteFormData; lineItems: LineItem[] }) => {
@@ -416,6 +447,8 @@ export default function QuoteBuilder({
       // Force clear all related cache
       queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
       queryClient.removeQueries({ queryKey: ['/api/proposals'] });
+      // Refresh the saved quote's detail cache so reopening shows the line items.
+      invalidateQuoteDetail(data?.id ?? savedQuoteId ?? initialQuoteId);
       if (data?.id) setSavedQuoteId(data.id);
       toast({
         title: 'Success',
@@ -443,10 +476,12 @@ export default function QuoteBuilder({
         approved: isManager, // managers bypass the below-margin gate
       });
     },
-    onSuccess: () => {
+    onSuccess: (_data, quoteId) => {
       // Force clear all related cache
       queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
       queryClient.removeQueries({ queryKey: ['/api/proposals'] });
+      // Drop the stale detail cache so reopening the submitted quote refetches it.
+      invalidateQuoteDetail(quoteId);
       toast({
         title: 'Success',
         description: 'Quote submitted successfully',
@@ -758,6 +793,9 @@ export default function QuoteBuilder({
         'PATCH',
         buildQuoteData(form.getValues(), latestLineItemsRef.current),
       );
+      // Keep the detail cache in sync so a later remount re-hydrates the autosaved
+      // line items instead of the stale empty draft cached at creation time.
+      invalidateQuoteDetail(savedQuoteId);
       setAutosaveState('saved');
     } catch (err) {
       setAutosaveState('error');

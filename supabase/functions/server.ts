@@ -109,6 +109,16 @@ await serve(
       functionName = 'dashboard-widgets';
     }
 
+    // EDGE-005a: the frontend calls the plural /accounts-{payable,receivable}
+    // segment, but the function directories are the singular account-* names.
+    // Alias them so production resolves the handlers (which serve the flat
+    // /:id URL shape the AccountsPayable/AccountsReceivable pages use).
+    if (functionName === 'accounts-payable') {
+      functionName = 'account-payable';
+    } else if (functionName === 'accounts-receivable') {
+      functionName = 'account-receivable';
+    }
+
     if (!functionName || !functions[functionName]) {
       return new Response(
         JSON.stringify({

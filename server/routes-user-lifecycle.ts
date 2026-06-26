@@ -10,6 +10,7 @@ import {
   onboardingChecklists,
   offboardingWorkflows,
   accessReviews,
+  accessReviewCertifications,
   bulkUserOperations,
   userImpersonationSessions,
 } from '@shared/schema';

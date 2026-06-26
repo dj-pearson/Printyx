@@ -54,7 +54,7 @@ export function useCrossModuleIntegration() {
     mutationFn: async (integration: ServiceIntegration) => {
       return await apiRequest('/api/cross-module/trigger-service', 'POST', integration);
     },
-    onSuccess: (data) => {
+    onSuccess: (data, integration) => {
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: ['/api/service-tickets'] });
       queryClient.invalidateQueries({ queryKey: ['/api/customers', integration.customerId] });
@@ -89,7 +89,7 @@ export function useCrossModuleIntegration() {
     mutationFn: async (integration: BillingIntegration) => {
       return await apiRequest('/api/cross-module/trigger-billing', 'POST', integration);
     },
-    onSuccess: () => {
+    onSuccess: (_data, integration) => {
       queryClient.invalidateQueries({ queryKey: ['/api/invoices'] });
       queryClient.invalidateQueries({
         queryKey: ['/api/service-tickets', integration.serviceTicketId],

@@ -20,6 +20,7 @@ import {
   type InsertDuplicateMatch,
   type ContactMergeHistory,
   type DuplicateScanJob,
+  type InsertDuplicateScanJob,
 } from '../../shared/gdpr-core-schema';
 import { businessRecords, enhancedContacts } from '../../shared/schema';
 import { logAuditEvent } from '../security-compliance';

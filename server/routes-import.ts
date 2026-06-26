@@ -16,6 +16,7 @@ import csv from 'csv-parser';
 import { Readable } from 'stream';
 import { db } from './db';
 import { businessRecords } from '../shared/schema';
+import { eq } from 'drizzle-orm';
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { requireSupabaseAuth as requireAuth } from './middleware/supabase-auth';
 import { z } from 'zod';

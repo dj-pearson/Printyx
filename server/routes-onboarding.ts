@@ -782,7 +782,7 @@ export function registerOnboardingRoutes(app: Express): void {
   app.put('/api/onboarding/sections/:id', async (req: any, res: Response) => {
     try {
       const { id } = req.params;
-      // Fixed auth above
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
@@ -802,7 +802,7 @@ export function registerOnboardingRoutes(app: Express): void {
   app.delete('/api/onboarding/sections/:id', async (req: any, res: Response) => {
     try {
       const { id } = req.params;
-      // Fixed auth above
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
@@ -819,7 +819,7 @@ export function registerOnboardingRoutes(app: Express): void {
   app.post('/api/onboarding/checklists/:checklistId/tasks', async (req: any, res: Response) => {
     try {
       const { checklistId } = req.params;
-      // Fixed auth above
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
@@ -844,7 +844,7 @@ export function registerOnboardingRoutes(app: Express): void {
   app.put('/api/onboarding/tasks/:id', async (req: any, res: Response) => {
     try {
       const { id } = req.params;
-      // Fixed auth above
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
@@ -864,7 +864,7 @@ export function registerOnboardingRoutes(app: Express): void {
   app.delete('/api/onboarding/tasks/:id', async (req: any, res: Response) => {
     try {
       const { id } = req.params;
-      // Fixed auth above
+      const tenantId = getTenantId(req);
       if (!tenantId) {
         return res.status(401).json({ error: 'Unauthorized' });
       }

@@ -997,7 +997,7 @@ export default function LeadsManagement() {
                   setStatusFilter('all');
                   setSourceFilter('all');
                 } else {
-                  setIsCreateOpen(true);
+                  setIsNewLeadOpen(true);
                 }
               },
               icon:

@@ -64,8 +64,6 @@
   ],
   "missingEdge": [
     "accessories",
-    "accounts-payable",
-    "accounts-receivable",
     "ai",
     "ai-analytics",
     "approvals",
@@ -107,9 +105,6 @@
     "salesforce",
     "security-compliance",
     "service",
-    "signature-analytics",
-    "signature-requests",
-    "signature-templates",
     "system-monitoring",
     "task-workflows",
     "technician-sessions",
@@ -142,6 +137,8 @@
     "user-assignments"
   ],
   "proxied": [
+    "accounts-payable",
+    "accounts-receivable",
     "activities",
     "api-keys",
     "billing",
@@ -175,6 +172,7 @@
     "search",
     "security",
     "service-products",
+    "signatures",
     "tasks",
     "territories",
     "users",

@@ -9,11 +9,16 @@
  * send-to-provider and webhook-ingest paths are intentionally stubbed until a
  * follow-up PRD wires a real provider.
  *
- * URL prefixes:
- *   /signatures/integration-credentials/*        → handlers/credentials.ts
- *   /signatures/signature-requests/*             → handlers/requests.ts
- *   /signatures/signature-signers/*              → handlers/signers.ts
- *   /signatures/signature-documents/*            → handlers/documents.ts
+ * URL prefixes (the leading `signature-` on a resource is optional — EDGE-005e
+ * consolidated the frontend onto the bare /signatures/<resource> shape, while
+ * the legacy /signatures/signature-<resource> paths still resolve for mobile /
+ * older callers):
+ *   /signatures/integration-credentials/*               → handlers/credentials.ts
+ *   /signatures/{requests,signature-requests}/*         → handlers/requests.ts
+ *   /signatures/{signers,signature-signers}/*           → handlers/signers.ts
+ *   /signatures/{documents,signature-documents}/*       → handlers/documents.ts
+ *   /signatures/{templates,signature-templates}         → handlers/templates.ts
+ *   /signatures/{analytics,signature-analytics}         → handlers/analytics.ts
  *   /signatures/customers/:customerId/signature-requests
  *   /signatures/webhooks/{docusign,adobe-sign,hellosign}  → handlers/webhooks.ts  (PUBLIC)
  *
@@ -33,6 +38,8 @@ import { handleRequests } from './handlers/requests.ts';
 import { handleSigners } from './handlers/signers.ts';
 import { handleDocuments } from './handlers/documents.ts';
 import { handleAudit } from './handlers/audit.ts';
+import { handleTemplates } from './handlers/templates.ts';
+import { handleAnalytics } from './handlers/analytics.ts';
 import { handleSignatureWebhook } from './handlers/webhooks.ts';
 
 const log = createLogger('signatures');
@@ -75,13 +82,18 @@ export default async function handler(req: Request) {
     const db = getDb();
     const ctx = { auth, db, requestId, pathParts: parts.slice(1), method, url };
 
+    // EDGE-005e: accept both the consolidated bare resource name (e.g.
+    // `requests`) and the legacy `signature-`-prefixed form (`signature-requests`).
+    const resource =
+      first && first.startsWith('signature-') ? first.slice('signature-'.length) : first;
+
     let result: Response | null = null;
-    switch (first) {
+    switch (resource) {
       case 'integration-credentials':
         result = await handleCredentials(req, ctx);
         break;
-      case 'signature-requests':
-        // Audit logs for a request: /signature-requests/:id/audit-logs → audit handler
+      case 'requests':
+        // Audit logs for a request: /requests/:id/audit-logs → audit handler
         if (parts[2] === 'audit-logs') {
           result = await handleAudit(req, {
             ...ctx,
@@ -91,8 +103,8 @@ export default async function handler(req: Request) {
           result = await handleRequests(req, ctx);
         }
         break;
-      case 'signature-signers':
-        // Audit logs for a signer: /signature-signers/:id/audit-logs → audit handler
+      case 'signers':
+        // Audit logs for a signer: /signers/:id/audit-logs → audit handler
         if (parts[2] === 'audit-logs') {
           result = await handleAudit(req, {
             ...ctx,
@@ -102,8 +114,14 @@ export default async function handler(req: Request) {
           result = await handleSigners(req, ctx);
         }
         break;
-      case 'signature-documents':
+      case 'documents':
         result = await handleDocuments(req, ctx);
+        break;
+      case 'templates':
+        result = await handleTemplates(req, ctx);
+        break;
+      case 'analytics':
+        result = await handleAnalytics(req, ctx);
         break;
       case 'customers': {
         // /customers/:customerId/signature-requests forward

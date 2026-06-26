@@ -31,6 +31,7 @@ import {
   TrendingUp,
   Users,
   Sparkles,
+  Settings,
   RefreshCw,
   ArrowRight,
   Phone,
