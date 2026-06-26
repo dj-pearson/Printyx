@@ -8182,3 +8182,71 @@ Status: Needs Review
 
 Iteration 5 (06/26/2026 14:43:53): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 13: server-wide req.session.user typing (root cause, -490)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+
+### Environment correction (important)
+This container started with an EMPTY node_modules — typescript, @types/node and vite
+were all absent — so `npx tsc` silently resolved a stray GLOBAL TypeScript 6.0.2 and,
+off a stale incremental cache, reported a bogus ~2 errors (config deprecation only).
+That looked like "QUALITY-002 is basically green." It is NOT. Ran `npm ci` to restore
+the pinned local TS 5.6.3 (the actual CI toolchain) and re-measured: true baseline 3577
+-> 3507 after upstream merges. LESSON: verify node_modules is populated (and which tsc
+`npx` resolves) before trusting any tsc count.
+
+### Root cause fixed
+500 TS2339 across 19 server route files, all identical:
+"Property 'user' does not exist on type 'Session & Partial<SessionData>'".
+The route layer reads req.session.user.{id,tenantId,role,roleLevel,role_level,email,
+firstName,fullName,twoFactorEnabled,twoFactorSecret} but @types/express-session's
+SessionData never declares `user`. Two access shapes:
+- direct: `req.session.user.tenantId` (apollo, email-marketing, field-service, lease, signature)
+- destructured: `const user = req.session?.user;` then `user.tenantId` (advanced-billing,
+  automated-billing, customer-success, geofence-alerts, gps-tracking, lead-scoring,
+  manufacturer-order, mfa, mileage, route-optimization, workflow-automation)
+
+### Latent runtime bug discovered (documented, deferred)
+Nothing populates req.session.user. Session login (server/auth-routes.ts) sets the FLAT
+req.session.userId / req.session.tenantId, and these 19 routers mount with NO auth
+middleware, so every `if (!req.session.user?.tenantId)` guard reads undefined and the
+endpoints ALWAYS 401 at runtime. Fixing that touches the security-sensitive login flow
+(or migrates 19 files to the getUserId/getTenantId helpers) and can't be smoke-tested
+here (build is pre-existing-broken) — left as a follow-up story, flagged in prd notes.
+
+### The fix (type-only, zero runtime risk)
+- NEW server/types/express-session.d.ts: `declare module 'express-session' { interface
+  SessionData { user?: { id: string; tenantId: string; role?: string; ... } } }`.
+  id+tenantId are REQUIRED string (auth-critical, always set together when a user exists)
+  so `if (!user)` guards narrow them to string for the many storage calls that need it —
+  keeping them optional left 209 string|undefined TS2345/TS2322. All other fields optional,
+  types derived from real usage (role.toLowerCase(); roleLevel||role_level||1; verifyTOTP(
+  user.twoFactorSecret)).
+- Removing the any-poisoning (req.session.user was a TS2339 error -> typed `any`, which
+  propagated through `{...validationResult.data, tenantId: any}`) re-typed 6 PRE-EXISTING
+  field-service errors from `{tenantId:any}` to `{tenantId:string}` (same file/line/col/code,
+  NOT new) and surfaced exactly ONE genuinely-new error: mfa-routes.ts(813), `user.email`
+  (string|undefined) into sendEmailOtp(email: string). Fixed faithfully with
+  `if (!user.email) return res.status(400)...` (can't send an email OTP without an email;
+  also narrows the type).
+
+### Verification
+- Canonical ratchet (local TS 5.6.3): 3507 -> 3017 (-490).
+- `comm` on file+line+col+code (message text stripped): ZERO genuinely-new error locations.
+- docs/typecheck-baseline.json tightened 3577 -> 3017.
+- prettier: both changed files unchanged (already formatted). eslint: server/ is ignore-listed (0 errors).
+- npm run build still pre-existing-broken (@sentry/react absent from node_modules); type-only
+  change verified via tsc/ratchet per the QUALITY-002 method.
+
+### Files
+- server/types/express-session.d.ts (new — SessionData.user augmentation)
+- server/routes/mfa-routes.ts (email-presence guard before sendEmailOtp)
+- docs/typecheck-baseline.json (3577 -> 3017)
+- prd.json (QUALITY-002 notes: BATCH 13), progress.txt
+
+### Story status
+- QUALITY-002: passes stays false (tsc not yet green; cumulative 6176 -> 3017, -51%)
+
+Iteration 6 (06/26/2026): Story QUALITY-002
+Status: Needs Review

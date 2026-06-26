@@ -808,6 +808,9 @@ router.post('/challenge', async (req: Request, res: Response) => {
 
     switch (method) {
       case 'email':
+        if (!user.email) {
+          return res.status(400).json({ error: 'No email address on file for this user' });
+        }
         const emailResult = await sendEmailOtp(
           user.id,
           user.email,
