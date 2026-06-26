@@ -8250,3 +8250,42 @@ here (build is pre-existing-broken) — left as a follow-up story, flagged in pr
 
 Iteration 6 (06/26/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 14: server phantom-shape fix routes-opportunities.ts (-30)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+
+### What/why
+server-side phantom-shape file (cf. client BATCH 7/10/11). routes-opportunities.ts
+queried business_records COLUMNS THAT DON'T EXIST (contactName/email/source/assignedToId/
+estimatedValue/stage) -> every endpoint 500s at runtime ("column does not exist").
+Mapped to real columns (schema-verified via inline E-Automate/Salesforce comments):
+  contactName  -> primaryContactName
+  email        -> primaryContactEmail
+  source       -> leadSource       (DB col 'source')
+  assignedToId -> ownerId          (the user-FK the codebase joins to users.id)
+  estimatedValue -> estimatedAmount (DB col 'estimated_deal_value')
+  stage        -> salesStage       (DB col 'sales_stage'; NOT 'state')
+Kept the SELECT output alias KEYS unchanged (contactName/stage/...), so the JSON the
+frontend + iOS decoder consume is identical — pure SQL fix, no API-contract change.
+Also fixed convert-to-deal dealData inserting `deals` with phantom keys (value->amount,
+assignedToId->ownerId, createdBy->createdById; removed stage:'prospecting' — deals has
+only stageId). Those keys were silently dropped at runtime (deals w/o amount/owner/creator).
+
+### Verification
+- Ratchet 3017 -> 2987 (-30). routes-opportunities 33 -> 3.
+- 3 remaining are ALL pre-existing: lines 23/29 middleware TS2769 (isAuthenticated/
+  enhanceUserContext overload); line 229 deals-insert missing required deals.stageId
+  (was line 230 pre-edit — shifted up 1 by deleting the phantom stage line, NOT new).
+- Zero genuinely-new logical errors. Baseline tightened 3017 -> 2987.
+- prettier clean; server/ eslint-ignored; build pre-existing-broken (@sentry/react absent).
+- Deferred: deals.stageId not-null is a separate convert-to-deal runtime bug (needs a
+  deal_stages default lookup).
+
+### Files
+- server/routes-opportunities.ts (phantom business_records + deals columns -> real columns)
+- docs/typecheck-baseline.json (3017 -> 2987)
+- prd.json (QUALITY-002 notes: BATCH 14), progress.txt
+
+Iteration 7 (06/26/2026): Story QUALITY-002
+Status: Needs Review
