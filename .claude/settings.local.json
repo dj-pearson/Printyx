@@ -126,7 +126,9 @@
       "PowerShell(\\(Get-Content prd.json -Raw\\).Length; Get-ChildItem server | Where-Object Name -match 'quote|proposal' | Select-Object -ExpandProperty Name; Get-ChildItem client\\\\src\\\\components -Recurse -Depth 1 -Directory | Where-Object Name -match 'quote|proposal' | Select-Object -ExpandProperty FullName)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npx vitest run server/tests/unit/proposal-merge.test.ts)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" npm run check)",
-      "Bash([ -s \"$f\" ])"
+      "Bash([ -s \"$f\" ])",
+      "Bash(git grep *)",
+      "Bash(python -c \"import json;json.load\\(open\\('prd.json'\\)\\);print\\('prd.json valid'\\)\")"
     ],
     "deny": [],
     "ask": []
