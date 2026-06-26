@@ -11,6 +11,7 @@ import {
   dataImportValidations,
   tenantHealthScores,
   tenantCloneOperations,
+  onboardingAnalytics,
 } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { requireRootAdmin } from './routes-root-admin';

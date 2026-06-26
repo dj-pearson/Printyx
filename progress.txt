@@ -7623,3 +7623,79 @@ separate concern from this routing-consolidation story.
 - server/middleware/edge-function-proxy.ts
 - docs/route-parity-matrix.md, docs/route-ownership-baseline.json (regenerated/tightened)
 - prd.json (EDGE-005e passes=true)
+
+Iteration 3 (06/26/2026 11:38:03): Story QUALITY-002
+Status: Needs Review
+
+Iteration 4 (06/26/2026): Story QUALITY-002 — typecheck ratchet BATCH 6
+Status: Batch complete (story stays passes:false — tsc not yet green)
+
+### Goal
+Burn down TS2304 (Cannot find name / undefined name) errors. These are the
+highest-value class in the ratchet: every one is a LATENT RUNTIME BUG (a
+ReferenceError or a dead/broken UI control), not just a type annotation — so
+fixing them improves correctness, not only the count.
+
+### Fixes (all import/undefined-name; each verified pre-existing-broken at runtime)
+- server/routes-onboarding.ts: 5 handlers (PUT/DELETE sections, POST/PUT/DELETE
+  tasks) referenced `tenantId` with a "// Fixed auth above" comment but NEVER
+  extracted it -> `const tenantId = getTenantId(req);` (matches file's existing
+  pattern). 9 TS2304 + a real ReferenceError on every call.
+- server/export-service.ts: csv-writer/exceljs/pdfkit imports were COMMENTED OUT
+  ("temporarily commenting out problematic imports") though all 3 are installed.
+  Restored them -> fixed 3 TS2304 AND 4 cascading TS7006 (ExcelJS .eachRow/cell
+  callbacks now typed). 7 -> 0 in that file.
+- client/src/hooks/useCrossModuleIntegration.ts: two useMutation onSuccess
+  callbacks read the mutation variable `integration` which is only in mutationFn
+  scope. In TanStack Query onSuccess is (data, variables) -> added `integration`
+  as the 2nd param. 3 TS2304 + broken cache invalidation/follow-on mutations.
+- server/storage.ts: `type InsertContractTieredRate` used but only
+  `ContractTieredRate` imported -> added the type import.
+- server/routes-tenant-onboarding.ts: `onboardingAnalytics` table queried but not
+  imported from @shared/schema.
+- server/routes-user-lifecycle.ts: `accessReviewCertifications` table queried but
+  not imported.
+- server/services/contact-deduplication-service.ts: `type InsertDuplicateScanJob`
+  used in a method signature but not imported.
+- server/routes-import.ts: `eq` used in a businessRecords query but drizzle-orm's
+  `eq` was never imported (the import-execute path would ReferenceError).
+- server/routes-quickbooks-integration.ts: `QUICKBOOKS_FIELD_MAPPINGS` used but
+  not imported from ./quickbooks-mapping.
+- server/seed-pricing-data.ts: `const tenantId = req.tenantId!` in a no-arg seed
+  fn (no `req` exists) -> `seedPricingData(tenantId = 'demo-tenant')` (matches the
+  sibling seed scripts' convention).
+- client/src/pages/LeadsManagement.tsx: empty-state button called
+  `setIsCreateOpen` (does not exist) -> `setIsNewLeadOpen` (the real setter; typo).
+- client/src/pages/EquipmentLifecycleHub.tsx: `DialogDescription` used but not in
+  the @/components/ui/dialog import.
+- client/src/pages/LeadIntelligenceDashboard.tsx: `Settings` lucide icon used but
+  not imported.
+
+### Verification
+- tsc --noEmit (script regex-match method, the authoritative count per CLAUDE.md):
+  3886 -> 3853 (-33). No new errors anywhere (verified per-file before/after).
+- docs/typecheck-baseline.json lowered 3886 -> 3853 with batch note.
+- prettier --write on all changed files: clean (diffs are ONLY the intended
+  lines; git diff --stat confirms 1-2 line changes each).
+- eslint: all touched files are in the ignore set (0 errors).
+- npm run test: 30 failing tests are PRE-EXISTING (confirmed by stashing my
+  changes and re-running report-cache.test.ts -> still fails on clean HEAD).
+  My import-only changes touch no failing test path.
+- npm run build still pre-existing-broken (@sentry/react missing from
+  node_modules) — unrelated, untouched. Type-only batch verified via tsc.
+
+### NOT committed (external auto-commit process's in-flight changes, not mine)
+QuoteBuilder.tsx (quote-detail cache invalidation), package.json (db:backfill
+script), drizzle/migrations/_backfill_run_all.sql, server/lib/db-probe.ts,
+server/lib/run-backfills.ts. Committed only my 13 source files + baseline + prd +
+progress to keep the batch clean.
+
+### Files
+server/routes-onboarding.ts, server/export-service.ts,
+client/src/hooks/useCrossModuleIntegration.ts, server/storage.ts,
+server/routes-tenant-onboarding.ts, server/routes-user-lifecycle.ts,
+server/services/contact-deduplication-service.ts, server/routes-import.ts,
+server/routes-quickbooks-integration.ts, server/seed-pricing-data.ts,
+client/src/pages/LeadsManagement.tsx, client/src/pages/EquipmentLifecycleHub.tsx,
+client/src/pages/LeadIntelligenceDashboard.tsx, docs/typecheck-baseline.json,
+prd.json (QUALITY-002 notes), progress.txt

@@ -5,6 +5,7 @@ const log = createModuleLogger('routes-quickbooks-integration');
 
 import {
   QUICKBOOKS_CONFIG,
+  QUICKBOOKS_FIELD_MAPPINGS,
   transformQuickBooksData,
   transformPrintyxData,
   SUPPORTED_QB_ENTITIES,

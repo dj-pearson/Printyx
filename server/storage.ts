@@ -89,6 +89,7 @@ import {
   type Supply,
   type ManagedService,
   type ContractTieredRate,
+  type InsertContractTieredRate,
   tasks,
   projects,
   systemAlerts,
