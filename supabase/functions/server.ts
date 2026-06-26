@@ -133,16 +133,6 @@ await serve(
       functionName = 'public-calculator';
     }
 
-    // EDGE-005a: the AccountsPayable/AccountsReceivable pages use the plural flat
-    // prefixes /api/accounts-{payable,receivable}; the edge function dirs are
-    // singular (account-payable / account-receivable). Map the plural segment to
-    // the singular fn so the flat /:id routes resolve in production.
-    if (functionName === 'accounts-payable') {
-      functionName = 'account-payable';
-    } else if (functionName === 'accounts-receivable') {
-      functionName = 'account-receivable';
-    }
-
     if (!functionName || !functions[functionName]) {
       return new Response(
         JSON.stringify({
