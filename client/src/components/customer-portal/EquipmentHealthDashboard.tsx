@@ -97,7 +97,7 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
   // Extract equipment health data with defensive fallback for both old and new API formats
   // New format: { success: true, data: [...], total: 123, meta: {...} }
   // Old format: { success: true, data: [...] } or just [...] array
-  const equipmentHealth = useMemo(() => {
+  const equipmentHealth = useMemo<EquipmentHealth[]>(() => {
     if (!equipmentHealthResponse) return [];
 
     // Handle array response (legacy format)
@@ -571,6 +571,8 @@ export const EquipmentHealthDashboard = memo(function EquipmentHealthDashboard({
                           .reduce((sum, a) => sum + a.count, 0),
                       },
                     ]}
+                    dataKey="value"
+                    nameKey="name"
                     title="Function Usage"
                     height={300}
                     showLegend={true}

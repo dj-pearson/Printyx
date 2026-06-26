@@ -7501,3 +7501,46 @@ EDGE-005a: the only in-scope TS change (server/middleware/edge-function-proxy.ts
 2 crmProxies entries) has 0 tsc errors; supabase/functions/** is outside tsc
 include scope. Raised docs/typecheck-baseline.json 3840 → 3910 with a note so the
 ratchet reflects true HEAD and still trips on any NEW growth. Flagged for QUALITY-002.
+
+Iteration 1 (06/26/2026 11:15:42): Story QUALITY-002
+Status: Needs Review
+
+---
+
+## Iteration — QUALITY-002 batch 5: EquipmentHealthDashboard implicit-any
+**Date**: 2026-06-26 · Branch: claude/edge-005a-accounts-flat-url (Ralph)
+
+client/src/components/customer-portal/EquipmentHealthDashboard.tsx (26 errors → 0):
+- The `equipmentHealth` useMemo derived from an untyped `apiRequest(...)` result,
+  so it was `any[]` — every downstream `.find/.reduce/.filter/.map` callback param
+  (eq/sum/alert/equipment/toner/a) was TS7006 implicit-any (25 of them).
+- A precise `EquipmentHealth[]` interface ALREADY existed in the file. Typed the
+  useMemo as `useMemo<EquipmentHealth[]>(...)`; the type flows through
+  `selectedEquipmentData` (a `.find()/[0]`, possibly-undefined but always read
+  inside the `{selectedEquipmentData && (...)}` guard → TS narrows it, so NO new
+  TS18048) and through every callback. Zero runtime change (`any`/`[]` both
+  assignable to the typed return).
+- Fixed the file's lone TS2739: the Activity-Breakdown `<PieChart>` was missing
+  required `dataKey`/`nameKey` props → added `dataKey="value" nameKey="name"`
+  (matches the `{name,value}[]` data it passes).
+
+### Verification
+- Ratchet (scripts/check-types.mjs) counts regex matches because `--pretty false`
+  suppresses tsc's "Found N errors" summary; that count is the canonical baseline.
+  Under it: 3912 → 3886 (−26, 0 new errors). 0 residual in the file.
+- Reconciled docs/typecheck-baseline.json 3910 → 3886: the prior 3910 was a
+  grep-of-lines undercount of the SAME HEAD (2 multi-match lines); baseline now
+  tracks the script's own method so the ratchet is self-consistent.
+- prettier: file unchanged (already formatted). eslint: client components are in
+  the ignore set (no errors).
+- vite `npm run build` FAILS pre-existing & unrelated: `@sentry/react` is declared
+  in package.json (^10.40.0) but absent from node_modules, so Rollup can't resolve
+  its import in client/src/main.tsx (the entry) — fails before my component is even
+  reached. main.tsx is untouched by this iteration; this is an env install gap, not
+  a regression. The type-only change is fully verified by tsc/ratchet.
+
+### Files
+- client/src/components/customer-portal/EquipmentHealthDashboard.tsx
+- docs/typecheck-baseline.json (3910 → 3886, method reconciled), prd.json (QUALITY-002 notes)
+
+QUALITY-002 stays passes=false (3886 ≠ 0). Cumulative 6176 → 3886.

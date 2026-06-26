@@ -1,4 +1,4 @@
 {
-  "note": "QUALITY-002 tsc-error ratchet baseline. scripts/check-types.mjs fails CI only when the error count grows above `total`. Lower it (never raise it) as debt is fixed: node scripts/check-types.mjs --update-baseline. EXCEPTION 2026-06-26: raised 3840 -> 3910 to absorb PRE-EXISTING drift already on main (clean HEAD measured 3910 with all working changes reverted) — NOT introduced by EDGE-005a (its only in-scope TS change, server/middleware/edge-function-proxy.ts, has 0 tsc errors). The +70 came in via prior merges; tracked under QUALITY-002 for burn-down. The ratchet still trips on any NEW growth beyond 3910.",
-  "total": 3910
+  "note": "QUALITY-002 tsc-error ratchet baseline. scripts/check-types.mjs fails CI only when the error count grows above `total`. Lower it (never raise it) as debt is fixed: node scripts/check-types.mjs --update-baseline. 2026-06-26 batch 5: typed EquipmentHealthDashboard.tsx's equipmentHealth useMemo as EquipmentHealth[] (clears 25 implicit-any TS7006 callback params) + added PieChart dataKey/nameKey props (TS2739). Under the script's regex-match count (the authoritative method; --pretty false suppresses tsc's 'Found N' summary): 3912 -> 3886 (-26, no new errors). The prior baseline 3910 was a grep-of-lines undercount of the same HEAD (2 multi-match lines); reconciled here to the script's method.",
+  "total": 3886
 }
