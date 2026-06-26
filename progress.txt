@@ -8138,3 +8138,34 @@ Fix (mirrors BATCH 7):
 - client/src/pages/Vendors.tsx (re-bound to real vendors schema)
 - docs/typecheck-baseline.json (3668 -> 3638)
 - prd.json (QUALITY-002 notes: BATCH 10), progress.txt, CLAUDE.md
+
+Iteration 3 (06/26/2026 14:26:24): Story QUALITY-002
+Status: Needs Review
+
+---
+
+## Iteration - QUALITY-002 BATCH 11: EnhancedProductAccessories.tsx phantom-shape fix
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+
+### What Was Done
+- Fixed client/src/pages/EnhancedProductAccessories.tsx (35 tsc errors -> 0)
+- Phantom-shape page (same as BATCH 7/10 vendors, BATCH 8 meter readings):
+  - Form bound 4 phantom fields (partNumber/weight/dimensions/warrantyPeriod) that
+    do NOT exist on the real product_accessories table -> removed those FormFields.
+  - Compatibility dialog read model.modelName/model.productType off product_models
+    (real cols productName/category) -> re-bound to productName, dropped productType.
+  - LATENT RUNTIME BUGS: create form POSTed dropped columns; compat dialog showed blank names.
+- Recipe: form schema = insertProductAccessorySchema.omit({tenantId:true}); useForm<AccessoryFormData>;
+  CompatibilityPayload = Omit<InsertAccessoryModelCompatibility,'tenantId'>; value={field.value ?? ''}
+  on nullable inputs/selects; filter arrays narrowed with `(m): m is string`.
+- Ratchet: 3638 -> 3603 (-35, 0 new errors). docs/typecheck-baseline.json updated to 3603.
+- prettier applied; eslint clean (file in ignore list); build pre-existing-broken (@sentry/react absent).
+
+### Files Modified
+- client/src/pages/EnhancedProductAccessories.tsx
+- docs/typecheck-baseline.json (3638 -> 3603)
+- prd.json (QUALITY-002 notes: BATCH 11 appended)
+
+### Story Status
+- QUALITY-002: passes stays false (tsc not green yet; cumulative 6176 -> 3603, -42%)

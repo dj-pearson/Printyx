@@ -32,10 +32,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Search, Plus, Edit, Link as LinkIcon, Settings } from 'lucide-react';
+import { z } from 'zod';
 import {
   insertProductAccessorySchema,
   type ProductAccessory,
-  type InsertProductAccessory,
   type ProductModel,
   type AccessoryModelCompatibility,
   type InsertAccessoryModelCompatibility,
@@ -44,6 +44,12 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import MainLayout from '@/components/layout/main-layout';
 import ManagementToolbar from '@/components/product-management/ManagementToolbar';
+
+// tenantId is server-injected; omit it from the client form (and don't seed it in
+// defaultValues). Mirrors the phantom-shape alignment in VendorManagement/Vendors.
+const accessoryFormSchema = insertProductAccessorySchema.omit({ tenantId: true });
+type AccessoryFormData = z.infer<typeof accessoryFormSchema>;
+type CompatibilityPayload = Omit<InsertAccessoryModelCompatibility, 'tenantId'>;
 
 export default function EnhancedProductAccessories() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -73,8 +79,8 @@ export default function EnhancedProductAccessories() {
     enabled: !!selectedAccessory?.id,
   });
 
-  const form = useForm<InsertProductAccessory>({
-    resolver: zodResolver(insertProductAccessorySchema),
+  const form = useForm<AccessoryFormData>({
+    resolver: zodResolver(accessoryFormSchema),
     defaultValues: {
       accessoryCode: '',
       accessoryName: '',
@@ -88,10 +94,6 @@ export default function EnhancedProductAccessories() {
       newRepPrice: '',
       upgradeCost: '',
       upgradeRepPrice: '',
-      partNumber: '',
-      weight: '',
-      dimensions: '',
-      warrantyPeriod: '',
       isActive: true,
       availableForAll: false,
       salesRepCredit: false,
@@ -101,7 +103,7 @@ export default function EnhancedProductAccessories() {
   });
 
   const createAccessoryMutation = useMutation({
-    mutationFn: async (data: InsertProductAccessory) => {
+    mutationFn: async (data: AccessoryFormData) => {
       return await apiRequest('/api/product-accessories', 'POST', data);
     },
     onSuccess: () => {
@@ -120,7 +122,7 @@ export default function EnhancedProductAccessories() {
   });
 
   const updateAccessoryMutation = useMutation({
-    mutationFn: async (data: InsertProductAccessory) => {
+    mutationFn: async (data: AccessoryFormData) => {
       return await apiRequest(`/api/product-accessories/${editingAccessory!.id}`, 'PATCH', data);
     },
     onSuccess: () => {
@@ -159,7 +161,7 @@ export default function EnhancedProductAccessories() {
 
   // Mutations for compatibility management
   const createCompatibilityMutation = useMutation({
-    mutationFn: async (data: InsertAccessoryModelCompatibility) => {
+    mutationFn: async (data: CompatibilityPayload) => {
       return await apiRequest(`/api/accessories/${data.accessoryId}/compatibility`, 'POST', data);
     },
     onSuccess: () => {
@@ -196,7 +198,7 @@ export default function EnhancedProductAccessories() {
     },
   });
 
-  const onSubmit = (data: InsertProductAccessory) => {
+  const onSubmit = (data: AccessoryFormData) => {
     if (editingAccessory) {
       updateAccessoryMutation.mutate(data);
     } else {
@@ -227,9 +229,11 @@ export default function EnhancedProductAccessories() {
     return matchesSearch && matchesManufacturer && matchesType;
   });
 
-  const manufacturers = Array.from(new Set(accessories.map((a) => a.manufacturer).filter(Boolean)));
+  const manufacturers = Array.from(
+    new Set(accessories.map((a) => a.manufacturer).filter((m): m is string => Boolean(m))),
+  );
   const accessoryTypes = Array.from(
-    new Set(accessories.map((a) => a.accessoryType).filter(Boolean)),
+    new Set(accessories.map((a) => a.accessoryType).filter((t): t is string => Boolean(t))),
   );
 
   const toggleItemSelection = (id: string) => {
@@ -481,7 +485,7 @@ export default function EnhancedProductAccessories() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Manufacturer *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value ?? ''}>
                           <FormControl>
                             <SelectTrigger data-testid="select-manufacturer">
                               <SelectValue placeholder="Select manufacturer" />
@@ -506,7 +510,7 @@ export default function EnhancedProductAccessories() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Type *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value ?? ''}>
                           <FormControl>
                             <SelectTrigger data-testid="select-accessory-type">
                               <SelectValue placeholder="Select type" />
@@ -536,6 +540,7 @@ export default function EnhancedProductAccessories() {
                         <FormControl>
                           <Input
                             {...field}
+                            value={field.value ?? ''}
                             placeholder="Optional category"
                             data-testid="input-category"
                           />
@@ -555,6 +560,7 @@ export default function EnhancedProductAccessories() {
                       <FormControl>
                         <Textarea
                           {...field}
+                          value={field.value ?? ''}
                           placeholder="Accessory description..."
                           data-testid="textarea-description"
                         />
@@ -572,7 +578,12 @@ export default function EnhancedProductAccessories() {
                       <FormItem>
                         <FormLabel>Standard Cost</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="0.00" data-testid="input-standard-cost" />
+                          <Input
+                            {...field}
+                            value={field.value ?? ''}
+                            placeholder="0.00"
+                            data-testid="input-standard-cost"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -588,75 +599,10 @@ export default function EnhancedProductAccessories() {
                         <FormControl>
                           <Input
                             {...field}
+                            value={field.value ?? ''}
                             placeholder="0.00"
                             data-testid="input-standard-rep-price"
                           />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="partNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Part Number</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="PN123456"
-                            data-testid="input-part-number"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="weight"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Weight</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="5.2 lbs" data-testid="input-weight" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="dimensions"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Dimensions</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder="12x8x6 inches"
-                            data-testid="input-dimensions"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="warrantyPeriod"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Warranty Period</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="12 months" data-testid="input-warranty" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -740,11 +686,10 @@ export default function EnhancedProductAccessories() {
                           >
                             <div className="flex-1">
                               <div className="font-medium" data-testid={`model-name-${model.id}`}>
-                                {model.modelName}
+                                {model.productName}
                               </div>
                               <div className="text-sm text-muted-foreground">
-                                {model.manufacturer} •{' '}
-                                {model.productType || model.category || 'MFP'}
+                                {model.manufacturer} • {model.category || 'MFP'}
                               </div>
                             </div>
                             <Button
@@ -808,11 +753,10 @@ export default function EnhancedProductAccessories() {
                         >
                           <div className="flex-1">
                             <div className="text-sm font-medium text-green-800 dark:text-green-200">
-                              {model?.modelName || 'Unknown Model'}
+                              {model?.productName || 'Unknown Model'}
                             </div>
                             <div className="text-xs text-green-600 dark:text-green-400">
-                              {model?.manufacturer} •{' '}
-                              {model?.productType || model?.category || 'MFP'}
+                              {model?.manufacturer} • {model?.category || 'MFP'}
                             </div>
                           </div>
                           <div className="text-xs text-green-600 dark:text-green-400">✓ Linked</div>
