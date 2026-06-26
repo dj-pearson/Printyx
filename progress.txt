@@ -7946,3 +7946,52 @@ Status: Needs Review
 ### Known debt (separate story):
 - PlatformCustomerSuccess.tsx TenantHealth interface diverges from real platform_health_scores
   columns; endpoints now RESOLVE (was prod 404) but field-by-field render needs a contract rewrite.
+
+Iteration 9 (06/26/2026 13:16:24): Story QUALITY-002
+Status: Needs Review
+
+Iteration (06/26/2026): Story QUALITY-002 — BATCH 7 (VendorManagement.tsx phantom-shape fix)
+Status: Needs Review (QUALITY-002 stays passes=false — ratchet batch, not green yet)
+
+### What shipped
+Fixed client/src/pages/VendorManagement.tsx (54 tsc errors -> 0). The whole page
+was built against a PHANTOM vendor shape that does not exist on the real `vendors`
+table (shared/schema.ts:2115 / migration 0000_fuzzy_blizzard.sql:9458):
+  page used:   companyName, contactPerson, address, notes, status,
+               preferred/isPreferred, vendorNumber, vendorType
+  real cols:   vendorName, primaryContactName, addressLine1/2, city/state/zipCode,
+               vendorNotes, isActive (bool), email/phone/website/taxId/paymentTerms/
+               accountNumber/externalVendorId/creditLimit
+Because /api/vendors (server/routes-products-crud.ts -> storage.getVendors/
+createVendor) reads/writes the real Drizzle table, the page was a LATENT RUNTIME
+BUG, not just a type error: the list rendered blank vendor names, the create form
+POSTed columns the DB silently ignores, and status/preferred were always undefined.
+
+### Fix (schema-faithful, strictly an improvement over the broken state)
+- Re-bound every field to real columns: companyName->vendorName,
+  contactPerson->primaryContactName, address->addressLine1, notes->vendorNotes,
+  status('active'/'inactive')->isActive boolean.
+- VendorFormData now = z.infer<insertVendorSchema.omit({tenantId:true})>; the prior
+  z.infer kept tenantId AND re-omitted createdAt/updatedAt (already omitted in
+  insertVendorSchema) which produced the TS2322 'boolean not assignable to never'.
+- Added value={field.value ?? ''} to every Input/Textarea (nullable varchars infer
+  string|null|undefined, which is not a valid HTML value) — this killed the bulk of
+  the TS2322 cluster.
+- REMOVED the 'preferred vendor' feature (no DB column ever existed): dropped the
+  Preferred stats card (4-col -> 3-col grid) and converted the star toggle to an
+  Active toggle (togglePreferred -> toggleActive, writes isActive). vendorType/
+  vendorNumber defaults removed (no columns).
+
+### Verification
+- Full tsc --noEmit: total 3795 -> 3741 (-54); VendorManagement.tsx 54 -> 0; zero
+  new errors anywhere else. Both count methods (grep -c lines / regex-match) agree.
+- docs/typecheck-baseline.json tightened 3795 -> 3741 (ratchet stays green).
+- Prettier applied; eslint ignores client/ (config) so 0 lint errors.
+- npm run build remains pre-existing-broken (@sentry/react absent from node_modules,
+  main.tsx Rollup-resolve fail) — type-only change verified via tsc/ratchet per the
+  established QUALITY-002 method.
+
+### Files
+- client/src/pages/VendorManagement.tsx (re-bound to real schema; preferred removed)
+- docs/typecheck-baseline.json (3795 -> 3741)
+- prd.json (QUALITY-002 notes: BATCH 7), progress.txt, CLAUDE.md

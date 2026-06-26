@@ -57,7 +57,9 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-type VendorFormData = z.infer<typeof insertVendorSchema>;
+// tenantId is injected server-side, so the form schema omits it.
+const vendorFormSchema = insertVendorSchema.omit({ tenantId: true });
+type VendorFormData = z.infer<typeof vendorFormSchema>;
 
 export default function VendorManagement() {
   const { user } = useAuth();
@@ -126,34 +128,26 @@ export default function VendorManagement() {
 
   // Form setup
   const form = useForm<VendorFormData>({
-    resolver: zodResolver(
-      insertVendorSchema.omit({
-        tenantId: true,
-        createdAt: true,
-        updatedAt: true,
-      }),
-    ),
+    resolver: zodResolver(vendorFormSchema),
     defaultValues: {
-      vendorNumber: '',
-      companyName: '',
-      vendorType: 'supplier',
-      contactPerson: '',
+      vendorName: '',
+      primaryContactName: '',
       email: '',
       phone: '',
-      address: '',
+      addressLine1: '',
       website: '',
       taxId: '',
       paymentTerms: 'Net 30',
-      preferred: false,
-      status: 'active',
+      vendorNotes: '',
+      isActive: true,
     },
   });
 
   // Filter vendors
   const filteredVendors = vendors.filter((vendor: Vendor) => {
     return (
-      vendor.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vendor.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      vendor.vendorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      vendor.primaryContactName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       vendor.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
@@ -163,20 +157,19 @@ export default function VendorManagement() {
     createVendorMutation.mutate(data);
   };
 
-  // Toggle preferred status
-  const togglePreferred = (vendor: Vendor) => {
+  // Toggle active status
+  const toggleActive = (vendor: Vendor) => {
     updateVendorMutation.mutate({
       id: vendor.id,
-      data: { preferred: !vendor.preferred },
+      data: { isActive: !vendor.isActive },
     });
   };
 
   // Get vendor stats
   const vendorStats = {
     total: vendors.length,
-    active: vendors.filter((v) => v.status === 'active').length,
-    preferred: vendors.filter((v) => v.preferred).length,
-    inactive: vendors.filter((v) => v.status === 'inactive').length,
+    active: vendors.filter((v) => v.isActive).length,
+    inactive: vendors.filter((v) => !v.isActive).length,
   };
 
   return (
@@ -213,12 +206,12 @@ export default function VendorManagement() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="companyName"
+                      name="vendorName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Company Name *</FormLabel>
+                          <FormLabel>Vendor Name *</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Company name" />
+                            <Input {...field} value={field.value ?? ''} placeholder="Vendor name" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -227,12 +220,16 @@ export default function VendorManagement() {
 
                     <FormField
                       control={form.control}
-                      name="contactPerson"
+                      name="primaryContactName"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Contact Person</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Primary contact name" />
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              placeholder="Primary contact name"
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -245,7 +242,12 @@ export default function VendorManagement() {
                         <FormItem>
                           <FormLabel>Email</FormLabel>
                           <FormControl>
-                            <Input {...field} type="email" placeholder="contact@vendor.com" />
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              type="email"
+                              placeholder="contact@vendor.com"
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -258,7 +260,11 @@ export default function VendorManagement() {
                         <FormItem>
                           <FormLabel>Phone</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Phone number" />
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              placeholder="Phone number"
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -271,7 +277,11 @@ export default function VendorManagement() {
                         <FormItem>
                           <FormLabel>Website</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="https://vendor.com" />
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              placeholder="https://vendor.com"
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -284,7 +294,11 @@ export default function VendorManagement() {
                         <FormItem>
                           <FormLabel>Tax ID</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Tax identification number" />
+                            <Input
+                              {...field}
+                              value={field.value ?? ''}
+                              placeholder="Tax identification number"
+                            />
                           </FormControl>
                         </FormItem>
                       )}
@@ -293,12 +307,16 @@ export default function VendorManagement() {
 
                   <FormField
                     control={form.control}
-                    name="address"
+                    name="addressLine1"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Address</FormLabel>
                         <FormControl>
-                          <Textarea {...field} placeholder="Full address" />
+                          <Textarea
+                            {...field}
+                            value={field.value ?? ''}
+                            placeholder="Full address"
+                          />
                         </FormControl>
                       </FormItem>
                     )}
@@ -311,7 +329,11 @@ export default function VendorManagement() {
                       <FormItem>
                         <FormLabel>Payment Terms</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="e.g., Net 30, Net 15" />
+                          <Input
+                            {...field}
+                            value={field.value ?? ''}
+                            placeholder="e.g., Net 30, Net 15"
+                          />
                         </FormControl>
                       </FormItem>
                     )}
@@ -319,12 +341,16 @@ export default function VendorManagement() {
 
                   <FormField
                     control={form.control}
-                    name="notes"
+                    name="vendorNotes"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Notes</FormLabel>
                         <FormControl>
-                          <Textarea {...field} placeholder="Additional notes about this vendor" />
+                          <Textarea
+                            {...field}
+                            value={field.value ?? ''}
+                            placeholder="Additional notes about this vendor"
+                          />
                         </FormControl>
                       </FormItem>
                     )}
@@ -333,20 +359,18 @@ export default function VendorManagement() {
                   <div className="flex items-center space-x-2">
                     <FormField
                       control={form.control}
-                      name="isPreferred"
+                      name="isActive"
                       render={({ field }) => (
                         <FormItem className="flex items-center space-x-2">
                           <FormControl>
                             <input
                               type="checkbox"
-                              checked={field.value}
+                              checked={field.value ?? true}
                               onChange={(e) => field.onChange(e.target.checked)}
                               className="rounded border-gray-300"
                             />
                           </FormControl>
-                          <FormLabel className="text-sm font-normal">
-                            Mark as preferred vendor
-                          </FormLabel>
+                          <FormLabel className="text-sm font-normal">Active vendor</FormLabel>
                         </FormItem>
                       )}
                     />
@@ -371,7 +395,7 @@ export default function VendorManagement() {
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center space-x-2">
@@ -379,18 +403,6 @@ export default function VendorManagement() {
                 <div>
                   <p className="text-2xl font-bold">{vendorStats.total}</p>
                   <p className="text-sm text-muted-foreground">Total Vendors</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <Star className="h-8 w-8 text-yellow-600" />
-                <div>
-                  <p className="text-2xl font-bold">{vendorStats.preferred}</p>
-                  <p className="text-sm text-muted-foreground">Preferred</p>
                 </div>
               </div>
             </CardContent>
@@ -476,10 +488,7 @@ export default function VendorManagement() {
                         <div className="flex items-center space-x-2">
                           <div className="flex flex-col">
                             <div className="flex items-center space-x-2">
-                              <span className="font-medium">{vendor.companyName}</span>
-                              {vendor.isPreferred && (
-                                <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                              )}
+                              <span className="font-medium">{vendor.vendorName}</span>
                             </div>
                             {vendor.website && (
                               <a
@@ -496,10 +505,10 @@ export default function VendorManagement() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {vendor.contactPerson ? (
+                        {vendor.primaryContactName ? (
                           <div className="flex items-center space-x-2">
                             <User className="h-4 w-4 text-gray-400" />
-                            <span>{vendor.contactPerson}</span>
+                            <span>{vendor.primaryContactName}</span>
                           </div>
                         ) : (
                           <span className="text-gray-400">—</span>
@@ -538,12 +547,12 @@ export default function VendorManagement() {
                       <TableCell>
                         <Badge
                           className={
-                            vendor.status === 'active'
+                            vendor.isActive
                               ? 'bg-green-100 text-green-800'
                               : 'bg-gray-100 text-gray-800'
                           }
                         >
-                          {vendor.status?.charAt(0).toUpperCase() + vendor.status?.slice(1)}
+                          {vendor.isActive ? 'Active' : 'Inactive'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -558,8 +567,8 @@ export default function VendorManagement() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => togglePreferred(vendor)}>
-                            {vendor.isPreferred ? (
+                          <Button variant="ghost" size="sm" onClick={() => toggleActive(vendor)}>
+                            {vendor.isActive ? (
                               <StarOff className="h-4 w-4" />
                             ) : (
                               <Star className="h-4 w-4" />
@@ -571,7 +580,7 @@ export default function VendorManagement() {
                             onClick={() => {
                               if (
                                 confirm(
-                                  `Delete vendor ${vendor.companyName}? This cannot be undone.`,
+                                  `Delete vendor ${vendor.vendorName}? This cannot be undone.`,
                                 )
                               ) {
                                 deleteVendorMutation.mutate(vendor.id);
@@ -596,7 +605,7 @@ export default function VendorManagement() {
             <DialogHeader>
               <DialogTitle>Vendor Details</DialogTitle>
               <DialogDescription>
-                Complete information for {selectedVendor?.companyName}
+                Complete information for {selectedVendor?.vendorName}
               </DialogDescription>
             </DialogHeader>
 
@@ -612,8 +621,8 @@ export default function VendorManagement() {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div>
-                        <span className="text-sm text-muted-foreground">Company Name</span>
-                        <p className="font-medium">{selectedVendor.companyName}</p>
+                        <span className="text-sm text-muted-foreground">Vendor Name</span>
+                        <p className="font-medium">{selectedVendor.vendorName}</p>
                       </div>
                       {selectedVendor.taxId && (
                         <div>
@@ -653,10 +662,10 @@ export default function VendorManagement() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {selectedVendor.contactPerson && (
+                      {selectedVendor.primaryContactName && (
                         <div>
                           <span className="text-sm text-muted-foreground">Contact Person</span>
-                          <p className="font-medium">{selectedVendor.contactPerson}</p>
+                          <p className="font-medium">{selectedVendor.primaryContactName}</p>
                         </div>
                       )}
                       {selectedVendor.email && (
@@ -685,17 +694,17 @@ export default function VendorManagement() {
                           </p>
                         </div>
                       )}
-                      {selectedVendor.address && (
+                      {selectedVendor.addressLine1 && (
                         <div>
                           <span className="text-sm text-muted-foreground">Address</span>
-                          <p className="text-sm">{selectedVendor.address}</p>
+                          <p className="text-sm">{selectedVendor.addressLine1}</p>
                         </div>
                       )}
                     </CardContent>
                   </Card>
                 </div>
 
-                {selectedVendor.notes && (
+                {selectedVendor.vendorNotes && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg flex items-center space-x-2">
@@ -704,7 +713,7 @@ export default function VendorManagement() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm">{selectedVendor.notes}</p>
+                      <p className="text-sm">{selectedVendor.vendorNotes}</p>
                     </CardContent>
                   </Card>
                 )}
@@ -713,16 +722,16 @@ export default function VendorManagement() {
                   <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
                     Close
                   </Button>
-                  <Button onClick={() => togglePreferred(selectedVendor)}>
-                    {selectedVendor.isPreferred ? (
+                  <Button onClick={() => toggleActive(selectedVendor)}>
+                    {selectedVendor.isActive ? (
                       <>
                         <StarOff className="h-4 w-4 mr-2" />
-                        Remove from Preferred
+                        Mark Inactive
                       </>
                     ) : (
                       <>
                         <Star className="h-4 w-4 mr-2" />
-                        Mark as Preferred
+                        Mark Active
                       </>
                     )}
                   </Button>
