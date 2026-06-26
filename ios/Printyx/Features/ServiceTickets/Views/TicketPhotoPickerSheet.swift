@@ -29,40 +29,49 @@ struct TicketPhotoPickerSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                Text("Attach photos of error codes, meters, or damage. Up to 3 per submit.")
-                    .font(.printyxCaption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
+            contentWithEvents
+        }
+    }
 
-                PhotosPicker(
-                    selection: $selection,
-                    maxSelectionCount: 3,
-                    matching: .images,
-                    photoLibrary: .shared()
-                ) {
-                    Label("Select photos", systemImage: "photo.on.rectangle.angled")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.printyxPrimary.opacity(0.12))
-                        .cornerRadius(AppTheme.Radius.md)
-                }
+    private var mainContent: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
+            Text("Attach photos of error codes, meters, or damage. Up to 3 per submit.")
+                .font(.printyxCaption)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal)
 
-                if !uploadResults.isEmpty {
-                    List(uploadResults) { result in
-                        HStack {
-                            Text(result.filename)
-                                .font(.printyxCaption)
-                            Spacer()
-                            statusBadge(for: result.status)
-                        }
-                    }
-                    .listStyle(.insetGrouped)
-                }
-
-                Spacer()
+            PhotosPicker(
+                selection: $selection,
+                maxSelectionCount: 3,
+                matching: .images,
+                photoLibrary: .shared()
+            ) {
+                Label("Select photos", systemImage: "photo.on.rectangle.angled")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.printyxPrimary.opacity(0.12))
+                    .cornerRadius(AppTheme.Radius.md)
             }
+            .padding(.horizontal)
+
+            if !uploadResults.isEmpty {
+                List(uploadResults) { result in
+                    HStack {
+                        Text(result.filename)
+                            .font(.printyxCaption)
+                        Spacer()
+                        statusBadge(for: result.status)
+                    }
+                }
+                .listStyle(.insetGrouped)
+            }
+
+            Spacer()
+        }
+    }
+
+    private var navigationContent: some View {
+        mainContent
             .padding(.top, AppTheme.Spacing.md)
             .navigationTitle("Add Photos")
             .navigationBarTitleDisplayMode(.inline)
@@ -71,11 +80,14 @@ struct TicketPhotoPickerSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
+    }
+
+    private var contentWithEvents: some View {
+        navigationContent
             .onChange(of: selection) { _, newItems in
                 guard !newItems.isEmpty else { return }
                 Task { await upload(items: newItems) }
             }
-        }
     }
 
     @ViewBuilder

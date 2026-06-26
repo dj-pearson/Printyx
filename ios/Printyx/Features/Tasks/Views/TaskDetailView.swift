@@ -13,43 +13,59 @@ struct TaskDetailView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if viewModel.isLoading {
-                    LoadingView()
-                } else if let error = viewModel.error, viewModel.task == nil {
-                    ErrorView(message: error, retryAction: { await viewModel.load() })
+            contentWithEvents
+        }
+    }
+
+    @ViewBuilder
+    private var mainContent: some View {
+        Group {
+            if viewModel.isLoading {
+                LoadingView()
+            } else if let error = viewModel.error, viewModel.task == nil {
+                ErrorView(message: error, retryAction: { await viewModel.load() })
+            } else {
+                taskContent
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button("Close") { dismiss() }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Task {
+                    if await viewModel.save() {
+                        dismiss()
+                    }
+                }
+            } label: {
+                if viewModel.isSaving {
+                    ProgressView()
                 } else {
-                    taskContent
+                    Text("Save")
+                        .fontWeight(.semibold)
                 }
             }
+            .disabled(viewModel.isSaving)
+        }
+    }
+
+    private var navigationContent: some View {
+        mainContent
             .navigationTitle(viewModel.isNewTask ? "New Task" : "Task Details")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task {
-                            if await viewModel.save() {
-                                dismiss()
-                            }
-                        }
-                    } label: {
-                        if viewModel.isSaving {
-                            ProgressView()
-                        } else {
-                            Text("Save")
-                                .fontWeight(.semibold)
-                        }
-                    }
-                    .disabled(viewModel.isSaving)
-                }
-            }
+            .toolbar { toolbarContent }
+    }
+
+    private var contentWithEvents: some View {
+        navigationContent
             .task {
                 await viewModel.load()
             }
-        }
     }
 
     // MARK: - Content

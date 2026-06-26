@@ -15,78 +15,28 @@ struct TaskListView: View {
         _viewModel = StateObject(wrappedValue: TaskListViewModel(taskService: taskService))
     }
 
+    // Body is decomposed into typed sub-views (`mainContent`, `contentBody`,
+    // `toolbarContent`) so the Swift type-checker doesn't time out on one giant
+    // expression ("unable to type-check in reasonable time").
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Stats Header
-                if let stats = viewModel.stats {
-                    TaskStatsBar(stats: stats)
-                }
+            contentWithEvents
+        }
+    }
 
-                // Search & Filter Bar
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    SearchBar(text: $viewModel.searchText, placeholder: "Search tasks...")
-
-                    Button {
-                        showingFilters.toggle()
-                    } label: {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
-                            .font(.system(size: 22))
-                            .foregroundStyle(hasActiveFilters ? Color.printyxPrimary : .secondary)
-                    }
-                    .frame(width: 44, height: 44)
-                }
-                .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.vertical, AppTheme.Spacing.sm)
-
-                // Content
-                if viewModel.isLoading && viewModel.tasks.isEmpty {
-                    LoadingView(message: "Loading tasks...")
-                } else if let error = viewModel.error, viewModel.tasks.isEmpty {
-                    ErrorView(message: error, retryAction: { await viewModel.refresh() })
-                } else if viewModel.activeTasks.isEmpty && viewModel.completedTasks.isEmpty {
-                    EmptyStateView(
-                        icon: "checklist",
-                        title: "No Tasks",
-                        message: viewModel.searchText.isEmpty
-                            ? "Create your first task to get started."
-                            : "No tasks match your search.",
-                        actionTitle: "Create Task",
-                        action: { showingCreateTask = true }
-                    )
-                } else {
-                    taskList
-                }
-            }
+    // The body's modifier chain is split across several `some View` properties
+    // so the Swift type-checker resolves each opaque type independently — one
+    // long chain in `body` times out ("unable to type-check in reasonable
+    // time"). Order: navigationContent → contentWithSheets → contentWithEvents.
+    private var navigationContent: some View {
+        mainContent
             .navigationTitle("Tasks")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showingCreateTask = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundStyle(Color.printyxPrimary)
-                    }
-                    .accessibilityLabel("Add task")
-                }
+            .toolbar { toolbarContent }
+            .refreshable { await viewModel.refresh() }
+    }
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Picker("Sort By", selection: $viewModel.sortBy) {
-                            ForEach(TaskListViewModel.SortOption.allCases) { option in
-                                Text(option.rawValue).tag(option)
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "arrow.up.arrow.down.circle")
-                            .font(.system(size: 20))
-                    }
-                }
-            }
-            .refreshable {
-                await viewModel.refresh()
-            }
+    private var contentWithSheets: some View {
+        navigationContent
             .sheet(isPresented: $showingCreateTask) {
                 TaskFormView(
                     taskService: TaskService(apiClient: apiClient),
@@ -102,6 +52,10 @@ struct TaskListView: View {
             .sheet(item: $selectedTask) { task in
                 TaskDetailView(taskService: TaskService(apiClient: apiClient), taskId: task.id)
             }
+    }
+
+    private var contentWithLifecycle: some View {
+        contentWithSheets
             .task {
                 if viewModel.tasks.isEmpty {
                     await viewModel.loadInitial()
@@ -116,21 +70,111 @@ struct TaskListView: View {
             .onChange(of: viewModel.showMyTasksOnly) { _, _ in
                 Task { await viewModel.refresh() }
             }
-            .confirmationDialog(
-                "Delete this task?",
-                isPresented: Binding(
-                    get: { taskPendingDelete != nil },
-                    set: { if !$0 { taskPendingDelete = nil } }
-                ),
-                presenting: taskPendingDelete
-            ) { task in
+    }
+
+    private var contentWithEvents: some View {
+        // Plain `confirmationDialog(isPresented:)` (no `presenting:` generic) so
+        // the type-checker isn't inferring the generic + two ViewBuilder
+        // closures in this already-long chain.
+        contentWithLifecycle
+            .confirmationDialog("Delete this task?", isPresented: deletePendingBinding) {
                 Button("Delete", role: .destructive) {
-                    Task { await viewModel.deleteTask(task) }
+                    if let task = taskPendingDelete {
+                        Task { await viewModel.deleteTask(task) }
+                    }
                     taskPendingDelete = nil
                 }
                 Button("Cancel", role: .cancel) { taskPendingDelete = nil }
-            } message: { task in
-                Text("\(task.displayName) will be permanently deleted. This can't be undone.")
+            } message: {
+                Text(deleteConfirmationMessage)
+            }
+    }
+
+    private var deleteConfirmationMessage: String {
+        guard let task = taskPendingDelete else { return "" }
+        return "\(task.title) will be permanently deleted. This can't be undone."
+    }
+
+    private var deletePendingBinding: Binding<Bool> {
+        Binding(
+            get: { taskPendingDelete != nil },
+            set: { if !$0 { taskPendingDelete = nil } }
+        )
+    }
+
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            // Stats Header
+            if let stats = viewModel.stats {
+                TaskStatsBar(stats: stats)
+            }
+
+            searchAndFilterBar
+            contentBody
+        }
+    }
+
+    private var searchAndFilterBar: some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            SearchBar(text: $viewModel.searchText, placeholder: "Search tasks...")
+
+            Button {
+                showingFilters.toggle()
+            } label: {
+                Image(systemName: "line.3.horizontal.decrease.circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(hasActiveFilters ? Color.printyxPrimary : .secondary)
+            }
+            .frame(width: 44, height: 44)
+        }
+        .padding(.horizontal, AppTheme.Spacing.lg)
+        .padding(.vertical, AppTheme.Spacing.sm)
+    }
+
+    @ViewBuilder
+    private var contentBody: some View {
+        if viewModel.isLoading && viewModel.tasks.isEmpty {
+            LoadingView(message: "Loading tasks...")
+        } else if let error = viewModel.error, viewModel.tasks.isEmpty {
+            ErrorView(message: error, retryAction: { await viewModel.refresh() })
+        } else if viewModel.activeTasks.isEmpty && viewModel.completedTasks.isEmpty {
+            EmptyStateView(
+                icon: "checklist",
+                title: "No Tasks",
+                message: viewModel.searchText.isEmpty
+                    ? "Create your first task to get started."
+                    : "No tasks match your search.",
+                actionTitle: "Create Task",
+                action: { showingCreateTask = true }
+            )
+        } else {
+            taskList
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                showingCreateTask = true
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(Color.printyxPrimary)
+            }
+            .accessibilityLabel("Add task")
+        }
+
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Picker("Sort By", selection: $viewModel.sortBy) {
+                    ForEach(TaskListViewModel.SortOption.allCases) { option in
+                        Text(option.rawValue).tag(option)
+                    }
+                }
+            } label: {
+                Image(systemName: "arrow.up.arrow.down.circle")
+                    .font(.system(size: 20))
             }
         }
     }

@@ -11,48 +11,68 @@ struct QuickLogSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: AppTheme.Spacing.lg) {
-                    linkedRecordHeader
-                    typeGrid
-                    detailToggleButton
-
-                    if viewModel.showDetailFields {
-                        detailFields
-                    }
-
-                    if let error = viewModel.errorMessage {
-                        Text(error)
-                            .font(.printyxCaption)
-                            .foregroundStyle(.red)
-                            .multilineTextAlignment(.center)
-                    }
-
-                    Spacer(minLength: AppTheme.Spacing.lg)
-                }
-                .padding(AppTheme.Spacing.lg)
-            }
-            .navigationTitle("Log Activity")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-            .disabled(viewModel.isSubmitting)
-            .overlay {
-                if viewModel.isSubmitting {
-                    Color.black.opacity(0.05)
-                        .ignoresSafeArea()
-                    ProgressView("Logging…")
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(AppTheme.Radius.md)
-                }
-            }
+            contentWithOverlay
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+
+    private var mainContent: some View {
+        ScrollView {
+            VStack(spacing: AppTheme.Spacing.lg) {
+                linkedRecordHeader
+                typeGrid
+                detailToggleButton
+
+                if viewModel.showDetailFields {
+                    detailFields
+                }
+
+                if let error = viewModel.errorMessage {
+                    Text(error)
+                        .font(.printyxCaption)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                }
+
+                Spacer(minLength: AppTheme.Spacing.lg)
+            }
+            .padding(AppTheme.Spacing.lg)
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button("Cancel") { dismiss() }
+        }
+    }
+
+    @ViewBuilder
+    private var submittingOverlay: some View {
+        if viewModel.isSubmitting {
+            Color.black.opacity(0.05)
+                .ignoresSafeArea()
+            ProgressView("Logging…")
+                .padding()
+                .background(Color(.systemBackground))
+                .cornerRadius(AppTheme.Radius.md)
+        }
+    }
+
+    private var navigationContent: some View {
+        mainContent
+            .navigationTitle("Log Activity")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbarContent }
+    }
+
+    private var contentWithOverlay: some View {
+        navigationContent
+            .disabled(viewModel.isSubmitting)
+            .overlay {
+                submittingOverlay
+            }
     }
 
     // MARK: - Sections

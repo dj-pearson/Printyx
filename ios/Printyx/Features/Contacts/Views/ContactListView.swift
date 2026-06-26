@@ -14,45 +14,74 @@ struct ContactListView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Search
-                SearchBar(text: $viewModel.searchText, placeholder: "Search contacts...")
-                    .padding(.horizontal, AppTheme.Spacing.lg)
-                    .padding(.vertical, AppTheme.Spacing.sm)
+            contentWithDialogs
+        }
+    }
 
-                // Content
-                if viewModel.isLoading && viewModel.contacts.isEmpty {
-                    LoadingView(message: "Loading contacts...")
-                } else if let error = viewModel.error, viewModel.contacts.isEmpty {
-                    ErrorView(message: error, retryAction: { await viewModel.refresh() })
-                } else if viewModel.filteredContacts.isEmpty {
-                    EmptyStateView(
-                        icon: "person.crop.circle",
-                        title: "No Contacts",
-                        message: "Add contacts to manage your relationships.",
-                        actionTitle: "Add Contact",
-                        action: { showingCreate = true }
-                    )
-                } else {
-                    contactList
-                }
+    @ViewBuilder
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            // Search
+            SearchBar(text: $viewModel.searchText, placeholder: "Search contacts...")
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.sm)
+
+            // Content
+            if viewModel.isLoading && viewModel.contacts.isEmpty {
+                LoadingView(message: "Loading contacts...")
+            } else if let error = viewModel.error, viewModel.contacts.isEmpty {
+                ErrorView(message: error, retryAction: { await viewModel.refresh() })
+            } else if viewModel.filteredContacts.isEmpty {
+                EmptyStateView(
+                    icon: "person.crop.circle",
+                    title: "No Contacts",
+                    message: "Add contacts to manage your relationships.",
+                    actionTitle: "Add Contact",
+                    action: { showingCreate = true }
+                )
+            } else {
+                contactList
             }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                showingCreate = true
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(Color.printyxPrimary)
+            }
+            .accessibilityLabel("Add contact")
+        }
+    }
+
+    /// Drives the delete confirmation dialog from `contactPendingDelete` (IOS-033).
+    private var deleteConfirmationBinding: Binding<Bool> {
+        Binding(
+            get: { contactPendingDelete != nil },
+            set: { if !$0 { contactPendingDelete = nil } }
+        )
+    }
+
+    private var deleteConfirmationMessage: String {
+        "\(contactPendingDelete?.displayName ?? "") will be permanently deleted. This can't be undone."
+    }
+
+    private var navigationContent: some View {
+        mainContent
             .navigationTitle("Contacts")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showingCreate = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundStyle(Color.printyxPrimary)
-                    }
-                    .accessibilityLabel("Add contact")
-                }
-            }
+            .toolbar { toolbarContent }
             .refreshable {
                 await viewModel.refresh()
             }
+    }
+
+    private var contentWithSheets: some View {
+        navigationContent
             .sheet(isPresented: $showingCreate) {
                 ContactFormView { _ in
                     Task { await viewModel.refresh() }
@@ -61,28 +90,33 @@ struct ContactListView: View {
             .sheet(item: $selectedContact) { contact in
                 ContactDetailView(contact: contact)
             }
+    }
+
+    private var contentWithEvents: some View {
+        contentWithSheets
             .task {
                 if viewModel.contacts.isEmpty {
                     await viewModel.loadInitial()
                 }
             }
+    }
+
+    private var contentWithDialogs: some View {
+        contentWithEvents
             .confirmationDialog(
                 "Delete this contact?",
-                isPresented: Binding(
-                    get: { contactPendingDelete != nil },
-                    set: { if !$0 { contactPendingDelete = nil } }
-                ),
-                presenting: contactPendingDelete
-            ) { contact in
+                isPresented: deleteConfirmationBinding
+            ) {
                 Button("Delete", role: .destructive) {
-                    Task { await viewModel.deleteContact(contact) }
+                    if let contact = contactPendingDelete {
+                        Task { await viewModel.deleteContact(contact) }
+                    }
                     contactPendingDelete = nil
                 }
                 Button("Cancel", role: .cancel) { contactPendingDelete = nil }
-            } message: { contact in
-                Text("\(contact.displayName) will be permanently deleted. This can't be undone.")
+            } message: {
+                Text(deleteConfirmationMessage)
             }
-        }
     }
 
     private var contactList: some View {

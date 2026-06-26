@@ -20,51 +20,68 @@ struct HomeView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: AppTheme.Spacing.lg) {
-                    if viewModel.isLoading && viewModel.dashboard == nil {
-                        LoadingView(message: "Loading dashboard...")
-                            .frame(height: 300)
-                    } else if let error = viewModel.error, viewModel.dashboard == nil {
-                        ErrorView(message: error, retryAction: { await viewModel.refresh() })
-                    } else {
-                        // Greeting
-                        greetingSection
+            contentWithEvents
+        }
+    }
 
-                        // Search bar
-                        searchSection
+    @ViewBuilder private var mainContent: some View {
+        if viewModel.isLoading && viewModel.dashboard == nil {
+            LoadingView(message: "Loading dashboard...")
+                .frame(height: 300)
+        } else if let error = viewModel.error, viewModel.dashboard == nil {
+            ErrorView(message: error, retryAction: { await viewModel.refresh() })
+        } else {
+            // Greeting
+            greetingSection
 
-                        // KPI Snapshot
-                        if let dashboard = viewModel.dashboard {
-                            snapshotSection(dashboard)
-                        }
+            // Search bar
+            searchSection
 
-                        // Quick Actions
-                        quickActionsSection
-
-                        // My Team (managers only)
-                        if showsManagerSection {
-                            ManagerTeamSection(apiClient: apiClient)
-                        }
-
-                        // Notifications
-                        if !viewModel.notifications.isEmpty {
-                            notificationsSection
-                        }
-
-                        // Activity Feed
-                        if !viewModel.activities.isEmpty {
-                            activitySection
-                        }
-                    }
-                }
-                .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.bottom, AppTheme.Spacing.xxl)
+            // KPI Snapshot
+            if let dashboard = viewModel.dashboard {
+                snapshotSection(dashboard)
             }
+
+            // Quick Actions
+            quickActionsSection
+
+            // My Team (managers only)
+            if showsManagerSection {
+                ManagerTeamSection(apiClient: apiClient)
+            }
+
+            // Notifications
+            if !viewModel.notifications.isEmpty {
+                notificationsSection
+            }
+
+            // Activity Feed
+            if !viewModel.activities.isEmpty {
+                activitySection
+            }
+        }
+    }
+
+    private var scrollContent: some View {
+        ScrollView {
+            VStack(spacing: AppTheme.Spacing.lg) {
+                mainContent
+            }
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.bottom, AppTheme.Spacing.xxl)
+        }
+    }
+
+    private var navigationContent: some View {
+        scrollContent
             .navigationTitle("Home")
             .refreshable {
                 await viewModel.refresh()
             }
+    }
+
+    private var contentWithEvents: some View {
+        navigationContent
             .sheet(isPresented: $viewModel.showingSearch) {
                 // Present the working, routing search sheet (IOS-028). The old
                 // in-Home GlobalSearchView whose rows never routed has been
@@ -76,7 +93,6 @@ struct HomeView: View {
                     await viewModel.loadInitial()
                 }
             }
-        }
     }
 
     // MARK: - Greeting

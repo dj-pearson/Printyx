@@ -63,6 +63,9 @@ const TRUSTED_SCOPES = [
   '@uppy',
   '@vitest',
   '@jridgewell',
+  // @tiptap/core normalizes to "core", distance 1 from critical "cors" — a
+  // false positive. TipTap is a reputable scoped publisher.
+  '@tiptap',
 ];
 
 // ============================================================================

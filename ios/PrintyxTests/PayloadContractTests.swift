@@ -14,6 +14,11 @@ import XCTest
 /// Follow-up (tracked in ios-docs): backfill behavioural unit tests for the
 /// logic-heavy ViewModels/Services using MockURLProtocol; this file covers the
 /// decode/contract layer where the regressions actually originated.
+///
+/// `@MainActor` because `APIClient` (and its `makeJSONDecoder()`) is
+/// main-actor-isolated; the stored `decoder` initializer below runs in the
+/// type's actor context.
+@MainActor
 final class PayloadContractTests: XCTestCase {
 
     private let decoder = APIClient.makeJSONDecoder()

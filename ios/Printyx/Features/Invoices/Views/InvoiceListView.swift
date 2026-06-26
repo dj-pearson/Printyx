@@ -11,46 +11,64 @@ struct InvoiceListView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Metrics
-                HStack(spacing: AppTheme.Spacing.md) {
-                    MetricCard(label: "Outstanding", value: formatCurrency(viewModel.totalOutstanding), icon: "dollarsign.circle", color: .printyxPrimary)
-                    MetricCard(label: "Overdue", value: "\(viewModel.overdueCount)", icon: "exclamationmark.triangle", color: .statusOverdue)
-                    MetricCard(label: "Paid", value: "\(viewModel.paidCount)", icon: "checkmark.seal.fill", color: .statusCompleted)
-                }
-                .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.vertical, AppTheme.Spacing.sm)
+            contentWithEvents
+        }
+    }
 
-                // Status filter
-                statusFilterChips
-
-                // Search
-                SearchBar(text: $viewModel.searchText, placeholder: "Search invoices...")
-                    .padding(.horizontal, AppTheme.Spacing.lg)
-                    .padding(.bottom, AppTheme.Spacing.sm)
-
-                // Content
-                if viewModel.isLoading && viewModel.invoices.isEmpty {
-                    LoadingView(message: "Loading invoices...")
-                } else if let error = viewModel.error, viewModel.invoices.isEmpty {
-                    ErrorView(message: error, retryAction: { await viewModel.refresh() })
-                } else if viewModel.filteredInvoices.isEmpty {
-                    EmptyStateView(
-                        icon: "doc.richtext",
-                        title: "No Invoices",
-                        message: "Invoices will appear here."
-                    )
-                } else {
-                    invoiceList
-                }
+    @ViewBuilder
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            // Metrics
+            HStack(spacing: AppTheme.Spacing.md) {
+                MetricCard(label: "Outstanding", value: formatCurrency(viewModel.totalOutstanding), icon: "dollarsign.circle", color: .printyxPrimary)
+                MetricCard(label: "Overdue", value: "\(viewModel.overdueCount)", icon: "exclamationmark.triangle", color: .statusOverdue)
+                MetricCard(label: "Paid", value: "\(viewModel.paidCount)", icon: "checkmark.seal.fill", color: .statusCompleted)
             }
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.vertical, AppTheme.Spacing.sm)
+
+            // Status filter
+            statusFilterChips
+
+            // Search
+            SearchBar(text: $viewModel.searchText, placeholder: "Search invoices...")
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.bottom, AppTheme.Spacing.sm)
+
+            // Content
+            if viewModel.isLoading && viewModel.invoices.isEmpty {
+                LoadingView(message: "Loading invoices...")
+            } else if let error = viewModel.error, viewModel.invoices.isEmpty {
+                ErrorView(message: error, retryAction: { await viewModel.refresh() })
+            } else if viewModel.filteredInvoices.isEmpty {
+                EmptyStateView(
+                    icon: "doc.richtext",
+                    title: "No Invoices",
+                    message: "Invoices will appear here."
+                )
+            } else {
+                invoiceList
+            }
+        }
+    }
+
+    private var navigationContent: some View {
+        mainContent
             .navigationTitle("Invoices")
             .refreshable {
                 await viewModel.refresh()
             }
+    }
+
+    private var contentWithSheets: some View {
+        navigationContent
             .sheet(item: $selectedInvoice) { invoice in
                 InvoiceDetailView(invoice: invoice)
             }
+    }
+
+    private var contentWithEvents: some View {
+        contentWithSheets
             .task {
                 if viewModel.invoices.isEmpty {
                     await viewModel.loadInitial()
@@ -59,7 +77,6 @@ struct InvoiceListView: View {
             .onChange(of: viewModel.selectedStatus) { _, _ in
                 Task { await viewModel.refresh() }
             }
-        }
     }
 
     // MARK: - Status Filter

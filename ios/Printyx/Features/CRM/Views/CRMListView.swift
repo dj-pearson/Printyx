@@ -17,70 +17,92 @@ struct CRMListView: View {
 
     var body: some View {
         NavigationStack(path: router.pathBinding(for: .crm)) {
-            VStack(spacing: 0) {
-                // Segment Control
-                Picker("Type", selection: $viewModel.selectedSegment) {
-                    ForEach(CRMListViewModel.CRMSegment.allCases) { segment in
-                        Text(segment.rawValue).tag(segment)
-                    }
+            contentWithEvents
+        }
+    }
+
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            // Segment Control
+            Picker("Type", selection: $viewModel.selectedSegment) {
+                ForEach(CRMListViewModel.CRMSegment.allCases) { segment in
+                    Text(segment.rawValue).tag(segment)
                 }
-                .pickerStyle(.segmented)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, AppTheme.Spacing.lg)
+            .padding(.vertical, AppTheme.Spacing.sm)
+
+            // Search
+            SearchBar(text: $viewModel.searchText, placeholder: "Search records...")
                 .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.vertical, AppTheme.Spacing.sm)
+                .padding(.bottom, AppTheme.Spacing.sm)
 
-                // Search
-                SearchBar(text: $viewModel.searchText, placeholder: "Search records...")
-                    .padding(.horizontal, AppTheme.Spacing.lg)
-                    .padding(.bottom, AppTheme.Spacing.sm)
-
-                // Content
-                if viewModel.isLoading && viewModel.records.isEmpty {
-                    LoadingView(message: "Loading records...")
-                } else if let error = viewModel.error, viewModel.records.isEmpty {
-                    ErrorView(message: error, retryAction: { await viewModel.refresh() })
-                } else if viewModel.filteredRecords.isEmpty {
-                    EmptyStateView(
-                        icon: "person.crop.circle.badge.plus",
-                        title: "No Records",
-                        message: viewModel.searchText.isEmpty
-                            ? "Add your first lead or customer."
-                            : "No records match your search.",
-                        actionTitle: "Add Record",
-                        action: { showingCreateRecord = true }
-                    )
-                } else {
-                    recordsList
-                }
+            // Content
+            if viewModel.isLoading && viewModel.records.isEmpty {
+                LoadingView(message: "Loading records...")
+            } else if let error = viewModel.error, viewModel.records.isEmpty {
+                ErrorView(message: error, retryAction: { await viewModel.refresh() })
+            } else if viewModel.filteredRecords.isEmpty {
+                EmptyStateView(
+                    icon: "person.crop.circle.badge.plus",
+                    title: "No Records",
+                    message: viewModel.searchText.isEmpty
+                        ? "Add your first lead or customer."
+                        : "No records match your search.",
+                    actionTitle: "Add Record",
+                    action: { showingCreateRecord = true }
+                )
+            } else {
+                recordsList
             }
+        }
+    }
+
+    @ToolbarContentBuilder private var toolbarContent: some ToolbarContent {
+        GlobalSearchToolbarButton(isPresented: $showingSearch)
+
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                showingCreateRecord = true
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(Color.printyxPrimary)
+            }
+            .accessibilityLabel("Add record")
+        }
+
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Picker("Sort By", selection: $viewModel.sortBy) {
+                    ForEach(CRMListViewModel.SortOption.allCases) { option in
+                        Text(option.rawValue).tag(option)
+                    }
+                }
+            } label: {
+                Image(systemName: "arrow.up.arrow.down.circle")
+                    .font(.system(size: 20))
+            }
+            .accessibilityLabel("Sort")
+        }
+    }
+
+    private var recordPendingDeleteBinding: Binding<Bool> {
+        Binding(
+            get: { recordPendingDelete != nil },
+            set: { if !$0 { recordPendingDelete = nil } }
+        )
+    }
+
+    private var navigationContent: some View {
+        mainContent
             .navigationTitle("CRM")
-            .toolbar {
-                GlobalSearchToolbarButton(isPresented: $showingSearch)
+            .toolbar { toolbarContent }
+    }
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showingCreateRecord = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundStyle(Color.printyxPrimary)
-                    }
-                    .accessibilityLabel("Add record")
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Picker("Sort By", selection: $viewModel.sortBy) {
-                            ForEach(CRMListViewModel.SortOption.allCases) { option in
-                                Text(option.rawValue).tag(option)
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "arrow.up.arrow.down.circle")
-                            .font(.system(size: 20))
-                    }
-                    .accessibilityLabel("Sort")
-                }
-            }
+    private var contentWithSheets: some View {
+        navigationContent
             .refreshable {
                 await viewModel.refresh()
             }
@@ -92,6 +114,10 @@ struct CRMListView: View {
             .sheet(isPresented: $showingSearch) {
                 UniversalSearchSheet(apiClient: apiClient)
             }
+    }
+
+    private var contentWithEvents: some View {
+        contentWithSheets
             .navigationDestination(for: AppRoute.self) { route in
                 AppRouteDestination(route: route, apiClient: apiClient)
             }
@@ -105,10 +131,7 @@ struct CRMListView: View {
             }
             .confirmationDialog(
                 "Delete this record?",
-                isPresented: Binding(
-                    get: { recordPendingDelete != nil },
-                    set: { if !$0 { recordPendingDelete = nil } }
-                ),
+                isPresented: recordPendingDeleteBinding,
                 presenting: recordPendingDelete
             ) { record in
                 Button("Delete", role: .destructive) {
@@ -119,7 +142,6 @@ struct CRMListView: View {
             } message: { record in
                 Text("\(record.displayName) will be permanently deleted. This can't be undone.")
             }
-        }
     }
 
     // MARK: - Records List

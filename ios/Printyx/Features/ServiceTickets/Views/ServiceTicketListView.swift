@@ -14,53 +14,72 @@ struct ServiceTicketListView: View {
 
     var body: some View {
         NavigationStack(path: router.pathBinding(for: .service)) {
-            VStack(spacing: 0) {
-                // Stats
-                statsBar
+            contentWithEvents
+        }
+    }
 
-                // Status filter chips
-                statusFilterChips
+    @ViewBuilder
+    private var mainContent: some View {
+        VStack(spacing: 0) {
+            // Stats
+            statsBar
 
-                // Search
-                SearchBar(text: $viewModel.searchText, placeholder: "Search tickets...")
-                    .padding(.horizontal, AppTheme.Spacing.lg)
-                    .padding(.bottom, AppTheme.Spacing.sm)
+            // Status filter chips
+            statusFilterChips
 
-                // Content
-                if viewModel.isLoading && viewModel.tickets.isEmpty {
-                    LoadingView(message: "Loading tickets...")
-                } else if let error = viewModel.error, viewModel.tickets.isEmpty {
-                    ErrorView(message: error, retryAction: { await viewModel.refresh() })
-                } else if viewModel.filteredTickets.isEmpty {
-                    EmptyStateView(
-                        icon: "wrench.and.screwdriver",
-                        title: "No Service Tickets",
-                        message: "Create a ticket to track service requests.",
-                        actionTitle: "New Ticket",
-                        action: { showingCreate = true }
-                    )
-                } else {
-                    ticketList
-                }
+            // Search
+            SearchBar(text: $viewModel.searchText, placeholder: "Search tickets...")
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.bottom, AppTheme.Spacing.sm)
+
+            // Content
+            if viewModel.isLoading && viewModel.tickets.isEmpty {
+                LoadingView(message: "Loading tickets...")
+            } else if let error = viewModel.error, viewModel.tickets.isEmpty {
+                ErrorView(message: error, retryAction: { await viewModel.refresh() })
+            } else if viewModel.filteredTickets.isEmpty {
+                EmptyStateView(
+                    icon: "wrench.and.screwdriver",
+                    title: "No Service Tickets",
+                    message: "Create a ticket to track service requests.",
+                    actionTitle: "New Ticket",
+                    action: { showingCreate = true }
+                )
+            } else {
+                ticketList
             }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        GlobalSearchToolbarButton(isPresented: $showingSearch)
+
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                showingCreate = true
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(Color.printyxPrimary)
+            }
+            .accessibilityLabel("Add ticket")
+        }
+    }
+
+    private var navigationContent: some View {
+        mainContent
             .navigationTitle("Service Tickets")
             .toolbar {
-                GlobalSearchToolbarButton(isPresented: $showingSearch)
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showingCreate = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundStyle(Color.printyxPrimary)
-                    }
-                    .accessibilityLabel("Add ticket")
-                }
+                toolbarContent
             }
             .refreshable {
                 await viewModel.refresh()
             }
+    }
+
+    private var contentWithSheets: some View {
+        navigationContent
             .sheet(isPresented: $showingCreate) {
                 ServiceTicketFormView { _ in
                     Task { await viewModel.refresh() }
@@ -69,6 +88,10 @@ struct ServiceTicketListView: View {
             .sheet(isPresented: $showingSearch) {
                 UniversalSearchSheet(apiClient: apiClient)
             }
+    }
+
+    private var contentWithEvents: some View {
+        contentWithSheets
             .navigationDestination(for: AppRoute.self) { route in
                 switch route {
                 case .serviceTicket(let id):
@@ -88,7 +111,6 @@ struct ServiceTicketListView: View {
             .onChange(of: viewModel.selectedStatus) { _, _ in
                 Task { await viewModel.refresh() }
             }
-        }
     }
 
     // MARK: - Stats Bar
@@ -294,86 +316,108 @@ struct ServiceTicketFormView: View {
         !title.trimmingCharacters(in: .whitespaces).isEmpty && !isSaving
     }
 
+    private var scheduleToggleBinding: Binding<Bool> {
+        Binding(
+            get: { scheduledDate != nil },
+            set: { scheduledDate = $0 ? (scheduledDate ?? Date().addingTimeInterval(86_400)) : nil }
+        )
+    }
+
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Ticket") {
-                    TextField("Title (required)", text: $title)
-                    TextField("Description", text: $description, axis: .vertical)
-                        .lineLimit(3...8)
-                    Picker("Priority", selection: $priority) {
-                        ForEach(TicketPriority.allCases) { p in
-                            Text(p.displayName).tag(p)
-                        }
-                    }
-                }
+            contentWithSheets
+        }
+    }
 
-                Section("Customer") {
-                    Button {
-                        showingCustomerPicker = true
-                    } label: {
-                        HStack {
-                            Text(selectedCustomer?.displayName ?? "Select customer")
-                                .foregroundStyle(selectedCustomer == nil ? .secondary : .primary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                }
-
-                Section("Equipment (optional)") {
-                    Button {
-                        showingEquipmentPicker = true
-                    } label: {
-                        HStack {
-                            Text(selectedEquipment?.displayName ?? "Select equipment")
-                                .foregroundStyle(selectedEquipment == nil ? .secondary : .primary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundStyle(.tertiary)
-                        }
-                    }
-                    .disabled(selectedCustomer == nil)
-                }
-
-                Section("Schedule (optional)") {
-                    Toggle("Schedule a visit", isOn: Binding(
-                        get: { scheduledDate != nil },
-                        set: { scheduledDate = $0 ? (scheduledDate ?? Date().addingTimeInterval(86_400)) : nil }
-                    ))
-                    if let bindingDate = Binding($scheduledDate) {
-                        DatePicker("Scheduled for", selection: bindingDate)
-                    }
-                }
-
-                if let error {
-                    Section {
-                        Text(error)
-                            .font(.printyxCaption)
-                            .foregroundStyle(.red)
+    private var formContent: some View {
+        Form {
+            Section("Ticket") {
+                TextField("Title (required)", text: $title)
+                TextField("Description", text: $description, axis: .vertical)
+                    .lineLimit(3...8)
+                Picker("Priority", selection: $priority) {
+                    ForEach(TicketPriority.allCases) { p in
+                        Text(p.displayName).tag(p)
                     }
                 }
             }
+
+            Section("Customer") {
+                Button {
+                    showingCustomerPicker = true
+                } label: {
+                    HStack {
+                        Text(selectedCustomer?.displayName ?? "Select customer")
+                            .foregroundStyle(selectedCustomer == nil ? .secondary : .primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+
+            Section("Equipment (optional)") {
+                Button {
+                    showingEquipmentPicker = true
+                } label: {
+                    HStack {
+                        Text(selectedEquipment?.displayName ?? "Select equipment")
+                            .foregroundStyle(selectedEquipment == nil ? .secondary : .primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .disabled(selectedCustomer == nil)
+            }
+
+            Section("Schedule (optional)") {
+                Toggle("Schedule a visit", isOn: scheduleToggleBinding)
+                if let bindingDate = Binding($scheduledDate) {
+                    DatePicker("Scheduled for", selection: bindingDate)
+                }
+            }
+
+            if let error {
+                Section {
+                    Text(error)
+                        .font(.printyxCaption)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button("Cancel") { dismiss() }
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Task { await save() }
+            } label: {
+                if isSaving {
+                    ProgressView()
+                } else {
+                    Text("Save").fontWeight(.semibold)
+                }
+            }
+            .disabled(!canSave)
+        }
+    }
+
+    private var navigationContent: some View {
+        formContent
             .navigationTitle("New Ticket")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await save() }
-                    } label: {
-                        if isSaving {
-                            ProgressView()
-                        } else {
-                            Text("Save").fontWeight(.semibold)
-                        }
-                    }
-                    .disabled(!canSave)
-                }
+                toolbarContent
             }
+    }
+
+    private var contentWithSheets: some View {
+        navigationContent
             .sheet(isPresented: $showingCustomerPicker) {
                 CustomerPickerSheet(apiClient: apiClient) { record in
                     selectedCustomer = record
@@ -388,7 +432,6 @@ struct ServiceTicketFormView: View {
                     }
                 }
             }
-        }
     }
 
     private func save() async {
@@ -438,26 +481,35 @@ struct CustomerPickerSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(records) { record in
-                    Button {
-                        onSelect(record)
-                        dismiss()
-                    } label: {
-                        VStack(alignment: .leading) {
-                            Text(record.displayName)
-                                .font(.printyxSubheadline)
-                                .foregroundStyle(Color.primary)
-                            if let city = record.city {
-                                Text(city)
-                                    .font(.printyxCaption)
-                                    .foregroundStyle(.secondary)
-                            }
+            contentWithEvents
+        }
+    }
+
+    private var mainContent: some View {
+        List {
+            ForEach(records) { record in
+                Button {
+                    onSelect(record)
+                    dismiss()
+                } label: {
+                    VStack(alignment: .leading) {
+                        Text(record.displayName)
+                            .font(.printyxSubheadline)
+                            .foregroundStyle(Color.primary)
+                        if let city = record.city {
+                            Text(city)
+                                .font(.printyxCaption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
-                if isLoading { InlineLoadingView() }
             }
+            if isLoading { InlineLoadingView() }
+        }
+    }
+
+    private var navigationContent: some View {
+        mainContent
             .listStyle(.insetGrouped)
             .searchable(text: $searchText, prompt: "Search customers")
             .navigationTitle("Customer")
@@ -467,11 +519,14 @@ struct CustomerPickerSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+    }
+
+    private var contentWithEvents: some View {
+        navigationContent
             .task { await load() }
             .onChange(of: searchText) { _, _ in
                 Task { await load() }
             }
-        }
     }
 
     private func load() async {
@@ -569,6 +624,11 @@ struct ServiceTicketDetailView: View {
     @State private var attachmentCount = 0
 
     var body: some View {
+        contentWithEvents
+    }
+
+    @ViewBuilder
+    private var mainContent: some View {
         List {
             if isLoading && ticket == nil {
                 Section {
@@ -609,14 +669,22 @@ struct ServiceTicketDetailView: View {
                 }
             }
         }
-        .navigationTitle(ticket?.displayTitle ?? "Ticket")
-        .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
-        .sheet(isPresented: $showingPhotoPicker) {
-            TicketPhotoPickerSheet(ticketId: ticketId, apiClient: apiClient) {
-                attachmentCount += 1
+    }
+
+    private var navigationContent: some View {
+        mainContent
+            .navigationTitle(ticket?.displayTitle ?? "Ticket")
+            .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var contentWithEvents: some View {
+        navigationContent
+            .task { await load() }
+            .sheet(isPresented: $showingPhotoPicker) {
+                TicketPhotoPickerSheet(ticketId: ticketId, apiClient: apiClient) {
+                    attachmentCount += 1
+                }
             }
-        }
     }
 
     // MARK: - Sections

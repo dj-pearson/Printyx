@@ -9,7 +9,10 @@ struct LoginRequest: Encodable {
 
 struct AuthTokenResponse: Decodable {
     let accessToken: String
-    let tokenType: String
+    // Optional: not every auth backend echoes token_type, and a missing field
+    // must not fail the whole login decode (left the whole response undecodable
+    // -> login silently failed with currentUser nil).
+    let tokenType: String?
     let expiresIn: Int
     let expiresAt: Int?
     let refreshToken: String
