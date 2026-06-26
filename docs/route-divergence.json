@@ -64,8 +64,6 @@
   ],
   "missingEdge": [
     "accessories",
-    "accounts-payable",
-    "accounts-receivable",
     "ai",
     "ai-analytics",
     "approvals",
@@ -142,6 +140,8 @@
     "user-assignments"
   ],
   "proxied": [
+    "accounts-payable",
+    "accounts-receivable",
     "activities",
     "api-keys",
     "billing",

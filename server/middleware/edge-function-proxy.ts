@@ -362,6 +362,15 @@ export function registerEdgeFunctionProxy(app: any) {
     // /api/client-metrics/* stays on Express (routes-client-monitoring.ts).
     '/api/monitoring-clients': 'monitoring-clients',
 
+    // EDGE-005a: accounts-payable / accounts-receivable. The frontend calls the
+    // FLAT /api/accounts-{payable,receivable}[/:id] shape (list/create at root,
+    // get/update/delete on /:id). The edge handlers were rewritten to serve that
+    // shape against the canonical accounts_payable / accounts_receivable tables.
+    // Dev forwards to the singular account-* function dirs (prod aliases the
+    // plural segment in server.ts), so dev matches prod.
+    '/api/accounts-payable': 'account-payable',
+    '/api/accounts-receivable': 'account-receivable',
+
     // EDGE-005c: phone-in-tickets. The search-companies/search-contacts/
     // equipment sub-routes the PhoneInTicketCreator calls were ported into the
     // phone-in-tickets edge fn (previously Express-only under the legacy
