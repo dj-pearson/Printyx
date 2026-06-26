@@ -7995,3 +7995,57 @@ POSTed columns the DB silently ignores, and status/preferred were always undefin
 - client/src/pages/VendorManagement.tsx (re-bound to real schema; preferred removed)
 - docs/typecheck-baseline.json (3795 -> 3741)
 - prd.json (QUALITY-002 notes: BATCH 7), progress.txt, CLAUDE.md
+
+Iteration 10 (06/26/2026 13:29:10): Story QUALITY-002
+Status: Needs Review
+
+Iteration (06/26/2026): Story QUALITY-002 — BATCH 8 (MeterReadings.tsx phantom-shape fix)
+Status: Needs Review (QUALITY-002 stays passes=false — ratchet batch, not green yet)
+
+### What shipped
+Fixed client/src/pages/MeterReadings.tsx (41 tsc errors -> 0). The page was built
+against a PHANTOM shape that does not match the real meter_readings / equipment
+tables (shared/schema.ts:1733 meter_readings, :1633 equipment):
+  page used:    blackMeter, colorMeter, equipment.model, equipment.locationId,
+                a (non-exported) `Location` type, a /api/locations join
+  real cols:    bwMeterReading, colorMeterReading, blackCopies, colorCopies,
+                equipment.modelNumber, equipment.locationDescription (free-text,
+                NO location FK)
+The Express GET (/api/meter-readings, routes-products-crud.ts:1587) returns raw
+snake_case rows (SELECT *), so against live data the page rendered BLANK meter
+cells and the create form POSTed phantom column names the server schema strips
+(latent runtime bug, not just a type error).
+
+### Fix (schema-faithful)
+- queryFn normalization re-bound to real camelCase columns (bw_meter_reading ->
+  bwMeterReading, color_meter_reading -> colorMeterReading, equipment
+  location_description -> locationDescription, etc.).
+- Form: field names blackMeter/colorMeter -> bwMeterReading/colorMeterReading;
+  CreateMeterReadingInput now = insertMeterReadingSchema.omit({tenantId:true,
+  createdBy:true}).extend(...) (both injected server-side) — prior bare extend kept
+  required tenantId/createdBy the form never supplies.
+- Added value={field.value ?? ''} / ?? undefined to nullable Inputs/Textarea/Selects
+  (cleared the TS2322 cluster).
+- Removed the phantom /api/locations query + `Location` import. Equipment has no
+  location FK, so the Location FILTER options are now derived from the distinct
+  equipment.locationDescription values (feature kept, against real data); the card
+  + equipment-select location displays use locationDescription directly.
+
+### Verification
+- Full tsc --noEmit: 3741 -> 3700 (-41); MeterReadings.tsx 41 -> 0; zero new errors
+  elsewhere (canonical regex-match count).
+- docs/typecheck-baseline.json tightened 3741 -> 3700 (ratchet stays green).
+- Prettier applied; eslint ignores client/ (config) -> 0 lint errors.
+- npm run build remains pre-existing-broken (@sentry/react absent from node_modules);
+  type-only change verified via tsc/ratchet per the established QUALITY-002 method.
+
+### Known debt (separate story, NOT in scope)
+- Server POST /api/meter-readings calls insertMeterReadingSchema.parse, which requires
+  createdBy (notNull, not omitted) — the route never injects it, so creates 500 until
+  the route defaults createdBy. The frontend now posts correct column names (strict
+  improvement), but the server-side createdBy injection is a separate fix.
+
+### Files
+- client/src/pages/MeterReadings.tsx (re-bound to real schema; locations removed)
+- docs/typecheck-baseline.json (3741 -> 3700)
+- prd.json (QUALITY-002 notes: BATCH 8), progress.txt, CLAUDE.md

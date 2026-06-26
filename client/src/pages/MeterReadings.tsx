@@ -48,17 +48,20 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertMeterReadingSchema } from '@shared/schema';
-import type { MeterReading, Equipment, Contract, Location } from '@shared/schema';
+import type { MeterReading, Equipment, Contract } from '@shared/schema';
 import { z } from 'zod';
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 
-const createMeterReadingSchema = insertMeterReadingSchema.extend({
-  readingDate: z.string(),
-  photoUrl: z.string().optional(),
-});
+// tenantId + createdBy are injected server-side; the form never supplies them.
+const createMeterReadingSchema = insertMeterReadingSchema
+  .omit({ tenantId: true, createdBy: true })
+  .extend({
+    readingDate: z.string(),
+    photoUrl: z.string().optional(),
+  });
 
 type CreateMeterReadingInput = z.infer<typeof createMeterReadingSchema>;
 
@@ -138,17 +141,22 @@ export default function MeterReadings() {
       const qs = params.toString();
       const path = `/api/meter-readings${qs ? `?${qs}` : ''}`;
       const response = await apiRequest(path, 'GET');
+      // The Express route returns raw snake_case rows (SELECT *); normalize to the
+      // camelCase Drizzle column names the page renders against.
       return (response || []).map((reading: any) => ({
         ...reading,
         id: reading.id,
-        equipmentId: reading.equipmentId || reading.equipmentId || '',
-        contractId: reading.contractId || reading.contractId || null,
-        readingDate: reading.reading_date || reading.readingDate || '',
-        blackMeter: reading.black_meter || reading.blackMeter || 0,
-        colorMeter: reading.color_meter || reading.colorMeter || 0,
-        collectionMethod: reading.collection_method || reading.collectionMethod || 'manual',
-        createdAt: reading.createdAt || reading.createdAt || '',
-        updatedAt: reading.updatedAt || reading.updatedAt || '',
+        equipmentId: reading.equipment_id ?? reading.equipmentId ?? '',
+        contractId: reading.contract_id ?? reading.contractId ?? null,
+        readingDate: reading.reading_date ?? reading.readingDate ?? '',
+        bwMeterReading: reading.bw_meter_reading ?? reading.bwMeterReading ?? 0,
+        colorMeterReading: reading.color_meter_reading ?? reading.colorMeterReading ?? 0,
+        blackCopies: reading.black_copies ?? reading.blackCopies ?? 0,
+        colorCopies: reading.color_copies ?? reading.colorCopies ?? 0,
+        collectionMethod: reading.collection_method ?? reading.collectionMethod ?? 'manual',
+        notes: reading.notes ?? reading.reading_notes ?? null,
+        createdAt: reading.created_at ?? reading.createdAt ?? null,
+        updatedAt: reading.updated_at ?? reading.updatedAt ?? null,
       }));
     },
   });
@@ -160,12 +168,13 @@ export default function MeterReadings() {
       return (response || []).map((equip: any) => ({
         ...equip,
         id: equip.id,
-        serialNumber: equip.serialNumber || equip.serialNumber || '',
-        modelNumber: equip.modelNumber || equip.modelNumber || '',
-        customerId: equip.customerId || equip.customerId || '',
-        locationId: equip.locationId || equip.locationId || null,
-        installDate: equip.install_date || equip.installDate || null,
-        createdAt: equip.createdAt || equip.createdAt || '',
+        serialNumber: equip.serial_number ?? equip.serialNumber ?? '',
+        modelNumber: equip.model_number ?? equip.modelNumber ?? '',
+        manufacturer: equip.manufacturer ?? '',
+        customerId: equip.customer_id ?? equip.customerId ?? '',
+        locationDescription: equip.location_description ?? equip.locationDescription ?? null,
+        installDate: equip.install_date ?? equip.installDate ?? null,
+        createdAt: equip.created_at ?? equip.createdAt ?? null,
       }));
     },
   });
@@ -183,25 +192,23 @@ export default function MeterReadings() {
     },
   });
 
-  const { data: locations } = useQuery<Location[]>({
-    queryKey: ['/api/locations'],
-    queryFn: async () => {
-      const response = await apiRequest('/api/locations', 'GET');
-      return (response || []).map((location: any) => ({
-        ...location,
-        id: location.id,
-        customerId: location.customerId || location.customerId || '',
-        createdAt: location.createdAt || location.createdAt || '',
-      }));
-    },
-  });
+  // Equipment links to a location only by free-text `locationDescription` (there is
+  // no location FK on the equipment table), so location filter options are derived
+  // from the distinct descriptions present on the equipment list.
+  const locationOptions = useMemo(() => {
+    const set = new Set<string>();
+    (equipment || []).forEach((eq) => {
+      if (eq.locationDescription) set.add(eq.locationDescription);
+    });
+    return Array.from(set).sort();
+  }, [equipment]);
 
   const form = useForm<CreateMeterReadingInput>({
     resolver: zodResolver(createMeterReadingSchema),
     defaultValues: {
       readingDate: new Date().toISOString().split('T')[0],
-      blackMeter: 0,
-      colorMeter: 0,
+      bwMeterReading: 0,
+      colorMeterReading: 0,
       collectionMethod: 'manual',
       notes: '',
       photoUrl: '',
@@ -221,24 +228,24 @@ export default function MeterReadings() {
 
   // Calculate deltas
   const blackDelta = useMemo(() => {
-    const current = form.watch('blackMeter');
+    const current = form.watch('bwMeterReading');
     if (!previousReading || !current) return 0;
-    return current - previousReading.blackMeter;
-  }, [form.watch('blackMeter'), previousReading]);
+    return current - (previousReading.bwMeterReading ?? 0);
+  }, [form.watch('bwMeterReading'), previousReading]);
 
   const colorDelta = useMemo(() => {
-    const current = form.watch('colorMeter');
+    const current = form.watch('colorMeterReading');
     if (!previousReading || !current) return 0;
-    return current - previousReading.colorMeter;
-  }, [form.watch('colorMeter'), previousReading]);
+    return current - (previousReading.colorMeterReading ?? 0);
+  }, [form.watch('colorMeterReading'), previousReading]);
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateMeterReadingInput) =>
       apiRequest('/api/meter-readings', 'POST', {
         ...data,
         readingDate: new Date(data.readingDate),
-        blackMeter: parseInt((data.blackMeter || 0).toString()),
-        colorMeter: parseInt((data.colorMeter || 0).toString()),
+        bwMeterReading: parseInt((data.bwMeterReading || 0).toString()),
+        colorMeterReading: parseInt((data.colorMeterReading || 0).toString()),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/meter-readings'] });
@@ -268,13 +275,12 @@ export default function MeterReadings() {
 
   const getEquipmentName = (equipmentId: string) => {
     const eq = equipment?.find((e) => e.id === equipmentId);
-    return eq ? `${eq.manufacturer} ${eq.model} (${eq.serialNumber})` : 'Unknown Equipment';
+    return eq ? `${eq.manufacturer} ${eq.modelNumber} (${eq.serialNumber})` : 'Unknown Equipment';
   };
 
-  const getEquipmentLocation = (equipmentId: string) => {
+  const getEquipmentLocation = (equipmentId: string): string | null => {
     const eq = equipment?.find((e) => e.id === equipmentId);
-    if (!eq?.locationId) return null;
-    return locations?.find((l) => l.id === eq.locationId);
+    return eq?.locationDescription ?? null;
   };
 
   const getContractNumber = (contractId: string) => {
@@ -321,7 +327,7 @@ export default function MeterReadings() {
     if (selectedLocation !== 'all') {
       filtered = filtered.filter((r) => {
         const eq = equipment?.find((e) => e.id === r.equipmentId);
-        return eq?.locationId === selectedLocation;
+        return eq?.locationDescription === selectedLocation;
       });
     }
 
@@ -354,7 +360,7 @@ export default function MeterReadings() {
 
     const search = equipmentSearch.toLowerCase();
     return equipment.filter((eq) => {
-      const name = `${eq.manufacturer} ${eq.model} ${eq.serialNumber}`.toLowerCase();
+      const name = `${eq.manufacturer} ${eq.modelNumber} ${eq.serialNumber}`.toLowerCase();
       return name.includes(search);
     });
   }, [equipment, equipmentSearch]);
@@ -485,25 +491,23 @@ export default function MeterReadings() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent className="max-h-[300px]">
-                              {filteredEquipment.map((eq) => {
-                                const location = locations?.find((l) => l.id === eq.locationId);
-                                return (
-                                  <SelectItem
-                                    key={eq.id}
-                                    value={eq.id}
-                                    className="min-h-[44px] touch-manipulation"
-                                  >
-                                    <div className="flex flex-col">
-                                      <span>
-                                        {eq.manufacturer} {eq.model}
-                                      </span>
-                                      <span className="text-xs text-gray-500">
-                                        {eq.serialNumber} {location ? `• ${location.name}` : ''}
-                                      </span>
-                                    </div>
-                                  </SelectItem>
-                                );
-                              })}
+                              {filteredEquipment.map((eq) => (
+                                <SelectItem
+                                  key={eq.id}
+                                  value={eq.id}
+                                  className="min-h-[44px] touch-manipulation"
+                                >
+                                  <div className="flex flex-col">
+                                    <span>
+                                      {eq.manufacturer} {eq.modelNumber}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      {eq.serialNumber}{' '}
+                                      {eq.locationDescription ? `• ${eq.locationDescription}` : ''}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -519,7 +523,7 @@ export default function MeterReadings() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-base">Contract *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                           <FormControl>
                             <SelectTrigger className="min-h-[44px] touch-manipulation text-base">
                               <SelectValue placeholder="Select contract" />
@@ -554,13 +558,13 @@ export default function MeterReadings() {
                         <div>
                           <p className="text-gray-600">Black & White</p>
                           <p className="font-semibold text-lg">
-                            {previousReading.blackMeter.toLocaleString()}
+                            {(previousReading.bwMeterReading ?? 0).toLocaleString()}
                           </p>
                         </div>
                         <div>
                           <p className="text-gray-600">Color</p>
                           <p className="font-semibold text-lg">
-                            {previousReading.colorMeter.toLocaleString()}
+                            {(previousReading.colorMeterReading ?? 0).toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -600,7 +604,7 @@ export default function MeterReadings() {
                   <div className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="blackMeter"
+                      name="bwMeterReading"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-base">Black & White Meter *</FormLabel>
@@ -610,6 +614,7 @@ export default function MeterReadings() {
                               inputMode="numeric"
                               pattern="[0-9]*"
                               {...field}
+                              value={field.value ?? ''}
                               onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                               className="min-h-[56px] text-2xl font-semibold touch-manipulation"
                               placeholder="0"
@@ -634,7 +639,7 @@ export default function MeterReadings() {
 
                     <FormField
                       control={form.control}
-                      name="colorMeter"
+                      name="colorMeterReading"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-base">Color Meter *</FormLabel>
@@ -644,6 +649,7 @@ export default function MeterReadings() {
                               inputMode="numeric"
                               pattern="[0-9]*"
                               {...field}
+                              value={field.value ?? ''}
                               onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                               className="min-h-[56px] text-2xl font-semibold touch-manipulation"
                               placeholder="0"
@@ -720,7 +726,7 @@ export default function MeterReadings() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-base">Collection Method</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                           <FormControl>
                             <SelectTrigger className="min-h-[44px] touch-manipulation text-base">
                               <SelectValue />
@@ -753,6 +759,7 @@ export default function MeterReadings() {
                         <FormControl>
                           <Textarea
                             {...field}
+                            value={field.value ?? ''}
                             placeholder="Additional notes about this reading..."
                             className="min-h-[100px] touch-manipulation text-base resize-none"
                           />
@@ -828,7 +835,7 @@ export default function MeterReadings() {
                         value={eq.id}
                         className="min-h-[44px] touch-manipulation"
                       >
-                        {eq.manufacturer} {eq.model}
+                        {eq.manufacturer} {eq.modelNumber}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -846,13 +853,9 @@ export default function MeterReadings() {
                     <SelectItem value="all" className="min-h-[44px] touch-manipulation">
                       All Locations
                     </SelectItem>
-                    {locations?.map((loc) => (
-                      <SelectItem
-                        key={loc.id}
-                        value={loc.id}
-                        className="min-h-[44px] touch-manipulation"
-                      >
-                        {loc.name}
+                    {locationOptions.map((loc) => (
+                      <SelectItem key={loc} value={loc} className="min-h-[44px] touch-manipulation">
+                        {loc}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -931,7 +934,7 @@ export default function MeterReadings() {
                         {location && (
                           <span className="flex items-center gap-1">
                             <MapPin className="w-3 h-3" />
-                            {location.name}
+                            {location}
                           </span>
                         )}
                         <span className="hidden sm:inline">•</span>
@@ -942,7 +945,7 @@ export default function MeterReadings() {
                       </CardDescription>
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                      {getCollectionMethodBadge(reading.collectionMethod)}
+                      {getCollectionMethodBadge(reading.collectionMethod ?? 'manual')}
                       {overdue && (
                         <Badge variant="destructive" className="text-xs">
                           <AlertCircle className="w-3 h-3 mr-1" />
@@ -962,7 +965,7 @@ export default function MeterReadings() {
                           Black & White
                         </p>
                         <p className="font-bold text-lg sm:text-xl mt-1">
-                          {reading.blackMeter.toLocaleString()}
+                          {(reading.bwMeterReading ?? 0).toLocaleString()}
                         </p>
                         {(reading.blackCopies || 0) > 0 && (
                           <p className="text-xs text-green-600 font-medium mt-1">
@@ -977,7 +980,7 @@ export default function MeterReadings() {
                       <div className="min-w-0">
                         <p className="text-xs sm:text-sm text-gray-600 font-medium">Color</p>
                         <p className="font-bold text-lg sm:text-xl mt-1">
-                          {reading.colorMeter.toLocaleString()}
+                          {(reading.colorMeterReading ?? 0).toLocaleString()}
                         </p>
                         {(reading.colorCopies || 0) > 0 && (
                           <p className="text-xs text-blue-600 font-medium mt-1">
@@ -991,7 +994,9 @@ export default function MeterReadings() {
                   {/* Contract Info */}
                   <div className="text-sm text-gray-600 px-3">
                     Contract:{' '}
-                    <span className="font-medium">{getContractNumber(reading.contractId)}</span>
+                    <span className="font-medium">
+                      {getContractNumber(reading.contractId ?? '')}
+                    </span>
                   </div>
 
                   {/* Notes */}
