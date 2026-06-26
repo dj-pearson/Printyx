@@ -5,18 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import {
-  Building2,
-  Plus,
-  Search,
-  Phone,
-  Mail,
-  MapPin,
-  Edit,
-  Trash2,
-  Star,
-  StarOff,
-} from 'lucide-react';
+import { Building2, Plus, Search, Phone, Mail, MapPin, Edit, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -47,36 +36,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import type { Vendor } from '@shared/schema';
+import { insertVendorSchema, type Vendor } from '@shared/schema';
 
-// Form schema for vendor creation/editing
-const vendorSchema = z.object({
-  vendorNumber: z.string().min(1, 'Vendor number is required'),
-  companyName: z.string().min(1, 'Company name is required'),
-  displayName: z.string().optional(),
-  contactPerson: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email().optional().or(z.literal('')),
-  website: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zipCode: z.string().optional(),
-  country: z.string().default('US'),
-  taxId: z.string().optional(),
-  paymentTerms: z.string().default('Net 30'),
-  currency: z.string().default('USD'),
-  creditLimit: z.string().optional(),
-  vendorType: z.string().min(1, 'Vendor type is required'),
-  category: z.string().optional(),
-  accountNumber: z.string().optional(),
-  status: z.string().default('active'),
-  preferred: z.boolean().default(false),
-  bankName: z.string().optional(),
-  accountHolder: z.string().optional(),
-  routingNumber: z.string().optional(),
-  bankAccountNumber: z.string().optional(),
-});
+// Form schema for vendor creation/editing — derived from the real `vendors`
+// table so the form binds only to columns that actually exist (tenantId is
+// injected server-side).
+const vendorSchema = insertVendorSchema.omit({ tenantId: true });
 
 type VendorFormData = z.infer<typeof vendorSchema>;
 
@@ -87,38 +52,30 @@ export default function Vendors() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: vendors = [], isLoading } = useQuery({
+  const { data: vendors = [], isLoading } = useQuery<Vendor[]>({
     queryKey: ['/api/vendors'],
   });
 
   const form = useForm<VendorFormData>({
     resolver: zodResolver(vendorSchema),
     defaultValues: {
-      vendorNumber: '',
-      companyName: '',
-      displayName: '',
-      contactPerson: '',
+      vendorName: '',
+      primaryContactName: '',
       phone: '',
+      fax: '',
       email: '',
       website: '',
-      address: '',
+      addressLine1: '',
+      addressLine2: '',
       city: '',
       state: '',
       zipCode: '',
-      country: 'US',
       taxId: '',
       paymentTerms: 'Net 30',
-      currency: 'USD',
       creditLimit: '',
-      vendorType: '',
-      category: '',
       accountNumber: '',
-      status: 'active',
-      preferred: false,
-      bankName: '',
-      accountHolder: '',
-      routingNumber: '',
-      bankAccountNumber: '',
+      isActive: true,
+      vendorNotes: '',
     },
   });
 
@@ -196,31 +153,23 @@ export default function Vendors() {
     if (vendor) {
       setEditingVendor(vendor);
       form.reset({
-        vendorNumber: vendor.vendorNumber,
-        companyName: vendor.companyName,
-        displayName: vendor.displayName || '',
-        contactPerson: vendor.contactPerson || '',
+        vendorName: vendor.vendorName,
+        primaryContactName: vendor.primaryContactName || '',
         phone: vendor.phone || '',
+        fax: vendor.fax || '',
         email: vendor.email || '',
         website: vendor.website || '',
-        address: vendor.address || '',
+        addressLine1: vendor.addressLine1 || '',
+        addressLine2: vendor.addressLine2 || '',
         city: vendor.city || '',
         state: vendor.state || '',
         zipCode: vendor.zipCode || '',
-        country: vendor.country,
         taxId: vendor.taxId || '',
-        paymentTerms: vendor.paymentTerms,
-        currency: vendor.currency,
+        paymentTerms: vendor.paymentTerms || 'Net 30',
         creditLimit: vendor.creditLimit || '',
-        vendorType: vendor.vendorType,
-        category: vendor.category || '',
         accountNumber: vendor.accountNumber || '',
-        status: vendor.status,
-        preferred: vendor.preferred,
-        bankName: vendor.bankName || '',
-        accountHolder: vendor.accountHolder || '',
-        routingNumber: vendor.routingNumber || '',
-        bankAccountNumber: vendor.bankAccountNumber || '',
+        isActive: vendor.isActive ?? true,
+        vendorNotes: vendor.vendorNotes || '',
       });
     } else {
       setEditingVendor(null);
@@ -238,17 +187,17 @@ export default function Vendors() {
   };
 
   const handleDelete = (vendor: Vendor) => {
-    if (confirm(`Are you sure you want to delete ${vendor.companyName}?`)) {
+    if (confirm(`Are you sure you want to delete ${vendor.vendorName}?`)) {
       deleteVendorMutation.mutate(vendor.id);
     }
   };
 
   const filteredVendors = vendors.filter(
     (vendor: Vendor) =>
-      vendor.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vendor.vendorNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (vendor.contactPerson &&
-        vendor.contactPerson.toLowerCase().includes(searchTerm.toLowerCase())),
+      vendor.vendorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      vendor.accountNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (vendor.primaryContactName &&
+        vendor.primaryContactName.toLowerCase().includes(searchTerm.toLowerCase())),
   );
 
   if (isLoading) {
@@ -298,12 +247,16 @@ export default function Vendors() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="vendorNumber"
+                      name="vendorName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Vendor Number *</FormLabel>
+                          <FormLabel>Vendor Name *</FormLabel>
                           <FormControl>
-                            <Input placeholder="V-001" {...field} />
+                            <Input
+                              placeholder="Acme Supplies Inc."
+                              {...field}
+                              value={field.value ?? ''}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -311,62 +264,12 @@ export default function Vendors() {
                     />
                     <FormField
                       control={form.control}
-                      name="companyName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Company Name *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Acme Supplies Inc." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="displayName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Display Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Acme Supplies" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="vendorType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Vendor Type *</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select vendor type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="supplier">Supplier</SelectItem>
-                              <SelectItem value="manufacturer">Manufacturer</SelectItem>
-                              <SelectItem value="distributor">Distributor</SelectItem>
-                              <SelectItem value="service-provider">Service Provider</SelectItem>
-                              <SelectItem value="contractor">Contractor</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="contactPerson"
+                      name="primaryContactName"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Contact Person</FormLabel>
                           <FormControl>
-                            <Input placeholder="John Smith" {...field} />
+                            <Input placeholder="John Smith" {...field} value={field.value ?? ''} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -379,7 +282,28 @@ export default function Vendors() {
                         <FormItem>
                           <FormLabel>Phone</FormLabel>
                           <FormControl>
-                            <Input placeholder="(555) 123-4567" {...field} />
+                            <Input
+                              placeholder="(555) 123-4567"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="fax"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fax</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="(555) 123-4568"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -392,7 +316,11 @@ export default function Vendors() {
                         <FormItem>
                           <FormLabel>Email</FormLabel>
                           <FormControl>
-                            <Input placeholder="contact@acmesupplies.com" {...field} />
+                            <Input
+                              placeholder="contact@acmesupplies.com"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -405,7 +333,11 @@ export default function Vendors() {
                         <FormItem>
                           <FormLabel>Website</FormLabel>
                           <FormControl>
-                            <Input placeholder="https://acmesupplies.com" {...field} />
+                            <Input
+                              placeholder="https://acmesupplies.com"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -418,16 +350,29 @@ export default function Vendors() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="address"
+                        name="addressLine1"
                         render={({ field }) => (
                           <FormItem className="md:col-span-2">
-                            <FormLabel>Address</FormLabel>
+                            <FormLabel>Address Line 1</FormLabel>
                             <FormControl>
-                              <Textarea
-                                placeholder="123 Main Street, Suite 100"
-                                className="resize-none"
+                              <Input
+                                placeholder="123 Main Street"
                                 {...field}
+                                value={field.value ?? ''}
                               />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="addressLine2"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Address Line 2</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Suite 100" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -440,7 +385,7 @@ export default function Vendors() {
                           <FormItem>
                             <FormLabel>City</FormLabel>
                             <FormControl>
-                              <Input placeholder="New York" {...field} />
+                              <Input placeholder="New York" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -453,7 +398,7 @@ export default function Vendors() {
                           <FormItem>
                             <FormLabel>State</FormLabel>
                             <FormControl>
-                              <Input placeholder="NY" {...field} />
+                              <Input placeholder="NY" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -466,20 +411,7 @@ export default function Vendors() {
                           <FormItem>
                             <FormLabel>ZIP Code</FormLabel>
                             <FormControl>
-                              <Input placeholder="10001" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="country"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Country</FormLabel>
-                            <FormControl>
-                              <Input placeholder="US" {...field} />
+                              <Input placeholder="10001" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -498,7 +430,11 @@ export default function Vendors() {
                           <FormItem>
                             <FormLabel>Tax ID</FormLabel>
                             <FormControl>
-                              <Input placeholder="12-3456789" {...field} />
+                              <Input
+                                placeholder="12-3456789"
+                                {...field}
+                                value={field.value ?? ''}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -510,7 +446,7 @@ export default function Vendors() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Payment Terms</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value ?? ''}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue />
@@ -530,48 +466,12 @@ export default function Vendors() {
                       />
                       <FormField
                         control={form.control}
-                        name="currency"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Currency</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="USD">USD</SelectItem>
-                                <SelectItem value="EUR">EUR</SelectItem>
-                                <SelectItem value="GBP">GBP</SelectItem>
-                                <SelectItem value="CAD">CAD</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
                         name="creditLimit"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Credit Limit</FormLabel>
                             <FormControl>
-                              <Input placeholder="10000.00" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="category"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Category</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Office Supplies" {...field} />
+                              <Input placeholder="10000.00" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -584,7 +484,7 @@ export default function Vendors() {
                           <FormItem>
                             <FormLabel>Account Number</FormLabel>
                             <FormControl>
-                              <Input placeholder="ACC-12345" {...field} />
+                              <Input placeholder="ACC-12345" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -595,47 +495,44 @@ export default function Vendors() {
 
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Settings</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="status"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Status</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="inactive">Inactive</SelectItem>
-                                <SelectItem value="pending">Pending</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="preferred"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">Preferred Vendor</FormLabel>
-                              <div className="text-sm text-muted-foreground">
-                                Mark as a preferred vendor for priority ordering
-                              </div>
+                    <FormField
+                      control={form.control}
+                      name="vendorNotes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notes</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Additional vendor notes…"
+                              className="resize-none"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="isActive"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel className="text-base">Active</FormLabel>
+                            <div className="text-sm text-muted-foreground">
+                              Inactive vendors are hidden from ordering workflows
                             </div>
-                            <FormControl>
-                              <Switch checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value ?? true}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
                   <div className="flex justify-end space-x-2 pt-4">
@@ -675,26 +572,24 @@ export default function Vendors() {
                   <div className="flex items-center space-x-2">
                     <Building2 className="h-5 w-5 text-gray-400" />
                     <div>
-                      <CardTitle className="text-lg">{vendor.companyName}</CardTitle>
-                      <p className="text-sm text-gray-500">#{vendor.vendorNumber}</p>
+                      <CardTitle className="text-lg">{vendor.vendorName}</CardTitle>
+                      {vendor.accountNumber && (
+                        <p className="text-sm text-gray-500">#{vendor.accountNumber}</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center space-x-1">
-                    {vendor.preferred && <Star className="h-4 w-4 text-yellow-500 fill-current" />}
-                    <Badge variant={vendor.status === 'active' ? 'default' : 'secondary'}>
-                      {vendor.status}
+                    <Badge variant={vendor.isActive ? 'default' : 'secondary'}>
+                      {vendor.isActive ? 'Active' : 'Inactive'}
                     </Badge>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <Badge variant="outline" className="text-xs">
-                    {vendor.vendorType}
-                  </Badge>
-                  {vendor.contactPerson && (
+                  {vendor.primaryContactName && (
                     <div className="flex items-center text-sm text-gray-600">
-                      <span className="font-medium">{vendor.contactPerson}</span>
+                      <span className="font-medium">{vendor.primaryContactName}</span>
                     </div>
                   )}
                   {vendor.phone && (

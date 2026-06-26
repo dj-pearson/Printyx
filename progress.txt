@@ -8092,3 +8092,49 @@ were implicit-any.
 - client/src/pages/PlatformAnalytics.tsx (typed the 5 useQuery responses)
 - docs/typecheck-baseline.json (3700 -> 3668)
 - prd.json (QUALITY-002 notes: BATCH 9), progress.txt, CLAUDE.md
+
+Iteration 2 (06/26/2026 14:14:54): Story QUALITY-002
+Status: Needs Review
+
+---
+
+## Iteration - QUALITY-002 BATCH 10 (Vendors.tsx phantom-shape fix)
+**Completed**: 2026-06-26
+
+### What Was Done
+Fixed client/src/pages/Vendors.tsx (30 errors -> 0). Same phantom-shape pattern as
+BATCH 7 (VendorManagement.tsx): the page was built against a vendor shape
+(vendorNumber/companyName/displayName/contactPerson/address/country/currency/
+vendorType/category/status/preferred + a whole banking section
+bankName/accountHolder/routingNumber/bankAccountNumber) that does NOT exist on the
+real `vendors` table (shared/schema.ts:2115 — real cols: vendorName/
+primaryContactName/addressLine1/addressLine2/city/state/zipCode/phone/fax/email/
+website/paymentTerms/taxId/accountNumber/creditLimit/isActive/vendorNotes).
+Since /api/vendors (storage.getVendors/createVendor) reads/writes the real Drizzle
+table, this was a LATENT RUNTIME BUG: list cards rendered blank names (#vendorNumber
+undefined), the create/edit form POSTed columns the DB silently drops, status/
+preferred/vendorType always undefined.
+
+Fix (mirrors BATCH 7):
+- Replaced the hand-written z.object form schema with
+  insertVendorSchema.omit({ tenantId: true }); VendorFormData = z.infer of that.
+- useQuery<Vendor[]> (was untyped -> `vendors` was unknown, TS18046).
+- Re-bound every form field + card render to real columns; added
+  value={field.value ?? ''} on each nullable Input/Textarea/Select.
+- REMOVED features with no backing column: vendorNumber, displayName, vendorType,
+  currency, category, the Preferred toggle (+Star/StarOff imports), and the entire
+  banking section. status select -> isActive Switch (Active/Inactive). Added a
+  vendorNotes Textarea. Card #id now shows accountNumber when present.
+
+### Verification
+- Full tsc --noEmit: 3668 -> 3638 (-30); Vendors.tsx 30 -> 0; no new errors
+  elsewhere (every TS code category dropped or held; canonical scripts/check-types.mjs).
+- docs/typecheck-baseline.json tightened 3668 -> 3638 (ratchet re-verified green).
+- Prettier applied; eslint ignores client/ pages -> 0 lint.
+- npm run build remains pre-existing-broken (@sentry/react absent from node_modules);
+  type-only/runtime-faithful change verified via tsc/ratchet per QUALITY-002 method.
+
+### Files
+- client/src/pages/Vendors.tsx (re-bound to real vendors schema)
+- docs/typecheck-baseline.json (3668 -> 3638)
+- prd.json (QUALITY-002 notes: BATCH 10), progress.txt, CLAUDE.md
