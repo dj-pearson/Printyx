@@ -8289,3 +8289,42 @@ only stageId). Those keys were silently dropped at runtime (deals w/o amount/own
 
 Iteration 7 (06/26/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 15: client untyped-useQuery burndown (-75)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+
+### What/why
+5 admin/dashboard pages used `useQuery({queryKey})` with no generic -> `data` was `{}`,
+so every `data?.field` read was TS2339 (+ TS7006 on .map/.slice callbacks). BATCH 9/12
+recipe: type the QUERY, not each read.
+- AdminHub.tsx (16): + AdminOverviewStats interface; guarded `(stats?.criticalAlerts ?? 0) > 0`.
+- admin/UserManagement.tsx (12) + admin/TenantManagement.tsx (12): small optional
+  string|number stats interface; list query typed `any[]` (rows read via existing
+  `(row: any)` callbacks -> faithful + zero risk).
+- admin/DatabaseUpdaterPage.tsx (17): page ALREADY had a matching DatabaseUpdaterStatus
+  interface -> just applied it.
+- RootAdminDashboard.tsx (18): page ALREADY had SystemOverview/TenantMetrics/SecurityAlert/
+  SystemResource interfaces. (First I added a DUPLICATE SystemOverview -> 24 TS2687/TS2717;
+  removed the dup and wired all 4 queries to the existing domain interfaces -> real-typed,
+  better than any[].)
+
+LESSON: grep the page before adding an interface — these pages often already define the
+exact shape (from their original mock-data version) and just never passed it to useQuery<T>.
+
+### Verification
+- Ratchet 2987 -> 2912 (-75). All 5 files 0 errors.
+- `comm` on file+line+col+code: ZERO genuinely-new error locations.
+- Type-only, zero runtime change (|| 0 / || 'Loading...' / || defaultOverview fallbacks
+  already null-tolerate). Baseline tightened 2987 -> 2912.
+- prettier applied; client/ eslint-ignored; build pre-existing-broken (@sentry/react).
+
+### Files
+- client/src/pages/AdminHub.tsx, client/src/pages/admin/UserManagement.tsx,
+  client/src/pages/admin/TenantManagement.tsx, client/src/pages/admin/DatabaseUpdaterPage.tsx,
+  client/src/pages/RootAdminDashboard.tsx
+- docs/typecheck-baseline.json (2987 -> 2912)
+- prd.json (QUALITY-002 notes: BATCH 15), progress.txt
+
+Iteration 8 (06/26/2026): Story QUALITY-002
+Status: Needs Review

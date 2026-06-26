@@ -26,17 +26,28 @@ import { Building2, Users, DollarSign, Activity, Plus, Edit, Trash2, Eye } from 
 import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/main-layout';
 
+interface TenantStats {
+  totalTenants?: string | number;
+  tenantGrowth?: string | number;
+  activeUsers?: string | number;
+  userGrowth?: string | number;
+  totalRevenue?: string | number;
+  revenueGrowth?: string | number;
+  conversionRate?: string | number;
+  conversionTrend?: string | number;
+}
+
 export default function TenantManagement() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedTenant, setSelectedTenant] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: tenants } = useQuery({
+  const { data: tenants } = useQuery<any[]>({
     queryKey: ['/api/admin/tenants'],
   });
 
-  const { data: tenantStats } = useQuery({
+  const { data: tenantStats } = useQuery<TenantStats>({
     queryKey: ['/api/admin/tenant-stats'],
   });
 

@@ -26,17 +26,28 @@ import { Users, UserPlus, UserCheck, UserX, Shield, Eye, Edit, Trash2 } from 'lu
 import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/main-layout';
 
+interface UserStats {
+  totalUsers?: string | number;
+  userGrowth?: string | number;
+  activeUsers?: string | number;
+  activeRate?: string | number;
+  suspendedUsers?: string | number;
+  suspendedRate?: string | number;
+  adminUsers?: string | number;
+  adminPercentage?: string | number;
+}
+
 export default function UserManagement() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedTenant, setSelectedTenant] = useState('all');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: users } = useQuery({
+  const { data: users } = useQuery<any[]>({
     queryKey: ['/api/admin/users', selectedTenant],
   });
 
-  const { data: userStats } = useQuery({
+  const { data: userStats } = useQuery<UserStats>({
     queryKey: ['/api/admin/user-stats'],
   });
 

@@ -99,25 +99,25 @@ export default function RootAdminDashboard() {
   const [selectedTimeRange, setSelectedTimeRange] = useState('24h');
 
   // Fetch real system overview data
-  const { data: systemOverview, isLoading: overviewLoading } = useQuery({
+  const { data: systemOverview, isLoading: overviewLoading } = useQuery<SystemOverview>({
     queryKey: ['/api/root-admin/overview'],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Fetch real tenant metrics
-  const { data: tenantMetrics, isLoading: tenantsLoading } = useQuery({
+  const { data: tenantMetrics, isLoading: tenantsLoading } = useQuery<TenantMetrics[]>({
     queryKey: ['/api/root-admin/tenants'],
     refetchInterval: 60000, // Refresh every minute
   });
 
   // Fetch real security alerts
-  const { data: securityAlerts, isLoading: alertsLoading } = useQuery({
+  const { data: securityAlerts, isLoading: alertsLoading } = useQuery<SecurityAlert[]>({
     queryKey: ['/api/root-admin/security-alerts'],
     refetchInterval: 15000, // Refresh every 15 seconds
   });
 
   // Fetch real system resources
-  const { data: systemResources, isLoading: resourcesLoading } = useQuery({
+  const { data: systemResources, isLoading: resourcesLoading } = useQuery<SystemResource[]>({
     queryKey: ['/api/root-admin/system-resources'],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
