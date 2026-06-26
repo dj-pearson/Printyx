@@ -119,6 +119,20 @@ await serve(
       functionName = 'account-receivable';
     }
 
+    // EDGE-005f: three frontend prefixes whose dir name differs from the URL.
+    //  - /api/deployment/{readiness,metrics} live in the deployment-readiness fn.
+    //  - /api/integration-hub/dashboard lives in the integrations fn.
+    //  - /api/public/calculator/* is the unauthenticated marketing calculator;
+    //    only the `calculator` sub-path is aliased so other future /public/*
+    //    prefixes keep resolving on their own.
+    if (functionName === 'deployment') {
+      functionName = 'deployment-readiness';
+    } else if (functionName === 'integration-hub') {
+      functionName = 'integrations';
+    } else if (functionName === 'public' && subPath[0] === 'calculator') {
+      functionName = 'public-calculator';
+    }
+
     if (!functionName || !functions[functionName]) {
       return new Response(
         JSON.stringify({

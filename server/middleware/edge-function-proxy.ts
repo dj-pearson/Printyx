@@ -379,6 +379,17 @@ export function registerEdgeFunctionProxy(app: any) {
     // prod (functions-direct, where server.ts resolves the `signatures` dir).
     '/api/signatures': 'signatures',
 
+    // EDGE-005f: three alias targets whose frontend prefix differs from the
+    // edge function dir name (prod resolves them via server.ts route overrides).
+    //  - /api/deployment/{readiness,metrics} → deployment-readiness fn.
+    //  - /api/integration-hub/dashboard → integrations fn (/dashboard handler).
+    //  - /api/public/calculator/* → public-calculator fn (UNAUTHENTICATED
+    //    marketing calculator; pathPrefix re-adds the /calculator segment the
+    //    mount strips so the dispatcher sees /calculator/<sub>).
+    '/api/deployment': 'deployment-readiness',
+    '/api/integration-hub': 'integrations',
+    '/api/public/calculator': { fn: 'public-calculator', pathPrefix: '/calculator' },
+
     // EDGE-005c: phone-in-tickets. The search-companies/search-contacts/
     // equipment sub-routes the PhoneInTicketCreator calls were ported into the
     // phone-in-tickets edge fn (previously Express-only under the legacy

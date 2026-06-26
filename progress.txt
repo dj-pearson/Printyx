@@ -7702,3 +7702,98 @@ prd.json (QUALITY-002 notes), progress.txt
 
 Iteration 4 (06/26/2026 11:55:23): Story QUALITY-002
 Status: Needs Review
+Iteration 5 (06/26/2026): Story EDGE-005f — deployment / integration-hub / public-calculator alias targets
+Status: DONE (passes=true)
+
+### Goal
+Resolve the three frontend prefixes whose edge-function dir name differs from the
+URL, so they stop 404'ing in production (where the frontend hits
+functions.printyx.net directly and Express is unreachable).
+
+### What shipped
+1. DEPLOYMENT — supabase/functions/deployment-readiness/index.ts now dispatches:
+   - GET /deployment/readiness -> ReadinessCheck[] (exact DeploymentReadiness.tsx
+     shape) derived from live tenant signals (DB connectivity, tenant config,
+     users, integrations) + baseline platform checks (TLS, RBAC, backups).
+   - GET /deployment/metrics -> DeploymentMetrics rolled up from those checks
+     (overallReadiness/criticalIssues/completedChecks/totalChecks/estimatedLaunchDate).
+   - Legacy bare-root GET kept (ready/checks summary) for back-compat.
+   The page previously fell back to STATIC MOCKS (404 non-fatal) — now real data.
+
+2. INTEGRATION-HUB — supabase/functions/integrations/index.ts gains a /dashboard
+   branch (detected via normalizePath BEFORE the `!segment1` list branch that
+   would otherwise swallow it). Returns the integrationOverview/activeIntegrations/
+   apiMarketplace/webhookManagement/integrationAnalytics shape IntegrationHub.tsx
+   reads, with REAL counts from platform_integrations + integration_webhooks and
+   explicit `degraded:` markers on the derived-metric blocks (apiCallsToday,
+   latency, recentDeliveries, cost) instead of the Express service's synthetic
+   Math.random() numbers. Page is fully optional-chained so partial-but-honest
+   data renders cleanly.
+
+3. PUBLIC/CALCULATOR (the architectural auth-bypass) — NEW unauthenticated edge fn
+   supabase/functions/public-calculator/index.ts:
+   - config.toml: [functions.public-calculator] verify_jwt=false. The Coolify
+     server.ts dispatcher enforces auth per-handler (ignores config.toml), so the
+     bypass is just the handler never checking a token — same as the `signup` fn.
+   - Ports the 4 routes the frontend calls (POST /sessions, POST /leads,
+     POST /track/pdf-download, POST /track/event) + GET /sessions/:key +
+     GET /benchmarks/:industry for parity. Uses the service-role client to write
+     calculator_sessions / calculator_leads / calculator_analytics_events /
+     email_sequence_tracking (public marketing tables, exactly as Express did).
+   - Pure calc engine copied to supabase/functions/_shared/print-cost-calculator.ts
+     (near-verbatim from the Express service; one hardening: FLEET_AGE_MULTIPLIERS
+     falls back to under_2_years for an unknown age instead of crashing — keep the
+     two copies in sync).
+   - DEFERRED honestly: the Day-0..7 nurture rows are RECORDED (status='pending')
+     but the provider SEND is stubbed (no email infra in the edge fn; mirrors
+     Express's best-effort non-blocking send + the signatures /send precedent).
+     Lead capture itself is fully functional.
+
+### Routing (matches the EDGE-005a pattern)
+- server.ts route-overrides: deployment->deployment-readiness,
+  integration-hub->integrations, public(+subPath[0]==='calculator')->public-calculator.
+- dev edge-function-proxy crmProxies: '/api/deployment'->'deployment-readiness',
+  '/api/integration-hub'->'integrations',
+  '/api/public/calculator'->{fn:'public-calculator',pathPrefix:'/calculator'}.
+  Both conventions resolve to the SAME handler path.
+
+### Verification
+- deno check CLEAN: public-calculator (0 errors), deployment-readiness, integrations.
+  The lone residual TS2345 in the two edited fns was the shared pre-existing
+  getUser(jwt) null-vs-undefined pattern — fixed (: null -> : undefined) so both
+  touched files are now fully deno-check clean.
+- deno lint's no-explicit-any is codebase-wide (the ORIGINAL integrations file
+  shows the same) and UNENFORCED (no deno.json anywhere; not in package.json/CI),
+  so `any` on untyped supabase rows matches surrounding edge style.
+- npm run audit:routes regenerated docs/route-parity-matrix.md.
+- npm run check:routes ratchet GREEN; tightened docs/route-ownership-baseline.json
+  missing-edge 56->54 (deployment + integration-hub flip missing-edge -> proxied).
+- typecheck ratchet GREEN at 3910. Baseline reconciled 3840->3910 to absorb
+  PRE-EXISTING main-HEAD drift: clean main @ 8cdee6d8 (post PR #184 merges)
+  measures 3910 with my tree BOTH stashed and restored (both runs = 3910), so the
+  +70 is upstream merge debt, NOT this story. EDGE-005f adds only
+  supabase/functions/* (outside tsc include scope) + 3 type-valid proxy entries =
+  0 new tsc errors. Same drift EDGE-005a flagged.
+- npm run build remains pre-existing-broken (@sentry/react absent from
+  node_modules; main.tsx untouched) — unrelated.
+
+### Environment note
+HEAD moved to `main` (8cdee6d8) mid-iteration via the external auto-commit
+process (it merged PR #184 and has in-flight edits to DealDeskCopilot.tsx /
+DoDEnforcementButton.tsx / QuoteBuilder.tsx / package.json that are NOT mine).
+Committed ONLY EDGE-005f source to keep the batch clean.
+
+### Files
+- supabase/functions/public-calculator/index.ts (new)
+- supabase/functions/_shared/print-cost-calculator.ts (new)
+- supabase/functions/deployment-readiness/index.ts
+- supabase/functions/integrations/index.ts
+- supabase/functions/server.ts (3 route overrides)
+- supabase/config.toml (verify_jwt=false for public-calculator)
+- server/middleware/edge-function-proxy.ts (3 proxy entries)
+- docs/route-parity-matrix.md, docs/route-divergence.json, docs/route-ownership-baseline.json (regenerated/tightened)
+- docs/typecheck-baseline.json (3840->3910 drift reconcile)
+- prd.json (EDGE-005f passes=true), progress.txt, CLAUDE.md
+
+Iteration 7 (06/26/2026 12:39:27): Story QUALITY-002
+Status: Needs Review

@@ -23,3 +23,10 @@ verify_jwt = false
 # Current user profile/role endpoint
 verify_jwt = true
 
+[functions.public-calculator]
+# EDGE-005f: public marketing print-cost calculator (lead capture). No JWT —
+# the page is anonymous. The Coolify server.ts dispatcher enforces auth
+# per-handler (it ignores this file); this entry keeps the native Supabase
+# runtime in sync. The handler itself performs no token verification.
+verify_jwt = false
+
