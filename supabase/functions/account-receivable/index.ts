@@ -1,4 +1,5 @@
 // Account Receivable Edge Function
+<<<<<<< HEAD
 // Handles accounts receivable (customer invoices) management.
 //
 // URL contract (EDGE-005a): the frontend (client/src/pages/AccountsReceivable.tsx)
@@ -12,10 +13,30 @@
 // Canonical table: `accounts_receivable` (shared/schema.ts) — columns match the
 // frontend form fields. (The previous implementation queried the E-Automate
 // `invoices` table with nested /summary, /aging, ... URLs the frontend never called.)
+=======
+// Flat CRUD over the canonical `accounts_receivable` table.
+//
+// EDGE-005a: the frontend (client/src/pages/AccountsReceivable.tsx) calls the FLAT
+// prefix /api/accounts-receivable:
+//   GET    /api/accounts-receivable        → list
+//   POST   /api/accounts-receivable        → create
+//   PATCH  /api/accounts-receivable/:id    → update
+// In production that resolves to functions.printyx.net/accounts-receivable
+// (getApiUrl strips /api/); server.ts route-overrides map the `accounts-receivable`
+// segment to THIS function (dir name is singular `account-receivable`) then strips
+// it, so the handler sees a flat path. In dev the edge-function-proxy forwards the
+// same way. normalizePath makes us robust to either calling convention.
+//
+// The old handlers queried `invoices`/`payments`/`ar_reminders`/`ar_write_offs` —
+// a different data model the AccountsReceivable page never read. The canonical
+// table is `accounts_receivable` (see shared/schema.ts), which the legacy Express
+// handler (server/routes-products-crud.ts → storage.getAccountsReceivable) used.
+>>>>>>> 7f72da4c (feat(edge): flat-URL parity for accounts-payable/receivable (EDGE-005a))
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { normalizePath } from '../_shared/path.ts';
 
+<<<<<<< HEAD
 // Snake_case → camelCase so the frontend (which reads camelCase keys directly,
 // e.g. ar.totalAmount / ar.balanceAmount) renders without a transformer. The
 // frontend's "reference number" maps to the sales_order_number column, so echo it
@@ -44,6 +65,42 @@ function isMissingTableError(error: { code?: string; message?: string } | null):
 }
 
 const pick = <T>(...vals: T[]): T | undefined => vals.find((v) => v !== undefined);
+=======
+const pick = <T>(v: T | undefined): T | undefined =>
+  v === undefined || v === null ? undefined : v;
+
+// Map an incoming (camelCase or snake_case) body to real accounts_receivable
+// columns. Frontend-only fields with no column (priority, referenceNumber) are
+// intentionally dropped so they can't trigger a PostgREST "column not found".
+function toArColumns(body: Record<string, any>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const set = (col: string, val: unknown) => {
+    if (val !== undefined) out[col] = val;
+  };
+  set('customer_id', pick(body.customerId ?? body.customer_id));
+  set('invoice_number', pick(body.invoiceNumber ?? body.invoice_number));
+  set('contract_id', pick(body.contractId ?? body.contract_id));
+  set('sales_order_number', pick(body.salesOrderNumber ?? body.sales_order_number));
+  set('invoice_date', pick(body.invoiceDate ?? body.invoice_date));
+  set('due_date', pick(body.dueDate ?? body.due_date));
+  set('description', pick(body.description));
+  set('subtotal', pick(body.subtotal));
+  set('tax_amount', pick(body.taxAmount ?? body.tax_amount));
+  set('total_amount', pick(body.totalAmount ?? body.total_amount));
+  set('paid_amount', pick(body.paidAmount ?? body.paid_amount));
+  set('balance_amount', pick(body.balanceAmount ?? body.balance_amount));
+  set('status', pick(body.status));
+  set('invoice_type', pick(body.invoiceType ?? body.invoice_type));
+  set('category', pick(body.category));
+  set('payment_terms', pick(body.paymentTerms ?? body.payment_terms));
+  set('payment_method', pick(body.paymentMethod ?? body.payment_method));
+  set('last_payment_date', pick(body.lastPaymentDate ?? body.last_payment_date));
+  set('follow_up_date', pick(body.followUpDate ?? body.follow_up_date));
+  set('collection_notes', pick(body.collectionNotes ?? body.collection_notes));
+  set('days_overdue', pick(body.daysOverdue ?? body.days_overdue));
+  return out;
+}
+>>>>>>> 7f72da4c (feat(edge): flat-URL parity for accounts-payable/receivable (EDGE-005a))
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -51,7 +108,7 @@ export default async function handler(req: Request) {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const jwt = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
     const supabase = createSupabaseClient(req);
     const {
@@ -75,6 +132,7 @@ export default async function handler(req: Request) {
     }
 
     const admin = createSupabaseServiceClient();
+<<<<<<< HEAD
     const url = new URL(req.url);
     const { parts } = normalizePath(url.pathname, 'account-receivable');
     const resource = parts[0]; // '' (list/create), 'summary', or an invoice id
@@ -158,11 +216,71 @@ export default async function handler(req: Request) {
       if (customerId) query = query.eq('customer_id', customerId);
 
       const { data: invoices, error, count } = await query;
+=======
+    const { parts } = normalizePath(new URL(req.url).pathname, 'account-receivable');
+    const arId = parts[0];
+
+    // GET /accounts-receivable - list
+    if (req.method === 'GET' && !arId) {
+      const { data, error } = await admin
+        .from('accounts_receivable')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('due_date', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching accounts receivable:', error);
+        return createCorsResponse({ error: 'Failed to fetch accounts receivable' }, 500, req);
+      }
+      return createCorsResponse(data || [], 200, req);
+    }
+
+    // GET /accounts-receivable/:id - single
+    if (req.method === 'GET' && arId) {
+      const { data, error } = await admin
+        .from('accounts_receivable')
+        .select('*')
+        .eq('id', arId)
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (error || !data) {
+        return createCorsResponse({ error: 'Account receivable not found' }, 404, req);
+      }
+      return createCorsResponse(data, 200, req);
+    }
+
+    // POST /accounts-receivable - create
+    if (req.method === 'POST' && !arId) {
+      const body = await req.json();
+      const cols = toArColumns(body);
+
+      // invoice_type is NOT NULL with no DB default; the AR form doesn't expose it.
+      if (cols.invoice_type === undefined) cols.invoice_type = 'standard';
+      // balance_amount is NOT NULL; default to total - paid when omitted.
+      if (cols.balance_amount === undefined) {
+        const total = Number(cols.total_amount ?? 0);
+        const paid = Number(cols.paid_amount ?? 0);
+        cols.balance_amount = total - paid;
+      }
+      if (cols.paid_amount === undefined) cols.paid_amount = 0;
+
+      const { data, error } = await admin
+        .from('accounts_receivable')
+        .insert({
+          ...cols,
+          tenant_id: tenantId,
+          created_by: user.id,
+        })
+        .select()
+        .single();
+>>>>>>> 7f72da4c (feat(edge): flat-URL parity for accounts-payable/receivable (EDGE-005a))
 
       if (error && isMissingTableError(error)) {
         return createCorsResponse({ data: [], total: 0 }, 200, req);
       }
       if (error) {
+<<<<<<< HEAD
         console.error('Error fetching accounts receivable:', error);
         return createCorsResponse({ error: 'Failed to fetch accounts receivable' }, 500, req);
       }
@@ -250,8 +368,42 @@ export default async function handler(req: Request) {
       if (error) {
         console.error('Error creating invoice:', error);
         return createCorsResponse({ error: 'Failed to create invoice' }, 500, req);
+=======
+        console.error('Error creating account receivable:', error);
+        return createCorsResponse(
+          { error: 'Failed to create account receivable', detail: error.message },
+          500,
+          req,
+        );
       }
+      return createCorsResponse(data, 201, req);
+    }
 
+    // PATCH / PUT /accounts-receivable/:id - update
+    if ((req.method === 'PATCH' || req.method === 'PUT') && arId) {
+      const body = await req.json();
+      const cols = toArColumns(body);
+
+      const { data, error } = await admin
+        .from('accounts_receivable')
+        .update({ ...cols, updated_at: new Date().toISOString() })
+        .eq('id', arId)
+        .eq('tenant_id', tenantId)
+        .select()
+        .single();
+
+      if (error || !data) {
+        return createCorsResponse(
+          { error: 'Failed to update account receivable', detail: error?.message },
+          error ? 500 : 404,
+          req,
+        );
+>>>>>>> 7f72da4c (feat(edge): flat-URL parity for accounts-payable/receivable (EDGE-005a))
+      }
+      return createCorsResponse(data, 200, req);
+    }
+
+<<<<<<< HEAD
       return createCorsResponse(toCamelRow(invoice), 201, req);
     }
 
@@ -314,6 +466,20 @@ export default async function handler(req: Request) {
       }
 
       return createCorsResponse({ success: true, message: 'Invoice deleted' }, 200, req);
+=======
+    // DELETE /accounts-receivable/:id
+    if (req.method === 'DELETE' && arId) {
+      const { error } = await admin
+        .from('accounts_receivable')
+        .delete()
+        .eq('id', arId)
+        .eq('tenant_id', tenantId);
+
+      if (error) {
+        return createCorsResponse({ error: 'Failed to delete account receivable' }, 500, req);
+      }
+      return createCorsResponse({ success: true, message: 'Account receivable deleted' }, 200, req);
+>>>>>>> 7f72da4c (feat(edge): flat-URL parity for accounts-payable/receivable (EDGE-005a))
     }
 
     return createCorsResponse({ error: 'Endpoint not found' }, 404, req);

@@ -7795,5 +7795,85 @@ Committed ONLY EDGE-005f source to keep the batch clean.
 - docs/typecheck-baseline.json (3840->3910 drift reconcile)
 - prd.json (EDGE-005f passes=true), progress.txt, CLAUDE.md
 
+<<<<<<< HEAD
 Iteration 7 (06/26/2026 12:39:27): Story QUALITY-002
 Status: Needs Review
+=======
+Iteration 5 (06/26/2026 12:21:12): Story QUALITY-002
+Status: Needs Review
+
+Iteration 6 (06/26/2026): Story EDGE-005a — accounts-payable + accounts-receivable flat URL parity
+Status: DONE (passes=true)
+
+### Goal
+Make the AccountsPayable/AccountsReceivable pages work in production. Frontend
+calls the flat plural prefixes /api/accounts-{payable,receivable} (list, POST,
+PATCH /:id); the edge fn dirs are singular account-{payable,receivable} and they
+served nested /bills + /summary sub-paths against the WRONG tables.
+
+### Root cause (bigger than a URL mismatch)
+Both edge fns queried tables the frontend never reads:
+  - account-payable    → bills / bill_line_items / bill_payments
+  - account-receivable → invoices / payments / ar_reminders / ar_write_offs
+The canonical tables are accounts_payable / accounts_receivable (shared/schema.ts),
+which the legacy Express handler (server/routes-products-crud.ts →
+storage.getAccountsPayable/Receivable) already used. So the edge fns weren't just
+mis-routed — they were pointed at a different data model.
+
+### Strategy: (a) REFACTOR to flat URLs, NOT (b) pathPrefix alias
+The AC suggested a proxy pathPrefix '/bills' alias. That ONLY works in dev. In
+prod the frontend hits functions.printyx.net/accounts-payable DIRECTLY
+(config.ts getApiUrl strips /api/), and server.ts strips the function-name
+segment, so the handler receives a FLAT path ('/' or '/:id') with no '/bills' to
+inject. Flat-URL handlers are the only approach giving true dev=prod parity.
+
+### What shipped
+- Rewrote supabase/functions/account-payable/index.ts and account-receivable/
+  index.ts as flat CRUD over the canonical tables:
+    GET /            → list (bare array; frontend uses extractRecords)
+    GET /:id         → single
+    POST /           → create
+    PATCH|PUT /:id   → update (frontend uses PATCH; both accepted)
+    DELETE /:id      → delete
+  normalizePath(pathname, 'account-{payable,receivable}') resolves the resource id
+  at parts[0] under either calling convention (Coolify strip OR native runtime).
+- Body mappers (toApColumns/toArColumns) translate camelCase + snake_case → REAL
+  columns only; unknown keys are dropped so a stray alias can't cause a PGRST204
+  "column not found". AR specifically drops frontend-only priority/referenceNumber
+  (no column) and defaults invoice_type='standard' (NOT NULL, AR form omits it).
+  Both default balance_amount = total - paid and paid_amount = 0 when omitted
+  (balance_amount is NOT NULL).
+- Removed the dead summary/aging/collection-queue/pay/approve/write-off handlers —
+  repo grep confirms the ONLY callers are AccountsPayable.tsx + AccountsReceivable.tsx.
+
+### Routing (EDGE-005f pattern)
+- server.ts route-overrides: accounts-payable→account-payable,
+  accounts-receivable→account-receivable (plural URL segment → singular fn dir).
+- dev edge-function-proxy: plain (no pathPrefix) entries
+  '/api/accounts-payable'→'account-payable', '/api/accounts-receivable'→
+  'account-receivable'. Plain (not pathPrefix) is correct because the handlers
+  are flat — dev and prod land the same flat path.
+
+### Verification
+- deno check CLEAN on both fns.
+- npm run audit:routes: AP + AR flip missing-edge → proxied.
+- npm run check:routes ratchet GREEN. Tightened docs/route-ownership-baseline.json:
+  removed accounts-payable/accounts-receivable from missingEdge. The same
+  --update-baseline reclassified deal-desk-copilot missingEdge→bothDivergent —
+  that is UPSTREAM debt from US-SUPER-008 (commit 8e5bf53f added a deal-desk-copilot
+  edge fn without a proxy entry), NOT this story; recorded so the guard is honest.
+- typecheck ratchet holds 3910 (edge-function-proxy.ts edit = 2 type-valid Record
+  entries → 0 new tsc errors; the fns are outside tsc include scope).
+- edge-function-proxy unit suite 33/33 green.
+- npm run build remains pre-existing-broken (@sentry/react absent from node_modules)
+  — unrelated to this story.
+
+### Files
+- supabase/functions/account-payable/index.ts (rewritten)
+- supabase/functions/account-receivable/index.ts (rewritten)
+- supabase/functions/server.ts (2 route overrides)
+- server/middleware/edge-function-proxy.ts (2 proxy entries)
+- docs/route-parity-matrix.md, docs/route-divergence.json (regenerated)
+- docs/route-ownership-baseline.json (tightened: AP/AR resolved; deal-desk-copilot reclassified)
+- prd.json (EDGE-005a passes=true), progress.txt, CLAUDE.md
+>>>>>>> 7f72da4c (feat(edge): flat-URL parity for accounts-payable/receivable (EDGE-005a))
