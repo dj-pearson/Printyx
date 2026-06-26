@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 
 interface DoDEnforcementButtonProps {
   recordId: string;
@@ -42,15 +43,23 @@ export default function DoDEnforcementButton({
     setValidationState('checking');
 
     try {
-      const response = await fetch(`/api/validate/${validationType}/${recordId}`, {
-        headers: {
-          'x-tenant-id': localStorage.getItem('currentTenantId') || '',
-        },
-      });
+      // Use apiRequest (NOT raw fetch): it rewrites the URL to the edge function
+      // base and injects the Bearer token. A bare `fetch('/api/validate/...')`
+      // hit the static site in prod and got index.html back, so `.json()` threw
+      // "Unexpected token '<'". apiRequest returns parsed JSON directly.
+      const result = await apiRequest(`/api/validate/${validationType}/${recordId}`, 'GET');
 
-      const result = await response.json();
+      // The edge fn returns errors as objects ({ field, message, ... }); older
+      // callers expected strings. Normalize either shape to a string list.
+      const errorMessages: string[] = Array.isArray(result?.errors)
+        ? result.errors.map((e: unknown) =>
+            typeof e === 'string'
+              ? e
+              : ((e as { message?: string })?.message ?? 'Validation failed'),
+          )
+        : [];
 
-      if (result.valid) {
+      if (result?.valid) {
         setValidationState('passed');
         setValidationErrors([]);
         // Brief success indication then proceed
@@ -60,11 +69,11 @@ export default function DoDEnforcementButton({
         }, 500);
       } else {
         setValidationState('failed');
-        setValidationErrors(result.errors || ['Validation failed']);
+        setValidationErrors(errorMessages.length ? errorMessages : ['Validation failed']);
 
         // Show validation errors in alert
         const errorMessage =
-          result.errors?.join('\n') || 'Please complete all required fields before proceeding.';
+          errorMessages.join('\n') || 'Please complete all required fields before proceeding.';
         alert(`Cannot proceed:\n\n${errorMessage}`);
 
         // Reset state after showing error

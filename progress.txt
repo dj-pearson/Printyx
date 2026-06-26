@@ -7795,11 +7795,10 @@ Committed ONLY EDGE-005f source to keep the batch clean.
 - docs/typecheck-baseline.json (3840->3910 drift reconcile)
 - prd.json (EDGE-005f passes=true), progress.txt, CLAUDE.md
 
-<<<<<<< HEAD
-Iteration 7 (06/26/2026 12:39:27): Story QUALITY-002
-Status: Needs Review
-=======
 Iteration 5 (06/26/2026 12:21:12): Story QUALITY-002
+Status: Needs Review
+
+Iteration 7 (06/26/2026 12:39:27): Story QUALITY-002
 Status: Needs Review
 
 Iteration 6 (06/26/2026): Story EDGE-005a — accounts-payable + accounts-receivable flat URL parity
@@ -7876,4 +7875,6 @@ inject. Flat-URL handlers are the only approach giving true dev=prod parity.
 - docs/route-parity-matrix.md, docs/route-divergence.json (regenerated)
 - docs/route-ownership-baseline.json (tightened: AP/AR resolved; deal-desk-copilot reclassified)
 - prd.json (EDGE-005a passes=true), progress.txt, CLAUDE.md
->>>>>>> 7f72da4c (feat(edge): flat-URL parity for accounts-payable/receivable (EDGE-005a))
+
+Iteration 6 (06/26/2026 12:33:24): Story QUALITY-002
+Status: Needs Review

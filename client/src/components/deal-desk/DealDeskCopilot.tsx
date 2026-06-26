@@ -26,6 +26,14 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+// The Copilot is an advisory, non-blocking sidebar. Its endpoints may be
+// unavailable (the edge fn isn't deployed everywhere, or a gateway returns a
+// transient 5xx). Don't retry and don't fire the global error toast for these
+// queries — failures degrade silently (the drawer hides itself). The thrown
+// errors are `Error("404: …")` with no `.status`, so the global retry guard
+// can't catch them — disable retry here explicitly.
+const COPILOT_QUERY_OPTS = { retry: false as const, onError: () => {} };
+
 // ---------------------------------------------------------------------------
 // API shapes (locally typed)
 // ---------------------------------------------------------------------------
@@ -132,6 +140,7 @@ function PanelError({ message }: { message: string }) {
 function SnapshotPanel({ quoteId }: { quoteId: string }) {
   const { data, isLoading, isError, error } = useQuery<SnapshotResponse>({
     queryKey: [`/api/deal-desk-copilot/${quoteId}/snapshot`],
+    ...COPILOT_QUERY_OPTS,
   });
 
   return (
@@ -257,6 +266,7 @@ function SnapshotPanel({ quoteId }: { quoteId: string }) {
 function SimilarDealsPanel({ quoteId }: { quoteId: string }) {
   const { data, isLoading, isError, error } = useQuery<SimilarDealsResponse>({
     queryKey: [`/api/deal-desk-copilot/${quoteId}/similar-deals`],
+    ...COPILOT_QUERY_OPTS,
   });
 
   return (
@@ -326,6 +336,7 @@ function SimilarDealsPanel({ quoteId }: { quoteId: string }) {
 function MarginPanel({ quoteId }: { quoteId: string }) {
   const { data, isLoading, isError, error } = useQuery<MarginResponse>({
     queryKey: [`/api/deal-desk-copilot/${quoteId}/margin`],
+    ...COPILOT_QUERY_OPTS,
   });
 
   return (
@@ -380,6 +391,7 @@ function MarginPanel({ quoteId }: { quoteId: string }) {
 function ObjectionsPanel({ quoteId }: { quoteId: string }) {
   const { data, isLoading, isError, error } = useQuery<ObjectionsResponse>({
     queryKey: [`/api/deal-desk-copilot/${quoteId}/objections`],
+    ...COPILOT_QUERY_OPTS,
   });
 
   return (
@@ -429,6 +441,17 @@ function ObjectionsPanel({ quoteId }: { quoteId: string }) {
 
 export default function DealDeskCopilot({ quoteId }: { quoteId: string }) {
   const [open, setOpen] = useState(true);
+
+  // Availability probe. The snapshot is the cheapest endpoint and every panel
+  // needs the account to exist, so use it to decide whether the Copilot backend
+  // is reachable at all. Shares SnapshotPanel's query key (deduped → no extra
+  // request). If it errors — the edge fn isn't deployed (404) or the gateway is
+  // down (5xx) — hide the whole drawer rather than render four error panels.
+  const probe = useQuery<SnapshotResponse>({
+    queryKey: [`/api/deal-desk-copilot/${quoteId}/snapshot`],
+    ...COPILOT_QUERY_OPTS,
+  });
+  if (probe.isError) return null;
 
   if (!open) {
     return (
