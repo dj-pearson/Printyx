@@ -8049,3 +8049,46 @@ cells and the create form POSTed phantom column names the server schema strips
 - client/src/pages/MeterReadings.tsx (re-bound to real schema; locations removed)
 - docs/typecheck-baseline.json (3741 -> 3700)
 - prd.json (QUALITY-002 notes: BATCH 8), progress.txt, CLAUDE.md
+
+Iteration 1 (06/26/2026 14:03:21): Story QUALITY-002
+Status: Needs Review
+
+Iteration (06/26/2026): Story QUALITY-002 — BATCH 9 (PlatformAnalytics.tsx untyped-useQuery)
+Status: Needs Review (QUALITY-002 stays passes=false — ratchet batch, not green yet)
+
+### What shipped
+Fixed client/src/pages/PlatformAnalytics.tsx (32 tsc errors -> 0). Classic
+untyped-useQuery cluster: 28 TS2339 ("Property X does not exist on type {}") +
+4 TS7006 implicit-any .map params. The five useQuery calls (revenue/conversion/
+pipeline/performance/growth-trends) passed only a queryKey and no generic, so
+`data` was typed `{}` and every flat-key read (revenueMetrics?.mrr,
+growthTrends?.revenueData, conversionMetrics?.funnelData, etc.) errored; the two
+chart .map callbacks (entry/index on distributionData, stage/index on funnelData)
+were implicit-any.
+
+### Fix (type-only, zero runtime change)
+- Added flat OPTIONAL interfaces capturing exactly the keys the page reads:
+  RevenueMetrics / ConversionMetrics / PipelineMetrics / PerformanceMetrics /
+  GrowthTrends, plus chart-row types RevenueDatum / FunnelDatum /
+  DistributionDatum / SourceDatum.
+- Applied useQuery<T> to each of the five queries; the `|| mock` fallback arrays
+  and the .map params then inferred their types automatically.
+- DATA-CONTRACT NOTE: the platform-analytics edge fn (EDGE-004) returns a NESTED
+  { metrics, counts } shape, NOT the flat keys this page reads, so these reads
+  resolve to undefined and the page keeps falling back to its built-in mock data.
+  That is the existing runtime behavior — typing it flat-optional changes nothing
+  at runtime. The real flat<-nested contract rewrite is a separate story (same gap
+  EDGE-004 flagged for PlatformCustomerSuccess.tsx).
+
+### Verification
+- Full tsc --noEmit: 3700 -> 3668 (-32); PlatformAnalytics.tsx 32 -> 0; no new
+  errors elsewhere (canonical regex-match count via scripts/check-types.mjs).
+- docs/typecheck-baseline.json tightened 3700 -> 3668 (ratchet stays green).
+- Prettier applied (file already conformant); eslint ignores client/ -> 0 lint.
+- npm run build remains pre-existing-broken (@sentry/react absent from node_modules);
+  type-only change verified via tsc/ratchet per established QUALITY-002 method.
+
+### Files
+- client/src/pages/PlatformAnalytics.tsx (typed the 5 useQuery responses)
+- docs/typecheck-baseline.json (3700 -> 3668)
+- prd.json (QUALITY-002 notes: BATCH 9), progress.txt, CLAUDE.md

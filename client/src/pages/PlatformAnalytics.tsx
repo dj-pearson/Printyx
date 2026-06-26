@@ -48,28 +48,97 @@ import {
   AreaChart,
 } from 'recharts';
 
+// Chart row shapes returned (or mocked) for the analytics charts.
+interface RevenueDatum {
+  month: string;
+  mrr: number;
+  arr: number;
+  new: number;
+  expansion: number;
+  churn: number;
+}
+interface FunnelDatum {
+  stage: string;
+  count: number;
+  percentage: number;
+}
+interface DistributionDatum {
+  name: string;
+  value: number;
+  color: string;
+}
+interface SourceDatum {
+  source: string;
+  leads: number;
+  conversions: number;
+  rate: number;
+}
+
+// The page reads these flat keys with `|| mock` fallbacks. The platform-analytics
+// edge fn currently returns a nested `{ metrics, counts }` shape, so most of these
+// resolve to undefined and the page falls back to mock data (a known data-contract
+// gap tracked as a separate story). These interfaces capture the keys the page
+// reads so the file typechecks without changing its runtime behavior.
+interface RevenueMetrics {
+  mrr?: number;
+  mrrGrowth?: number;
+  arr?: number;
+  arrGrowth?: number;
+  activeTenants?: number;
+  tenantGrowth?: number;
+  nrr?: number;
+  nrrChange?: number;
+  grr?: number;
+  arpa?: number;
+  ltv?: number;
+  cac?: number;
+  ltvCacRatio?: number;
+  churnRate?: number;
+  netChurnRate?: number;
+  churnedCustomers?: number;
+  churnMrr?: number;
+}
+interface ConversionMetrics {
+  funnelData?: FunnelDatum[];
+  leadConversionRate?: number;
+}
+interface PipelineMetrics {
+  distributionData?: DistributionDatum[];
+  avgSalesCycle?: number;
+  winRate?: number;
+  totalValue?: number;
+  weightedValue?: number;
+  coverage?: number;
+}
+interface PerformanceMetrics {
+  sourceData?: SourceDatum[];
+}
+interface GrowthTrends {
+  revenueData?: RevenueDatum[];
+}
+
 export default function PlatformAnalytics() {
   const [timeframe, setTimeframe] = useState('30d');
   const [activeTab, setActiveTab] = useState('overview');
 
   // Fetch analytics data
-  const { data: revenueMetrics } = useQuery({
+  const { data: revenueMetrics } = useQuery<RevenueMetrics>({
     queryKey: [`/api/platform-analytics/revenue-metrics?timeframe=${timeframe}`],
   });
 
-  const { data: conversionMetrics } = useQuery({
+  const { data: conversionMetrics } = useQuery<ConversionMetrics>({
     queryKey: [`/api/platform-analytics/conversion-metrics?timeframe=${timeframe}`],
   });
 
-  const { data: pipelineMetrics } = useQuery({
+  const { data: pipelineMetrics } = useQuery<PipelineMetrics>({
     queryKey: [`/api/platform-analytics/pipeline-metrics?timeframe=${timeframe}`],
   });
 
-  const { data: performanceMetrics } = useQuery({
+  const { data: performanceMetrics } = useQuery<PerformanceMetrics>({
     queryKey: [`/api/platform-analytics/performance-metrics?timeframe=${timeframe}`],
   });
 
-  const { data: growthTrends } = useQuery({
+  const { data: growthTrends } = useQuery<GrowthTrends>({
     queryKey: [`/api/platform-analytics/growth-trends?timeframe=${timeframe}`],
   });
 
