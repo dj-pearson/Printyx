@@ -7878,3 +7878,34 @@ inject. Flat-URL handlers are the only approach giving true dev=prod parity.
 
 Iteration 6 (06/26/2026 12:33:24): Story QUALITY-002
 Status: Needs Review
+
+Iteration (06/26/2026): REPO RECOVERY — interrupted pull-rebase left committed conflict markers
+Status: DONE (repo unblocked; no feature story this iteration)
+
+### Situation found
+Session opened mid `git pull --rebase --tags origin main`: local main (9b3050b9:
+EDGE-005f, a LOCAL duplicate EDGE-005a, quote fix) was replaying onto origin/main
+843eb9ef, which had INDEPENDENTLY merged its own EDGE-005a via PR #185 (d1d83111).
+A prior iteration had removed the EDGE-005f doc/log markers in the WORKING TREE but
+never staged/continued (progress.txt log ended "Iteration 7 ... Needs Review").
+33s of sampling showed zero movement -> abandoned, not a live competitor.
+
+### Recovery
+1. Verified the working-tree EDGE-005f resolutions (route-parity-matrix.md,
+   typecheck-baseline.json=3910, progress.txt, auto-merged server.ts +
+   edge-function-proxy.ts) were clean, staged, `rebase --continue`.
+2. EDGE-005a (7f72da4c) replayed as 76468cc9; quote fix conflicted only in
+   progress.txt (append log) -> kept union of entries.
+3. Post-rebase the tree STILL had committed markers (prior iteration had `git add`ed
+   unresolved files): prd.json EDGE-005a `notes` (invalid JSON) +
+   account-{payable,receivable}/index.ts (full duplicate-EDGE-005a collision).
+   Fixed: kept canonical prd.json notes; restored both edge fns to origin/main's
+   merged version (the flat-URL + /summary + camelCase shape CLAUDE.md documents).
+4. Commit 7d0d5116.
+
+### End state (all green)
+Tree marker-free; prd.json valid; tsc ratchet 3855/3910; route-ownership ratchet
+green; local main 4 ahead of origin/main, cleanly fast-forwardable. GOTCHA learned:
+an interrupted `git pull --rebase` here can leave UNRESOLVED markers `git add`ed
+(status shows M, not UU) so they get committed silently — after any rebase recovery,
+`git grep '^<<<<<<<'` the WHOLE tree, don't trust the unmerged (UU) list alone.
