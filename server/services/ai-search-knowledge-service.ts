@@ -866,7 +866,7 @@ Return JSON format:
     );
 
     return Object.entries(tagCounts)
-      .sort(([, a], [, b]) => b - a)
+      .sort(([, a], [, b]) => Number(b) - Number(a))
       .slice(0, 8)
       .map(([tag]) => tag);
   }

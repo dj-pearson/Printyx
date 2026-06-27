@@ -868,7 +868,7 @@ export default function WorkflowAutomation() {
                       <div className="text-2xl font-bold text-orange-900">
                         {formatPercentage(
                           workflowData.rulesEngine.ruleCategories.reduce(
-                            (acc, cat) => acc + cat.performance,
+                            (acc: number, cat: any) => acc + cat.performance,
                             0,
                           ) / workflowData.rulesEngine.ruleCategories.length,
                         )}

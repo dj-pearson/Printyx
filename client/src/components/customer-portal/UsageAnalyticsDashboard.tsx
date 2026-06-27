@@ -37,7 +37,7 @@ import {
   Target,
   Lightbulb,
 } from 'lucide-react';
-import type { UsageAnalytics } from '../../../shared/customer-portal-schema';
+import type { UsageAnalytics } from '@shared/customer-portal-schema';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Remove local type definition - using shared schema types instead
@@ -117,13 +117,13 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
       ],
 
       // Memoize daily patterns data transformation
-      dailyPatternsData: analytics.peakUsage.dailyPeaks.map((peak) => ({
+      dailyPatternsData: analytics.peakUsage.dailyPeaks.map((peak: any) => ({
         name: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][peak.dayOfWeek],
         value: peak.averageVolume,
       })),
 
       // Memoize hourly patterns data transformation
-      hourlyPatternsData: analytics.peakUsage.hourlyPeaks.map((peak) => ({
+      hourlyPatternsData: analytics.peakUsage.hourlyPeaks.map((peak: any) => ({
         hour: `${peak.hour}:00`,
         volume: peak.averageVolume,
       })),
@@ -476,7 +476,7 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {analytics.equipmentUsage.map((equipment) => (
+                {analytics.equipmentUsage.map((equipment: any) => (
                   <div
                     key={equipment.equipmentId}
                     className="p-4 border rounded-lg space-y-3"
@@ -551,7 +551,7 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
               </CardHeader>
               <CardContent>
                 <BarChart
-                  data={analytics.peakUsage.dailyPeaks.map((peak) => ({
+                  data={analytics.peakUsage.dailyPeaks.map((peak: any) => ({
                     name: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][peak.dayOfWeek],
                     value: peak.averageVolume,
                   }))}
@@ -573,7 +573,7 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
               </CardHeader>
               <CardContent>
                 <LineChart
-                  data={analytics.peakUsage.hourlyPeaks.map((peak) => ({
+                  data={analytics.peakUsage.hourlyPeaks.map((peak: any) => ({
                     hour: `${peak.hour}:00`,
                     volume: peak.averageVolume,
                   }))}
@@ -601,7 +601,7 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {analytics.recommendations.map((rec, index) => (
+                {analytics.recommendations.map((rec: any, index: number) => (
                   <div
                     key={index}
                     className={`p-4 rounded-lg border-l-4 ${

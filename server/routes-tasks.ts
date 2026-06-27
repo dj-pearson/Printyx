@@ -140,7 +140,7 @@ export function registerTaskRoutes(app: Express) {
         userId = assignedTo as string;
       }
 
-      const projects = await storage.getProjects(tenantId, userId);
+      const projects = await storage.getProjects(tenantId);
       res.json(projects);
     } catch (error) {
       log.error('Error fetching projects:', error);
@@ -154,7 +154,7 @@ export function registerTaskRoutes(app: Express) {
       log.info('Creating project - request body:', req.body);
       const tenantId = getTenantId(req);
       const userId = getUserId(req);
-      log.info('Creating project - tenant:', tenantId, 'user:', userId);
+      log.info('Creating project', { tenantId, userId });
 
       // Convert string dates to Date objects and clean up data
       const projectData = { ...req.body };

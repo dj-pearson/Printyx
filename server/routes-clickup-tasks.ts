@@ -413,7 +413,7 @@ async function updateParentTaskProgress(parentTaskId: string) {
 
     // Calculate average completion percentage
     const avgCompletion = Math.round(
-      subtasks.reduce((sum, task) => sum + task.completionPercentage, 0) / subtasks.length,
+      subtasks.reduce((sum, task) => sum + (task.completionPercentage ?? 0), 0) / subtasks.length,
     );
 
     // Determine status based on subtasks

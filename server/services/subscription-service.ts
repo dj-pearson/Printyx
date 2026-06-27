@@ -108,9 +108,9 @@ export class SubscriptionService {
     let trialEndDate = null;
     let currentPeriodEnd = new Date();
 
-    if (startTrial && plan.trialEnabled && plan.trialDays > 0) {
+    if (startTrial && plan.trialEnabled && (plan.trialDays ?? 0) > 0) {
       isTrialing = true;
-      trialEndDate = new Date(now.getTime() + plan.trialDays * 24 * 60 * 60 * 1000);
+      trialEndDate = new Date(now.getTime() + (plan.trialDays ?? 0) * 24 * 60 * 60 * 1000);
       currentPeriodEnd = trialEndDate;
     } else {
       // No trial, set period end based on billing cycle

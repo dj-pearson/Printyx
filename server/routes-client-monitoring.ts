@@ -432,13 +432,15 @@ async function sendNotificationAlerts(
           })
           .where(eq(customerNotifications.id, notificationId));
 
-        log.info(
-          '[EMAIL NOTIFICATION] Email sent successfully:',
+        log.info('[EMAIL NOTIFICATION] Email sent successfully:', {
           notificationId,
-          emailResult.messageId,
-        );
+          messageId: emailResult.messageId,
+        });
       } else {
-        log.error('[EMAIL NOTIFICATION] Email failed to send:', notificationId, emailResult.error);
+        log.error('[EMAIL NOTIFICATION] Email failed to send:', {
+          notificationId,
+          error: emailResult.error,
+        });
       }
     }
 
@@ -468,9 +470,15 @@ async function sendNotificationAlerts(
           })
           .where(eq(customerNotifications.id, notificationId));
 
-        log.info('[SMS NOTIFICATION] SMS sent successfully:', notificationId, smsResult.messageId);
+        log.info('[SMS NOTIFICATION] SMS sent successfully:', {
+          notificationId,
+          messageId: smsResult.messageId,
+        });
       } else {
-        log.error('[SMS NOTIFICATION] SMS failed to send:', notificationId, smsResult.error);
+        log.error('[SMS NOTIFICATION] SMS failed to send:', {
+          notificationId,
+          error: smsResult.error,
+        });
       }
     }
 
@@ -1798,12 +1806,10 @@ export function registerClientMonitoringRoutes(app: Express) {
           }),
         );
 
-        log.info(
-          '[SUPPLY ORDER ITEMS] Created items:',
-          orderItems.length,
-          'Subtotal:',
-          subtotal.toFixed(2),
-        );
+        log.info('[SUPPLY ORDER ITEMS] Created items:', {
+          count: orderItems.length,
+          subtotal: subtotal.toFixed(2),
+        });
 
         // Create notification for customer and send email/SMS
         let emailSent = false;

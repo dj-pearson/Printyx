@@ -241,7 +241,7 @@ export class EmailMonitorService {
 
     try {
       // Extract attachments info
-      const attachments = (email.attachments || []).map((att) => ({
+      const attachments = (email.attachments || []).map((att: any) => ({
         filename: att.filename,
         contentType: att.contentType,
         size: att.size,

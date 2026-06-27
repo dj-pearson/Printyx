@@ -413,11 +413,11 @@ export default function WarehouseTeamStatsWidget({
             </div>
             <Progress value={stats?.performance.firstPassYield || 0} className="mt-2 h-2" />
             <p className="text-xs text-muted-foreground mt-2">
-              {stats?.performance.firstPassYield >= 85
+              {(stats?.performance.firstPassYield ?? 0) >= 85
                 ? 'Excellent'
-                : stats?.performance.firstPassYield >= 75
+                : (stats?.performance.firstPassYield ?? 0) >= 75
                   ? 'Good'
-                  : stats?.performance.firstPassYield >= 65
+                  : (stats?.performance.firstPassYield ?? 0) >= 65
                     ? 'Fair'
                     : 'Needs Improvement'}
             </p>

@@ -152,7 +152,7 @@ router.get('/technicians/nearby', async (req: Request, res: Response) => {
 
     // Filter locations within radius
     const nearbyTechnicians = allLocations
-      .map((location) => ({
+      .map((location: any) => ({
         ...location,
         distance: calculateDistance(
           latitude,
@@ -161,8 +161,8 @@ router.get('/technicians/nearby', async (req: Request, res: Response) => {
           parseFloat(location.longitude),
         ),
       }))
-      .filter((location) => location.distance <= radiusMeters)
-      .sort((a, b) => a.distance - b.distance);
+      .filter((location: any) => location.distance <= radiusMeters)
+      .sort((a: any, b: any) => a.distance - b.distance);
 
     res.json(nearbyTechnicians);
   } catch (error) {

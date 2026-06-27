@@ -378,7 +378,7 @@ Format as JSON:
       let score = 50; // Base score
 
       // Check capacity
-      const capacityUtilization = rep.currentActiveLeads / (rep.maxActiveLeads || 50);
+      const capacityUtilization = (rep.currentActiveLeads ?? 0) / (rep.maxActiveLeads || 50);
       if (capacityUtilization < 0.6) {
         score += 20;
         reasons.push('Low workload');

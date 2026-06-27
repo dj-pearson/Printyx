@@ -118,7 +118,7 @@ export default function OnboardingDashboard() {
   const [, setLocation] = useLocation();
 
   // Fetch onboarding checklists
-  const { data: checklists = [], isLoading } = useQuery({
+  const { data: checklists = [], isLoading } = useQuery<OnboardingChecklist[]>({
     queryKey: ['/api/onboarding/checklists'],
   });
 

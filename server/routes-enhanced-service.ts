@@ -101,7 +101,7 @@ router.put(
     } catch (error) {
       log.error('Error updating service request status:', error);
 
-      if (error.message === 'Service request not found') {
+      if (error instanceof Error && error.message === 'Service request not found') {
         return res.status(404).json({
           success: false,
           message: 'Service request not found',

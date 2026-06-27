@@ -626,7 +626,7 @@ export default function CommissionManagement() {
                       <div>
                         <div className="text-sm font-medium mb-2">Commission Tiers</div>
                         <div className="space-y-2">
-                          {plan.tiers.map((tier) => (
+                          {plan.tiers.map((tier: any) => (
                             <div key={tier.tierLevel} className="text-xs bg-gray-50 rounded p-2">
                               <div className="font-medium">{tier.tierName}</div>
                               <div>
@@ -665,7 +665,7 @@ export default function CommissionManagement() {
                       <div>
                         <div className="text-sm font-medium mb-2">Product Rates</div>
                         <div className="space-y-1">
-                          {plan.productRates.slice(0, 3).map((rate, idx) => (
+                          {plan.productRates.slice(0, 3).map((rate: any, idx: number) => (
                             <div key={idx} className="flex justify-between text-xs">
                               <span>{rate.category.replace('_', ' ')}</span>
                               <span>{rate.rate}%</span>

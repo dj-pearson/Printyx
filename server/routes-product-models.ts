@@ -125,7 +125,7 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
         const modelId = req.params.id;
 
         const [model] = await db
@@ -152,7 +152,7 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.CREATE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
 
         const modelData = insertProductModelSchema.parse({
           ...req.body,
@@ -181,7 +181,7 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
         const modelId = req.params.id;
 
         const validatedData = updateProductModelSchema.parse(req.body);
@@ -218,7 +218,7 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.DELETE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
         const modelId = req.params.id;
 
         const [deletedModel] = await db
@@ -245,7 +245,7 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
 
         const categories = await db
           .selectDistinct({ category: productModels.category })
@@ -269,7 +269,7 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
 
         const manufacturers = await db
           .selectDistinct({ manufacturer: productModels.manufacturer })
@@ -296,7 +296,7 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
 
         const lowStockModels = await db
           .select()
@@ -324,7 +324,7 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
 
         const totalModelsResult = await db
           .select({ count: count() })
@@ -379,7 +379,7 @@ export function registerProductModelsRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
 
         const { updates } = bulkStockUpdateSchema.parse(req.body);
 

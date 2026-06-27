@@ -519,7 +519,7 @@ export function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
             <AvatarFallback className="bg-slate-600 text-white font-semibold">
               {user?.name
                 ?.split(' ')
-                .map((n) => n[0])
+                .map((n: string) => n[0])
                 .join('') || 'U'}
             </AvatarFallback>
           </Avatar>

@@ -115,7 +115,7 @@ class AdvancedSchedulingService {
     existingSchedule: any[] = [],
   ): Promise<SchedulingResult> {
     const startTime = Date.now();
-    log.info('🚀 Starting advanced scheduling for', tasks.length, 'tasks...');
+    log.info(`🚀 Starting advanced scheduling for ${tasks.length} tasks...`);
 
     try {
       // Step 1: Analyze user patterns and update learning models
@@ -151,7 +151,7 @@ class AdvancedSchedulingService {
         result: finalResult,
       });
 
-      log.info('✅ Advanced scheduling completed in', duration, 'ms');
+      log.info(`✅ Advanced scheduling completed in ${duration}ms`);
       return finalResult;
     } catch (error) {
       log.error('Advanced scheduling failed:', error);
@@ -252,7 +252,7 @@ Return JSON with updated pattern insights:
 
       log.info(`📊 Updated patterns for user ${userId}:`, patternInsights.insights?.slice(0, 2));
     } catch (error) {
-      log.error('Pattern learning failed for user', userId, ':', error);
+      log.error(`Pattern learning failed for user ${userId}:`, error);
     }
   }
 
@@ -309,7 +309,7 @@ Return JSON with updated pattern insights:
           category: 'time',
           condition: (values) => {
             const slot = values[`task_${task.id}`];
-            return slot ? slot.endTime <= task.dueDate : false;
+            return slot && task.dueDate ? slot.endTime <= task.dueDate : false;
           },
           description: `Task ${task.title} must complete by ${task.dueDate?.toISOString()}`,
         });

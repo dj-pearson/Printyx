@@ -130,7 +130,7 @@ function LeadContactForm({
       });
 
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating lead contact:', error);
       console.error('Error details:', error.response?.data || error.message);
       toast({
@@ -539,7 +539,7 @@ export default function LeadDetailHubspot() {
                       title: 'Success',
                       description: 'Test contact created directly',
                     });
-                  } catch (error) {
+                  } catch (error: any) {
                     console.error('DIRECT API ERROR:', error);
                     alert('ERROR: ' + error.message);
                     toast({

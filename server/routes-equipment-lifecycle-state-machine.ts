@@ -169,7 +169,7 @@ router.get(
       }
 
       // Get current equipment state
-      const { db } = await import('./db/index');
+      const { db } = await import('./db');
       const { equipmentLifecycle } = await import('@shared/schema');
       const { eq, and } = await import('drizzle-orm');
 
@@ -253,7 +253,7 @@ router.get(
       }
 
       // Get current equipment state
-      const { db } = await import('./db/index');
+      const { db } = await import('./db');
       const { equipmentLifecycle } = await import('@shared/schema');
       const { eq, and } = await import('drizzle-orm');
 
@@ -441,7 +441,7 @@ router.get('/api/equipment-lifecycle/stages', async (req: TenantRequest, res: Re
   try {
     const { LIFECYCLE_STAGES } = EquipmentLifecycleStateMachine;
 
-    const stages = Object.entries(LIFECYCLE_STAGES).map(([key, value]) => ({
+    const stages = Object.entries(LIFECYCLE_STAGES).map(([key, value]: [string, string]) => ({
       key,
       value,
       name: value.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),

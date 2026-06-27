@@ -106,7 +106,7 @@ export function CustomerContracts({ customerId, customerName }: CustomerContract
     data: contracts = [],
     isLoading,
     refetch,
-  } = useQuery({
+  } = useQuery<Contract[]>({
     queryKey: ['/api/contracts', 'customer', customerId],
     enabled: !!customerId,
   });

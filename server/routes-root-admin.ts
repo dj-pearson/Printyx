@@ -41,7 +41,7 @@ export const requireRootAdmin = async (req: any, res: any, next: any) => {
     const user = userWithRole[0];
 
     // Check if user has root admin level (7+) or can access all tenants
-    if (user.roleLevel < 7 && !user.canAccessAllTenants) {
+    if ((user.roleLevel ?? 0) < 7 && !user.canAccessAllTenants) {
       return res.status(403).json({
         message: 'Root admin access required - insufficient privileges',
       });
@@ -467,7 +467,11 @@ router.post(
       // Safety check - only allow SELECT queries
       const trimmedQuery = query.trim().toLowerCase();
       if (!trimmedQuery.startsWith('select')) {
-        log.warn('Blocked non-SELECT query attempt', { userId, clientIp, queryPrefix: query.substring(0, 50) });
+        log.warn('Blocked non-SELECT query attempt', {
+          userId,
+          clientIp,
+          queryPrefix: query.substring(0, 50),
+        });
         return res.status(400).json({
           message: 'Only SELECT queries are allowed for security reasons',
         });
@@ -476,7 +480,9 @@ router.post(
       // Block multiple statements (prevent piggyback injection via semicolons)
       // Remove string literals and comments before checking for semicolons
       const withoutStrings = query.replace(/'[^']*'/g, '').replace(/"[^"]*"/g, '');
-      const withoutComments = withoutStrings.replace(/--[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      const withoutComments = withoutStrings
+        .replace(/--[^\n]*/g, '')
+        .replace(/\/\*[\s\S]*?\*\//g, '');
       if (withoutComments.includes(';')) {
         log.warn('Blocked multi-statement query attempt', { userId, clientIp });
         return res.status(400).json({
@@ -485,7 +491,8 @@ router.post(
       }
 
       // Block dangerous SQL keywords that could be injected after SELECT
-      const dangerousKeywords = /\b(INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|DROP\s+|ALTER\s+|CREATE\s+|TRUNCATE\s+|GRANT\s+|REVOKE\s+|EXEC\s*\(|EXECUTE\s+|COPY\s+|pg_read_file|pg_write_file|lo_import|lo_export|pg_sleep|pg_terminate_backend|pg_cancel_backend|set\s+role|set\s+session)\b/i;
+      const dangerousKeywords =
+        /\b(INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM|DROP\s+|ALTER\s+|CREATE\s+|TRUNCATE\s+|GRANT\s+|REVOKE\s+|EXEC\s*\(|EXECUTE\s+|COPY\s+|pg_read_file|pg_write_file|lo_import|lo_export|pg_sleep|pg_terminate_backend|pg_cancel_backend|set\s+role|set\s+session)\b/i;
       if (dangerousKeywords.test(withoutStrings)) {
         log.warn('Blocked query with dangerous keywords', { userId, clientIp });
         return res.status(400).json({
@@ -495,7 +502,9 @@ router.post(
 
       // Enforce server-side row limit (max 1000 rows)
       const MAX_ROWS = 1000;
-      const limitedQuery = /\blimit\b/i.test(withoutComments) ? query : `${query} LIMIT ${MAX_ROWS}`;
+      const limitedQuery = /\blimit\b/i.test(withoutComments)
+        ? query
+        : `${query} LIMIT ${MAX_ROWS}`;
 
       // Audit log: record query execution
       log.info('Root admin SQL query executed', {
@@ -785,12 +794,9 @@ router.get('/security/locked-accounts', async (_req, res) => {
 
     const enriched = locked.map((account) => ({
       ...account,
-      requiresAdminUnlock:
-        account.lockedUntil && account.lockedUntil.getTime() === 0,
+      requiresAdminUnlock: account.lockedUntil && account.lockedUntil.getTime() === 0,
       lockedType:
-        account.lockedUntil && account.lockedUntil.getTime() === 0
-          ? 'permanent'
-          : 'temporary',
+        account.lockedUntil && account.lockedUntil.getTime() === 0 ? 'permanent' : 'temporary',
     }));
 
     res.json({ data: enriched, count: enriched.length });

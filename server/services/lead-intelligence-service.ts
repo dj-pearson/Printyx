@@ -84,7 +84,7 @@ class LeadIntelligenceService {
     const startTime = Date.now();
 
     // Get the lead
-    const lead = await storage.getBusinessRecord(leadId);
+    const lead = await storage.getBusinessRecord(leadId, tenantId);
     if (!lead || lead.tenantId !== tenantId) {
       throw new Error('Lead not found or access denied');
     }
@@ -332,7 +332,7 @@ class LeadIntelligenceService {
     tenantId: string,
     userId?: string,
   ): Promise<EnrichmentResult> {
-    const lead = await storage.getBusinessRecord(leadId);
+    const lead = await storage.getBusinessRecord(leadId, tenantId);
     if (!lead || lead.tenantId !== tenantId) {
       throw new Error('Lead not found or access denied');
     }
@@ -509,7 +509,7 @@ class LeadIntelligenceService {
    * Get comprehensive lead intelligence
    */
   async getLeadIntelligence(leadId: string, tenantId: string): Promise<LeadIntelligence> {
-    const lead = await storage.getBusinessRecord(leadId);
+    const lead = await storage.getBusinessRecord(leadId, tenantId);
     if (!lead || lead.tenantId !== tenantId) {
       throw new Error('Lead not found or access denied');
     }

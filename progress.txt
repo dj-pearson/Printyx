@@ -8575,3 +8575,300 @@ Status: Needs Review
 
 Iteration 26 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 34: routes-customer-portal req.user + survey aggregation (-52)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- routes-customer-portal.ts 54 -> 2 errors. Three clusters:
+  1) 16x TS18048 'req.user' possibly undefined in AuthenticatedRequest handlers -> req.user?.tenantId /
+     req.user?.customerId optional chaining (guards already follow). Added customerId?: string to
+     EnhancedUserContext (set at runtime by requireCustomerPortalAuth) so ?.customerId resolves without TS2339.
+  2) Survey-submission: typed validatedResponses as InsertCustomerSatisfactionSurveyResponse[] (clears
+     TS7034/7005 evolving-any + makes loop element typed); ratingValue guards !== null -> != null (covers
+     undefined); overallScore (decimal col = string) -> String(overallScore) on insert.
+  3) Survey analytics aggregation: the dynamic Object.fromEntries(selectFields) makes every row field a
+     UNION of all column types (incl Date), so surveyType read as Date|null (TS2538 index) and overallScore
+     as string|null. Typed both reduce accumulators as Record<string,{...}>, coerced key with String(),
+     numeric pushes/sums with Number(). Real behavior preserved (values were already numeric).
+- Ratchet 2435 -> 2383 (-52); NO file gained errors. Baseline tightened.
+- Remaining 2 in this file: TS2769 router.use(enhanceUserContext)/requirePermission overload (AuthenticatedRequest
+  vs Express.User .user-type conflict) - deferred (broader middleware-typing pattern).
+- DEFERRED as own story: MeterBilling.tsx (26 errs) is PHANTOM-SHAPE (form uses blackMeter/colorMeter absent
+  from real meter_readings table; real cols bwMeterReading/colorMeterReading) + useForm resolver cascade -
+  runtime form/SQL rewrite needs app verification (same class as MeterReadings.tsx batch 8).
+
+## Iteration - QUALITY-002 BATCH 35: intelligent-alerts-service + csv-import-service (-46)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- intelligent-alerts-service.ts 26 -> 0. TWO REAL RUNTIME BUGS found + fixed:
+  (1) executeContainmentAction had `const [log] = await db.insert(automatedContainmentLogs)...returning()`
+      at the END of the method (line ~1125), block-scoped to the whole method body -> it SHADOWED the
+      module-level `const log = createModuleLogger(...)`, so every earlier log.warn/log.error (851-1109)
+      hit the TDZ -> ReferenceError "Cannot access 'log' before initialization" at runtime. These are
+      security-containment logging calls (block_ip/quarantine_file/disable_integration/etc.) that CRASHED
+      the action before doing the work. Renamed the local binding to `containmentLog` (decl + return) ->
+      cleared 7 TS2448 + 7 TS2454 + 7 TS2339 (.warn/.error on the row type).
+  (2) detectAnomaly: `if (severity in ['high','critical'] ...)` used the `in` operator on an ARRAY, which
+      checks index keys (0/1/length), so it was ALWAYS false and the high-risk alert branch never ran.
+      Fixed to ['high','critical'].includes(severity). Same line: (existing.detectionCount ?? 0) >= 3.
+  Plus: null-coalesced existing.totalIncidents/totalResolved/avgResolutionTime in recordResolutionPattern
+  (nullable int cols, TS18047), and added basedOn: undefined to the default resolution suggestion (the
+  .map-inferred element type requires the basedOn key, TS2345).
+- csv-import-service.ts 20 -> 0. (a) 10x TS2345: orClauses .filter(Boolean) left (SQL|null)[], and
+  or(...orClauses) rejects null -> changed to .filter((clause): clause is SQL => clause !== null) (added
+  type SQL import). (b) TS2790 delete row._rowNumber (required on the intersection type) -> delete
+  (row as Record<string,any>)._rowNumber. (c) 9x TS2769 .values({...data, tenantId, createdAt, updatedAt})
+  where data:Record<string,any> can't match the Drizzle insert overload -> cast each block's values object
+  `as typeof <table>.$inferInsert` (10 inserts incl the already-passing contacts one; type-only, faithful -
+  data is a legitimately dynamic CSV-mapped row, runtime unchanged).
+- Ratchet 2383 -> 2337 (-46); per-file count diff shows NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 36: storage.ts null-guards + dynamic + cross-tenant-leak fix (-32)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- server/storage.ts 93 -> 61. Bucket D mechanical subset + 1 REAL SECURITY BUG:
+  (1) 16x `return result.rowCount > 0;` -> `(result.rowCount ?? 0) > 0` (Drizzle delete/execute rowCount is
+      number|null; null => 0 affected => false; faithful). (TS18047)
+  (2) 6x BANT aggregation reads (b.totalBantScore/budgetScore/authorityScore/needScore/timelineScore, all
+      nullable int) -> `(x ?? 0)` in the filter/reduce (null score counts as 0 in averages). (TS18047)
+  (3) 3x TS2769: new Date(b.updatedAt) where updatedAt is Date|null -> new Date(b.updatedAt ?? 0); inArray(
+      businessRecords.id, businessRecordIds) where ids were (string|null)[] -> .filter((id): id is string =>
+      id !== null); eq(leases.status, status:string) where leases.status is a pgEnum -> cast status to
+      (typeof leases.status.enumValues)[number].
+  (4) SECURITY: getPerformanceMetricsSummary chained `.where(tenantId?...).where(gte(timestamp...))` — Drizzle
+      OVERWRITES on a second .where(), so the tenantId filter was SILENTLY DROPPED -> the hourly perf-metrics
+      aggregate ran across ALL tenants (cross-tenant leak). Combined into one .where(and(tenantFilter,
+      timeFilter)); also restored type inference so the .forEach((metric)) param is typed (cleared TS7006).
+  (5) getCompanyContacts: `let query = db.select()...; query = query.orderBy()/limit()/offset()` reassignment
+      -> added .$dynamic() (TS2739 missing offset/limit). Batch-25 recipe.
+- DEFERRED in storage.ts: 6858/6872 .update(users).set({twoFactorEnabled,twoFactorSecret}) TS2353 — the
+  users table DOES have those cols (schema 1010-1011) but the .set() type lacks them, suggesting the `users`
+  symbol here resolves to a DIFFERENT users table (import drift) — needs investigation, not a blind fix.
+  Also the 9 TS2416 IStorage method-signature mismatches + 43 TS2339 (phantom reads) remain.
+- Ratchet 2337 -> 2305 (-32); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 37: qrcode dep + missing UI exports (-9, real runtime-bug fixes)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- routes-equipment-qr.ts: QRCode used at L71/200 but NEVER imported AND `qrcode` absent from package.json
+  -> both QR endpoints threw ReferenceError at runtime (bucket C). `npm install qrcode@1.5.4 @types/qrcode@1.5.6`
+  (PUPPETEER_SKIP_DOWNLOAD to avoid the chromium-download failure that aborts npm in this env) + added
+  `import QRCode from 'qrcode'`. Cleared 2 TS2304. (file retains 5 pre-existing unrelated errors.)
+- client/src/components/ui/textarea.tsx: exported `type TextareaProps = React.ComponentProps<'textarea'>`
+  (textarea-with-counter.tsx imported it but it was never exported -> TS2305 + cascading downstream errors).
+- client/src/components/ui/skeletons.tsx: added the missing `TimelineSkeleton({items})` component
+  (customer-360-view.tsx imports + renders it -> TS2305 + cascade; faithful: the component was genuinely
+  absent so the page wouldn't compile).
+- Ratchet 2305 -> 2296 (-9; the 4 direct fixes also cleared ~5 downstream cascade errors in the importers);
+  per-file count diff: NO file gained errors. Baseline tightened.
+- NOTE: package.json + package-lock.json changed (qrcode dep) - first dependency add this story.
+
+## Iteration - QUALITY-002 BATCH 38: client untyped-useQuery + LeadDetail catch (-32)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- 6 client files, all TS18046 'X is of type unknown'. Five were untyped useQuery (data typed unknown):
+  QuoteProposalGeneration (proposals/templates/packages/businessRecords -> useQuery<any[]>, all read via
+  (x:any).map/.length), DocumentBuilder (availableQuotes/quoteLineItems/customers/documents -> any[]),
+  SocialMediaGenerator (posts -> SocialMediaPost[], cronJobs -> CronJob[], the file's own interfaces used in
+  the .map callbacks), CustomerNumberSettings (configs -> CustomerNumberConfig[], history ->
+  CustomerNumberHistory[]), OnboardingDashboard (checklists -> OnboardingChecklist[], consumed via
+  (c: OnboardingChecklist) callbacks). LeadDetail: 2 catch blocks accessed axios-style error.response?.data
+  / error.message on `unknown` -> annotated `catch (error: any)` (faithful: the code treats it as an axios
+  error; instanceof Error wouldn't expose .response).
+- Ratchet 2296 -> 2264 (-32); per-file count diff: NO file gained errors. Type-only, zero runtime change.
+  Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 39: client TS7006 implicit-any callback params (-21)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- 3 client chart/layout files, all TS7006 implicit-any on loosely-typed callback params:
+  ReportViewer.tsx (4x `formatTooltip={(value, name)}` -> (value: any, name: any) — the chart wrapper's
+  formatTooltip prop is loosely typed); UsageAnalyticsDashboard.tsx (6x .map params on analytics.* which is
+  an untyped data source: peak/equipment/rec -> :any, index -> :number); context-panel.tsx (4x .map params
+  stat/action/activity/record -> :any, idx -> :number).
+- Faithful any-annotation (documented fallback for (row:any)-style callbacks); zero runtime change.
+- Ratchet 2264 -> 2243 (-21); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 40: routes-products-crud clean subset (-10, 16 -> 6)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- server/routes-products-crud.ts clean subset: 6x TS7006 (.map/.filter (a)/(code) params on any-typed
+  split() results -> :string); 1x TS18046 catch error.message -> error instanceof Error ? .message :
+  String(error); 2x TS18046 `results` (CSV parse `await new Promise(...)` untyped) -> new Promise<any[]>;
+  1x TS2554 log.info called with 3 args (logger takes 1-2) -> consolidated extra args into a {value,type}
+  meta object (preserves structured logging).
+- DEFERRED (phantom-shape, need schema verification): 4x TS2339 reading currentStock/supplier off the
+  inventory_items TABLE object (table-vs-row or phantom cols); 2x accessory insert shape (TS2345/TS2769).
+- Ratchet 2243 -> 2233 (-10); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 41: server TS18046 catch blocks + untyped sources (-13)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- 5 server files, TS18046 'X is of type unknown'. customer-portal-service (2 catch blocks: guarded
+  `if (error.message === 'X')` -> `if (error instanceof Error && error.message === 'X')`), ai-employee-service
+  (3 inline error.message in SQL/array -> `error instanceof Error ? error.message : String(error)`),
+  routes-social-media (3 same, template + res.json), ai-search-knowledge-service (sort([,a],[,b]) on an
+  any[]-derived reduce whose Object.entries values widened to unknown -> Number(b)-Number(a)),
+  routes-catalog-csv (`results` from untyped `await new Promise(...)` -> new Promise<any[]>).
+- All faithful (instanceof Error falls through to String(error)/generic handler; Number coerces counts).
+- Ratchet 2233 -> 2220 (-13); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 42: client TS7006 params + ProductHubUnified useQuery (-9)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- CommissionManagement (plan.tiers.map (tier)->:any, plan.productRates.slice.map (rate,idx)->:any,:number),
+  WorkflowAutomation (reduce (acc,cat)->(acc:number,cat:any)), DemoScheduling (equipmentModels.map
+  (model,idx)->:any,:number), ProductHubUnified (manufacturers useQuery -> useQuery<string[]>, consumed via
+  .length + .map((manufacturer:string))).
+- Ratchet 2220 -> 2211 (-9); per-file count diff: NO file gained errors. Type-only. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 43: usage-tracking nullable cols + ai-documentation req.user (-38)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- usage-tracking-service.ts 16 -> 2: 14x TS18047 nullable usageMetrics columns (totalUsers/storageUsedMb/
+  apiCalls/activeLocations/businessRecords) in over-limit comparisons + percentage divisions -> (x ?? 0).
+  Left lines 332-343 (return-object values where null is acceptable) untouched to avoid a null->0 behavior
+  change. Remaining 2: TS2339 businessRecords.isDeleted (phantom col) deferred.
+- ai-documentation-routes.ts 23 -> 5: 23x TS18048 req.user possibly undefined. The router mounts at /api
+  with NO auth middleware, but every handler already dereferences req.user.tenantId/req.user.id assuming
+  presence (would crash if undefined) -> applied non-null assertion `req.user!.` (type-only, preserves the
+  exact current runtime). Remaining 5 are unrelated pre-existing errors.
+- Ratchet 2211 -> 2173 (-38); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 44: req.user! across 5 sibling route modules (-52)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Same pattern/fix as batch 43's ai-documentation-routes, applied to the sibling routers mounted alongside
+  it in routes-registry asyncRootApiMounts (all at /api, NO auth middleware, all dereference req.user.x
+  assuming presence): meeting-transcription-routes (14), team-collaboration-routes (12),
+  ai-search-knowledge-routes (12), meeting-scheduling-routes (8), task-routes (6). All were plain
+  `req.user.x` (verified: no ?./.claims fallbacks) -> non-null assertion `req.user!.` (type-only, preserves
+  exact current runtime; the handlers already crash if req.user is undefined).
+- Ratchet 2173 -> 2121 (-52); per-file count diff: NO file gained errors. Baseline tightened.
+- NOTE: these /api routers having NO auth middleware while assuming req.user is a real latent concern
+  (documented for a security follow-up: either wrap the asyncRootApiMounts in requireAuth or migrate to
+  getUserId/getTenantId helpers) - but that's a behavior change out of scope for the type ratchet.
+
+## Iteration - QUALITY-002 BATCH 45: req.user! across 5 more route modules (-23)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Continued the batch 43/44 req.user! pattern: routes-product-models (9), routes-technician-management (7),
+  calendar-routes (4), admin-workflows (2), performance-routes (1). All plain req.user.x (verified no
+  ?./.claims fallbacks) -> `req.user!.` (type-only, preserves runtime). For product-models/technician-management
+  (phantom-shape files on the avoid-list) this ONLY touched the req.user assertions; their phantom-column
+  errors remain untouched (per-file count diff confirms no regression).
+- Ratchet 2121 -> 2098 (-23); per-file count diff: NO file gained errors. Baseline tightened. Crossed <2100.
+
+## Iteration - QUALITY-002 BATCH 46: broken import paths + nullable-col guards (-21)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- 3 broken import paths (TS2307, real runtime module-resolution bugs): server/integrations/routes.ts
+  './utils/auth-helpers' -> '../utils/auth-helpers'; routes-equipment-lifecycle-state-machine.ts dynamic
+  import('./db/index') -> import('./db') (x2); UsageAnalyticsDashboard.tsx '../../../shared/...' ->
+  '@shared/customer-portal-schema' (type-only import).
+- Nullable-column null guards (TS18047): chrome-extension-routes (8x duplicateCheck.record -> changed the
+  ternary from .exists to .record so the branch narrows record non-null), contract-renewal-service (3x
+  supportTicketsLast90Days/escalationsLast90Days/equipmentCount in if-comparisons -> (x ?? 0)),
+  routes-social-media (3x cronJob.executionCount/failureCount in increments -> (x ?? 0)), Invoices.tsx
+  (invoiceNumber?.toLowerCase via ?? "", blackCopiesTotal/colorCopiesTotal -> (x ?? 0).toLocaleString()).
+- DEFERRED (missing modules, need creation): server/domains/reporting + routes-registry './domains/reporting';
+  @shared/schema-integrations; CustomerPortal.tsx's 10 missing @/components/customer-portal/* components; the
+  optional npm deps ioredis/@aws-sdk/client-secrets-manager/openapi-types (dynamic imports w/ fallback).
+- Ratchet 2098 -> 2077 (-21); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 47: scattered TS18048 optional-prop guards (-20)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- TerritoryManagement (6): geographicRules?.states?.length / accountRules?.industries?.length comparisons
+  and inner .slice/.length -> (x ?? 0) on comparisons + (arr ?? []) on slice/join.
+- WarehouseTeamStatsWidget (3) + ServiceTeamStatsWidget (3): stats?.performance.firstPassYield /
+  firstTimeFixRate >= N comparisons (number|undefined) -> (x ?? 0) >= N.
+- ModularDashboard (3): cardConfig?.availableCards?.length > 0 -> (x ?? 0) > 0; cardConfig.availableCards.map
+  -> cardConfig?.availableCards?.map.
+- auth-routes (5): testUser from storage.getUser (User|undefined) deref'd as testUser.id/.email/... ->
+  added `if (!testUser) return res.status(404)...` guard before the res.json (real null-safety + narrows).
+- Ratchet 2077 -> 2057 (-20); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 48: TS18046 singletons - untyped useQuery + catch (-7)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- 4 client untyped useQuery: CustomerQuotes (useQuery<Quote[]>), CustomerContracts (useQuery<Contract[]>),
+  ServiceRequestsDashboard (satisfactionSurveys useQuery<any[]>, .find((survey:any))), PreventiveMaintenance
+  Scheduling (businessRecords useQuery<any[]>, .map((record:any))).
+- 3 server catch error-unknown: routes-salesforce-integration + routes-admin-workflows (error: error.message
+  -> error instanceof Error ? .message : String(error)), routes-enhanced-service (if (error.message === '...')
+  -> if (error instanceof Error && error.message === '...')).
+- Ratchet 2057 -> 2050 (-7); per-file count diff: NO file gained errors. Baseline tightened. Crossed <=2050.
+
+## Iteration - QUALITY-002 BATCH 49: catalog-csv/gps TS7006 + client-monitoring log args (-15)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- routes-catalog-csv (6 TS7006): same split-param recipe as batch 40 — .map/.filter (a)/(code) on any-typed
+  split() results -> :string.
+- gps-tracking-routes (4 TS7006): allLocations .map/.filter (location) + .sort (a,b) -> :any (untyped storage
+  source). Left this file's 4 TS2554 storage-arg mismatches (need signature verification).
+- routes-client-monitoring (5 TS2554): log.info/log.error called with 3 args (logger takes 1-2) ->
+  consolidated the extra positional args into a {notificationId, messageId/error} (or {count, subtotal})
+  meta object (preserves structured logging; same as batch 40 line 262).
+- Ratchet 2050 -> 2035 (-15); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 50: TS2554 missing-tenantId bug + logger args (-8)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- lead-intelligence-service (3, REAL BUG): storage.getBusinessRecord(leadId) missing tenantId — the method
+  is getBusinessRecord(id, tenantId) and filters and(eq(id),eq(tenantId)), so tenantId=undefined matched
+  nothing and lead-score/enrich/intelligence silently returned empty. All 3 methods have tenantId in scope
+  -> getBusinessRecord(leadId, tenantId). (batch-29 recipe)
+- routes-tasks (143): storage.getProjects(tenantId, userId) -> getProjects(tenantId) (method takes 1 arg;
+  the extra userId was silently ignored at runtime -> faithful).
+- Logger 3-arg consolidations (logger takes 1-2): advanced-scheduling-service (3: template-literal the
+  count/duration, error meta), meeting-transcription-service (2: template + {recordingId,status} meta),
+  routes-tasks 157 (Creating project -> {tenantId,userId} meta).
+- Ratchet 2035 -> 2027 (-8); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 51: more TS2554 logger + missing-tenantId storage (-6)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Logger 3-arg consolidations (Edit tool needed - emoji prefixes broke sed in batch 50): advanced-scheduling
+  118 (the 1 batch-50 missed), dynamic-rescheduling 90, document-generation 501, routes-contacts 280 ->
+  meta object/template literal.
+- Missing-tenantId storage calls (real scope bugs): routes-settings getUserCustomerAssignments(user.id) ->
+  (user.id, user.tenantId) (sig is (userId, tenantId)); seed-lead-scoring updateBusinessRecord(lead.id, {..})
+  -> (lead.id, tenantId, {..}) (sig is (id, tenantId, updates); tenantId in scope at file top).
+- Ratchet 2027 -> 2021 (-6); per-file count diff: NO file gained errors. Baseline tightened.
+- Remaining TS2554: gps-tracking (4, storage-arg mismatches - need signature verification), salesforce-mapping
+  transform, integration-service createQuickBooksClient, test-toner-order, Signup.tsx, CsvImportWizard - each
+  needs individual verification (deferred to per-site checks).
+
+## Iteration - QUALITY-002 BATCH 52: nullable-col guards in 2 services (-6)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- predictive-service-dispatch-SERVICE (not the skipped routes file): tech.currentActiveLeads (nullable int)
+  in utilizationRate division / <5 comparison / *2 slot calc -> (x ?? 0); available: tech.isAvailable
+  (boolean|null) -> ?? false (TS2322).
+- subscription-service: plan.trialDays (nullable int) in `> 0` check and trial-end date math -> (x ?? 0).
+- Ratchet 2021 -> 2015 (-6); per-file count diff: NO file gained errors. Baseline tightened. Crossed <=2015.
+
+## Iteration - QUALITY-002 BATCH 53: scattered nullable-guard singletons (-12, 11 files)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- TS18047/TS18048 one-offs across 11 files: clickup-tasks/enhanced-tasks (task.completionPercentage ?? 0 in
+  reduce), routes-root-admin (user.roleLevel ?? 0 < 7), routes-subscriptions (discount.redemptionCount ?? 0),
+  apollo-routes (cached.totalAvailable ?? 0), auto-lead-routing (rep.currentActiveLeads ?? 0), warehouse-fpy
+  (startTime = startedAt||createdAt||new Date()), routes-seo (audit.startedAt ? Date.now()-... : 0),
+  advanced-scheduling (slot && task.dueDate ? ... : false), DocumentBuilder ((lineItems||[]).map),
+  MobileFieldService (result.successful && result.successful.length).
+- All faithful nullable guards (?? 0 / optional-chain / fallback date). Ratchet 2015 -> 2003 (-12); per-file
+  count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 54: TS7006/TS18046 singletons (-13, 11 files) — CROSSED <2000
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Implicit-any callback params (:any/:string): ExternalIntegrationsDashboard (integration), LeadQuotes
+  (quote), IntegrationsManagement (data), salesforce-mapping (value,record transform), document-ocr-ai
+  (logger m), email-monitor (att), mileage (t), CollapsibleSidebar (n:string), index.ts (cors origin,callback).
+- Source-typing: equipment-lifecycle Object.entries(LIFECYCLE_STAGES).map(([key,value]:[string,string]))
+  -> fixed both the value.replace TS18046 and the inner (l) TS7006; ESignatureIntegration customers
+  useQuery<any[]> (cleared the customers-unknown TS18046).
+- Ratchet 2003 -> 1990 (-13); per-file count diff: NO file gained errors. Baseline tightened. CROSSED <2000
+  (6176 -> 1990, -68%).

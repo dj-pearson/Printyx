@@ -506,7 +506,7 @@ export const SALESFORCE_FIELD_MAPPINGS: TableMapping[] = [
         targetField: 'primaryContactName',
         targetTable: 'business_records',
         dataType: 'string',
-        transform: (value, record) => `${value || ''} ${record.LastName || ''}`.trim(),
+        transform: (value: any, record: any) => `${value || ''} ${record.LastName || ''}`.trim(),
       },
       {
         sourceField: 'Company',

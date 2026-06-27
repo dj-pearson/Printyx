@@ -43,6 +43,7 @@ import {
   type CustomerSatisfactionSurveyQuestion,
   type CustomerSatisfactionSurveyResponse,
   type CustomerSatisfactionAnalytics,
+  type InsertCustomerSatisfactionSurveyResponse,
 } from '../shared/customer-portal-schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { CustomerPortalService } from './services/customer-portal-service';
@@ -114,7 +115,7 @@ router.get(
   requirePermission([PERMISSIONS.SALES.CUSTOMER.VIEW_OWN, PERMISSIONS.SALES.CUSTOMER.VIEW_TEAM]),
   async (req: AuthenticatedRequest, res) => {
     try {
-      const tenantId = req.user.tenantId;
+      const tenantId = req.user?.tenantId;
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID required' });
       }
@@ -171,7 +172,7 @@ router.get(
 // Get all portal users for a tenant
 router.get('/users', async (req, res) => {
   try {
-    const tenantId = req.user.tenantId;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID required' });
     }
@@ -196,7 +197,7 @@ router.get('/users', async (req, res) => {
 // Get recent service requests
 router.get('/service-requests/recent', async (req, res) => {
   try {
-    const tenantId = req.user.tenantId;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID required' });
     }
@@ -224,7 +225,7 @@ router.get('/service-requests/recent', async (req, res) => {
 // Get recent meter submissions
 router.get('/meter-submissions/recent', async (req, res) => {
   try {
-    const tenantId = req.user.tenantId;
+    const tenantId = req.user?.tenantId;
     if (!tenantId) {
       return res.status(400).json({ message: 'Tenant ID required' });
     }
@@ -252,7 +253,7 @@ router.get('/meter-submissions/recent', async (req, res) => {
 // Test database connectivity
 router.get('/test', async (req, res) => {
   try {
-    const tenantId = req.user.tenantId;
+    const tenantId = req.user?.tenantId;
 
     // Test all customer portal tables exist
     const tableTests = await Promise.all([
@@ -315,8 +316,8 @@ router.get('/equipment-health', requireCustomerPortalAuth, async (req, res) => {
     const { timeRange, equipmentIds, includeAlerts, includeMetrics } = validationResult.data;
 
     // Use authenticated user's context - NO client-provided tenant/customer IDs
-    const tenantId = req.user.tenantId;
-    const customerId = req.user.customerId || req.customerPortalUser?.customerId;
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId || req.customerPortalUser?.customerId;
 
     if (!tenantId || !customerId) {
       return res.status(403).json({
@@ -388,8 +389,8 @@ router.post('/equipment-maintenance', requireCustomerPortalAuth, async (req, res
     const { equipmentId, preferredDate, maintenanceType, notes, urgency } = validationResult.data;
 
     // Use authenticated user's context - NO client-provided IDs
-    const tenantId = req.user.tenantId;
-    const customerId = req.user.customerId || req.customerPortalUser?.customerId;
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId || req.customerPortalUser?.customerId;
     const customerPortalUserId = req.customerPortalUser?.id;
 
     if (!tenantId || !customerId || !customerPortalUserId) {
@@ -447,8 +448,8 @@ router.get('/equipment-analytics/:equipmentId', requireCustomerPortalAuth, async
     }
 
     // Use authenticated user's context - NO client-provided IDs
-    const tenantId = req.user.tenantId;
-    const customerId = req.user.customerId || req.customerPortalUser?.customerId;
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId || req.customerPortalUser?.customerId;
 
     if (!tenantId || !customerId) {
       return res.status(403).json({
@@ -507,8 +508,8 @@ router.get('/usage-analytics', requireCustomerPortalAuth, async (req, res) => {
     const options: UsageAnalyticsRequest = validationResult.data;
 
     // Use authenticated user's context - NO client-provided IDs
-    const tenantId = req.user.tenantId;
-    const customerId = req.user.customerId || req.customerPortalUser?.customerId;
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId || req.customerPortalUser?.customerId;
 
     if (!tenantId || !customerId) {
       return res.status(403).json({
@@ -578,8 +579,8 @@ router.get('/equipment-usage/:equipmentId', requireCustomerPortalAuth, async (re
     }
 
     // Use authenticated user's context - NO client-provided IDs
-    const tenantId = req.user.tenantId;
-    const customerId = req.user.customerId || req.customerPortalUser?.customerId;
+    const tenantId = req.user?.tenantId;
+    const customerId = req.user?.customerId || req.customerPortalUser?.customerId;
 
     if (!tenantId || !customerId) {
       return res.status(403).json({
@@ -1428,7 +1429,7 @@ router.post(
       const questionMap = new Map(questions.map((q) => [q.id, q]));
 
       // Validate and prepare responses
-      const validatedResponses = [];
+      const validatedResponses: InsertCustomerSatisfactionSurveyResponse[] = [];
       for (const response of responses) {
         const question = questionMap.get(response.questionId);
         if (!question) {
@@ -1469,10 +1470,10 @@ router.post(
 
       for (const response of validatedResponses) {
         const question = questionMap.get(response.questionId);
-        if (question && response.ratingValue !== null) {
-          if (question.questionType === 'nps_score' && response.ratingValue !== null) {
+        if (question && response.ratingValue != null) {
+          if (question.questionType === 'nps_score' && response.ratingValue != null) {
             npsScore = response.ratingValue;
-          } else if (question.questionType === 'rating_scale' && response.ratingValue !== null) {
+          } else if (question.questionType === 'rating_scale' && response.ratingValue != null) {
             const weight = parseFloat(question.weight || '1.00');
             totalWeightedScore += response.ratingValue * weight;
             totalWeight += weight;
@@ -1502,7 +1503,7 @@ router.post(
           .set({
             completedAt: new Date(),
             status: 'completed',
-            overallScore,
+            overallScore: overallScore != null ? String(overallScore) : null,
             npsScore,
           })
           .where(eq(customerSatisfactionSurveys.id, surveyId))
@@ -1615,41 +1616,52 @@ router.get('/satisfaction/analytics', requireCustomerPortalAuth, async (req, res
 
     const averageScore =
       scoresWithValues.length > 0
-        ? scoresWithValues.reduce((sum, s) => sum + s.overallScore, 0) / scoresWithValues.length
+        ? scoresWithValues.reduce((sum, s) => sum + Number(s.overallScore), 0) /
+          scoresWithValues.length
         : null;
 
     const averageNpsScore =
       npsScoresWithValues.length > 0
-        ? npsScoresWithValues.reduce((sum, s) => sum + s.npsScore, 0) / npsScoresWithValues.length
+        ? npsScoresWithValues.reduce((sum, s) => sum + Number(s.npsScore), 0) /
+          npsScoresWithValues.length
         : null;
 
     // Group by survey type
-    const byType = completedSurveys.reduce((acc, survey) => {
-      const type = survey.surveyType;
-      if (!acc[type]) {
-        acc[type] = { count: 0, scores: [], npsScores: [] };
-      }
-      acc[type].count++;
-      if (survey.overallScore !== null) acc[type].scores.push(survey.overallScore);
-      if (survey.npsScore !== null) acc[type].npsScores.push(survey.npsScore);
-      return acc;
-    }, {});
+    const byType = completedSurveys.reduce(
+      (acc, survey) => {
+        const type = String(survey.surveyType ?? 'unknown');
+        if (!acc[type]) {
+          acc[type] = { count: 0, scores: [], npsScores: [] };
+        }
+        acc[type].count++;
+        if (survey.overallScore !== null) acc[type].scores.push(Number(survey.overallScore));
+        if (survey.npsScore !== null) acc[type].npsScores.push(Number(survey.npsScore));
+        return acc;
+      },
+      {} as Record<string, { count: number; scores: number[]; npsScores: number[] }>,
+    );
 
     // Calculate averages by type
-    const summaryByType = Object.entries(byType).reduce((acc, [type, data]) => {
-      acc[type] = {
-        count: data.count,
-        averageScore:
-          data.scores.length > 0
-            ? data.scores.reduce((sum, score) => sum + score, 0) / data.scores.length
-            : null,
-        averageNpsScore:
-          data.npsScores.length > 0
-            ? data.npsScores.reduce((sum, score) => sum + score, 0) / data.npsScores.length
-            : null,
-      };
-      return acc;
-    }, {});
+    const summaryByType = Object.entries(byType).reduce(
+      (acc, [type, data]) => {
+        acc[type] = {
+          count: data.count,
+          averageScore:
+            data.scores.length > 0
+              ? data.scores.reduce((sum, score) => sum + score, 0) / data.scores.length
+              : null,
+          averageNpsScore:
+            data.npsScores.length > 0
+              ? data.npsScores.reduce((sum, score) => sum + score, 0) / data.npsScores.length
+              : null,
+        };
+        return acc;
+      },
+      {} as Record<
+        string,
+        { count: number; averageScore: number | null; averageNpsScore: number | null }
+      >,
+    );
 
     const queryDuration = Date.now() - queryStartTime;
     const totalDuration = Date.now() - startTime;

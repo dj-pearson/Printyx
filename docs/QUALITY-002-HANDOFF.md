@@ -1,10 +1,35 @@
 # QUALITY-002 Handoff — TypeScript Error Burndown
 
-**Branch:** `claude/prd-stories-progress-7eqztb`
+**Branch:** `claude/quality-002-typecheck-burndown` (main was merged via PR #186; this is the continuation branch)
 **Story:** QUALITY-002 — "Drive `npm run check` to green"
 **Status:** `passes: false` (flips to true only when `tsc` is fully clean)
-**Current count:** **2435** tsc errors (started at 6176; **−61%**). Baseline tracked in `docs/typecheck-baseline.json`.
-**Last batch:** 33 (RBAC `requireRole` contract fix).
+**Current count:** **1990** tsc errors (started at 6176; **−68%**). Baseline tracked in `docs/typecheck-baseline.json`.
+**Last batch:** 54 (TS7006/TS18046 singletons across 11 files). Singleton-sweep phase: null-guards, logger args, implicit-any params, untyped-query generics — ~12-15/batch.
+
+> NOTE for sed: files with emoji in log strings (🚀🔄✅📝) break `sed` matching — use the Edit tool for those.
+> The clean per-batch yield is now ~6-15 (clusters fragmented into singletons). The big remaining buckets
+> (TS2339 ~840, TS2769 ~390, TS2322 ~220, TS2345 ~180) are dominated by phantom-shape/insert-shape files on
+> the avoid-list that need app-verified rewrites as their own stories — not type-ratchet batches.
+
+> LOGGER-ARG PATTERN (batches 40/49/50): the structured logger (`createModuleLogger`) takes 1-2 args
+> (message, meta?). Calls with 3+ positional args are TS2554 — consolidate the extras into a meta object
+> (`log.x('msg', { a, b })`) or a template literal. Plenty remain; grep the tsc log for TS2554 and check
+> whether each site is a `log.`/console call (clean) vs a storage-method arg mismatch (verify the signature).
+
+> HIGH-YIELD PATTERN (batches 43-44): many `/api` route modules in routes-registry `asyncRootApiMounts` are
+> mounted with NO auth middleware yet dereference `req.user.x` directly (TS18048). Where the access is plain
+> `req.user.x` (NO `?.`/`.claims` fallback — grep to confirm), the minimal faithful fix is `sed -i
+> 's/req\.user\./req.user!./g'` (type-only, preserves runtime). Done: ai-documentation, meeting-transcription,
+> team-collaboration, ai-search-knowledge, meeting-scheduling, task-routes. More `req.user` TS18048 files
+> likely remain — grep `TS18048 .* req.user` in the fresh tsc log. (Latent security note: these routes lack
+> auth; a real fix wraps the mounts in requireAuth — separate story.)
+
+> ENV UPDATE (2026-06-26): `npm ci` aborts on a puppeteer chromium-download failure here — run it as
+> `PUPPETEER_SKIP_DOWNLOAD=true PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm ci`. Also `tsc` needs a bigger heap:
+> `export NODE_OPTIONS="--max-old-space-size=8192"` or it OOMs (4GB) and prints 0 errors (false green).
+> Batches 34-37 (this session): customer-portal req.user + survey agg (-52); intelligent-alerts TDZ
+> logger-shadow crash + csv-import insert typing (-46); storage.ts null-guards/$dynamic + a cross-tenant
+> metrics leak (-32); qrcode dep + UI exports (-9).
 
 ---
 

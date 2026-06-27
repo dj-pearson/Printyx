@@ -121,7 +121,7 @@ router.post('/execute-action', requireRootAdmin, async (req, res) => {
       type: 'admin_action',
       severity: 'info',
       description: `Admin action executed: ${actionId}`,
-      userId: req.user.id,
+      userId: req.user!.id,
       metadata: { actionId, parameters },
       resolved: true,
       createdAt: new Date(),
@@ -345,7 +345,7 @@ router.post(
         type: 'bulk_operation',
         severity: 'info',
         description: `Bulk operation on ${userIds.length} users: ${operation}`,
-        userId: req.user.id,
+        userId: req.user!.id,
         metadata: { operation, count: userIds.length, parameters },
         resolved: true,
         createdAt: new Date(),
@@ -409,7 +409,7 @@ async function checkDatabaseHealth() {
   } catch (error) {
     return {
       status: 'critical',
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }

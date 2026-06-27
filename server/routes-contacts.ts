@@ -124,9 +124,7 @@ export function registerContactsRoutes(app: Express) {
           log.error('Validation errors:', error.errors);
           res.status(400).json({ error: 'Validation failed', details: error.errors });
         } else {
-          res
-            .status(500)
-            .json({ error: 'Failed to create company contact', });
+          res.status(500).json({ error: 'Failed to create company contact' });
         }
       }
     },
@@ -277,7 +275,7 @@ export function registerContactsRoutes(app: Express) {
                 filters.ownerId = ownerUser.id;
               }
             } catch (err) {
-              log.warn('[CONTACTS] Failed to lookup user by name:', ownerFilter, err);
+              log.warn('[CONTACTS] Failed to lookup user by name:', { ownerFilter, err });
             }
           }
         }
@@ -413,7 +411,7 @@ export function registerContactsRoutes(app: Express) {
         res.status(201).json(contact);
       } catch (error: any) {
         log.error('Error creating contact:', error);
-        res.status(500).json({ error: 'Failed to create contact', });
+        res.status(500).json({ error: 'Failed to create contact' });
       }
     },
   );

@@ -128,7 +128,7 @@ export default function PreventiveMaintenanceScheduling() {
   });
 
   // Fetch business records for dropdown
-  const { data: businessRecords = [] } = useQuery({
+  const { data: businessRecords = [] } = useQuery<any[]>({
     queryKey: ['/api/business-records'],
   });
 

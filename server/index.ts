@@ -235,7 +235,7 @@ app.use((req, res, next) => {
 // Ensures consistent behavior even if a proxy strips our manual headers
 app.use(
   cors({
-    origin: (origin, callback) => {
+    origin: (origin: any, callback: any) => {
       const allowed = getValidatedOrigin(origin, currentEnv);
       if (allowed) {
         callback(null, allowed);

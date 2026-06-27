@@ -609,7 +609,7 @@ router.post('/validate-discount', async (req, res) => {
     }
 
     // Check redemption limit
-    if (discount.maxRedemptions && discount.redemptionCount >= discount.maxRedemptions) {
+    if (discount.maxRedemptions && (discount.redemptionCount ?? 0) >= discount.maxRedemptions) {
       return res.status(400).json({
         valid: false,
         error: 'This discount code has reached its redemption limit',

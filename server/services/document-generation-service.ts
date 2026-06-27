@@ -498,7 +498,7 @@ export class DocumentGenerationService {
         const docId = await this.generateDocument(templateId, context, userId, tenantId, options);
         generatedDocIds.push(docId);
       } catch (error: any) {
-        log.error(`Failed to generate document for context:`, context, error);
+        log.error(`Failed to generate document for context:`, { context, error });
         // Continue with next document
       }
     }

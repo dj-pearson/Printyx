@@ -59,6 +59,10 @@ export interface EnhancedUserContext {
   firstName?: string;
   lastName?: string;
   email?: string;
+
+  // Customer-portal context: requireCustomerPortalAuth attaches the validated
+  // portal session's customerId here at runtime.
+  customerId?: string;
 }
 
 export interface AuthenticatedRequest extends Request {

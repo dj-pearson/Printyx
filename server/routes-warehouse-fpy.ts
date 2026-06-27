@@ -143,7 +143,7 @@ router.post('/warehouse-kitting-operations/:id/complete', async (req, res) => {
       operation.reworkCount === 0;
 
     // Calculate duration
-    const startTime = operation.startedAt || operation.createdAt;
+    const startTime = operation.startedAt || operation.createdAt || new Date();
     const totalDurationMinutes = Math.round(
       (new Date().getTime() - startTime.getTime()) / (1000 * 60),
     );

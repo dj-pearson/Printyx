@@ -55,7 +55,7 @@ export class OCRService {
     }
     if (!this.worker) {
       this.worker = await createWorker('eng', 1, {
-        logger: (m) => {
+        logger: (m: any) => {
           if (m.status === 'recognizing text') {
             log.info(`OCR Progress: ${Math.round(m.progress * 100)}%`);
           }

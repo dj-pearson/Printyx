@@ -580,7 +580,7 @@ export class MileageService {
     try {
       // Get all active technician locations for the tenant
       const technicians = await storage.getActiveTechnicianLocations(tenantId);
-      const uniqueTechnicians = new Set(technicians.map((t) => t.technicianId));
+      const uniqueTechnicians = new Set(technicians.map((t: any) => t.technicianId));
 
       let recordsCreated = 0;
 

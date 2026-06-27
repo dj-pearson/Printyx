@@ -158,7 +158,7 @@ router.post('/api/seo/audit', async (req: any, res) => {
         status: 'completed',
         ...auditResults,
         completedAt: new Date(),
-        duration: Date.now() - audit.startedAt.getTime(),
+        duration: audit.startedAt ? Date.now() - audit.startedAt.getTime() : 0,
       })
       .where(eq(seoAuditHistory.id, audit.id))
       .returning();
@@ -1412,8 +1412,9 @@ router.get('/image-sitemap.xml', async (req: any, res) => {
     const baseUrl = process.env.BASE_URL || 'https://printyx.com';
 
     // Import schemas for images
-    const { blogPosts, guides, caseStudies, landingPages, knowledgeArticles } =
-      await import('@shared/schema');
+    const { blogPosts, guides, caseStudies, landingPages, knowledgeArticles } = await import(
+      '@shared/schema'
+    );
 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n';

@@ -140,7 +140,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
         const technicianId = req.params.id;
 
         const [technician] = await db
@@ -193,7 +193,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
 
         const technicianData = insertTechnicianSchema.parse({
           ...req.body,
@@ -224,7 +224,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
         const technicianId = req.params.id;
 
         const validatedData = updateTechnicianSchema.parse(req.body);
@@ -261,7 +261,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.MANAGE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
         const technicianId = req.params.id;
 
         // Check if technician has active service tickets
@@ -307,7 +307,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
         const { date } = req.query;
 
         const availableTechnicians = await db
@@ -363,7 +363,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
 
         const queryParams = performanceQuerySchema.parse(req.query);
         const periodDays = parseInt(queryParams.period, 10);
@@ -410,7 +410,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
     requirePermission([PERMISSIONS.SERVICE.TECHNICIAN.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user.tenantId;
+        const tenantId = req.user!.tenantId;
 
         const totalTechniciansResult = await db
           .select({ count: count() })
