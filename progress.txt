@@ -9136,3 +9136,26 @@ signals per AC5 "structured input from existing dashboards", documented inline; 
 
 SESSION RUNNING TOTAL: 16 stories flipped (9 audit + 5 iOS audit + 2 implemented: US-SUPER-008, US-SUPER-015).
 390 passing / 83 remaining of 473.
+
+## Iteration - CI Tests job green: de-brittle pre-existing failures + 2 real bug fixes
+**Date**: 2026-06-27
+**Status**: COMPLETE — full unit suite green (1122 tests). Not a PRD story flip; clears CI noise
+that was interrupting every PRD PR (Tests job had been red and non-blocking; PRs merged red).
+Triaged 7 pre-existing Tests-job failures (none caused by PRD work); fixed each at the right layer:
+REAL CODE BUGS (fixed in source):
+- server/middleware/hierarchical-query-builder.ts: team-scope branch gated direct-reports on
+  userContext.managerId, so a TOP-LEVEL team lead (managerId=null) fell through to own-data-only and
+  could not see their own reports (over-restrictive, not a leak). Removed the gate to match the already-
+  correct prefixed branch later in the file (subquery degrades to own-data for non-managers).
+- server/lib/connection-resilience.ts: added message-text fallbacks ('connection does not exist',
+  'connection failure') so wrappers that drop the SQLSTATE code but keep the PG text are still retryable.
+BRITTLE/STALE TESTS (corrected, protections preserved):
+- report-cache.test.ts (prior commit): mock getCacheKey hashed the key but invalidate matched by substring.
+- navigation-permissions.test.ts: CRM is { alwaysVisible: true } by design; test asserting it hidden was stale.
+- error-sanitization.test.ts: asserted exact 'table [redacted]' marker that a later SQL-fragment pass
+  legitimately rewrites; now asserts the security property (no table-name leak + redaction occurred).
+- hierarchical-query-builder.test.ts: inline mock mirrored the same managerId-gate bug; fixed mock to match.
+CI ENV:
+- .github/workflows/ci.yml: test job now also sets DATABASE_URL (db.ts requires it at load; the unit tests
+  mock queries but import middleware that pulls in db.ts). tenant-isolation + rbac-middleware-extended now load.
+VERIFICATION: DATABASE_URL=... NODE_ENV=test npm run test:unit -> 44 files / 1122 tests pass; check:types holds 1926.

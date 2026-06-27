@@ -144,20 +144,20 @@ export class HierarchicalQueryBuilder {
         break;
 
       case 'team':
-        // Team access - filter by team and location
+        // Team access - filter by team, else by the user's direct reports.
         if (this.userContext.teamId) {
           const teamField = this.getFieldName('teamId', options);
           filters.push(sql`${sql.identifier(teamField)} = ${this.userContext.teamId}`);
-        } else if (this.userContext.managerId) {
-          // If no explicit team, filter by manager's direct reports
+        } else {
+          // No explicit team: direct reports (manager_id = self) OR own data.
+          // Gating this on userContext.managerId was wrong — a top-level team
+          // lead has no manager above them yet must still see their reports; the
+          // subquery degrades to own-data for non-managers, so it's safe for all.
+          // (Mirrors the prefixed team branch later in this file.)
           const userField = this.getFieldName('userId', options);
           filters.push(sql`(${sql.identifier(userField)} IN (
             SELECT id FROM users WHERE manager_id = ${this.userContext.id}
           ) OR ${sql.identifier(userField)} = ${this.userContext.id})`);
-        } else {
-          // No team or manager = own data only
-          const userField = this.getFieldName('userId', options);
-          filters.push(sql`${sql.identifier(userField)} = ${this.userContext.id}`);
         }
         break;
 

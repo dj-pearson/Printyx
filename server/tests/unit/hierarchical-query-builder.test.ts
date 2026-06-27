@@ -75,12 +75,13 @@ class SimpleHierarchicalQueryBuilder {
       case 'team':
         if (this.userContext.teamId) {
           clauses.push(`team_id = '${this.userContext.teamId}'`);
-        } else if (this.userContext.managerId) {
+        } else {
+          // No explicit team: direct reports OR own data (degrades to own-data
+          // for non-managers). Mirrors the fixed middleware builder — gating on
+          // managerId wrongly hid a top-level team lead's own reports.
           clauses.push(
             `(user_id IN (SELECT id FROM users WHERE manager_id = '${this.userContext.id}') OR user_id = '${this.userContext.id}')`,
           );
-        } else {
-          clauses.push(`user_id = '${this.userContext.id}'`);
         }
         break;
 

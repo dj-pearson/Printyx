@@ -51,8 +51,13 @@ describe('sanitizeErrorMessage', () => {
   it('should scrub PostgreSQL table names from error messages', () => {
     const msg = 'insert or update on table "users" violates foreign key constraint';
     const result = sanitizeErrorMessage(msg);
+    // Security property: the table name must not leak, and the span must be
+    // redacted. The exact marker ('table [redacted]' vs '[sql-redacted]')
+    // depends on which redaction pass claims the span, so assert the property,
+    // not the literal marker.
     expect(result).not.toContain('"users"');
-    expect(result).toContain('table [redacted]');
+    expect(result).not.toContain('users');
+    expect(result).toContain('[redacted]');
   });
 
   it('should scrub PostgreSQL constraint names', () => {
