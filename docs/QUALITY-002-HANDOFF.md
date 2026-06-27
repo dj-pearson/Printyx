@@ -3,8 +3,16 @@
 **Branch:** `claude/quality-002-typecheck-burndown` (main was merged via PR #186; this is the continuation branch)
 **Story:** QUALITY-002 — "Drive `npm run check` to green"
 **Status:** `passes: false` (flips to true only when `tsc` is fully clean)
-**Current count:** **2233** tsc errors (started at 6176; **−64%**). Baseline tracked in `docs/typecheck-baseline.json`.
-**Last batch:** 40 (routes-products-crud clean subset).
+**Current count:** **2121** tsc errors (started at 6176; **−66%**). Baseline tracked in `docs/typecheck-baseline.json`.
+**Last batch:** 44 (req.user! across 5 sibling route modules).
+
+> HIGH-YIELD PATTERN (batches 43-44): many `/api` route modules in routes-registry `asyncRootApiMounts` are
+> mounted with NO auth middleware yet dereference `req.user.x` directly (TS18048). Where the access is plain
+> `req.user.x` (NO `?.`/`.claims` fallback — grep to confirm), the minimal faithful fix is `sed -i
+> 's/req\.user\./req.user!./g'` (type-only, preserves runtime). Done: ai-documentation, meeting-transcription,
+> team-collaboration, ai-search-knowledge, meeting-scheduling, task-routes. More `req.user` TS18048 files
+> likely remain — grep `TS18048 .* req.user` in the fresh tsc log. (Latent security note: these routes lack
+> auth; a real fix wraps the mounts in requireAuth — separate story.)
 
 > ENV UPDATE (2026-06-26): `npm ci` aborts on a puppeteer chromium-download failure here — run it as
 > `PUPPETEER_SKIP_DOWNLOAD=true PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm ci`. Also `tsc` needs a bigger heap:
