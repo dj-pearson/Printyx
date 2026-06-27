@@ -3,8 +3,8 @@
 **Branch:** `claude/quality-002-typecheck-burndown` (main was merged via PR #186; this is the continuation branch)
 **Story:** QUALITY-002 — "Drive `npm run check` to green"
 **Status:** `passes: false` (flips to true only when `tsc` is fully clean)
-**Current count:** **2015** tsc errors (started at 6176; **−67%**). Baseline tracked in `docs/typecheck-baseline.json`.
-**Last batch:** 52 (nullable-col guards in dispatch + subscription services). Sweeping scattered singletons: null-guards (`?? 0`), 3-arg logger calls (TS2554), missing-tenantId storage calls, TS18046/TS7006.
+**Current count:** **1990** tsc errors (started at 6176; **−68%**). Baseline tracked in `docs/typecheck-baseline.json`.
+**Last batch:** 54 (TS7006/TS18046 singletons across 11 files). Singleton-sweep phase: null-guards, logger args, implicit-any params, untyped-query generics — ~12-15/batch.
 
 > NOTE for sed: files with emoji in log strings (🚀🔄✅📝) break `sed` matching — use the Edit tool for those.
 > The clean per-batch yield is now ~6-15 (clusters fragmented into singletons). The big remaining buckets
