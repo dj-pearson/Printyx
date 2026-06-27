@@ -8748,3 +8748,13 @@ Status: Needs Review
 - NOTE: these /api routers having NO auth middleware while assuming req.user is a real latent concern
   (documented for a security follow-up: either wrap the asyncRootApiMounts in requireAuth or migrate to
   getUserId/getTenantId helpers) - but that's a behavior change out of scope for the type ratchet.
+
+## Iteration - QUALITY-002 BATCH 45: req.user! across 5 more route modules (-23)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Continued the batch 43/44 req.user! pattern: routes-product-models (9), routes-technician-management (7),
+  calendar-routes (4), admin-workflows (2), performance-routes (1). All plain req.user.x (verified no
+  ?./.claims fallbacks) -> `req.user!.` (type-only, preserves runtime). For product-models/technician-management
+  (phantom-shape files on the avoid-list) this ONLY touched the req.user assertions; their phantom-column
+  errors remain untouched (per-file count diff confirms no regression).
+- Ratchet 2121 -> 2098 (-23); per-file count diff: NO file gained errors. Baseline tightened. Crossed <2100.

@@ -18,7 +18,7 @@ const router = express.Router();
 router.get('/connections', async (req, res) => {
   try {
     const { tenantId } = req.user;
-    const userId = req.user.id;
+    const userId = req.user!.id;
 
     // Mock response for now - would query calendar_connections table
     const connections = [
@@ -46,7 +46,7 @@ router.post('/connections', async (req, res) => {
   try {
     const { provider, accessToken, refreshToken, calendarId } = req.body;
     const { tenantId } = req.user;
-    const userId = req.user.id;
+    const userId = req.user!.id;
 
     if (!provider || !accessToken) {
       return res.status(400).json({ error: 'Provider and access token are required' });
@@ -102,7 +102,7 @@ router.get('/events', async (req, res) => {
   try {
     const { start, end, calendarIds } = req.query;
     const { tenantId } = req.user;
-    const userId = req.user.id;
+    const userId = req.user!.id;
 
     if (!start || !end) {
       return res.status(400).json({ error: 'Start and end dates are required' });
@@ -164,7 +164,7 @@ router.post('/events', async (req, res) => {
   try {
     const eventData = req.body;
     const { tenantId } = req.user;
-    const userId = req.user.id;
+    const userId = req.user!.id;
 
     // Validate required fields
     if (!eventData.title || !eventData.startTime || !eventData.endTime) {

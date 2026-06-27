@@ -399,7 +399,7 @@ router.post('/alerts/:alertId/resolve', async (req, res) => {
       id: alertId,
       resolved: true,
       resolvedAt: new Date(),
-      resolvedBy: req.user.id,
+      resolvedBy: req.user!.id,
       resolution: resolution || 'Manually resolved',
     };
 
