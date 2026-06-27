@@ -19,17 +19,26 @@ const router = express.Router();
 
 // SECURITY: Progressive account lockout configuration
 const LOCKOUT_TIERS = [
-  { threshold: 5, durationMinutes: 15 },   // 5 failures → 15 min lock
-  { threshold: 10, durationMinutes: 60 },   // 10 failures → 1 hour lock
-  { threshold: 20, durationMinutes: -1 },   // 20 failures → requires admin unlock (-1 = permanent)
+  { threshold: 5, durationMinutes: 15 }, // 5 failures → 15 min lock
+  { threshold: 10, durationMinutes: 60 }, // 10 failures → 1 hour lock
+  { threshold: 20, durationMinutes: -1 }, // 20 failures → requires admin unlock (-1 = permanent)
 ];
 const ATTEMPT_WINDOW_MINUTES = 15; // Count attempts within 15-minute window
 
 // Known automated tool User-Agent patterns
 const AUTOMATED_UA_PATTERNS = [
-  /curl\//i, /python-requests/i, /python-urllib/i, /axios\//i,
-  /headlesschrome/i, /phantomjs/i, /selenium/i, /puppeteer/i,
-  /scrapy/i, /httpie/i, /postman/i, /insomnia/i,
+  /curl\//i,
+  /python-requests/i,
+  /python-urllib/i,
+  /axios\//i,
+  /headlesschrome/i,
+  /phantomjs/i,
+  /selenium/i,
+  /puppeteer/i,
+  /scrapy/i,
+  /httpie/i,
+  /postman/i,
+  /insomnia/i,
 ];
 
 // SECURITY FIX: Enhanced password validation with complexity requirements
@@ -220,8 +229,14 @@ async function recordFailedLoginAttempt(
       lastAttemptAt: now,
       lastIpAddress: ipAddress,
     });
-    log.info(`[SECURITY] failed_login: email=${normalizedEmail} ip=${ipAddress} attempt=1${anomalyReasons.length > 0 ? ` anomaly=[${anomalyReasons.join(',')}]` : ''}`);
-    return { locked: false, attemptsRemaining: LOCKOUT_TIERS[0].threshold - 1, requiresAdminUnlock: false };
+    log.info(
+      `[SECURITY] failed_login: email=${normalizedEmail} ip=${ipAddress} attempt=1${anomalyReasons.length > 0 ? ` anomaly=[${anomalyReasons.join(',')}]` : ''}`,
+    );
+    return {
+      locked: false,
+      attemptsRemaining: LOCKOUT_TIERS[0].threshold - 1,
+      requiresAdminUnlock: false,
+    };
   }
 
   // Check if previous attempts are outside the window (reset counter)
@@ -246,10 +261,14 @@ async function recordFailedLoginAttempt(
         // Use epoch 0 as sentinel for "admin unlock required"
         lockedUntil = new Date(0);
         requiresAdminUnlock = true;
-        log.info(`[SECURITY] account_locked_permanent: email=${normalizedEmail} attempts=${newAttemptCount} - requires admin unlock`);
+        log.info(
+          `[SECURITY] account_locked_permanent: email=${normalizedEmail} attempts=${newAttemptCount} - requires admin unlock`,
+        );
       } else {
         lockedUntil = new Date(now.getTime() + tier.durationMinutes * 60 * 1000);
-        log.info(`[SECURITY] account_locked: email=${normalizedEmail} attempts=${newAttemptCount} duration=${tier.durationMinutes}min`);
+        log.info(
+          `[SECURITY] account_locked: email=${normalizedEmail} attempts=${newAttemptCount} duration=${tier.durationMinutes}min`,
+        );
       }
     }
   }
@@ -266,10 +285,12 @@ async function recordFailedLoginAttempt(
     })
     .where(eq(loginAttempts.id, existingAttempt.id));
 
-  log.info(`[SECURITY] failed_login: email=${normalizedEmail} ip=${ipAddress} attempt=${newAttemptCount}${anomalyReasons.length > 0 ? ` anomaly=[${anomalyReasons.join(',')}]` : ''}`);
+  log.info(
+    `[SECURITY] failed_login: email=${normalizedEmail} ip=${ipAddress} attempt=${newAttemptCount}${anomalyReasons.length > 0 ? ` anomaly=[${anomalyReasons.join(',')}]` : ''}`,
+  );
 
   // Calculate remaining attempts until next lockout tier
-  const nextTier = LOCKOUT_TIERS.find(t => t.threshold > newAttemptCount);
+  const nextTier = LOCKOUT_TIERS.find((t) => t.threshold > newAttemptCount);
   const attemptsRemaining = nextTier ? nextTier.threshold - newAttemptCount : 0;
 
   return {
@@ -307,7 +328,8 @@ router.post('/login', loginLimiter, async (req, res) => {
       log.info(`[SECURITY] Blocked login attempt for locked account: ${email}`);
       if (lockStatus.requiresAdminUnlock) {
         return res.status(429).json({
-          message: 'Account has been locked due to excessive failed attempts. Please contact your administrator to unlock.',
+          message:
+            'Account has been locked due to excessive failed attempts. Please contact your administrator to unlock.',
           locked: true,
           requiresAdminUnlock: true,
         });
@@ -322,7 +344,9 @@ router.post('/login', loginLimiter, async (req, res) => {
     // SECURITY: Detect anomalous login behavior
     const anomaly = detectLoginAnomaly(req, email);
     if (anomaly.isAnomalous) {
-      log.info(`[SECURITY] anomalous_login: email=${email} ip=${ipAddress} reasons=[${anomaly.reasons.join(',')}]`);
+      log.info(
+        `[SECURITY] anomalous_login: email=${email} ip=${ipAddress} reasons=[${anomaly.reasons.join(',')}]`,
+      );
     }
 
     const user = await storage.authenticateUser(email, password);
@@ -332,7 +356,8 @@ router.post('/login', loginLimiter, async (req, res) => {
 
       if (attemptResult.requiresAdminUnlock) {
         return res.status(429).json({
-          message: 'Account has been locked due to excessive failed attempts. Please contact your administrator to unlock.',
+          message:
+            'Account has been locked due to excessive failed attempts. Please contact your administrator to unlock.',
           locked: true,
           requiresAdminUnlock: true,
         });
@@ -444,6 +469,10 @@ const getCurrentUserHandler = async (req: any, res: any) => {
           role: 'admin',
         });
         testUser = await storage.getUser(testUserId);
+      }
+
+      if (!testUser) {
+        return res.status(404).json({ message: 'Test user not found' });
       }
 
       const userWithRole = await storage.getUserWithRole(testUserId);

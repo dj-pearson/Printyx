@@ -220,7 +220,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          {cardConfig?.availableCards?.length > 0 && (
+          {(cardConfig?.availableCards?.length ?? 0) > 0 && (
             <Button
               variant="outline"
               size="sm"
@@ -239,7 +239,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
       </div>
 
       {/* Card Management Panel */}
-      {showCardManager && cardConfig?.availableCards?.length > 0 && (
+      {showCardManager && (cardConfig?.availableCards?.length ?? 0) > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -252,7 +252,7 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {cardConfig.availableCards.map((cardId: string) => (
+              {cardConfig?.availableCards?.map((cardId: string) => (
                 <div
                   key={cardId}
                   className="flex items-center justify-between p-3 border rounded-lg"

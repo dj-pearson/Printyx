@@ -370,11 +370,11 @@ export default function ServiceTeamStatsWidget({
             </div>
             <Progress value={stats?.performance.firstTimeFixRate || 0} className="mt-2 h-2" />
             <p className="text-xs text-muted-foreground mt-2">
-              {stats?.performance.firstTimeFixRate >= 85
+              {(stats?.performance.firstTimeFixRate ?? 0) >= 85
                 ? 'Excellent'
-                : stats?.performance.firstTimeFixRate >= 75
+                : (stats?.performance.firstTimeFixRate ?? 0) >= 75
                   ? 'Good'
-                  : stats?.performance.firstTimeFixRate >= 65
+                  : (stats?.performance.firstTimeFixRate ?? 0) >= 65
                     ? 'Fair'
                     : 'Needs Improvement'}
             </p>

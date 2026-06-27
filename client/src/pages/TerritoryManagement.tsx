@@ -625,17 +625,18 @@ export default function TerritoryManagement() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm space-y-1">
-                            {territory.geographicRules?.states?.length > 0 && (
+                            {(territory.geographicRules?.states?.length ?? 0) > 0 && (
                               <div className="text-muted-foreground">
-                                States: {territory.geographicRules.states.slice(0, 3).join(', ')}
-                                {territory.geographicRules.states.length > 3 && '...'}
+                                States:{' '}
+                                {(territory.geographicRules?.states ?? []).slice(0, 3).join(', ')}
+                                {(territory.geographicRules?.states?.length ?? 0) > 3 && '...'}
                               </div>
                             )}
-                            {territory.accountRules?.industries?.length > 0 && (
+                            {(territory.accountRules?.industries?.length ?? 0) > 0 && (
                               <div className="text-muted-foreground">
                                 Industries:{' '}
-                                {territory.accountRules.industries.slice(0, 2).join(', ')}
-                                {territory.accountRules.industries.length > 2 && '...'}
+                                {(territory.accountRules?.industries ?? []).slice(0, 2).join(', ')}
+                                {(territory.accountRules?.industries?.length ?? 0) > 2 && '...'}
                               </div>
                             )}
                           </div>
