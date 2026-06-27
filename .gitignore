@@ -110,3 +110,7 @@ page-2026*
 console-2026*
 .env.bak-2026-06-12
 .claude/settings.local.json
+
+# PRD verification generated artifacts (prd-verify.mjs / prd-verify.yml)
+docs/prd-verify-matrix.md
+prd-verify-*.json
