@@ -8404,3 +8404,17 @@ Status: Needs Review
 
 Iteration 13 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 21: client untyped-useQuery burndown cont. (-18)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- DataEnrichment.tsx (9 -> 0): ContactsData/CompaniesData/EnrichmentAnalytics interfaces +
+  campaignsData typed ProspectingCampaign[] (drove the TS2740).
+- CrmGoalsDashboard.tsx (10 -> 1): typed teams/users/insights/conversionAnalysis as any[]
+  (clears map/length/slice TS2339 + conversionAnalysis[0] TS7053 + insights unknown-render TS2322).
+  1 remaining = pre-existing TeamStatsWidget prop-mismatch TS2322, intentionally LEFT.
+- Ratchet 2755 -> 2737 (-18); zero genuinely-new error locations. Baseline tightened.
+- NOTE: TeamStatsWidget prop mismatch (variant/showAutoRefresh) now in 2+ pages -> own small batch later.
+
+Iteration 14 (06/27/2026): Story QUALITY-002
+Status: Needs Review

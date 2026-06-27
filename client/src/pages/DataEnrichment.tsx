@@ -67,6 +67,19 @@ interface ProspectingCampaign {
   start_date?: string;
 }
 
+interface ContactsData {
+  contacts?: EnrichedContact[];
+}
+
+interface CompaniesData {
+  companies?: EnrichedCompany[];
+}
+
+interface EnrichmentAnalytics {
+  contacts?: any;
+  companies?: any;
+}
+
 export default function DataEnrichment() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -76,7 +89,7 @@ export default function DataEnrichment() {
   const [activeTab, setActiveTab] = useState('contacts');
 
   // Fetch enriched contacts
-  const { data: contactsData, isLoading: contactsLoading } = useQuery({
+  const { data: contactsData, isLoading: contactsLoading } = useQuery<ContactsData>({
     queryKey: ['/api/enrichment/contacts', searchQuery, filterStatus, filterSource],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -93,7 +106,7 @@ export default function DataEnrichment() {
   });
 
   // Fetch enriched companies
-  const { data: companiesData, isLoading: companiesLoading } = useQuery({
+  const { data: companiesData, isLoading: companiesLoading } = useQuery<CompaniesData>({
     queryKey: ['/api/enrichment/companies', searchQuery],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -108,13 +121,13 @@ export default function DataEnrichment() {
   });
 
   // Fetch prospecting campaigns
-  const { data: campaignsData, isLoading: campaignsLoading } = useQuery({
+  const { data: campaignsData, isLoading: campaignsLoading } = useQuery<ProspectingCampaign[]>({
     queryKey: ['/api/enrichment/campaigns'],
     enabled: activeTab === 'campaigns',
   });
 
   // Fetch analytics
-  const { data: analyticsData } = useQuery({
+  const { data: analyticsData } = useQuery<EnrichmentAnalytics>({
     queryKey: ['/api/enrichment/analytics'],
     enabled: activeTab === 'analytics',
   });
