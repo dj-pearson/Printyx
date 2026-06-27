@@ -179,7 +179,7 @@ export default function PreventiveMaintenanceAutomation() {
   const { register, handleSubmit, reset, setValue } = useForm();
 
   // Fetch maintenance schedules
-  const { data: schedules = [], isLoading: schedulesLoading } = useQuery({
+  const { data: schedules = [], isLoading: schedulesLoading } = useQuery<any[]>({
     queryKey: ['/api/maintenance/schedules'],
     select: (data: any[]) =>
       data.map((schedule) => ({
@@ -208,12 +208,18 @@ export default function PreventiveMaintenanceAutomation() {
   });
 
   // Fetch maintenance analytics
-  const { data: analytics } = useQuery({
+  const { data: analytics } = useQuery<{
+    efficiency: any;
+    summary: any;
+    equipment_health: any;
+    cost_analysis: any;
+    performance_trends: any;
+  }>({
     queryKey: ['/api/maintenance/analytics'],
   });
 
   // Fetch predictive maintenance
-  const { data: predictions = [] } = useQuery({
+  const { data: predictions = [] } = useQuery<any[]>({
     queryKey: ['/api/maintenance/predictions'],
   });
 
@@ -544,12 +550,14 @@ export default function PreventiveMaintenanceAutomation() {
                             Recommended Actions:
                           </h6>
                           <ul className="text-xs text-gray-600 space-y-1">
-                            {schedule.predictiveInsights.recommendedActions.map((action, idx) => (
-                              <li key={idx} className="flex items-start gap-1">
-                                <span className="text-blue-600 mt-0.5">•</span>
-                                <span>{action}</span>
-                              </li>
-                            ))}
+                            {schedule.predictiveInsights.recommendedActions.map(
+                              (action: any, idx: number) => (
+                                <li key={idx} className="flex items-start gap-1">
+                                  <span className="text-blue-600 mt-0.5">•</span>
+                                  <span>{action}</span>
+                                </li>
+                              ),
+                            )}
                           </ul>
                         </div>
                       )}

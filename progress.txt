@@ -8442,3 +8442,15 @@ Status: Needs Review
 
 Iteration 16 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 24: CompanyContacts + PreventiveMaintenanceAutomation (-32)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- CompanyContacts.tsx (17 -> 0): company inline interface (guarded by if(!company)return + field &&),
+  existingContacts<any[]> (assignable to Contact[] prop; cleared 3 TS18046 + TS2322).
+- PreventiveMaintenanceAutomation.tsx (15 -> 0): schedules<any[]>, analytics<{...REQUIRED any}> (under
+  {analytics &&}), predictions<any[]>; annotated pre-existing recommendedActions.map TS7006.
+- Ratchet 2709 -> 2677 (-32); zero genuinely-new error locations. Baseline tightened.
+
+Iteration 17 (06/27/2026): Story QUALITY-002
+Status: Needs Review
