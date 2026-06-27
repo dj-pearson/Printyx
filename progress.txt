@@ -8914,3 +8914,17 @@ Status: Needs Review
   service (mockEquipmentOwnership->Record<string,string[]>, equipment[field] -> (equipment as
   Record<string,any>)[field]). All faithful (runtime lookup unchanged; undefined for unknown keys as before).
 - Ratchet 1982 -> 1967 (-15); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 58: make apiRequest generic — clears ALL TS2558 (-13, 1 line)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- ROOT-CAUSE one-liner: 13 TS2558 'Expected 0 type arguments, but got 1' across 9 files were all
+  apiRequest<T>(url) calls, but apiRequest was declared `(...): Promise<any>` with no generic. Made it
+  `apiRequest<T = any>(...): Promise<T>` (client/src/lib/queryClient.ts). All return paths return
+  safeJsonParse() -> any, assignable to T; callers without a generic still get Promise<any> (T defaults
+  to any) so ZERO behavior change. This is the correct fix (apiRequest SHOULD be generic) and the batch-57
+  `as Promise<T>` casts still compile.
+- Cleared TS2558 entirely (13 -> 0). Files that had them: AssetUploadDialog, ApolloCredentialManager,
+  ProductPricingForm, BlogCompetitorGap, BlogPaaMiner, BlogPostEditor, BlogSerp, BlogSettingsCmsTargets/
+  Jobs/KeywordTargets.
+- Ratchet 1967 -> 1954 (-13); per-file count diff: NO file gained errors. Baseline tightened.

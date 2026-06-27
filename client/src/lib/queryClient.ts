@@ -134,12 +134,12 @@ async function buildAuthHeaders(requestId: string): Promise<HeadersInit> {
   return headers;
 }
 
-export async function apiRequest(
+export async function apiRequest<T = any>(
   url: string,
   methodOrOptions: string | ApiRequestOptions = 'GET',
   body?: any,
   headers?: Record<string, string>,
-): Promise<any> {
+): Promise<T> {
   // Support both formats:
   // apiRequest(url, 'POST', data) - positional params
   // apiRequest(url, { method: 'POST', body: data }) - options object
