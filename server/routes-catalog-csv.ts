@@ -287,11 +287,10 @@ function validateSoftwareProductData(row: any): any {
   // Parse pricing values
   const standardCost = parseDecimal(getFieldValue('standard_cost'));
   const standardRepPriceRaw = getFieldValue('standard_rep_price');
-  log.info(
-    `Debug: standardRepPriceRaw for ${productCode}:`,
-    standardRepPriceRaw,
-    typeof standardRepPriceRaw,
-  );
+  log.info(`Debug: standardRepPriceRaw for ${productCode}:`, {
+    value: standardRepPriceRaw,
+    type: typeof standardRepPriceRaw,
+  });
   const standardRepPrice = parseDecimal(standardRepPriceRaw);
   log.info(`Debug: standardRepPrice after parseDecimal for ${productCode}:`, standardRepPrice);
   const newCost = parseDecimal(getFieldValue('new_cost'));
@@ -1314,7 +1313,7 @@ export function registerCatalogCsvRoutes(app: Express) {
 
         // Enhanced CSV parsing with field mapping
         const csvText = file.buffer.toString('utf-8');
-        log.info('CSV file size:', file.size, 'bytes');
+        log.info('CSV file size', { bytes: file.size });
         log.info('First 200 characters:', csvText.substring(0, 200));
 
         const lines: string[] = csvText.split(/\r?\n/).filter((line: string) => line.trim());

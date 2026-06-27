@@ -152,7 +152,7 @@ async function setupAndTest() {
     log.info('\n✅ Test Verification:\n');
 
     if (result.success || result.message) {
-      log.info('   ✅ API responded (status:', response.status, ')');
+      log.info('API responded', { status: response.status });
 
       if (result.order) {
         log.info('   ✅ Order object present');

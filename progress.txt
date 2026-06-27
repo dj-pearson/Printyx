@@ -8872,3 +8872,16 @@ Status: Needs Review
   useQuery<any[]> (cleared the customers-unknown TS18046).
 - Ratchet 2003 -> 1990 (-13); per-file count diff: NO file gained errors. Baseline tightened. CROSSED <2000
   (6176 -> 1990, -68%).
+
+## Iteration - QUALITY-002 BATCH 55: TS2554 loggers + salesforce transform type (-5)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- catalog-csv (2): the Debug standardRepPriceRaw 3-arg log.info -> {value,type} meta; 'CSV file size' 3-arg
+  -> {bytes} meta. test-toner-order-simple: 'API responded' 3-arg -> {status} meta.
+- salesforce-mapping: FieldMapping.transform type was `(value: any) => any` (1 param) but the transform
+  IMPLs and the call site (line 1154) use 2 args (value, record) -> widened the type to
+  `(value: any, record?: any) => any` (real type-correctness fix; impls already use record).
+- DEFERRED gps-tracking 4 TS2554: storage-method arg mismatches — a MIX of missing required args (93
+  updateTechnicianLocation, 746 getLatestEtaForTicket expect 3 got 2) and extra ignored args (420 startRoute,
+  459 completeRoute) — each needs individual signature reconciliation; flagged for a focused pass.
+- Ratchet 1990 -> 1985 (-5); per-file count diff: NO file gained errors. Baseline tightened.

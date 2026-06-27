@@ -8,7 +8,7 @@ export interface FieldMapping {
   dataType: 'string' | 'number' | 'boolean' | 'date' | 'decimal' | 'json';
   required?: boolean;
   defaultValue?: any;
-  transform?: (value: any) => any;
+  transform?: (value: any, record?: any) => any;
 }
 
 export interface TableMapping {
