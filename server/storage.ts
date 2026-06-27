@@ -1974,7 +1974,7 @@ export class DatabaseStorage implements IStorage {
 
     // Combine and sort by updated date
     const allProducts = [...models, ...accessories].sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      (a, b) => new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime(),
     );
 
     return allProducts;
@@ -2608,7 +2608,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(companies)
       .where(and(eq(companies.id, id), eq(companies.tenantId, tenantId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Company contact operations
@@ -3236,7 +3236,11 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(businessRecordActivities.createdAt));
 
       // Then get business records for context
-      const businessRecordIds = [...new Set(activities.map((a) => a.businessRecordId))];
+      const businessRecordIds = [
+        ...new Set(
+          activities.map((a) => a.businessRecordId).filter((id): id is string => id !== null),
+        ),
+      ];
       const records =
         businessRecordIds.length > 0
           ? await db
@@ -3563,7 +3567,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(productAccessories)
       .where(and(eq(productAccessories.id, id), eq(productAccessories.tenantId, tenantId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async updateProductAccessory(
@@ -3778,8 +3782,12 @@ export class DatabaseStorage implements IStorage {
         unit: performanceMetrics.unit,
       })
       .from(performanceMetrics)
-      .where(tenantId ? eq(performanceMetrics.tenantId, tenantId) : sql`TRUE`)
-      .where(gte(performanceMetrics.timestamp, new Date(Date.now() - 60 * 60 * 1000))) // Last hour
+      .where(
+        and(
+          tenantId ? eq(performanceMetrics.tenantId, tenantId) : sql`TRUE`,
+          gte(performanceMetrics.timestamp, new Date(Date.now() - 60 * 60 * 1000)), // Last hour
+        ),
+      )
       .groupBy(performanceMetrics.metricType, performanceMetrics.unit);
 
     const result = {
@@ -3947,7 +3955,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(professionalServices)
       .where(and(eq(professionalServices.id, id), eq(professionalServices.tenantId, tenantId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Service Products
@@ -4008,7 +4016,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(softwareProducts)
       .where(and(eq(softwareProducts.id, id), eq(softwareProducts.tenantId, tenantId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async bulkDeleteSoftwareProducts(ids: string[], tenantId: string): Promise<number> {
@@ -4110,7 +4118,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(supplies)
       .where(and(eq(supplies.id, id), eq(supplies.tenantId, tenantId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async createManagedService(service: InsertManagedService): Promise<ManagedService> {
@@ -4135,7 +4143,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(managedServices)
       .where(and(eq(managedServices.id, id), eq(managedServices.tenantId, tenantId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Contact operations (used for company contacts)
@@ -4182,7 +4190,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(leadContacts)
       .where(and(eq(leadContacts.id, contactId), eq(leadContacts.tenantId, tenantId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Get contacts by company name from enhanced_contacts table
@@ -4243,7 +4251,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(vendors)
       .where(and(eq(vendors.id, id), eq(vendors.tenantId, tenantId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Accounts Payable operations
@@ -4422,7 +4430,7 @@ export class DatabaseStorage implements IStorage {
       .delete(purchaseOrders)
       .where(and(eq(purchaseOrders.id, id), eq(purchaseOrders.tenantId, tenantId)));
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async deletePurchaseOrderItem(id: string, tenantId: string): Promise<boolean> {
@@ -4430,7 +4438,7 @@ export class DatabaseStorage implements IStorage {
       .delete(purchaseOrderItems)
       .where(and(eq(purchaseOrderItems.id, id), eq(purchaseOrderItems.tenantId, tenantId)));
 
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Vendor operations - removed duplicate methods (kept original versions above)
@@ -4766,7 +4774,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(productPricing)
       .where(and(eq(productPricing.id, id), eq(productPricing.tenantId, tenantId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getQuotePricing(quoteId: string, tenantId: string): Promise<QuotePricing | undefined> {
@@ -4844,7 +4852,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(quotePricingLineItems)
       .where(and(eq(quotePricingLineItems.id, id), eq(quotePricingLineItems.tenantId, tenantId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Comprehensive contact management methods
@@ -4903,7 +4911,8 @@ export class DatabaseStorage implements IStorage {
       .from(companyContacts)
       .leftJoin(companies, eq(companyContacts.companyId, companies.id))
       .leftJoin(users, eq(companyContacts.ownerId, users.id))
-      .where(and(...whereConditions));
+      .where(and(...whereConditions))
+      .$dynamic();
 
     // Apply sorting - simplified to avoid dynamic column access issues
     if (options.sortBy === 'lastActivityDate' || options.sortBy === 'lastContactDate') {
@@ -5102,7 +5111,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUserSettings(userId: string): Promise<boolean> {
     const result = await db.delete(userSettings).where(eq(userSettings.userId, userId));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getUserById(userId: string): Promise<User | undefined> {
@@ -5125,12 +5134,12 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(userCustomerAssignments)
       .where(eq(userCustomerAssignments.userId, userId));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async deleteUser(userId: string): Promise<boolean> {
     const result = await db.delete(users).where(eq(users.id, userId));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Warehouse Operations methods
@@ -5626,7 +5635,12 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(leases)
-      .where(and(eq(leases.status, status), eq(leases.tenantId, tenantId)))
+      .where(
+        and(
+          eq(leases.status, status as (typeof leases.status.enumValues)[number]),
+          eq(leases.tenantId, tenantId),
+        ),
+      )
       .orderBy(desc(leases.createdAt));
   }
 
@@ -7915,28 +7929,28 @@ export class DatabaseStorage implements IStorage {
       .where(eq(bantQualificationCriteria.tenantId, tenantId));
 
     const totalAssessed = allBant.length;
-    const qualifiedCount = allBant.filter((b) => b.totalBantScore >= 50).length;
+    const qualifiedCount = allBant.filter((b) => (b.totalBantScore ?? 0) >= 50).length;
     const averageBantScore =
       totalAssessed > 0
-        ? Math.round(allBant.reduce((sum, b) => sum + b.totalBantScore, 0) / totalAssessed)
+        ? Math.round(allBant.reduce((sum, b) => sum + (b.totalBantScore ?? 0), 0) / totalAssessed)
         : 0;
 
     const componentAverages = {
       budgetScore:
         totalAssessed > 0
-          ? Math.round(allBant.reduce((sum, b) => sum + b.budgetScore, 0) / totalAssessed)
+          ? Math.round(allBant.reduce((sum, b) => sum + (b.budgetScore ?? 0), 0) / totalAssessed)
           : 0,
       authorityScore:
         totalAssessed > 0
-          ? Math.round(allBant.reduce((sum, b) => sum + b.authorityScore, 0) / totalAssessed)
+          ? Math.round(allBant.reduce((sum, b) => sum + (b.authorityScore ?? 0), 0) / totalAssessed)
           : 0,
       needScore:
         totalAssessed > 0
-          ? Math.round(allBant.reduce((sum, b) => sum + b.needScore, 0) / totalAssessed)
+          ? Math.round(allBant.reduce((sum, b) => sum + (b.needScore ?? 0), 0) / totalAssessed)
           : 0,
       timelineScore:
         totalAssessed > 0
-          ? Math.round(allBant.reduce((sum, b) => sum + b.timelineScore, 0) / totalAssessed)
+          ? Math.round(allBant.reduce((sum, b) => sum + (b.timelineScore ?? 0), 0) / totalAssessed)
           : 0,
     };
 

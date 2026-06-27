@@ -8622,3 +8622,27 @@ Status: Needs Review
   `as typeof <table>.$inferInsert` (10 inserts incl the already-passing contacts one; type-only, faithful -
   data is a legitimately dynamic CSV-mapped row, runtime unchanged).
 - Ratchet 2383 -> 2337 (-46); per-file count diff shows NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 36: storage.ts null-guards + dynamic + cross-tenant-leak fix (-32)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- server/storage.ts 93 -> 61. Bucket D mechanical subset + 1 REAL SECURITY BUG:
+  (1) 16x `return result.rowCount > 0;` -> `(result.rowCount ?? 0) > 0` (Drizzle delete/execute rowCount is
+      number|null; null => 0 affected => false; faithful). (TS18047)
+  (2) 6x BANT aggregation reads (b.totalBantScore/budgetScore/authorityScore/needScore/timelineScore, all
+      nullable int) -> `(x ?? 0)` in the filter/reduce (null score counts as 0 in averages). (TS18047)
+  (3) 3x TS2769: new Date(b.updatedAt) where updatedAt is Date|null -> new Date(b.updatedAt ?? 0); inArray(
+      businessRecords.id, businessRecordIds) where ids were (string|null)[] -> .filter((id): id is string =>
+      id !== null); eq(leases.status, status:string) where leases.status is a pgEnum -> cast status to
+      (typeof leases.status.enumValues)[number].
+  (4) SECURITY: getPerformanceMetricsSummary chained `.where(tenantId?...).where(gte(timestamp...))` — Drizzle
+      OVERWRITES on a second .where(), so the tenantId filter was SILENTLY DROPPED -> the hourly perf-metrics
+      aggregate ran across ALL tenants (cross-tenant leak). Combined into one .where(and(tenantFilter,
+      timeFilter)); also restored type inference so the .forEach((metric)) param is typed (cleared TS7006).
+  (5) getCompanyContacts: `let query = db.select()...; query = query.orderBy()/limit()/offset()` reassignment
+      -> added .$dynamic() (TS2739 missing offset/limit). Batch-25 recipe.
+- DEFERRED in storage.ts: 6858/6872 .update(users).set({twoFactorEnabled,twoFactorSecret}) TS2353 — the
+  users table DOES have those cols (schema 1010-1011) but the .set() type lacks them, suggesting the `users`
+  symbol here resolves to a DIFFERENT users table (import drift) — needs investigation, not a blind fix.
+  Also the 9 TS2416 IStorage method-signature mismatches + 43 TS2339 (phantom reads) remain.
+- Ratchet 2337 -> 2305 (-32); per-file count diff: NO file gained errors. Baseline tightened.
