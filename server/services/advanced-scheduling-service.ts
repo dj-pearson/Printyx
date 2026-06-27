@@ -115,7 +115,7 @@ class AdvancedSchedulingService {
     existingSchedule: any[] = [],
   ): Promise<SchedulingResult> {
     const startTime = Date.now();
-    log.info('🚀 Starting advanced scheduling for', tasks.length, 'tasks...');
+    log.info(`🚀 Starting advanced scheduling for ${tasks.length} tasks...`);
 
     try {
       // Step 1: Analyze user patterns and update learning models

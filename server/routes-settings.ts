@@ -242,7 +242,7 @@ export async function exportUserData(req: Request, res: Response) {
     // Gather all user-related data
     const userData = await storage.getUserById(user.id);
     const userSettings = await storage.getUserSettings(user.id);
-    const userAssignments = await storage.getUserCustomerAssignments(user.id);
+    const userAssignments = await storage.getUserCustomerAssignments(user.id, user.tenantId);
 
     const exportData = {
       profile: {

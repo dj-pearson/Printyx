@@ -469,7 +469,7 @@ async function seedLeadScoring() {
         });
 
         // Update lead score
-        await storage.updateBusinessRecord(lead.id, {
+        await storage.updateBusinessRecord(lead.id, tenantId, {
           leadScore: totalScore,
           priority: leadTier === 'hot' ? 'high' : leadTier === 'warm' ? 'medium' : 'low',
         });

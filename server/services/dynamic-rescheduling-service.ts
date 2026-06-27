@@ -87,7 +87,7 @@ class DynamicReschedulingService {
    * Trigger rescheduling based on an event
    */
   async triggerRescheduling(event: ReschedulingEvent): Promise<ReschedulingResult> {
-    log.info('🔄 Rescheduling triggered:', event.type, 'Impact:', event.impact);
+    log.info('🔄 Rescheduling triggered:', { type: event.type, impact: event.impact });
 
     // Add to event queue
     this.eventQueue.push(event);

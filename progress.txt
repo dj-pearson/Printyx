@@ -8825,3 +8825,17 @@ Status: Needs Review
   count/duration, error meta), meeting-transcription-service (2: template + {recordingId,status} meta),
   routes-tasks 157 (Creating project -> {tenantId,userId} meta).
 - Ratchet 2035 -> 2027 (-8); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 51: more TS2554 logger + missing-tenantId storage (-6)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Logger 3-arg consolidations (Edit tool needed - emoji prefixes broke sed in batch 50): advanced-scheduling
+  118 (the 1 batch-50 missed), dynamic-rescheduling 90, document-generation 501, routes-contacts 280 ->
+  meta object/template literal.
+- Missing-tenantId storage calls (real scope bugs): routes-settings getUserCustomerAssignments(user.id) ->
+  (user.id, user.tenantId) (sig is (userId, tenantId)); seed-lead-scoring updateBusinessRecord(lead.id, {..})
+  -> (lead.id, tenantId, {..}) (sig is (id, tenantId, updates); tenantId in scope at file top).
+- Ratchet 2027 -> 2021 (-6); per-file count diff: NO file gained errors. Baseline tightened.
+- Remaining TS2554: gps-tracking (4, storage-arg mismatches - need signature verification), salesforce-mapping
+  transform, integration-service createQuickBooksClient, test-toner-order, Signup.tsx, CsvImportWizard - each
+  needs individual verification (deferred to per-site checks).
