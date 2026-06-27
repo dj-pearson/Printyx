@@ -355,7 +355,7 @@ router.get('/equipment-health', requireCustomerPortalAuth, async (req, res) => {
   } catch (error) {
     log.error('Error fetching equipment health data:', error);
 
-    if (error.message === 'CUSTOMER_ACCESS_DENIED') {
+    if (error instanceof Error && error.message === 'CUSTOMER_ACCESS_DENIED') {
       return res.status(403).json({
         success: false,
         message: 'Access denied: customer does not belong to your tenant',
@@ -417,7 +417,7 @@ router.post('/equipment-maintenance', requireCustomerPortalAuth, async (req, res
   } catch (error) {
     log.error('Error scheduling equipment maintenance:', error);
 
-    if (error.message === 'EQUIPMENT_ACCESS_DENIED') {
+    if (error instanceof Error && error.message === 'EQUIPMENT_ACCESS_DENIED') {
       return res.status(403).json({
         success: false,
         message: 'Access denied: equipment does not belong to your account',
@@ -471,7 +471,7 @@ router.get('/equipment-analytics/:equipmentId', requireCustomerPortalAuth, async
   } catch (error) {
     log.error('Error fetching equipment usage analytics:', error);
 
-    if (error.message === 'EQUIPMENT_ACCESS_DENIED') {
+    if (error instanceof Error && error.message === 'EQUIPMENT_ACCESS_DENIED') {
       return res.status(403).json({
         success: false,
         message: 'Access denied: equipment does not belong to your account',
@@ -537,7 +537,7 @@ router.get('/usage-analytics', requireCustomerPortalAuth, async (req, res) => {
   } catch (error) {
     log.error('Error fetching usage analytics:', error);
 
-    if (error.message === 'CUSTOMER_ACCESS_DENIED') {
+    if (error instanceof Error && error.message === 'CUSTOMER_ACCESS_DENIED') {
       return res.status(403).json({
         success: false,
         message: 'Access denied: customer does not belong to your account',
@@ -609,7 +609,7 @@ router.get('/equipment-usage/:equipmentId', requireCustomerPortalAuth, async (re
   } catch (error) {
     log.error('Error fetching equipment usage details:', error);
 
-    if (error.message === 'EQUIPMENT_ACCESS_DENIED') {
+    if (error instanceof Error && error.message === 'EQUIPMENT_ACCESS_DENIED') {
       return res.status(403).json({
         success: false,
         message: 'Access denied: equipment does not belong to your account',
@@ -849,14 +849,14 @@ router.put(
     } catch (error) {
       log.error('Error rescheduling appointment:', error);
 
-      if (error.message === 'Appointment not found') {
+      if (error instanceof Error && error.message === 'Appointment not found') {
         return res.status(404).json({
           success: false,
           message: 'Appointment not found',
         });
       }
 
-      if (error.message.includes('Cannot reschedule')) {
+      if (error instanceof Error && error.message.includes('Cannot reschedule')) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -907,14 +907,14 @@ router.delete(
     } catch (error) {
       log.error('Error cancelling appointment:', error);
 
-      if (error.message === 'Appointment not found') {
+      if (error instanceof Error && error.message === 'Appointment not found') {
         return res.status(404).json({
           success: false,
           message: 'Appointment not found',
         });
       }
 
-      if (error.message.includes('Cannot cancel')) {
+      if (error instanceof Error && error.message.includes('Cannot cancel')) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -1106,7 +1106,7 @@ router.get('/service-requests/:requestId/history', requireCustomerPortalAuth, as
   } catch (error) {
     log.error('Error fetching service request status history:', error);
 
-    if (error.message === 'Service request not found') {
+    if (error instanceof Error && error.message === 'Service request not found') {
       return res.status(404).json({
         success: false,
         message: 'Service request not found',

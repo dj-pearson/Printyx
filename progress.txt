@@ -8493,3 +8493,15 @@ Status: Needs Review
 
 Iteration 20 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 28: routes-customer-portal.ts partial (-23)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Added Request.customerPortalUser to server/types/express.d.ts (was only augmenting Express.User)
+  -> cleared 11 TS2339 'customerPortalUser does not exist on Request'.
+- Guarded 12 catch-block `error.message` accesses with `error instanceof Error &&` -> cleared 12 TS18046.
+- customer-portal 77 -> 54; EMPTY non-target diff (zero new). Ratchet 2576 -> 2553. Baseline tightened.
+- Remaining 54 (req.user-undefined, null-index TS2538, data-null TS18047, reduce typing) deferred.
+
+Iteration 21 (06/27/2026): Story QUALITY-002
+Status: Needs Review
