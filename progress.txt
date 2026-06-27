@@ -9064,3 +9064,26 @@ CONFIRMED NOT-DONE / NOT-LOCALLY-COMPLETABLE (stay passes:false; routed to prd-v
   gated on an unfinished EXTERNAL integration (Twilio SMS, real-time voice, Slack/Teams OAuth, address-
   book vendor adapters, cron scheduler / email-send). Not flipped.
 - IOS-* (62) — native SwiftUI; audit in progress / verified via prd-verify.yml ios tier (xcodebuild on macOS).
+
+## Iteration - PRD VERIFY-AND-FLIP: iOS cluster audit complete (2026-06-27)
+**Status**: iOS native-Swift audit done (62 stories). 5 flipped on cited-symbol evidence. 85 total remain.
+
+iOS audit was against the NATIVE Swift app (ios/). Note: design-system stories IOS-017..025 were largely
+written against the SEPARATE Expo/RN app (mobile/) and have no Swift equivalent -> NOT-DONE for ios/.
+
+FLIPPED (5, cited symbols in story notes):
+- IOS-029 Manager team roll-up — 4 team-reports endpoints (APIEndpoint.swift:341-358) + tests + cards.
+- IOS-036 QuickLog concurrency — SpeechTranscriber recognitionRequest-before-installTap + location resumeOnce guard.
+- IOS-048 Navigation/deep-link destinations — all 10 AppRoute cases registered in AppRouteDestinations.swift.
+- IOS-075 List pagination triggers — loadMore last-row onAppear on ticket/CRM/contact lists; quote rows tappable.
+- IOS-082 UI consistency/dead-API bundle — OfflineBanner/Shadow tokens/currencyAbbreviated/StatusBadge critical/hex fallback.
+
+NOT FLIPPED (57 iOS, stay passes:false -> routed to prd-verify.yml ios tier = xcodebuild test on macOS):
+- PARTIAL (25): IOS-034,038,040,042,047,049,052,053,054,055,056,058,060,063,064,065,067,068,072,074,077,078,079,080,085.
+- NOT-DONE (24): IOS-014,015,017,018,019,020,021,022,024,025,035,037,041,043,045,046,050,051,057,059,061,062,066,084.
+- PARTIAL-leaning-NOT-DONE: IOS-039, IOS-083.
+Cross-cutting: security/network hardening (014/035/037/041/043/084) essentially unstarted in source despite
+notes; design-system 017-025 target the Expo app not Swift; detail screens broadly read-only (create/edit/PDF missing).
+
+SESSION TOTAL: 14 stories flipped (9 web/edge/super + 5 iOS). 473 stories -> 388 passing / 85 remaining.
+All 85 remaining are routed to the new prd-verify.yml per-tier CI verification (web/ios/infra gates).

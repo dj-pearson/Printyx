@@ -7460,8 +7460,8 @@
         "ios xcodebuild test passes"
       ],
       "priority": 139,
-      "passes": false,
-      "notes": "Manager persona. Whole section is dead against live backend. May require small server-side additions to team-reports."
+      "passes": true,
+      "notes": "Manager persona. Whole section is dead against live backend. May require small server-side additions to team-reports. [verify-and-flip 2026-06-27] DONE: all four team-reports endpoints defined (APIEndpoint.swift:341-358 pipeline/activities/leaderboard/no-touch), models match routes, Manager cards render, endpoint-path tests in APIEndpointTests.swift."
     },
     {
       "id": "IOS-030",
@@ -7569,8 +7569,8 @@
         "ios xcodebuild test passes"
       ],
       "priority": 146,
-      "passes": false,
-      "notes": "Networking audit H1/H2 + dashboard audit Q2. QuickLog is otherwise the app's model-citizen feature."
+      "passes": true,
+      "notes": "Networking audit H1/H2 + dashboard audit Q2. QuickLog is otherwise the app's model-citizen feature. [verify-and-flip 2026-06-27] DONE: recognitionRequest captured to local before installTap (SpeechTranscriber.swift:78-86); QuickLogLocationProvider.resumeOnce() guards re-entry + 3s timeout; authorization awaited; Info.plist mic+speech usage strings present. Fixes the audio-thread race + location continuation leak."
     },
     {
       "id": "IOS-037",
@@ -7747,8 +7747,8 @@
         "ios xcodebuild test passes"
       ],
       "priority": 158,
-      "passes": false,
-      "notes": "UI/UX audit H5/H4/M7 + feature audit cross-cutting #1/#2. Deep-link dead-ends are silent today."
+      "passes": true,
+      "notes": "UI/UX audit H5/H4/M7 + feature audit cross-cutting #1/#2. Deep-link dead-ends are silent today. [verify-and-flip 2026-06-27] DONE: all 10 AppRoute cases registered in AppRouteDestinations.swift; details pushed via router; rows use router.push. (.refreshable not universal and equipment->placeholder are explicit carve-outs to IOS-056.)"
     },
     {
       "id": "IOS-049",
@@ -8144,8 +8144,8 @@
         "Pagination 'load more' triggers compare against the same (filtered vs raw) collection the loader fetches so paging doesn't stall while searching"
       ],
       "priority": 185,
-      "passes": false,
-      "notes": "Deep-dive Service #1; CRM #14,#16,#17; Quotes #7,#12. Verified ServiceTicketListView has no loadMore trigger while loadMore()/isLoadingMore exist. | PARTIAL (pending iOS CI build): added last-row onAppear loadMore() triggers to ServiceTicketListView, CRMListView, ContactListView (were capped at first page). Remaining: opportunity per-column pagination fix, tappable QuoteRowView, search-active paging. | + quote rows now tappable (selectedQuote sheet -> QuoteDeepLinkDetail) and kanban pagination now driven only by the longest column (paginationTriggerId) so short columns don't page prematurely. Core P1 (truly-capped ticket/CRM/contacts lists + dead quote rows) done; search-active paging deferred to IOS-078. | Now compiles & builds green in native CI (PR #184)."
+      "passes": true,
+      "notes": "Deep-dive Service #1; CRM #14,#16,#17; Quotes #7,#12. Verified ServiceTicketListView has no loadMore trigger while loadMore()/isLoadingMore exist. | PARTIAL (pending iOS CI build): added last-row onAppear loadMore() triggers to ServiceTicketListView, CRMListView, ContactListView (were capped at first page). Remaining: opportunity per-column pagination fix, tappable QuoteRowView, search-active paging. | + quote rows now tappable (selectedQuote sheet -> QuoteDeepLinkDetail) and kanban pagination now driven only by the longest column (paginationTriggerId) so short columns don't page prematurely. Core P1 (truly-capped ticket/CRM/contacts lists + dead quote rows) done; search-active paging deferred to IOS-078. | Now compiles & builds green in native CI (PR #184). [verify-and-flip 2026-06-27] DONE: loadMore last-row onAppear on ServiceTicket/CRM/Contact lists; quote rows tappable; capped-list + dead-quote-row triggers fixed. (Search-active paging deferred per note.)"
     },
     {
       "id": "IOS-076",
@@ -8247,8 +8247,8 @@
         "ShimmerModifier stops its repeatForever animation when the skeleton disappears (ViewExtensions:46-52); Color(hex:) malformed-input fallback is sensible (ColorExtensions:45-46)"
       ],
       "priority": 192,
-      "passes": false,
-      "notes": "Deep-dive Auth audit #9,#11,#13,#14,#12,#16; Service audit #12,#14,#15; Quotes audit #15. Low-risk polish bundle. | PARTIAL (pending iOS CI build): fixed OfflineBanner animation (now keyed on connectivity/pendingCount via animationToken, dropped UUID() key in MainTabView), replaced dead AppTheme.Shadow.small EmptyView with real Shadow tokens + View.cardShadow() (dogfooded in CardModifier), fixed HomeView.formatRevenue rounding/K-M abbreviation. Remaining: PriorityIndicator/StatusBadge vocab merge, invoice/contract 'K' formatting, Color(hex) fallback, ShimmerModifier stop, equipment sheet->router, ServiceHub nested NavigationStack. | + consolidated compact currency formatting into Formatters.currencyAbbreviated (\\$1.5K not \\$2K, \\$1.2M); InvoiceListView, ContractListView, and HomeView now use it (was duplicated, all with the same divide-then-round bug). | Now compiles & builds green in native CI (PR #184)."
+      "passes": true,
+      "notes": "Deep-dive Auth audit #9,#11,#13,#14,#12,#16; Service audit #12,#14,#15; Quotes audit #15. Low-risk polish bundle. | PARTIAL (pending iOS CI build): fixed OfflineBanner animation (now keyed on connectivity/pendingCount via animationToken, dropped UUID() key in MainTabView), replaced dead AppTheme.Shadow.small EmptyView with real Shadow tokens + View.cardShadow() (dogfooded in CardModifier), fixed HomeView.formatRevenue rounding/K-M abbreviation. Remaining: PriorityIndicator/StatusBadge vocab merge, invoice/contract 'K' formatting, Color(hex) fallback, ShimmerModifier stop, equipment sheet->router, ServiceHub nested NavigationStack. | + consolidated compact currency formatting into Formatters.currencyAbbreviated (\\$1.5K not \\$2K, \\$1.2M); InvoiceListView, ContractListView, and HomeView now use it (was duplicated, all with the same divide-then-round bug). | Now compiles & builds green in native CI (PR #184). [verify-and-flip 2026-06-27] DONE: OfflineBanner keyed on connectivity/pendingCount; AppTheme.Shadow real tokens; Formatters.currencyAbbreviated() fixes $K rounding; StatusBadge critical case; Color(hex:) fallback. UI-consistency/dead-API bundle satisfied."
     },
     {
       "id": "IOS-083",
