@@ -3,8 +3,8 @@
 **Branch:** `claude/quality-002-typecheck-burndown` (main was merged via PR #186; this is the continuation branch)
 **Story:** QUALITY-002 — "Drive `npm run check` to green"
 **Status:** `passes: false` (flips to true only when `tsc` is fully clean)
-**Current count:** **1982** tsc errors (started at 6176; **−68%**). Baseline tracked in `docs/typecheck-baseline.json`.
-**Last batch:** 56 (gps-tracking storage-arg mismatches). Singleton-sweep phase: null-guards, logger args, implicit-any params, untyped-query generics, storage-arg fixes — ~3-13/batch.
+**Current count:** **1967** tsc errors (started at 6176; **−68%**). Baseline tracked in `docs/typecheck-baseline.json`.
+**Last batch:** 57 (apiRequest generics + Record-typed string-indexed maps). TS18047/18048/18046 EXHAUSTED. Now sweeping TS2558 (`apiRequest<T>` → cast; wrong generic-arg counts) and TS7053 (string-indexed object literals → `Record<...>` / `key as keyof typeof`).
 
 > DEFERRED for a focused pass: gps-tracking-routes 4 TS2554 are storage-method arg mismatches — a MIX of
 > missing required args (updateTechnicianLocation, getLatestEtaForTicket want 3, got 2) and extra ignored
