@@ -135,9 +135,9 @@ export function MyTasksView({ tasks, isLoading, teamMembers, projects = [] }: My
     const cleanedData = Object.entries(data).reduce((acc, [key, value]) => {
       // Convert empty strings to null, especially for dates
       if (value === '') {
-        acc[key] = null;
+        (acc as Record<string, any>)[key] = null;
       } else {
-        acc[key] = value;
+        (acc as Record<string, any>)[key] = value;
       }
       return acc;
     }, {} as Partial<Task>);

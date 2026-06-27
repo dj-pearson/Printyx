@@ -588,7 +588,7 @@ export const SALESFORCE_FIELD_MAPPINGS: TableMapping[] = [
             Unqualified: 'unqualified',
             Converted: 'converted',
           };
-          return statusMap[value] || 'new';
+          return statusMap[value as keyof typeof statusMap] || 'new';
         },
       },
       {

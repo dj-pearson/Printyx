@@ -160,7 +160,7 @@ export async function apiRequest<T = any>(
   const requestId = generateRequestId();
   __lastRequestId = requestId;
 
-  const requestHeaders: HeadersInit = {
+  const requestHeaders: Record<string, string> = {
     ...(await buildAuthHeaders(requestId)),
     ...finalHeaders,
   };

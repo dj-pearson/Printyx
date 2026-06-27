@@ -429,7 +429,7 @@ export default function LeadDetailHubspot() {
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({
       ...prev,
-      [section]: !prev[section],
+      [section]: !prev[section as keyof typeof prev],
     }));
   };
 

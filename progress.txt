@@ -8928,3 +8928,15 @@ Status: Needs Review
   ProductPricingForm, BlogCompetitorGap, BlogPaaMiner, BlogPostEditor, BlogSerp, BlogSettingsCmsTargets/
   Jobs/KeywordTargets.
 - Ratchet 1967 -> 1954 (-13); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 59: TS7053 string-index singletons (-6)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- queryClient (2): requestHeaders typed HeadersInit (not indexable by string) -> Record<string,string>
+  (still a valid fetch HeadersInit; clears both requestHeaders['Authorization'] = ...).
+- MyTasksView (2): reduce accumulator `{}` indexed by key -> (acc as Record<string,any>)[key].
+- CustomerDetail + LeadDetail: setExpandedSections(prev => ({...prev, [section]: !prev[section]})) ->
+  !prev[section as keyof typeof prev].
+- api-versioning: handlers[version] (version was any||DEFAULT) -> handlers[version as ApiVersion].
+- salesforce-mapping: statusMap[value] -> statusMap[value as keyof typeof statusMap].
+- TS7053 now 1 remaining. Ratchet 1954 -> 1948 (-6); per-file count diff: NO file gained errors. Baseline tightened.

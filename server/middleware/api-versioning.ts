@@ -188,7 +188,7 @@ export function createVersionedRouter(version: ApiVersion): Router {
 export function versionedHandler(handlers: Partial<Record<ApiVersion, Function>>) {
   return (req: Request, res: Response, next: NextFunction) => {
     const version = (req as any).apiVersion || API_VERSIONS.DEFAULT;
-    const handler = handlers[version];
+    const handler = handlers[version as ApiVersion];
 
     if (!handler) {
       // Fall back to default version handler
