@@ -8575,3 +8575,24 @@ Status: Needs Review
 
 Iteration 26 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 34: routes-customer-portal req.user + survey aggregation (-52)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- routes-customer-portal.ts 54 -> 2 errors. Three clusters:
+  1) 16x TS18048 'req.user' possibly undefined in AuthenticatedRequest handlers -> req.user?.tenantId /
+     req.user?.customerId optional chaining (guards already follow). Added customerId?: string to
+     EnhancedUserContext (set at runtime by requireCustomerPortalAuth) so ?.customerId resolves without TS2339.
+  2) Survey-submission: typed validatedResponses as InsertCustomerSatisfactionSurveyResponse[] (clears
+     TS7034/7005 evolving-any + makes loop element typed); ratingValue guards !== null -> != null (covers
+     undefined); overallScore (decimal col = string) -> String(overallScore) on insert.
+  3) Survey analytics aggregation: the dynamic Object.fromEntries(selectFields) makes every row field a
+     UNION of all column types (incl Date), so surveyType read as Date|null (TS2538 index) and overallScore
+     as string|null. Typed both reduce accumulators as Record<string,{...}>, coerced key with String(),
+     numeric pushes/sums with Number(). Real behavior preserved (values were already numeric).
+- Ratchet 2435 -> 2383 (-52); NO file gained errors. Baseline tightened.
+- Remaining 2 in this file: TS2769 router.use(enhanceUserContext)/requirePermission overload (AuthenticatedRequest
+  vs Express.User .user-type conflict) - deferred (broader middleware-typing pattern).
+- DEFERRED as own story: MeterBilling.tsx (26 errs) is PHANTOM-SHAPE (form uses blackMeter/colorMeter absent
+  from real meter_readings table; real cols bwMeterReading/colorMeterReading) + useForm resolver cascade -
+  runtime form/SQL rewrite needs app verification (same class as MeterReadings.tsx batch 8).
