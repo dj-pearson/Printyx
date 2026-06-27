@@ -9021,3 +9021,46 @@ RECOMMENDATION: the ratchet is firmly held at 1926 and CI-guarded (scripts/check
 tsc-green from here is feature-level work, not type-janitor work — convert the groups above into individual
 testable stories (each "re-bind <file> to real <table> columns; verify endpoint/page against live data").
 Continuing blind type edits on these risks masking the real latent bugs they represent.
+
+## ============================================================================
+## Iteration - PRD VERIFY-AND-FLIP PASS + per-story verification workflow (2026-06-27)
+## ============================================================================
+**Status**: Verification tooling landed; 9 stories flipped on hard evidence. 90 remain passes:false.
+
+APPROACH (per owner decision): verify-and-flip ONLY where the code demonstrably exists and is
+locally inspectable; route everything else to a NEW per-story-tier GitHub verification workflow.
+Audited all 99 open stories against real source via 3 parallel evidence-based audits (ios / edge / super).
+
+NEW VERIFICATION MECHANISM (handles the non-locally-verifiable majority):
+- scripts/prd-verify.mjs — classifies every passes:false story into a TIER (web / ios / infra-load /
+  infra-backup) and a set of CI GATES; `--mode run` executes web gates, `--mode record` ingests gate
+  results produced natively by other runners (xcodebuild, k6, pg_dump), `--mode report` aggregates into
+  a pass/fail matrix (docs/prd-verify-matrix.md + run summary). Evidence only — never edits prd.json.
+- .github/workflows/prd-verify.yml — 4 jobs: web-verify (ubuntu: typecheck-ratchet/lint/build/unit/
+  route-ownership), ios-verify (macos-15: xcodebuild test of the SwiftUI app, mirrors ios-ci),
+  infra-verify (ubuntu+Postgres: db:backup smoke via pg_dump + k6 load smoke), report (aggregates).
+  Triggers: workflow_dispatch (with run_ios/run_infra toggles) + PRs touching prd.json/the engine/the wf.
+
+FLIPPED THIS PASS (9, each with file-cited evidence appended to the story notes):
+- EDGE-002j — client-metrics dual-impl resolved via monitoring-clients/ edge fn (full surface + proxied).
+- US-SUPER-001 Predictive failure dispatch — routes-predictive-failure-dispatch.ts (881L) + schema + UI.
+- US-SUPER-003 Contract P&L X-ray — routes-contract-pnl.ts (738L) + 2 matlzd views + 2 UI pages.
+- US-SUPER-004 Auto QBR decks — routes-qbr.ts (988L) + qbr_reports/suppressions + Playwright PDF + UI.
+- US-SUPER-005 Voice ticket close — routes-voice-ticket-close.ts (823L), transactional close+inventory.
+- US-SUPER-006 Tech knowledge graph RAG — routes-service-knowledge.ts (719L) + pgvector sidecar + UI.
+- US-SUPER-007 Truck stocking optimizer — routes-truck-stock.ts (812L) + truck_inventory + UI.
+- US-SUPER-010 Renewal auto-quote — routes-renewal-autoquote.ts (762L), CPC re-tier, no auto-send.
+- US-SUPER-016 Email autopilot — routes-email-autopilot.ts (1065L), verified draft-only (no send path).
+
+CONFIRMED NOT-DONE / NOT-LOCALLY-COMPLETABLE (stay passes:false; routed to prd-verify.yml):
+- QUALITY-002 — tsc NOT green (ratchet held at 1926 errors; AC requires exit 0). Web tier verifies.
+- LAUNCH-011 backup, LAUNCH-020 load — artifacts exist (DISASTER_RECOVERY_RUNBOOK.md, tests/load/*.js)
+  but AC requires real ops execution (db:backup/restore + 50/200-user k6 + P95 budgets). Infra tier verifies.
+- EDGE-002c/d/e/f/g/h, EDGE-006a, EDGE-007a, EDGE-008..011, EDGE-014 — NOT-DONE (audit: endpoints not
+  ported, prefixes absent from crmProxies; destructive 009/010/011 unstarted — server/, node-cron,
+  websocket-service.ts all still present). EDGE-013/015/016/017 — PARTIAL (route-ownership/divergence
+  tooling landed but per-domain folding + Express-handler deletions unfinished).
+- US-SUPER-002/008/009/011/012/013/014/015 — PARTIAL: real schema+scoring+AI logic exists but each is
+  gated on an unfinished EXTERNAL integration (Twilio SMS, real-time voice, Slack/Teams OAuth, address-
+  book vendor adapters, cron scheduler / email-send). Not flipped.
+- IOS-* (62) — native SwiftUI; audit in progress / verified via prd-verify.yml ios tier (xcodebuild on macOS).

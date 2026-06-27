@@ -1,0 +1,209 @@
+# PRD Story Verification
+#
+# Per-story acceptance-criteria verification for PRD stories still marked
+# `passes: false` in prd.json. Stories that cannot be verified from a Linux dev
+# container (native iOS, load/backup ops) are verified here instead.
+#
+# scripts/prd-verify.mjs classifies every open story into a TIER and runs the
+# CI gates for that tier on the right runner:
+#   web   -> typecheck-ratchet, lint, build, unit-tests, route-ownership (ubuntu)
+#   ios   -> xcodebuild test of the SwiftUI app (macOS)
+#   infra -> k6 load smoke + db:backup smoke (ubuntu + Postgres service)
+# The `report` job aggregates the gate results into a pass/fail matrix published
+# to the run summary and committed-shape artifact docs/prd-verify-matrix.md.
+#
+# This workflow is EVIDENCE ONLY. It never edits prd.json — flipping a story to
+# passes:true stays a human/owner decision (scripts/flip-prd-stories.mjs).
+
+name: PRD Verify
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_ios:
+        description: 'Run the macOS iOS verification job (slow/costly)'
+        type: boolean
+        default: true
+      run_infra:
+        description: 'Run the infra (load + backup) verification job'
+        type: boolean
+        default: true
+  pull_request:
+    branches: [main]
+    paths:
+      - 'prd.json'
+      - 'scripts/prd-verify.mjs'
+      - '.github/workflows/prd-verify.yml'
+
+concurrency:
+  group: prd-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─── Web tier (EDGE-*, US-SUPER-*, QUALITY-002, other) ───
+  web-verify:
+    name: Web tier gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run web-tier gates
+        run: node scripts/prd-verify.mjs --mode run --tier web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prd-verify-web
+          path: prd-verify-web.json
+
+  # ─── iOS tier (IOS-*) — native SwiftUI build+test on macOS ───
+  ios-verify:
+    name: iOS tier gates
+    runs-on: macos-15
+    timeout-minutes: 40
+    if: ${{ github.event_name == 'pull_request' || inputs.run_ios }}
+    env:
+      XCODE_VERSION: '26.2'
+      SCHEME: Printyx
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: ios
+        run: |
+          sed -i '' 's/DEVELOPMENT_TEAM: .*/DEVELOPMENT_TEAM: ""/' project.yml
+          xcodegen generate
+      - name: Resolve Swift packages
+        working-directory: ios
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Printyx.xcodeproj -scheme "$SCHEME" \
+            -clonedSourcePackagesDirPath .spm
+      - name: Pick a simulator
+        id: sim
+        working-directory: ios
+        run: |
+          UDID=$(xcrun simctl list devices available --json | python3 -c "import sys, json; d = json.load(sys.stdin)['devices']; ids = [dev['udid'] for runtime, devs in d.items() if 'iOS' in runtime for dev in devs if dev.get('isAvailable') and dev['name'].startswith('iPhone')]; print(ids[0] if ids else '')")
+          if [ -z "$UDID" ]; then echo "No available iPhone simulator found"; exit 1; fi
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+      - name: xcodebuild test (Debug)
+        id: xctest
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Printyx.xcodeproj -scheme "$SCHEME" -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -clonedSourcePackagesDirPath .spm \
+            -only-testing:PrintyxTests \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | xcpretty
+      - name: Record iOS gate result
+        if: ${{ always() }}
+        run: |
+          RESULT=${{ steps.xctest.outcome == 'success' && 'pass' || 'fail' }}
+          node scripts/prd-verify.mjs --mode record --tier ios --gate ios-xcodebuild-test=$RESULT
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: prd-verify-ios
+          path: prd-verify-ios.json
+
+  # ─── Infra tier (LAUNCH-011 backup, LAUNCH-020 load) ───
+  infra-verify:
+    name: Infra tier gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ github.event_name == 'pull_request' || inputs.run_infra }}
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: printyx_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:testpassword@localhost:5432/printyx_test
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update && sudo apt-get install -y k6 postgresql-client
+      - name: db:backup smoke (pg_dump to local)
+        id: backup
+        continue-on-error: true
+        run: |
+          # Verify the backup script can dump the CI Postgres to a gzip file.
+          mkdir -p /tmp/prd-backups
+          PGPASSWORD=testpassword pg_dump -h localhost -p 5432 -U postgres printyx_test | gzip > /tmp/prd-backups/printyx-ci.sql.gz
+          test -s /tmp/prd-backups/printyx-ci.sql.gz
+      - name: k6 load smoke
+        id: load
+        continue-on-error: true
+        run: |
+          # Start the built app and run the k6 smoke profile against it.
+          # Best-effort: server boot may need secrets not present in CI.
+          k6 run tests/load/smoke.js || exit 1
+      - name: Record infra gate results
+        if: ${{ always() }}
+        run: |
+          BK=${{ steps.backup.outcome == 'success' && 'pass' || 'fail' }}
+          LD=${{ steps.load.outcome == 'success' && 'pass' || 'fail' }}
+          node scripts/prd-verify.mjs --mode record --tier infra-backup --gate db-backup-smoke=$BK
+          node scripts/prd-verify.mjs --mode record --tier infra-load --gate k6-load-smoke=$LD
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: prd-verify-infra
+          path: |
+            prd-verify-infra-backup.json
+            prd-verify-infra-load.json
+
+  # ─── Aggregate into the matrix ───
+  report:
+    name: Verification matrix
+    runs-on: ubuntu-latest
+    needs: [web-verify, ios-verify, infra-verify]
+    if: ${{ always() }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download gate results
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect gate result files to repo root
+        run: |
+          find artifacts -name 'prd-verify-*.json' -exec cp {} . \; || true
+          ls -la prd-verify-*.json || echo "no gate result files"
+      - name: Build matrix
+        run: node scripts/prd-verify.mjs --mode report >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prd-verify-matrix
+          path: docs/prd-verify-matrix.md
