@@ -8557,3 +8557,21 @@ Status: Needs Review
 
 Iteration 25 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 33: RBAC requireRole([roles]) contract (-73, SECURITY FIX, user-directed)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Owner directed the RBAC fix (hierarchical tier access). ~13 route files call requireRole(['admin',
+  'manager',...]) with role-name arrays, but requireRole only took (minimumLevel: number). At runtime the
+  array coerced to NaN in `role.level < minimumLevel`, so the 403 never fired -> routes granted ANY
+  authenticated role (too-permissive hole).
+- Fix: requireRole(string[] | number, department?); resolveMinimumLevel() maps role-name shorthands to the
+  DB level hierarchy (sales_rep=1..root_admin=7) and gates by the MIN listed tier (hierarchical: lowest
+  listed tier + everyone above). Numeric callers unchanged. Added `|| req.user?.id` userId fallback.
+- Ratchet 2508 -> 2435 (-73); NO file gained errors; the 1 'new' rbac-middleware loc is the pre-existing
+  getDataFilter TS2339 shifted by additions (file holds at its 2 pre-existing errors). Baseline tightened.
+- Centralized + documented the shorthand->level map for review. Real security improvement (restricts to
+  intended tiers + makes routes function for session/JWT auth).
+
+Iteration 26 (06/27/2026): Story QUALITY-002
+Status: Needs Review
