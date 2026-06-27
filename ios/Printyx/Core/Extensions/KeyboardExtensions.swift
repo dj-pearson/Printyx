@@ -13,7 +13,7 @@ extension View {
     /// conflict with navigation-bar items.
     func formKeyboardDismissal() -> some View {
         self
-            .scrollDismissesKeyboard(.interactive)
+            .scrollDismissesKeyboard(.interactively)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
