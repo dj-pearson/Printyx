@@ -50,14 +50,16 @@ interface TeamStatsWidgetProps {
   variant?: 'compact' | 'full';
   showDetails?: boolean;
   className?: string;
+  showAutoRefresh?: boolean;
 }
 
 export function TeamStatsWidget({
   variant = 'full',
   showDetails = true,
   className,
+  showAutoRefresh = false,
 }: TeamStatsWidgetProps) {
-  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(showAutoRefresh);
 
   const {
     data: stats,

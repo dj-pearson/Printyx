@@ -8418,3 +8418,15 @@ Status: Needs Review
 
 Iteration 14 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 22: TeamStatsWidget showAutoRefresh prop (-3, cross-page)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- LATENT BUG: SalesPipelineWorkflow + CrmGoalsDashboard render <TeamStatsWidget showAutoRefresh={...}/>
+  but TeamStatsWidgetProps never declared it -> React dropped the prop, auto-refresh never happened.
+- Fix: added showAutoRefresh?: boolean and seeded the existing autoRefresh state (useState(showAutoRefresh))
+  so refetchInterval honors the caller. Clears 3 TS2322 across 2 pages.
+- Ratchet 2737 -> 2734 (-3); zero genuinely-new errors. Baseline tightened.
+
+Iteration 15 (06/27/2026): Story QUALITY-002
+Status: Needs Review
