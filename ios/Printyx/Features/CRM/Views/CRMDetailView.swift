@@ -61,6 +61,7 @@ struct CRMDetailView: View {
     private var contentWithEvents: some View {
         navigationContent
             .toolbar { toolbarContent }
+            .formKeyboardDismissal()
             .task {
                 await viewModel.load()
                 if let record = viewModel.record {
@@ -231,11 +232,13 @@ struct CRMDetailView: View {
                     .textFieldStyle(.roundedBorder)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.URL)
+                    .textContentType(.URL)
                 TextField("Industry", text: $viewModel.industry)
                     .textFieldStyle(.roundedBorder)
                 TextField("Phone", text: $viewModel.phone)
                     .textFieldStyle(.roundedBorder)
                     .keyboardType(.phonePad)
+                    .textContentType(.telephoneNumber)
             }
             .padding(.horizontal)
         }
@@ -256,9 +259,11 @@ struct CRMDetailView: View {
                     .textFieldStyle(.roundedBorder)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.emailAddress)
+                    .textContentType(.emailAddress)
                 TextField("Phone", text: $viewModel.primaryContactPhone)
                     .textFieldStyle(.roundedBorder)
                     .keyboardType(.phonePad)
+                    .textContentType(.telephoneNumber)
             }
             .padding(.horizontal)
         }

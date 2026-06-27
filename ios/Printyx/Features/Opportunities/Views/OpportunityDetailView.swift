@@ -37,6 +37,7 @@ struct OpportunityDetailView: View {
         .navigationTitle("Opportunity")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
+        .formKeyboardDismissal()
         .task { await load() }
     }
 

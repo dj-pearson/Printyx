@@ -59,6 +59,7 @@ struct TaskDetailView: View {
             .navigationTitle(viewModel.isNewTask ? "New Task" : "Task Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarContent }
+            .formKeyboardDismissal()
     }
 
     private var contentWithEvents: some View {

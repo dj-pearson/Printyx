@@ -78,6 +78,7 @@ struct ProposalDetailView: View {
         .navigationTitle("Proposal")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
+        .formKeyboardDismissal()
         .task { await load() }
     }
 
