@@ -8900,3 +8900,17 @@ Status: Needs Review
   but the fix needs a product decision (where does technicianId come from for a ticket-level latest-ETA, or
   should the storage method drop the technicianId filter?). Flagged for owner.
 - Ratchet 1985 -> 1982 (-3); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 57: TS2558 apiRequest generics + TS7053 index-by-string (-15)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- TS18047/TS18048/TS18046 clusters now FULLY EXHAUSTED (0 remaining excl. predictive phantom file).
+- useExternalIntegrations (4 TS2558): apiRequest takes NO type generic (returns Promise<any>), so
+  apiRequest<T>(url) -> apiRequest(url) as Promise<T> (preserves the useQuery result typing).
+- TS7053 element-implicitly-any index-by-string: team-alert-service (severityColors/severityBg ->
+  Record<string,string>), ai-employee-service (employeeTypeMap->Record<string,string>, skillsByType->
+  Record<string,string[]>, timeEstimates->Record<string,number>), data-field-mapping (statusMap->
+  Record<string,Record<string,string>>; fieldMap param -> key as keyof typeof fieldMap), customer-portal-
+  service (mockEquipmentOwnership->Record<string,string[]>, equipment[field] -> (equipment as
+  Record<string,any>)[field]). All faithful (runtime lookup unchanged; undefined for unknown keys as before).
+- Ratchet 1982 -> 1967 (-15); per-file count diff: NO file gained errors. Baseline tightened.

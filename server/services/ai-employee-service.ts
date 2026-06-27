@@ -675,7 +675,7 @@ class AIEmployeeService {
     context: any,
   ): Promise<string> {
     // Simple assignment logic - in real implementation, this would be more sophisticated
-    const employeeTypeMap = {
+    const employeeTypeMap: Record<string, string> = {
       lead_qualification: 'sales_assistant',
       customer_support: 'support_agent',
       data_analysis: 'data_analyst',
@@ -700,7 +700,7 @@ class AIEmployeeService {
     employeeId: string,
     employeeType: string,
   ): Promise<void> {
-    const skillsByType = {
+    const skillsByType: Record<string, string[]> = {
       sales_assistant: [
         'lead_qualification',
         'email_communication',
@@ -791,7 +791,7 @@ class AIEmployeeService {
 
   private estimateResolutionTime(ticket: any): number {
     const category = this.categorizeIssue(ticket.description);
-    const timeEstimates = {
+    const timeEstimates: Record<string, number> = {
       technical: 45,
       billing: 30,
       account: 20,
