@@ -8734,3 +8734,17 @@ Status: Needs Review
   presence (would crash if undefined) -> applied non-null assertion `req.user!.` (type-only, preserves the
   exact current runtime). Remaining 5 are unrelated pre-existing errors.
 - Ratchet 2211 -> 2173 (-38); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 44: req.user! across 5 sibling route modules (-52)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Same pattern/fix as batch 43's ai-documentation-routes, applied to the sibling routers mounted alongside
+  it in routes-registry asyncRootApiMounts (all at /api, NO auth middleware, all dereference req.user.x
+  assuming presence): meeting-transcription-routes (14), team-collaboration-routes (12),
+  ai-search-knowledge-routes (12), meeting-scheduling-routes (8), task-routes (6). All were plain
+  `req.user.x` (verified: no ?./.claims fallbacks) -> non-null assertion `req.user!.` (type-only, preserves
+  exact current runtime; the handlers already crash if req.user is undefined).
+- Ratchet 2173 -> 2121 (-52); per-file count diff: NO file gained errors. Baseline tightened.
+- NOTE: these /api routers having NO auth middleware while assuming req.user is a real latent concern
+  (documented for a security follow-up: either wrap the asyncRootApiMounts in requireAuth or migrate to
+  getUserId/getTenantId helpers) - but that's a behavior change out of scope for the type ratchet.

@@ -19,8 +19,8 @@ router.post('/teams', async (req, res) => {
   try {
     const teamData = {
       ...req.body,
-      tenantId: req.user.tenantId,
-      createdBy: req.user.id,
+      tenantId: req.user!.tenantId,
+      createdBy: req.user!.id,
     };
 
     const team = await TeamCollaborationService.createTeam(teamData);
@@ -41,7 +41,7 @@ router.get('/teams', async (req, res) => {
     const teams = [
       {
         id: 'team-1',
-        tenantId: req.user.tenantId,
+        tenantId: req.user!.tenantId,
         name: 'Sales Team',
         description: 'Primary sales and business development team',
         teamType: 'department',
@@ -64,7 +64,7 @@ router.get('/teams', async (req, res) => {
       },
       {
         id: 'team-2',
-        tenantId: req.user.tenantId,
+        tenantId: req.user!.tenantId,
         name: 'Technical Services',
         description: 'Installation, maintenance, and technical support',
         teamType: 'department',
@@ -87,7 +87,7 @@ router.get('/teams', async (req, res) => {
       },
       {
         id: 'team-3',
-        tenantId: req.user.tenantId,
+        tenantId: req.user!.tenantId,
         name: 'Customer Success',
         description: 'Customer onboarding and relationship management',
         teamType: 'department',
@@ -128,7 +128,7 @@ router.get('/teams/:teamId', async (req, res) => {
     // Mock detailed team data
     const team = {
       id: teamId,
-      tenantId: req.user.tenantId,
+      tenantId: req.user!.tenantId,
       name: 'Sales Team',
       description: 'Primary sales and business development team',
       teamType: 'department',
@@ -263,8 +263,8 @@ router.post('/projects', async (req, res) => {
   try {
     const projectData = {
       ...req.body,
-      tenantId: req.user.tenantId,
-      createdBy: req.user.id,
+      tenantId: req.user!.tenantId,
+      createdBy: req.user!.id,
     };
 
     const project = await TeamCollaborationService.createProject(projectData);
@@ -287,7 +287,7 @@ router.get('/projects', async (req, res) => {
     const projects = [
       {
         id: 'project-1',
-        tenantId: req.user.tenantId,
+        tenantId: req.user!.tenantId,
         parentProjectId: null,
         teamId: 'team-1',
         teamName: 'Sales Team',
@@ -319,7 +319,7 @@ router.get('/projects', async (req, res) => {
       },
       {
         id: 'project-2',
-        tenantId: req.user.tenantId,
+        tenantId: req.user!.tenantId,
         parentProjectId: null,
         teamId: 'team-2',
         teamName: 'Technical Services',
@@ -352,7 +352,7 @@ router.get('/projects', async (req, res) => {
       },
       {
         id: 'project-3',
-        tenantId: req.user.tenantId,
+        tenantId: req.user!.tenantId,
         parentProjectId: null,
         teamId: 'team-3',
         teamName: 'Customer Success',
@@ -407,7 +407,7 @@ router.get('/projects/:projectId', async (req, res) => {
     // Mock detailed project data
     const project = {
       id: projectId,
-      tenantId: req.user.tenantId,
+      tenantId: req.user!.tenantId,
       teamId: 'team-1',
       teamName: 'Sales Team',
       name: 'Q4 Enterprise Sales Campaign',

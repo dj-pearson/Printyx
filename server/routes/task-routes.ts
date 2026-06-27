@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
   try {
     const { status, priority, category, limit = 50, offset = 0 } = req.query;
     const { tenantId } = req.user;
-    const userId = req.user.id;
+    const userId = req.user!.id;
 
     // Mock tasks data
     const mockTasks = [
@@ -119,7 +119,7 @@ router.post('/', async (req, res) => {
   try {
     const taskData = req.body;
     const { tenantId } = req.user;
-    const userId = req.user.id;
+    const userId = req.user!.id;
 
     // Validate required fields
     if (!taskData.title) {
@@ -228,7 +228,7 @@ router.post('/schedule', async (req, res) => {
   try {
     const { taskIds, startDate, endDate, preferences = {}, existingEvents = [] } = req.body;
     const { tenantId } = req.user;
-    const userId = req.user.id;
+    const userId = req.user!.id;
 
     if (!taskIds || !Array.isArray(taskIds)) {
       return res.status(400).json({ error: 'Task IDs array is required' });
@@ -332,7 +332,7 @@ router.post('/:taskId/time-entry', async (req, res) => {
   try {
     const { taskId } = req.params;
     const { action, description } = req.body; // action: 'start' or 'stop'
-    const userId = req.user.id;
+    const userId = req.user!.id;
 
     if (!['start', 'stop'].includes(action)) {
       return res.status(400).json({ error: 'Action must be "start" or "stop"' });
@@ -362,7 +362,7 @@ router.post('/:taskId/time-entry', async (req, res) => {
 router.get('/suggestions', async (req, res) => {
   try {
     const { tenantId } = req.user;
-    const userId = req.user.id;
+    const userId = req.user!.id;
 
     // Mock AI suggestions based on user activity
     const suggestions = [
@@ -415,7 +415,7 @@ router.post('/suggestions/:suggestionId/accept', async (req, res) => {
   try {
     const { suggestionId } = req.params;
     const { tenantId } = req.user;
-    const userId = req.user.id;
+    const userId = req.user!.id;
 
     // Mock accepting suggestion and creating task
     const createdTask = {
