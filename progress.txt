@@ -8517,3 +8517,18 @@ Status: Needs Review
 
 Iteration 22 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 30: verified-safe one-offs + hard-tail assessment (-4)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- advanced-billing-routes: renamed 2 stale storage calls (getUnresolvedMeterAnomalies->getUnresolvedAnomalies,
+  reviewMeterAnomaly->reviewAnomaly) verified arg-for-arg. (resolveMeterAnomaly deferred: 6 vs 4 args.)
+- AdvancedBillingEngine.tsx: Number(invoice.totalAmount).toFixed(2) x2 (string decimal).
+- Ratchet 2541 -> 2537 (-4); empty non-target diff. Baseline tightened.
+- HARD TAIL reached: remaining ~2537 need feature work + testing, not mechanical batches —
+  phantom RELATIONS (db.query.activities/deals silently return [] -> dead dashboard sections),
+  UNIMPLEMENTED storage methods (advanced-billing ~14, endpoints 500), phantom DISPLAY fields needing
+  joins, the RBAC requireRole contract (~80 + always-403 bug, needs a decision), storage.ts internals.
+
+Iteration 23 (06/27/2026): Story QUALITY-002
+Status: Needs Review
