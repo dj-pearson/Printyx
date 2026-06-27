@@ -3,8 +3,13 @@
 **Branch:** `claude/quality-002-typecheck-burndown` (main was merged via PR #186; this is the continuation branch)
 **Story:** QUALITY-002 — "Drive `npm run check` to green"
 **Status:** `passes: false` (flips to true only when `tsc` is fully clean)
-**Current count:** **2027** tsc errors (started at 6176; **−67%**). Baseline tracked in `docs/typecheck-baseline.json`.
-**Last batch:** 50 (TS2554 missing-tenantId bug + logger args). `req.user!` cluster exhausted (43-45); now sweeping scattered null-guards, TS18046, TS7006 params, 3-arg logger calls (TS2554), and missing-tenantId storage calls.
+**Current count:** **2015** tsc errors (started at 6176; **−67%**). Baseline tracked in `docs/typecheck-baseline.json`.
+**Last batch:** 52 (nullable-col guards in dispatch + subscription services). Sweeping scattered singletons: null-guards (`?? 0`), 3-arg logger calls (TS2554), missing-tenantId storage calls, TS18046/TS7006.
+
+> NOTE for sed: files with emoji in log strings (🚀🔄✅📝) break `sed` matching — use the Edit tool for those.
+> The clean per-batch yield is now ~6-15 (clusters fragmented into singletons). The big remaining buckets
+> (TS2339 ~840, TS2769 ~390, TS2322 ~220, TS2345 ~180) are dominated by phantom-shape/insert-shape files on
+> the avoid-list that need app-verified rewrites as their own stories — not type-ratchet batches.
 
 > LOGGER-ARG PATTERN (batches 40/49/50): the structured logger (`createModuleLogger`) takes 1-2 args
 > (message, meta?). Calls with 3+ positional args are TS2554 — consolidate the extras into a meta object
