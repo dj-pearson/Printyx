@@ -3,8 +3,8 @@
 **Branch:** `claude/quality-002-typecheck-burndown` (main was merged via PR #186; this is the continuation branch)
 **Story:** QUALITY-002 — "Drive `npm run check` to green"
 **Status:** `passes: false` (flips to true only when `tsc` is fully clean)
-**Current count:** **1948** tsc errors (started at 6176; **−68%**). Baseline tracked in `docs/typecheck-baseline.json`.
-**Last batch:** 59 (TS7053 string-index singletons). EXHAUSTED: TS18047/18048/18046, TS2558 (apiRequest made generic — root fix). TS7053 nearly done (1 left). Remaining safe codes thinning — next look at TS2741, TS2352, TS2305, leftover TS7006/TS2554, then write the owner phantom-shape summary.
+**Current count:** **1937** tsc errors (started at 6176; **−69%**). Baseline tracked in `docs/typecheck-baseline.json`.
+**Last batch:** 60 (TS2352 unknown-casts + TS2741 $dynamic/missing-prop). EXHAUSTED: TS18047/18048/18046, TS2558, TS7006, TS7053(~done). Picking off TS2352 (`as unknown as T`), TS2741 (`.$dynamic()` / add missing prop). Safe codes thinning fast — when a batch yields <5, switch to writing the owner phantom-shape summary.
 
 > DEFERRED for a focused pass: gps-tracking-routes 4 TS2554 are storage-method arg mismatches — a MIX of
 > missing required args (updateTechnicianLocation, getLatestEtaForTicket want 3, got 2) and extra ignored
