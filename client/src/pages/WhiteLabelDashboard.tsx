@@ -12,12 +12,28 @@ import { Palette, Mail, Eye, Settings, Sparkles, Check, X } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
+interface WhiteLabelConfig {
+  companyName?: string;
+  companyTagline?: string;
+  logoUrl?: string;
+  colorPrimary?: string;
+  colorSecondary?: string;
+  colorAccent?: string;
+  welcomeTitle?: string;
+  welcomeMessage?: string;
+  supportEmail?: string;
+  supportPhone?: string;
+  customDomain?: string;
+  customDomainVerified?: boolean;
+  features?: any;
+}
+
 export default function WhiteLabelDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('branding');
 
-  const { data: config, isLoading } = useQuery({
+  const { data: config, isLoading } = useQuery<WhiteLabelConfig>({
     queryKey: ['/api/white-label/config'],
   });
 

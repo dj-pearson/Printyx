@@ -23,23 +23,34 @@ import { toast } from '@/hooks/use-toast';
  * Prevents stockouts and emergency orders through predictive analytics
  */
 
+interface ReplenishmentMetrics {
+  devicesMonitored?: number;
+  suppliesTracked?: number;
+  lowSupplies?: number;
+  urgentOrders?: number;
+  projectedSavings?: number;
+  emergenciesPrevented?: number;
+  averageLeadTime?: number;
+  ordersThisMonth?: number;
+}
+
 export default function AutoSupplyReplenishmentDashboard() {
   const queryClient = useQueryClient();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Fetch dashboard metrics
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
+  const { data: metrics, isLoading: metricsLoading } = useQuery<ReplenishmentMetrics>({
     queryKey: ['/api/auto-supply-replenishment/dashboard'],
     refetchInterval: 60000, // Refresh every 60 seconds
   });
 
   // Fetch low supplies
-  const { data: lowSupplies, isLoading: lowSuppliesLoading } = useQuery({
+  const { data: lowSupplies, isLoading: lowSuppliesLoading } = useQuery<any[]>({
     queryKey: ['/api/auto-supply-replenishment/low-supplies'],
   });
 
   // Fetch recent orders
-  const { data: orders, isLoading: ordersLoading } = useQuery({
+  const { data: orders, isLoading: ordersLoading } = useQuery<any[]>({
     queryKey: ['/api/auto-supply-replenishment/orders'],
   });
 

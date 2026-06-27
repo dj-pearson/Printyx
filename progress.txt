@@ -8328,3 +8328,18 @@ exact shape (from their original mock-data version) and just never passed it to 
 
 Iteration 8 (06/26/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 16: client untyped-useQuery burndown cont. (-35)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- WhiteLabelDashboard.tsx (13): WhiteLabelConfig interface (features?: any object).
+- AutoSupplyReplenishmentDashboard.tsx (12): ReplenishmentMetrics numeric stats;
+  lowSupplies/orders queries typed any[] (rows read via (row: any) callbacks).
+- RootAdminSignupsCRM.tsx (10): 4 response interfaces (SignupsResponse{data,pagination},
+  SignupsAnalytics with bySource/byStatus as Record<string,any> for Object.entries,
+  TrialFunnel, HighValueSignups).
+- Ratchet 2912 -> 2877 (-35); all 3 files 0; zero genuinely-new error locations.
+  Type-only, zero runtime change. Baseline tightened 2912 -> 2877.
+
+Iteration 9 (06/27/2026): Story QUALITY-002
+Status: Needs Review
