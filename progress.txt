@@ -8885,3 +8885,18 @@ Status: Needs Review
   updateTechnicianLocation, 746 getLatestEtaForTicket expect 3 got 2) and extra ignored args (420 startRoute,
   459 completeRoute) — each needs individual signature reconciliation; flagged for a focused pass.
 - Ratchet 1990 -> 1985 (-5); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 56: gps-tracking storage-arg mismatches (-3, real bug)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- updateTechnicianLocation(req.params.id, {data}) — sig is (technicianId, tenantId, data) so the data object
+  was passed in the TENANTID slot (tenantId+data both effectively undefined) -> REAL BUG: inserted
+  user.tenantId as the 2nd arg, kept the data object as 3rd. Tech location updates now scope correctly.
+- startRoute(id, tenantId, startLocation) -> startRoute(id, tenantId); completeRoute(id, tenantId,
+  endLocation, actualDuration) -> completeRoute(id, tenantId). Sigs take 2 args; the extra location/duration
+  were silently ignored at runtime (faithful drop; the methods never persisted them - feature gap noted).
+- DEFERRED gps 746 getLatestEtaForTicket(ticketId, tenantId): sig is (ticketId, technicianId, tenantId) and
+  the route has NO technicianId in scope (GET /eta/:ticketId) — passing tenantId as technicianId is the bug,
+  but the fix needs a product decision (where does technicianId come from for a ticket-level latest-ETA, or
+  should the storage method drop the technicianId filter?). Flagged for owner.
+- Ratchet 1985 -> 1982 (-3); per-file count diff: NO file gained errors. Baseline tightened.

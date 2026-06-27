@@ -90,7 +90,7 @@ router.put('/technicians/:id/location', async (req: Request, res: Response) => {
 
   try {
     const data = insertTechnicianLocationSchema.parse(req.body);
-    const location = await storage.updateTechnicianLocation(req.params.id, {
+    const location = await storage.updateTechnicianLocation(req.params.id, user.tenantId, {
       ...data,
       tenantId: user.tenantId,
       technicianId: req.params.id,
@@ -417,7 +417,7 @@ router.post('/routes/:id/start', async (req: Request, res: Response) => {
 
     const { startLocation } = startSchema.parse(req.body);
 
-    const updated = await storage.startRoute(req.params.id, user.tenantId, startLocation);
+    const updated = await storage.startRoute(req.params.id, user.tenantId);
 
     res.json(updated);
   } catch (error) {
@@ -453,12 +453,7 @@ router.post('/routes/:id/complete', async (req: Request, res: Response) => {
 
     const { endLocation, actualDuration } = completeSchema.parse(req.body);
 
-    const updated = await storage.completeRoute(
-      req.params.id,
-      user.tenantId,
-      endLocation,
-      actualDuration,
-    );
+    const updated = await storage.completeRoute(req.params.id, user.tenantId);
 
     res.json(updated);
   } catch (error) {
