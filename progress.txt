@@ -8848,3 +8848,15 @@ Status: Needs Review
   (boolean|null) -> ?? false (TS2322).
 - subscription-service: plan.trialDays (nullable int) in `> 0` check and trial-end date math -> (x ?? 0).
 - Ratchet 2021 -> 2015 (-6); per-file count diff: NO file gained errors. Baseline tightened. Crossed <=2015.
+
+## Iteration - QUALITY-002 BATCH 53: scattered nullable-guard singletons (-12, 11 files)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- TS18047/TS18048 one-offs across 11 files: clickup-tasks/enhanced-tasks (task.completionPercentage ?? 0 in
+  reduce), routes-root-admin (user.roleLevel ?? 0 < 7), routes-subscriptions (discount.redemptionCount ?? 0),
+  apollo-routes (cached.totalAvailable ?? 0), auto-lead-routing (rep.currentActiveLeads ?? 0), warehouse-fpy
+  (startTime = startedAt||createdAt||new Date()), routes-seo (audit.startedAt ? Date.now()-... : 0),
+  advanced-scheduling (slot && task.dueDate ? ... : false), DocumentBuilder ((lineItems||[]).map),
+  MobileFieldService (result.successful && result.successful.length).
+- All faithful nullable guards (?? 0 / optional-chain / fallback date). Ratchet 2015 -> 2003 (-12); per-file
+  count diff: NO file gained errors. Baseline tightened.

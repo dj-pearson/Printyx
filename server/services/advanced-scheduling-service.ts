@@ -309,7 +309,7 @@ Return JSON with updated pattern insights:
           category: 'time',
           condition: (values) => {
             const slot = values[`task_${task.id}`];
-            return slot ? slot.endTime <= task.dueDate : false;
+            return slot && task.dueDate ? slot.endTime <= task.dueDate : false;
           },
           description: `Task ${task.title} must complete by ${task.dueDate?.toISOString()}`,
         });

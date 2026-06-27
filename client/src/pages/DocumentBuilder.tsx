@@ -317,7 +317,7 @@ export default function DocumentBuilder() {
                   <CardContent>
                     {(documentForm.lineItems || []).length > 0 ? (
                       <div className="space-y-3">
-                        {documentForm.lineItems.map((item, index) => (
+                        {(documentForm.lineItems || []).map((item, index) => (
                           <div
                             key={index}
                             className="flex justify-between items-center p-3 bg-gray-50 rounded"

@@ -84,7 +84,7 @@ router.post('/search', isAuthenticated, async (req, res) => {
           page: filters.page || 1,
           perPage: filters.perPage || 25,
           totalEntries: cached.totalAvailable,
-          totalPages: Math.ceil(cached.totalAvailable / (filters.perPage || 25)),
+          totalPages: Math.ceil((cached.totalAvailable ?? 0) / (filters.perPage || 25)),
         },
         fromCache: true,
       });
