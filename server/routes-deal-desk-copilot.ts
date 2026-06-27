@@ -40,6 +40,19 @@ import {
   serviceTickets,
   invoices,
 } from '@shared/schema';
+import {
+  computeQuoteCost,
+  computeMargin,
+  headcountBand,
+  machineClassOf,
+  dealMatches,
+} from '@shared/deal-desk-margin';
+
+/** proposalType values that represent a financed/leased deal. */
+const FINANCED_PROPOSAL_TYPES = new Set(['equipment_lease', 'lease', 'financed', 'fmv_lease']);
+function isFinancedDeal(proposalType: string | null | undefined): boolean {
+  return FINANCED_PROPOSAL_TYPES.has(String(proposalType ?? '').toLowerCase());
+}
 
 const log = createModuleLogger('routes-deal-desk-copilot');
 
@@ -114,9 +127,10 @@ interface SimilarDealsResult {
     proposalType: string | null;
     sizeBandLow: number;
     sizeBandHigh: number;
-    // STUB: headcount + machine-class matching not yet available (fields not reliably present).
-    headcountMatch: 'stub';
-    machineClassMatch: 'stub';
+    /** Quote's derived machine class (from equipment line names). */
+    machineClass: string;
+    /** Quote's customer headcount band (from Account.NumberOfEmployees). */
+    headcountBand: string;
   };
 }
 
@@ -305,10 +319,10 @@ export function registerDealDeskCopilotRoutes(app: Express) {
         if (!proposal) return res.status(404).json({ message: 'Quote not found' });
         const customerId = proposal.businessRecordId;
 
-        // Customer territory drives region matching.
+        // Customer territory + headcount drive region/size matching.
         const customer = await db.query.businessRecords.findFirst({
           where: and(eq(businessRecords.id, customerId), eq(businessRecords.tenantId, tenantId)),
-          columns: { territory: true },
+          columns: { territory: true, employeeCount: true },
         });
         const territory = customer?.territory ?? null;
         const proposalType = proposal.proposalType ?? null;
@@ -318,16 +332,36 @@ export function registerDealDeskCopilotRoutes(app: Express) {
         const sizeBandKey =
           thisSize > 0 ? `${Math.round(sizeBandLow)}-${Math.round(sizeBandHigh)}` : 'any';
 
-        const cacheKey = `${tenantId}:${territory ?? '-'}:${sizeBandKey}:${proposalType ?? '-'}`;
+        // Quote's own machine class (from its equipment line names) + headcount band.
+        const thisLines = await db
+          .select({
+            itemType: proposalLineItems.itemType,
+            productName: proposalLineItems.productName,
+          })
+          .from(proposalLineItems)
+          .where(
+            and(
+              eq(proposalLineItems.tenantId, tenantId),
+              eq(proposalLineItems.proposalId, proposal.id),
+            ),
+          );
+        const quoteMachineClass = machineClassOf(thisLines, proposalType);
+        const quoteHeadcountBand = headcountBand(customer?.employeeCount);
+        const quoteProfile = {
+          machineClass: quoteMachineClass,
+          headcountBand: quoteHeadcountBand,
+          territory,
+        };
+
+        const cacheKey = `${tenantId}:${territory ?? '-'}:${sizeBandKey}:${proposalType ?? '-'}:${quoteMachineClass}:${quoteHeadcountBand}`;
         const cached = similarDealsCache.get(cacheKey);
         if (cached && cached.expires > Date.now()) {
           return res.json(cached.value);
         }
 
-        // Cohort: tenant proposals matched best-effort on territory (via the
-        // customer's business_record), proposal type, and size band. We pull a
-        // candidate set then filter in JS so the size band / territory join
-        // stays simple and resilient.
+        // Cohort: tenant proposals matched on machine class + customer headcount
+        // band + region (territory) + size band. We pull a candidate set then
+        // classify + filter in JS so the joins stay simple and resilient.
         const cohortConditions = [eq(proposals.tenantId, tenantId)];
         if (proposalType) cohortConditions.push(eq(proposals.proposalType, proposalType));
 
@@ -340,31 +374,66 @@ export function registerDealDeskCopilotRoutes(app: Express) {
             discountPercentage: proposals.discountPercentage,
             updatedAt: proposals.updatedAt,
             businessRecordId: proposals.businessRecordId,
+            proposalType: proposals.proposalType,
           })
           .from(proposals)
           .where(and(...cohortConditions))
           .limit(2000);
 
-        // Resolve territories for the candidate customers (best-effort region match).
-        let territoryMatchIds: Set<string> | null = null;
-        if (territory) {
-          const custIds = Array.from(new Set(candidates.map((c) => c.businessRecordId)));
-          const custRows = custIds.length
-            ? await db
-                .select({ id: businessRecords.id, territory: businessRecords.territory })
-                .from(businessRecords)
-                .where(
-                  and(eq(businessRecords.tenantId, tenantId), inArray(businessRecords.id, custIds)),
-                )
-            : [];
-          territoryMatchIds = new Set(
-            custRows.filter((r) => r.territory === territory).map((r) => r.id),
-          );
+        // Resolve candidate customers' territory + headcount (for region/size match).
+        const custIds = Array.from(
+          new Set(candidates.map((c) => c.businessRecordId).filter(Boolean)),
+        );
+        const custRows = custIds.length
+          ? await db
+              .select({
+                id: businessRecords.id,
+                territory: businessRecords.territory,
+                employeeCount: businessRecords.employeeCount,
+              })
+              .from(businessRecords)
+              .where(
+                and(eq(businessRecords.tenantId, tenantId), inArray(businessRecords.id, custIds)),
+              )
+          : [];
+        const custById = new Map(custRows.map((r) => [r.id, r]));
+
+        // Classify each candidate's machine class from its equipment line names.
+        const candidateIds = candidates.map((c) => c.id);
+        const candLines = candidateIds.length
+          ? await db
+              .select({
+                proposalId: proposalLineItems.proposalId,
+                itemType: proposalLineItems.itemType,
+                productName: proposalLineItems.productName,
+              })
+              .from(proposalLineItems)
+              .where(
+                and(
+                  eq(proposalLineItems.tenantId, tenantId),
+                  inArray(proposalLineItems.proposalId, candidateIds),
+                ),
+              )
+          : [];
+        const linesByProposal = new Map<
+          string,
+          Array<{ itemType: string | null; productName: string | null }>
+        >();
+        for (const l of candLines) {
+          const arr = linesByProposal.get(l.proposalId) ?? [];
+          arr.push({ itemType: l.itemType, productName: l.productName });
+          linesByProposal.set(l.proposalId, arr);
         }
 
-        // Size-band + (best-effort) territory cohort.
+        // Machine class + headcount band + region + size-band cohort.
         const cohort = candidates.filter((c) => {
-          if (territoryMatchIds && !territoryMatchIds.has(c.businessRecordId)) return false;
+          const cust = custById.get(c.businessRecordId);
+          const candProfile = {
+            machineClass: machineClassOf(linesByProposal.get(c.id) ?? [], c.proposalType),
+            headcountBand: headcountBand(cust?.employeeCount),
+            territory: cust?.territory ?? null,
+          };
+          if (!dealMatches(quoteProfile, candProfile)) return false;
           const amt = num(c.totalAmount);
           if (thisSize > 0 && (amt < sizeBandLow || amt > sizeBandHigh)) return false;
           return true;
@@ -411,10 +480,8 @@ export function registerDealDeskCopilotRoutes(app: Express) {
             proposalType,
             sizeBandLow,
             sizeBandHigh: Number.isFinite(sizeBandHigh) ? sizeBandHigh : 0,
-            // STUB: headcount + machine-class matching not yet wired — those
-            // fields aren't reliably available on proposals/business_records.
-            headcountMatch: 'stub',
-            machineClassMatch: 'stub',
+            machineClass: quoteMachineClass,
+            headcountBand: quoteHeadcountBand,
           },
         };
 
@@ -450,10 +517,13 @@ export function registerDealDeskCopilotRoutes(app: Express) {
 
         const revenue = num(proposal.totalAmount) || num(proposal.subtotal);
 
-        // Cost = sum(unitCost × quantity) over the proposal's line items.
+        // Cost = parts + projected service-delivery + financing carry. See
+        // shared/deal-desk-margin.ts for the model (unit-tested).
         const lines = await db
           .select({
+            itemType: proposalLineItems.itemType,
             unitCost: proposalLineItems.unitCost,
+            unitPrice: proposalLineItems.unitPrice,
             quantity: proposalLineItems.quantity,
           })
           .from(proposalLineItems)
@@ -463,28 +533,33 @@ export function registerDealDeskCopilotRoutes(app: Express) {
               eq(proposalLineItems.proposalId, proposal.id),
             ),
           );
-        const cost = lines.reduce((a, l) => a + num(l.unitCost) * (l.quantity ?? 1), 0);
-
-        const grossProfit = revenue - cost;
-        const gpPercent = revenue > 0 ? Math.round((grossProfit / revenue) * 1000) / 10 : 0;
+        const costLines = lines.map((l) => ({
+          itemType: l.itemType,
+          unitCost: num(l.unitCost),
+          unitPrice: num(l.unitPrice),
+          quantity: l.quantity ?? 1,
+        }));
 
         const settings = await getOrCreateSettings(tenantId);
         const gpFloorPct = settings ? num(settings.gpFloorPct) : 30;
-        const belowFloor = revenue > 0 && gpPercent < gpFloorPct;
+        const financed = isFinancedDeal(proposal.proposalType);
+        const cost = computeQuoteCost(costLines, { revenue, financed });
+        const margin = computeMargin({ revenue, cost, gpFloorPct });
 
         res.json({
-          revenue,
-          cost,
-          grossProfit,
-          gpPercent,
-          gpFloorPct,
-          belowFloor,
-          // STUB: financing not modeled — lease/financing terms don't yet feed cost.
-          financingNote: 'STUB: financing/lease terms are not yet modeled into cost or GP.',
-          // STUB: service-cost modeling not included — cost currently reflects
-          // parts/line unitCost only (no projected service/labor cost).
-          serviceCostNote:
-            'STUB: cost = parts/line unitCost only; projected service/labor cost not yet modeled.',
+          revenue: margin.revenue,
+          // Backward-compatible scalar (now the full modeled cost, not parts-only).
+          cost: margin.totalCost,
+          grossProfit: margin.grossProfit,
+          gpPercent: margin.gpPercent,
+          gpFloorPct: margin.gpFloorPct,
+          belowFloor: margin.belowFloor,
+          financed,
+          costBreakdown: {
+            partsCost: margin.partsCost,
+            serviceCost: margin.serviceCost,
+            financingCost: margin.financingCost,
+          },
         });
       } catch (error: any) {
         log.error('Failed to compute margin:', error);

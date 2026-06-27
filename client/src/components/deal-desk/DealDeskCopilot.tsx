@@ -80,8 +80,12 @@ interface MarginResponse {
   gpPercent: number;
   gpFloorPct: number;
   belowFloor: boolean;
-  financingNote: string;
-  serviceCostNote: string;
+  financed: boolean;
+  costBreakdown: {
+    partsCost: number;
+    serviceCost: number;
+    financingCost: number;
+  };
 }
 
 interface ObjectionsResponse {
@@ -380,7 +384,24 @@ function MarginPanel({ quoteId }: { quoteId: string }) {
               <span>Revenue {money(data.revenue)}</span>
               <span>Cost {money(data.cost)}</span>
             </div>
-            <p className="text-[10px] text-muted-foreground">{data.serviceCostNote}</p>
+            {data.costBreakdown ? (
+              <div className="space-y-0.5 text-[10px] text-muted-foreground">
+                <div className="flex justify-between">
+                  <span>Parts/hardware cost</span>
+                  <span>{money(data.costBreakdown.partsCost)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Projected service cost</span>
+                  <span>{money(data.costBreakdown.serviceCost)}</span>
+                </div>
+                {data.financed ? (
+                  <div className="flex justify-between">
+                    <span>Financing carry</span>
+                    <span>{money(data.costBreakdown.financingCost)}</span>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </>
         ) : null}
       </CardContent>
