@@ -7718,8 +7718,8 @@
         "ios xcodebuild test passes"
       ],
       "priority": 156,
-      "passes": false,
-      "notes": "UI/UX audit H6."
+      "passes": true,
+      "notes": "UI/UX audit H6. [iOS-via-CI VERIFIED 2026-06-27] ios-ci.yml Build & Test (Debug) xcodebuild test PASSED on PR #195 (run 28304247448, job 83857666391, SHA f836d4b, Run unit tests Debug = success). AC1+AC2: NEW Core/Extensions/KeyboardExtensions.swift View.formKeyboardDismissal() = .scrollDismissesKeyboard(.interactively) + ToolbarItemGroup(placement:.keyboard) Done button (resigns first responder; only way to dismiss decimalPad/numberPad), applied to CRMDetailView/OpportunityDetailView/ProposalDetailView/TaskDetailView. AC3: .textContentType autofill hints (URL/telephoneNumber/emailAddress) on CRMDetailView contact fields; keyboardType already set on all fields. AC4: xcodebuild green. (Note: SwiftUI case is .interactively, not .interactive as the AC text said.)"
     },
     {
       "id": "IOS-047",

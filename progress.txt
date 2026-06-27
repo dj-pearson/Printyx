@@ -9198,3 +9198,11 @@ AC3 — keyboardType already set on all fields; added .textContentType autofill 
 emailAddress) to CRMDetailView website/phone/email/contact-phone.
 AC4 — xcodebuild test via ios-ci.yml build-test on the PR.
 Local sanity: brace+paren balance OK on helper + 4 forms; formKeyboardDismissal() applied 4x.
+
+## Iteration - IOS-046 VERIFIED + flipped (iOS-via-CI)
+**Date**: 2026-06-27
+**Status**: COMPLETE — flipped passes:true after macOS xcodebuild green (PR #195, SHA f836d4b).
+Keyboard Done toolbar + interactive dismiss on the 4 detail forms via View.formKeyboardDismissal().
+CI caught one real error first (ScrollDismissesKeyboardMode case is .interactively, not .interactive
+as the AC wrote) — fixed in f836d4b, then Build & Test (Debug) passed. Cert-pin guard + Lint secret-scan
+failures on the run are the known non-blocking ones.
