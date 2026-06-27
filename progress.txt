@@ -8468,3 +8468,14 @@ Status: Needs Review
 
 Iteration 18 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 26: server seed-manufacturer-orders.ts decimal literals (-56)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- All 56 errors = same TS2322 number->string: seed passed numeric literals to Drizzle decimal/numeric
+  columns (insert type string). Wrapped the numeric RHS in quotes on the 56 flagged lines via a
+  line-targeted perl. Faithful (+ fixes latent seed correctness).
+- seed-manufacturer-orders.ts 56 -> 0; EMPTY non-seed diff (zero new). Ratchet 2665 -> 2609. Baseline tightened.
+
+Iteration 19 (06/27/2026): Story QUALITY-002
+Status: Needs Review
