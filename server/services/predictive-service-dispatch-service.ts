@@ -419,7 +419,7 @@ Format as JSON:
       }
 
       // Check workload
-      const utilizationRate = tech.currentActiveLeads / (tech.maxActiveLeads || 50);
+      const utilizationRate = (tech.currentActiveLeads ?? 0) / (tech.maxActiveLeads || 50);
       if (utilizationRate < 0.6) {
         score += 15;
         reasons.push('Low workload');
@@ -435,14 +435,14 @@ Format as JSON:
       }
 
       // Priority for urgent issues
-      if (health.requiresImmediateAttention && tech.currentActiveLeads < 5) {
+      if (health.requiresImmediateAttention && (tech.currentActiveLeads ?? 0) < 5) {
         score += 15;
         reasons.push('Available for urgent call');
       }
 
       // Calculate next available slot (simplified)
       const nextSlot = new Date();
-      nextSlot.setHours(nextSlot.getHours() + tech.currentActiveLeads * 2); // 2 hours per existing job
+      nextSlot.setHours(nextSlot.getHours() + (tech.currentActiveLeads ?? 0) * 2); // 2 hours per existing job
 
       // Get technician name from users table
       const technicianName = await getUserName(tech.userId);
@@ -453,7 +453,7 @@ Format as JSON:
         score,
         reasons,
         availability: {
-          available: tech.isAvailable,
+          available: tech.isAvailable ?? false,
           nextAvailableSlot: nextSlot,
         },
         location: {

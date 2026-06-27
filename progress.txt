@@ -8839,3 +8839,12 @@ Status: Needs Review
 - Remaining TS2554: gps-tracking (4, storage-arg mismatches - need signature verification), salesforce-mapping
   transform, integration-service createQuickBooksClient, test-toner-order, Signup.tsx, CsvImportWizard - each
   needs individual verification (deferred to per-site checks).
+
+## Iteration - QUALITY-002 BATCH 52: nullable-col guards in 2 services (-6)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- predictive-service-dispatch-SERVICE (not the skipped routes file): tech.currentActiveLeads (nullable int)
+  in utilizationRate division / <5 comparison / *2 slot calc -> (x ?? 0); available: tech.isAvailable
+  (boolean|null) -> ?? false (TS2322).
+- subscription-service: plan.trialDays (nullable int) in `> 0` check and trial-end date math -> (x ?? 0).
+- Ratchet 2021 -> 2015 (-6); per-file count diff: NO file gained errors. Baseline tightened. Crossed <=2015.
