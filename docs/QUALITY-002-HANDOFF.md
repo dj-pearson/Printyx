@@ -3,8 +3,12 @@
 **Branch:** `claude/quality-002-typecheck-burndown` (main was merged via PR #186; this is the continuation branch)
 **Story:** QUALITY-002 — "Drive `npm run check` to green"
 **Status:** `passes: false` (flips to true only when `tsc` is fully clean)
-**Current count:** **1990** tsc errors (started at 6176; **−68%**). Baseline tracked in `docs/typecheck-baseline.json`.
-**Last batch:** 54 (TS7006/TS18046 singletons across 11 files). Singleton-sweep phase: null-guards, logger args, implicit-any params, untyped-query generics — ~12-15/batch.
+**Current count:** **1985** tsc errors (started at 6176; **−68%**). Baseline tracked in `docs/typecheck-baseline.json`.
+**Last batch:** 55 (TS2554 loggers + salesforce transform type). Singleton-sweep phase: null-guards, logger args, implicit-any params, untyped-query generics — ~5-13/batch.
+
+> DEFERRED for a focused pass: gps-tracking-routes 4 TS2554 are storage-method arg mismatches — a MIX of
+> missing required args (updateTechnicianLocation, getLatestEtaForTicket want 3, got 2) and extra ignored
+> args (startRoute, completeRoute) — each needs the storage signature checked individually before fixing.
 
 > NOTE for sed: files with emoji in log strings (🚀🔄✅📝) break `sed` matching — use the Edit tool for those.
 > The clean per-batch yield is now ~6-15 (clusters fragmented into singletons). The big remaining buckets
