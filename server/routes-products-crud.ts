@@ -80,8 +80,8 @@ function validateProductModelData(row: any): any {
       // Support both comma and semicolon separated values
       const accessories = accessoryString
         .split(/[,;]/)
-        .map((a) => a.trim())
-        .filter((a) => a.length > 0);
+        .map((a: string) => a.trim())
+        .filter((a: string) => a.length > 0);
       if (accessories.length > 0) {
         requiredAccessories = accessories.join(',');
       }
@@ -256,11 +256,10 @@ function validateSoftwareProductData(row: any): any {
   // Parse pricing values
   const standardCost = parseDecimal(getFieldValue('standard_cost'));
   const standardRepPriceRaw = getFieldValue('standard_rep_price');
-  log.info(
-    `Debug: standardRepPriceRaw for ${productCode}:`,
-    standardRepPriceRaw,
-    typeof standardRepPriceRaw,
-  );
+  log.info(`Debug: standardRepPriceRaw for ${productCode}:`, {
+    value: standardRepPriceRaw,
+    type: typeof standardRepPriceRaw,
+  });
   const standardRepPrice = parseDecimal(standardRepPriceRaw);
   log.info(`Debug: standardRepPrice after parseDecimal for ${productCode}:`, standardRepPrice);
   const newCost = parseDecimal(getFieldValue('new_cost'));
@@ -496,7 +495,11 @@ export function registerProductsCrudRoutes(app: Express) {
           }
         } catch (error) {
           log.error(`Error deleting model ${id}:`, error);
-          results.push({ id, success: false, error: error.message });
+          results.push({
+            id,
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       }
 
@@ -574,7 +577,7 @@ export function registerProductsCrudRoutes(app: Express) {
       // Check if codes parameter is provided for filtering
       const codesParam = req.query.codes as string;
       if (codesParam) {
-        const codes = codesParam.split(',').map((code) => code.trim());
+        const codes = codesParam.split(',').map((code: string) => code.trim());
         const accessories = await storage.getProductAccessoriesByCodes(codes, tenantId);
         return res.json(accessories);
       }
@@ -1765,8 +1768,8 @@ export function registerProductsCrudRoutes(app: Express) {
             if (productData.requiredAccessories) {
               const requiredCodes = productData.requiredAccessories
                 .split(',')
-                .map((code) => code.trim())
-                .filter((code) => code.length > 0);
+                .map((code: string) => code.trim())
+                .filter((code: string) => code.length > 0);
 
               if (requiredCodes.length > 0) {
                 const existingAccessories = await storage.getProductAccessoriesByCodes(
@@ -1774,11 +1777,15 @@ export function registerProductsCrudRoutes(app: Express) {
                   tenantId,
                 );
                 const existingCodes = existingAccessories.map((acc) => acc.accessoryCode);
-                const missingCodes = requiredCodes.filter((code) => !existingCodes.includes(code));
+                const missingCodes = requiredCodes.filter(
+                  (code: string) => !existingCodes.includes(code),
+                );
 
                 if (missingCodes.length > 0) {
                   // Remove missing accessory codes from required accessories to prevent future errors
-                  const validCodes = requiredCodes.filter((code) => existingCodes.includes(code));
+                  const validCodes = requiredCodes.filter((code: string) =>
+                    existingCodes.includes(code),
+                  );
                   productData.requiredAccessories =
                     validCodes.length > 0 ? validCodes.join(',') : null;
 
@@ -1944,7 +1951,7 @@ export function registerProductsCrudRoutes(app: Express) {
         }
 
         const csvText = req.file.buffer.toString('utf-8');
-        const results = await new Promise((resolve, reject) => {
+        const results = await new Promise<any[]>((resolve, reject) => {
           const records: any[] = [];
           const stream = Readable.from([csvText])
             .pipe(csv())

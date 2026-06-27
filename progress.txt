@@ -8688,3 +8688,15 @@ Status: Needs Review
   stat/action/activity/record -> :any, idx -> :number).
 - Faithful any-annotation (documented fallback for (row:any)-style callbacks); zero runtime change.
 - Ratchet 2264 -> 2243 (-21); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 40: routes-products-crud clean subset (-10, 16 -> 6)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- server/routes-products-crud.ts clean subset: 6x TS7006 (.map/.filter (a)/(code) params on any-typed
+  split() results -> :string); 1x TS18046 catch error.message -> error instanceof Error ? .message :
+  String(error); 2x TS18046 `results` (CSV parse `await new Promise(...)` untyped) -> new Promise<any[]>;
+  1x TS2554 log.info called with 3 args (logger takes 1-2) -> consolidated extra args into a {value,type}
+  meta object (preserves structured logging).
+- DEFERRED (phantom-shape, need schema verification): 4x TS2339 reading currentStock/supplier off the
+  inventory_items TABLE object (table-vs-row or phantom cols); 2x accessory insert shape (TS2345/TS2769).
+- Ratchet 2243 -> 2233 (-10); per-file count diff: NO file gained errors. Baseline tightened.
