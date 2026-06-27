@@ -513,7 +513,7 @@ function ReportChart({ data, metadata }: ReportChartProps) {
           ]}
           showGrid={true}
           showLegend={true}
-          formatTooltip={(value, name) => {
+          formatTooltip={(value: any, name: any) => {
             if (typeof value === 'number' && value > 1000) {
               return new Intl.NumberFormat('en-US', {
                 style: 'currency',
@@ -537,7 +537,7 @@ function ReportChart({ data, metadata }: ReportChartProps) {
           ]}
           showGrid={true}
           showLegend={true}
-          formatTooltip={(value, name) => {
+          formatTooltip={(value: any, name: any) => {
             if (typeof value === 'number' && value > 1000) {
               return new Intl.NumberFormat('en-US', {
                 style: 'currency',
@@ -558,7 +558,7 @@ function ReportChart({ data, metadata }: ReportChartProps) {
           nameKey="name"
           showLabels={true}
           showLegend={true}
-          formatTooltip={(value, name) => {
+          formatTooltip={(value: any, name: any) => {
             const total = chartData.reduce((sum: number, item: any) => sum + item.value, 0);
             const percentage = ((value / total) * 100).toFixed(1);
             return `${value?.toLocaleString()} (${percentage}%)`;
@@ -578,7 +578,7 @@ function ReportChart({ data, metadata }: ReportChartProps) {
           ]}
           showGrid={true}
           showLegend={true}
-          formatTooltip={(value, name) => {
+          formatTooltip={(value: any, name: any) => {
             if (typeof value === 'number' && value > 1000) {
               return new Intl.NumberFormat('en-US', {
                 style: 'currency',

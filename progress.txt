@@ -8677,3 +8677,14 @@ Status: Needs Review
   error; instanceof Error wouldn't expose .response).
 - Ratchet 2296 -> 2264 (-32); per-file count diff: NO file gained errors. Type-only, zero runtime change.
   Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 39: client TS7006 implicit-any callback params (-21)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- 3 client chart/layout files, all TS7006 implicit-any on loosely-typed callback params:
+  ReportViewer.tsx (4x `formatTooltip={(value, name)}` -> (value: any, name: any) — the chart wrapper's
+  formatTooltip prop is loosely typed); UsageAnalyticsDashboard.tsx (6x .map params on analytics.* which is
+  an untyped data source: peak/equipment/rec -> :any, index -> :number); context-panel.tsx (4x .map params
+  stat/action/activity/record -> :any, idx -> :number).
+- Faithful any-annotation (documented fallback for (row:any)-style callbacks); zero runtime change.
+- Ratchet 2264 -> 2243 (-21); per-file count diff: NO file gained errors. Baseline tightened.

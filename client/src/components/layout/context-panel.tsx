@@ -298,7 +298,7 @@ export function ContextPanel({ entityType, entityId, entityName, onClose }: Cont
             <div>
               <h3 className="text-sm font-semibold mb-3">Overview</h3>
               <div className="grid grid-cols-2 gap-3">
-                {stats.map((stat, idx) => (
+                {stats.map((stat: any, idx: number) => (
                   <Card key={idx} className="p-3">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
@@ -333,7 +333,7 @@ export function ContextPanel({ entityType, entityId, entityName, onClose }: Cont
             <div>
               <h3 className="text-sm font-semibold mb-3">Quick Actions</h3>
               <div className="space-y-2">
-                {actions.map((action, idx) => (
+                {actions.map((action: any, idx: number) => (
                   <Button
                     key={idx}
                     variant={action.variant || 'outline'}
@@ -364,7 +364,7 @@ export function ContextPanel({ entityType, entityId, entityName, onClose }: Cont
             <div>
               <h3 className="text-sm font-semibold mb-3">Recent Activity</h3>
               <div className="space-y-3">
-                {activities.slice(0, 10).map((activity) => (
+                {activities.slice(0, 10).map((activity: any) => (
                   <div key={activity.id} className="flex gap-3">
                     <div className="flex flex-col items-center">
                       <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
@@ -403,7 +403,7 @@ export function ContextPanel({ entityType, entityId, entityName, onClose }: Cont
             <div>
               <h3 className="text-sm font-semibold mb-3">Related Items</h3>
               <div className="space-y-2">
-                {relatedRecords.map((record) => (
+                {relatedRecords.map((record: any) => (
                   <Link key={record.id} href={record.href || '#'}>
                     <div className="flex items-center justify-between p-2 rounded-md hover:bg-accent cursor-pointer">
                       <div className="flex items-center gap-2 min-w-0">
