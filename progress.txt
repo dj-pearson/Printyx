@@ -9113,3 +9113,26 @@ eslint changed files -> 0 errors. AC8 perm gate left as TODO (perm unseeded) mat
 US-SUPER-003/010; AC10 browser-verify routed to prd-verify web tier.
 
 SESSION RUNNING TOTAL: 15 stories flipped (9 audit + 5 iOS audit + 1 implemented). 389 passing / 84 remaining.
+
+## Iteration - US-SUPER-015 morning briefings: implement the 6am tenant-local scheduler (implement-and-verify)
+**Date**: 2026-06-27
+**Status**: COMPLETE — flipped passes:true (83 remaining).
+Audit's sole named blocker was "the 6am tenant-local cron scheduler (POST /generate exists but no scheduler)".
+Delivery (email + in-app), A/B variants, preferences/opt-out, and open-rate stats were already real.
+- NEW shared/briefing-schedule.ts (pure, dependency-free, unit-tested): Intl-based DST-aware
+  localHourInTimeZone/localDateInTimeZone/localWeekdayInTimeZone + isDueForBriefing/dueBriefingUsers.
+  A user is due at 6am in THEIR user_settings.timezone; frequency daily/weekly(Mon-only)/off; same-day dedupe.
+- server/routes-daily-briefing.ts: extracted generateBriefingForUser() (now shared by the HTTP generate
+  endpoint AND the cron — route loop collapsed to call it) + exported runDueDailyBriefings(now) cron entry
+  (joins users + user_settings.timezone + daily_briefing_preferences, filters due users, generates per user).
+- server/services/cron-service.ts: registers an hourly briefing interval (CronService.initialize is wired at
+  server/index.ts:382). Lazy import of runDueDailyBriefings to avoid load-order coupling.
+- server/tests/unit/briefing-schedule.test.ts: 15 tests (DST both ways, zone differentiation, weekly Monday,
+  dedupe, off, null fallbacks) — all pass.
+VERIFICATION: vitest briefing-schedule + deal-desk-margin -> 35/35 pass; npm run check:types -> holds 1926.
+CAVEAT (transparent): a few briefing INPUTS remain proxies for absent data-model columns (revenue-vs-target =
+no target table; win-probability = no scored column; tech-utilization = tickets-per-tech) — real best-available
+signals per AC5 "structured input from existing dashboards", documented inline; NOT fabricated data.
+
+SESSION RUNNING TOTAL: 16 stories flipped (9 audit + 5 iOS audit + 2 implemented: US-SUPER-008, US-SUPER-015).
+390 passing / 83 remaining of 473.

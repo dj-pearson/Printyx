@@ -22,8 +22,11 @@
  * Auth: requireAuth + tenant scoping on every query.
  * TODO(rbac): no special permission — every authenticated user gets their own
  * role-appropriate briefing.
- * TODO(cron): wire a per-tenant 06:00 tenant-local scheduler that POSTs
- * /api/daily-briefing/generate { all: true } once per tenant.
+ * Scheduling (US-SUPER-015 AC1): runDueDailyBriefings() is the cron entry,
+ * invoked hourly by CronService. It delivers each user's briefing at 6am in
+ * THEIR local timezone (user_settings.timezone), honoring frequency
+ * (daily/weekly/off) and same-day dedupe. Schedule logic is unit-tested in
+ * shared/briefing-schedule.ts.
  */
 
 import type { Express } from 'express';
@@ -36,6 +39,12 @@ import { getTenantId, getUserId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
 import ClaudeAIService from './services/claude-ai-service';
 import { sendEmail } from './services/email-service';
+import {
+  dueBriefingUsers,
+  localDateInTimeZone,
+  type BriefingScheduleUser,
+} from '@shared/briefing-schedule';
+import { userSettings } from '@shared/schema';
 import {
   dailyBriefingPreferences,
   dailyBriefingLog,
@@ -611,6 +620,196 @@ const prefsSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// Per-user generation (shared by the HTTP endpoint and the cron)
+// ---------------------------------------------------------------------------
+
+interface BriefingTargetUser {
+  id: string;
+  email: string | null;
+  role: string | null;
+}
+
+interface BriefingGenOutcome {
+  generated: boolean;
+  skippedOff: boolean;
+  emailed: boolean;
+  inApp: boolean;
+}
+
+/** Generate + deliver one user's briefing for `date`. */
+async function generateBriefingForUser(
+  tenantId: string,
+  u: BriefingTargetUser,
+  date: string,
+  force: boolean,
+): Promise<BriefingGenOutcome> {
+  const prefs = await getOrCreatePreferences(tenantId, u.id);
+  if (!prefs) return { generated: false, skippedOff: false, emailed: false, inApp: false };
+  if (prefs.frequency === 'off' && !force) {
+    return { generated: false, skippedOff: true, emailed: false, inApp: false };
+  }
+
+  const role = (prefs.role as BriefingRole | null) ?? deriveRole(u.role);
+  const variant = (prefs.abVariant as BriefingVariant) ?? 'numbers';
+
+  const data = await assembleData(tenantId, u.id, role);
+  const briefing = await generateBriefing(data, variant, date);
+
+  const content = {
+    role,
+    variant,
+    sections: data.sections,
+    bullets: briefing.bullets,
+    links: [{ label: 'Open briefings', url: '/briefings' }],
+    wordCount: wordCount(briefing.bullets, briefing.subject),
+    source: briefing.source,
+  };
+
+  // In-app badge (best-effort: user_notifications tenant_id is uuid + enums).
+  let inAppSent = false;
+  if (prefs.inAppEnabled) {
+    try {
+      await db.insert(userNotifications).values({
+        tenantId: tenantId as any,
+        userId: u.id,
+        type: 'daily_briefing',
+        priority: 'medium',
+        category: 'system',
+        title: briefing.subject,
+        message: briefing.bullets[0] ?? 'Your morning briefing is ready.',
+        actionUrl: '/briefings',
+      });
+      inAppSent = true;
+    } catch (err: any) {
+      log.warn(
+        { err: err?.message, userId: u.id },
+        'In-app briefing notification insert failed (non-fatal)',
+      );
+    }
+  }
+
+  // Email (best-effort).
+  let emailSent = false;
+  if (prefs.emailEnabled && u.email) {
+    try {
+      const html = `<h2>${briefing.subject}</h2><ul>${briefing.bullets
+        .map((b) => `<li>${b}</li>`)
+        .join('')}</ul>`;
+      const result = await sendEmail({
+        to: u.email,
+        subject: briefing.subject,
+        html,
+        text: briefing.bullets.join('\n'),
+      });
+      emailSent = !!result?.success;
+    } catch (err: any) {
+      log.warn({ err: err?.message, userId: u.id }, 'Briefing email send failed (non-fatal)');
+    }
+  }
+
+  await db.insert(dailyBriefingLog).values({
+    tenantId,
+    userId: u.id,
+    role,
+    briefingDate: date,
+    variant,
+    subject: briefing.subject,
+    emailSent,
+    inAppSent,
+    content,
+  });
+
+  await db
+    .update(dailyBriefingPreferences)
+    .set({ lastSentAt: new Date(), updatedAt: new Date() })
+    .where(
+      and(
+        eq(dailyBriefingPreferences.tenantId, tenantId),
+        eq(dailyBriefingPreferences.userId, u.id),
+      ),
+    );
+
+  return { generated: true, skippedOff: false, emailed: emailSent, inApp: inAppSent };
+}
+
+/**
+ * Cron entry (US-SUPER-015 AC1): hourly tick that generates briefings for every
+ * active user whose LOCAL time is 6am (user_settings.timezone), respecting the
+ * per-user frequency (daily/weekly/off) and same-day dedupe. Called from
+ * CronService; safe to run hourly because lastSentAt dedupes within the day.
+ */
+export async function runDueDailyBriefings(now: Date = new Date()): Promise<{
+  candidates: number;
+  due: number;
+  generated: number;
+  emailed: number;
+  inApp: number;
+}> {
+  const rows = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      role: users.role,
+      tenantId: users.tenantId,
+      timezone: userSettings.timezone,
+      frequency: dailyBriefingPreferences.frequency,
+      lastSentAt: dailyBriefingPreferences.lastSentAt,
+    })
+    .from(users)
+    .leftJoin(userSettings, eq(userSettings.userId, users.id))
+    .leftJoin(
+      dailyBriefingPreferences,
+      and(
+        eq(dailyBriefingPreferences.userId, users.id),
+        eq(dailyBriefingPreferences.tenantId, users.tenantId),
+      ),
+    )
+    .where(eq(users.isActive, true));
+
+  // Resolve same-day dedupe against each user's local last-sent date.
+  const candidates = rows.map((r) => ({
+    ...r,
+    lastSentDate: r.lastSentAt
+      ? localDateInTimeZone(r.lastSentAt, r.timezone || 'America/New_York')
+      : null,
+  }));
+  const due = dueBriefingUsers(
+    candidates as Array<(typeof candidates)[number] & BriefingScheduleUser>,
+    now,
+  );
+
+  let generated = 0;
+  let emailed = 0;
+  let inApp = 0;
+  for (const u of due) {
+    if (!u.tenantId) continue;
+    try {
+      const date = localDateInTimeZone(now, u.timezone || 'America/New_York');
+      const r = await generateBriefingForUser(
+        u.tenantId,
+        { id: u.id, email: u.email, role: u.role },
+        date,
+        false,
+      );
+      if (r.generated) generated++;
+      if (r.emailed) emailed++;
+      if (r.inApp) inApp++;
+    } catch (err: any) {
+      log.warn(
+        { err: err?.message, userId: u.id },
+        'Scheduled briefing generation failed (non-fatal)',
+      );
+    }
+  }
+
+  log.info(
+    { candidates: rows.length, due: due.length, generated, emailed, inApp },
+    '[CRON] daily briefings tick',
+  );
+  return { candidates: rows.length, due: due.length, generated, emailed, inApp };
+}
+
+// ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
 
@@ -659,96 +858,11 @@ export function registerDailyBriefingRoutes(app: Express) {
       let inApp = 0;
 
       for (const u of targets) {
-        const prefs = await getOrCreatePreferences(tenantId, u.id);
-        if (!prefs) continue;
-        if (prefs.frequency === 'off' && !force) {
-          skippedOff++;
-          continue;
-        }
-
-        const role = (prefs.role as BriefingRole | null) ?? deriveRole(u.role);
-        const variant = (prefs.abVariant as BriefingVariant) ?? 'numbers';
-
-        const data = await assembleData(tenantId, u.id, role);
-        const briefing = await generateBriefing(data, variant, date);
-
-        const content = {
-          role,
-          variant,
-          sections: data.sections,
-          bullets: briefing.bullets,
-          links: [{ label: 'Open briefings', url: '/briefings' }],
-          wordCount: wordCount(briefing.bullets, briefing.subject),
-          source: briefing.source,
-        };
-
-        // In-app badge (best-effort: user_notifications tenant_id is uuid + enums).
-        let inAppSent = false;
-        if (prefs.inAppEnabled) {
-          try {
-            await db.insert(userNotifications).values({
-              tenantId: tenantId as any,
-              userId: u.id,
-              type: 'daily_briefing',
-              priority: 'medium',
-              category: 'system',
-              title: briefing.subject,
-              message: briefing.bullets[0] ?? 'Your morning briefing is ready.',
-              actionUrl: '/briefings',
-            });
-            inAppSent = true;
-            inApp++;
-          } catch (err: any) {
-            log.warn(
-              { err: err?.message, userId: u.id },
-              'In-app briefing notification insert failed (non-fatal)',
-            );
-          }
-        }
-
-        // Email (best-effort).
-        let emailSent = false;
-        if (prefs.emailEnabled && u.email) {
-          try {
-            const html = `<h2>${briefing.subject}</h2><ul>${briefing.bullets
-              .map((b) => `<li>${b}</li>`)
-              .join('')}</ul>`;
-            const result = await sendEmail({
-              to: u.email,
-              subject: briefing.subject,
-              html,
-              text: briefing.bullets.join('\n'),
-            });
-            emailSent = !!result?.success;
-            if (emailSent) emailed++;
-          } catch (err: any) {
-            log.warn({ err: err?.message, userId: u.id }, 'Briefing email send failed (non-fatal)');
-          }
-        }
-
-        await db.insert(dailyBriefingLog).values({
-          tenantId,
-          userId: u.id,
-          role,
-          briefingDate: date,
-          variant,
-          subject: briefing.subject,
-          emailSent,
-          inAppSent,
-          content,
-        });
-
-        await db
-          .update(dailyBriefingPreferences)
-          .set({ lastSentAt: new Date(), updatedAt: new Date() })
-          .where(
-            and(
-              eq(dailyBriefingPreferences.tenantId, tenantId),
-              eq(dailyBriefingPreferences.userId, u.id),
-            ),
-          );
-
-        generated++;
+        const outcome = await generateBriefingForUser(tenantId, u, date, force);
+        if (outcome.skippedOff) skippedOff++;
+        if (outcome.generated) generated++;
+        if (outcome.emailed) emailed++;
+        if (outcome.inApp) inApp++;
       }
 
       audit('GENERATE', {

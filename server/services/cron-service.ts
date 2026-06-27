@@ -53,6 +53,23 @@ export class CronService {
       this.intervals.push(dailyInterval);
     }
 
+    // US-SUPER-015: hourly tick that delivers morning briefings to each user at
+    // 6am in their own timezone. Safe to run hourly — same-day dedupe lives in
+    // runDueDailyBriefings. Lazy import to avoid load-order coupling.
+    const briefingInterval = setInterval(
+      async () => {
+        try {
+          const { runDueDailyBriefings } = await import('../routes-daily-briefing');
+          const r = await runDueDailyBriefings();
+          if (r.due > 0) log.info(`[CRON] Morning briefings: ${r.generated}/${r.due} delivered`);
+        } catch (error) {
+          log.error('[CRON] Morning briefing tick failed:', error);
+        }
+      },
+      60 * 60 * 1000,
+    );
+    this.intervals.push(briefingInterval);
+
     log.info(`[CRON] Initialized ${this.intervals.length} scheduled tasks`);
   }
 
