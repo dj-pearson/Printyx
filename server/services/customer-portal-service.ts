@@ -2172,7 +2172,8 @@ export class CustomerPortalService {
         .select()
         .from(customerMaintenanceAppointments)
         .where(and(...conditions))
-        .orderBy(desc(customerMaintenanceAppointments.appointmentDate));
+        .orderBy(desc(customerMaintenanceAppointments.appointmentDate))
+        .$dynamic();
 
       if (options.limit) {
         query = query.limit(options.limit);

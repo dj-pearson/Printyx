@@ -290,7 +290,8 @@ router.get('/users', requireRootAdmin, async (req, res) => {
       })
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
-      .leftJoin(tenants, eq(users.tenantId, tenants.id));
+      .leftJoin(tenants, eq(users.tenantId, tenants.id))
+      .$dynamic();
 
     // Apply filters
     const conditions = [];

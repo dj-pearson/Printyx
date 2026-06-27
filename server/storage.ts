@@ -10529,7 +10529,8 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(customerHealthScores)
       .where(and(...conditions))
-      .orderBy(desc(customerHealthScores.calculatedAt));
+      .orderBy(desc(customerHealthScores.calculatedAt))
+      .$dynamic();
   }
 
   async getHealthScore(scoreId: string): Promise<CustomerHealthScore | null> {
@@ -10617,7 +10618,8 @@ export class DatabaseStorage implements IStorage {
           eq(customerHealthScores.tenantId, tenantId),
         ),
       )
-      .orderBy(desc(customerHealthScores.calculatedAt));
+      .orderBy(desc(customerHealthScores.calculatedAt))
+      .$dynamic();
 
     if (limit) {
       query = query.limit(limit);

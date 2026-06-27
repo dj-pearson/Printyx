@@ -112,10 +112,7 @@ function pathToRegex(pattern: string): RegExp {
 }
 
 /** Look up a registered schema for the given method + path. */
-function findSchemaForRoute(
-  method: string,
-  path: string,
-): ZodSchema | undefined {
+function findSchemaForRoute(method: string, path: string): ZodSchema | undefined {
   const lowerMethod = method.toLowerCase();
   for (const entry of routeSchemaRegistry) {
     if (entry.method !== lowerMethod) continue;
@@ -160,10 +157,7 @@ export function exceedsMaxDepth(
  * Recursively scan all string values in the payload for dangerous characters.
  * Returns an array of dot-paths where violations were found.
  */
-export function findDangerousStrings(
-  value: unknown,
-  path: string = '',
-): string[] {
+export function findDangerousStrings(value: unknown, path: string = ''): string[] {
   const violations: string[] = [];
 
   if (typeof value === 'string') {
@@ -204,7 +198,7 @@ function knownKeysFromSchema(schema: ZodSchema): Set<string> | null {
 
   // Walk through ZodEffects layers
   while ((inner as { _def?: { schema?: ZodSchema } })._def?.schema) {
-    inner = (inner as { _def: { schema: ZodSchema } })._def.schema;
+    inner = (inner as unknown as { _def: { schema: ZodSchema } })._def.schema;
   }
 
   if (inner instanceof ZodObject) {
@@ -216,10 +210,7 @@ function knownKeysFromSchema(schema: ZodSchema): Set<string> | null {
 /**
  * Detect unknown top-level properties relative to a schema.
  */
-export function findUnknownProperties(
-  body: Record<string, unknown>,
-  schema: ZodSchema,
-): string[] {
+export function findUnknownProperties(body: Record<string, unknown>, schema: ZodSchema): string[] {
   const known = knownKeysFromSchema(schema);
   if (!known) return []; // can't determine – skip check
   return Object.keys(body).filter((k) => !known.has(k));
@@ -276,9 +267,18 @@ export function openapiValidator() {
     try {
       const serialised = JSON.stringify(body);
       if (serialised && serialised.length > MAX_BODY_STRING_LENGTH) {
-        formatValidationResponse(res, 'Request body too large', [
-          { field: 'body', message: `Body exceeds maximum size of ${MAX_BODY_STRING_LENGTH} characters`, code: 'too_big' },
-        ], req.requestId);
+        formatValidationResponse(
+          res,
+          'Request body too large',
+          [
+            {
+              field: 'body',
+              message: `Body exceeds maximum size of ${MAX_BODY_STRING_LENGTH} characters`,
+              code: 'too_big',
+            },
+          ],
+          req.requestId,
+        );
         return;
       }
     } catch {
@@ -287,9 +287,18 @@ export function openapiValidator() {
 
     // 2. Max nesting depth
     if (exceedsMaxDepth(body)) {
-      formatValidationResponse(res, 'Request body nested too deeply', [
-        { field: 'body', message: `Object nesting exceeds maximum depth of ${MAX_NESTING_DEPTH}`, code: 'too_deep' },
-      ], req.requestId);
+      formatValidationResponse(
+        res,
+        'Request body nested too deeply',
+        [
+          {
+            field: 'body',
+            message: `Object nesting exceeds maximum depth of ${MAX_NESTING_DEPTH}`,
+            code: 'too_deep',
+          },
+        ],
+        req.requestId,
+      );
       return;
     }
 
