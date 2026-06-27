@@ -109,12 +109,12 @@ export default function KnowledgeBaseAdminDashboard() {
   });
 
   // Fetch pending feedback
-  const { data: feedbackData } = useQuery({
+  const { data: feedbackData } = useQuery<{ data?: any[] }>({
     queryKey: ['/api/admin/knowledge-base/feedback/pending'],
   });
 
   // Fetch AI generation queue
-  const { data: aiQueueData } = useQuery({
+  const { data: aiQueueData } = useQuery<{ data?: any[] }>({
     queryKey: ['/api/admin/knowledge-base/ai-queue'],
   });
 

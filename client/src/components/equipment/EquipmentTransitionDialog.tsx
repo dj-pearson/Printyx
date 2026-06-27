@@ -64,7 +64,7 @@ export function EquipmentTransitionDialog({
   const { toast } = useToast();
 
   // Fetch available transitions
-  const { data: availableData, isLoading: loadingAvailable } = useQuery({
+  const { data: availableData, isLoading: loadingAvailable } = useQuery<{ data?: any }>({
     queryKey: [`/api/equipment-lifecycle/${equipmentId}/available-transitions`],
     enabled: open && !!equipmentId,
   });
@@ -72,7 +72,7 @@ export function EquipmentTransitionDialog({
   const availableTransitions = availableData?.data?.availableTransitions || [];
 
   // Fetch validation details when a stage is selected
-  const { data: validationData, isLoading: loadingValidation } = useQuery({
+  const { data: validationData, isLoading: loadingValidation } = useQuery<{ data?: any }>({
     queryKey: [`/api/equipment-lifecycle/${equipmentId}/can-transition/${selectedStage}`],
     enabled: !!selectedStage && open,
   });

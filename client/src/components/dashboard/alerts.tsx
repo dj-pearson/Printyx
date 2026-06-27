@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Clock, Info } from 'lucide-react';
 
 export default function Alerts() {
-  const { data: alertsData, isLoading } = useQuery({
+  const { data: alertsData, isLoading } = useQuery<{ lowStock?: any[] }>({
     queryKey: ['/api/dashboard/alerts'],
   });
 
