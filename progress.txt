@@ -8532,3 +8532,16 @@ Status: Needs Review
 
 Iteration 23 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 31: purchase-orders permissions + auth-helpers (-26)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Added EDIT/DELETE to PERMISSIONS.INVENTORY.PURCHASE_ORDER (routes referenced them -> 9 TS2339 +
+  requirePermission([undefined]) broken gate at runtime).
+- Replaced 17 old-auth `req.user?.x || req.user?.claims?.y` fallbacks with getTenantId/getUserId helpers;
+  the surfaced 11 string|undefined TS2345 at post-auth storage calls fixed with `!` (auth guarantees tenant).
+- po 46 -> 20 (remaining are pre-existing insert-shape/overload phantom-shape); EMPTY non-target diff.
+  Ratchet 2537 -> 2511. Baseline tightened.
+
+Iteration 24 (06/27/2026): Story QUALITY-002
+Status: Needs Review

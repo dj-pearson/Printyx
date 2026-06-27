@@ -210,6 +210,8 @@ export const PERMISSIONS = {
     PURCHASE_ORDER: {
       VIEW: 'inventory.po.view',
       CREATE: 'inventory.po.create',
+      EDIT: 'inventory.po.edit',
+      DELETE: 'inventory.po.delete',
       APPROVE: 'inventory.po.approve',
       RECEIVE: 'inventory.po.receive',
     },

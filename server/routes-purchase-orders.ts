@@ -116,7 +116,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
         const { id } = req.params;
 
         const purchaseOrder = await storage.getPurchaseOrder(id, tenantId);
@@ -141,8 +141,8 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.CREATE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
-        const userId = req.user?.id || req.user?.claims?.sub;
+        const tenantId = getTenantId(req)!;
+        const userId = getUserId(req)!;
 
         const validatedData = insertPurchaseOrderSchema.parse({
           ...req.body,
@@ -187,7 +187,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
         const { id } = req.params;
 
         const validatedData = updatePurchaseOrderSchema.parse(req.body);
@@ -219,7 +219,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.DELETE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
         const { id } = req.params;
 
         const success = await storage.deletePurchaseOrder(id, tenantId);
@@ -242,7 +242,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
         const { id } = req.params;
 
         const { status } = purchaseOrderStatusSchema.parse(req.body);
@@ -253,7 +253,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
             status,
             updatedAt: new Date(),
             ...(status === 'approved' && {
-              approvedBy: req.user?.id || req.user?.claims?.sub,
+              approvedBy: getUserId(req)!,
               approvedDate: new Date(),
             }),
           },
@@ -283,7 +283,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
         const { id } = req.params;
 
         const items = await storage.getPurchaseOrderItems(id, tenantId);
@@ -301,7 +301,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
         const { id } = req.params;
 
         const validatedData = insertPurchaseOrderItemSchema.parse({
@@ -329,7 +329,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
         const { id } = req.params;
 
         const validatedData = updatePurchaseOrderItemSchema.parse(req.body);
@@ -357,7 +357,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
         const { id } = req.params;
 
         const success = await storage.deletePurchaseOrderItem(id, tenantId);
@@ -380,7 +380,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
         const vendors = await storage.getVendors(tenantId);
         res.json(vendors);
       } catch (error) {
@@ -396,7 +396,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
         const { id } = req.params;
 
         const vendor = await storage.getVendor(id, tenantId);
@@ -418,7 +418,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
 
         const validatedData = insertVendorSchema.parse({
           ...req.body,
@@ -444,7 +444,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.EDIT]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
         const { id } = req.params;
 
         const validatedData = updateVendorSchema.parse(req.body);
@@ -472,7 +472,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.DELETE]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
         const { id } = req.params;
 
         const success = await storage.deleteVendor(id, tenantId);
@@ -495,7 +495,7 @@ export function registerPurchaseOrderRoutes(app: Express) {
     requirePermission([PERMISSIONS.INVENTORY.PURCHASE_ORDER.VIEW]),
     async (req: AuthenticatedRequest, res) => {
       try {
-        const tenantId = req.user?.tenantId || req.user?.claims?.tenantId;
+        const tenantId = getTenantId(req)!;
         const purchaseOrders = await storage.getPurchaseOrders(tenantId);
 
         const stats = {
