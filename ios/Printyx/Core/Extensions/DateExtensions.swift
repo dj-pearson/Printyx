@@ -2,35 +2,48 @@ import Foundation
 
 extension Date {
 
-    /// "2 hours ago", "3 days ago", etc.
+    // Cached formatters — DateFormatter is expensive to allocate, and these
+    // were previously re-created on every access (once per list row). Static
+    // lets are created once and are thread-safe to read.
+    private static let shortDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        return f
+    }()
+
+    private static let fullDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
+
+    private static let timeOnlyFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .none
+        f.timeStyle = .short
+        return f
+    }()
+
+    /// "2 hours ago", "3 days ago", etc. Uses the shared cached formatter.
     var relativeDescription: String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: self, relativeTo: Date())
+        Formatters.relativeDate.localizedString(for: self, relativeTo: Date())
     }
 
     /// "Jan 15, 2026"
     var shortFormatted: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter.string(from: self)
+        Date.shortDateFormatter.string(from: self)
     }
 
     /// "Jan 15, 2026 at 3:30 PM"
     var fullFormatted: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter.string(from: self)
+        Date.fullDateFormatter.string(from: self)
     }
 
     /// "3:30 PM"
     var timeFormatted: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .none
-        formatter.timeStyle = .short
-        return formatter.string(from: self)
+        Date.timeOnlyFormatter.string(from: self)
     }
 
     /// Whether the date is in the past.

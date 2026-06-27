@@ -25,7 +25,7 @@ struct ContractListView: View {
             HStack(spacing: AppTheme.Spacing.md) {
                 MetricCard(label: "Active", value: "\(viewModel.activeCount)", icon: "checkmark.seal.fill", color: .statusActive)
                 MetricCard(label: "Expiring", value: "\(viewModel.expiringCount)", icon: "clock.badge.exclamationmark", color: .statusPending)
-                MetricCard(label: "Annual Value", value: formatCurrency(viewModel.totalAnnualValue), icon: "dollarsign.circle", color: .printyxPrimary)
+                MetricCard(label: "Annual Value", value: Formatters.currencyAbbreviated(viewModel.totalAnnualValue), icon: "dollarsign.circle", color: .printyxPrimary)
             }
             .padding(.horizontal, AppTheme.Spacing.lg)
             .padding(.vertical, AppTheme.Spacing.sm)
@@ -154,9 +154,6 @@ struct ContractListView: View {
         .listStyle(.insetGrouped)
     }
 
-    private func formatCurrency(_ value: Double) -> String {
-        Formatters.currencyAbbreviated(value)
-    }
 }
 
 // MARK: - Contract Row
@@ -192,7 +189,7 @@ struct ContractRow: View {
 
             VStack(alignment: .trailing, spacing: AppTheme.Spacing.xs) {
                 if let amount = contract.monthlyAmount, amount > 0 {
-                    Text(formatCurrency(amount) + "/mo")
+                    Text(Formatters.currencyRounded(amount) + "/mo")
                         .font(.printyxCaption)
                         .fontWeight(.bold)
                         .foregroundStyle(Color.printyxPrimary)
@@ -219,13 +216,6 @@ struct ContractRow: View {
         }
     }
 
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
-    }
 }
 
 // MARK: - StatusBadge extension for contracts
@@ -283,10 +273,10 @@ struct ContractDetailView: View {
 
                 Section("Financial") {
                     if let monthly = contract.monthlyAmount {
-                        LabeledContent("Monthly Amount", value: formatCurrency(monthly))
+                        LabeledContent("Monthly Amount", value: Formatters.currency(monthly))
                     }
                     if let annual = contract.annualValue {
-                        LabeledContent("Annual Value", value: formatCurrency(annual))
+                        LabeledContent("Annual Value", value: Formatters.currency(annual))
                     }
                 }
 
@@ -310,10 +300,4 @@ struct ContractDetailView: View {
         }
     }
 
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
-    }
 }

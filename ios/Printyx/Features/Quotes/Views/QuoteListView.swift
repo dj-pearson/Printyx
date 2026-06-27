@@ -147,7 +147,7 @@ struct QuoteListView: View {
         HStack(spacing: AppTheme.Spacing.md) {
             MetricCard(
                 label: "Total Value",
-                value: formatCurrency(viewModel.totalProposalValue),
+                value: Formatters.currencyRounded(viewModel.totalProposalValue),
                 icon: "dollarsign.circle",
                 color: .printyxPrimary
             )
@@ -275,14 +275,6 @@ struct QuoteListView: View {
             }
         }
     }
-
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
-    }
 }
 
 // MARK: - Proposal Row
@@ -319,7 +311,7 @@ struct ProposalRowView: View {
 
             VStack(alignment: .trailing, spacing: AppTheme.Spacing.xs) {
                 if let amount = proposal.totalAmount, amount > 0 {
-                    Text(formatCurrency(amount))
+                    Text(Formatters.currencyRounded(amount))
                         .font(.printyxCaption)
                         .fontWeight(.bold)
                         .foregroundStyle(Color.printyxPrimary)
@@ -343,14 +335,6 @@ struct ProposalRowView: View {
         case .expired: .statusCancelled
         case .none: .secondary
         }
-    }
-
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
     }
 }
 
@@ -386,20 +370,12 @@ struct QuoteRowView: View {
             Spacer()
 
             if let amount = quote.totalAmount, amount > 0 {
-                Text(formatCurrency(amount))
+                Text(Formatters.currencyRounded(amount))
                     .font(.printyxCaption)
                     .fontWeight(.bold)
                     .foregroundStyle(Color.printyxPrimary)
             }
         }
         .padding(.vertical, AppTheme.Spacing.xs)
-    }
-
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
     }
 }

@@ -178,14 +178,14 @@ struct OpportunityListView: View {
         HStack(spacing: AppTheme.Spacing.md) {
             MetricCard(
                 label: "Pipeline",
-                value: formatCurrency(viewModel.totalPipelineValue),
+                value: Formatters.currencyAbbreviated(viewModel.totalPipelineValue),
                 icon: "chart.bar.fill",
                 color: .printyxPrimary
             )
 
             MetricCard(
                 label: "Weighted",
-                value: formatCurrency(viewModel.weightedPipelineValue),
+                value: Formatters.currencyAbbreviated(viewModel.weightedPipelineValue),
                 icon: "scale.3d",
                 color: .printyxSecondary
             )
@@ -249,20 +249,6 @@ struct OpportunityListView: View {
         .listStyle(.insetGrouped)
     }
 
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        if value >= 1_000_000 {
-            formatter.maximumFractionDigits = 1
-            return formatter.string(from: NSNumber(value: value / 1_000_000)).map { "\($0)M" } ?? "$\(Int(value))"
-        }
-        if value >= 1_000 {
-            return formatter.string(from: NSNumber(value: value / 1_000)).map { "\($0)K" } ?? "$\(Int(value))"
-        }
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
-    }
 }
 
 // MARK: - Metric Card
@@ -364,7 +350,7 @@ struct PipelineCard: View {
                 .lineLimit(2)
 
             if let amount = opportunity.estimatedAmount, amount > 0 {
-                Text(formatCurrency(amount))
+                Text(Formatters.currencyRounded(amount))
                     .font(.printyxSmall)
                     .fontWeight(.bold)
                     .foregroundStyle(Color.printyxPrimary)
@@ -389,14 +375,6 @@ struct PipelineCard: View {
         .background(Color(.systemBackground))
         .cornerRadius(AppTheme.Radius.sm)
         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-    }
-
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
     }
 }
 
@@ -433,7 +411,7 @@ struct OpportunityRowView: View {
 
             VStack(alignment: .trailing, spacing: AppTheme.Spacing.xs) {
                 if let amount = opportunity.estimatedAmount, amount > 0 {
-                    Text(formatCurrency(amount))
+                    Text(Formatters.currencyRounded(amount))
                         .font(.printyxCaption)
                         .fontWeight(.bold)
                         .foregroundStyle(Color.printyxPrimary)
@@ -452,13 +430,5 @@ struct OpportunityRowView: View {
         guard let stage = opportunity.salesStage,
               let dealStage = DealStage(rawValue: stage) else { return .secondary }
         return Color(hex: dealStage.color)
-    }
-
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
     }
 }

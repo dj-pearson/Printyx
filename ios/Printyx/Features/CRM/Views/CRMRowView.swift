@@ -53,7 +53,7 @@ struct CRMRowView: View {
             // Right side info
             VStack(alignment: .trailing, spacing: AppTheme.Spacing.xs) {
                 if let amount = record.estimatedAmount, amount > 0 {
-                    Text(formatCurrency(amount))
+                    Text(Formatters.currencyRounded(amount))
                         .font(.printyxCaption)
                         .fontWeight(.semibold)
                         .foregroundStyle(Color.printyxPrimary)
@@ -86,11 +86,4 @@ struct CRMRowView: View {
         }
     }
 
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
-    }
 }
