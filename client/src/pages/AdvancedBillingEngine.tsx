@@ -1233,7 +1233,7 @@ export default function AdvancedBillingEngine() {
                           </div>
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium">
-                              ${invoice.totalAmount.toFixed(2)}
+                              ${Number(invoice.totalAmount).toFixed(2)}
                             </span>
                             <Badge variant={getStatusColor(invoice.status)} className="text-xs">
                               {getStatusIcon(invoice.status)}
@@ -1604,7 +1604,7 @@ export default function AdvancedBillingEngine() {
                               className="text-xl font-bold text-green-600"
                               data-testid={`invoice-amount-${invoice.id}`}
                             >
-                              ${invoice.totalAmount.toFixed(2)}
+                              ${Number(invoice.totalAmount).toFixed(2)}
                             </p>
                             {invoice.balance_due > 0 && (
                               <p className="text-sm text-red-600 font-medium">

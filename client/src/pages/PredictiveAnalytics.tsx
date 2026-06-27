@@ -104,6 +104,15 @@ const getImpactIcon = (impact: string) => {
   }
 };
 
+interface ModelsData {
+  trainingJobs?: any[];
+}
+
+interface DataSourcesData {
+  connectedSources?: any[];
+  dataQuality?: any;
+}
+
 export default function PredictiveAnalytics() {
   const [selectedTab, setSelectedTab] = useState('dashboard');
 
@@ -134,13 +143,13 @@ export default function PredictiveAnalytics() {
   });
 
   // Fetch ML models data
-  const { data: modelsData } = useQuery({
+  const { data: modelsData } = useQuery<ModelsData>({
     queryKey: ['/api/predictive-analytics/models'],
     refetchInterval: 30000,
   });
 
   // Fetch data sources
-  const { data: dataSourcesData } = useQuery({
+  const { data: dataSourcesData } = useQuery<DataSourcesData>({
     queryKey: ['/api/predictive-analytics/data-sources'],
     refetchInterval: 30000,
   });

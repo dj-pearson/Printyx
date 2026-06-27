@@ -63,22 +63,22 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   }, []);
 
   // Fetch data for search
-  const { data: customers = [] } = useQuery({
+  const { data: customers = [] } = useQuery<any[]>({
     queryKey: ['/api/customers'],
     enabled: open && search.length > 0,
   });
 
-  const { data: tickets = [] } = useQuery({
+  const { data: tickets = [] } = useQuery<any[]>({
     queryKey: ['/api/service-tickets'],
     enabled: open && search.length > 0,
   });
 
-  const { data: equipment = [] } = useQuery({
+  const { data: equipment = [] } = useQuery<any[]>({
     queryKey: ['/api/equipment'],
     enabled: open && search.length > 0,
   });
 
-  const { data: invoices = [] } = useQuery({
+  const { data: invoices = [] } = useQuery<any[]>({
     queryKey: ['/api/invoices'],
     enabled: open && search.length > 0,
   });

@@ -8,19 +8,31 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Shield, AlertTriangle, Lock, Key, Activity, Users, Database, Globe } from 'lucide-react';
 import { MainLayout } from '@/components/layout/main-layout';
 
+interface SecurityMetrics {
+  securityScore?: string | number;
+  securityStatus?: string;
+  threatLevel?: string;
+  failedLogins?: string | number;
+  activeApiKeys?: string | number;
+  totalTenants?: string | number;
+  activeUsers?: string | number;
+  adminUsers?: string | number;
+  apiRequests24h?: string | number;
+}
+
 export default function RootAdminSecurity() {
   const [activeTab, setActiveTab] = useState('overview');
 
-  const { data: securityMetrics } = useQuery({
+  const { data: securityMetrics } = useQuery<SecurityMetrics>({
     queryKey: ['/api/admin/security/metrics'],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const { data: auditLogs } = useQuery({
+  const { data: auditLogs } = useQuery<any[]>({
     queryKey: ['/api/admin/audit-logs'],
   });
 
-  const { data: activeThreats } = useQuery({
+  const { data: activeThreats } = useQuery<any[]>({
     queryKey: ['/api/admin/security/threats'],
   });
 

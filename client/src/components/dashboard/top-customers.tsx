@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
 
 export default function TopCustomers() {
-  const { data: customers, isLoading } = useQuery({
+  const { data: customers, isLoading } = useQuery<any[]>({
     queryKey: ['/api/dashboard/top-customers'],
   });
 

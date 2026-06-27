@@ -134,12 +134,12 @@ export default function CrmGoalsDashboard() {
   });
 
   // Teams query
-  const { data: teams = [] } = useQuery({
+  const { data: teams = [] } = useQuery<any[]>({
     queryKey: ['/api/crm/teams'],
   });
 
   // Users query for dropdowns
-  const { data: users = [] } = useQuery({
+  const { data: users = [] } = useQuery<any[]>({
     queryKey: ['/api/users'],
   });
 
@@ -497,11 +497,11 @@ export default function CrmGoalsDashboard() {
 
 // Manager Insights Component
 function ConversionInsights() {
-  const { data: insights } = useQuery({
+  const { data: insights } = useQuery<any[]>({
     queryKey: ['/api/crm/manager-insights'],
   });
 
-  const { data: conversionAnalysis } = useQuery({
+  const { data: conversionAnalysis } = useQuery<any[]>({
     queryKey: ['/api/crm/analytics/conversion-analysis'],
   });
 

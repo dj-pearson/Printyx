@@ -26,9 +26,19 @@ import {
   Brain,
 } from 'lucide-react';
 
+interface AdminOverviewStats {
+  totalTenants?: number;
+  activeTenants?: number;
+  totalUsers?: number;
+  activeUsers?: number;
+  systemHealth?: string;
+  criticalAlerts?: number;
+  systemUptime?: number;
+}
+
 export default function AdminHub() {
   // Fetch quick stats for the dashboard
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<AdminOverviewStats>({
     queryKey: ['/api/root-admin/overview'],
     refetchInterval: 30000,
   });
@@ -51,7 +61,7 @@ export default function AdminHub() {
       label: 'Critical Alerts',
       value: stats?.criticalAlerts || 0,
       icon: AlertTriangle,
-      color: stats?.criticalAlerts > 0 ? 'text-red-600' : 'text-gray-400',
+      color: (stats?.criticalAlerts ?? 0) > 0 ? 'text-red-600' : 'text-gray-400',
     },
   ];
 

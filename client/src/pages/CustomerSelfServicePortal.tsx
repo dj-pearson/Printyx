@@ -216,7 +216,7 @@ export default function CustomerSelfServicePortal() {
   });
 
   // Fetch satisfaction surveys
-  const { data: satisfactionSurveys = [], isLoading: surveysLoading } = useQuery({
+  const { data: satisfactionSurveys = [], isLoading: surveysLoading } = useQuery<any[]>({
     queryKey: ['/api/customer-portal/satisfaction/surveys'],
   });
 

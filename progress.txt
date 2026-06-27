@@ -8182,3 +8182,396 @@ Status: Needs Review
 
 Iteration 5 (06/26/2026 14:43:53): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 13: server-wide req.session.user typing (root cause, -490)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+
+### Environment correction (important)
+This container started with an EMPTY node_modules — typescript, @types/node and vite
+were all absent — so `npx tsc` silently resolved a stray GLOBAL TypeScript 6.0.2 and,
+off a stale incremental cache, reported a bogus ~2 errors (config deprecation only).
+That looked like "QUALITY-002 is basically green." It is NOT. Ran `npm ci` to restore
+the pinned local TS 5.6.3 (the actual CI toolchain) and re-measured: true baseline 3577
+-> 3507 after upstream merges. LESSON: verify node_modules is populated (and which tsc
+`npx` resolves) before trusting any tsc count.
+
+### Root cause fixed
+500 TS2339 across 19 server route files, all identical:
+"Property 'user' does not exist on type 'Session & Partial<SessionData>'".
+The route layer reads req.session.user.{id,tenantId,role,roleLevel,role_level,email,
+firstName,fullName,twoFactorEnabled,twoFactorSecret} but @types/express-session's
+SessionData never declares `user`. Two access shapes:
+- direct: `req.session.user.tenantId` (apollo, email-marketing, field-service, lease, signature)
+- destructured: `const user = req.session?.user;` then `user.tenantId` (advanced-billing,
+  automated-billing, customer-success, geofence-alerts, gps-tracking, lead-scoring,
+  manufacturer-order, mfa, mileage, route-optimization, workflow-automation)
+
+### Latent runtime bug discovered (documented, deferred)
+Nothing populates req.session.user. Session login (server/auth-routes.ts) sets the FLAT
+req.session.userId / req.session.tenantId, and these 19 routers mount with NO auth
+middleware, so every `if (!req.session.user?.tenantId)` guard reads undefined and the
+endpoints ALWAYS 401 at runtime. Fixing that touches the security-sensitive login flow
+(or migrates 19 files to the getUserId/getTenantId helpers) and can't be smoke-tested
+here (build is pre-existing-broken) — left as a follow-up story, flagged in prd notes.
+
+### The fix (type-only, zero runtime risk)
+- NEW server/types/express-session.d.ts: `declare module 'express-session' { interface
+  SessionData { user?: { id: string; tenantId: string; role?: string; ... } } }`.
+  id+tenantId are REQUIRED string (auth-critical, always set together when a user exists)
+  so `if (!user)` guards narrow them to string for the many storage calls that need it —
+  keeping them optional left 209 string|undefined TS2345/TS2322. All other fields optional,
+  types derived from real usage (role.toLowerCase(); roleLevel||role_level||1; verifyTOTP(
+  user.twoFactorSecret)).
+- Removing the any-poisoning (req.session.user was a TS2339 error -> typed `any`, which
+  propagated through `{...validationResult.data, tenantId: any}`) re-typed 6 PRE-EXISTING
+  field-service errors from `{tenantId:any}` to `{tenantId:string}` (same file/line/col/code,
+  NOT new) and surfaced exactly ONE genuinely-new error: mfa-routes.ts(813), `user.email`
+  (string|undefined) into sendEmailOtp(email: string). Fixed faithfully with
+  `if (!user.email) return res.status(400)...` (can't send an email OTP without an email;
+  also narrows the type).
+
+### Verification
+- Canonical ratchet (local TS 5.6.3): 3507 -> 3017 (-490).
+- `comm` on file+line+col+code (message text stripped): ZERO genuinely-new error locations.
+- docs/typecheck-baseline.json tightened 3577 -> 3017.
+- prettier: both changed files unchanged (already formatted). eslint: server/ is ignore-listed (0 errors).
+- npm run build still pre-existing-broken (@sentry/react absent from node_modules); type-only
+  change verified via tsc/ratchet per the QUALITY-002 method.
+
+### Files
+- server/types/express-session.d.ts (new — SessionData.user augmentation)
+- server/routes/mfa-routes.ts (email-presence guard before sendEmailOtp)
+- docs/typecheck-baseline.json (3577 -> 3017)
+- prd.json (QUALITY-002 notes: BATCH 13), progress.txt
+
+### Story status
+- QUALITY-002: passes stays false (tsc not yet green; cumulative 6176 -> 3017, -51%)
+
+Iteration 6 (06/26/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 14: server phantom-shape fix routes-opportunities.ts (-30)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+
+### What/why
+server-side phantom-shape file (cf. client BATCH 7/10/11). routes-opportunities.ts
+queried business_records COLUMNS THAT DON'T EXIST (contactName/email/source/assignedToId/
+estimatedValue/stage) -> every endpoint 500s at runtime ("column does not exist").
+Mapped to real columns (schema-verified via inline E-Automate/Salesforce comments):
+  contactName  -> primaryContactName
+  email        -> primaryContactEmail
+  source       -> leadSource       (DB col 'source')
+  assignedToId -> ownerId          (the user-FK the codebase joins to users.id)
+  estimatedValue -> estimatedAmount (DB col 'estimated_deal_value')
+  stage        -> salesStage       (DB col 'sales_stage'; NOT 'state')
+Kept the SELECT output alias KEYS unchanged (contactName/stage/...), so the JSON the
+frontend + iOS decoder consume is identical — pure SQL fix, no API-contract change.
+Also fixed convert-to-deal dealData inserting `deals` with phantom keys (value->amount,
+assignedToId->ownerId, createdBy->createdById; removed stage:'prospecting' — deals has
+only stageId). Those keys were silently dropped at runtime (deals w/o amount/owner/creator).
+
+### Verification
+- Ratchet 3017 -> 2987 (-30). routes-opportunities 33 -> 3.
+- 3 remaining are ALL pre-existing: lines 23/29 middleware TS2769 (isAuthenticated/
+  enhanceUserContext overload); line 229 deals-insert missing required deals.stageId
+  (was line 230 pre-edit — shifted up 1 by deleting the phantom stage line, NOT new).
+- Zero genuinely-new logical errors. Baseline tightened 3017 -> 2987.
+- prettier clean; server/ eslint-ignored; build pre-existing-broken (@sentry/react absent).
+- Deferred: deals.stageId not-null is a separate convert-to-deal runtime bug (needs a
+  deal_stages default lookup).
+
+### Files
+- server/routes-opportunities.ts (phantom business_records + deals columns -> real columns)
+- docs/typecheck-baseline.json (3017 -> 2987)
+- prd.json (QUALITY-002 notes: BATCH 14), progress.txt
+
+Iteration 7 (06/26/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 15: client untyped-useQuery burndown (-75)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+
+### What/why
+5 admin/dashboard pages used `useQuery({queryKey})` with no generic -> `data` was `{}`,
+so every `data?.field` read was TS2339 (+ TS7006 on .map/.slice callbacks). BATCH 9/12
+recipe: type the QUERY, not each read.
+- AdminHub.tsx (16): + AdminOverviewStats interface; guarded `(stats?.criticalAlerts ?? 0) > 0`.
+- admin/UserManagement.tsx (12) + admin/TenantManagement.tsx (12): small optional
+  string|number stats interface; list query typed `any[]` (rows read via existing
+  `(row: any)` callbacks -> faithful + zero risk).
+- admin/DatabaseUpdaterPage.tsx (17): page ALREADY had a matching DatabaseUpdaterStatus
+  interface -> just applied it.
+- RootAdminDashboard.tsx (18): page ALREADY had SystemOverview/TenantMetrics/SecurityAlert/
+  SystemResource interfaces. (First I added a DUPLICATE SystemOverview -> 24 TS2687/TS2717;
+  removed the dup and wired all 4 queries to the existing domain interfaces -> real-typed,
+  better than any[].)
+
+LESSON: grep the page before adding an interface — these pages often already define the
+exact shape (from their original mock-data version) and just never passed it to useQuery<T>.
+
+### Verification
+- Ratchet 2987 -> 2912 (-75). All 5 files 0 errors.
+- `comm` on file+line+col+code: ZERO genuinely-new error locations.
+- Type-only, zero runtime change (|| 0 / || 'Loading...' / || defaultOverview fallbacks
+  already null-tolerate). Baseline tightened 2987 -> 2912.
+- prettier applied; client/ eslint-ignored; build pre-existing-broken (@sentry/react).
+
+### Files
+- client/src/pages/AdminHub.tsx, client/src/pages/admin/UserManagement.tsx,
+  client/src/pages/admin/TenantManagement.tsx, client/src/pages/admin/DatabaseUpdaterPage.tsx,
+  client/src/pages/RootAdminDashboard.tsx
+- docs/typecheck-baseline.json (2987 -> 2912)
+- prd.json (QUALITY-002 notes: BATCH 15), progress.txt
+
+Iteration 8 (06/26/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 16: client untyped-useQuery burndown cont. (-35)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- WhiteLabelDashboard.tsx (13): WhiteLabelConfig interface (features?: any object).
+- AutoSupplyReplenishmentDashboard.tsx (12): ReplenishmentMetrics numeric stats;
+  lowSupplies/orders queries typed any[] (rows read via (row: any) callbacks).
+- RootAdminSignupsCRM.tsx (10): 4 response interfaces (SignupsResponse{data,pagination},
+  SignupsAnalytics with bySource/byStatus as Record<string,any> for Object.entries,
+  TrialFunnel, HighValueSignups).
+- Ratchet 2912 -> 2877 (-35); all 3 files 0; zero genuinely-new error locations.
+  Type-only, zero runtime change. Baseline tightened 2912 -> 2877.
+
+Iteration 9 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 17: client untyped-useQuery burndown cont. (-36)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- ContractRenewalDashboard.tsx (14): RenewalMetrics numeric stats + 3 list queries any[].
+- AdminCommandCenter.tsx (8): AdminOverview interface + reused existing SystemMetric[]/
+  PendingTask[] for the two list queries (.map sites already &&-guarded).
+- DatabaseManagement.tsx (6): 3 list queries any[] (read via (r:any) find/map/slice).
+- PredictiveMaintenanceHub.tsx (8): PredictiveMaintenanceDashboard{overview,equipment} +
+  PartsForecastResponse with REQUIRED summary (page reads .summary.x without ?. inside the
+  forecast&& block -> optional would've added TS18048).
+- Ratchet 2877 -> 2841 (-36); all 4 files 0; zero genuinely-new error locations.
+  Type-only, zero runtime change. Baseline tightened 2877 -> 2841.
+
+Iteration 10 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 18: client untyped-useQuery burndown cont. (-22)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- RootAdminSEO.tsx (6): SeoSettings interface.
+- BasicTaskManagement.tsx (4): TaskStats matching the displayStats=taskStats||{defaults} object.
+- dashboard/metrics-cards.tsx (4): DashboardMetrics with REQUIRED number fields (page calls
+  metrics.monthlyRevenue.toLocaleString() inside a `metrics ?` guard -> optional would TS18048).
+- billing/invoice-email-dialog.tsx (8): InvoiceEmailData (totalAmount/total + invoiceStatus/status
+  optional for `a||b` fallbacks; reads guarded by {invoice && ...}).
+- Ratchet 2841 -> 2819 (-22); all 4 files 0; zero genuinely-new error locations. Baseline tightened.
+- RECIPE NOTE: field must be REQUIRED when a METHOD is called on it (x.toLocaleString()) even under
+  a truthy parent guard; optional only when rendered/||-defaulted.
+
+Iteration 11 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 19: client untyped-useQuery burndown cont. (-38)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- admin/RootAdminSecurity.tsx (15): SecurityMetrics string|number stats + auditLogs/activeThreats
+  any[]; typing metrics also cleared a TS2322 unknown-render.
+- layout/command-palette.tsx (4): 4 list queries any[].
+- CustomerSuccessManagement.tsx (19): UsageAnalyticsData + SatisfactionData with REQUIRED summary:any
+  + required any[] arrays; page reads data.summary.x directly under {data && (...)} guards, so required
+  fields let the && narrowing reach subfields (avoids TS18048); summary:any also clears 4 TS2322.
+- Ratchet 2819 -> 2781 (-38); all 3 files 0; zero genuinely-new error locations. Baseline tightened.
+
+Iteration 12 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 20: client untyped-useQuery burndown cont. (-26)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- SalesPipelineWorkflow.tsx (8 TS2339): PipelineSummary optional-number interface. The file's 2
+  TS2322 are a SEPARATE pre-existing TeamStatsWidget prop mismatch (variant/showAutoRefresh) -
+  LEFT as-is (shifted to L438/680 by my +11 interface lines, confirmed not new).
+- MobileServiceApp.tsx (7 TS2339 + 1 TS2322): RouteData{optimizedRoute:any REQUIRED} (read
+  directly under {routeData &&}).
+- PredictiveAnalytics.tsx (9 TS2339 + 1 TS2322): ModelsData + DataSourcesData (all ?./||/&& -> optional).
+- Ratchet 2781 -> 2755 (-26); MobileServiceApp+PredictiveAnalytics 0; SalesPipeline 8->2
+  (2 remaining = shifted pre-existing TeamStatsWidget). Zero genuinely-new logical errors. Baseline tightened.
+
+Iteration 13 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 21: client untyped-useQuery burndown cont. (-18)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- DataEnrichment.tsx (9 -> 0): ContactsData/CompaniesData/EnrichmentAnalytics interfaces +
+  campaignsData typed ProspectingCampaign[] (drove the TS2740).
+- CrmGoalsDashboard.tsx (10 -> 1): typed teams/users/insights/conversionAnalysis as any[]
+  (clears map/length/slice TS2339 + conversionAnalysis[0] TS7053 + insights unknown-render TS2322).
+  1 remaining = pre-existing TeamStatsWidget prop-mismatch TS2322, intentionally LEFT.
+- Ratchet 2755 -> 2737 (-18); zero genuinely-new error locations. Baseline tightened.
+- NOTE: TeamStatsWidget prop mismatch (variant/showAutoRefresh) now in 2+ pages -> own small batch later.
+
+Iteration 14 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 22: TeamStatsWidget showAutoRefresh prop (-3, cross-page)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- LATENT BUG: SalesPipelineWorkflow + CrmGoalsDashboard render <TeamStatsWidget showAutoRefresh={...}/>
+  but TeamStatsWidgetProps never declared it -> React dropped the prop, auto-refresh never happened.
+- Fix: added showAutoRefresh?: boolean and seeded the existing autoRefresh state (useState(showAutoRefresh))
+  so refetchInterval honors the caller. Clears 3 TS2322 across 2 pages.
+- Ratchet 2737 -> 2734 (-3); zero genuinely-new errors. Baseline tightened.
+
+Iteration 15 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 23: client untyped-useQuery — 8 small files (-25)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Inline generics (useQuery<{...}>) on 8 files -> all 0: PlatformCohortAnalysis,
+  EquipmentTransitionDialog, dashboard/top-customers, dashboard/alerts, ProactiveServiceDashboard
+  (reused MaintenanceSummary/EquipmentMaintenanceItem), admin/KnowledgeBaseAdminDashboard,
+  ApolloLeadEnrichment (cleared unknown-render TS2322), CustomerSelfServicePortal (cleared TS18046).
+- Ratchet 2734 -> 2709 (-25); zero genuinely-new error locations. Baseline tightened.
+
+Iteration 16 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 24: CompanyContacts + PreventiveMaintenanceAutomation (-32)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- CompanyContacts.tsx (17 -> 0): company inline interface (guarded by if(!company)return + field &&),
+  existingContacts<any[]> (assignable to Contact[] prop; cleared 3 TS18046 + TS2322).
+- PreventiveMaintenanceAutomation.tsx (15 -> 0): schedules<any[]>, analytics<{...REQUIRED any}> (under
+  {analytics &&}), predictions<any[]>; annotated pre-existing recommendedActions.map TS7006.
+- Ratchet 2709 -> 2677 (-32); zero genuinely-new error locations. Baseline tightened.
+
+Iteration 17 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 25: server storage.ts dup-import + Drizzle .$dynamic() (-12)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Removed duplicate named import (masterProductModels/masterProductAccessories imported twice in the
+  @shared/schema import) -> 4 TS2300.
+- Added .$dynamic() to the two `let modelQuery/accessoryQuery = db.select().from()` builders so the
+  `q = q.where(...)` reassignments typecheck -> 8 TS2740 (classic Drizzle dynamic-query pattern).
+- storage.ts 105 -> 93. VERIFY CAVEAT: line-add/remove shifts line numbers so the file+line+col comm
+  falsely shows all 93 as "new"; verified instead by per-code counts (TS2300 4->0, TS2740 8->0, all
+  others identical) + empty non-storage diff. Exactly 12 cleared, zero new. Baseline 2677 -> 2665.
+
+Iteration 18 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 26: server seed-manufacturer-orders.ts decimal literals (-56)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- All 56 errors = same TS2322 number->string: seed passed numeric literals to Drizzle decimal/numeric
+  columns (insert type string). Wrapped the numeric RHS in quotes on the 56 flagged lines via a
+  line-targeted perl. Faithful (+ fixes latent seed correctness).
+- seed-manufacturer-orders.ts 56 -> 0; EMPTY non-seed diff (zero new). Ratchet 2665 -> 2609. Baseline tightened.
+
+Iteration 19 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 27: gpt5-service discriminated-union as-const (-33)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- ROOT CAUSE in gpt5-service.ts fixed 33 errors in routes-ai-gpt5.ts. The route guards
+  `if (!result.success)` but the service return type had `success: boolean` (object-literal widening),
+  so TS couldn't discriminate the {error} vs {content,responseId,usage} branches.
+- Added `as const` to all 5 success literals (checkEnabled + generateResponse + generateChatCompletion).
+  All analyze*/generate* methods return this.generateResponse(...), so the fix propagates to every route.
+- routes-ai-gpt5 33 -> 0; gpt5-service holds at 2 pre-existing unrelated errors; empty other-file diff.
+  Zero new, zero runtime change. Ratchet 2609 -> 2576. Baseline tightened.
+
+Iteration 20 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 28: routes-customer-portal.ts partial (-23)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Added Request.customerPortalUser to server/types/express.d.ts (was only augmenting Express.User)
+  -> cleared 11 TS2339 'customerPortalUser does not exist on Request'.
+- Guarded 12 catch-block `error.message` accesses with `error instanceof Error &&` -> cleared 12 TS18046.
+- customer-portal 77 -> 54; EMPTY non-target diff (zero new). Ratchet 2576 -> 2553. Baseline tightened.
+- Remaining 54 (req.user-undefined, null-index TS2538, data-null TS18047, reduce typing) deferred.
+
+Iteration 21 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 29: lead-scoring-routes missing tenantId args (-12)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- 12 TS2554: storage.getBusinessRecord(id, tenantId) / updateBusinessRecord(id, tenantId, updates) require
+  tenantId (filter by it) but calls omitted it -> ran with tenantId=undefined -> matched nothing -> 404/403
+  on valid leads (LATENT BUG). Added user.tenantId (in scope + guarded 19/19).
+- lead-scoring 12 TS2554 -> 0 (1 unrelated TS2322 remains); EMPTY non-target diff (zero new).
+  Ratchet 2553 -> 2541. Baseline tightened.
+
+Iteration 22 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 30: verified-safe one-offs + hard-tail assessment (-4)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- advanced-billing-routes: renamed 2 stale storage calls (getUnresolvedMeterAnomalies->getUnresolvedAnomalies,
+  reviewMeterAnomaly->reviewAnomaly) verified arg-for-arg. (resolveMeterAnomaly deferred: 6 vs 4 args.)
+- AdvancedBillingEngine.tsx: Number(invoice.totalAmount).toFixed(2) x2 (string decimal).
+- Ratchet 2541 -> 2537 (-4); empty non-target diff. Baseline tightened.
+- HARD TAIL reached: remaining ~2537 need feature work + testing, not mechanical batches —
+  phantom RELATIONS (db.query.activities/deals silently return [] -> dead dashboard sections),
+  UNIMPLEMENTED storage methods (advanced-billing ~14, endpoints 500), phantom DISPLAY fields needing
+  joins, the RBAC requireRole contract (~80 + always-403 bug, needs a decision), storage.ts internals.
+
+Iteration 23 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 31: purchase-orders permissions + auth-helpers (-26)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Added EDIT/DELETE to PERMISSIONS.INVENTORY.PURCHASE_ORDER (routes referenced them -> 9 TS2339 +
+  requirePermission([undefined]) broken gate at runtime).
+- Replaced 17 old-auth `req.user?.x || req.user?.claims?.y` fallbacks with getTenantId/getUserId helpers;
+  the surfaced 11 string|undefined TS2345 at post-auth storage calls fixed with `!` (auth guarantees tenant).
+- po 46 -> 20 (remaining are pre-existing insert-shape/overload phantom-shape); EMPTY non-target diff.
+  Ratchet 2537 -> 2511. Baseline tightened.
+
+Iteration 24 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 32: permission EDIT->UPDATE (-3)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- routes-product-models (x2) + routes-customer-success used PERMISSIONS.*.EDIT, but INVENTORY.ITEM and
+  SALES.CUSTOMER define UPDATE (the canonical edit key) not EDIT -> pointed guards at .UPDATE (real
+  permission strings; fixes requirePermission([undefined]) at runtime).
+- Ratchet 2511 -> 2508 (-3); EMPTY non-target diff (zero new). Baseline tightened.
+- Hard tail confirmed: per-cycle yield now small; remaining bulk is phantom-shape/unimplemented/RBAC.
+
+Iteration 25 (06/27/2026): Story QUALITY-002
+Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 33: RBAC requireRole([roles]) contract (-73, SECURITY FIX, user-directed)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Owner directed the RBAC fix (hierarchical tier access). ~13 route files call requireRole(['admin',
+  'manager',...]) with role-name arrays, but requireRole only took (minimumLevel: number). At runtime the
+  array coerced to NaN in `role.level < minimumLevel`, so the 403 never fired -> routes granted ANY
+  authenticated role (too-permissive hole).
+- Fix: requireRole(string[] | number, department?); resolveMinimumLevel() maps role-name shorthands to the
+  DB level hierarchy (sales_rep=1..root_admin=7) and gates by the MIN listed tier (hierarchical: lowest
+  listed tier + everyone above). Numeric callers unchanged. Added `|| req.user?.id` userId fallback.
+- Ratchet 2508 -> 2435 (-73); NO file gained errors; the 1 'new' rbac-middleware loc is the pre-existing
+  getDataFilter TS2339 shifted by additions (file holds at its 2 pre-existing errors). Baseline tightened.
+- Centralized + documented the shorthand->level map for review. Real security improvement (restricts to
+  intended tiers + makes routes function for session/JWT auth).
+
+Iteration 26 (06/27/2026): Story QUALITY-002
+Status: Needs Review

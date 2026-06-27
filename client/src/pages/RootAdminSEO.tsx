@@ -10,10 +10,19 @@ import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/main-layout';
 import { Search, Globe, FileText, Bot, Brain } from 'lucide-react';
 
+interface SeoSettings {
+  siteName?: string;
+  siteUrl?: string;
+  defaultTitle?: string;
+  defaultDescription?: string;
+  defaultOgImage?: string;
+  twitterHandle?: string;
+}
+
 export default function RootAdminSEO() {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { data: settings } = useQuery({ queryKey: ['/api/seo/settings'] });
+  const { data: settings } = useQuery<SeoSettings>({ queryKey: ['/api/seo/settings'] });
   const { data: pages } = useQuery({ queryKey: ['/api/seo/pages'] });
 
   const [siteName, setSiteName] = useState(settings?.siteName || '');

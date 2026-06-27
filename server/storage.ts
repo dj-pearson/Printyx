@@ -179,9 +179,8 @@ import {
   type InsertOnboardingDynamicSection,
   type OnboardingTask,
   type InsertOnboardingTask,
-  // Master product catalog schemas
-  masterProductModels,
-  masterProductAccessories,
+  // Master product catalog schemas (masterProductModels / masterProductAccessories
+  // are already imported above)
   tenantEnabledProducts,
   type MasterProductModel,
   type InsertMasterProductModel,
@@ -1908,7 +1907,8 @@ export class DatabaseStorage implements IStorage {
         updatedAt: masterProductModels.updatedAt,
         itemType: sql<string>`'model'`.as('itemType'),
       })
-      .from(masterProductModels);
+      .from(masterProductModels)
+      .$dynamic();
 
     // Query accessories
     let accessoryQuery = db
@@ -1930,7 +1930,8 @@ export class DatabaseStorage implements IStorage {
         updatedAt: masterProductAccessories.updatedAt,
         itemType: sql<string>`'accessory'`.as('itemType'),
       })
-      .from(masterProductAccessories);
+      .from(masterProductAccessories)
+      .$dynamic();
 
     // Apply filters to both queries
     if (params.manufacturer && params.manufacturer !== 'all') {

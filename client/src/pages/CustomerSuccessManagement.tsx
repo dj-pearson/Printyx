@@ -161,6 +161,18 @@ const getTrendIcon = (trend: string) => {
 
 const CHART_COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'];
 
+interface UsageAnalyticsData {
+  summary: any;
+  optimizationOpportunities: any[];
+  customerBreakdown: any[];
+}
+
+interface SatisfactionData {
+  summary: any;
+  categoryTrends: any;
+  recentSurveys: any[];
+}
+
 export default function CustomerSuccessManagement() {
   const [, setLocation] = useLocation();
   const [selectedPeriod, setSelectedPeriod] = useState('month');
@@ -188,12 +200,12 @@ export default function CustomerSuccessManagement() {
   });
 
   // Fetch usage analytics
-  const { data: usageAnalytics } = useQuery({
+  const { data: usageAnalytics } = useQuery<UsageAnalyticsData>({
     queryKey: ['/api/customer-success/usage-analytics', selectedPeriod],
   });
 
   // Fetch satisfaction data
-  const { data: satisfactionData } = useQuery({
+  const { data: satisfactionData } = useQuery<SatisfactionData>({
     queryKey: ['/api/customer-success/satisfaction'],
   });
 

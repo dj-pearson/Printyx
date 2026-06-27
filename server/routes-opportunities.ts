@@ -40,31 +40,31 @@ export function registerOpportunitiesRoutes(app: Express) {
           .select({
             id: businessRecords.id,
             companyName: businessRecords.companyName,
-            contactName: businessRecords.contactName,
-            email: businessRecords.email,
+            contactName: businessRecords.primaryContactName,
+            email: businessRecords.primaryContactEmail,
             phone: businessRecords.phone,
-            source: businessRecords.source,
+            source: businessRecords.leadSource,
             status: businessRecords.status,
-            assignedToId: businessRecords.assignedToId,
+            assignedToId: businessRecords.ownerId,
             assignedToName: users.firstName,
-            estimatedValue: businessRecords.estimatedValue,
+            estimatedValue: businessRecords.estimatedAmount,
             priority: businessRecords.priority,
             lastContactDate: businessRecords.lastContactDate,
             nextFollowUpDate: businessRecords.nextFollowUpDate,
-            stage: businessRecords.stage,
+            stage: businessRecords.salesStage,
             createdAt: businessRecords.createdAt,
             updatedAt: businessRecords.updatedAt,
             notes: businessRecords.notes,
           })
           .from(businessRecords)
-          .leftJoin(users, eq(businessRecords.assignedToId, users.id))
+          .leftJoin(users, eq(businessRecords.ownerId, users.id))
           .where(
             and(
               eq(businessRecords.tenantId, tenantId),
-              sql`${businessRecords.estimatedValue} > 0 OR ${businessRecords.priority} IN ('high', 'urgent')`,
+              sql`${businessRecords.estimatedAmount} > 0 OR ${businessRecords.priority} IN ('high', 'urgent')`,
             ),
           )
-          .orderBy(desc(businessRecords.estimatedValue), desc(businessRecords.createdAt));
+          .orderBy(desc(businessRecords.estimatedAmount), desc(businessRecords.createdAt));
 
         res.json(opportunities);
       } catch (error) {
@@ -84,18 +84,18 @@ export function registerOpportunitiesRoutes(app: Express) {
         .select({
           id: businessRecords.id,
           companyName: businessRecords.companyName,
-          contactName: businessRecords.contactName,
-          email: businessRecords.email,
+          contactName: businessRecords.primaryContactName,
+          email: businessRecords.primaryContactEmail,
           phone: businessRecords.phone,
-          source: businessRecords.source,
+          source: businessRecords.leadSource,
           status: businessRecords.status,
-          assignedToId: businessRecords.assignedToId,
+          assignedToId: businessRecords.ownerId,
           assignedToName: users.firstName,
-          estimatedValue: businessRecords.estimatedValue,
+          estimatedValue: businessRecords.estimatedAmount,
           priority: businessRecords.priority,
           lastContactDate: businessRecords.lastContactDate,
           nextFollowUpDate: businessRecords.nextFollowUpDate,
-          stage: businessRecords.stage,
+          stage: businessRecords.salesStage,
           createdAt: businessRecords.createdAt,
           updatedAt: businessRecords.updatedAt,
           notes: businessRecords.notes,
@@ -104,7 +104,7 @@ export function registerOpportunitiesRoutes(app: Express) {
           annualRevenue: businessRecords.annualRevenue,
         })
         .from(businessRecords)
-        .leftJoin(users, eq(businessRecords.assignedToId, users.id))
+        .leftJoin(users, eq(businessRecords.ownerId, users.id))
         .where(and(eq(businessRecords.id, opportunityId), eq(businessRecords.tenantId, tenantId)));
 
       if (!opportunity) {
@@ -179,7 +179,7 @@ export function registerOpportunitiesRoutes(app: Express) {
 
       const [updated] = await db
         .update(businessRecords)
-        .set({ stage, updatedAt: new Date() })
+        .set({ salesStage: stage, updatedAt: new Date() })
         .where(and(eq(businessRecords.id, opportunityId), eq(businessRecords.tenantId, tenantId)))
         .returning();
 
@@ -187,7 +187,7 @@ export function registerOpportunitiesRoutes(app: Express) {
         return res.status(404).json({ error: 'Opportunity not found' });
       }
 
-      res.json({ ...updated, salesStage: updated.stage });
+      res.json({ ...updated, salesStage: updated.salesStage });
     } catch (error) {
       log.error('Error updating opportunity stage:', error);
       res.status(500).json({ error: 'Failed to update opportunity stage' });
@@ -214,15 +214,14 @@ export function registerOpportunitiesRoutes(app: Express) {
       // Create deal from opportunity
       const dealData = {
         title: `Deal: ${opportunity.companyName}`,
-        description: `Converted from opportunity: ${opportunity.contactName}`,
+        description: `Converted from opportunity: ${opportunity.primaryContactName}`,
         customerId: opportunity.id,
-        value: opportunity.estimatedValue || 0,
+        amount: opportunity.estimatedAmount || '0',
         probability: 50, // Default probability
-        stage: 'prospecting',
         status: 'active',
-        assignedToId: opportunity.assignedToId || userId,
+        ownerId: opportunity.ownerId || userId,
         tenantId,
-        createdBy: userId,
+        createdById: userId,
         expectedCloseDate:
           req.body.expectedCloseDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       };
@@ -234,7 +233,7 @@ export function registerOpportunitiesRoutes(app: Express) {
         .update(businessRecords)
         .set({
           status: 'customer',
-          stage: 'converted',
+          salesStage: 'converted',
           updatedAt: new Date(),
         })
         .where(and(eq(businessRecords.id, opportunityId), eq(businessRecords.tenantId, tenantId)));
@@ -258,7 +257,7 @@ export function registerOpportunitiesRoutes(app: Express) {
         .where(
           and(
             eq(businessRecords.tenantId, tenantId),
-            sql`${businessRecords.estimatedValue} > 0 OR ${businessRecords.priority} IN ('high', 'urgent')`,
+            sql`${businessRecords.estimatedAmount} > 0 OR ${businessRecords.priority} IN ('high', 'urgent')`,
           ),
         );
 
@@ -268,7 +267,7 @@ export function registerOpportunitiesRoutes(app: Express) {
         .where(
           and(
             eq(businessRecords.tenantId, tenantId),
-            sql`${businessRecords.estimatedValue} >= 10000`,
+            sql`${businessRecords.estimatedAmount} >= 10000`,
           ),
         );
 
@@ -279,11 +278,11 @@ export function registerOpportunitiesRoutes(app: Express) {
 
       const totalValueResult = await db
         .select({
-          totalValue: sql<number>`COALESCE(SUM(${businessRecords.estimatedValue}), 0)`,
+          totalValue: sql<number>`COALESCE(SUM(${businessRecords.estimatedAmount}), 0)`,
         })
         .from(businessRecords)
         .where(
-          and(eq(businessRecords.tenantId, tenantId), sql`${businessRecords.estimatedValue} > 0`),
+          and(eq(businessRecords.tenantId, tenantId), sql`${businessRecords.estimatedAmount} > 0`),
         );
 
       const totalOpportunities = totalOpportunitiesResult[0]?.count || 0;
@@ -311,18 +310,18 @@ export function registerOpportunitiesRoutes(app: Express) {
 
       const opportunitiesByStage = await db
         .select({
-          stage: businessRecords.stage,
+          stage: businessRecords.salesStage,
           count: count(),
-          totalValue: sql<number>`COALESCE(SUM(${businessRecords.estimatedValue}), 0)`,
+          totalValue: sql<number>`COALESCE(SUM(${businessRecords.estimatedAmount}), 0)`,
         })
         .from(businessRecords)
         .where(
           and(
             eq(businessRecords.tenantId, tenantId),
-            sql`${businessRecords.estimatedValue} > 0 OR ${businessRecords.priority} IN ('high', 'urgent')`,
+            sql`${businessRecords.estimatedAmount} > 0 OR ${businessRecords.priority} IN ('high', 'urgent')`,
           ),
         )
-        .groupBy(businessRecords.stage);
+        .groupBy(businessRecords.salesStage);
 
       res.json(opportunitiesByStage);
     } catch (error) {

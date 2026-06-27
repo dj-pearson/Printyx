@@ -53,7 +53,11 @@ export default function PlatformCohortAnalysis() {
   const [timeframe, setTimeframe] = useState('12m');
 
   // Fetch cohort data
-  const { data: cohortData } = useQuery({
+  const { data: cohortData } = useQuery<{
+    cohortTable?: any[];
+    revenueCohorts?: any[];
+    ltvData?: any[];
+  }>({
     queryKey: [
       `/api/platform-analytics/cohort-analysis?type=${cohortType}&metric=${metricType}&timeframe=${timeframe}`,
     ],

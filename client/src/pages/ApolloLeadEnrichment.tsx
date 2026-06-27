@@ -173,7 +173,7 @@ export default function ApolloLeadEnrichment({ embedded = false }: ApolloLeadEnr
   });
 
   // Stats query
-  const { data: stats } = useQuery({
+  const { data: stats } = useQuery<{ totalCalls?: number; totalCreditsUsed?: number }>({
     queryKey: ['/api/apollo/stats'],
   });
 

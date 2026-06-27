@@ -53,7 +53,7 @@ export default function DatabaseUpdaterPage() {
     data: status,
     error,
     isLoading,
-  } = useQuery({
+  } = useQuery<DatabaseUpdaterStatus>({
     queryKey: ['/api/database-updater/status'],
     refetchInterval: autoRefresh ? 5000 : false,
     refetchIntervalInBackground: true,

@@ -127,6 +127,10 @@ const getTrafficColor = (condition: string) => {
   }
 };
 
+interface RouteData {
+  optimizedRoute: any;
+}
+
 export default function MobileServiceApp() {
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -178,7 +182,7 @@ export default function MobileServiceApp() {
   });
 
   // Fetch route optimization
-  const { data: routeData } = useQuery({
+  const { data: routeData } = useQuery<RouteData>({
     queryKey: ['/api/mobile/route-optimization'],
   });
 

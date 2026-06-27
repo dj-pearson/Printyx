@@ -25,6 +25,18 @@ declare global {
       customerId?: string;
       customerPortalUser?: boolean;
     }
+
+    /**
+     * Augmented Request: customer-portal routes attach the validated portal
+     * session (a CustomerPortalAccess row) here in requireCustomerPortalAuth.
+     */
+    interface Request {
+      customerPortalUser?: {
+        id?: string;
+        customerId?: string;
+        [key: string]: unknown;
+      };
+    }
   }
 }
 

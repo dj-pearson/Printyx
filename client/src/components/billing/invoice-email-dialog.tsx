@@ -42,6 +42,16 @@ interface InvoiceEmailDialogProps {
   invoiceId: string | null;
 }
 
+interface InvoiceEmailData {
+  customerEmail?: string;
+  customerName?: string;
+  invoiceNumber?: string;
+  totalAmount?: string;
+  total?: string;
+  invoiceStatus?: string;
+  status?: string;
+}
+
 export function InvoiceEmailDialog({ open, onOpenChange, invoiceId }: InvoiceEmailDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -56,7 +66,7 @@ export function InvoiceEmailDialog({ open, onOpenChange, invoiceId }: InvoiceEma
   });
 
   // Fetch invoice details
-  const { data: invoice, isLoading: loadingInvoice } = useQuery({
+  const { data: invoice, isLoading: loadingInvoice } = useQuery<InvoiceEmailData>({
     queryKey: [`/api/billing/invoices/${invoiceId}`],
     enabled: !!invoiceId && open,
   });

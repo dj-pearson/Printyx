@@ -86,6 +86,15 @@ interface Project {
   createdAt: string;
 }
 
+interface TaskStats {
+  totalTasks?: number;
+  completedTasks?: number;
+  inProgressTasks?: number;
+  overdueTasks?: number;
+  myTasks?: number;
+  avgCompletionTime?: number;
+}
+
 export default function BasicTaskManagement() {
   const [selectedView, setSelectedView] = useState<'my-tasks' | 'all-tasks' | 'projects'>(
     'my-tasks',
@@ -125,7 +134,7 @@ export default function BasicTaskManagement() {
     queryKey: ['/api/projects'],
   });
 
-  const { data: taskStats } = useQuery({
+  const { data: taskStats } = useQuery<TaskStats>({
     queryKey: ['/api/tasks/stats'],
   });
 

@@ -230,7 +230,7 @@ router.get('/anomalies/unresolved', async (req: Request, res: Response) => {
   }
 
   try {
-    const anomalies = await storage.getUnresolvedMeterAnomalies(user.tenantId);
+    const anomalies = await storage.getUnresolvedAnomalies(user.tenantId);
     res.json(anomalies);
   } catch (error) {
     log.error('Get unresolved anomalies error:', error);
@@ -298,7 +298,7 @@ router.post('/anomalies/:id/review', async (req: Request, res: Response) => {
 
     const { reviewNotes } = req.body;
 
-    const reviewed = await storage.reviewMeterAnomaly(
+    const reviewed = await storage.reviewAnomaly(
       req.params.id,
       user.tenantId,
       user.id,

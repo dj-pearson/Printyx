@@ -26,11 +26,60 @@ export interface AuthenticatedRequest extends Express.Request {
   };
 }
 
-// Role-based permission checking middleware
-export const requireRole = (minimumLevel: number, department?: string): RequestHandler => {
+/**
+ * Coarse role-name shorthands used in `requireRole([...])` calls, mapped to the
+ * MINIMUM `role.level` (DB hierarchy: Sales Rep/Service Tech = 1, Team Lead = 2,
+ * Manager = 3, Director = 4, Company Admin = 5, Printyx Support = 6,
+ * Root/Platform Admin = 7) that satisfies them.
+ *
+ * `requireRole([...])` grants the LOWEST listed tier and everyone above it
+ * (hierarchical: a manager can reach a route gated to sales reps). Functional
+ * roles (compliance/legal/security) sit at company-admin level so a route like
+ * `requireRole(['admin', 'compliance_officer', 'legal', 'manager'])` admits
+ * managers and up — matching the explicit list the route author wrote.
+ */
+const ROLE_NAME_MIN_LEVEL: Record<string, number> = {
+  guest: 1,
+  user: 1,
+  employee: 1,
+  sales_rep: 1,
+  service_tech: 1,
+  technician: 1,
+  team_lead: 2,
+  manager: 3,
+  director: 4,
+  admin: 5,
+  company_admin: 5,
+  compliance_officer: 5,
+  legal: 5,
+  security_officer: 5,
+  printyx_support: 6,
+  platform_admin: 7,
+  root_admin: 7,
+  super_admin: 7,
+};
+
+/**
+ * Resolve a `requireRole` argument (a numeric minimum level, or an array of
+ * role-name shorthands) to the minimum acceptable `role.level`.
+ */
+function resolveMinimumLevel(rolesOrLevel: string[] | number): number {
+  if (typeof rolesOrLevel === 'number') return rolesOrLevel;
+  if (!rolesOrLevel.length) return Number.POSITIVE_INFINITY; // empty list => deny
+  return Math.min(...rolesOrLevel.map((r) => ROLE_NAME_MIN_LEVEL[r.toLowerCase()] ?? 1));
+}
+
+// Role-based permission checking middleware. Accepts either a numeric minimum
+// role level (e.g. requireRole(3)) or an array of role-name shorthands
+// (e.g. requireRole(['admin', 'manager'])).
+export const requireRole = (
+  rolesOrLevel: string[] | number,
+  department?: string,
+): RequestHandler => {
+  const minimumLevel = resolveMinimumLevel(rolesOrLevel);
   return async (req: any, res, next) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = req.user?.claims?.sub || req.user?.id;
 
       if (!userId) {
         return res.status(401).json({ message: 'Unauthorized - No user ID' });

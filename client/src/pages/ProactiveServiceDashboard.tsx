@@ -61,7 +61,10 @@ export default function ProactiveServiceDashboard() {
   const [schedulingEquipment, setSchedulingEquipment] = useState<string | null>(null);
 
   // Fetch proactive maintenance data
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery<{
+    summary?: MaintenanceSummary;
+    equipment?: EquipmentMaintenanceItem[];
+  }>({
     queryKey: ['/api/service/proactive-maintenance'],
     refetchInterval: 300000, // Refresh every 5 minutes
   });

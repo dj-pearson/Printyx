@@ -2,8 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { DollarSign, FileText, AlertTriangle, Clock } from 'lucide-react';
 
+interface DashboardMetrics {
+  monthlyRevenue: number;
+  activeContracts: number;
+  openTickets: number;
+  avgResponseTime: number;
+}
+
 export default function MetricsCards() {
-  const { data: metrics, isLoading } = useQuery({
+  const { data: metrics, isLoading } = useQuery<DashboardMetrics>({
     queryKey: ['/api/dashboard/metrics'],
   });
 

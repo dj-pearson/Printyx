@@ -12,13 +12,19 @@ export default function CompanyContacts() {
   const [, navigate] = useLocation();
 
   // Get company details
-  const { data: company, isLoading: companyLoading } = useQuery({
+  const { data: company, isLoading: companyLoading } = useQuery<{
+    name?: string;
+    industry?: string;
+    phone?: string;
+    website?: string;
+    address?: string;
+  }>({
     queryKey: ['/api/companies', companyId],
     enabled: !!companyId,
   });
 
   // Get existing contacts for this company
-  const { data: existingContacts = [], isLoading: contactsLoading } = useQuery({
+  const { data: existingContacts = [], isLoading: contactsLoading } = useQuery<any[]>({
     queryKey: ['/api/companies', companyId, 'contacts'],
     enabled: !!companyId,
   });

@@ -66,28 +66,49 @@ const sourceColors: Record<string, string> = {
   manual: 'bg-slate-100 text-slate-800',
 };
 
+interface SignupsResponse {
+  data?: any[];
+  pagination?: any;
+}
+
+interface SignupsAnalytics {
+  totalSignups?: number;
+  conversionRate?: number;
+  avgQualificationScore?: number;
+  bySource?: Record<string, any>;
+  byStatus?: Record<string, any>;
+}
+
+interface TrialFunnel {
+  funnel?: any[];
+}
+
+interface HighValueSignups {
+  data?: any[];
+}
+
 export default function RootAdminSignupsCRM() {
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
 
   // Fetch signups
-  const { data: signupsData, isLoading: signupsLoading } = useQuery({
+  const { data: signupsData, isLoading: signupsLoading } = useQuery<SignupsResponse>({
     queryKey: ['/api/root-admin/signups', statusFilter === 'all' ? '' : statusFilter, page],
   });
 
   // Fetch analytics
-  const { data: analyticsData, isLoading: analyticsLoading } = useQuery({
+  const { data: analyticsData, isLoading: analyticsLoading } = useQuery<SignupsAnalytics>({
     queryKey: ['/api/root-admin/signups-analytics'],
   });
 
   // Fetch funnel
-  const { data: funnelData, isLoading: funnelLoading } = useQuery({
+  const { data: funnelData, isLoading: funnelLoading } = useQuery<TrialFunnel>({
     queryKey: ['/api/root-admin/trial-funnel'],
   });
 
   // Fetch high-value signups
-  const { data: highValueData } = useQuery({
+  const { data: highValueData } = useQuery<HighValueSignups>({
     queryKey: ['/api/root-admin/high-value-signups'],
   });
 
