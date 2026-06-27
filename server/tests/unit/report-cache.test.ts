@@ -27,7 +27,10 @@ class ReportCacheService {
       parameters: params.parameters || {},
       userId,
     };
-    return crypto.createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
+    const hash = crypto.createHash('sha256').update(JSON.stringify(normalized)).digest('hex');
+    // Prefix with the report code so invalidate(reportCode) can target a report's
+    // entries — a bare hash carries no recoverable report code.
+    return `${reportCode}:${hash}`;
   }
 
   static get(cacheKey: string): any[] | null {
@@ -54,7 +57,7 @@ class ReportCacheService {
 
   static invalidate(reportCode: string): void {
     for (const [key] of this.cache) {
-      if (key.includes(reportCode)) {
+      if (key.startsWith(`${reportCode}:`)) {
         this.cache.delete(key);
       }
     }
