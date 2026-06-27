@@ -8454,3 +8454,17 @@ Status: Needs Review
 
 Iteration 17 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 25: server storage.ts dup-import + Drizzle .$dynamic() (-12)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Removed duplicate named import (masterProductModels/masterProductAccessories imported twice in the
+  @shared/schema import) -> 4 TS2300.
+- Added .$dynamic() to the two `let modelQuery/accessoryQuery = db.select().from()` builders so the
+  `q = q.where(...)` reassignments typecheck -> 8 TS2740 (classic Drizzle dynamic-query pattern).
+- storage.ts 105 -> 93. VERIFY CAVEAT: line-add/remove shifts line numbers so the file+line+col comm
+  falsely shows all 93 as "new"; verified instead by per-code counts (TS2300 4->0, TS2740 8->0, all
+  others identical) + empty non-storage diff. Exactly 12 cleared, zero new. Baseline 2677 -> 2665.
+
+Iteration 18 (06/27/2026): Story QUALITY-002
+Status: Needs Review
