@@ -54,6 +54,10 @@ export const DEFAULT_RETRY_CONFIG: RetryConfig = {
     '08000', // PostgreSQL: connection exception
     '08003', // PostgreSQL: connection does not exist
     '08006', // PostgreSQL: connection failure
+    // Message-text fallbacks for wrappers that drop the SQLSTATE code but keep
+    // the human-readable PostgreSQL connection-error text.
+    'connection does not exist',
+    'connection failure',
   ],
 };
 

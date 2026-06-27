@@ -200,10 +200,12 @@ describe('checkNavigationAccess', () => {
       expect(checkNavigationAccess(rule, new Set(['sales.lead.view_own']), 1, false)).toBe(true);
     });
 
-    it('should hide CRM section from users without any sales permission', () => {
+    it('always shows the CRM section (alwaysVisible) regardless of permissions', () => {
+      // SECTION_PERMISSIONS.crm is { alwaysVisible: true } by design — the CRM
+      // nav entry is shown to everyone; the server still enforces API-level RBAC.
       const rule = SECTION_PERMISSIONS['crm'];
       expect(checkNavigationAccess(rule, new Set(['service.ticket.view_own']), 1, false)).toBe(
-        false,
+        true,
       );
     });
 
