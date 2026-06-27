@@ -142,7 +142,7 @@ class AIEmployeeService {
       // Initialize default skills for the employee
       await this.initializeEmployeeSkills(tenantId, result.rows[0].id, employeeData.employeeType);
 
-      return result.rows[0] as AIEmployee;
+      return result.rows[0] as unknown as AIEmployee;
     } catch (error) {
       log.error('Error creating AI employee:', error);
       throw new Error('Failed to create AI employee');
@@ -156,7 +156,7 @@ class AIEmployeeService {
         WHERE tenant_id = ${tenantId} AND id = ${employeeId}
       `);
 
-      return (result.rows[0] as AIEmployee) || null;
+      return (result.rows[0] as unknown as AIEmployee) || null;
     } catch (error) {
       log.error('Error fetching AI employee:', error);
       return null;
@@ -190,7 +190,7 @@ class AIEmployeeService {
         WHERE ${sql.join(conditions, sql` AND `)}
         ORDER BY created_at DESC
       `);
-      return result.rows as AIEmployee[];
+      return result.rows as unknown as AIEmployee[];
     } catch (error) {
       log.error('Error fetching AI employees:', error);
       return [];
@@ -234,7 +234,7 @@ class AIEmployeeService {
         ) RETURNING *
       `);
 
-      const task = result.rows[0] as AIEmployeeTask;
+      const task = result.rows[0] as unknown as AIEmployeeTask;
 
       // Start task execution asynchronously
       this.executeTask(task.id, tenantId);
@@ -856,7 +856,7 @@ class AIEmployeeService {
         WHERE ${sql.join(conditions, sql` AND `)}
         ORDER BY assigned_at DESC
       `);
-      return result.rows as AIEmployeeTask[];
+      return result.rows as unknown as AIEmployeeTask[];
     } catch (error) {
       log.error('Error fetching employee tasks:', error);
       return [];
