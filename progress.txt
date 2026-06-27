@@ -8646,3 +8646,19 @@ Status: Needs Review
   symbol here resolves to a DIFFERENT users table (import drift) — needs investigation, not a blind fix.
   Also the 9 TS2416 IStorage method-signature mismatches + 43 TS2339 (phantom reads) remain.
 - Ratchet 2337 -> 2305 (-32); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 37: qrcode dep + missing UI exports (-9, real runtime-bug fixes)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- routes-equipment-qr.ts: QRCode used at L71/200 but NEVER imported AND `qrcode` absent from package.json
+  -> both QR endpoints threw ReferenceError at runtime (bucket C). `npm install qrcode@1.5.4 @types/qrcode@1.5.6`
+  (PUPPETEER_SKIP_DOWNLOAD to avoid the chromium-download failure that aborts npm in this env) + added
+  `import QRCode from 'qrcode'`. Cleared 2 TS2304. (file retains 5 pre-existing unrelated errors.)
+- client/src/components/ui/textarea.tsx: exported `type TextareaProps = React.ComponentProps<'textarea'>`
+  (textarea-with-counter.tsx imported it but it was never exported -> TS2305 + cascading downstream errors).
+- client/src/components/ui/skeletons.tsx: added the missing `TimelineSkeleton({items})` component
+  (customer-360-view.tsx imports + renders it -> TS2305 + cascade; faithful: the component was genuinely
+  absent so the page wouldn't compile).
+- Ratchet 2305 -> 2296 (-9; the 4 direct fixes also cleared ~5 downstream cascade errors in the importers);
+  per-file count diff: NO file gained errors. Baseline tightened.
+- NOTE: package.json + package-lock.json changed (qrcode dep) - first dependency add this story.

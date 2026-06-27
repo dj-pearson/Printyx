@@ -111,6 +111,25 @@ export function ListSkeleton({ count = 5 }: { count?: number }) {
 }
 
 /**
+ * Vertical timeline loading skeleton (e.g. customer activity feed)
+ */
+export function TimelineSkeleton({ items = 4 }: { items?: number }) {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: items }).map((_, i) => (
+        <div key={i} className="flex gap-3">
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-3 w-2/3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Loading spinner with accessibility support
  */
 interface LoadingSpinnerProps {

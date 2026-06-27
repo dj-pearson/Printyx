@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import QRCode from 'qrcode';
 import { db } from './db';
 import { equipment } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
