@@ -764,7 +764,7 @@ export function registerCatalogCsvRoutes(app: Express) {
         }
 
         const csvText = req.file.buffer.toString('utf-8');
-        const results = await new Promise((resolve, reject) => {
+        const results = await new Promise<any[]>((resolve, reject) => {
           const records: any[] = [];
           const stream = Readable.from([csvText])
             .pipe(csv())

@@ -1018,7 +1018,7 @@ export class CustomerPortalService {
         throw new Error('CUSTOMER_ACCESS_DENIED');
       }
     } catch (error) {
-      if (error.message === 'CUSTOMER_ACCESS_DENIED') {
+      if (error instanceof Error && error.message === 'CUSTOMER_ACCESS_DENIED') {
         throw error;
       }
       log.error('Error verifying customer access:', error);
@@ -1055,8 +1055,8 @@ export class CustomerPortalService {
       }
     } catch (error) {
       if (
-        error.message === 'EQUIPMENT_ACCESS_DENIED' ||
-        error.message === 'CUSTOMER_ACCESS_DENIED'
+        error instanceof Error &&
+        (error.message === 'EQUIPMENT_ACCESS_DENIED' || error.message === 'CUSTOMER_ACCESS_DENIED')
       ) {
         throw error;
       }

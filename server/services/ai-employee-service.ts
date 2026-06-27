@@ -295,7 +295,7 @@ class AIEmployeeService {
       // Mark task as failed
       await db.execute(sql`
         UPDATE ai_employee_tasks 
-        SET status = 'failed', completed_at = CURRENT_TIMESTAMP, error_messages = ${JSON.stringify([error.message])}
+        SET status = 'failed', completed_at = CURRENT_TIMESTAMP, error_messages = ${JSON.stringify([error instanceof Error ? error.message : String(error)])}
         WHERE id = ${taskId}
       `);
     }
@@ -371,7 +371,7 @@ class AIEmployeeService {
         qualityScore: 0,
         confidence: 0,
         executionTimeMinutes: Math.max(1, executionTimeMinutes),
-        errors: [error.message],
+        errors: [error instanceof Error ? error.message : String(error)],
       };
     }
   }
@@ -661,7 +661,7 @@ class AIEmployeeService {
 
       await db.execute(sql`
         UPDATE ai_workflow_executions 
-        SET status = 'failed', error_details = ${JSON.stringify({ error: error.message })}
+        SET status = 'failed', error_details = ${JSON.stringify({ error: error instanceof Error ? error.message : String(error) })}
         WHERE id = ${executionId}
       `);
     }

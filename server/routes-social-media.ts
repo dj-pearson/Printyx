@@ -112,7 +112,9 @@ async function generateSocialMediaContent(prompt: string): Promise<{
     };
   } catch (error) {
     log.error('Claude API Error:', error);
-    throw new Error(`Failed to generate content: ${error.message}`);
+    throw new Error(
+      `Failed to generate content: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
@@ -240,7 +242,7 @@ router.post('/api/social-media/posts/generate', isAuthenticated, async (req: any
     log.error('Error generating social media post:', error);
     res.status(500).json({
       message: 'Failed to generate post',
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 });
@@ -533,7 +535,7 @@ router.post('/api/social-media/cron-jobs/:id/execute', isAuthenticated, async (r
     log.error('Error executing cron job:', error);
     res.status(500).json({
       message: 'Failed to execute cron job',
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 });

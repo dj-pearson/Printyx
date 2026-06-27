@@ -8700,3 +8700,15 @@ Status: Needs Review
 - DEFERRED (phantom-shape, need schema verification): 4x TS2339 reading currentStock/supplier off the
   inventory_items TABLE object (table-vs-row or phantom cols); 2x accessory insert shape (TS2345/TS2769).
 - Ratchet 2243 -> 2233 (-10); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 41: server TS18046 catch blocks + untyped sources (-13)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- 5 server files, TS18046 'X is of type unknown'. customer-portal-service (2 catch blocks: guarded
+  `if (error.message === 'X')` -> `if (error instanceof Error && error.message === 'X')`), ai-employee-service
+  (3 inline error.message in SQL/array -> `error instanceof Error ? error.message : String(error)`),
+  routes-social-media (3 same, template + res.json), ai-search-knowledge-service (sort([,a],[,b]) on an
+  any[]-derived reduce whose Object.entries values widened to unknown -> Number(b)-Number(a)),
+  routes-catalog-csv (`results` from untyped `await new Promise(...)` -> new Promise<any[]>).
+- All faithful (instanceof Error falls through to String(error)/generic handler; Number coerces counts).
+- Ratchet 2233 -> 2220 (-13); per-file count diff: NO file gained errors. Baseline tightened.
