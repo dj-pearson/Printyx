@@ -9176,3 +9176,11 @@ AC3 — DateExtensions: shortFormatted/fullFormatted/timeFormatted now use cache
 AC4 — xcodebuild test: verified by ios-ci.yml build-test on the PR (macOS).
 Local sanity: brace balance OK on all 8 edited files; Formatters API signatures match (all call sites pass
 Double/Double -> Double?). Will flip IOS-049 once the macOS build is green.
+
+## Iteration - IOS-049 VERIFIED + flipped (iOS-via-CI)
+**Date**: 2026-06-27
+**Status**: COMPLETE — flipped passes:true after CI verification. 389 -> remaining recount below.
+ios-ci.yml "Build & Test (Debug)" (macOS xcodebuild test of full PrintyxTests target) PASSED on PR #193
+(SHA 3d1bd27). All four IOS-049 ACs satisfied (formatter consolidation + cached date formatters). The
+Cert-pin guard (Release) failure on the same run is the expected IOS-014 continue-on-error empty-pins job.
+This validates the iOS-via-CI lane: implement Swift -> rely on ios-ci.yml macOS build -> flip on green.

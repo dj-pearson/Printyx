@@ -7761,8 +7761,8 @@
         "ios xcodebuild test passes"
       ],
       "priority": 159,
-      "passes": false,
-      "notes": "UI/UX audit M4/M5/L4. Also a per-render NumberFormatter/DateFormatter allocation perf win in lists."
+      "passes": true,
+      "notes": "UI/UX audit M4/M5/L4. Also a per-render NumberFormatter/DateFormatter allocation perf win in lists. [iOS-via-CI VERIFIED 2026-06-27] ios-ci.yml Build & Test (Debug) xcodebuild test PASSED on PR #193 (run 28302787902, job 83853888187, SHA 3d1bd27 — Run unit tests Debug = success). AC1: all 15 per-view formatCurrency copies deleted across 6 files, every call site routed through Core/Extensions/Formatters (currencyRounded/currency/currencyAbbreviated by behavior); 0 formatCurrency refs remain in ios/. AC2: ProposalFormView raw totals via Formatters.currencyRounded. AC3: DateExtensions short/full/time formatters cached as statics + relativeDescription via shared Formatters.relativeDate. AC4: xcodebuild test green. (Cert-pin guard failure is the expected IOS-014 continue-on-error pins job, unrelated.)"
     },
     {
       "id": "IOS-050",
