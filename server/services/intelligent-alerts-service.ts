@@ -488,6 +488,7 @@ export class IntelligentAlertsService {
         estimatedTime: 60,
         successRate: 70,
         confidence: 'medium',
+        basedOn: undefined,
       });
     }
 
@@ -1122,7 +1123,7 @@ export class IntelligentAlertsService {
     }
 
     // Log the containment action
-    const [log] = await db
+    const [containmentLog] = await db
       .insert(automatedContainmentLogs)
       .values({
         tenantId,
@@ -1157,7 +1158,7 @@ export class IntelligentAlertsService {
       category: 'security',
     });
 
-    return log;
+    return containmentLog;
   }
 
   // ==================== INCIDENT CORRELATION ====================
@@ -1313,7 +1314,11 @@ export class IntelligentAlertsService {
     }
 
     // If risk is high and detected multiple times, create alert
-    if (severity in ['high', 'critical'] && existing && existing.detectionCount >= 3) {
+    if (
+      ['high', 'critical'].includes(severity) &&
+      existing &&
+      (existing.detectionCount ?? 0) >= 3
+    ) {
       // TODO: Create actual security alert
       log.info(`High risk anomaly detected for ${entityType} ${entityId} - creating alert`);
     }
@@ -1337,12 +1342,13 @@ export class IntelligentAlertsService {
 
     if (existing) {
       // Update existing pattern
-      const newTotal = existing.totalIncidents + 1;
-      const newResolved = existing.totalResolved + (successful ? 1 : 0);
+      const newTotal = (existing.totalIncidents ?? 0) + 1;
+      const newResolved = (existing.totalResolved ?? 0) + (successful ? 1 : 0);
       const newSuccessRate = Math.round((newResolved / newTotal) * 100);
 
       const newAvgTime = Math.round(
-        (existing.avgResolutionTime * existing.totalIncidents + resolutionTime) / newTotal,
+        ((existing.avgResolutionTime ?? 0) * (existing.totalIncidents ?? 0) + resolutionTime) /
+          newTotal,
       );
 
       await db

@@ -8596,3 +8596,29 @@ Status: Needs Review
 - DEFERRED as own story: MeterBilling.tsx (26 errs) is PHANTOM-SHAPE (form uses blackMeter/colorMeter absent
   from real meter_readings table; real cols bwMeterReading/colorMeterReading) + useForm resolver cascade -
   runtime form/SQL rewrite needs app verification (same class as MeterReadings.tsx batch 8).
+
+## Iteration - QUALITY-002 BATCH 35: intelligent-alerts-service + csv-import-service (-46)
+**Date**: 2026-06-26
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- intelligent-alerts-service.ts 26 -> 0. TWO REAL RUNTIME BUGS found + fixed:
+  (1) executeContainmentAction had `const [log] = await db.insert(automatedContainmentLogs)...returning()`
+      at the END of the method (line ~1125), block-scoped to the whole method body -> it SHADOWED the
+      module-level `const log = createModuleLogger(...)`, so every earlier log.warn/log.error (851-1109)
+      hit the TDZ -> ReferenceError "Cannot access 'log' before initialization" at runtime. These are
+      security-containment logging calls (block_ip/quarantine_file/disable_integration/etc.) that CRASHED
+      the action before doing the work. Renamed the local binding to `containmentLog` (decl + return) ->
+      cleared 7 TS2448 + 7 TS2454 + 7 TS2339 (.warn/.error on the row type).
+  (2) detectAnomaly: `if (severity in ['high','critical'] ...)` used the `in` operator on an ARRAY, which
+      checks index keys (0/1/length), so it was ALWAYS false and the high-risk alert branch never ran.
+      Fixed to ['high','critical'].includes(severity). Same line: (existing.detectionCount ?? 0) >= 3.
+  Plus: null-coalesced existing.totalIncidents/totalResolved/avgResolutionTime in recordResolutionPattern
+  (nullable int cols, TS18047), and added basedOn: undefined to the default resolution suggestion (the
+  .map-inferred element type requires the basedOn key, TS2345).
+- csv-import-service.ts 20 -> 0. (a) 10x TS2345: orClauses .filter(Boolean) left (SQL|null)[], and
+  or(...orClauses) rejects null -> changed to .filter((clause): clause is SQL => clause !== null) (added
+  type SQL import). (b) TS2790 delete row._rowNumber (required on the intersection type) -> delete
+  (row as Record<string,any>)._rowNumber. (c) 9x TS2769 .values({...data, tenantId, createdAt, updatedAt})
+  where data:Record<string,any> can't match the Drizzle insert overload -> cast each block's values object
+  `as typeof <table>.$inferInsert` (10 inserts incl the already-passing contacts one; type-only, faithful -
+  data is a legitimately dynamic CSV-mapped row, runtime unchanged).
+- Ratchet 2383 -> 2337 (-46); per-file count diff shows NO file gained errors. Baseline tightened.

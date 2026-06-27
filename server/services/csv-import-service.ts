@@ -10,7 +10,7 @@
  */
 
 import { db } from '../db';
-import { eq, and, or, ilike, sql } from 'drizzle-orm';
+import { eq, and, or, ilike, sql, type SQL } from 'drizzle-orm';
 import {
   csvImportJobs,
   csvImportDuplicates,
@@ -639,7 +639,7 @@ async function searchBusinessRecords(
           return ilike(column, c.value);
         }
       })
-      .filter(Boolean);
+      .filter((clause): clause is SQL => clause !== null);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -672,7 +672,7 @@ async function searchContacts(
           return ilike(column, c.value);
         }
       })
-      .filter(Boolean);
+      .filter((clause): clause is SQL => clause !== null);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -705,7 +705,7 @@ async function searchEquipment(
           return ilike(column, c.value);
         }
       })
-      .filter(Boolean);
+      .filter((clause): clause is SQL => clause !== null);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -738,7 +738,7 @@ async function searchInventory(
           return ilike(column, c.value);
         }
       })
-      .filter(Boolean);
+      .filter((clause): clause is SQL => clause !== null);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -771,7 +771,7 @@ async function searchProductModels(
           return ilike(column, c.value);
         }
       })
-      .filter(Boolean);
+      .filter((clause): clause is SQL => clause !== null);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -804,7 +804,7 @@ async function searchProductAccessories(
           return ilike(column, c.value);
         }
       })
-      .filter(Boolean);
+      .filter((clause): clause is SQL => clause !== null);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -837,7 +837,7 @@ async function searchServiceProducts(
           return ilike(column, c.value);
         }
       })
-      .filter(Boolean);
+      .filter((clause): clause is SQL => clause !== null);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -870,7 +870,7 @@ async function searchSoftwareProducts(
           return ilike(column, c.value);
         }
       })
-      .filter(Boolean);
+      .filter((clause): clause is SQL => clause !== null);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -903,7 +903,7 @@ async function searchSupplies(
           return ilike(column, c.value);
         }
       })
-      .filter(Boolean);
+      .filter((clause): clause is SQL => clause !== null);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -936,7 +936,7 @@ async function searchManagedServices(
           return ilike(column, c.value);
         }
       })
-      .filter(Boolean);
+      .filter((clause): clause is SQL => clause !== null);
 
     if (orClauses.length > 0) {
       whereConditions.push(or(...orClauses));
@@ -1266,7 +1266,7 @@ export class CsvImportService {
 
     for (const row of transformedData) {
       const rowNumber = row._rowNumber;
-      delete row._rowNumber;
+      delete (row as Record<string, any>)._rowNumber;
 
       try {
         if (duplicateRowNumbers.has(rowNumber)) {
@@ -1497,7 +1497,7 @@ async function createNewRecord(
           tenantId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
+        } as typeof businessRecords.$inferInsert)
         .returning({ id: businessRecords.id });
       return br.id;
     }
@@ -1510,7 +1510,7 @@ async function createNewRecord(
           tenantId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
+        } as typeof enhancedContacts.$inferInsert)
         .returning({ id: enhancedContacts.id });
       return contact.id;
 
@@ -1522,7 +1522,7 @@ async function createNewRecord(
           tenantId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
+        } as typeof equipment.$inferInsert)
         .returning({ id: equipment.id });
       return equip.id;
 
@@ -1534,7 +1534,7 @@ async function createNewRecord(
           tenantId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
+        } as typeof inventoryItems.$inferInsert)
         .returning({ id: inventoryItems.id });
       return inv.id;
 
@@ -1546,7 +1546,7 @@ async function createNewRecord(
           tenantId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
+        } as typeof productModels.$inferInsert)
         .returning({ id: productModels.id });
       return pm.id;
 
@@ -1558,7 +1558,7 @@ async function createNewRecord(
           tenantId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
+        } as typeof productAccessories.$inferInsert)
         .returning({ id: productAccessories.id });
       return pa.id;
 
@@ -1570,7 +1570,7 @@ async function createNewRecord(
           tenantId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
+        } as typeof serviceProducts.$inferInsert)
         .returning({ id: serviceProducts.id });
       return sp.id;
 
@@ -1582,7 +1582,7 @@ async function createNewRecord(
           tenantId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
+        } as typeof softwareProducts.$inferInsert)
         .returning({ id: softwareProducts.id });
       return sw.id;
 
@@ -1594,7 +1594,7 @@ async function createNewRecord(
           tenantId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
+        } as typeof supplies.$inferInsert)
         .returning({ id: supplies.id });
       return sup.id;
 
@@ -1606,7 +1606,7 @@ async function createNewRecord(
           tenantId,
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
+        } as typeof managedServices.$inferInsert)
         .returning({ id: managedServices.id });
       return ms.id;
 
