@@ -8712,3 +8712,12 @@ Status: Needs Review
   routes-catalog-csv (`results` from untyped `await new Promise(...)` -> new Promise<any[]>).
 - All faithful (instanceof Error falls through to String(error)/generic handler; Number coerces counts).
 - Ratchet 2233 -> 2220 (-13); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 42: client TS7006 params + ProductHubUnified useQuery (-9)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- CommissionManagement (plan.tiers.map (tier)->:any, plan.productRates.slice.map (rate,idx)->:any,:number),
+  WorkflowAutomation (reduce (acc,cat)->(acc:number,cat:any)), DemoScheduling (equipmentModels.map
+  (model,idx)->:any,:number), ProductHubUnified (manufacturers useQuery -> useQuery<string[]>, consumed via
+  .length + .map((manufacturer:string))).
+- Ratchet 2220 -> 2211 (-9); per-file count diff: NO file gained errors. Type-only. Baseline tightened.

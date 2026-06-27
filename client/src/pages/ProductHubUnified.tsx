@@ -246,7 +246,7 @@ export default function ProductHubUnified() {
     queryKey: ['/api/enabled-products'],
   });
 
-  const { data: manufacturers = [] } = useQuery({
+  const { data: manufacturers = [] } = useQuery<string[]>({
     queryKey: ['/api/catalog/manufacturers'],
   });
 

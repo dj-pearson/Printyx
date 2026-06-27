@@ -568,7 +568,7 @@ function DemoSchedulingContent() {
 
                   {demo.equipmentModels?.length > 0 && (
                     <div className="flex flex-wrap gap-1">
-                      {demo.equipmentModels.map((model, idx) => (
+                      {demo.equipmentModels.map((model: any, idx: number) => (
                         <Badge key={idx} variant="outline" className="text-xs">
                           {model}
                         </Badge>
