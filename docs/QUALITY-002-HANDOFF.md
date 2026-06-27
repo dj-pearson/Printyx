@@ -3,8 +3,15 @@
 **Branch:** `claude/quality-002-typecheck-burndown` (main was merged via PR #186; this is the continuation branch)
 **Story:** QUALITY-002 — "Drive `npm run check` to green"
 **Status:** `passes: false` (flips to true only when `tsc` is fully clean)
-**Current count:** **1931** tsc errors (started at 6176; **−69%**). Baseline tracked in `docs/typecheck-baseline.json`.
-**Last batch:** 61 (TS2741 $dynamic cluster + openapi cast). EXHAUSTED: TS18047/18048/18046, TS2558, TS7006, TS7053, most TS2741/TS2352. Remaining safe pockets are nearly gone (~6/batch). NEXT: finish residual TS2352/TS2741, verify the TS2305 missing-export items (ServiceSession/BillingEntry/JournalEntry/articleRatings/InsertLeadScoreCalculation — add export if real, DEFER if phantom; billingDisputes/creditMemos ARE phantom), then WRITE THE OWNER SUMMARY for the ~1,600 phantom/insert-shape TS2339/TS2769/TS2322/TS2345 errors.
+**Current count:** **1926** tsc errors (started at 6176; **−69%**). Baseline tracked in `docs/typecheck-baseline.json`.
+**Last batch:** 62 (missing schema exports + casts + owner summary).
+
+> ⛳ SAFE MECHANICAL BURNDOWN COMPLETE (62 batches, 6176→1926, −69%). All zero-runtime-risk clusters are
+> exhausted. The remaining ~1926 errors are phantom-shape / insert-shape mismatches (TS2339 839, TS2769 396,
+> TS2322 222, TS2345 186, …) that change runtime SQL/response shapes and CANNOT be verified without running
+> the app. See the **OWNER SUMMARY** at the bottom of `progress.txt` and in the `prd.json` QUALITY-002 notes
+> for the enumerated per-file rewrite-story list. Reaching tsc-green from here is feature-level work; do NOT
+> continue blind mechanical type edits (they would mask the real latent bugs). The ratchet is CI-held at 1926.
 
 > DEFERRED for a focused pass: gps-tracking-routes 4 TS2554 are storage-method arg mismatches — a MIX of
 > missing required args (updateTechnicianLocation, getLatestEtaForTicket want 3, got 2) and extra ignored
