@@ -3,8 +3,13 @@
 **Branch:** `claude/quality-002-typecheck-burndown` (main was merged via PR #186; this is the continuation branch)
 **Story:** QUALITY-002 — "Drive `npm run check` to green"
 **Status:** `passes: false` (flips to true only when `tsc` is fully clean)
-**Current count:** **2050** tsc errors (started at 6176; **−67%**). Baseline tracked in `docs/typecheck-baseline.json`.
-**Last batch:** 48 (TS18046 untyped-useQuery + catch singletons). `req.user!` cluster exhausted (43-45); scattered null-guard/TS18046 singletons being swept (47-48).
+**Current count:** **2027** tsc errors (started at 6176; **−67%**). Baseline tracked in `docs/typecheck-baseline.json`.
+**Last batch:** 50 (TS2554 missing-tenantId bug + logger args). `req.user!` cluster exhausted (43-45); now sweeping scattered null-guards, TS18046, TS7006 params, 3-arg logger calls (TS2554), and missing-tenantId storage calls.
+
+> LOGGER-ARG PATTERN (batches 40/49/50): the structured logger (`createModuleLogger`) takes 1-2 args
+> (message, meta?). Calls with 3+ positional args are TS2554 — consolidate the extras into a meta object
+> (`log.x('msg', { a, b })`) or a template literal. Plenty remain; grep the tsc log for TS2554 and check
+> whether each site is a `log.`/console call (clean) vs a storage-method arg mismatch (verify the signature).
 
 > HIGH-YIELD PATTERN (batches 43-44): many `/api` route modules in routes-registry `asyncRootApiMounts` are
 > mounted with NO auth middleware yet dereference `req.user.x` directly (TS18048). Where the access is plain
