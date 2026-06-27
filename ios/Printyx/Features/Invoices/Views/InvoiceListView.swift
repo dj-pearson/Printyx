@@ -20,7 +20,7 @@ struct InvoiceListView: View {
         VStack(spacing: 0) {
             // Metrics
             HStack(spacing: AppTheme.Spacing.md) {
-                MetricCard(label: "Outstanding", value: formatCurrency(viewModel.totalOutstanding), icon: "dollarsign.circle", color: .printyxPrimary)
+                MetricCard(label: "Outstanding", value: Formatters.currencyAbbreviated(viewModel.totalOutstanding), icon: "dollarsign.circle", color: .printyxPrimary)
                 MetricCard(label: "Overdue", value: "\(viewModel.overdueCount)", icon: "exclamationmark.triangle", color: .statusOverdue)
                 MetricCard(label: "Paid", value: "\(viewModel.paidCount)", icon: "checkmark.seal.fill", color: .statusCompleted)
             }
@@ -166,9 +166,6 @@ struct InvoiceListView: View {
         .listStyle(.insetGrouped)
     }
 
-    private func formatCurrency(_ value: Double) -> String {
-        Formatters.currencyAbbreviated(value)
-    }
 }
 
 // MARK: - Invoice Row
@@ -203,7 +200,7 @@ struct InvoiceRow: View {
 
             VStack(alignment: .trailing, spacing: AppTheme.Spacing.xs) {
                 if let amount = invoice.totalAmount, amount > 0 {
-                    Text(formatCurrency(amount))
+                    Text(Formatters.currencyRounded(amount))
                         .font(.printyxCaption)
                         .fontWeight(.bold)
                         .foregroundStyle(Color.printyxPrimary)
@@ -231,13 +228,6 @@ struct InvoiceRow: View {
         }
     }
 
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
-    }
 }
 
 // MARK: - StatusBadge extension for invoices
@@ -280,19 +270,19 @@ struct InvoiceDetailView: View {
 
                 Section("Amounts") {
                     if let subtotal = invoice.subtotal {
-                        LabeledContent("Subtotal", value: formatCurrency(subtotal))
+                        LabeledContent("Subtotal", value: Formatters.currency(subtotal))
                     }
                     if let tax = invoice.taxAmount, tax > 0 {
-                        LabeledContent("Tax", value: formatCurrency(tax))
+                        LabeledContent("Tax", value: Formatters.currency(tax))
                     }
                     if let total = invoice.totalAmount {
-                        LabeledContent("Total", value: formatCurrency(total))
+                        LabeledContent("Total", value: Formatters.currency(total))
                     }
                     if let paid = invoice.amountPaid, paid > 0 {
-                        LabeledContent("Paid", value: formatCurrency(paid))
+                        LabeledContent("Paid", value: Formatters.currency(paid))
                     }
                     if let due = invoice.amountDue, due > 0 {
-                        LabeledContent("Amount Due", value: formatCurrency(due))
+                        LabeledContent("Amount Due", value: Formatters.currency(due))
                     }
                 }
 
@@ -325,10 +315,4 @@ struct InvoiceDetailView: View {
         }
     }
 
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
-    }
 }

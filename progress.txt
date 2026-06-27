@@ -9159,3 +9159,20 @@ CI ENV:
 - .github/workflows/ci.yml: test job now also sets DATABASE_URL (db.ts requires it at load; the unit tests
   mock queries but import middleware that pulls in db.ts). tenant-isolation + rbac-middleware-extended now load.
 VERIFICATION: DATABASE_URL=... NODE_ENV=test npm run test:unit -> 44 files / 1122 tests pass; check:types holds 1926.
+
+## Iteration - IOS-049 consolidate currency/date formatting (iOS-via-CI; awaiting macOS build)
+**Date**: 2026-06-27
+**Status**: IMPLEMENTED — NOT yet flipped. Awaiting ios-ci.yml xcodebuild (AC4) before flipping passes:true
+(no local Swift toolchain; per the chosen iOS-via-CI verification lane).
+AC1 — deleted every per-view formatCurrency copy (CRMRowView, ProposalDetailView, QuoteListView x3,
+ContractListView x3, InvoiceListView x3, OpportunityListView x3) and routed all call sites through the
+shared Core/Extensions/Formatters: maximumFractionDigits=0 copies -> Formatters.currencyRounded; no-max
+(2-digit, invoice cents) -> Formatters.currency; abbreviation copies -> Formatters.currencyAbbreviated.
+grep confirms zero formatCurrency references remain in ios/.
+AC2 — ProposalFormView raw totals ("$\(Int(total))" line-item total, "$\(calculatedTotal)" footer) now use
+Formatters.currencyRounded(...).
+AC3 — DateExtensions: shortFormatted/fullFormatted/timeFormatted now use cached static DateFormatters
+(were re-allocated per access); relativeDescription routes through the shared Formatters.relativeDate.
+AC4 — xcodebuild test: verified by ios-ci.yml build-test on the PR (macOS).
+Local sanity: brace balance OK on all 8 edited files; Formatters API signatures match (all call sites pass
+Double/Double -> Double?). Will flip IOS-049 once the macOS build is green.

@@ -150,7 +150,7 @@ struct QuoteFormView: View {
                                 .keyboardType(.decimalPad)
                             Spacer()
                             let total = (Double(item.quantity) ?? 0) * (Double(item.unitPrice) ?? 0)
-                            Text("$\(Int(total))")
+                            Text(Formatters.currencyRounded(total))
                                 .font(.printyxCaption)
                                 .fontWeight(.bold)
                         }
@@ -170,7 +170,7 @@ struct QuoteFormView: View {
                     Text("Total")
                         .font(.printyxSubheadline)
                     Spacer()
-                    Text("$\(calculatedTotal)")
+                    Text(Formatters.currencyRounded(Double(calculatedTotal)))
                         .font(.printyxHeadline)
                         .foregroundStyle(Color.printyxPrimary)
                 }

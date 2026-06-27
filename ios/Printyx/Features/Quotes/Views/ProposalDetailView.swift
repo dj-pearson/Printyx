@@ -98,7 +98,7 @@ struct ProposalDetailView: View {
                             .font(.printyxHeadline)
                         Spacer()
                         if let amount = proposal?.totalAmount, amount > 0 {
-                            Text(formatCurrency(amount))
+                            Text(Formatters.currencyRounded(amount))
                                 .font(.printyxTitle)
                                 .foregroundStyle(Color.printyxPrimary)
                         }
@@ -260,11 +260,4 @@ struct ProposalDetailView: View {
         }
     }
 
-    private func formatCurrency(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "$\(Int(value))"
-    }
 }
