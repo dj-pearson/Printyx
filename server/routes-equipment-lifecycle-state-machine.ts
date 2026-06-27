@@ -169,7 +169,7 @@ router.get(
       }
 
       // Get current equipment state
-      const { db } = await import('./db/index');
+      const { db } = await import('./db');
       const { equipmentLifecycle } = await import('@shared/schema');
       const { eq, and } = await import('drizzle-orm');
 
@@ -253,7 +253,7 @@ router.get(
       }
 
       // Get current equipment state
-      const { db } = await import('./db/index');
+      const { db } = await import('./db');
       const { equipmentLifecycle } = await import('@shared/schema');
       const { eq, and } = await import('drizzle-orm');
 

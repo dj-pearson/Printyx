@@ -37,7 +37,7 @@ import {
   Target,
   Lightbulb,
 } from 'lucide-react';
-import type { UsageAnalytics } from '../../../shared/customer-portal-schema';
+import type { UsageAnalytics } from '@shared/customer-portal-schema';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Remove local type definition - using shared schema types instead

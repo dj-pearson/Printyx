@@ -417,7 +417,7 @@ router.get('/leads/check-duplicate', isAuthenticated, async (req: any, res) => {
     return res.json({
       exists: duplicateCheck.exists,
       matchType: duplicateCheck.matchType,
-      record: duplicateCheck.exists
+      record: duplicateCheck.record
         ? {
             id: duplicateCheck.record.id,
             name: `${duplicateCheck.record.firstName} ${duplicateCheck.record.lastName}`.trim(),

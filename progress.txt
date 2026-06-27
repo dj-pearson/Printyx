@@ -8758,3 +8758,20 @@ Status: Needs Review
   (phantom-shape files on the avoid-list) this ONLY touched the req.user assertions; their phantom-column
   errors remain untouched (per-file count diff confirms no regression).
 - Ratchet 2121 -> 2098 (-23); per-file count diff: NO file gained errors. Baseline tightened. Crossed <2100.
+
+## Iteration - QUALITY-002 BATCH 46: broken import paths + nullable-col guards (-21)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- 3 broken import paths (TS2307, real runtime module-resolution bugs): server/integrations/routes.ts
+  './utils/auth-helpers' -> '../utils/auth-helpers'; routes-equipment-lifecycle-state-machine.ts dynamic
+  import('./db/index') -> import('./db') (x2); UsageAnalyticsDashboard.tsx '../../../shared/...' ->
+  '@shared/customer-portal-schema' (type-only import).
+- Nullable-column null guards (TS18047): chrome-extension-routes (8x duplicateCheck.record -> changed the
+  ternary from .exists to .record so the branch narrows record non-null), contract-renewal-service (3x
+  supportTicketsLast90Days/escalationsLast90Days/equipmentCount in if-comparisons -> (x ?? 0)),
+  routes-social-media (3x cronJob.executionCount/failureCount in increments -> (x ?? 0)), Invoices.tsx
+  (invoiceNumber?.toLowerCase via ?? "", blackCopiesTotal/colorCopiesTotal -> (x ?? 0).toLocaleString()).
+- DEFERRED (missing modules, need creation): server/domains/reporting + routes-registry './domains/reporting';
+  @shared/schema-integrations; CustomerPortal.tsx's 10 missing @/components/customer-portal/* components; the
+  optional npm deps ioredis/@aws-sdk/client-secrets-manager/openapi-types (dynamic imports w/ fallback).
+- Ratchet 2098 -> 2077 (-21); per-file count diff: NO file gained errors. Baseline tightened.

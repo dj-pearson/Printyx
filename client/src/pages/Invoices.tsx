@@ -264,7 +264,7 @@ export default function Invoices() {
   // Filter invoices
   const filteredInvoices = invoices?.filter((invoice) => {
     const matchesSearch =
-      invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (invoice.invoiceNumber ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       getCustomerName(invoice.customerId).toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
@@ -715,7 +715,7 @@ export default function Invoices() {
                     <div className="flex-1">
                       <p className="text-xs text-gray-600 mb-1">B&W Copies</p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {invoice.blackCopiesTotal.toLocaleString()}
+                        {(invoice.blackCopiesTotal ?? 0).toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -728,7 +728,7 @@ export default function Invoices() {
                     <div className="flex-1">
                       <p className="text-xs text-gray-600 mb-1">Color Copies</p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {invoice.colorCopiesTotal.toLocaleString()}
+                        {(invoice.colorCopiesTotal ?? 0).toLocaleString()}
                       </p>
                     </div>
                   </div>

@@ -185,14 +185,14 @@ Format response as JSON:
     }
 
     // Adjust based on support tickets
-    if (contract.supportTicketsLast90Days > 10) {
+    if ((contract.supportTicketsLast90Days ?? 0) > 10) {
       renewalProbability -= 10;
       churnRiskScore += 10;
       riskFactors.push('High support ticket volume');
     }
 
     // Adjust based on escalations
-    if (contract.escalationsLast90Days > 2) {
+    if ((contract.escalationsLast90Days ?? 0) > 2) {
       renewalProbability -= 15;
       churnRiskScore += 15;
       riskFactors.push('Recent escalations');
@@ -206,7 +206,7 @@ Format response as JSON:
     }
 
     // Identify opportunities
-    if (contract.equipmentCount > 5) {
+    if ((contract.equipmentCount ?? 0) > 5) {
       opportunityFactors.push('Large equipment fleet - potential for expanded services');
     }
 

@@ -506,8 +506,10 @@ router.post('/api/social-media/cron-jobs/:id/execute', isAuthenticated, async (r
         .update(socialMediaCronJobs)
         .set({
           lastExecuted: new Date(),
-          executionCount: cronJob.executionCount + 1,
-          failureCount: webhookSuccess ? cronJob.failureCount : cronJob.failureCount + 1,
+          executionCount: (cronJob.executionCount ?? 0) + 1,
+          failureCount: webhookSuccess
+            ? (cronJob.failureCount ?? 0)
+            : (cronJob.failureCount ?? 0) + 1,
           updatedAt: new Date(),
         })
         .where(and(eq(socialMediaCronJobs.id, id), eq(socialMediaCronJobs.tenantId, tenantId)));
@@ -524,7 +526,7 @@ router.post('/api/social-media/cron-jobs/:id/execute', isAuthenticated, async (r
       await db
         .update(socialMediaCronJobs)
         .set({
-          failureCount: cronJob.failureCount + 1,
+          failureCount: (cronJob.failureCount ?? 0) + 1,
           updatedAt: new Date(),
         })
         .where(and(eq(socialMediaCronJobs.id, id), eq(socialMediaCronJobs.tenantId, tenantId)));
