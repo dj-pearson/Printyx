@@ -8479,3 +8479,17 @@ Status: Needs Review
 
 Iteration 19 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 27: gpt5-service discriminated-union as-const (-33)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- ROOT CAUSE in gpt5-service.ts fixed 33 errors in routes-ai-gpt5.ts. The route guards
+  `if (!result.success)` but the service return type had `success: boolean` (object-literal widening),
+  so TS couldn't discriminate the {error} vs {content,responseId,usage} branches.
+- Added `as const` to all 5 success literals (checkEnabled + generateResponse + generateChatCompletion).
+  All analyze*/generate* methods return this.generateResponse(...), so the fix propagates to every route.
+- routes-ai-gpt5 33 -> 0; gpt5-service holds at 2 pre-existing unrelated errors; empty other-file diff.
+  Zero new, zero runtime change. Ratchet 2609 -> 2576. Baseline tightened.
+
+Iteration 20 (06/27/2026): Story QUALITY-002
+Status: Needs Review

@@ -124,7 +124,7 @@ export class GPT5Service {
 
   private checkEnabled() {
     if (!this.isEnabled || !this.openai) {
-      return { success: false, error: 'OpenAI API key not configured' };
+      return { success: false as const, error: 'OpenAI API key not configured' };
     }
     return null;
   }
@@ -156,7 +156,7 @@ export class GPT5Service {
       const response = await this.openai!.responses.create(requestData);
 
       return {
-        success: true,
+        success: true as const,
         data: response,
         responseId: response.id,
         content: response.output?.content || '',
@@ -166,7 +166,7 @@ export class GPT5Service {
     } catch (error) {
       log.error('GPT-5 Responses API error:', error);
       return {
-        success: false,
+        success: false as const,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
@@ -205,7 +205,7 @@ export class GPT5Service {
       const response = await this.openai!.chat.completions.create(requestData);
 
       return {
-        success: true,
+        success: true as const,
         data: response,
         content: response.choices[0]?.message?.content || '',
         usage: response.usage,
@@ -213,7 +213,7 @@ export class GPT5Service {
     } catch (error) {
       log.error('GPT-5 Chat Completions error:', error);
       return {
-        success: false,
+        success: false as const,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
