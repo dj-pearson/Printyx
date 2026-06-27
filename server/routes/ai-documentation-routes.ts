@@ -24,7 +24,7 @@ router.post('/documents', async (req, res) => {
       return res.status(400).json({ error: 'Document title is required' });
     }
 
-    const document = await AIDocumentationService.createDocument(req.user.tenantId, req.user.id, {
+    const document = await AIDocumentationService.createDocument(req.user!.tenantId, req.user!.id, {
       title,
       description,
       documentTypeId,
@@ -53,7 +53,7 @@ router.get('/documents', async (req, res) => {
     const documents = [
       {
         id: 'doc-1',
-        tenantId: req.user.tenantId,
+        tenantId: req.user!.tenantId,
         title: 'Q4 Strategic Planning Meeting Minutes',
         description: 'Comprehensive minutes from Q4 strategic planning session',
         status: 'published',
@@ -82,14 +82,14 @@ router.get('/documents', async (req, res) => {
           'Strategic planning session outlining Q4 growth objectives and resource requirements',
         viewCount: 45,
         editCount: 3,
-        createdBy: req.user.id,
+        createdBy: req.user!.id,
         createdAt: new Date('2025-09-27T10:00:00Z'),
         updatedAt: new Date('2025-09-27T14:30:00Z'),
         publishedAt: new Date('2025-09-27T15:00:00Z'),
       },
       {
         id: 'doc-2',
-        tenantId: req.user.tenantId,
+        tenantId: req.user!.tenantId,
         title: 'Enterprise Client Proposal - TechCorp Solutions',
         description: 'Comprehensive proposal for TechCorp enterprise engagement',
         status: 'review',
@@ -117,13 +117,13 @@ router.get('/documents', async (req, res) => {
         assignedTo: 'user-reviewer-1',
         reviewers: ['user-reviewer-1', 'user-manager-1'],
         approvalStatus: 'pending',
-        createdBy: req.user.id,
+        createdBy: req.user!.id,
         createdAt: new Date('2025-09-26T09:00:00Z'),
         updatedAt: new Date('2025-09-27T11:15:00Z'),
       },
       {
         id: 'doc-3',
-        tenantId: req.user.tenantId,
+        tenantId: req.user!.tenantId,
         title: 'Project Status Report - Q3 Implementation',
         description: 'Detailed progress report for Q3 implementation milestones',
         status: 'draft',
@@ -147,7 +147,7 @@ router.get('/documents', async (req, res) => {
         summary: 'Comprehensive status report covering Q3 implementation progress and milestones',
         viewCount: 12,
         editCount: 5,
-        createdBy: req.user.id,
+        createdBy: req.user!.id,
         createdAt: new Date('2025-09-25T14:00:00Z'),
         updatedAt: new Date('2025-09-27T09:45:00Z'),
       },
@@ -203,7 +203,7 @@ router.get('/documents/:documentId', async (req, res) => {
     // Mock document retrieval
     const document = {
       id: documentId,
-      tenantId: req.user.tenantId,
+      tenantId: req.user!.tenantId,
       title: 'Q4 Strategic Planning Meeting Minutes',
       description: 'Comprehensive minutes from Q4 strategic planning session',
       status: 'published',
@@ -333,7 +333,7 @@ router.get('/documents/:documentId', async (req, res) => {
       // Access control
       isPublic: false,
       publicUrl: null,
-      accessPermissions: [req.user.id, 'user-manager-1'],
+      accessPermissions: [req.user!.id, 'user-manager-1'],
       sharingSettings: {
         allowComments: true,
         allowDownload: true,
@@ -353,7 +353,7 @@ router.get('/documents/:documentId', async (req, res) => {
       lastEditedAt: new Date('2025-09-27T14:30:00Z'),
 
       // Timestamps
-      createdBy: req.user.id,
+      createdBy: req.user!.id,
       createdAt: new Date('2025-09-27T10:00:00Z'),
       updatedAt: new Date('2025-09-27T14:30:00Z'),
       publishedAt: new Date('2025-09-27T15:00:00Z'),
@@ -365,14 +365,14 @@ router.get('/documents/:documentId', async (req, res) => {
       (document as any).editHistory = [
         {
           version: 1,
-          editedBy: req.user.id,
+          editedBy: req.user!.id,
           editedAt: new Date('2025-09-27T12:00:00Z'),
           changes: ['Initial AI generation from meeting transcription'],
           changesSummary: 'Document created from meeting transcription',
         },
         {
           version: 2,
-          editedBy: req.user.id,
+          editedBy: req.user!.id,
           editedAt: new Date('2025-09-27T14:30:00Z'),
           changes: ['Added detailed action item assignments', 'Enhanced decision context'],
           changesSummary: 'Added action item details and decision context',
@@ -424,8 +424,8 @@ router.post('/documents/from-meeting', async (req, res) => {
     }
 
     const document = await AIDocumentationService.generateDocumentFromMeeting(
-      req.user.tenantId,
-      req.user.id,
+      req.user!.tenantId,
+      req.user!.id,
       meetingId,
       transcriptionData,
       documentType,
@@ -505,8 +505,8 @@ router.post('/knowledge/articles', async (req, res) => {
     }
 
     const result = await AIDocumentationService.createKnowledgeArticle(
-      req.user.tenantId,
-      req.user.id,
+      req.user!.tenantId,
+      req.user!.id,
       { title, category, subcategory, content, tags, targetAudience },
     );
 
@@ -529,7 +529,7 @@ router.get('/knowledge/articles', async (req, res) => {
     const articles = [
       {
         id: 'article-1',
-        tenantId: req.user.tenantId,
+        tenantId: req.user!.tenantId,
         title: 'How to Set Up AI-Powered Meeting Transcription',
         slug: 'how-to-set-up-ai-powered-meeting-transcription',
         category: 'tutorials',
@@ -570,14 +570,14 @@ router.get('/knowledge/articles', async (req, res) => {
         averageRating: 4.7,
         relatedArticles: ['article-2', 'article-3'],
         contentFreshnessScore: 0.95,
-        createdBy: req.user.id,
+        createdBy: req.user!.id,
         createdAt: new Date('2025-09-20T10:00:00Z'),
         updatedAt: new Date('2025-09-25T14:30:00Z'),
         publishedAt: new Date('2025-09-20T15:00:00Z'),
       },
       {
         id: 'article-2',
-        tenantId: req.user.tenantId,
+        tenantId: req.user!.tenantId,
         title: 'Best Practices for AI Document Generation',
         slug: 'best-practices-for-ai-document-generation',
         category: 'best_practices',
@@ -618,7 +618,7 @@ router.get('/knowledge/articles', async (req, res) => {
         averageRating: 4.5,
         relatedArticles: ['article-1', 'article-3'],
         contentFreshnessScore: 0.88,
-        createdBy: req.user.id,
+        createdBy: req.user!.id,
         createdAt: new Date('2025-09-18T09:00:00Z'),
         updatedAt: new Date('2025-09-23T11:15:00Z'),
         publishedAt: new Date('2025-09-18T12:00:00Z'),
@@ -680,7 +680,7 @@ router.post('/documents/search', async (req, res) => {
     }
 
     const searchResults = await AIDocumentationService.searchDocuments(
-      req.user.tenantId,
+      req.user!.tenantId,
       query,
       filters,
       options,
@@ -704,7 +704,7 @@ router.get('/analytics/writing', async (req, res) => {
       end_date = new Date().toISOString(),
     } = req.query;
 
-    const analytics = await AIDocumentationService.getWritingAnalytics(req.user.tenantId, {
+    const analytics = await AIDocumentationService.getWritingAnalytics(req.user!.tenantId, {
       start: new Date(start_date as string),
       end: new Date(end_date as string),
     });

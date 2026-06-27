@@ -8721,3 +8721,16 @@ Status: Needs Review
   (model,idx)->:any,:number), ProductHubUnified (manufacturers useQuery -> useQuery<string[]>, consumed via
   .length + .map((manufacturer:string))).
 - Ratchet 2220 -> 2211 (-9); per-file count diff: NO file gained errors. Type-only. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 43: usage-tracking nullable cols + ai-documentation req.user (-38)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- usage-tracking-service.ts 16 -> 2: 14x TS18047 nullable usageMetrics columns (totalUsers/storageUsedMb/
+  apiCalls/activeLocations/businessRecords) in over-limit comparisons + percentage divisions -> (x ?? 0).
+  Left lines 332-343 (return-object values where null is acceptable) untouched to avoid a null->0 behavior
+  change. Remaining 2: TS2339 businessRecords.isDeleted (phantom col) deferred.
+- ai-documentation-routes.ts 23 -> 5: 23x TS18048 req.user possibly undefined. The router mounts at /api
+  with NO auth middleware, but every handler already dereferences req.user.tenantId/req.user.id assuming
+  presence (would crash if undefined) -> applied non-null assertion `req.user!.` (type-only, preserves the
+  exact current runtime). Remaining 5 are unrelated pre-existing errors.
+- Ratchet 2211 -> 2173 (-38); per-file count diff: NO file gained errors. Baseline tightened.

@@ -268,28 +268,31 @@ export class UsageTrackingService {
     const overages: Record<string, number> = {};
     let isOverLimit = false;
 
-    if (limits.maxUsers !== -1 && usage.totalUsers > limits.maxUsers) {
-      overages.users = usage.totalUsers - limits.maxUsers;
+    if (limits.maxUsers !== -1 && (usage.totalUsers ?? 0) > limits.maxUsers) {
+      overages.users = (usage.totalUsers ?? 0) - limits.maxUsers;
       isOverLimit = true;
     }
 
-    if (limits.maxStorage !== -1 && usage.storageUsedMb > limits.maxStorage * 1024) {
-      overages.storage = usage.storageUsedMb - limits.maxStorage * 1024;
+    if (limits.maxStorage !== -1 && (usage.storageUsedMb ?? 0) > limits.maxStorage * 1024) {
+      overages.storage = (usage.storageUsedMb ?? 0) - limits.maxStorage * 1024;
       isOverLimit = true;
     }
 
-    if (limits.maxApiCalls !== -1 && usage.apiCalls > limits.maxApiCalls) {
-      overages.apiCalls = usage.apiCalls - limits.maxApiCalls;
+    if (limits.maxApiCalls !== -1 && (usage.apiCalls ?? 0) > limits.maxApiCalls) {
+      overages.apiCalls = (usage.apiCalls ?? 0) - limits.maxApiCalls;
       isOverLimit = true;
     }
 
-    if (limits.maxLocations !== -1 && usage.activeLocations > limits.maxLocations) {
-      overages.locations = usage.activeLocations - limits.maxLocations;
+    if (limits.maxLocations !== -1 && (usage.activeLocations ?? 0) > limits.maxLocations) {
+      overages.locations = (usage.activeLocations ?? 0) - limits.maxLocations;
       isOverLimit = true;
     }
 
-    if (limits.maxBusinessRecords !== -1 && usage.businessRecords > limits.maxBusinessRecords) {
-      overages.businessRecords = usage.businessRecords - limits.maxBusinessRecords;
+    if (
+      limits.maxBusinessRecords !== -1 &&
+      (usage.businessRecords ?? 0) > limits.maxBusinessRecords
+    ) {
+      overages.businessRecords = (usage.businessRecords ?? 0) - limits.maxBusinessRecords;
       isOverLimit = true;
     }
 
@@ -506,21 +509,22 @@ export class UsageTrackingService {
 
     // Calculate percentages (-1 means unlimited, show as 0%)
     const percentages = {
-      users: limits.users === -1 ? 0 : Math.min(100, (usage.totalUsers / limits.users) * 100),
+      users:
+        limits.users === -1 ? 0 : Math.min(100, ((usage.totalUsers ?? 0) / limits.users) * 100),
       storage:
         limits.storage === -1
           ? 0
-          : Math.min(100, (usage.storageUsedMb / (limits.storage * 1024)) * 100),
+          : Math.min(100, ((usage.storageUsedMb ?? 0) / (limits.storage * 1024)) * 100),
       apiCalls:
-        limits.apiCalls === -1 ? 0 : Math.min(100, (usage.apiCalls / limits.apiCalls) * 100),
+        limits.apiCalls === -1 ? 0 : Math.min(100, ((usage.apiCalls ?? 0) / limits.apiCalls) * 100),
       locations:
         limits.locations === -1
           ? 0
-          : Math.min(100, (usage.activeLocations / limits.locations) * 100),
+          : Math.min(100, ((usage.activeLocations ?? 0) / limits.locations) * 100),
       businessRecords:
         limits.businessRecords === -1
           ? 0
-          : Math.min(100, (usage.businessRecords / limits.businessRecords) * 100),
+          : Math.min(100, ((usage.businessRecords ?? 0) / limits.businessRecords) * 100),
     };
 
     return {
