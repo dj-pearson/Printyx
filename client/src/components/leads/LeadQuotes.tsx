@@ -332,7 +332,7 @@ export function LeadQuotes({ leadId, leadName }: LeadQuotesProps) {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredQuotes.map((quote) => (
+                    filteredQuotes.map((quote: any) => (
                       <TableRow key={quote.id} className="hover:bg-gray-50">
                         <TableCell>
                           <div className="font-medium text-blue-600">{quote.quoteNumber}</div>

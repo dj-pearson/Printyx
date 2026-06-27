@@ -605,7 +605,7 @@ export function IntegrationsManagement() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         integration={selectedIntegration}
-        onSubmit={(data) => createMutation.mutate(data)}
+        onSubmit={(data: any) => createMutation.mutate(data)}
         isLoading={createMutation.isPending}
       />
     </div>

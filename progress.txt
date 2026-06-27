@@ -8860,3 +8860,15 @@ Status: Needs Review
   MobileFieldService (result.successful && result.successful.length).
 - All faithful nullable guards (?? 0 / optional-chain / fallback date). Ratchet 2015 -> 2003 (-12); per-file
   count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 54: TS7006/TS18046 singletons (-13, 11 files) — CROSSED <2000
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- Implicit-any callback params (:any/:string): ExternalIntegrationsDashboard (integration), LeadQuotes
+  (quote), IntegrationsManagement (data), salesforce-mapping (value,record transform), document-ocr-ai
+  (logger m), email-monitor (att), mileage (t), CollapsibleSidebar (n:string), index.ts (cors origin,callback).
+- Source-typing: equipment-lifecycle Object.entries(LIFECYCLE_STAGES).map(([key,value]:[string,string]))
+  -> fixed both the value.replace TS18046 and the inner (l) TS7006; ESignatureIntegration customers
+  useQuery<any[]> (cleared the customers-unknown TS18046).
+- Ratchet 2003 -> 1990 (-13); per-file count diff: NO file gained errors. Baseline tightened. CROSSED <2000
+  (6176 -> 1990, -68%).

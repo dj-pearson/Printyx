@@ -441,7 +441,7 @@ router.get('/api/equipment-lifecycle/stages', async (req: TenantRequest, res: Re
   try {
     const { LIFECYCLE_STAGES } = EquipmentLifecycleStateMachine;
 
-    const stages = Object.entries(LIFECYCLE_STAGES).map(([key, value]) => ({
+    const stages = Object.entries(LIFECYCLE_STAGES).map(([key, value]: [string, string]) => ({
       key,
       value,
       name: value.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),

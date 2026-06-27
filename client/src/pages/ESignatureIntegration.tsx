@@ -166,7 +166,7 @@ export default function ESignatureIntegration() {
   });
 
   // Fetch customers for dropdown
-  const { data: customers = [] } = useQuery({
+  const { data: customers = [] } = useQuery<any[]>({
     queryKey: ['/api/demos/customers'], // Reuse customers endpoint
   });
 
