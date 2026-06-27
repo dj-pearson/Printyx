@@ -357,6 +357,7 @@ export default function ComprehensiveOnboardingForm() {
       location: '',
       features: [],
       accessories: [],
+      isReplacement: false,
     };
     setEquipmentItems([...equipmentItems, newItem]);
     form.setValue('equipment', [...equipmentItems, newItem]);

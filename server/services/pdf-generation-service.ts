@@ -657,7 +657,7 @@ class PDFGenerationService {
     return {
       ...invoice,
       lineItems,
-    } as InvoiceWithDetails;
+    } as unknown as InvoiceWithDetails;
   }
 
   /**

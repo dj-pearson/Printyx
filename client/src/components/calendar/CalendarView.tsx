@@ -70,6 +70,7 @@ export default function CalendarView({ className }: CalendarViewProps) {
       },
       {
         id: 'event-2',
+        status: 'confirmed',
         title: 'Follow up with ABC Corp',
         description: 'AI-scheduled follow-up call',
         startTime: '2025-09-26T14:00:00Z',
@@ -83,6 +84,7 @@ export default function CalendarView({ className }: CalendarViewProps) {
       },
       {
         id: 'event-3',
+        status: 'confirmed',
         title: 'Focus Time: Proposal Writing',
         description: 'AI-blocked time for deep work',
         startTime: '2025-09-26T15:00:00Z',
@@ -94,6 +96,7 @@ export default function CalendarView({ className }: CalendarViewProps) {
       },
       {
         id: 'event-4',
+        status: 'confirmed',
         title: 'Service Call - XYZ Manufacturing',
         description: 'Copier maintenance and inspection',
         startTime: '2025-09-27T09:00:00Z',

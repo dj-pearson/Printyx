@@ -48,14 +48,15 @@ export function useExternalIntegrations() {
   // Get integration statuses
   const integrationStatuses = useQuery({
     queryKey: ['/api/integrations/status'],
-    queryFn: () => apiRequest<IntegrationStatus[]>('/api/integrations/status'),
+    queryFn: () => apiRequest('/api/integrations/status') as Promise<IntegrationStatus[]>,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   // E-Automate Integration
   const eAutomateConfig = useQuery({
     queryKey: ['/api/integrations/eautomate/config'],
-    queryFn: () => apiRequest<EAutomateIntegration>('/api/integrations/eautomate/config'),
+    queryFn: () =>
+      apiRequest('/api/integrations/eautomate/config') as Promise<EAutomateIntegration>,
   });
 
   const updateEAutomateConfig = useMutation({
@@ -84,7 +85,8 @@ export function useExternalIntegrations() {
   // Salesforce Integration
   const salesforceConfig = useQuery({
     queryKey: ['/api/integrations/salesforce/config'],
-    queryFn: () => apiRequest<SalesforceIntegration>('/api/integrations/salesforce/config'),
+    queryFn: () =>
+      apiRequest('/api/integrations/salesforce/config') as Promise<SalesforceIntegration>,
   });
 
   const updateSalesforceConfig = useMutation({
@@ -113,7 +115,8 @@ export function useExternalIntegrations() {
   // QuickBooks Integration
   const quickBooksConfig = useQuery({
     queryKey: ['/api/integrations/quickbooks/config'],
-    queryFn: () => apiRequest<QuickBooksIntegration>('/api/integrations/quickbooks/config'),
+    queryFn: () =>
+      apiRequest('/api/integrations/quickbooks/config') as Promise<QuickBooksIntegration>,
   });
 
   const updateQuickBooksConfig = useMutation({

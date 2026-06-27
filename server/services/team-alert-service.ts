@@ -468,13 +468,13 @@ export class TeamAlertService {
   }
 
   private static generateAlertEmailHTML(alert: any): string {
-    const severityColors = {
+    const severityColors: Record<string, string> = {
       info: '#3b82f6',
       warning: '#f59e0b',
       critical: '#ef4444',
     };
 
-    const severityBg = {
+    const severityBg: Record<string, string> = {
       info: '#eff6ff',
       warning: '#fef3c7',
       critical: '#fee2e2',

@@ -142,7 +142,7 @@ class AIEmployeeService {
       // Initialize default skills for the employee
       await this.initializeEmployeeSkills(tenantId, result.rows[0].id, employeeData.employeeType);
 
-      return result.rows[0] as AIEmployee;
+      return result.rows[0] as unknown as AIEmployee;
     } catch (error) {
       log.error('Error creating AI employee:', error);
       throw new Error('Failed to create AI employee');
@@ -156,7 +156,7 @@ class AIEmployeeService {
         WHERE tenant_id = ${tenantId} AND id = ${employeeId}
       `);
 
-      return (result.rows[0] as AIEmployee) || null;
+      return (result.rows[0] as unknown as AIEmployee) || null;
     } catch (error) {
       log.error('Error fetching AI employee:', error);
       return null;
@@ -190,7 +190,7 @@ class AIEmployeeService {
         WHERE ${sql.join(conditions, sql` AND `)}
         ORDER BY created_at DESC
       `);
-      return result.rows as AIEmployee[];
+      return result.rows as unknown as AIEmployee[];
     } catch (error) {
       log.error('Error fetching AI employees:', error);
       return [];
@@ -234,7 +234,7 @@ class AIEmployeeService {
         ) RETURNING *
       `);
 
-      const task = result.rows[0] as AIEmployeeTask;
+      const task = result.rows[0] as unknown as AIEmployeeTask;
 
       // Start task execution asynchronously
       this.executeTask(task.id, tenantId);
@@ -675,7 +675,7 @@ class AIEmployeeService {
     context: any,
   ): Promise<string> {
     // Simple assignment logic - in real implementation, this would be more sophisticated
-    const employeeTypeMap = {
+    const employeeTypeMap: Record<string, string> = {
       lead_qualification: 'sales_assistant',
       customer_support: 'support_agent',
       data_analysis: 'data_analyst',
@@ -700,7 +700,7 @@ class AIEmployeeService {
     employeeId: string,
     employeeType: string,
   ): Promise<void> {
-    const skillsByType = {
+    const skillsByType: Record<string, string[]> = {
       sales_assistant: [
         'lead_qualification',
         'email_communication',
@@ -791,7 +791,7 @@ class AIEmployeeService {
 
   private estimateResolutionTime(ticket: any): number {
     const category = this.categorizeIssue(ticket.description);
-    const timeEstimates = {
+    const timeEstimates: Record<string, number> = {
       technical: 45,
       billing: 30,
       account: 20,
@@ -856,7 +856,7 @@ class AIEmployeeService {
         WHERE ${sql.join(conditions, sql` AND `)}
         ORDER BY assigned_at DESC
       `);
-      return result.rows as AIEmployeeTask[];
+      return result.rows as unknown as AIEmployeeTask[];
     } catch (error) {
       log.error('Error fetching employee tasks:', error);
       return [];

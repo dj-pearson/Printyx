@@ -69,7 +69,8 @@ router.get('/subscriptions', async (req, res) => {
       .from(tenantSubscriptions)
       .orderBy(desc(tenantSubscriptions.createdAt))
       .limit(Number(limit))
-      .offset(offset);
+      .offset(offset)
+      .$dynamic();
 
     // Apply filters
     if (status) {
@@ -267,7 +268,8 @@ router.get('/discounts', async (req, res) => {
       .from(discounts)
       .orderBy(desc(discounts.createdAt))
       .limit(Number(limit))
-      .offset(offset);
+      .offset(offset)
+      .$dynamic();
 
     if (active !== undefined) {
       query = query.where(eq(discounts.isActive, active === 'true'));

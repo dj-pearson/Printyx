@@ -3,8 +3,19 @@
 **Branch:** `claude/quality-002-typecheck-burndown` (main was merged via PR #186; this is the continuation branch)
 **Story:** QUALITY-002 — "Drive `npm run check` to green"
 **Status:** `passes: false` (flips to true only when `tsc` is fully clean)
-**Current count:** **1990** tsc errors (started at 6176; **−68%**). Baseline tracked in `docs/typecheck-baseline.json`.
-**Last batch:** 54 (TS7006/TS18046 singletons across 11 files). Singleton-sweep phase: null-guards, logger args, implicit-any params, untyped-query generics — ~12-15/batch.
+**Current count:** **1926** tsc errors (started at 6176; **−69%**). Baseline tracked in `docs/typecheck-baseline.json`.
+**Last batch:** 62 (missing schema exports + casts + owner summary).
+
+> ⛳ SAFE MECHANICAL BURNDOWN COMPLETE (62 batches, 6176→1926, −69%). All zero-runtime-risk clusters are
+> exhausted. The remaining ~1926 errors are phantom-shape / insert-shape mismatches (TS2339 839, TS2769 396,
+> TS2322 222, TS2345 186, …) that change runtime SQL/response shapes and CANNOT be verified without running
+> the app. See the **OWNER SUMMARY** at the bottom of `progress.txt` and in the `prd.json` QUALITY-002 notes
+> for the enumerated per-file rewrite-story list. Reaching tsc-green from here is feature-level work; do NOT
+> continue blind mechanical type edits (they would mask the real latent bugs). The ratchet is CI-held at 1926.
+
+> DEFERRED for a focused pass: gps-tracking-routes 4 TS2554 are storage-method arg mismatches — a MIX of
+> missing required args (updateTechnicianLocation, getLatestEtaForTicket want 3, got 2) and extra ignored
+> args (startRoute, completeRoute) — each needs the storage signature checked individually before fixing.
 
 > NOTE for sed: files with emoji in log strings (🚀🔄✅📝) break `sed` matching — use the Edit tool for those.
 > The clean per-batch yield is now ~6-15 (clusters fragmented into singletons). The big remaining buckets

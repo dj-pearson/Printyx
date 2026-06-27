@@ -1043,7 +1043,7 @@ export class CustomerPortalService {
 
       // Mock equipment ownership verification - in reality this would query equipment tables
       // that have foreign keys to customers and tenants
-      const mockEquipmentOwnership = {
+      const mockEquipmentOwnership: Record<string, string[]> = {
         'eq-001': ['demo-customer-001', 'customer-001'],
         'eq-002': ['demo-customer-001', 'customer-001'],
         'eq-003': ['demo-customer-002', 'customer-002'],
@@ -1288,7 +1288,7 @@ export class CustomerPortalService {
         const selectedFields: any = {};
         options.fields!.forEach((field) => {
           if (equipment.hasOwnProperty(field)) {
-            selectedFields[field] = equipment[field];
+            selectedFields[field] = (equipment as Record<string, any>)[field];
           }
         });
         return selectedFields;
@@ -2172,7 +2172,8 @@ export class CustomerPortalService {
         .select()
         .from(customerMaintenanceAppointments)
         .where(and(...conditions))
-        .orderBy(desc(customerMaintenanceAppointments.appointmentDate));
+        .orderBy(desc(customerMaintenanceAppointments.appointmentDate))
+        .$dynamic();
 
       if (options.limit) {
         query = query.limit(options.limit);

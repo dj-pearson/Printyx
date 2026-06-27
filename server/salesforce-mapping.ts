@@ -8,7 +8,7 @@ export interface FieldMapping {
   dataType: 'string' | 'number' | 'boolean' | 'date' | 'decimal' | 'json';
   required?: boolean;
   defaultValue?: any;
-  transform?: (value: any) => any;
+  transform?: (value: any, record?: any) => any;
 }
 
 export interface TableMapping {
@@ -588,7 +588,7 @@ export const SALESFORCE_FIELD_MAPPINGS: TableMapping[] = [
             Unqualified: 'unqualified',
             Converted: 'converted',
           };
-          return statusMap[value] || 'new';
+          return statusMap[value as keyof typeof statusMap] || 'new';
         },
       },
       {

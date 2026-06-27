@@ -169,7 +169,7 @@ export function transformFrontendToDb<T extends Record<string, any>>(
   const transformed: Record<string, any> = {};
 
   Object.entries(data).forEach(([key, value]) => {
-    const dbKey = fieldMap[key] || key;
+    const dbKey = fieldMap[key as keyof typeof fieldMap] || key;
     transformed[dbKey] = value;
   });
 
@@ -211,7 +211,7 @@ export const BusinessRecordsTransformer = {
 
   // Handle status conversion with proper lead-to-customer lifecycle
   normalizeStatus: (status: string, recordType: 'lead' | 'customer'): string => {
-    const statusMap = {
+    const statusMap: Record<string, Record<string, string>> = {
       lead: {
         new: 'new',
         contacted: 'contacted',

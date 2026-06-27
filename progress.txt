@@ -8872,3 +8872,152 @@ Status: Needs Review
   useQuery<any[]> (cleared the customers-unknown TS18046).
 - Ratchet 2003 -> 1990 (-13); per-file count diff: NO file gained errors. Baseline tightened. CROSSED <2000
   (6176 -> 1990, -68%).
+
+## Iteration - QUALITY-002 BATCH 55: TS2554 loggers + salesforce transform type (-5)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- catalog-csv (2): the Debug standardRepPriceRaw 3-arg log.info -> {value,type} meta; 'CSV file size' 3-arg
+  -> {bytes} meta. test-toner-order-simple: 'API responded' 3-arg -> {status} meta.
+- salesforce-mapping: FieldMapping.transform type was `(value: any) => any` (1 param) but the transform
+  IMPLs and the call site (line 1154) use 2 args (value, record) -> widened the type to
+  `(value: any, record?: any) => any` (real type-correctness fix; impls already use record).
+- DEFERRED gps-tracking 4 TS2554: storage-method arg mismatches — a MIX of missing required args (93
+  updateTechnicianLocation, 746 getLatestEtaForTicket expect 3 got 2) and extra ignored args (420 startRoute,
+  459 completeRoute) — each needs individual signature reconciliation; flagged for a focused pass.
+- Ratchet 1990 -> 1985 (-5); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 56: gps-tracking storage-arg mismatches (-3, real bug)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- updateTechnicianLocation(req.params.id, {data}) — sig is (technicianId, tenantId, data) so the data object
+  was passed in the TENANTID slot (tenantId+data both effectively undefined) -> REAL BUG: inserted
+  user.tenantId as the 2nd arg, kept the data object as 3rd. Tech location updates now scope correctly.
+- startRoute(id, tenantId, startLocation) -> startRoute(id, tenantId); completeRoute(id, tenantId,
+  endLocation, actualDuration) -> completeRoute(id, tenantId). Sigs take 2 args; the extra location/duration
+  were silently ignored at runtime (faithful drop; the methods never persisted them - feature gap noted).
+- DEFERRED gps 746 getLatestEtaForTicket(ticketId, tenantId): sig is (ticketId, technicianId, tenantId) and
+  the route has NO technicianId in scope (GET /eta/:ticketId) — passing tenantId as technicianId is the bug,
+  but the fix needs a product decision (where does technicianId come from for a ticket-level latest-ETA, or
+  should the storage method drop the technicianId filter?). Flagged for owner.
+- Ratchet 1985 -> 1982 (-3); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 57: TS2558 apiRequest generics + TS7053 index-by-string (-15)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- TS18047/TS18048/TS18046 clusters now FULLY EXHAUSTED (0 remaining excl. predictive phantom file).
+- useExternalIntegrations (4 TS2558): apiRequest takes NO type generic (returns Promise<any>), so
+  apiRequest<T>(url) -> apiRequest(url) as Promise<T> (preserves the useQuery result typing).
+- TS7053 element-implicitly-any index-by-string: team-alert-service (severityColors/severityBg ->
+  Record<string,string>), ai-employee-service (employeeTypeMap->Record<string,string>, skillsByType->
+  Record<string,string[]>, timeEstimates->Record<string,number>), data-field-mapping (statusMap->
+  Record<string,Record<string,string>>; fieldMap param -> key as keyof typeof fieldMap), customer-portal-
+  service (mockEquipmentOwnership->Record<string,string[]>, equipment[field] -> (equipment as
+  Record<string,any>)[field]). All faithful (runtime lookup unchanged; undefined for unknown keys as before).
+- Ratchet 1982 -> 1967 (-15); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 58: make apiRequest generic — clears ALL TS2558 (-13, 1 line)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- ROOT-CAUSE one-liner: 13 TS2558 'Expected 0 type arguments, but got 1' across 9 files were all
+  apiRequest<T>(url) calls, but apiRequest was declared `(...): Promise<any>` with no generic. Made it
+  `apiRequest<T = any>(...): Promise<T>` (client/src/lib/queryClient.ts). All return paths return
+  safeJsonParse() -> any, assignable to T; callers without a generic still get Promise<any> (T defaults
+  to any) so ZERO behavior change. This is the correct fix (apiRequest SHOULD be generic) and the batch-57
+  `as Promise<T>` casts still compile.
+- Cleared TS2558 entirely (13 -> 0). Files that had them: AssetUploadDialog, ApolloCredentialManager,
+  ProductPricingForm, BlogCompetitorGap, BlogPaaMiner, BlogPostEditor, BlogSerp, BlogSettingsCmsTargets/
+  Jobs/KeywordTargets.
+- Ratchet 1967 -> 1954 (-13); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 59: TS7053 string-index singletons (-6)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- queryClient (2): requestHeaders typed HeadersInit (not indexable by string) -> Record<string,string>
+  (still a valid fetch HeadersInit; clears both requestHeaders['Authorization'] = ...).
+- MyTasksView (2): reduce accumulator `{}` indexed by key -> (acc as Record<string,any>)[key].
+- CustomerDetail + LeadDetail: setExpandedSections(prev => ({...prev, [section]: !prev[section]})) ->
+  !prev[section as keyof typeof prev].
+- api-versioning: handlers[version] (version was any||DEFAULT) -> handlers[version as ApiVersion].
+- salesforce-mapping: statusMap[value] -> statusMap[value as keyof typeof statusMap].
+- TS7053 now 1 remaining. Ratchet 1954 -> 1948 (-6); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 60: TS2352 unknown-casts + TS2741 $dynamic/missing-prop (-11)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- ai-employee-service (5 TS2352): db.execute() result.rows cast to domain types didn't overlap ->
+  `as unknown as AIEmployee/AIEmployeeTask(\[\])` (standard raw-SQL-row cast).
+- routes-admin-subscriptions (3 TS2741 'where missing'): `let query = db.select()...; query = query.where()`
+  reassignment -> added .$dynamic() to both select chains (tenantSubscriptions + discounts). Batch-25 recipe.
+- CalendarView (3 TS2741 'status missing'): mock events event-2/3/4 lacked the required CalendarEvent.status
+  -> added status: 'confirmed' (matching event-1 + the 'confirmed'|'tentative'|'cancelled' union).
+- Ratchet 1948 -> 1937 (-11); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 61: TS2741 $dynamic cluster + openapi cast (-6)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- TS2741 'where/limit/offset missing' = query=query.X() reassignment -> added .$dynamic() to 4 select
+  chains: apollo-storage (tenantApolloLeads, limit+offset = 2 errs), customer-portal-service
+  (customerMaintenanceAppointments), storage.ts (customerHealthScores), routes-root-admin (users w/joins).
+- openapi-validator (TS2352): (inner as {_def:...}) non-overlap -> as unknown as {_def:...}.
+- Ratchet 1937 -> 1931 (-6); per-file count diff: NO file gained errors. Baseline tightened.
+- NOTE: ComprehensiveOnboardingForm 362 TS2741 (form.setValue equipment array element missing prop) +
+  TS2305 missing exports (billingDisputes/creditMemos = phantom DEFER; ServiceSession/BillingEntry/
+  JournalEntry/articleRatings/InsertLeadScoreCalculation = need schema verification) left for next probe.
+
+## Iteration - QUALITY-002 BATCH 62: TS2305 real missing-exports + TS2352/TS2741 (-5)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- TS2305 real (not phantom): articleRatings exists in shared/knowledge-base-schema.ts (line 562) but was
+  missing from schema.ts's re-export block -> added it. InsertLeadScoreCalculation exists in
+  shared/lead-scoring-schema.ts (line 369), not re-exported from @shared/schema -> split the import in
+  auto-lead-routing-service.ts to pull it from @shared/lead-scoring-schema.
+- TS2352 as-unknown-as: ai-documentation-service (2x `} as AIDocument`), pdf-generation-service (1x
+  `} as InvoiceWithDetails`).
+- TS2741: ComprehensiveOnboardingForm newItem missing required `isReplacement` -> added isReplacement:false.
+- Ratchet 1931 -> 1926 (-5); per-file count diff: NO file gained errors. Baseline tightened.
+
+## ============================================================================
+## QUALITY-002 OWNER SUMMARY (2026-06-27) — SAFE MECHANICAL BURNDOWN COMPLETE
+## ============================================================================
+Cumulative: 6176 -> 1926 tsc errors (-69%) across 62 batches. The safe, zero-runtime-risk mechanical
+clusters are now EXHAUSTED (TS18047/18048/18046 null/undefined guards; TS2558 apiRequest generic; TS7006
+implicit-any; TS7053 string-index; most TS2554 logger/arg; most TS2352/TS2741). Per-batch yield has fallen
+to ~5. The REMAINING ~1926 errors are dominated by 4 codes that are NOT safe to batch mechanically:
+  TS2339 (839) property-does-not-exist  | TS2769 (396) no-overload/insert-shape
+  TS2322 (222) type-not-assignable      | TS2345 (186) arg-type
+plus TS2304 (62, almost all the predictive phantom tables) and TS2353 (51, extra-property on inserts).
+
+These require PHANTOM-SHAPE / INSERT-SHAPE REWRITES that change runtime SQL or response shapes and therefore
+NEED THE ABILITY TO RUN THE APP to verify. They should each be their own scoped, testable story:
+
+TOP PHANTOM-SHAPE FILES (group by table/feature; approx error counts):
+1. routes-predictive-service-dispatch.ts (69) — references phantom TABLES serviceCallsEnhanced,
+   equipmentMetrics, technicianResourcesEnhanced that exist in NO schema/migration. Endpoints already 500.
+   STORY: design + migrate the 3 tables (or delete the feature), then re-type. BLOCKED on a product decision.
+2. storage.ts (60) — residual TS2416 IStorage method-signature drift + TS2339 phantom-column reads in big
+   query builders. STORY: reconcile DatabaseStorage methods against IStorage one cluster at a time w/ app run.
+3. routes-technician-management.ts (44) + routes-service-dispatch.ts (29) + routes-mobile-technician.ts (24)
+   — read technicians.name/specialties/availability + service_tickets.technicianId etc. that don't exist on
+   the real tables. STORY: remap to real technician/service-ticket columns (verify against live data).
+4. billing: billing-engine-service.ts (43) + routes/billing.ts (27) — import phantom tables billingDisputes /
+   creditMemos (no schema/migration). STORY: add the tables+migration OR remove the dispute/credit-memo
+   endpoints; then re-type. BLOCKED on product decision.
+5. routes-product-models.ts (34) + MeterBilling.tsx (26) + Enhanced... — product/meter CRUD bound to stale
+   mock shapes (price/stockQuantity/specifications/blackMeter/colorMeter). STORY: re-bind to real columns
+   (batch-7/8 recipe) — runtime form/SQL change, needs app verification.
+6. seed-all-demo-data.ts (32) + admin-seed-routes.ts (24) — seed inserts with literal objects referencing
+   phantom columns. STORY: align seed objects to real insert types (low prod risk; still needs a seed run).
+7. routes-today-dashboard.ts (29) — db.query.activities / db.query.deals are UNREGISTERED relations (return
+   [] at runtime) + activities.status semantics. STORY: rewrite to db.select().from(...) w/ real columns.
+8. routes-onboarding.ts (27) — onboarding checklist type is {id,tenantId,items} but code reads
+   customerData/checklistTitle/installationType/... STORY: model the real onboarding shape + rewrite.
+9. pdf-generation-service.ts (27) — InvoiceWithDetails reads phantom total/tax/paid/balance (real cols
+   total_amount/amount_paid/balance_due). STORY: re-bind to real invoices columns.
+10. field-service-routes.ts (27), routes-universal-search.ts (24), manufacturer-integration-service.ts (22),
+    ESignatureIntegration.tsx (22, mock camelCase vs snake signature_requests), routes-software-products.ts
+    (20), routes-root-admin.ts (23, users.name/status phantom) — each a per-table remap story.
+
+RECOMMENDATION: the ratchet is firmly held at 1926 and CI-guarded (scripts/check-types.mjs). Reaching
+tsc-green from here is feature-level work, not type-janitor work — convert the groups above into individual
+testable stories (each "re-bind <file> to real <table> columns; verify endpoint/page against live data").
+Continuing blind type edits on these risks masking the real latent bugs they represent.

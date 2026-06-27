@@ -8256,6 +8256,7 @@ export {
   articleVersions,
   articleViews,
   articleFeedback,
+  articleRatings,
   aiContentGenerationQueue,
   articleEmbeddings,
   knowledgeSearchQueries,

@@ -86,7 +86,8 @@ export class ApolloStorage {
       .select()
       .from(tenantApolloLeads)
       .where(and(...conditions))
-      .orderBy(desc(tenantApolloLeads.createdAt));
+      .orderBy(desc(tenantApolloLeads.createdAt))
+      .$dynamic();
 
     if (filters?.limit) {
       query = query.limit(filters.limit);
