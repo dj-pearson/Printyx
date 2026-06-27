@@ -56,12 +56,12 @@ export default function CustomerNumberSettings() {
   const queryClient = useQueryClient();
 
   // Fetch current configurations
-  const { data: configs = [], isLoading } = useQuery({
+  const { data: configs = [], isLoading } = useQuery<CustomerNumberConfig[]>({
     queryKey: ['/api/customer-numbers/config'],
   });
 
   // Fetch customer number history
-  const { data: history = [] } = useQuery({
+  const { data: history = [] } = useQuery<CustomerNumberHistory[]>({
     queryKey: ['/api/customer-numbers/history'],
   });
 

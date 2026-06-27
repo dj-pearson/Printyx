@@ -105,22 +105,22 @@ export default function QuoteProposalGeneration() {
 
   // Fetch proposals
   // Fetch proposals (queryClient automatically unwraps { data: [...] } responses)
-  const { data: proposals = [], isLoading: proposalsLoading } = useQuery({
+  const { data: proposals = [], isLoading: proposalsLoading } = useQuery<any[]>({
     queryKey: ['/api/proposals'],
   });
 
   // Fetch proposal templates
-  const { data: templates = [], isLoading: templatesLoading } = useQuery({
+  const { data: templates = [], isLoading: templatesLoading } = useQuery<any[]>({
     queryKey: ['/api/proposals/proposal-templates'],
   });
 
   // Fetch equipment packages
-  const { data: packages = [], isLoading: packagesLoading } = useQuery({
+  const { data: packages = [], isLoading: packagesLoading } = useQuery<any[]>({
     queryKey: ['/api/proposals/equipment-packages'],
   });
 
   // Fetch business records for customer selection
-  const { data: businessRecords = [] } = useQuery({
+  const { data: businessRecords = [] } = useQuery<any[]>({
     queryKey: ['/api/business-records'],
   });
 

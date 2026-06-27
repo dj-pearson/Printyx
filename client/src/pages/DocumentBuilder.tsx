@@ -98,23 +98,23 @@ export default function DocumentBuilder() {
   });
 
   // Fetch available quotes for import
-  const { data: availableQuotes = [] } = useQuery({
+  const { data: availableQuotes = [] } = useQuery<any[]>({
     queryKey: ['/api/quotes'],
   });
 
   // Fetch quote line items when quote is selected
-  const { data: quoteLineItems = [] } = useQuery({
+  const { data: quoteLineItems = [] } = useQuery<any[]>({
     queryKey: ['/api/quotes', selectedQuoteId, 'line-items'],
     enabled: !!selectedQuoteId,
   });
 
   // Fetch customers for selection
-  const { data: customers = [] } = useQuery({
+  const { data: customers = [] } = useQuery<any[]>({
     queryKey: ['/api/business-records'],
   });
 
   // Fetch existing documents
-  const { data: documents = [], isLoading } = useQuery({
+  const { data: documents = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/documents'],
   });
 

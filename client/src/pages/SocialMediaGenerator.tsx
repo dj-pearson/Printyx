@@ -102,12 +102,12 @@ export default function SocialMediaGenerator() {
   const [showCronDialog, setShowCronDialog] = useState(false);
 
   // Fetch social media posts
-  const { data: posts = [], isLoading: postsLoading } = useQuery({
+  const { data: posts = [], isLoading: postsLoading } = useQuery<SocialMediaPost[]>({
     queryKey: ['/api/social-media/posts'],
   });
 
   // Fetch cron jobs
-  const { data: cronJobs = [], isLoading: cronLoading } = useQuery({
+  const { data: cronJobs = [], isLoading: cronLoading } = useQuery<CronJob[]>({
     queryKey: ['/api/social-media/cron-jobs'],
   });
 
