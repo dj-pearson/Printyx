@@ -130,6 +130,17 @@ interface PipelineOpportunity {
   lead_source: string;
 }
 
+interface PipelineSummary {
+  totalValue?: number;
+  growthRate?: number;
+  activeOpportunities?: number;
+  qualifiedOpportunities?: number;
+  conversionRate?: number;
+  avgSalesCycle?: number;
+  monthlyRevenue?: number;
+  goalAchievement?: number;
+}
+
 export default function SalesPipelineWorkflow() {
   const [selectedStage, setSelectedStage] = useState<string>('all');
   const [selectedRep, setSelectedRep] = useState<string>('all');
@@ -183,7 +194,7 @@ export default function SalesPipelineWorkflow() {
   });
 
   // Fetch pipeline summary
-  const { data: pipelineSummary } = useQuery({
+  const { data: pipelineSummary } = useQuery<PipelineSummary>({
     queryKey: ['/api/sales-pipeline/summary'],
     refetchInterval: 30000,
   });

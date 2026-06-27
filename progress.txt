@@ -8389,3 +8389,18 @@ Status: Needs Review
 
 Iteration 12 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 20: client untyped-useQuery burndown cont. (-26)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- SalesPipelineWorkflow.tsx (8 TS2339): PipelineSummary optional-number interface. The file's 2
+  TS2322 are a SEPARATE pre-existing TeamStatsWidget prop mismatch (variant/showAutoRefresh) -
+  LEFT as-is (shifted to L438/680 by my +11 interface lines, confirmed not new).
+- MobileServiceApp.tsx (7 TS2339 + 1 TS2322): RouteData{optimizedRoute:any REQUIRED} (read
+  directly under {routeData &&}).
+- PredictiveAnalytics.tsx (9 TS2339 + 1 TS2322): ModelsData + DataSourcesData (all ?./||/&& -> optional).
+- Ratchet 2781 -> 2755 (-26); MobileServiceApp+PredictiveAnalytics 0; SalesPipeline 8->2
+  (2 remaining = shifted pre-existing TeamStatsWidget). Zero genuinely-new logical errors. Baseline tightened.
+
+Iteration 13 (06/27/2026): Story QUALITY-002
+Status: Needs Review
