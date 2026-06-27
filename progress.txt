@@ -8545,3 +8545,15 @@ Status: Needs Review
 
 Iteration 24 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 32: permission EDIT->UPDATE (-3)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- routes-product-models (x2) + routes-customer-success used PERMISSIONS.*.EDIT, but INVENTORY.ITEM and
+  SALES.CUSTOMER define UPDATE (the canonical edit key) not EDIT -> pointed guards at .UPDATE (real
+  permission strings; fixes requirePermission([undefined]) at runtime).
+- Ratchet 2511 -> 2508 (-3); EMPTY non-target diff (zero new). Baseline tightened.
+- Hard tail confirmed: per-cycle yield now small; remaining bulk is phantom-shape/unimplemented/RBAC.
+
+Iteration 25 (06/27/2026): Story QUALITY-002
+Status: Needs Review

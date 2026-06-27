@@ -178,7 +178,7 @@ export function registerProductModelsRoutes(app: Express) {
   app.put(
     '/api/product-models/:id',
     isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.ITEM.EDIT]),
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
     async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user.tenantId;
@@ -376,7 +376,7 @@ export function registerProductModelsRoutes(app: Express) {
   app.patch(
     '/api/product-models/bulk-stock-update',
     isAuthenticated,
-    requirePermission([PERMISSIONS.INVENTORY.ITEM.EDIT]),
+    requirePermission([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
     async (req: AuthenticatedRequest, res) => {
       try {
         const tenantId = req.user.tenantId;

@@ -678,7 +678,7 @@ router.get(
 router.post(
   '/api/customer-success/calculate-health',
 
-  requirePermission([PERMISSIONS.SALES.CUSTOMER.EDIT]),
+  requirePermission([PERMISSIONS.SALES.CUSTOMER.UPDATE]),
   async (req: AuthenticatedRequest, res) => {
     try {
       const tenantId = req.user?.tenantId;
