@@ -116,7 +116,7 @@ export function CustomerQuotes({ customerId, customerName }: CustomerQuotesProps
     data: quotes = [],
     isLoading,
     refetch,
-  } = useQuery({
+  } = useQuery<Quote[]>({
     queryKey: ['/api/quotes', 'customer', customerId],
     enabled: !!customerId,
   });

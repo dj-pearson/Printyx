@@ -332,7 +332,7 @@ export const ServiceRequestsDashboard = memo(function ServiceRequestsDashboard()
   });
 
   // Fetch satisfaction surveys - Least critical, can be cached longer
-  const { data: satisfactionSurveys = [] } = useQuery({
+  const { data: satisfactionSurveys = [] } = useQuery<any[]>({
     queryKey: ['/api/customer-portal/satisfaction/surveys'],
     staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
     refetchInterval: 5 * 60 * 1000, // 5 minutes for surveys

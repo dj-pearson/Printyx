@@ -409,7 +409,7 @@ async function checkDatabaseHealth() {
   } catch (error) {
     return {
       status: 'critical',
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }

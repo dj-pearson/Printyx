@@ -122,7 +122,7 @@ export function registerSalesforceRoutes(app: Express) {
               log.error(`Error processing record ${record[mapping.primaryKey]}:`, error);
               results.errors.push({
                 record: record[mapping.primaryKey],
-                error: error.message,
+                error: error instanceof Error ? error.message : String(error),
               });
               results.errorCount++;
             }

@@ -8788,3 +8788,14 @@ Status: Needs Review
 - auth-routes (5): testUser from storage.getUser (User|undefined) deref'd as testUser.id/.email/... ->
   added `if (!testUser) return res.status(404)...` guard before the res.json (real null-safety + narrows).
 - Ratchet 2077 -> 2057 (-20); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 48: TS18046 singletons - untyped useQuery + catch (-7)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- 4 client untyped useQuery: CustomerQuotes (useQuery<Quote[]>), CustomerContracts (useQuery<Contract[]>),
+  ServiceRequestsDashboard (satisfactionSurveys useQuery<any[]>, .find((survey:any))), PreventiveMaintenance
+  Scheduling (businessRecords useQuery<any[]>, .map((record:any))).
+- 3 server catch error-unknown: routes-salesforce-integration + routes-admin-workflows (error: error.message
+  -> error instanceof Error ? .message : String(error)), routes-enhanced-service (if (error.message === '...')
+  -> if (error instanceof Error && error.message === '...')).
+- Ratchet 2057 -> 2050 (-7); per-file count diff: NO file gained errors. Baseline tightened. Crossed <=2050.
