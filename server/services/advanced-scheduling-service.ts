@@ -151,7 +151,7 @@ class AdvancedSchedulingService {
         result: finalResult,
       });
 
-      log.info('✅ Advanced scheduling completed in', duration, 'ms');
+      log.info(`✅ Advanced scheduling completed in ${duration}ms`);
       return finalResult;
     } catch (error) {
       log.error('Advanced scheduling failed:', error);
@@ -252,7 +252,7 @@ Return JSON with updated pattern insights:
 
       log.info(`📊 Updated patterns for user ${userId}:`, patternInsights.insights?.slice(0, 2));
     } catch (error) {
-      log.error('Pattern learning failed for user', userId, ':', error);
+      log.error(`Pattern learning failed for user ${userId}:`, error);
     }
   }
 

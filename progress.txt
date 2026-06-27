@@ -8811,3 +8811,17 @@ Status: Needs Review
   consolidated the extra positional args into a {notificationId, messageId/error} (or {count, subtotal})
   meta object (preserves structured logging; same as batch 40 line 262).
 - Ratchet 2050 -> 2035 (-15); per-file count diff: NO file gained errors. Baseline tightened.
+
+## Iteration - QUALITY-002 BATCH 50: TS2554 missing-tenantId bug + logger args (-8)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- lead-intelligence-service (3, REAL BUG): storage.getBusinessRecord(leadId) missing tenantId — the method
+  is getBusinessRecord(id, tenantId) and filters and(eq(id),eq(tenantId)), so tenantId=undefined matched
+  nothing and lead-score/enrich/intelligence silently returned empty. All 3 methods have tenantId in scope
+  -> getBusinessRecord(leadId, tenantId). (batch-29 recipe)
+- routes-tasks (143): storage.getProjects(tenantId, userId) -> getProjects(tenantId) (method takes 1 arg;
+  the extra userId was silently ignored at runtime -> faithful).
+- Logger 3-arg consolidations (logger takes 1-2): advanced-scheduling-service (3: template-literal the
+  count/duration, error meta), meeting-transcription-service (2: template + {recordingId,status} meta),
+  routes-tasks 157 (Creating project -> {tenantId,userId} meta).
+- Ratchet 2035 -> 2027 (-8); per-file count diff: NO file gained errors. Baseline tightened.

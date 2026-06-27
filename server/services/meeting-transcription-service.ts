@@ -350,7 +350,7 @@ class MeetingTranscriptionService {
       contentCategories: ['business_planning', 'performance_review', 'strategy_discussion'],
     };
 
-    log.info('✅ Transcription generated with', mockSegments.length, 'segments');
+    log.info(`✅ Transcription generated with ${mockSegments.length} segments`);
     return transcription;
   }
 
@@ -792,7 +792,7 @@ Return JSON array:
       aiAnalysisStatus?: string;
     },
   ): Promise<void> {
-    log.info('📝 Updating recording status:', recordingId, status);
+    log.info('📝 Updating recording status:', { recordingId, status });
     // In production, this would update the database
   }
 
