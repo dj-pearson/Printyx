@@ -3,8 +3,8 @@
 **Branch:** `claude/quality-002-typecheck-burndown` (main was merged via PR #186; this is the continuation branch)
 **Story:** QUALITY-002 — "Drive `npm run check` to green"
 **Status:** `passes: false` (flips to true only when `tsc` is fully clean)
-**Current count:** **2121** tsc errors (started at 6176; **−66%**). Baseline tracked in `docs/typecheck-baseline.json`.
-**Last batch:** 44 (req.user! across 5 sibling route modules).
+**Current count:** **2077** tsc errors (started at 6176; **−66%**). Baseline tracked in `docs/typecheck-baseline.json`.
+**Last batch:** 46 (broken import paths + nullable-col guards). `req.user!` cluster now exhausted (batches 43-45).
 
 > HIGH-YIELD PATTERN (batches 43-44): many `/api` route modules in routes-registry `asyncRootApiMounts` are
 > mounted with NO auth middleware yet dereference `req.user.x` directly (TS18048). Where the access is plain
