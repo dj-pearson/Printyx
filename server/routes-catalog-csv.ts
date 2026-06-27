@@ -80,8 +80,8 @@ function validateProductModelData(row: any): any {
       // Support both comma and semicolon separated values
       const accessories = accessoryString
         .split(/[,;]/)
-        .map((a) => a.trim())
-        .filter((a) => a.length > 0);
+        .map((a: string) => a.trim())
+        .filter((a: string) => a.length > 0);
       if (accessories.length > 0) {
         requiredAccessories = accessories.join(',');
       }
@@ -585,8 +585,8 @@ export function registerCatalogCsvRoutes(app: Express) {
             if (productData.requiredAccessories) {
               const requiredCodes = productData.requiredAccessories
                 .split(',')
-                .map((code) => code.trim())
-                .filter((code) => code.length > 0);
+                .map((code: string) => code.trim())
+                .filter((code: string) => code.length > 0);
 
               if (requiredCodes.length > 0) {
                 const existingAccessories = await storage.getProductAccessoriesByCodes(
@@ -594,11 +594,15 @@ export function registerCatalogCsvRoutes(app: Express) {
                   tenantId,
                 );
                 const existingCodes = existingAccessories.map((acc) => acc.accessoryCode);
-                const missingCodes = requiredCodes.filter((code) => !existingCodes.includes(code));
+                const missingCodes = requiredCodes.filter(
+                  (code: string) => !existingCodes.includes(code),
+                );
 
                 if (missingCodes.length > 0) {
                   // Remove missing accessory codes from required accessories to prevent future errors
-                  const validCodes = requiredCodes.filter((code) => existingCodes.includes(code));
+                  const validCodes = requiredCodes.filter((code: string) =>
+                    existingCodes.includes(code),
+                  );
                   productData.requiredAccessories =
                     validCodes.length > 0 ? validCodes.join(',') : null;
 
