@@ -1,10 +1,17 @@
 # QUALITY-002 Handoff — TypeScript Error Burndown
 
-**Branch:** `claude/prd-stories-progress-7eqztb`
+**Branch:** `claude/quality-002-typecheck-burndown` (main was merged via PR #186; this is the continuation branch)
 **Story:** QUALITY-002 — "Drive `npm run check` to green"
 **Status:** `passes: false` (flips to true only when `tsc` is fully clean)
-**Current count:** **2435** tsc errors (started at 6176; **−61%**). Baseline tracked in `docs/typecheck-baseline.json`.
-**Last batch:** 33 (RBAC `requireRole` contract fix).
+**Current count:** **2296** tsc errors (started at 6176; **−63%**). Baseline tracked in `docs/typecheck-baseline.json`.
+**Last batch:** 37 (qrcode dep + missing UI exports).
+
+> ENV UPDATE (2026-06-26): `npm ci` aborts on a puppeteer chromium-download failure here — run it as
+> `PUPPETEER_SKIP_DOWNLOAD=true PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm ci`. Also `tsc` needs a bigger heap:
+> `export NODE_OPTIONS="--max-old-space-size=8192"` or it OOMs (4GB) and prints 0 errors (false green).
+> Batches 34-37 (this session): customer-portal req.user + survey agg (-52); intelligent-alerts TDZ
+> logger-shadow crash + csv-import insert typing (-46); storage.ts null-guards/$dynamic + a cross-tenant
+> metrics leak (-32); qrcode dep + UI exports (-9).
 
 ---
 
