@@ -8343,3 +8343,19 @@ Status: Needs Review
 
 Iteration 9 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 17: client untyped-useQuery burndown cont. (-36)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- ContractRenewalDashboard.tsx (14): RenewalMetrics numeric stats + 3 list queries any[].
+- AdminCommandCenter.tsx (8): AdminOverview interface + reused existing SystemMetric[]/
+  PendingTask[] for the two list queries (.map sites already &&-guarded).
+- DatabaseManagement.tsx (6): 3 list queries any[] (read via (r:any) find/map/slice).
+- PredictiveMaintenanceHub.tsx (8): PredictiveMaintenanceDashboard{overview,equipment} +
+  PartsForecastResponse with REQUIRED summary (page reads .summary.x without ?. inside the
+  forecast&& block -> optional would've added TS18048).
+- Ratchet 2877 -> 2841 (-36); all 4 files 0; zero genuinely-new error locations.
+  Type-only, zero runtime change. Baseline tightened 2877 -> 2841.
+
+Iteration 10 (06/27/2026): Story QUALITY-002
+Status: Needs Review

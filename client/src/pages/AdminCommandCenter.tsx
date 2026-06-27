@@ -70,6 +70,12 @@ interface SystemMetric {
   threshold?: number;
 }
 
+interface AdminOverview {
+  systemHealth?: string;
+  systemUptime?: number;
+  activeUsers?: number;
+}
+
 export default function AdminCommandCenter() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -78,17 +84,17 @@ export default function AdminCommandCenter() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null);
 
   // Fetch system data
-  const { data: systemOverview, refetch: refetchOverview } = useQuery({
+  const { data: systemOverview, refetch: refetchOverview } = useQuery<AdminOverview>({
     queryKey: ['/api/root-admin/overview'],
     refetchInterval: 30000,
   });
 
-  const { data: systemResources } = useQuery({
+  const { data: systemResources } = useQuery<SystemMetric[]>({
     queryKey: ['/api/root-admin/system-resources'],
     refetchInterval: 15000,
   });
 
-  const { data: pendingTasks } = useQuery({
+  const { data: pendingTasks } = useQuery<PendingTask[]>({
     queryKey: ['/api/root-admin/pending-tasks'],
     refetchInterval: 30000,
   });

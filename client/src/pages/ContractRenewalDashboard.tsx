@@ -30,28 +30,39 @@ import { toast } from '@/hooks/use-toast';
  * Proactively manages renewals and reduces customer churn
  */
 
+interface RenewalMetrics {
+  activeContracts?: number;
+  expiringSoon?: number;
+  atRisk?: number;
+  mrrAtRisk?: number;
+  renewalRate?: number;
+  mrrRetained?: number;
+  autoRenewalSuccessRate?: number;
+  proposalsOutstanding?: number;
+}
+
 export default function ContractRenewalDashboard() {
   const queryClient = useQueryClient();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Fetch dashboard metrics
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
+  const { data: metrics, isLoading: metricsLoading } = useQuery<RenewalMetrics>({
     queryKey: ['/api/contract-renewal/dashboard'],
     refetchInterval: 60000, // Refresh every 60 seconds
   });
 
   // Fetch contracts at risk
-  const { data: atRiskContracts, isLoading: atRiskLoading } = useQuery({
+  const { data: atRiskContracts, isLoading: atRiskLoading } = useQuery<any[]>({
     queryKey: ['/api/contract-renewal/at-risk'],
   });
 
   // Fetch expiring contracts
-  const { data: expiringContracts, isLoading: expiringLoading } = useQuery({
+  const { data: expiringContracts, isLoading: expiringLoading } = useQuery<any[]>({
     queryKey: ['/api/contract-renewal/expiring', { days: 90 }],
   });
 
   // Fetch proposals
-  const { data: proposals, isLoading: proposalsLoading } = useQuery({
+  const { data: proposals, isLoading: proposalsLoading } = useQuery<any[]>({
     queryKey: ['/api/contract-renewal/proposals'],
   });
 

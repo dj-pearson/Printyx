@@ -116,6 +116,20 @@ interface PartsForecast {
   devices: string[];
 }
 
+interface PredictiveMaintenanceDashboard {
+  overview?: DashboardOverview;
+  equipment?: EquipmentHealth[];
+}
+
+interface PartsForecastResponse {
+  forecast?: PartsForecast[];
+  summary: {
+    totalParts?: number;
+    uniqueParts?: number;
+    totalEstimatedCost?: number;
+  };
+}
+
 export default function PredictiveMaintenanceHub() {
   const [selectedTab, setSelectedTab] = useState('dashboard');
   const [filterUrgency, setFilterUrgency] = useState<string>('all');
@@ -128,13 +142,13 @@ export default function PredictiveMaintenanceHub() {
   const queryClient = useQueryClient();
 
   // Fetch dashboard data
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch } = useQuery<PredictiveMaintenanceDashboard>({
     queryKey: ['/api/predictive-maintenance/dashboard'],
     refetchInterval: 300000, // 5 minutes
   });
 
   // Fetch parts forecast
-  const { data: partsForecast } = useQuery({
+  const { data: partsForecast } = useQuery<PartsForecastResponse>({
     queryKey: ['/api/predictive-maintenance/parts-forecast'],
     enabled: selectedTab === 'parts',
   });

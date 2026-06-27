@@ -116,19 +116,19 @@ export default function DatabaseManagement() {
   const [queryResult, setQueryResult] = useState<any>(null);
 
   // Fetch real system resources (database stats)
-  const { data: systemResources, isLoading: resourcesLoading } = useQuery({
+  const { data: systemResources, isLoading: resourcesLoading } = useQuery<any[]>({
     queryKey: ['/api/root-admin/system-resources'],
     refetchInterval: 30000,
   });
 
   // Fetch real database tables information
-  const { data: tablesData, isLoading: tablesLoading } = useQuery({
+  const { data: tablesData, isLoading: tablesLoading } = useQuery<any[]>({
     queryKey: ['/api/root-admin/database-tables'],
     refetchInterval: 60000,
   });
 
   // Fetch real audit logs (for query monitoring)
-  const { data: auditLogs, isLoading: auditLoading } = useQuery({
+  const { data: auditLogs, isLoading: auditLoading } = useQuery<any[]>({
     queryKey: ['/api/root-admin/audit-logs'],
     refetchInterval: 30000,
   });
