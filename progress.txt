@@ -9184,3 +9184,17 @@ ios-ci.yml "Build & Test (Debug)" (macOS xcodebuild test of full PrintyxTests ta
 (SHA 3d1bd27). All four IOS-049 ACs satisfied (formatter consolidation + cached date formatters). The
 Cert-pin guard (Release) failure on the same run is the expected IOS-014 continue-on-error empty-pins job.
 This validates the iOS-via-CI lane: implement Swift -> rely on ios-ci.yml macOS build -> flip on green.
+
+## Iteration - IOS-046 keyboard handling on forms (iOS-via-CI; awaiting macOS build)
+**Date**: 2026-06-27
+**Status**: IMPLEMENTED — NOT yet flipped. Awaiting ios-ci.yml Build & Test (Debug) before flipping.
+AC1+AC2 — NEW ios/Printyx/Core/Extensions/KeyboardExtensions.swift: View.formKeyboardDismissal() adds
+.scrollDismissesKeyboard(.interactive) + a ToolbarItemGroup(placement:.keyboard) "Done" button (resigns
+first responder — the only way to dismiss decimalPad/numberPad which have no return key). Applied to all
+four edit/detail forms right after their existing .toolbar { toolbarContent } (CRMDetailView,
+OpportunityDetailView, ProposalDetailView, TaskDetailView) — scrollDismissesKeyboard propagates to the
+descendant ScrollView; the keyboard-placement toolbar merges with the navbar toolbar.
+AC3 — keyboardType already set on all fields; added .textContentType autofill hints (URL/telephoneNumber/
+emailAddress) to CRMDetailView website/phone/email/contact-phone.
+AC4 — xcodebuild test via ios-ci.yml build-test on the PR.
+Local sanity: brace+paren balance OK on helper + 4 forms; formKeyboardDismissal() applied 4x.
