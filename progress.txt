@@ -8505,3 +8505,15 @@ Status: Needs Review
 
 Iteration 21 (06/27/2026): Story QUALITY-002
 Status: Needs Review
+
+## Iteration - QUALITY-002 BATCH 29: lead-scoring-routes missing tenantId args (-12)
+**Date**: 2026-06-27
+**Status**: BATCH COMPLETE (QUALITY-002 still passes:false until tsc green)
+- 12 TS2554: storage.getBusinessRecord(id, tenantId) / updateBusinessRecord(id, tenantId, updates) require
+  tenantId (filter by it) but calls omitted it -> ran with tenantId=undefined -> matched nothing -> 404/403
+  on valid leads (LATENT BUG). Added user.tenantId (in scope + guarded 19/19).
+- lead-scoring 12 TS2554 -> 0 (1 unrelated TS2322 remains); EMPTY non-target diff (zero new).
+  Ratchet 2553 -> 2541. Baseline tightened.
+
+Iteration 22 (06/27/2026): Story QUALITY-002
+Status: Needs Review

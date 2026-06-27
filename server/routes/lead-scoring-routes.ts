@@ -188,7 +188,7 @@ router.post('/calculate/:leadId', async (req: Request, res: Response) => {
     const { leadId } = req.params;
 
     // Get the lead to verify access
-    const lead = await storage.getBusinessRecord(leadId);
+    const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
@@ -361,7 +361,7 @@ router.post('/calculate/:leadId', async (req: Request, res: Response) => {
     });
 
     // Update lead score in business_records
-    await storage.updateBusinessRecord(leadId, {
+    await storage.updateBusinessRecord(leadId, user.tenantId, {
       leadScore: cappedTotalScore,
       priority: leadTier === 'hot' ? 'high' : leadTier === 'warm' ? 'medium' : 'low',
     });
@@ -386,7 +386,7 @@ router.get('/score/:leadId', async (req: Request, res: Response) => {
   try {
     const { leadId } = req.params;
 
-    const lead = await storage.getBusinessRecord(leadId);
+    const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
@@ -419,7 +419,7 @@ router.get('/score/:leadId/history', async (req: Request, res: Response) => {
     const { leadId } = req.params;
     const limit = parseInt(req.query.limit as string) || 50;
 
-    const lead = await storage.getBusinessRecord(leadId);
+    const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
@@ -446,7 +446,7 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
     // Enrich with lead details
     const enrichedLeads = await Promise.all(
       topLeads.map(async (score) => {
-        const lead = await storage.getBusinessRecord(score.leadId);
+        const lead = await storage.getBusinessRecord(score.leadId, user.tenantId);
         return {
           ...score,
           lead: lead
@@ -482,7 +482,7 @@ router.get('/grade/:grade', async (req: Request, res: Response) => {
     // Enrich with lead details
     const enrichedLeads = await Promise.all(
       leads.map(async (score) => {
-        const lead = await storage.getBusinessRecord(score.leadId);
+        const lead = await storage.getBusinessRecord(score.leadId, user.tenantId);
         return {
           ...score,
           lead: lead
@@ -516,7 +516,7 @@ router.post('/bant/:leadId', async (req: Request, res: Response) => {
   try {
     const { leadId } = req.params;
 
-    const lead = await storage.getBusinessRecord(leadId);
+    const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
@@ -612,7 +612,7 @@ router.get('/bant/:leadId', async (req: Request, res: Response) => {
   try {
     const { leadId } = req.params;
 
-    const lead = await storage.getBusinessRecord(leadId);
+    const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
@@ -643,7 +643,7 @@ router.get('/qualified', async (req: Request, res: Response) => {
     // Enrich with lead details
     const enrichedLeads = await Promise.all(
       qualifiedLeads.map(async (qualification) => {
-        const lead = await storage.getBusinessRecord(qualification.leadId);
+        const lead = await storage.getBusinessRecord(qualification.leadId, user.tenantId);
         return {
           ...qualification,
           lead: lead
@@ -677,7 +677,7 @@ router.post('/engagement/:leadId', async (req: Request, res: Response) => {
   try {
     const { leadId } = req.params;
 
-    const lead = await storage.getBusinessRecord(leadId);
+    const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
@@ -711,7 +711,7 @@ router.get('/engagement/:leadId', async (req: Request, res: Response) => {
     const { leadId } = req.params;
     const limit = parseInt(req.query.limit as string) || 100;
 
-    const lead = await storage.getBusinessRecord(leadId);
+    const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
@@ -782,7 +782,7 @@ router.get('/qualification-history/:leadId', async (req: Request, res: Response)
   try {
     const { leadId } = req.params;
 
-    const lead = await storage.getBusinessRecord(leadId);
+    const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
       return res.status(404).json({ error: 'Lead not found' });
     }
