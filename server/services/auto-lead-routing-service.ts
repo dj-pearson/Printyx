@@ -13,10 +13,10 @@ import {
   platformLeadAssignmentHistory as leadAssignmentHistory,
   leadAssignmentQueue,
   users,
-  type InsertLeadScoreCalculation,
   type InsertLeadAssignmentHistory,
   type InsertLeadAssignmentQueue,
 } from '@shared/schema';
+import type { InsertLeadScoreCalculation } from '@shared/lead-scoring-schema';
 import { eq, and, desc, gte, lte, sql, inArray } from 'drizzle-orm';
 
 // Batch helper: fetch full names for multiple user IDs in a single query
