@@ -3,8 +3,8 @@
 **Branch:** `claude/quality-002-typecheck-burndown` (main was merged via PR #186; this is the continuation branch)
 **Story:** QUALITY-002 — "Drive `npm run check` to green"
 **Status:** `passes: false` (flips to true only when `tsc` is fully clean)
-**Current count:** **2296** tsc errors (started at 6176; **−63%**). Baseline tracked in `docs/typecheck-baseline.json`.
-**Last batch:** 37 (qrcode dep + missing UI exports).
+**Current count:** **2233** tsc errors (started at 6176; **−64%**). Baseline tracked in `docs/typecheck-baseline.json`.
+**Last batch:** 40 (routes-products-crud clean subset).
 
 > ENV UPDATE (2026-06-26): `npm ci` aborts on a puppeteer chromium-download failure here — run it as
 > `PUPPETEER_SKIP_DOWNLOAD=true PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true npm ci`. Also `tsc` needs a bigger heap:
