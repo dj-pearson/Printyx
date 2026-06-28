@@ -49,7 +49,7 @@ the `ios-deploy.yml` workflow to build, sign, and upload to App Store Connect.
 ### Creating the Provisioning Profile
 
 1. Go to [developer.apple.com/account/resources/profiles](https://developer.apple.com/account/resources/profiles/list)
-2. Click **+** > **App Store Connect** > Select your App ID (`net.printyx.ios`)
+2. Click **+** > **App Store Connect** > Select your App ID (`net.printyx.mainapp`)
 3. Select your Distribution Certificate > Generate > Download
 4. Base64-encode: `base64 -i Profile.mobileprovision | pbcopy`
 5. Paste into `IOS_PROVISIONING_PROFILE` secret
@@ -88,7 +88,7 @@ You can trigger a manual deploy from the Actions tab with:
 Before the workflow can run, ensure you have:
 
 1. An **Apple Developer Program** membership ($99/year)
-2. An **App ID** registered for `net.printyx.ios`
+2. An **App ID** registered for `net.printyx.mainapp`
 3. An **App Store Connect** app record created for Printyx
 4. A valid **iOS Distribution Certificate** (not expired)
 5. An **App Store provisioning profile** linked to the certificate and App ID

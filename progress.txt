@@ -9206,3 +9206,15 @@ Keyboard Done toolbar + interactive dismiss on the 4 detail forms via View.formK
 CI caught one real error first (ScrollDismissesKeyboardMode case is .interactively, not .interactive
 as the AC wrote) — fixed in f836d4b, then Build & Test (Debug) passed. Cert-pin guard + Lint secret-scan
 failures on the run are the known non-blocking ones.
+
+## Iteration - IOS-070 Info.plist armv7 fix + bundle-id reconciliation (iOS-via-CI; awaiting build)
+**Date**: 2026-06-27
+**Status**: IMPLEMENTED — NOT yet flipped. Awaiting ios-ci.yml Build & Test (Debug) (xcodegen generate +
+build validates the plist) before flipping.
+AC1 — ios/Printyx/Resources/Info.plist UIRequiredDeviceCapabilities armv7 -> arm64 (armv7 is 32-bit, invalid
+for the arm64-only iOS 17 target).
+AC2 — bundle id reconciled to net.printyx.mainapp: project.yml (3x) + ios-deploy.yml (BUNDLE_ID) already used
+it; updated ios/SECRETS.md (was net.printyx.ios, 2x). NOTE: ios-docs/supabase-edge-functions-ios-integration.md
+line 452 net.printyx.ios is a Sign-in-with-Apple SERVICE ID (a distinct Apple identifier, not the app bundle)
+and is outside AC2's enumerated three targets — intentionally left unchanged.
+AC3 — xcodegen generate + Release build validated by ios-ci.yml on the PR.
