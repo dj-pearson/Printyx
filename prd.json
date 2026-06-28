@@ -8186,8 +8186,8 @@
         "Pagination while a search term is active continues to load further pages (don't key load-more off the filtered last item against an unfiltered fetch)"
       ],
       "priority": 188,
-      "passes": false,
-      "notes": "Deep-dive CRM audit #12,#13; Quotes audit #11,#12,#13. Overlaps IOS-068 (list search/sort/filter completeness) — this captures the concrete mechanisms."
+      "passes": true,
+      "notes": "Deep-dive CRM audit #12,#13; Quotes audit #11,#12,#13. Overlaps IOS-068 (list search/sort/filter completeness) — this captures the concrete mechanisms. [iOS-via-CI VERIFIED 2026-06-28] ios-ci.yml Build & Test (Debug) PASSED on PR #199 (run 28308982598, job 83870189286, SHA ecb94bd — Generate Xcode project + Run unit tests Debug = success). AC1 loadMore sorts the full accumulated list (CRM/Tasks); AC2 $sortBy Combine subscription re-sorts loaded list on change (CRM/Tasks); AC3 invoices/contracts pass searchText to server (services already accept it), quotes/proposals client-side filter with no wasted refetch; AC4 pagination continues while search active."
     },
     {
       "id": "IOS-079",

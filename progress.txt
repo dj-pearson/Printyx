@@ -9240,3 +9240,11 @@ search param; client `filtered` kept as harmless fallback); quotes/proposals sea
 AC4 — pagination continues while search active: invoices/contracts page server-filtered, CRM already, quotes/
 tasks client-filter while paging unfiltered pages (hasMore keyed off fetched page count, not filtered).
 AC: ios xcodebuild test via ios-ci.yml on the PR. Local sanity: brace/paren balance OK on all 5 VMs.
+
+## Iteration - IOS-078 VERIFIED + flipped (iOS-via-CI)
+**Date**: 2026-06-28
+**Status**: COMPLETE — flipped passes:true after macOS build green (PR #199, SHA ecb94bd, Build & Test Debug
+= success). Sort applies to full accumulated list + re-sorts on change (CRM/Tasks); invoices/contracts use
+server search, quotes/proposals client-side without wasted refetch; pagination continues during search.
+Flip committed onto the still-open #199 (impl + flip merge together). Cert-pin/Lint failures are the known
+non-blocking ones.
