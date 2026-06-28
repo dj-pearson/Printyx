@@ -72,6 +72,7 @@ final class ContractListViewModel: ObservableObject {
         do {
             let fetched = try await contractService.fetchContracts(
                 status: selectedStatus?.rawValue,
+                search: searchText.isEmpty ? nil : searchText,
                 page: 1,
                 limit: pageSize
             )
@@ -96,6 +97,7 @@ final class ContractListViewModel: ObservableObject {
         do {
             let fetched = try await contractService.fetchContracts(
                 status: selectedStatus?.rawValue,
+                search: searchText.isEmpty ? nil : searchText,
                 page: nextPage,
                 limit: pageSize
             )
