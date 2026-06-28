@@ -31,21 +31,14 @@ final class QuoteListViewModel: ObservableObject {
     }
 
     private let quoteService: QuoteService
-    private var searchCancellable: AnyCancellable?
 
     init(quoteService: QuoteService) {
         self.quoteService = quoteService
-        setupSearch()
     }
 
-    private func setupSearch() {
-        searchCancellable = $searchText
-            .debounce(for: .milliseconds(400), scheduler: RunLoop.main)
-            .removeDuplicates()
-            .sink { [weak self] _ in
-                Task { await self?.refresh() }
-            }
-    }
+    // Search is client-side over the loaded proposals/quotes (the endpoints have
+    // no search param). filteredProposals / filteredQuotes recompute from the
+    // @Published searchText, so no server refetch is triggered (IOS-078 AC3).
 
     // MARK: - Loading
 

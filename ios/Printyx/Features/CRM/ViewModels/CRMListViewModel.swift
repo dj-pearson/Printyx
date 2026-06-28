@@ -45,10 +45,12 @@ final class CRMListViewModel: ObservableObject {
     private let pageSize = 25
     private let crmService: CRMService
     private var searchCancellable: AnyCancellable?
+    private var sortCancellable: AnyCancellable?
 
     init(crmService: CRMService) {
         self.crmService = crmService
         setupSearch()
+        setupSort()
     }
 
     private func setupSearch() {
@@ -57,6 +59,20 @@ final class CRMListViewModel: ObservableObject {
             .removeDuplicates()
             .sink { [weak self] _ in
                 Task { await self?.refresh() }
+            }
+    }
+
+    /// Re-order the already-loaded records immediately when the sort changes
+    /// (IOS-078). Client-side re-sort of the whole accumulated list — no refetch.
+    private func setupSort() {
+        sortCancellable = $sortBy
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.records = self.sortRecords(self.records)
+                }
             }
     }
 
@@ -98,7 +114,8 @@ final class CRMListViewModel: ObservableObject {
                 page: nextPage,
                 limit: pageSize
             )
-            self.records.append(contentsOf: sortRecords(more))
+            // Sort the FULL accumulated list, not just this page (IOS-078).
+            self.records = sortRecords(self.records + more)
             self.currentPage = nextPage
             self.hasMore = more.count >= pageSize
         } catch {

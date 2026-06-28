@@ -40,10 +40,12 @@ final class TaskListViewModel: ObservableObject {
 
     private let taskService: TaskService
     private var searchCancellable: AnyCancellable?
+    private var sortCancellable: AnyCancellable?
 
     init(taskService: TaskService) {
         self.taskService = taskService
         setupSearch()
+        setupSort()
     }
 
     // MARK: - Search Debounce
@@ -54,6 +56,20 @@ final class TaskListViewModel: ObservableObject {
             .removeDuplicates()
             .sink { [weak self] _ in
                 Task { await self?.refresh() }
+            }
+    }
+
+    /// Re-order the already-loaded tasks immediately when the sort changes
+    /// (IOS-078). Client-side re-sort of the whole accumulated list — no refetch.
+    private func setupSort() {
+        sortCancellable = $sortBy
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.tasks = self.sortTasks(self.tasks)
+                }
             }
     }
 
@@ -101,7 +117,8 @@ final class TaskListViewModel: ObservableObject {
                 page: nextPage,
                 limit: pageSize
             )
-            self.tasks.append(contentsOf: sortTasks(moreTasks))
+            // Sort the FULL accumulated list, not just this page (IOS-078).
+            self.tasks = sortTasks(self.tasks + moreTasks)
             self.currentPage = nextPage
             self.hasMore = moreTasks.count >= pageSize
         } catch {

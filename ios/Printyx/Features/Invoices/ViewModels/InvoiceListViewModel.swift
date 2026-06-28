@@ -73,6 +73,7 @@ final class InvoiceListViewModel: ObservableObject {
         do {
             let fetched = try await invoiceService.fetchInvoices(
                 status: selectedStatus?.rawValue,
+                search: searchText.isEmpty ? nil : searchText,
                 page: 1,
                 limit: pageSize
             )
@@ -97,6 +98,7 @@ final class InvoiceListViewModel: ObservableObject {
         do {
             let fetched = try await invoiceService.fetchInvoices(
                 status: selectedStatus?.rawValue,
+                search: searchText.isEmpty ? nil : searchText,
                 page: nextPage,
                 limit: pageSize
             )

@@ -9225,3 +9225,26 @@ AC3 — xcodegen generate + Release build validated by ios-ci.yml on the PR.
 Info.plist armv7->arm64 + bundle-id reconciled to net.printyx.mainapp. xcodegen generate + Debug build/test
 passed; Release build compiled (cert-pin job reached its pin-test step). Cert-pin + Lint secret-scan failures
 on the run are the known non-blocking ones.
+
+## Iteration - IOS-078 sort/search correctness (iOS-via-CI; awaiting macOS build)
+**Date**: 2026-06-28
+**Status**: IMPLEMENTED — NOT yet flipped. Awaiting ios-ci.yml Build & Test (Debug).
+AC1 — loadMore now sorts the FULL accumulated list (was sorting only the new page then appending):
+CRMListViewModel records = sortRecords(records+more); TaskListViewModel tasks = sortTasks(tasks+more).
+AC2 — added a $sortBy Combine subscription (setupSort) that re-sorts the loaded list immediately on sort
+change (CRM + Tasks; mirrors the existing search debounce; Task @MainActor, dropFirst+removeDuplicates).
+AC3 — invoices/contracts now pass searchText to the server (fetchInvoices/fetchContracts already accept a
+search param; client `filtered` kept as harmless fallback); quotes/proposals search is client-side only
+(removed QuoteListViewModel's wasted refresh() refetch — filteredProposals/filteredQuotes recompute from
+@Published searchText); CRM already passed search.
+AC4 — pagination continues while search active: invoices/contracts page server-filtered, CRM already, quotes/
+tasks client-filter while paging unfiltered pages (hasMore keyed off fetched page count, not filtered).
+AC: ios xcodebuild test via ios-ci.yml on the PR. Local sanity: brace/paren balance OK on all 5 VMs.
+
+## Iteration - IOS-078 VERIFIED + flipped (iOS-via-CI)
+**Date**: 2026-06-28
+**Status**: COMPLETE — flipped passes:true after macOS build green (PR #199, SHA ecb94bd, Build & Test Debug
+= success). Sort applies to full accumulated list + re-sorts on change (CRM/Tasks); invoices/contracts use
+server search, quotes/proposals client-side without wasted refetch; pagination continues during search.
+Flip committed onto the still-open #199 (impl + flip merge together). Cert-pin/Lint failures are the known
+non-blocking ones.
