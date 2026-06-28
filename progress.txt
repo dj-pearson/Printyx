@@ -9218,3 +9218,10 @@ it; updated ios/SECRETS.md (was net.printyx.ios, 2x). NOTE: ios-docs/supabase-ed
 line 452 net.printyx.ios is a Sign-in-with-Apple SERVICE ID (a distinct Apple identifier, not the app bundle)
 and is outside AC2's enumerated three targets — intentionally left unchanged.
 AC3 — xcodegen generate + Release build validated by ios-ci.yml on the PR.
+
+## Iteration - IOS-070 VERIFIED + flipped (iOS-via-CI)
+**Date**: 2026-06-28
+**Status**: COMPLETE — flipped passes:true after macOS build green (PR #197, SHA d9bca68).
+Info.plist armv7->arm64 + bundle-id reconciled to net.printyx.mainapp. xcodegen generate + Debug build/test
+passed; Release build compiled (cert-pin job reached its pin-test step). Cert-pin + Lint secret-scan failures
+on the run are the known non-blocking ones.

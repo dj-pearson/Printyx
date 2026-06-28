@@ -8067,8 +8067,8 @@
         "xcodegen generate + a Release archive validate cleanly"
       ],
       "priority": 180,
-      "passes": false,
-      "notes": "My own finding + security audit L2. Low risk but a real release-config inconsistency."
+      "passes": true,
+      "notes": "My own finding + security audit L2. Low risk but a real release-config inconsistency. [iOS-via-CI VERIFIED 2026-06-28] ios-ci.yml Build & Test (Debug) PASSED on PR #197 (run 28305453505, job 83860733688, SHA d9bca68 — Generate Xcode project + Run unit tests Debug = success); Release build also compiled (cert-pin job reached the pin test step). AC1: Info.plist UIRequiredDeviceCapabilities armv7->arm64 (armv7 invalid for arm64-only iOS 17). AC2: bundle id reconciled to net.printyx.mainapp across project.yml(3x)/ios-deploy.yml(BUNDLE_ID)/ios SECRETS.md(2x); ios-docs net.printyx.ios left as-is (separate Sign-in-with-Apple Service ID). AC3: xcodegen generate + build clean."
     },
     {
       "id": "IOS-071",
