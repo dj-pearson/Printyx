@@ -74,7 +74,6 @@ interface AIAnalyticsData {
   customerPredictions: {
     churnPrediction: {
       totalCustomersAnalyzed: number;
-      highRiskCustomers: number;
       mediumRiskCustomers: number;
       lowRiskCustomers: number;
       predictionAccuracy: number;
@@ -596,7 +595,7 @@ export default function AIAnalyticsDashboard() {
                       <div className="grid grid-cols-3 gap-4 mb-6">
                         <div className="text-center p-3 bg-red-50 border border-red-200 rounded">
                           <div className="text-xl font-bold text-red-900">
-                            {aiData.customerPredictions.churnPrediction.highRiskCustomers}
+                            {aiData.customerPredictions.churnPrediction.highRiskCustomers.length}
                           </div>
                           <div className="text-sm text-red-600">High Risk</div>
                         </div>
