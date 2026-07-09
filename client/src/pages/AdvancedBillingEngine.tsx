@@ -58,7 +58,7 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import { apiRequest, extractRecords } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
-import { type Invoice, type BillingEntry, type BusinessRecord } from '@shared/schema';
+import { type Invoice, type BusinessRecord } from '@shared/schema';
 import ContextualHelp from '@/components/contextual/ContextualHelp';
 import PageAlerts from '@/components/contextual/PageAlerts';
 import KpiSummaryBar from '@/components/dashboard/KpiSummaryBar';
@@ -82,8 +82,9 @@ interface BillingInvoice extends Invoice {
   business_record_name?: string;
 }
 
-// Using BillingEntry from schema - BillingConfiguration extends BillingEntry with configuration-specific fields
-interface BillingConfiguration extends Omit<BillingEntry, 'id'> {
+// BillingConfiguration mirrors the raw-SQL billing_configurations drift table
+// (no Drizzle schema exists for it — see CLAUDE.md billing notes).
+interface BillingConfiguration {
   id: string;
   configuration_name: string;
   billing_type: string;
@@ -315,7 +316,7 @@ export default function AdvancedBillingEngine() {
     createAdjustmentMutation.mutate(data);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | null | undefined) => {
     switch (status) {
       case 'draft':
         return 'secondary';
@@ -342,7 +343,7 @@ export default function AdvancedBillingEngine() {
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string | null | undefined) => {
     switch (status) {
       case 'paid':
       case 'completed':
@@ -1738,10 +1739,10 @@ export default function AdvancedBillingEngine() {
                                 </Badge>
                               )}
                               <Badge
-                                variant={config.isActive ? 'default' : 'secondary'}
+                                variant={config.is_active ? 'default' : 'secondary'}
                                 className="text-xs"
                               >
-                                {config.isActive ? 'Active' : 'Inactive'}
+                                {config.is_active ? 'Active' : 'Inactive'}
                               </Badge>
                             </div>
                           </div>
