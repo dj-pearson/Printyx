@@ -20,7 +20,12 @@ import {
   useBulkSelection,
   BulkAction,
 } from '@/components/ui/bulk-operations-toolbar';
-import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
+import {
+  exportToCSV,
+  exportToJSON,
+  createExportColumn,
+  type ExportColumn,
+} from '@/lib/export-utils';
 import { SavedFilters, useFilterState } from '@/components/ui/saved-filters';
 import { VirtualizedDataTable, type VirtualColumn } from '@/components/ui/virtualized-data-table';
 import {
@@ -462,7 +467,7 @@ export default function Customers() {
   const handleBulkExport = (format: 'csv' | 'json') => {
     const selectedCustomers = filtered.filter((c: any) => bulkSelection.selectedIds.includes(c.id));
 
-    const columns = [
+    const columns: ExportColumn<any>[] = [
       createExportColumn('companyName', 'Company Name'),
       createExportColumn('industry', 'Industry'),
       createExportColumn('city', 'City'),
@@ -911,7 +916,7 @@ export default function Customers() {
                   onSelectionChange={(ids) => {
                     const current = bulkSelection.selectedIdsSet;
                     ids.forEach((id) => {
-                      if (!current.has(id)) bulkSelection.toggleSelection(id as string);
+                      if (!current.has(id as string)) bulkSelection.toggleSelection(id as string);
                     });
                     current.forEach((id) => {
                       if (!ids.has(id)) bulkSelection.toggleSelection(id as string);
