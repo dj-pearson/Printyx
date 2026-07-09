@@ -440,7 +440,7 @@ router.post('/api/mobile/jobs/:jobId/status', async (req: any, res) => {
       },
 
       // Automatic actions based on status
-      automatedActions: [],
+      automatedActions: [] as Array<Record<string, unknown>>,
     };
 
     // Add automated actions based on new status

@@ -111,7 +111,9 @@ router.get('/', async (req: Request, res: Response) => {
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Build ORDER BY
-    const orderByColumn =
+    // Dynamic column selection indexes the table object, whose union type
+    // includes non-column members; asc/desc only accept a column.
+    const orderByColumn: any =
       platformDeals[sortBy as keyof typeof platformDeals] || platformDeals.createdAt;
     const orderByClause = sortOrder === 'asc' ? asc(orderByColumn) : desc(orderByColumn);
 
@@ -391,7 +393,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Calculate weighted value
     if (data.dealValue && data.probability !== undefined) {
-      data.weightedValue = (Number(data.dealValue) * data.probability) / 100;
+      data.weightedValue = String((Number(data.dealValue) * data.probability) / 100);
     }
 
     // Set forecast category based on stage
@@ -532,7 +534,7 @@ router.post('/:id/move-stage', async (req: Request, res: Response) => {
         previousStage: currentDeal.stage,
         probability: stageConfig.probability,
         forecastCategory: stageConfig.category as any,
-        weightedValue: (Number(currentDeal.dealValue) * stageConfig.probability) / 100,
+        weightedValue: String((Number(currentDeal.dealValue) * stageConfig.probability) / 100),
         updatedAt: new Date(),
       })
       .where(eq(platformDeals.id, id))
