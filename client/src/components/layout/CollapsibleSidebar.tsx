@@ -364,6 +364,8 @@ interface CollapsibleSidebarProps {
 
 export function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
   const { user, isAuthenticated } = useAuth();
+  const displayName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || '';
 
   // Get role-aware navigation sections using user.role directly
   const navigationSections = getNavigationSections(user?.role);
@@ -515,16 +517,16 @@ export function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
       <div className="p-4 border-t border-slate-200 bg-white">
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9 ring-2 ring-slate-200">
-            <AvatarImage src={user?.picture} alt={user?.name} />
+            <AvatarImage src={undefined} alt={displayName} />
             <AvatarFallback className="bg-slate-600 text-white font-semibold">
-              {user?.name
+              {displayName
                 ?.split(' ')
                 .map((n: string) => n[0])
                 .join('') || 'U'}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-900 truncate">{user?.name || 'User'}</p>
+            <p className="text-sm font-semibold text-slate-900 truncate">{displayName || 'User'}</p>
             <p className="text-xs text-slate-600 truncate">{user?.email || 'user@example.com'}</p>
           </div>
         </div>
