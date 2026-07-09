@@ -133,7 +133,11 @@ export default function ProductCatalog() {
 
   // Derive categories from products
   const categories = [
-    ...new Set(masterProducts.map((p: MasterProductModel) => p.category).filter(Boolean)),
+    ...new Set(
+      masterProducts
+        .map((p: MasterProductModel) => p.category)
+        .filter((c): c is string => Boolean(c)),
+    ),
   ];
 
   // Enable single product mutation
@@ -815,7 +819,7 @@ export default function ProductCatalog() {
                       }
 
                       // Item type filter
-                      if (selectedItemType !== 'all' && product.itemType !== selectedItemType) {
+                      if (selectedItemType !== 'all' && product.productType !== selectedItemType) {
                         return false;
                       }
 
@@ -890,12 +894,12 @@ export default function ProductCatalog() {
 
                               {/* Product Type and Category Badges */}
                               <div className="flex flex-wrap gap-2 pt-2">
-                                {product.itemType && (
+                                {product.productType && (
                                   <Badge
-                                    variant={product.itemType === 'model' ? 'default' : 'secondary'}
+                                    variant={product.productType === 'model' ? 'default' : 'secondary'}
                                     className="text-xs"
                                   >
-                                    {product.itemType === 'model' ? 'Model' : 'Accessory'}
+                                    {product.productType === 'model' ? 'Model' : 'Accessory'}
                                   </Badge>
                                 )}
                                 {product.category && (
@@ -928,14 +932,14 @@ export default function ProductCatalog() {
                                     <div className="space-y-4">
                                       {/* Product Type and Category Badges */}
                                       <div className="flex flex-wrap gap-2">
-                                        {product.itemType && (
+                                        {product.productType && (
                                           <Badge
                                             variant={
-                                              product.itemType === 'model' ? 'default' : 'secondary'
+                                              product.productType === 'model' ? 'default' : 'secondary'
                                             }
                                             className="text-sm"
                                           >
-                                            {product.itemType === 'model'
+                                            {product.productType === 'model'
                                               ? 'Equipment Model'
                                               : 'Accessory'}
                                           </Badge>
@@ -946,7 +950,8 @@ export default function ProductCatalog() {
                                           </Badge>
                                         )}
                                         {product.productType &&
-                                          product.productType !== product.itemType && (
+                                          product.productType !== 'model' &&
+                                          product.productType !== 'accessory' && (
                                             <Badge variant="secondary" className="text-sm">
                                               {product.productType}
                                             </Badge>
@@ -995,7 +1000,7 @@ export default function ProductCatalog() {
                                           <p className="text-sm">{product.status}</p>
                                         </div>
                                       </div>
-                                      {product.specsJson && (
+                                      {Boolean(product.specsJson) && (
                                         <div>
                                           <Label className="text-sm font-medium">
                                             Specifications
@@ -1238,22 +1243,26 @@ export default function ProductCatalog() {
                       <p className="text-xs">Browse the catalog to enable products.</p>
                     </div>
                   ) : (
-                    enabledProducts.map((product: EnabledProduct) => (
-                      <Card key={product.enabledProductId}>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base leading-tight">
-                            {product.customName || product.displayName}
-                          </CardTitle>
-                          <CardDescription className="text-xs">
-                            {product.manufacturer} - {product.customSku || product.modelCode}
-                          </CardDescription>
-                        </CardHeader>
+                    enabledProducts.map((product: EnabledProduct) => {
+                      const master = masterProducts.find(
+                        (m: MasterProductModel) => m.id === product.masterProductId,
+                      );
+                      return (
+                        <Card key={product.enabledProductId}>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="text-base leading-tight">
+                              {product.customName || master?.displayName}
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                              {master?.manufacturer} - {product.customSku || master?.modelCode}
+                            </CardDescription>
+                          </CardHeader>
                         <CardContent className="pt-0">
                           <div className="space-y-2">
                             <div className="flex justify-between">
                               <span className="text-xs text-muted-foreground">MSRP:</span>
                               <span className="text-sm">
-                                {product.msrp ? `$${product.msrp.toLocaleString()}` : 'N/A'}
+                                {master?.msrp ? `$${master.msrp.toLocaleString()}` : 'N/A'}
                               </span>
                             </div>
                             {product.dealerCost && (
@@ -1289,7 +1298,8 @@ export default function ProductCatalog() {
                           </div>
                         </CardContent>
                       </Card>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </CardContent>

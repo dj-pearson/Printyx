@@ -353,7 +353,7 @@ export default function ProductHubUnified() {
     return dealerCost * (1 + markupPercentage / 100);
   };
 
-  const formatCurrency = (value: string | number | undefined): string => {
+  const formatCurrency = (value: string | number | null | undefined): string => {
     if (!value) return '$0.00';
     const num = typeof value === 'string' ? parseFloat(value) : value;
     return new Intl.NumberFormat('en-US', {
@@ -472,7 +472,7 @@ export default function ProductHubUnified() {
     if (catalogCategory !== 'all' && product.category !== catalogCategory) {
       return false;
     }
-    if (selectedItemType !== 'all' && product.itemType !== selectedItemType) {
+    if (selectedItemType !== 'all' && product.productType !== selectedItemType) {
       return false;
     }
     return true;
@@ -489,7 +489,11 @@ export default function ProductHubUnified() {
 
   const categories = Array.from(new Set(productModules.map((m) => m.category)));
   const catalogCategories = Array.from(
-    new Set(masterProducts.map((p: MasterProductModel) => p.category).filter(Boolean)),
+    new Set(
+      masterProducts
+        .map((p: MasterProductModel) => p.category)
+        .filter((c): c is string => Boolean(c)),
+    ),
   );
   const pricingCategories = Array.from(
     new Set(productsWithPricing.map((p) => p.category).filter(Boolean)),
@@ -950,7 +954,7 @@ export default function ProductHubUnified() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {enabledProducts.map((product: EnabledProduct) => (
-                      <Card key={product.id}>
+                      <Card key={product.enabledProductId}>
                         <CardHeader>
                           <CardTitle className="text-sm">
                             {product.customName || 'Product'}
@@ -973,8 +977,8 @@ export default function ProductHubUnified() {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Status:</span>
-                              <Badge variant={product.isActive ? 'default' : 'secondary'}>
-                                {product.isActive ? 'Active' : 'Inactive'}
+                              <Badge variant={product.enabled ? 'default' : 'secondary'}>
+                                {product.enabled ? 'Active' : 'Inactive'}
                               </Badge>
                             </div>
                           </div>
