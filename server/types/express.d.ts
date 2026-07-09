@@ -24,6 +24,18 @@ declare global {
       lastName?: string;
       customerId?: string;
       customerPortalUser?: boolean;
+      /**
+       * OIDC/session claims populated by the session and test-mode auth paths
+       * for backward compatibility with routes that read `req.user.claims.sub`.
+       */
+      claims?: {
+        sub: string;
+        email?: string;
+        first_name?: string;
+        last_name?: string;
+        [key: string]: unknown;
+      };
+      expires_at?: number;
     }
 
     /**

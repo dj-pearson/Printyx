@@ -62,11 +62,11 @@ class CalendarService {
       return events.map((event) => ({
         id: event.id!,
         title: event.summary || 'Untitled Event',
-        description: event.description,
+        description: event.description ?? undefined,
         startTime: new Date(event.start?.dateTime || event.start?.date || ''),
         endTime: new Date(event.end?.dateTime || event.end?.date || ''),
         isAllDay: !!event.start?.date,
-        location: event.location,
+        location: event.location ?? undefined,
         attendees: event.attendees?.map((attendee) => attendee.email || '') || [],
         status: (event.status as any) || 'confirmed',
       }));
@@ -81,7 +81,7 @@ class CalendarService {
    */
   async syncOutlookCalendar(connection: CalendarConnection): Promise<CalendarEvent[]> {
     try {
-      const graphClient = Client.init({
+      const graphClient = Client.initWithMiddleware({
         authProvider: {
           getAccessToken: async () => connection.accessToken,
         },
@@ -172,7 +172,7 @@ class CalendarService {
     connection: CalendarConnection,
     event: Partial<CalendarEvent>,
   ): Promise<string> {
-    const graphClient = Client.init({
+    const graphClient = Client.initWithMiddleware({
       authProvider: {
         getAccessToken: async () => connection.accessToken,
       },
