@@ -257,7 +257,7 @@ async function seedLeadScoring() {
             tenantId,
             // Budget
             budgetIdentified: true,
-            budgetAmount: leadData.annualRevenue * 0.02, // 2% of annual revenue
+            budgetAmount: (leadData.annualRevenue * 0.02).toString(), // 2% of annual revenue
             budgetTimeframe: 'current_quarter',
             budgetApproved: leadData.status === 'proposal',
             budgetScore: leadData.status === 'proposal' ? 25 : 15,
@@ -397,7 +397,7 @@ async function seedLeadScoring() {
         // Get BANT score
         const bantQualification = await storage.getBantQualification(lead.id);
         if (bantQualification) {
-          bantScore = bantQualification.totalBantScore;
+          bantScore = bantQualification.totalBantScore ?? 0;
         }
 
         // Get engagement score

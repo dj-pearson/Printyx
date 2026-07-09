@@ -65,9 +65,7 @@ router.post('/installations', async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const validationResult = insertInstallationSchema
-      .omit({ id: true, createdAt: true, updatedAt: true })
-      .safeParse(req.body);
+    const validationResult = insertInstallationSchema      .safeParse(req.body);
 
     if (!validationResult.success) {
       return res.status(400).json({
@@ -101,9 +99,7 @@ router.patch('/installations/:id', async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const validationResult = insertInstallationSchema
-      .omit({ id: true, createdAt: true, updatedAt: true })
-      .partial()
+    const validationResult = insertInstallationSchema      .partial()
       .safeParse(req.body);
 
     if (!validationResult.success) {
@@ -195,9 +191,7 @@ router.post('/service-signatures', async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const validationResult = insertServiceSignatureSchema
-      .omit({ id: true, createdAt: true, updatedAt: true })
-      .safeParse(req.body);
+    const validationResult = insertServiceSignatureSchema      .safeParse(req.body);
 
     if (!validationResult.success) {
       return res.status(400).json({
@@ -225,9 +219,7 @@ router.patch('/service-signatures/:id', async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const validationResult = insertServiceSignatureSchema
-      .omit({ id: true, createdAt: true, updatedAt: true })
-      .partial()
+    const validationResult = insertServiceSignatureSchema      .partial()
       .safeParse(req.body);
 
     if (!validationResult.success) {
@@ -313,9 +305,7 @@ router.post('/installation-checklists', async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const validationResult = insertInstallationChecklistSchema
-      .omit({ id: true, createdAt: true, updatedAt: true })
-      .safeParse(req.body);
+    const validationResult = insertInstallationChecklistSchema      .safeParse(req.body);
 
     if (!validationResult.success) {
       return res.status(400).json({
@@ -342,13 +332,7 @@ router.post('/installation-checklists/bulk', async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const bulkSchema = z.array(
-      insertInstallationChecklistSchema.omit({
-        id: true,
-        createdAt: true,
-        updatedAt: true,
-      }),
-    );
+    const bulkSchema = z.array(insertInstallationChecklistSchema);
 
     const validationResult = bulkSchema.safeParse(req.body);
 
@@ -377,9 +361,7 @@ router.patch('/installation-checklists/:id', async (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const validationResult = insertInstallationChecklistSchema
-      .omit({ id: true, createdAt: true, updatedAt: true })
-      .partial()
+    const validationResult = insertInstallationChecklistSchema      .partial()
       .safeParse(req.body);
 
     if (!validationResult.success) {

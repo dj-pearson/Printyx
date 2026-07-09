@@ -240,7 +240,12 @@ class ComprehensiveTestRunner {
 
       const suiteResult = {
         name: suite.name,
-        tests: [],
+        tests: [] as Array<{
+          name: string;
+          passed: boolean;
+          duration: number;
+          error?: string;
+        }>,
         passed: 0,
         failed: 0,
         duration: 0,
