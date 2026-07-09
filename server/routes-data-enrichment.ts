@@ -168,7 +168,7 @@ export function registerDataEnrichmentRoutes(app: Express) {
       const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
 
       // Try to fetch contacts, return empty result if table doesn't exist
-      let contacts = [];
+      let contacts: any[] = [];
       let total = 0;
 
       try {
@@ -186,10 +186,8 @@ export function registerDataEnrichmentRoutes(app: Express) {
           ? searchParams.sortBy
           : 'created_at';
 
-        const orderBy =
-          searchParams.sortOrder === 'asc'
-            ? asc(enrichedContacts[sortColumn as keyof typeof enrichedContacts])
-            : desc(enrichedContacts[sortColumn as keyof typeof enrichedContacts]);
+        const sortCol = enrichedContacts[sortColumn as keyof typeof enrichedContacts] as any;
+        const orderBy = searchParams.sortOrder === 'asc' ? asc(sortCol) : desc(sortCol);
 
         contacts = await db
           .select()
@@ -336,11 +334,11 @@ export function registerDataEnrichmentRoutes(app: Express) {
       }
 
       if (searchParams.revenue?.min !== undefined) {
-        conditions.push(gte(enrichedCompanies.annual_revenue, searchParams.revenue.min));
+        conditions.push(gte(enrichedCompanies.annual_revenue, searchParams.revenue.min.toString()));
       }
 
       if (searchParams.revenue?.max !== undefined) {
-        conditions.push(lte(enrichedCompanies.annual_revenue, searchParams.revenue.max));
+        conditions.push(lte(enrichedCompanies.annual_revenue, searchParams.revenue.max.toString()));
       }
 
       if (searchParams.targetTier?.length) {
@@ -352,10 +350,8 @@ export function registerDataEnrichmentRoutes(app: Express) {
       const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
 
       // Apply sorting
-      const orderBy =
-        searchParams.sortOrder === 'asc'
-          ? asc(enrichedCompanies[searchParams.sortBy as keyof typeof enrichedCompanies])
-          : desc(enrichedCompanies[searchParams.sortBy as keyof typeof enrichedCompanies]);
+      const sortCol = enrichedCompanies[searchParams.sortBy as keyof typeof enrichedCompanies] as any;
+      const orderBy = searchParams.sortOrder === 'asc' ? asc(sortCol) : desc(sortCol);
 
       const companies = await db
         .select()

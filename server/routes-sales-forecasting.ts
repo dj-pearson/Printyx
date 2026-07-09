@@ -112,7 +112,7 @@ router.get(
       let dealsData = [];
       let quotesData = [];
       let proposalsData = [];
-      let crmGoalsData = [];
+      let crmGoalsData: any[] = [];
 
       try {
         // Get deals data
@@ -331,7 +331,7 @@ router.post('/api/sales-forecasts', isAuthenticated, async (req: any, res) => {
         forecastType: forecastType || 'monthly',
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        revenueTarget: parseFloat(revenueTarget),
+        revenueTarget: parseFloat(revenueTarget).toString(),
         unitTarget: parseInt(unitTarget) || null,
         dealCountTarget: parseInt(dealCountTarget) || null,
         confidenceLevel: 'medium',
@@ -411,14 +411,14 @@ router.get('/api/sales-trends', async (req: any, res) => {
       db
         .select({
           month: sql<string>`DATE_TRUNC('month', ${businessRecords.updatedAt})::text`,
-          revenue: sql<number>`COALESCE(SUM(CAST(${businessRecords.value} AS decimal)), 0)`,
+          revenue: sql<number>`COALESCE(SUM(CAST(${businessRecords.estimatedAmount} AS decimal)), 0)`,
           deals: sql<number>`COUNT(*)`,
         })
         .from(businessRecords)
         .where(
           and(
             eq(businessRecords.tenantId, tenantId),
-            eq(businessRecords.type, 'customer'),
+            eq(businessRecords.recordType, 'customer'),
             gte(businessRecords.updatedAt, startDate),
           ),
         )
