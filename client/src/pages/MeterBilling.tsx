@@ -59,9 +59,11 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import { apiRequest } from '@/lib/queryClient';
 
-const createMeterReadingSchema = insertMeterReadingSchema.extend({
-  readingDate: z.string(),
-});
+const createMeterReadingSchema = insertMeterReadingSchema
+  .omit({ tenantId: true, createdBy: true })
+  .extend({
+    readingDate: z.string(),
+  });
 
 const createTieredRateSchema = insertContractTieredRateSchema.extend({
   rate: z.string(),
@@ -103,8 +105,8 @@ export default function MeterBilling() {
     resolver: zodResolver(createMeterReadingSchema),
     defaultValues: {
       readingDate: new Date().toISOString().split('T')[0],
-      blackMeter: 0,
-      colorMeter: 0,
+      bwMeterReading: 0,
+      colorMeterReading: 0,
       collectionMethod: 'manual',
       notes: '',
     },
@@ -130,8 +132,8 @@ export default function MeterBilling() {
         body: JSON.stringify({
           ...data,
           readingDate: new Date(data.readingDate),
-          blackMeter: parseInt((data.blackMeter || 0).toString()),
-          colorMeter: parseInt((data.colorMeter || 0).toString()),
+          bwMeterReading: parseInt((data.bwMeterReading || 0).toString()),
+          colorMeterReading: parseInt((data.colorMeterReading || 0).toString()),
         }),
       });
       return response;
@@ -187,17 +189,17 @@ export default function MeterBilling() {
   };
 
   // Utility functions
-  const getEquipmentName = (equipmentId: string) => {
+  const getEquipmentName = (equipmentId: string | null | undefined) => {
     const eq = equipment?.find((e) => e.id === equipmentId);
-    return eq ? `${eq.manufacturer} ${eq.model} (${eq.serialNumber})` : 'Unknown Equipment';
+    return eq ? `${eq.manufacturer} ${eq.modelNumber} (${eq.serialNumber})` : 'Unknown Equipment';
   };
 
-  const getContractNumber = (contractId: string) => {
+  const getContractNumber = (contractId: string | null | undefined) => {
     const contract = contracts?.find((c) => c.id === contractId);
     return contract?.contractNumber || 'Unknown Contract';
   };
 
-  const getCollectionMethodBadge = (method: string) => {
+  const getCollectionMethodBadge = (method: string | null | undefined) => {
     const variants = {
       manual: { variant: 'default' as const, color: 'bg-gray-100' },
       email: { variant: 'secondary' as const, color: 'bg-blue-100' },
@@ -208,10 +210,12 @@ export default function MeterBilling() {
 
     const config = variants[method as keyof typeof variants] || variants.manual;
 
-    return <Badge variant={config.variant}>{method.replace('_', ' ').toUpperCase()}</Badge>;
+    return (
+      <Badge variant={config.variant}>{(method ?? 'manual').replace('_', ' ').toUpperCase()}</Badge>
+    );
   };
 
-  const getBillingStatusBadge = (status: string) => {
+  const getBillingStatusBadge = (status: string | null | undefined) => {
     const variants = {
       pending: { variant: 'outline' as const, icon: Clock },
       processed: { variant: 'secondary' as const, icon: CheckCircle },
@@ -225,7 +229,7 @@ export default function MeterBilling() {
     return (
       <Badge variant={config.variant} className="gap-1">
         <Icon className="w-3 h-3" />
-        {status.toUpperCase()}
+        {(status ?? 'pending').toUpperCase()}
       </Badge>
     );
   };
@@ -235,10 +239,10 @@ export default function MeterBilling() {
     invoices?.reduce((sum, inv) => sum + parseFloat(inv.totalAmount.toString()), 0) || 0;
   const pendingReadings = meterReadings?.filter((r) => r.billingStatus === 'pending').length || 0;
   const averageBlackRate =
-    contracts?.reduce((sum, c) => sum + parseFloat(c.blackRate?.toString() || '0'), 0) /
+    (contracts?.reduce((sum, c) => sum + parseFloat(c.blackRate?.toString() || '0'), 0) ?? 0) /
       (contracts?.length || 1) || 0;
   const averageColorRate =
-    contracts?.reduce((sum, c) => sum + parseFloat(c.colorRate?.toString() || '0'), 0) /
+    (contracts?.reduce((sum, c) => sum + parseFloat(c.colorRate?.toString() || '0'), 0) ?? 0) /
       (contracts?.length || 1) || 0;
 
   if (isLoadingReadings) {
@@ -379,7 +383,7 @@ export default function MeterBilling() {
                             <SelectContent>
                               {equipment?.map((eq) => (
                                 <SelectItem key={eq.id} value={eq.id}>
-                                  {eq.manufacturer} {eq.model}
+                                  {eq.manufacturer} {eq.modelNumber}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -394,7 +398,7 @@ export default function MeterBilling() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Contract</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select contract" />
@@ -431,12 +435,12 @@ export default function MeterBilling() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={meterForm.control}
-                      name="blackMeter"
+                      name="bwMeterReading"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Black & White Meter</FormLabel>
                           <FormControl>
-                            <Input type="number" {...field} />
+                            <Input type="number" {...field} value={field.value ?? ''} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -444,12 +448,12 @@ export default function MeterBilling() {
                     />
                     <FormField
                       control={meterForm.control}
-                      name="colorMeter"
+                      name="colorMeterReading"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Color Meter</FormLabel>
                           <FormControl>
-                            <Input type="number" {...field} />
+                            <Input type="number" {...field} value={field.value ?? ''} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -463,7 +467,7 @@ export default function MeterBilling() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Collection Method</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value ?? undefined}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select collection method" />
@@ -489,7 +493,7 @@ export default function MeterBilling() {
                       <FormItem>
                         <FormLabel>Notes</FormLabel>
                         <FormControl>
-                          <Textarea {...field} />
+                          <Textarea {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -656,7 +660,8 @@ export default function MeterBilling() {
                         (sum, inv) => sum + parseFloat(inv.totalAmount.toString()),
                         0,
                       );
-                      const equipmentCost = parseFloat(contract.equipmentCost?.toString() || '0');
+                      // contracts have no equipment-cost column; treat as 0 for margin
+                      const equipmentCost = 0;
                       const margin =
                         equipmentCost > 0
                           ? ((totalRevenue - equipmentCost) / totalRevenue) * 100
