@@ -62,7 +62,6 @@ export default function ProductAccessories() {
         ...accessory,
         id: accessory.id,
         accessoryName: accessory.accessory_name || accessory.accessoryName || '',
-        modelId: accessory.model_id || accessory.modelId || null,
         createdAt: accessory.createdAt || accessory.createdAt || '',
         updatedAt: accessory.updatedAt || accessory.updatedAt || '',
       }));
@@ -175,16 +174,17 @@ export default function ProductAccessories() {
         accessoryName: selectedAccessory.accessoryName,
         category: selectedAccessory.category,
         description: selectedAccessory.description,
-        msrp: selectedAccessory.msrp,
-        repPrice: selectedAccessory.repPrice,
-        isRequired: selectedAccessory.isRequired,
+        standardCost: selectedAccessory.standardCost,
+        standardRepPrice: selectedAccessory.standardRepPrice,
         isActive: selectedAccessory.isActive,
       });
     }
   }, [selectedAccessory, editForm]);
 
   // Get unique manufacturers from models
-  const manufacturers = Array.from(new Set(models.map((m) => m.manufacturer).filter(Boolean)));
+  const manufacturers = Array.from(
+    new Set(models.map((m) => m.manufacturer).filter((m): m is string => Boolean(m))),
+  );
 
   // Filter models by selected manufacturer
   const filteredModels =
@@ -201,9 +201,8 @@ export default function ProductAccessories() {
 
     if (selectedManufacturer === 'all') return matchesSearch;
 
-    // Find the model this accessory belongs to and check manufacturer
-    const relatedModel = models.find((m) => m.id === accessory.modelId);
-    const matchesManufacturer = relatedModel?.manufacturer === selectedManufacturer;
+    // Accessories carry their own manufacturer column (no direct model FK).
+    const matchesManufacturer = accessory.manufacturer === selectedManufacturer;
 
     return matchesSearch && matchesManufacturer;
   });
@@ -217,8 +216,6 @@ export default function ProductAccessories() {
   };
 
   const AccessoryCard = ({ accessory }: { accessory: ProductAccessory }) => {
-    const relatedModel = models.find((m) => m.id === accessory.modelId);
-
     return (
       <Card className="hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
@@ -227,13 +224,12 @@ export default function ProductAccessories() {
               <CardTitle className="text-lg">{accessory.accessoryName}</CardTitle>
               <CardDescription>
                 <span className="font-medium">{accessory.accessoryCode || 'N/A'}</span>
-                {relatedModel && (
-                  <span className="ml-2 text-muted-foreground">• {relatedModel.productName}</span>
+                {accessory.accessoryType && (
+                  <span className="ml-2 text-muted-foreground">• {accessory.accessoryType}</span>
                 )}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              {accessory.isRequired && <Badge variant="destructive">Required</Badge>}
               {accessory.isActive ? (
                 <Badge variant="default" className="bg-green-100 text-green-800">
                   Active
@@ -248,8 +244,8 @@ export default function ProductAccessories() {
           <div className="flex items-center gap-2">
             <Tag className="h-4 w-4 text-muted-foreground" />
             <Badge variant="outline">{accessory.category}</Badge>
-            {relatedModel?.manufacturer && (
-              <Badge variant="outline">{relatedModel.manufacturer}</Badge>
+            {accessory.manufacturer && (
+              <Badge variant="outline">{accessory.manufacturer}</Badge>
             )}
           </div>
 
@@ -261,23 +257,23 @@ export default function ProductAccessories() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">MSRP</span>
+                <span className="text-sm font-medium">Standard Cost</span>
               </div>
-              <p className="text-lg font-bold">{formatCurrency(accessory.msrp)}</p>
-            </div>
-
-            <div className="space-y-2">
-              <span className="text-sm font-medium">Standard Cost</span>
               <p className="text-lg font-bold text-blue-600">
-                {formatCurrency((accessory as any).standardCost)}
+                {formatCurrency(accessory.standardCost)}
               </p>
             </div>
 
             <div className="space-y-2">
-              <span className="text-sm font-medium">Rep Price</span>
+              <span className="text-sm font-medium">Std Rep Price</span>
               <p className="text-lg font-bold text-green-600">
-                {formatCurrency(accessory.repPrice)}
+                {formatCurrency(accessory.standardRepPrice)}
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-sm font-medium">New Rep Price</span>
+              <p className="text-lg font-bold">{formatCurrency(accessory.newRepPrice)}</p>
             </div>
           </div>
 
@@ -285,7 +281,7 @@ export default function ProductAccessories() {
 
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
-              Model: {relatedModel?.productCode || 'Unknown'}
+              Type: {accessory.accessoryType || 'Unknown'}
             </div>
             <Button variant="outline" size="sm" onClick={() => setSelectedAccessory(accessory)}>
               <Edit3 className="h-4 w-4 mr-1" />
@@ -876,15 +872,15 @@ export default function ProductAccessories() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={editForm.control}
-                      name="msrp"
+                      name="standardCost"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>MSRP ($)</FormLabel>
+                          <FormLabel>Standard Cost ($)</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
                               step="0.01"
-                              value={field.value || ''}
+                              value={field.value ?? ''}
                               onChange={field.onChange}
                             />
                           </FormControl>
@@ -894,7 +890,7 @@ export default function ProductAccessories() {
                     />
                     <FormField
                       control={editForm.control}
-                      name="repPrice"
+                      name="standardRepPrice"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Rep Price ($)</FormLabel>
@@ -902,7 +898,7 @@ export default function ProductAccessories() {
                             <Input
                               type="number"
                               step="0.01"
-                              value={field.value || ''}
+                              value={field.value ?? ''}
                               onChange={field.onChange}
                             />
                           </FormControl>
@@ -915,13 +911,13 @@ export default function ProductAccessories() {
                   <div className="flex items-center space-x-4">
                     <FormField
                       control={editForm.control}
-                      name="isRequired"
+                      name="availableForAll"
                       render={({ field }) => (
                         <FormItem className="flex items-center space-x-2">
                           <FormControl>
                             <Switch checked={!!field.value} onCheckedChange={field.onChange} />
                           </FormControl>
-                          <FormLabel className="text-sm font-medium">Required Accessory</FormLabel>
+                          <FormLabel className="text-sm font-medium">Available for All Models</FormLabel>
                         </FormItem>
                       )}
                     />
