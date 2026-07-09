@@ -1,4 +1,4 @@
-import { QueryClient, QueryFunction } from '@tanstack/react-query';
+import { QueryClient, QueryCache, QueryFunction } from '@tanstack/react-query';
 import { toast } from '@/hooks/use-toast';
 import { getApiUrl } from '@/lib/config';
 import { getAccessToken, refreshSession } from '@/lib/supabase';
@@ -108,8 +108,8 @@ interface ApiRequestOptions {
 /**
  * Build common request headers: Bearer token, tenant ID, demo flag, request ID.
  */
-async function buildAuthHeaders(requestId: string): Promise<HeadersInit> {
-  const headers: HeadersInit = {
+async function buildAuthHeaders(requestId: string): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-Request-ID': requestId,
   };
@@ -235,7 +235,7 @@ export async function apiFormRequest(
   // Remove Content-Type so the browser sets multipart/form-data with boundary
   delete (baseHeaders as Record<string, string>)['Content-Type'];
 
-  const requestHeaders: HeadersInit = {
+  const requestHeaders: Record<string, string> = {
     ...baseHeaders,
     ...extraHeaders,
   };
@@ -401,28 +401,31 @@ export const getQueryFn: <T>(options: { on401: UnauthorizedBehavior }) => QueryF
   };
 
 export const queryClient = new QueryClient({
+  // v5: global query error handling lives on the QueryCache, not query options.
+  queryCache: new QueryCache({
+    onError: (error: any) => {
+      // Suppress cascading error toasts when session is already expired
+      const message = typeof error === 'string' ? error : error?.message || 'Failed to load data';
+      if (isSessionExpired() && message.includes('401')) {
+        return;
+      }
+      mobileLogger.error('Query error', { message, stack: error?.stack?.slice(0, 300) });
+      toast({
+        title: 'Load error',
+        description: message,
+        variant: 'destructive',
+      });
+    },
+  }),
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: 'throw' }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
       staleTime: 5 * 60 * 1000, // 5 minutes
-      cacheTime: 10 * 60 * 1000, // 10 minutes cache
+      gcTime: 10 * 60 * 1000, // 10 minutes cache (v5: gcTime)
       refetchOnMount: true,
       refetchOnReconnect: true,
-      onError: (error: any) => {
-        // Suppress cascading error toasts when session is already expired
-        const message = typeof error === 'string' ? error : error?.message || 'Failed to load data';
-        if (isSessionExpired() && message.includes('401')) {
-          return;
-        }
-        mobileLogger.error('Query error', { message, stack: error?.stack?.slice(0, 300) });
-        toast({
-          title: 'Load error',
-          description: message,
-          variant: 'destructive',
-        });
-      },
       retry: (failureCount, error: any) => {
         // Don't retry on auth errors or client errors
         if (error?.status === 401 || error?.status === 403 || error?.status === 404) {
