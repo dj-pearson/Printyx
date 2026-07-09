@@ -188,13 +188,13 @@ export default function Contracts() {
     );
 
   // Helper: is contract expiring within 30 days?
-  const isExpiringSoon = (endDate: string) => {
+  const isExpiringSoon = (endDate: Date | string | null | undefined) => {
     if (!endDate) return false;
     const diff = (new Date(endDate).getTime() - Date.now()) / 86_400_000;
     return diff > 0 && diff <= 30;
   };
 
-  const isExpired = (endDate: string) => {
+  const isExpired = (endDate: Date | string | null | undefined) => {
     if (!endDate) return false;
     return new Date(endDate).getTime() < Date.now();
   };
