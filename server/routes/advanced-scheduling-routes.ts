@@ -218,8 +218,8 @@ router.post('/constraints/validate', async (req, res) => {
     // Mock validation process
     const validationResult = {
       feasible: true,
-      conflictingConstraints: [],
-      suggestions: [],
+      conflictingConstraints: [] as Array<Record<string, unknown>>,
+      suggestions: [] as string[],
       complexity: {
         variables: tasks?.length || 0,
         constraints: constraints.length,

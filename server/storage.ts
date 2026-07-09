@@ -546,9 +546,7 @@ export interface IStorage {
 
   // Lead contact operations
   getLeadContacts(leadId: string, tenantId: string): Promise<LeadContact[]>;
-  createLeadContact(
-    contact: Omit<LeadContact, 'id' | 'createdAt' | 'updatedAt'>,
-  ): Promise<LeadContact>;
+  createLeadContact(contact: typeof leadContacts.$inferInsert): Promise<LeadContact>;
 
   // Lead related records operations
   getLeadRelatedRecords(leadId: string, tenantId: string): Promise<LeadRelatedRecord[]>;
@@ -3309,9 +3307,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(leadContacts.leadId, leadId), eq(leadContacts.tenantId, tenantId)));
   }
 
-  async createLeadContact(
-    contact: Omit<LeadContact, 'id' | 'createdAt' | 'updatedAt'>,
-  ): Promise<LeadContact> {
+  async createLeadContact(contact: typeof leadContacts.$inferInsert): Promise<LeadContact> {
     const [newContact] = await db.insert(leadContacts).values(contact).returning();
     return newContact;
   }
