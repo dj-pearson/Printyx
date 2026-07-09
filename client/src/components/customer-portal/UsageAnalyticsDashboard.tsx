@@ -361,14 +361,13 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
               <CardContent>
                 <ComposedChart
                   data={analytics.trends}
-                  xKey="date"
+                  xDataKey="date"
                   lines={[
-                    { key: 'totalImpressions', name: 'Total', color: CHART_COLORS[0] },
-                    { key: 'blackWhiteImpressions', name: 'B&W', color: CHART_COLORS[1] },
-                    { key: 'colorImpressions', name: 'Color', color: CHART_COLORS[2] },
+                    { dataKey: 'totalImpressions', name: 'Total', color: CHART_COLORS[0] },
+                    { dataKey: 'blackWhiteImpressions', name: 'B&W', color: CHART_COLORS[1] },
+                    { dataKey: 'colorImpressions', name: 'Color', color: CHART_COLORS[2] },
                   ]}
                   height={300}
-                  data-testid="chart-usage-trends"
                 />
               </CardContent>
             </Card>
@@ -384,11 +383,10 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
               <CardContent>
                 <ComposedChart
                   data={analytics.trends}
-                  xKey="date"
-                  lines={[{ key: 'costEstimate', name: 'Cost ($)', color: CHART_COLORS[2] }]}
-                  bars={[{ key: 'efficiency', name: 'Efficiency (%)', color: CHART_COLORS[4] }]}
+                  xDataKey="date"
+                  lines={[{ dataKey: 'costEstimate', name: 'Cost ($)', color: CHART_COLORS[2] }]}
+                  bars={[{ dataKey: 'efficiency', name: 'Efficiency (%)', color: CHART_COLORS[4] }]}
                   height={300}
-                  data-testid="chart-cost-efficiency"
                 />
               </CardContent>
             </Card>
@@ -416,8 +414,9 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
                     { name: 'Maintenance', value: analytics.costBreakdown.maintenanceCost },
                     { name: 'Supplies', value: analytics.costBreakdown.supplyCost },
                   ]}
+                  dataKey="value"
+                  nameKey="name"
                   height={300}
-                  data-testid="chart-cost-breakdown"
                 />
               </CardContent>
             </Card>
@@ -555,10 +554,9 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
                     name: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][peak.dayOfWeek],
                     value: peak.averageVolume,
                   }))}
-                  xKey="name"
-                  yKey="value"
+                  xDataKey="name"
+                  bars={[{ dataKey: 'value', name: 'Avg Volume', color: CHART_COLORS[0] }]}
                   height={window.innerWidth < 640 ? 200 : 250}
-                  data-testid="chart-daily-patterns"
                 />
               </CardContent>
             </Card>
@@ -577,10 +575,9 @@ export const UsageAnalyticsDashboard = memo(function UsageAnalyticsDashboard({
                     hour: `${peak.hour}:00`,
                     volume: peak.averageVolume,
                   }))}
-                  xKey="hour"
-                  yKey="volume"
+                  xDataKey="hour"
+                  lines={[{ dataKey: 'volume', name: 'Avg Volume', color: CHART_COLORS[1] }]}
                   height={window.innerWidth < 640 ? 200 : 250}
-                  data-testid="chart-hourly-patterns"
                 />
               </CardContent>
             </Card>
