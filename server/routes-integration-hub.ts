@@ -796,7 +796,7 @@ router.get('/api/integration-hub/marketplace', async (req: any, res) => {
     }
 
     // Mock marketplace data with filtering
-    const marketplaceAPIs = [
+    const marketplaceAPIs: any[] = [
       // This would contain the full marketplace data
       // For now, return a subset for demonstration
     ];

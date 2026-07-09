@@ -591,7 +591,12 @@ Return JSON with updated pattern insights:
 
   // Helper methods
   private generateTimeSlots(task: Task, resources: Resource[]): any[] {
-    const slots = [];
+    const slots: Array<{
+      startTime: Date;
+      endTime: Date;
+      resourceId: string;
+      duration: number;
+    }> = [];
     const now = new Date();
     const endDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 2 weeks ahead
 

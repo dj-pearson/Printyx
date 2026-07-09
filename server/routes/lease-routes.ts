@@ -501,7 +501,9 @@ router.post('/lease-payments/:id/process', async (req, res, next) => {
     if (lease) {
       await storage.updateLease(payment.leaseId, tenantId, {
         paymentsCompleted: (lease.paymentsCompleted || 0) + 1,
-        totalPaid: parseFloat(lease.totalPaid || '0') + parseFloat(payment.scheduledAmount),
+        totalPaid: (
+          parseFloat(lease.totalPaid || '0') + parseFloat(payment.scheduledAmount)
+        ).toString(),
       });
     }
 
@@ -579,11 +581,13 @@ router.post('/leases/:id/complete-disposition', async (req, res, next) => {
     });
 
     // Update lease status based on disposition action
-    let leaseStatus = 'expired';
+    // Buyout/purchase ends the lease early → 'terminated' (the enum has no
+    // 'completed'; storing that raised a Postgres enum violation at runtime).
+    let leaseStatus: 'expired' | 'renewed' | 'terminated' = 'expired';
     if (req.body.action === 'renew') {
       leaseStatus = 'renewed';
     } else if (req.body.action === 'purchase') {
-      leaseStatus = 'completed';
+      leaseStatus = 'terminated';
     }
 
     await storage.updateLease(lease.id, tenantId, {
