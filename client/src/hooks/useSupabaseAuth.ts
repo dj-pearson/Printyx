@@ -64,6 +64,7 @@ export interface AuthUser {
   email: string;
   firstName?: string;
   lastName?: string;
+  profileImageUrl?: string;
   tenantId?: string;
   roleId?: string;
   teamId?: string;
@@ -335,7 +336,7 @@ export function useSupabaseAuth() {
 
         // Get team data if we have a team_id
         const teamId = profile?.team_id || authUser.teamId;
-        let teamData = null;
+        let teamData: { id: string; name: string } | undefined = undefined;
 
         if (teamId) {
           const { data: team, error: teamError } = await supabase
@@ -383,6 +384,7 @@ export function useSupabaseAuth() {
           ...authUser,
           firstName: profile?.firstName || authUser.firstName,
           lastName: profile?.lastName || authUser.lastName,
+          profileImageUrl: profile?.profile_image_url || authUser.profileImageUrl,
           tenantId: profile?.tenantId || authUser.tenantId,
           roleId: profile?.role_id || authUser.roleId,
           teamId: profile?.team_id || authUser.teamId,

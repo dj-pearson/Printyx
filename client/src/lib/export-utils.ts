@@ -36,7 +36,7 @@ export function exportToCSV<T extends Record<string, any>>(
   data.forEach((row) => {
     const rowData = columns.map((col) => {
       const key = col.key as keyof T;
-      let value = row[key];
+      let value: any = row[key];
 
       // Apply custom formatting if provided
       if (col.format) {
@@ -83,7 +83,7 @@ export function exportToJSON<T extends Record<string, any>>(
     const obj: Record<string, any> = {};
     columns.forEach((col) => {
       const key = col.key as keyof T;
-      let value = row[key];
+      let value: any = row[key];
 
       if (col.format) {
         value = col.format(value, row);

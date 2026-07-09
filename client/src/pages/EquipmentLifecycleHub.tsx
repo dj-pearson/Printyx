@@ -691,7 +691,7 @@ export default function EquipmentLifecycleHub() {
                         />
                         <FormField
                           control={poForm.control}
-                          name="items.0.unitPrice"
+                          name="items.0.unit_price"
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>

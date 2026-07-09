@@ -395,10 +395,12 @@ export default function TaskManagement() {
   const groupedTasks = groupTasksBy(filteredTasks, view.groupBy);
 
   // Sort tasks within groups
-  const sortedGroupedTasks = Object.entries(groupedTasks).map(([group, tasks]) => [
-    group,
-    sortTasks(tasks as Task[], view.sortBy, view.sortOrder),
-  ]);
+  const sortedGroupedTasks = Object.entries(groupedTasks).map(
+    ([group, tasks]): [string, Task[]] => [
+      group,
+      sortTasks(tasks as Task[], view.sortBy, view.sortOrder),
+    ],
+  );
 
   const toggleTaskExpansion = (taskId: string) => {
     setExpandedTasks((prev) =>
