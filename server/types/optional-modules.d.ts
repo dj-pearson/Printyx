@@ -5,3 +5,9 @@
 // not use). Declaring them here lets TypeScript resolve the dynamic import as
 // `any` so the codebase typechecks without installing the SDK.
 declare module '@aws-sdk/client-secrets-manager';
+
+// Third-party integration SDKs that ship no bundled TypeScript declarations
+// and have no maintained @types package. Declared here so imports resolve as
+// `any` rather than failing the typecheck.
+declare module 'node-quickbooks';
+declare module 'jsforce';
