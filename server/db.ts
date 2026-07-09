@@ -134,7 +134,7 @@ pool.on('error', (err: Error) => {
 // This makes requestId visible in PostgreSQL slow query logs (log_min_duration_statement)
 pool.on('connect', (client: pg.PoolClient) => {
   const origQuery = client.query;
-  client.query = function (...args: any[]) {
+  client.query = function (this: any, ...args: any[]) {
     try {
       const ctx = getRequestContext();
       if (ctx?.requestId) {
@@ -148,7 +148,7 @@ pool.on('connect', (client: pg.PoolClient) => {
     } catch {
       /* never break queries for correlation logging */
     }
-    return origQuery.apply(this, args);
+    return (origQuery as any).apply(this, args);
   } as any;
 });
 
@@ -173,7 +173,7 @@ export async function withDbResilience<T>(
   queryFn: () => Promise<T>,
   operationName = 'database query',
 ): Promise<T> {
-  return dbRetryHandler.execute(queryFn, { operationName });
+  return dbRetryHandler.execute(queryFn, { operationName }) as Promise<T>;
 }
 
 /**
@@ -196,7 +196,7 @@ export async function withDbTransaction<T>(
       return db.transaction(txFn);
     },
     { operationName },
-  );
+  ) as Promise<T>;
 }
 
 /**
