@@ -48,7 +48,19 @@ export const DEFAULT_ACCESSIBILITY_PREFERENCES = {
   cursorSize: 'normal' as 'normal' | 'large',
 } as const;
 
-export type AccessibilityPreferences = typeof DEFAULT_ACCESSIBILITY_PREFERENCES;
+export interface AccessibilityPreferences {
+  highContrast: boolean;
+  reducedMotion: boolean;
+  fontSize: FontSizeKey;
+  screenReader: boolean;
+  keyboardNavigation: boolean;
+  colorBlind: ColorBlindType;
+  soundEnabled: boolean;
+  voiceCommands: boolean;
+  focusIndicators: boolean;
+  underlineLinks: boolean;
+  cursorSize: 'normal' | 'large';
+}
 
 // ARIA role descriptions for screen readers
 export const ARIA_DESCRIPTIONS = {
