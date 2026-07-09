@@ -14,7 +14,12 @@ import {
   useBulkSelection,
   BulkAction,
 } from '@/components/ui/bulk-operations-toolbar';
-import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
+import {
+  exportToCSV,
+  exportToJSON,
+  createExportColumn,
+  type ExportColumn,
+} from '@/lib/export-utils';
 import { SavedFilters, useFilterState } from '@/components/ui/saved-filters';
 import {
   Select,
@@ -63,21 +68,20 @@ export default function Inventory() {
       return (response || []).map((item: any) => ({
         ...item,
         id: item.id,
-        productId: item.productId || item.productId || '',
-        warehouseId: item.warehouse_id || item.warehouseId || '',
-        currentStock: item.current_stock || item.currentStock || 0,
-        reorderPoint: item.reorder_point || item.reorderPoint || 0,
-        reorderQuantity: item.reorder_quantity || item.reorderQuantity || 0,
-        lastRestocked: item.last_restocked || item.lastRestocked || null,
         createdAt: item.createdAt || item.createdAt || '',
         updatedAt: item.updatedAt || item.updatedAt || '',
       }));
     },
   });
 
-  const getStockStatus = (currentStock: number, reorderPoint: number) => {
-    if (currentStock <= reorderPoint) return 'low';
-    if (currentStock <= reorderPoint * 1.5) return 'medium';
+  const getStockStatus = (
+    currentStock: number | null | undefined,
+    reorderPoint: number | null | undefined,
+  ) => {
+    const stock = currentStock ?? 0;
+    const reorder = reorderPoint ?? 0;
+    if (stock <= reorder) return 'low';
+    if (stock <= reorder * 1.5) return 'medium';
     return 'good';
   };
 
@@ -102,10 +106,10 @@ export default function Inventory() {
       // Search filter
       const term = searchTerm.trim().toLowerCase();
       const matchesSearch =
-        !term || item.name?.toLowerCase().includes(term) || item.sku?.toLowerCase().includes(term);
+        !term || item.name?.toLowerCase().includes(term) || item.partNumber?.toLowerCase().includes(term);
 
       // Stock status filter
-      const itemStockStatus = getStockStatus(item.currentStock, item.reorderPoint);
+      const itemStockStatus = getStockStatus(item.quantityOnHand, item.reorderPoint);
       const matchesStockStatus = stockStatus === 'all' || itemStockStatus === stockStatus;
 
       return matchesSearch && matchesStockStatus;
@@ -143,13 +147,13 @@ export default function Inventory() {
       bulkSelection.selectedIds.includes(item.id),
     );
 
-    const columns = [
+    const columns: ExportColumn<InventoryItem>[] = [
       createExportColumn('name', 'Item Name'),
-      createExportColumn('sku', 'SKU'),
-      createExportColumn('currentStock', 'Current Stock'),
+      createExportColumn('partNumber', 'SKU'),
+      createExportColumn('quantityOnHand', 'Current Stock'),
       createExportColumn('reorderPoint', 'Reorder Point'),
       createExportColumn('unitCost', 'Unit Cost', 'currency'),
-      createExportColumn('location', 'Location'),
+      createExportColumn('binLocation', 'Location'),
     ];
 
     if (format === 'csv') {
@@ -331,7 +335,7 @@ export default function Inventory() {
           viewMode === 'cards' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredInventory.map((item: InventoryItem) => {
-                const itemStockStatus = getStockStatus(item.currentStock, item.reorderPoint);
+                const itemStockStatus = getStockStatus(item.quantityOnHand, item.reorderPoint);
                 const stockBadge = getStockBadge(itemStockStatus);
                 const isSelected = bulkSelection.isSelected(item.id);
 
@@ -355,7 +359,7 @@ export default function Inventory() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
-                            <p className="text-sm text-gray-600 mt-1">SKU: {item.sku}</p>
+                            <p className="text-sm text-gray-600 mt-1">SKU: {item.partNumber}</p>
                           </div>
                         </div>
                         <Badge variant={stockBadge.variant} className="ml-2 flex-shrink-0">
@@ -368,7 +372,7 @@ export default function Inventory() {
                           <p className="text-xs text-gray-500 uppercase tracking-wide">
                             Current Stock
                           </p>
-                          <p className="text-lg font-semibold text-gray-900">{item.currentStock}</p>
+                          <p className="text-lg font-semibold text-gray-900">{item.quantityOnHand}</p>
                         </div>
                         <div>
                           <p className="text-xs text-gray-500 uppercase tracking-wide">Unit Cost</p>
@@ -408,12 +412,12 @@ export default function Inventory() {
                   header: 'Item Name',
                   cell: (item) => <span className="font-medium">{item.name}</span>,
                 },
-                { id: 'sku', header: 'SKU', cell: (item) => item.sku },
+                { id: 'sku', header: 'SKU', cell: (item) => item.partNumber },
                 {
                   id: 'stockStatus',
                   header: 'Stock Status',
                   cell: (item) => {
-                    const s = getStockStatus(item.currentStock, item.reorderPoint);
+                    const s = getStockStatus(item.quantityOnHand, item.reorderPoint);
                     const b = getStockBadge(s);
                     return <Badge variant={b.variant}>{b.label}</Badge>;
                   },
@@ -421,7 +425,7 @@ export default function Inventory() {
                 {
                   id: 'currentStock',
                   header: 'Current Stock',
-                  cell: (item) => item.currentStock,
+                  cell: (item) => item.quantityOnHand,
                   align: 'right',
                 },
                 {
@@ -436,13 +440,13 @@ export default function Inventory() {
                   cell: (item) => `$${Number(item.unitCost || 0).toFixed(2)}`,
                   align: 'right',
                 },
-                { id: 'location', header: 'Location', cell: (item) => item.location || '—' },
+                { id: 'location', header: 'Location', cell: (item) => item.binLocation || '—' },
               ]}
               selectedIds={bulkSelection.selectedIdsSet}
               onSelectionChange={(ids) => {
                 const current = bulkSelection.selectedIdsSet;
                 ids.forEach((id) => {
-                  if (!current.has(id)) bulkSelection.toggleSelection(id as string);
+                  if (!current.has(id as string)) bulkSelection.toggleSelection(id as string);
                 });
                 current.forEach((id) => {
                   if (!ids.has(id)) bulkSelection.toggleSelection(id as string);
