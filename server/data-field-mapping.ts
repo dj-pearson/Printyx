@@ -164,7 +164,7 @@ Object.entries(SERVICE_TICKET_FIELD_MAP.frontendToDb).forEach(([frontend, db]) =
  */
 export function transformFrontendToDb<T extends Record<string, any>>(
   data: T,
-  fieldMap: typeof BUSINESS_RECORDS_FIELD_MAP.frontendToDb,
+  fieldMap: Record<string, string>,
 ): Record<string, any> {
   const transformed: Record<string, any> = {};
 
@@ -181,7 +181,7 @@ export function transformFrontendToDb<T extends Record<string, any>>(
  */
 export function transformDbToFrontend<T extends Record<string, any>>(
   data: T,
-  fieldMap: typeof BUSINESS_RECORDS_FIELD_MAP.dbToFrontend,
+  fieldMap: Record<string, string>,
 ): Record<string, any> {
   const transformed: Record<string, any> = {};
 
