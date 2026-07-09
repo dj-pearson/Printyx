@@ -83,8 +83,8 @@ export class TrialManagementService {
       }
 
       const templateData = {
-        userName: user.firstName || undefined,
-        userEmail: user.email,
+        userName: user.firstName || '',
+        userEmail: user.email || '',
         trialEndDate: trialStatus.trialEndDate.toLocaleDateString('en-US', {
           month: 'long',
           day: 'numeric',
@@ -116,7 +116,7 @@ export class TrialManagementService {
       }
 
       await emailService.send({
-        to: user.email,
+        to: user.email || '',
         subject: emailTemplate.subject,
         html: emailTemplate.html,
         text: emailTemplate.text,
@@ -163,7 +163,9 @@ export class TrialManagementService {
         try {
           const trialStatus = await this.getTrialStatus(user.id);
 
-          if (!trialStatus || trialStatus.status !== 'active') {
+          // Process active trials (day 3/7/11/13 nurture) and expired trials
+          // (day-14 notification); only fully-converted trials are skipped.
+          if (!trialStatus || trialStatus.status === 'converted') {
             continue;
           }
 
