@@ -817,7 +817,7 @@ export class CustomerPortalService {
   async logActivity(
     tenantId: string,
     customerId: string,
-    customerPortalUserId: string,
+    customerPortalUserId: string | null,
     action: string,
     description?: string,
     relatedRecordType?: string,
@@ -2053,7 +2053,13 @@ export class CustomerPortalService {
       const requestDate = new Date(request.date);
 
       // Generate standard business hours time slots (8 AM - 5 PM)
-      const timeSlots = [];
+      const timeSlots: Array<{
+        time: string;
+        duration: number;
+        technicianId: string;
+        technicianName: string;
+        isAvailable: boolean;
+      }> = [];
       for (let hour = 8; hour < 17; hour++) {
         timeSlots.push({
           time: `${hour.toString().padStart(2, '0')}:00`,

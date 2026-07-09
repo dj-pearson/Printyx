@@ -248,7 +248,7 @@ export class WhiteLabelService {
             <li>Invoice Number: {{invoiceNumber}}</li>
             <li>Invoice Date: {{invoiceDate}}</li>
             <li>Due Date: {{dueDate}}</li>
-            <li>Amount Due: ${{ amountDue }}</li>
+            <li>Amount Due: \${{amountDue}}</li>
           </ul>
           <p><a href="{{invoiceUrl}}" style="background-color: {{colorPrimary}}; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Invoice</a></p>
         `,
@@ -427,7 +427,7 @@ export class WhiteLabelService {
     await db
       .update(whiteLabelPresets)
       .set({
-        usageCount: String(parseInt(preset.usageCount) + 1),
+        usageCount: String(parseInt(preset.usageCount ?? '0') + 1),
       })
       .where(eq(whiteLabelPresets.id, preset.id));
 
