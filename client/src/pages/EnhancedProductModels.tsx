@@ -48,6 +48,30 @@ import { ProductPricingForm } from '@/components/product-management/ProductPrici
 import { ProductPricingDisplay } from '@/components/product-management/ProductPricingDisplay';
 import { usePricingVisibility } from '@/hooks/usePricingVisibility';
 
+type TierState = {
+  active: boolean;
+  dealerCost: string;
+  repMarkupPercentage: string;
+  repCost: string;
+  suggestedRetail: string;
+};
+
+// ProductPricingForm emits a PricingTier (optional number|string fields); the
+// local tier state stores plain strings. Coerce so setState stays type-safe.
+const toTierState = (v: {
+  active: boolean;
+  dealerCost?: number | string;
+  repMarkupPercentage?: number | string;
+  repCost?: number | string;
+  suggestedRetail?: number | string;
+}): TierState => ({
+  active: v.active,
+  dealerCost: v.dealerCost != null ? String(v.dealerCost) : '',
+  repMarkupPercentage: v.repMarkupPercentage != null ? String(v.repMarkupPercentage) : '',
+  repCost: v.repCost != null ? String(v.repCost) : '',
+  suggestedRetail: v.suggestedRetail != null ? String(v.suggestedRetail) : '',
+});
+
 export default function EnhancedProductModels() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -246,10 +270,8 @@ export default function EnhancedProductModels() {
   const filteredModels = models.filter((model) => {
     const matchesSearch =
       !searchTerm ||
-      (model.productName || model.modelName || '')
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (model.productCode || model.modelCode || '').toLowerCase().includes(searchTerm.toLowerCase());
+      (model.productName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (model.productCode || '').toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesCategory = selectedCategory === 'all' || model.category === selectedCategory;
 
@@ -368,7 +390,7 @@ export default function EnhancedProductModels() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Category</FormLabel>
-                              <Select value={field.value} onValueChange={field.onChange}>
+                              <Select value={field.value ?? undefined} onValueChange={field.onChange}>
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue />
@@ -521,24 +543,24 @@ export default function EnhancedProductModels() {
                         tier="new"
                         tierLabel="New"
                         values={newTier}
-                        onChange={setNewTier}
-                        productCategory={form.watch('category')}
+                        onChange={(v) => setNewTier(toTierState(v))}
+                        productCategory={form.watch('category') ?? undefined}
                       />
 
                       <ProductPricingForm
                         tier="upgrade"
                         tierLabel="Upgrade"
                         values={upgradeTier}
-                        onChange={setUpgradeTier}
-                        productCategory={form.watch('category')}
+                        onChange={(v) => setUpgradeTier(toTierState(v))}
+                        productCategory={form.watch('category') ?? undefined}
                       />
 
                       <ProductPricingForm
                         tier="lexmark"
                         tierLabel="Lexmark"
                         values={lexmarkTier}
-                        onChange={setLexmarkTier}
-                        productCategory={form.watch('category')}
+                        onChange={(v) => setLexmarkTier(toTierState(v))}
+                        productCategory={form.watch('category') ?? undefined}
                       />
                     </TabsContent>
                   </Tabs>
@@ -595,11 +617,9 @@ export default function EnhancedProductModels() {
                 <CardHeader className={bulkMode ? 'pl-12' : ''}>
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <CardTitle className="text-lg">
-                        {model.productName || model.modelName}
-                      </CardTitle>
+                      <CardTitle className="text-lg">{model.productName}</CardTitle>
                       <CardDescription>
-                        <span className="font-medium">{model.productCode || model.modelCode}</span>
+                        <span className="font-medium">{model.productCode}</span>
                         {model.manufacturer && <span className="ml-2">• {model.manufacturer}</span>}
                       </CardDescription>
                     </div>
@@ -635,19 +655,19 @@ export default function EnhancedProductModels() {
                   <ProductPricingDisplay
                     msrp={model.msrp}
                     newTier={{
-                      active: model.newActive,
+                      active: model.newActive ?? undefined,
                       dealerCost: model.newDealerCost,
                       repCost: model.newRepCost,
                       suggestedRetail: model.newSuggestedRetail,
                     }}
                     upgradeTier={{
-                      active: model.upgradeActive,
+                      active: model.upgradeActive ?? undefined,
                       dealerCost: model.upgradeDealerCost,
                       repCost: model.upgradeRepCost,
                       suggestedRetail: model.upgradeSuggestedRetail,
                     }}
                     lexmarkTier={{
-                      active: model.lexmarkActive,
+                      active: model.lexmarkActive ?? undefined,
                       dealerCost: model.lexmarkDealerCost,
                       repCost: model.lexmarkRepCost,
                       suggestedRetail: model.lexmarkSuggestedRetail,
