@@ -45,8 +45,8 @@ import type {
 // Form schemas
 const companyPricingSchema = z.object({
   defaultMarkupPercentage: z.string().min(1, 'Default markup percentage is required'),
-  allowSalespersonOverride: z.boolean(),
-  minimumGrossProfitPercentage: z.string().min(1, 'Minimum gross profit percentage is required'),
+  allowRepPriceEdit: z.boolean(),
+  minMarginPercentage: z.string().min(1, 'Minimum gross profit percentage is required'),
 });
 
 const productPricingSchema = z.object({
@@ -186,8 +186,8 @@ export default function PricingManagement() {
     resolver: zodResolver(companyPricingSchema),
     defaultValues: {
       defaultMarkupPercentage: '20.00',
-      allowSalespersonOverride: true,
-      minimumGrossProfitPercentage: '5.00',
+      allowRepPriceEdit: true,
+      minMarginPercentage: '5.00',
     },
   });
 
@@ -196,8 +196,8 @@ export default function PricingManagement() {
     if (companySettings) {
       companyForm.reset({
         defaultMarkupPercentage: companySettings.defaultMarkupPercentage || '20.00',
-        allowSalespersonOverride: companySettings.allowSalespersonOverride ?? true,
-        minimumGrossProfitPercentage: companySettings.minimumGrossProfitPercentage || '5.00',
+        allowRepPriceEdit: companySettings.allowRepPriceEdit ?? true,
+        minMarginPercentage: companySettings.minMarginPercentage || '5.00',
       });
     }
   }, [companySettings, companyForm]);
@@ -312,7 +312,7 @@ export default function PricingManagement() {
 
                     <FormField
                       control={companyForm.control}
-                      name="minimumGrossProfitPercentage"
+                      name="minMarginPercentage"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Minimum Gross Profit Percentage (%)</FormLabel>
@@ -326,7 +326,7 @@ export default function PricingManagement() {
 
                     <FormField
                       control={companyForm.control}
-                      name="allowSalespersonOverride"
+                      name="allowRepPriceEdit"
                       render={({ field }) => (
                         <FormItem className="flex items-center justify-between">
                           <FormLabel>Allow Salesperson Override</FormLabel>
@@ -522,15 +522,15 @@ export default function PricingManagement() {
                 <div>
                   <p className="text-sm text-gray-600">Minimum Profit</p>
                   <p className="text-lg font-semibold">
-                    {companySettings.minimumGrossProfitPercentage}%
+                    {companySettings.minMarginPercentage}%
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Salesperson Override</p>
                   <Badge
-                    variant={companySettings.allowSalespersonOverride ? 'default' : 'secondary'}
+                    variant={companySettings.allowRepPriceEdit ? 'default' : 'secondary'}
                   >
-                    {companySettings.allowSalespersonOverride ? 'Allowed' : 'Restricted'}
+                    {companySettings.allowRepPriceEdit ? 'Allowed' : 'Restricted'}
                   </Badge>
                 </div>
               </div>

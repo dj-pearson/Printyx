@@ -278,8 +278,8 @@ export default function CustomerDetailHubspot() {
     website: '',
     industry: '',
     companySize: '',
-    employeeCount: null,
-    annualRevenue: null,
+    employeeCount: null as number | null,
+    annualRevenue: null as number | null,
 
     // Contact Information
     primaryContactName: '',
@@ -363,7 +363,7 @@ export default function CustomerDetailHubspot() {
     migrationStatus: '',
 
     // Financial Information
-    creditLimit: null,
+    creditLimit: null as number | null,
     paymentTerms: 'Net 30',
     billingTerms: '',
     taxExempt: false,
@@ -1629,7 +1629,7 @@ export default function CustomerDetailHubspot() {
                             onCheckedChange={(checked) =>
                               setEditForm((prev) => ({
                                 ...prev,
-                                taxExempt: checked,
+                                taxExempt: checked === true,
                               }))
                             }
                           />
@@ -2267,10 +2267,7 @@ export default function CustomerDetailHubspot() {
               </TabsContent>
 
               <TabsContent value="meter-readings" className="mt-6">
-                <CustomerMeterReadings
-                  customerId={customer?.id || ''}
-                  customerName={customer?.companyName || 'Unknown Customer'}
-                />
+                <CustomerMeterReadings customerId={customer?.id || ''} />
               </TabsContent>
 
               <TabsContent value="integrations" className="mt-6">
