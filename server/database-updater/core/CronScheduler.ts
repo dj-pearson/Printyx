@@ -253,65 +253,6 @@ export class CronScheduler {
   }
 
   /**
-   * Execute job handler with error handling and metrics
-   */
-  private async executeJobHandler(job: ScheduledJob): Promise<void> {
-    const startTime = Date.now();
-
-    try {
-      this.runningJobs.add(job.name);
-
-      this.logger.debug(`Executing scheduled job: ${job.name}`);
-
-      await job.handler();
-
-      job.executionCount++;
-      job.lastExecution = new Date();
-
-      const executionTime = Date.now() - startTime;
-      this.logger.info(`Completed scheduled job: ${job.name}`, {
-        executionTime: `${executionTime}ms`,
-        executionCount: job.executionCount,
-      });
-    } catch (error) {
-      job.errorCount++;
-
-      const executionTime = Date.now() - startTime;
-      this.logger.error(`Scheduled job failed: ${job.name}`, {
-        error,
-        executionTime: `${executionTime}ms`,
-        errorCount: job.errorCount,
-      });
-
-      if (this.options.enableExceptionHandling) {
-        // Optionally implement retry logic here
-        this.logger.info(`Exception handling enabled for job: ${job.name}`);
-      }
-    } finally {
-      this.runningJobs.delete(job.name);
-    }
-  }
-
-  /**
-   * Calculate next execution time for a job
-   */
-  private getNextExecutionTime(job: ScheduledJob): Date | null {
-    try {
-      // This is a simplified calculation - in a real implementation,
-      // you'd use the cron library's ability to get next execution time
-      // For now, we'll return null or implement a basic calculation
-
-      // Note: node-cron doesn't have a built-in method to get next execution time
-      // You might want to use a library like 'cron-parser' for this functionality
-
-      return null; // Placeholder
-    } catch (error) {
-      this.logger.error(`Failed to calculate next execution time for job: ${job.name}`, error);
-      return null;
-    }
-  }
-
-  /**
    * Get job by name
    */
   getJob(name: string): ScheduledJob | undefined {
