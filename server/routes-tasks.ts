@@ -13,6 +13,7 @@ export function registerTaskRoutes(app: Express) {
   app.get('/api/tasks', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
       const { assignedTo, my } = req.query;
 
       let userId: string | undefined;
@@ -34,6 +35,7 @@ export function registerTaskRoutes(app: Express) {
   app.get('/api/tasks/stats', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
       const { my } = req.query;
 
       let userId: string | undefined;
@@ -53,6 +55,7 @@ export function registerTaskRoutes(app: Express) {
   app.post('/api/tasks', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
       const userId = getUserId(req);
 
       // Convert string dates to Date objects and clean up data
@@ -93,6 +96,7 @@ export function registerTaskRoutes(app: Express) {
   app.put('/api/tasks/:id', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
       const taskId = req.params.id;
 
       const task = await storage.updateTask(taskId, req.body, tenantId);
@@ -112,6 +116,7 @@ export function registerTaskRoutes(app: Express) {
   app.patch('/api/tasks/:id', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
       const taskId = req.params.id;
 
       const task = await storage.updateTask(taskId, req.body, tenantId);
@@ -131,6 +136,7 @@ export function registerTaskRoutes(app: Express) {
   app.get('/api/projects', async (req: any, res) => {
     try {
       const tenantId = getTenantId(req);
+      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
       const { assignedTo, my } = req.query;
 
       let userId: string | undefined;
@@ -153,6 +159,7 @@ export function registerTaskRoutes(app: Express) {
     try {
       log.info('Creating project - request body:', req.body);
       const tenantId = getTenantId(req);
+      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
       const userId = getUserId(req);
       log.info('Creating project', { tenantId, userId });
 
