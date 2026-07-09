@@ -193,15 +193,15 @@ export default function Invoices() {
 
   const getCustomerName = (customerId: string) => {
     const customer = customers?.find((c) => c.id === customerId);
-    return customer?.name || 'Unknown Customer';
+    return customer?.companyName || 'Unknown Customer';
   };
 
-  const getContractNumber = (contractId: string) => {
+  const getContractNumber = (contractId: string | null | undefined) => {
     const contract = contracts?.find((c) => c.id === contractId);
     return contract?.contractNumber || 'Unknown Contract';
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | null | undefined) => {
     const colors = {
       draft: 'bg-gray-100 text-gray-800',
       sent: 'bg-blue-100 text-blue-800',
@@ -214,7 +214,7 @@ export default function Invoices() {
       <Badge
         className={`${colors[status as keyof typeof colors] || colors.draft} touch-manipulation min-h-[32px] px-3 text-sm font-medium`}
       >
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Draft'}
       </Badge>
     );
   };
@@ -306,13 +306,13 @@ export default function Invoices() {
   });
 
   // Bulk export
-  const handleBulkExport = (format: 'csv' | 'json') => {
+  const handleBulkExport = (exportFormat: 'csv' | 'json') => {
     const selected = (filteredInvoices || []).filter((inv) =>
       bulkSelection.selectedIds.includes(inv.id),
     );
     if (selected.length === 0) return;
 
-    if (format === 'json') {
+    if (exportFormat === 'json') {
       const blob = new Blob([JSON.stringify(selected, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -701,8 +701,13 @@ export default function Invoices() {
                     <div className="flex-1">
                       <p className="text-xs text-gray-600 mb-1">Billing Period</p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {format(new Date(invoice.billingPeriodStart), 'MMM dd')} -{' '}
-                        {format(new Date(invoice.billingPeriodEnd), 'MMM dd, yyyy')}
+                        {invoice.billingPeriodStart
+                          ? format(new Date(invoice.billingPeriodStart), 'MMM dd')
+                          : 'N/A'}{' '}
+                        -{' '}
+                        {invoice.billingPeriodEnd
+                          ? format(new Date(invoice.billingPeriodEnd), 'MMM dd, yyyy')
+                          : 'N/A'}
                       </p>
                     </div>
                   </div>

@@ -74,14 +74,14 @@ export interface PaginatedResponse<T> {
 
 export const getCacheConfig = (dataType: keyof typeof CACHE_TIMES) => ({
   staleTime: CACHE_TIMES[dataType],
-  cacheTime: CACHE_TIMES[dataType] * 2, // Keep in cache 2x longer than stale time
+  gcTime: CACHE_TIMES[dataType] * 2, // Keep in cache 2x longer than stale time (v5: gcTime)
   refetchOnWindowFocus: dataType === 'REAL_TIME' || dataType === 'ALERTS',
   refetchOnMount: true,
   refetchOnReconnect: true,
 });
 
 export const getPollingConfig = (priority: keyof typeof POLLING_INTERVALS, enabled = true) => ({
-  refetchInterval: enabled ? POLLING_INTERVALS[priority] : false,
+  refetchInterval: enabled ? POLLING_INTERVALS[priority] : (false as const),
   refetchIntervalInBackground: priority === 'CRITICAL',
 });
 
@@ -174,7 +174,7 @@ export const createOptimisticMutation = <TData, TVariables>(
     successMessage?: string;
     errorMessage?: string;
   },
-): UseMutationOptions<TData, Error, TVariables> => {
+): UseMutationOptions<TData, Error, TVariables, { previousData: unknown }> => {
   const { queryKeyToInvalidate, optimisticUpdateFn, successMessage, errorMessage } = options;
 
   return {
@@ -272,7 +272,7 @@ export const queryPerformanceMetrics = {
     console.log('Query Cache Stats:', {
       totalQueries: queries.length,
       stalQueries: queries.filter((q) => q.isStale()).length,
-      fetchingQueries: queries.filter((q) => q.isFetching()).length,
+      fetchingQueries: queries.filter((q) => q.state.fetchStatus === 'fetching').length,
     });
   },
 };
@@ -282,7 +282,7 @@ export const optimizedQueryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: CACHE_TIMES.CUSTOMER_DATA,
-      cacheTime: CACHE_TIMES.CUSTOMER_DATA * 2,
+      gcTime: CACHE_TIMES.CUSTOMER_DATA * 2,
       refetchOnWindowFocus: false,
       refetchOnMount: true,
       refetchOnReconnect: true,
