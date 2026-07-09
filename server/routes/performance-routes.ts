@@ -215,7 +215,18 @@ router.post('/optimize', async (req, res) => {
     const { optimizationType = 'all' } = req.body;
 
     // Mock optimization process
-    const optimizationResults = {
+    const optimizationResults: {
+      type: string;
+      status: string;
+      startTime: Date;
+      duration: number;
+      improvements: string[];
+      metrics: {
+        before: Record<string, number | string>;
+        after: Record<string, number | string>;
+        improvement: Record<string, number | string>;
+      };
+    } = {
       type: optimizationType,
       status: 'completed',
       startTime: new Date(),
