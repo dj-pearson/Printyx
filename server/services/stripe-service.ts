@@ -24,7 +24,9 @@ if (!stripeSecretKey) {
 
 export const stripe = stripeSecretKey
   ? new Stripe(stripeSecretKey, {
-      apiVersion: '2024-11-20.acacia',
+      // Pinned deliberately; cast because the installed SDK's types target a
+      // newer default apiVersion than the one we run against.
+      apiVersion: '2024-11-20.acacia' as any,
     })
   : null;
 
@@ -785,8 +787,10 @@ export class StripeService {
     }
 
     return await stripe.subscriptions.update(subscriptionId, {
+      // `coupon` is valid on the pinned API version; newer SDK types moved it
+      // under `discounts`, so cast to keep the pinned-version request shape.
       coupon: couponId,
-    });
+    } as any);
   }
 
   /**
@@ -803,7 +807,7 @@ export class StripeService {
 
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-    return await stripe.invoices.retrieveUpcoming({
+    return await (stripe.invoices as any).retrieveUpcoming({
       customer: stripeCustomerId,
       subscription: subscriptionId,
       subscription_items: [
@@ -1161,7 +1165,7 @@ export class StripeService {
       const lineItems = (invoice.lines?.data || [])
         .slice(0, 10)
         .map((item) => {
-          const description = item.description || item.price?.nickname || 'Line item';
+          const description = item.description || (item as any).price?.nickname || 'Line item';
           const itemAmount = item.amount != null ? `$${(item.amount / 100).toFixed(2)}` : '';
           return `<tr><td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6;">${description}</td><td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: 600;">${itemAmount}</td></tr>`;
         })

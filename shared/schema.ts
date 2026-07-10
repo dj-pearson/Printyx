@@ -937,6 +937,10 @@ export const tenants = pgTable('tenants', {
   storageUsed: integer('storage_used').default(0), // in MB
   apiCalls: integer('api_calls').default(0), // monthly count
 
+  // Free-form tenant metadata: signup details (industry, companySize, website,
+  // address, ...) and integration identifiers such as stripeCustomerId.
+  metadata: jsonb('metadata'),
+
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
@@ -969,6 +973,10 @@ export const users = pgTable('users', {
   isPlatformUser: boolean('is_platform_user').default(false), // True for Printyx staff
   isActive: boolean('is_active').default(true),
   lastLoginAt: timestamp('last_login_at'),
+
+  // Free-form user metadata (e.g. signup phone/source captured at registration).
+  metadata: jsonb('metadata'),
+
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

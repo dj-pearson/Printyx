@@ -568,6 +568,12 @@ router.post('/signup', signupLimiter, async (req, res) => {
       .insert(tenants)
       .values({
         name: data.companyName,
+        // slug is required + unique; derive from the company name and append a
+        // short random suffix so concurrent same-named signups don't collide.
+        slug: `${data.companyName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')}-${randomBytes(3).toString('hex')}`,
         domain: data.companyName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         // Store additional tenant metadata
         metadata: {
@@ -611,20 +617,20 @@ router.post('/signup', signupLimiter, async (req, res) => {
 
     await db.insert(emailVerifications).values({
       userId: user.id,
-      email: user.email,
+      email: user.email!,
       token: verificationToken,
       expiresAt,
     });
 
     // Send verification email
     const emailTemplate = EmailTemplates.emailVerification({
-      userName: user.firstName,
-      userEmail: user.email,
+      userName: user.firstName ?? undefined,
+      userEmail: user.email ?? undefined,
       verificationToken,
     });
 
     await emailService.send({
-      to: user.email,
+      to: user.email!,
       subject: emailTemplate.subject,
       html: emailTemplate.html,
       text: emailTemplate.text,
@@ -693,13 +699,13 @@ router.post('/verify-email', async (req, res) => {
 
     // Send welcome email
     const emailTemplate = EmailTemplates.welcome({
-      userName: user.firstName,
-      userEmail: user.email,
+      userName: user.firstName ?? undefined,
+      userEmail: user.email ?? undefined,
       trialDays: 14, // Default trial period
     });
 
     await emailService.send({
-      to: user.email,
+      to: user.email!,
       subject: emailTemplate.subject,
       html: emailTemplate.html,
       text: emailTemplate.text,
@@ -765,7 +771,7 @@ router.post('/resend-verification', async (req, res) => {
 
     await db.insert(emailVerifications).values({
       userId: user.id,
-      email: user.email,
+      email: user.email!,
       token: verificationToken,
       expiresAt,
     });
@@ -773,12 +779,12 @@ router.post('/resend-verification', async (req, res) => {
     // Send email
     const emailTemplate = EmailTemplates.emailVerification({
       userName: user.firstName || undefined,
-      userEmail: user.email,
+      userEmail: user.email ?? undefined,
       verificationToken,
     });
 
     await emailService.send({
-      to: user.email,
+      to: user.email!,
       subject: emailTemplate.subject,
       html: emailTemplate.html,
       text: emailTemplate.text,
@@ -836,12 +842,12 @@ router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
     // Send password reset email
     const emailTemplate = EmailTemplates.passwordReset({
       userName: user.firstName || undefined,
-      userEmail: user.email,
+      userEmail: user.email ?? undefined,
       resetToken: token,
     });
 
     await emailService.send({
-      to: user.email,
+      to: user.email!,
       subject: emailTemplate.subject,
       html: emailTemplate.html,
       text: emailTemplate.text,
@@ -941,11 +947,11 @@ router.post('/reset-password', async (req, res) => {
     // Send confirmation email
     const emailTemplate = EmailTemplates.passwordChanged({
       userName: user.firstName || undefined,
-      userEmail: user.email,
+      userEmail: user.email ?? undefined,
     });
 
     await emailService.send({
-      to: user.email,
+      to: user.email!,
       subject: emailTemplate.subject,
       html: emailTemplate.html,
       text: emailTemplate.text,
