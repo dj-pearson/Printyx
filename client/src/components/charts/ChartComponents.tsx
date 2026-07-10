@@ -758,7 +758,9 @@ interface MetricCardProps {
   target?: number;
   format?: 'currency' | 'percentage' | 'number';
   color?: string;
+  icon?: React.ReactNode;
   onClick?: () => void;
+  'data-testid'?: string;
 }
 
 function MetricCard({
@@ -770,7 +772,9 @@ function MetricCard({
   target,
   format = 'number',
   color = BRAND_COLORS.primary,
+  icon,
   onClick,
+  'data-testid': dataTestId,
 }: MetricCardProps) {
   const formatValue = (val: string | number) => {
     if (typeof val === 'string') return val;
@@ -807,11 +811,15 @@ function MetricCard({
         onClick && 'cursor-pointer hover:scale-[1.02]',
       )}
       onClick={onClick}
+      data-testid={dataTestId}
     >
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-medium text-gray-600">{title}</h3>
-          {getTrendIcon()}
+          <div className="flex items-center gap-1 text-gray-400">
+            {icon}
+            {getTrendIcon()}
+          </div>
         </div>
 
         <div className="flex items-baseline space-x-2 mb-2">

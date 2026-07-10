@@ -414,6 +414,8 @@ export default function MobileNavigationDrawer({
   onOpenChange,
 }: MobileNavigationDrawerProps) {
   const { user } = useAuth();
+  const displayName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || '';
   const { permissions, level, isPlatformUser } = usePermissions();
   const [location] = useLocation();
 
@@ -545,16 +547,16 @@ export default function MobileNavigationDrawer({
         <div className="px-6 py-4 border-t bg-background sticky bottom-0">
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10 ring-2 ring-border">
-              <AvatarImage src={user?.picture} alt={user?.name} />
+              <AvatarImage src={undefined} alt={displayName} />
               <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-sm">
-                {user?.name
+                {displayName
                   ?.split(' ')
                   .map((n: string) => n[0])
                   .join('') || 'U'}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">{user?.name || 'User'}</p>
+              <p className="text-sm font-semibold truncate">{displayName || 'User'}</p>
               <p className="text-xs text-muted-foreground truncate">
                 {user?.email || 'user@example.com'}
               </p>

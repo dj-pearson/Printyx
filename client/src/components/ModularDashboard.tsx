@@ -68,7 +68,11 @@ export function ModularDashboard({ className }: ModularDashboardProps) {
     data: dashboardData,
     isLoading,
     refetch,
-  } = useQuery({
+  } = useQuery<{
+    modules: DashboardModule[];
+    userRole: string;
+    roleConfig: Record<string, unknown>;
+  }>({
     queryKey: ['/api/dashboard/modules', enabledCards.join(',')],
     refetchInterval: 30000, // Refresh every 30 seconds
   });

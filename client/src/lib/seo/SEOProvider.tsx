@@ -45,7 +45,8 @@ function getOrCreateMeta(name: string, isProperty: boolean = false): HTMLMetaEle
     return meta;
   }
 
-  meta = document.querySelector(`meta[${attrName}="${name}"]`) as HTMLMetaElement | null;
+  meta =
+    (document.querySelector(`meta[${attrName}="${name}"]`) as HTMLMetaElement | null) ?? undefined;
   if (!meta) {
     meta = document.createElement('meta');
     meta.setAttribute(attrName, name);
@@ -64,7 +65,7 @@ function getOrCreateLink(rel: string): HTMLLinkElement {
     return link;
   }
 
-  link = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
+  link = (document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null) ?? undefined;
   if (!link) {
     link = document.createElement('link');
     link.setAttribute('rel', rel);

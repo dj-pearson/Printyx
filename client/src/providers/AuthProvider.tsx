@@ -125,11 +125,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Build context value
   const value = useMemo((): AuthContextValue => {
     return {
-      user: supabaseAuth.user,
+      user: supabaseAuth.user ?? null,
       isLoading: supabaseAuth.isLoading,
       isAuthenticated: supabaseAuth.isAuthenticated,
       error: supabaseAuth.error as Error | null,
-      login: supabaseAuth.login,
+      // Context contract is Promise<void>; discard the Supabase session payload.
+      login: async (email: string, password: string) => {
+        await supabaseAuth.login(email, password);
+      },
       logout,
       signup,
       resetPassword: supabaseAuth.resetPassword,

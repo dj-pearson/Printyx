@@ -23,7 +23,6 @@ import {
   setupMonitoringMiddleware,
   setupMonitoringErrorHandlers,
   shutdownMonitoring,
-  createModuleLogger,
   getAPM,
   getMonitoringHealth,
   getQueryStats,

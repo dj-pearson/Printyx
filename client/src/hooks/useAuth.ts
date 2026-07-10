@@ -15,5 +15,6 @@ export function useAuth() {
     isLoading: auth.isLoading,
     isAuthenticated: auth.isAuthenticated,
     error: auth.error,
+    logout: auth.logout,
   };
 }

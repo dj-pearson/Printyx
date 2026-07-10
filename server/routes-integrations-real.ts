@@ -13,7 +13,7 @@ import {
   platformIntegrations,
   integrationSyncLogs,
   insertPlatformIntegrationSchema,
-} from '@shared/schema-integrations';
+} from '@shared/platform-integrations-schema';
 import { IntegrationsService } from './services/integrations-service';
 
 const router = express.Router();
@@ -135,7 +135,6 @@ router.post('/api/integrations/:id/test', async (req: any, res) => {
         .set({
           status: 'error',
           lastErrorMessage: 'Connection test failed',
-          lastErrorAt: new Date(),
           updatedAt: new Date(),
         })
         .where(eq(platformIntegrations.id, id));
@@ -168,6 +167,8 @@ router.post('/api/integrations/:id/sync', async (req: any, res) => {
       .insert(integrationSyncLogs)
       .values({
         integrationId: id,
+        tenantId,
+        entityType,
         syncType: 'pull',
         status: 'in_progress',
       })
@@ -181,7 +182,7 @@ router.post('/api/integrations/:id/sync', async (req: any, res) => {
           records = await IntegrationsService.syncSalesforceLeads(
             (integration.credentials as any).accessToken,
             (integration.credentials as any).instanceUrl,
-            integration.lastSyncedAt,
+            integration.lastSyncedAt ?? undefined,
           );
           break;
 
@@ -189,7 +190,7 @@ router.post('/api/integrations/:id/sync', async (req: any, res) => {
           records = await IntegrationsService.syncQuickBooksInvoices(
             (integration.credentials as any).realmId,
             (integration.credentials as any).accessToken,
-            integration.lastSyncedAt,
+            integration.lastSyncedAt ?? undefined,
           );
           break;
 
@@ -220,9 +221,9 @@ router.post('/api/integrations/:id/sync', async (req: any, res) => {
         .set({
           status: 'completed',
           completedAt: new Date(),
-          recordsProcessed: String(records.length),
-          recordsCreated: String(Math.floor(records.length * 0.7)),
-          recordsUpdated: String(Math.floor(records.length * 0.3)),
+          recordsFetched: records.length,
+          recordsCreated: Math.floor(records.length * 0.7),
+          recordsUpdated: Math.floor(records.length * 0.3),
         })
         .where(eq(integrationSyncLogs.id, syncLog.id));
 

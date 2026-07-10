@@ -11,7 +11,7 @@ import DOMPurify from 'isomorphic-dompurify';
  * Default configuration for DOMPurify.
  * Allows common HTML elements while blocking potentially dangerous ones.
  */
-const DEFAULT_CONFIG: DOMPurify.Config = {
+const DEFAULT_CONFIG: import('dompurify').Config = {
   // Allowed HTML tags for rich text content
   ALLOWED_TAGS: [
     // Text formatting
@@ -124,13 +124,13 @@ const DEFAULT_CONFIG: DOMPurify.Config = {
  * <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(userContent) }} />
  * ```
  */
-export function sanitizeHtml(html: string, config?: DOMPurify.Config): string {
+export function sanitizeHtml(html: string, config?: import('dompurify').Config): string {
   if (!html) return '';
 
   // Merge custom config with defaults
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
 
-  return DOMPurify.sanitize(html, mergedConfig);
+  return DOMPurify.sanitize(html, mergedConfig) as string;
 }
 
 /**
@@ -172,7 +172,7 @@ export function sanitizeBasicHtml(html: string): string {
 export function sanitizeRichHtml(html: string): string {
   if (!html) return '';
 
-  return DOMPurify.sanitize(html, DEFAULT_CONFIG);
+  return DOMPurify.sanitize(html, DEFAULT_CONFIG) as string;
 }
 
 /**

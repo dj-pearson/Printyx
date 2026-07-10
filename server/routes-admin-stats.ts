@@ -94,14 +94,18 @@ export function registerAdminStatsRoutes(app: Express) {
           : '0.0';
 
       // Conversion rate: leads that became customers (closed_won / total leads)
-      const [totalLeadsResult] = await db.execute(
-        sql`SELECT COUNT(*) as count FROM business_records WHERE record_type = 'lead'`,
-      );
+      const totalLeadsResult = (
+        await db.execute(
+          sql`SELECT COUNT(*) as count FROM business_records WHERE record_type = 'lead'`,
+        )
+      ).rows[0];
       const totalLeads = Number((totalLeadsResult as any)?.count ?? 0);
 
-      const [convertedLeadsResult] = await db.execute(
-        sql`SELECT COUNT(*) as count FROM business_records WHERE record_type = 'customer' OR status = 'closed_won'`,
-      );
+      const convertedLeadsResult = (
+        await db.execute(
+          sql`SELECT COUNT(*) as count FROM business_records WHERE record_type = 'customer' OR status = 'closed_won'`,
+        )
+      ).rows[0];
       const convertedLeads = Number((convertedLeadsResult as any)?.count ?? 0);
 
       const conversionRate =

@@ -126,7 +126,7 @@ function LeadContactForm({
     try {
       const response = await apiRequest(`/api/leads/${leadId}/contacts`, {
         method: 'POST',
-        data: formData,
+        body: formData,
       });
 
       onSuccess();
@@ -222,7 +222,7 @@ export default function LeadDetailHubspot() {
   const queryClient = useQueryClient();
 
   // Use slug as the ID (slug contains the UUID from the URL path)
-  const id = slug;
+  const id = slug ?? '';
   const [isEditing, setIsEditing] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     company: true,
@@ -297,8 +297,8 @@ export default function LeadDetailHubspot() {
     website: '',
     industry: '',
     companySize: '',
-    employeeCount: null,
-    annualRevenue: null,
+    employeeCount: null as number | null,
+    annualRevenue: null as number | null,
 
     // Contact Information
     primaryContactName: '',
@@ -342,7 +342,7 @@ export default function LeadDetailHubspot() {
 
     // Pipeline Information
     leadSource: 'website',
-    estimatedAmount: null,
+    estimatedAmount: null as number | null,
     probability: 50,
     closeDate: '',
     salesStage: 'new',
@@ -372,7 +372,7 @@ export default function LeadDetailHubspot() {
     migrationStatus: '',
 
     // Financial Information
-    creditLimit: null,
+    creditLimit: null as number | null,
     paymentTerms: 'Net 30',
     billingTerms: '',
     taxExempt: false,
@@ -527,7 +527,7 @@ export default function LeadDetailHubspot() {
                   try {
                     const response = await apiRequest(`/api/leads/${id}/contacts`, {
                       method: 'POST',
-                      data: {
+                      body: {
                         firstName: 'Test',
                         lastName: 'Contact',
                         email: 'test@test.com',
@@ -2067,7 +2067,7 @@ export default function LeadDetailHubspot() {
                         onCheckedChange={(checked) =>
                           setEditForm((prev) => ({
                             ...prev,
-                            taxExempt: checked,
+                            taxExempt: checked === true,
                           }))
                         }
                       />

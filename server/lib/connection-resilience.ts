@@ -354,13 +354,13 @@ export class RetryWithBackoff<T> {
   /**
    * Execute an operation with retry logic
    */
-  async execute(
-    operation: () => Promise<T>,
+  async execute<R = T>(
+    operation: () => Promise<R>,
     options: {
       operationName?: string;
       onRetry?: (error: Error, attempt: number, delay: number) => void;
     } = {},
-  ): Promise<T> {
+  ): Promise<R> {
     const { operationName = 'operation', onRetry } = options;
     let lastError: Error | null = null;
 

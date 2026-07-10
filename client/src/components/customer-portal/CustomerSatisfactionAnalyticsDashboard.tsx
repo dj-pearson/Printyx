@@ -286,10 +286,11 @@ export const CustomerSatisfactionAnalyticsDashboard = memo(
                   <div className="h-64 sm:h-80">
                     <LineChart
                       data={analytics.trends}
-                      xKey="date"
-                      yKey="averageScore"
+                      xDataKey="date"
+                      lines={[
+                        { dataKey: 'averageScore', name: 'Average Score', color: '#3b82f6' },
+                      ]}
                       title="Average Satisfaction Score Over Time"
-                      color="#3b82f6"
                     />
                   </div>
                 ) : (
@@ -343,10 +344,9 @@ export const CustomerSatisfactionAnalyticsDashboard = memo(
                     <div className="h-32 sm:h-40">
                       <BarChart
                         data={analytics.trends.slice(-7)} // Last 7 data points
-                        xKey="date"
-                        yKey="responseCount"
+                        xDataKey="date"
+                        bars={[{ dataKey: 'responseCount', name: 'Responses', color: '#10b981' }]}
                         title="Survey Responses"
-                        color="#10b981"
                       />
                     </div>
                   ) : (
@@ -374,10 +374,9 @@ export const CustomerSatisfactionAnalyticsDashboard = memo(
                     <div className="h-64">
                       <BarChart
                         data={analytics.scoreDistribution}
-                        xKey="score"
-                        yKey="count"
+                        xDataKey="score"
+                        bars={[{ dataKey: 'count', name: 'Responses', color: '#8b5cf6' }]}
                         title="Satisfaction Score Distribution"
-                        color="#8b5cf6"
                       />
                     </div>
                   ) : (
@@ -492,10 +491,9 @@ export const CustomerSatisfactionAnalyticsDashboard = memo(
                     <div className="h-64">
                       <LineChart
                         data={analytics.trends}
-                        xKey="date"
-                        yKey="npsScore"
+                        xDataKey="date"
+                        lines={[{ dataKey: 'npsScore', name: 'NPS Score', color: '#10b981' }]}
                         title="NPS Score Over Time"
-                        color="#10b981"
                       />
                     </div>
                   ) : (

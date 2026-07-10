@@ -133,12 +133,12 @@ export default function AdvancedReporting() {
 
     const monthlyRevenue = invoices
       .filter((inv) => {
-        const invDate = new Date(inv.issuedAt);
+        const invDate = new Date(inv.issuedAt!);
         return invDate >= dateRange.from && invDate <= dateRange.to;
       })
       .reduce(
         (acc, inv) => {
-          const month = format(new Date(inv.issuedAt), 'MMM yyyy');
+          const month = format(new Date(inv.issuedAt!), 'MMM yyyy');
           acc[month] = (acc[month] || 0) + parseFloat(inv.totalAmount.toString());
           return acc;
         },
@@ -181,7 +181,7 @@ export default function AdvancedReporting() {
         const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
 
         return {
-          customer: customer.name,
+          customer: customer.companyName,
           revenue,
           serviceCost,
           profit,
@@ -202,7 +202,7 @@ export default function AdvancedReporting() {
       };
 
     const filteredTickets = serviceTickets.filter((ticket) => {
-      const ticketDate = new Date(ticket.createdAt);
+      const ticketDate = new Date(ticket.createdAt!);
       return ticketDate >= dateRange.from && ticketDate <= dateRange.to;
     });
 
@@ -211,7 +211,7 @@ export default function AdvancedReporting() {
     const resolutionTimes = completedTickets
       .filter((t) => t.resolvedAt)
       .map((t) => {
-        const created = new Date(t.createdAt);
+        const created = new Date(t.createdAt!);
         const resolved = new Date(t.resolvedAt!);
         return (resolved.getTime() - created.getTime()) / (1000 * 60 * 60); // hours
       });
@@ -246,11 +246,11 @@ export default function AdvancedReporting() {
       );
 
       const monthlyAverage = totalCopies / Math.max(contractReadings.length, 1);
-      const contractValue = parseFloat(contract.monthlyValue?.toString() || '0');
+      const contractValue = parseFloat(contract.monthlyBase?.toString() || '0');
 
       return {
         contract: contract.contractNumber,
-        customer: customers?.find((c) => c.id === contract.customerId)?.name || 'Unknown',
+        customer: customers?.find((c) => c.id === contract.customerId)?.companyName || 'Unknown',
         monthlyValue: contractValue,
         totalCopies,
         monthlyAverage: Math.round(monthlyAverage),
@@ -281,7 +281,7 @@ export default function AdvancedReporting() {
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
                 <label className="text-sm font-medium mb-2 block">Date Range</label>
-                <DateRangePicker onDateRangeChange={handleDateRangeChange} />
+                <DateRangePicker onChange={(range) => range && handleDateRangeChange(range)} />
               </div>
               <div className="w-full sm:w-48">
                 <label className="text-sm font-medium mb-2 block">Customer</label>
@@ -293,7 +293,7 @@ export default function AdvancedReporting() {
                     <SelectItem value="all">All Customers</SelectItem>
                     {customers?.map((customer) => (
                       <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name}
+                        {customer.companyName}
                       </SelectItem>
                     ))}
                   </SelectContent>

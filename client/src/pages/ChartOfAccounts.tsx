@@ -53,14 +53,10 @@ const chartOfAccountSchema = z.object({
   accountCode: z.string().min(1, 'Account code is required'),
   accountName: z.string().min(1, 'Account name is required'),
   accountType: z.string().min(1, 'Account type is required'),
+  accountSubtype: z.string().optional(),
   parentAccountId: z.string().optional(),
   description: z.string().optional(),
   isActive: z.boolean().default(true),
-  isSubAccount: z.boolean().default(false),
-  category: z.string().optional(),
-  normalBalance: z.string().min(1, 'Normal balance is required'),
-  taxRelevant: z.boolean().default(false),
-  bankAccount: z.boolean().default(false),
 });
 
 type ChartOfAccountFormData = z.infer<typeof chartOfAccountSchema>;
@@ -97,14 +93,10 @@ export default function ChartOfAccounts() {
       accountCode: '',
       accountName: '',
       accountType: '',
+      accountSubtype: '',
       parentAccountId: '',
       description: '',
       isActive: true,
-      isSubAccount: false,
-      category: '',
-      normalBalance: '',
-      taxRelevant: false,
-      bankAccount: false,
     },
   });
 
@@ -185,14 +177,10 @@ export default function ChartOfAccounts() {
         accountCode: account.accountCode,
         accountName: account.accountName,
         accountType: account.accountType,
+        accountSubtype: account.accountSubtype || '',
         parentAccountId: account.parentAccountId || '',
         description: account.description || '',
-        isActive: account.isActive,
-        isSubAccount: account.isSubAccount,
-        category: account.category || '',
-        normalBalance: account.normalBalance,
-        taxRelevant: account.taxRelevant,
-        bankAccount: account.bankAccount,
+        isActive: account.isActive ?? true,
       });
     } else {
       setEditingAccount(null);
@@ -375,27 +363,6 @@ export default function ChartOfAccounts() {
                     />
                     <FormField
                       control={form.control}
-                      name="normalBalance"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Normal Balance *</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select normal balance" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Debit">Debit</SelectItem>
-                              <SelectItem value="Credit">Credit</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
                       name="parentAccountId"
                       render={({ field }) => (
                         <FormItem>
@@ -423,12 +390,16 @@ export default function ChartOfAccounts() {
                     />
                     <FormField
                       control={form.control}
-                      name="category"
+                      name="accountSubtype"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Category</FormLabel>
+                          <FormLabel>Subtype</FormLabel>
                           <FormControl>
-                            <Input placeholder="Current Assets, Fixed Assets, etc." {...field} />
+                            <Input
+                              placeholder="Current Assets, Fixed Assets, etc."
+                              {...field}
+                              value={field.value ?? ''}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -466,40 +437,6 @@ export default function ChartOfAccounts() {
                               <FormLabel className="text-base">Active Account</FormLabel>
                               <div className="text-sm text-muted-foreground">
                                 Enable this account for transactions
-                              </div>
-                            </div>
-                            <FormControl>
-                              <Switch checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="taxRelevant"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">Tax Relevant</FormLabel>
-                              <div className="text-sm text-muted-foreground">
-                                Include in tax reporting
-                              </div>
-                            </div>
-                            <FormControl>
-                              <Switch checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="bankAccount"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">Bank Account</FormLabel>
-                              <div className="text-sm text-muted-foreground">
-                                This is a bank account
                               </div>
                             </div>
                             <FormControl>
@@ -577,14 +514,9 @@ export default function ChartOfAccounts() {
                             Inactive
                           </Badge>
                         )}
-                        {account.bankAccount && (
+                        {account.isSystem && (
                           <Badge variant="outline" className="text-xs">
-                            Bank
-                          </Badge>
-                        )}
-                        {account.taxRelevant && (
-                          <Badge variant="outline" className="text-xs">
-                            Tax
+                            System
                           </Badge>
                         )}
                       </div>
@@ -592,8 +524,8 @@ export default function ChartOfAccounts() {
                         <Badge className={getAccountTypeColor(account.accountType)}>
                           {account.accountType}
                         </Badge>
-                        <span>Balance: {account.normalBalance}</span>
-                        {account.category && <span>Category: {account.category}</span>}
+                        <span>Balance: {account.currentBalance}</span>
+                        {account.accountSubtype && <span>Subtype: {account.accountSubtype}</span>}
                         {account.parentAccountId && (
                           <span>Parent: {getParentAccountName(account.parentAccountId)}</span>
                         )}
@@ -670,12 +602,13 @@ export default function ChartOfAccounts() {
                         {viewingAccount.accountType}
                       </div>
                       <div>
-                        <span className="text-gray-600">Normal Balance:</span>{' '}
-                        {viewingAccount.normalBalance}
+                        <span className="text-gray-600">Current Balance:</span>{' '}
+                        {viewingAccount.currentBalance}
                       </div>
-                      {viewingAccount.category && (
+                      {viewingAccount.accountSubtype && (
                         <div>
-                          <span className="text-gray-600">Category:</span> {viewingAccount.category}
+                          <span className="text-gray-600">Subtype:</span>{' '}
+                          {viewingAccount.accountSubtype}
                         </div>
                       )}
                       {viewingAccount.parentAccountId && (
@@ -694,16 +627,12 @@ export default function ChartOfAccounts() {
                         {viewingAccount.isActive ? 'Active' : 'Inactive'}
                       </div>
                       <div>
-                        <span className="text-gray-600">Tax Relevant:</span>{' '}
-                        {viewingAccount.taxRelevant ? 'Yes' : 'No'}
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Bank Account:</span>{' '}
-                        {viewingAccount.bankAccount ? 'Yes' : 'No'}
+                        <span className="text-gray-600">System Account:</span>{' '}
+                        {viewingAccount.isSystem ? 'Yes' : 'No'}
                       </div>
                       <div>
                         <span className="text-gray-600">Sub Account:</span>{' '}
-                        {viewingAccount.isSubAccount ? 'Yes' : 'No'}
+                        {viewingAccount.parentAccountId ? 'Yes' : 'No'}
                       </div>
                     </div>
                   </div>

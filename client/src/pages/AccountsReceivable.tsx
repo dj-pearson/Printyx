@@ -56,7 +56,6 @@ const accountsReceivableSchema = z.object({
   customerId: z.string().min(1, 'Customer is required'),
   invoiceNumber: z.string().min(1, 'Invoice number is required'),
   contractId: z.string().optional(),
-  referenceNumber: z.string().optional(),
   invoiceDate: z.string().min(1, 'Invoice date is required'),
   dueDate: z.string().min(1, 'Due date is required'),
   description: z.string().optional(),
@@ -64,7 +63,6 @@ const accountsReceivableSchema = z.object({
   taxAmount: z.string().default('0'),
   totalAmount: z.string().min(1, 'Total amount is required'),
   status: z.string().default('pending'),
-  priority: z.string().default('normal'),
   category: z.string().optional(),
   paymentTerms: z.string().default('Net 30'),
 });
@@ -90,7 +88,6 @@ export default function AccountsReceivable() {
         customerId: ar.customerId || ar.customerId || '',
         invoiceNumber: ar.invoiceNumber || ar.invoiceNumber || '',
         contractId: ar.contractId || ar.contractId || null,
-        referenceNumber: ar.referenceNumber || ar.referenceNumber || '',
         invoiceDate: ar.invoice_date || ar.invoiceDate || '',
         dueDate: ar.dueDate || ar.dueDate || '',
         createdAt: ar.createdAt || ar.createdAt || '',
@@ -116,7 +113,6 @@ export default function AccountsReceivable() {
       customerId: '',
       invoiceNumber: '',
       contractId: '',
-      referenceNumber: '',
       invoiceDate: '',
       dueDate: '',
       description: '',
@@ -124,7 +120,6 @@ export default function AccountsReceivable() {
       taxAmount: '0',
       totalAmount: '',
       status: 'pending',
-      priority: 'normal',
       category: '',
       paymentTerms: 'Net 30',
     },
@@ -195,7 +190,6 @@ export default function AccountsReceivable() {
         customerId: ar.customerId,
         invoiceNumber: ar.invoiceNumber,
         contractId: ar.contractId || '',
-        referenceNumber: ar.referenceNumber || '',
         invoiceDate: format(new Date(ar.invoiceDate), 'yyyy-MM-dd'),
         dueDate: format(new Date(ar.dueDate), 'yyyy-MM-dd'),
         description: ar.description || '',
@@ -203,7 +197,6 @@ export default function AccountsReceivable() {
         taxAmount: ar.taxAmount?.toString() || '0',
         totalAmount: ar.totalAmount.toString(),
         status: ar.status,
-        priority: ar.priority || 'normal',
         category: ar.category || '',
         paymentTerms: ar.paymentTerms || 'Net 30',
       });
@@ -255,24 +248,10 @@ export default function AccountsReceivable() {
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'bg-red-100 text-red-800';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'low':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const filteredAR = accountsReceivable.filter((ar: AccountsReceivable) => {
     const matchesSearch =
       ar.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getCustomerName(ar.customerId).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (ar.referenceNumber && ar.referenceNumber.toLowerCase().includes(searchTerm.toLowerCase()));
+      getCustomerName(ar.customerId).toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' || ar.status === statusFilter;
 
@@ -369,19 +348,6 @@ export default function AccountsReceivable() {
                           <FormLabel>Contract ID</FormLabel>
                           <FormControl>
                             <Input placeholder="CON-001" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="referenceNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Reference Number</FormLabel>
-                          <FormControl>
-                            <Input placeholder="REF-001" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -514,29 +480,6 @@ export default function AccountsReceivable() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="priority"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Priority</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="low">Low</SelectItem>
-                              <SelectItem value="normal">Normal</SelectItem>
-                              <SelectItem value="high">High</SelectItem>
-                              <SelectItem value="urgent">Urgent</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </div>
 
                   <FormField
@@ -619,9 +562,6 @@ export default function AccountsReceivable() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <Badge className={getStatusColor(ar.status)}>{ar.status}</Badge>
-                    <Badge className={getPriorityColor(ar.priority || 'normal')}>
-                      {ar.priority || 'normal'}
-                    </Badge>
                   </div>
 
                   <div className="space-y-2">

@@ -306,10 +306,12 @@ export function registerCrmCoreRoutes(app: Express) {
         }
 
         try {
-          const existing = await storage.getBusinessRecords({
+          const existing = await storage.getBusinessRecords(
             tenantId,
-            search: row.companyName.trim(),
-          });
+            undefined,
+            undefined,
+            row.companyName.trim(),
+          );
 
           if (
             existing.some(

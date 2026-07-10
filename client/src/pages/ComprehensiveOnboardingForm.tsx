@@ -256,18 +256,19 @@ type OnboardingFormData = z.infer<typeof onboardingSchema>;
 export default function ComprehensiveOnboardingForm() {
   const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
-  const [equipmentItems, setEquipmentItems] = useState([
+  const [equipmentItems, setEquipmentItems] = useState<OnboardingFormData['equipment']>([
     {
-      equipmentType: 'printer' as const,
+      equipmentType: 'printer',
       manufacturer: '',
       model: '',
       serialNumber: '',
       location: '',
       features: [],
       accessories: [],
+      isReplacement: false,
     },
   ]);
-  const [dynamicSections, setDynamicSections] = useState([]);
+  const [dynamicSections, setDynamicSections] = useState<OnboardingFormData['dynamicSections']>([]);
   const queryClient = useQueryClient();
 
   const form = useForm<OnboardingFormData>({

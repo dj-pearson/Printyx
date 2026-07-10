@@ -84,8 +84,8 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
       try {
         const dbUser = await storage.getUser(supabaseUser.id);
         if (dbUser) {
-          tenantId = tenantId || dbUser.tenantId;
-          roleId = roleId || dbUser.roleId;
+          tenantId = tenantId || dbUser.tenantId || undefined;
+          roleId = roleId || dbUser.roleId || undefined;
         } else {
           // SECURITY: Require explicit DEMO_TENANT_ID - no hardcoded fallback
           const demoTenantId = process.env.DEMO_TENANT_ID;
@@ -180,7 +180,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
         expires_at: Math.floor(Date.now() / 1000) + 3600,
       };
 
-      req.isAuthenticated = () => true;
+      (req as any).isAuthenticated = () => true;
       return next();
     } catch (error) {
       log.error('Test auth bypass error:', error);

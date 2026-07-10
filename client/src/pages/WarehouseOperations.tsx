@@ -8,7 +8,6 @@ import { MainLayout } from '@/components/layout/main-layout';
 import { useLocation } from 'wouter';
 import {
   type Equipment,
-  type CustomerEquipment,
   type WarehouseOperation,
   type Technician,
   type BusinessRecord,
@@ -187,7 +186,7 @@ export default function WarehouseOperations() {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedOperation, setSelectedOperation] = useState(null);
+  const [selectedOperation, setSelectedOperation] = useState<WarehouseOperation | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showSerialDialog, setShowSerialDialog] = useState(false);
@@ -950,7 +949,7 @@ export default function WarehouseOperations() {
                           <SelectContent>
                             {equipment.map((item: Equipment) => (
                               <SelectItem key={item.id} value={item.id}>
-                                {item.serialNumber} - {item.model}
+                                {item.serialNumber} - {item.modelNumber}
                               </SelectItem>
                             ))}
                           </SelectContent>

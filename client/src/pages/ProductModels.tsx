@@ -72,8 +72,6 @@ export default function ProductModels() {
       return (response || []).map((model: any) => ({
         ...model,
         id: model.id,
-        modelNumber: model.modelNumber || model.modelNumber || '',
-        modelName: model.model_name || model.modelName || '',
         createdAt: model.createdAt || model.createdAt || '',
         updatedAt: model.updatedAt || model.updatedAt || '',
       }));
@@ -242,12 +240,8 @@ export default function ProductModels() {
 
   const filteredModels = models.filter((model) => {
     const matchesSearch =
-      (model.productName || model.modelName || '')
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (model.productCode || model.modelCode || '')
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
+      (model.productName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (model.productCode || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (model.manufacturer || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || model.category === selectedCategory;
     return matchesSearch && matchesCategory;
@@ -259,8 +253,8 @@ export default function ProductModels() {
     if (selectedModel) {
       console.log('Resetting form with selectedModel data');
       editForm.reset({
-        productCode: selectedModel.productCode || selectedModel.modelCode || '',
-        productName: selectedModel.productName || selectedModel.modelName || '',
+        productCode: selectedModel.productCode || '',
+        productName: selectedModel.productName || '',
         category: selectedModel.category || '',
         manufacturer: selectedModel.manufacturer || '',
         description: selectedModel.description || '',
@@ -281,7 +275,9 @@ export default function ProductModels() {
     }
   }, [selectedModel, editForm]);
 
-  const categories = Array.from(new Set(models.map((m) => m.category))).filter(Boolean);
+  const categories = Array.from(new Set(models.map((m) => m.category))).filter(
+    (c): c is string => Boolean(c),
+  );
 
   const formatCurrency = (value: string | null) => {
     if (!value) return '$0.00';
@@ -304,9 +300,9 @@ export default function ProductModels() {
               />
             )}
             <div className="space-y-1">
-              <CardTitle className="text-lg">{model.productName || model.modelName}</CardTitle>
+              <CardTitle className="text-lg">{model.productName}</CardTitle>
               <CardDescription>
-                <span className="font-medium">{model.productCode || model.modelCode}</span>
+                <span className="font-medium">{model.productCode}</span>
                 {model.manufacturer && (
                   <span className="ml-2 text-muted-foreground">• {model.manufacturer}</span>
                 )}
@@ -476,7 +472,7 @@ export default function ProductModels() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Category</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
+                        <Select value={field.value ?? undefined} onValueChange={field.onChange}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue />

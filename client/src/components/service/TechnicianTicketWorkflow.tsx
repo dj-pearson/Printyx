@@ -43,12 +43,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
-import {
-  type ServiceTicket,
-  type ServiceSession,
-  type InsertServiceSession,
-  insertServiceSessionSchema,
-} from '@shared/schema';
+import { type ServiceTicket } from '@shared/schema';
 
 interface TechnicianTicketWorkflowProps {
   ticket: ServiceTicket;
@@ -185,13 +180,15 @@ export default function TechnicianTicketWorkflow({
   const queryClient = useQueryClient();
 
   // Get current session data
-  const { data: session } = useQuery({
+  const { data: session } = useQuery<{ id: string; totalDuration?: number }>({
     queryKey: ['/api/technician-sessions', ticket.id],
     enabled: !!ticket.id,
   });
 
   // Get workflow steps for this session
-  const { data: workflowStepsData } = useQuery({
+  const { data: workflowStepsData } = useQuery<
+    Array<{ stepCompleted?: boolean; stepName?: string }>
+  >({
     queryKey: ['/api/technician-sessions', sessionId, 'workflow-steps'],
     enabled: !!sessionId,
   });
@@ -603,7 +600,7 @@ export default function TechnicianTicketWorkflow({
             Service Ticket #{ticket.id?.slice(0, 8)}
           </CardTitle>
           <CardDescription>
-            {ticket.description} - {ticket.customerName}
+            {ticket.description} - {ticket.customerId}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -636,7 +633,7 @@ export default function TechnicianTicketWorkflow({
               </div>
               <div>
                 <span className="font-medium">Customer:</span>
-                <span className="ml-2">{ticket.customerName}</span>
+                <span className="ml-2">{ticket.customerId}</span>
               </div>
               <div>
                 <span className="font-medium">Address:</span>

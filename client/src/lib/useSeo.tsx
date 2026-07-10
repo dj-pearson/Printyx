@@ -17,7 +17,7 @@ export function useSeo(pathname: string) {
         const description = meta?.description || '';
         document.title = title;
 
-        function setMeta(name: string, content: string) {
+        const setMeta = (name: string, content: string) => {
           if (!content) return;
           let tag = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
           if (!tag) {
@@ -26,9 +26,9 @@ export function useSeo(pathname: string) {
             document.head.appendChild(tag);
           }
           tag.setAttribute('content', content);
-        }
+        };
 
-        function setProperty(property: string, content: string) {
+        const setProperty = (property: string, content: string) => {
           if (!content) return;
           let tag = document.querySelector(
             `meta[property="${property}"]`,
@@ -39,7 +39,7 @@ export function useSeo(pathname: string) {
             document.head.appendChild(tag);
           }
           tag.setAttribute('content', content);
-        }
+        };
 
         setMeta('description', description);
         setProperty('og:title', title);
@@ -50,7 +50,7 @@ export function useSeo(pathname: string) {
 
         // JSON-LD
         const id = 'printyx-jsonld';
-        let script = document.getElementById(id);
+        let script = document.getElementById(id) as HTMLScriptElement | null;
         if (!script) {
           script = document.createElement('script');
           script.id = id;

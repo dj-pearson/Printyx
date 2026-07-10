@@ -140,7 +140,11 @@ class AIEmployeeService {
       `);
 
       // Initialize default skills for the employee
-      await this.initializeEmployeeSkills(tenantId, result.rows[0].id, employeeData.employeeType);
+      await this.initializeEmployeeSkills(
+        tenantId,
+        result.rows[0].id as string,
+        employeeData.employeeType,
+      );
 
       return result.rows[0] as unknown as AIEmployee;
     } catch (error) {
@@ -288,7 +292,7 @@ class AIEmployeeService {
       `);
 
       // Update employee statistics
-      await this.updateEmployeeStats(taskData.employee_id, tenantId, executionResult.success);
+      await this.updateEmployeeStats(taskData.employee_id as string, tenantId, executionResult.success);
     } catch (error) {
       log.error('Error executing task:', error);
 
@@ -563,7 +567,7 @@ class AIEmployeeService {
         ) RETURNING id
       `);
 
-      const executionId = result.rows[0].id;
+      const executionId = result.rows[0].id as string;
 
       // Start workflow execution asynchronously
       this.processWorkflow(executionId, tenantId);
@@ -590,8 +594,8 @@ class AIEmployeeService {
       }
 
       const execution = workflowResult.rows[0];
-      const steps = JSON.parse(execution.workflow_steps);
-      const assignments = JSON.parse(execution.employee_assignments);
+      const steps = JSON.parse(execution.workflow_steps as string);
+      const assignments = JSON.parse(execution.employee_assignments as string);
 
       let currentStepIndex = 0;
       const completedSteps = [];
@@ -631,7 +635,7 @@ class AIEmployeeService {
 
           completedSteps.push({
             step: step.step,
-            result: JSON.parse(taskResult.rows[0].task_result),
+            result: JSON.parse(taskResult.rows[0].task_result as string),
             qualityScore: taskResult.rows[0].quality_score,
           });
         } else {
@@ -692,7 +696,7 @@ class AIEmployeeService {
       LIMIT 1
     `);
 
-    return result.rows[0]?.id || '00000000-0000-0000-0000-000000000001'; // Fallback to default
+    return (result.rows[0]?.id as string) || '00000000-0000-0000-0000-000000000001'; // Fallback to default
   }
 
   private async initializeEmployeeSkills(

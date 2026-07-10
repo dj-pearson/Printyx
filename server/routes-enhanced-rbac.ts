@@ -260,7 +260,7 @@ router.get('/roles', async (req, res) => {
     `);
 
     const roles = rolesResult.rows;
-    const totalCount = parseInt(countResult.rows[0]?.total || '0');
+    const totalCount = parseInt((countResult.rows[0]?.total as string) || '0');
 
     res.json({
       roles,
@@ -337,7 +337,7 @@ router.get('/roles/:id', async (req, res) => {
     res.json({
       ...role,
       permissions: permissionsResult.rows,
-      assignmentCount: parseInt(assignmentCountResult.rows[0]?.count || '0'),
+      assignmentCount: parseInt((assignmentCountResult.rows[0]?.count as string) || '0'),
     });
   } catch (error) {
     log.error('Role fetch error:', error);

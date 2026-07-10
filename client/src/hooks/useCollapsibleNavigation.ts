@@ -8,6 +8,7 @@ export interface NavigationSection {
   path: string;
   children?: NavigationItem[];
   matchPatterns?: string[]; // Route patterns that should expand this section
+  badge?: string; // Optional short label (e.g. "AI", "New") shown next to the section
 }
 
 export interface NavigationItem {

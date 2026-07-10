@@ -390,13 +390,6 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/integration-hub': 'integrations',
     '/api/public/calculator': { fn: 'public-calculator', pathPrefix: '/calculator' },
 
-    // EDGE-005a: AccountsPayable/AccountsReceivable use plural flat prefixes;
-    // edge fn dirs are singular. Plain proxy (no pathPrefix) — both fns serve
-    // flat /:id routes against the canonical accounts_{payable,receivable} tables,
-    // so dev and prod (server.ts override) hit the same flat handler path.
-    '/api/accounts-payable': 'account-payable',
-    '/api/accounts-receivable': 'account-receivable',
-
     // EDGE-005c: phone-in-tickets. The search-companies/search-contacts/
     // equipment sub-routes the PhoneInTicketCreator calls were ported into the
     // phone-in-tickets edge fn (previously Express-only under the legacy

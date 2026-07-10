@@ -50,7 +50,7 @@ export default function QuickBooksIntegration() {
   });
 
   // Get supported entities
-  const { data: entitiesData } = useQuery({
+  const { data: entitiesData } = useQuery<{ supported_entities?: string[] }>({
     queryKey: ['/api/quickbooks/entities'],
     retry: false,
   });

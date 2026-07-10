@@ -503,7 +503,7 @@ export default function PurchaseOrders() {
                             <SelectContent>
                               {vendors.map((vendor) => (
                                 <SelectItem key={vendor.id} value={vendor.id}>
-                                  {vendor.companyName}
+                                  {vendor.vendorName}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -960,7 +960,7 @@ export default function PurchaseOrders() {
                     return (
                       <TableRow key={po.id}>
                         <TableCell className="font-medium">{po.poNumber}</TableCell>
-                        <TableCell>{vendor?.companyName || 'Unknown Vendor'}</TableCell>
+                        <TableCell>{vendor?.vendorName || 'Unknown Vendor'}</TableCell>
                         <TableCell>
                           {po.orderDate ? format(new Date(po.orderDate), 'MMM dd, yyyy') : 'N/A'}
                         </TableCell>
@@ -1106,12 +1106,12 @@ export default function PurchaseOrders() {
                           <div className="space-y-3">
                             <div className="flex items-center space-x-2">
                               <Building2 className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{vendor.companyName}</span>
+                              <span className="font-medium">{vendor.vendorName}</span>
                             </div>
-                            {vendor.contactPerson && (
+                            {vendor.primaryContactName && (
                               <div className="flex items-center space-x-2">
                                 <User className="h-4 w-4 text-muted-foreground" />
-                                <span>{vendor.contactPerson}</span>
+                                <span>{vendor.primaryContactName}</span>
                               </div>
                             )}
                             {vendor.phone && (
@@ -1126,10 +1126,10 @@ export default function PurchaseOrders() {
                                 <span>{vendor.email}</span>
                               </div>
                             )}
-                            {vendor.address && (
+                            {vendor.addressLine1 && (
                               <div className="flex items-start space-x-2">
                                 <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
-                                <span className="text-sm">{vendor.address}</span>
+                                <span className="text-sm">{vendor.addressLine1}</span>
                               </div>
                             )}
                           </div>

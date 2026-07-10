@@ -139,7 +139,7 @@ const SALES_KPIS: KPIDefinition[] = [
         AND o.tenantId = :tenantId
         AND o.stage NOT IN ('Closed Won', 'Closed Lost')
     `,
-    targetValue: null,
+    targetValue: undefined,
     targetType: 'absolute',
     displayFormat: 'currency',
     prefix: '$',
@@ -204,7 +204,7 @@ const SALES_KPIS: KPIDefinition[] = [
         AND o.stage = 'Closed Won'
         AND o.close_date >= :dateFrom
     `,
-    targetValue: null,
+    targetValue: undefined,
     targetType: 'absolute',
     displayFormat: 'currency',
     prefix: '$',
@@ -293,7 +293,7 @@ const SALES_KPIS: KPIDefinition[] = [
         AND o.stage = 'Closed Won'
         AND o.close_date >= DATE_TRUNC('month', CURRENT_DATE)
     `,
-    targetValue: null,
+    targetValue: undefined,
     targetType: 'absolute',
     displayFormat: 'currency',
     prefix: '$',
@@ -375,7 +375,7 @@ const SALES_KPIS: KPIDefinition[] = [
         AND o.stage = 'Closed Won'
         AND o.close_date >= :dateFrom
     `,
-    targetValue: null,
+    targetValue: undefined,
     targetType: 'absolute',
     displayFormat: 'currency',
     prefix: '$',
@@ -547,7 +547,7 @@ const SERVICE_KPIS: KPIDefinition[] = [
         AND t.ticket_type = 'Billable'
         AND t.completed_date >= :dateFrom
     `,
-    targetValue: null,
+    targetValue: undefined,
     targetType: 'absolute',
     displayFormat: 'currency',
     prefix: '$',
@@ -801,7 +801,7 @@ const OPERATIONS_KPIS: KPIDefinition[] = [
         AND wm.tenantId = :tenantId
         AND wm.metric_date >= :dateFrom
     `,
-    targetValue: null,
+    targetValue: undefined,
     targetType: 'absolute',
     displayFormat: 'decimal',
     suffix: ' units/hr',
@@ -1058,7 +1058,7 @@ const EXECUTIVE_KPIS: KPIDefinition[] = [
         AND sm.expense_date >= :dateFrom
         AND c.record_type = 'customer'
     `,
-    targetValue: null,
+    targetValue: undefined,
     targetType: 'absolute',
     displayFormat: 'currency',
     prefix: '$',
@@ -1083,7 +1083,7 @@ const EXECUTIVE_KPIS: KPIDefinition[] = [
         AND c.record_type = 'customer'
         AND c.status = 'Active'
     `,
-    targetValue: null,
+    targetValue: undefined,
     targetType: 'absolute',
     displayFormat: 'currency',
     prefix: '$',
@@ -1326,7 +1326,7 @@ const PLATFORM_KPIS: KPIDefinition[] = [
       FROM platform_billing
       WHERE billing_date = DATE_TRUNC('month', CURRENT_DATE)
     `,
-    targetValue: null,
+    targetValue: undefined,
     targetType: 'absolute',
     displayFormat: 'currency',
     prefix: '$',

@@ -41,7 +41,7 @@ export function usePaginatedQuery<T>(options: UsePaginatedQueryOptions<T>) {
     queryFn,
     enabled,
     staleTime,
-    cacheTime,
+    gcTime: cacheTime,
     placeholderData: keepPrevious ? (previousData: any) => previousData : undefined,
     refetchOnWindowFocus: false,
     retry: (failureCount, error: any) => {

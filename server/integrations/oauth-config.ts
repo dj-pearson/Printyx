@@ -207,7 +207,7 @@ export function createMicrosoftGraphClient(accessToken: string): Client {
 export function createSalesforceClient(
   accessToken: string,
   instanceUrl?: string,
-): jsforce.Connection {
+): any {
   const conn = new jsforce.Connection({
     oauth2: {
       clientId: salesforceConfig.config.clientId,
@@ -230,7 +230,9 @@ export function createStripeClient(accessToken?: string): Stripe {
   const apiKey = accessToken || process.env.STRIPE_SECRET_KEY;
 
   return new Stripe(apiKey!, {
-    apiVersion: '2024-06-20',
+    // Pin the API version explicitly; cast because the SDK's apiVersion type
+    // is locked to the version it was built against.
+    apiVersion: '2024-06-20' as any,
   });
 }
 
@@ -241,7 +243,7 @@ export function createQuickBooksClient(
   accessToken: string,
   refreshToken: string,
   companyId: string,
-): QuickBooks {
+): any {
   return new QuickBooks(
     quickbooksConfig.config.clientId,
     quickbooksConfig.config.clientSecret,

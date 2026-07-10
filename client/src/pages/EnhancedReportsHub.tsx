@@ -115,14 +115,17 @@ export default function EnhancedReportsHub() {
     refetch: refetchReports,
   } = useQuery<ReportDefinition[]>({
     queryKey: ['reporting/reports', dashboardState.selectedCategory, dashboardState.searchQuery],
-    queryFn: () =>
-      apiRequest('/api/reporting/reports', {
-        params: {
-          category:
-            dashboardState.selectedCategory !== 'all' ? dashboardState.selectedCategory : undefined,
-          search: dashboardState.searchQuery || undefined,
-        },
-      }).then((response) => response.reports || []),
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (dashboardState.selectedCategory !== 'all') {
+        params.set('category', dashboardState.selectedCategory);
+      }
+      if (dashboardState.searchQuery) params.set('search', dashboardState.searchQuery);
+      const qs = params.toString();
+      return apiRequest(`/api/reporting/reports${qs ? `?${qs}` : ''}`).then(
+        (response) => response.reports || [],
+      );
+    },
     staleTime: 30000, // 30 seconds
   });
 
@@ -133,13 +136,16 @@ export default function EnhancedReportsHub() {
     refetch: refetchKPIs,
   } = useQuery<KPIDefinition[]>({
     queryKey: ['reporting/kpis', dashboardState.selectedCategory],
-    queryFn: () =>
-      apiRequest('/api/reporting/kpis', {
-        params: {
-          category:
-            dashboardState.selectedCategory !== 'all' ? dashboardState.selectedCategory : undefined,
-        },
-      }).then((response) => response.kpis || []),
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (dashboardState.selectedCategory !== 'all') {
+        params.set('category', dashboardState.selectedCategory);
+      }
+      const qs = params.toString();
+      return apiRequest(`/api/reporting/kpis${qs ? `?${qs}` : ''}`).then(
+        (response) => response.kpis || [],
+      );
+    },
     refetchInterval: 60000, // Refresh KPIs every minute
     staleTime: 30000,
   });

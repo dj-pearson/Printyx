@@ -14,7 +14,12 @@ import {
   useBulkSelection,
   BulkAction,
 } from '@/components/ui/bulk-operations-toolbar';
-import { exportToCSV, exportToJSON, createExportColumn } from '@/lib/export-utils';
+import {
+  exportToCSV,
+  exportToJSON,
+  createExportColumn,
+  type ExportColumn,
+} from '@/lib/export-utils';
 import { SavedFilters, useFilterState } from '@/components/ui/saved-filters';
 import { QuoteTemplates } from '@/components/quotes/quote-templates';
 import GenerateProposalDialog from '@/components/proposal-builder/GenerateProposalDialog';
@@ -364,7 +369,7 @@ export default function QuotesManagement() {
   const handleBulkExport = (format: 'csv' | 'json') => {
     const selectedQuotes = quotes.filter((q) => bulkSelection.selectedIds.includes(q.id));
 
-    const columns = [
+    const columns: ExportColumn<any>[] = [
       createExportColumn('proposalNumber', 'Quote Number'),
       createExportColumn('title', 'Title'),
       createExportColumn('customerName', 'Customer'),
@@ -791,7 +796,7 @@ export default function QuotesManagement() {
                 onSelectionChange={(ids) => {
                   const current = bulkSelection.selectedIdsSet;
                   ids.forEach((id) => {
-                    if (!current.has(id)) bulkSelection.toggleSelection(id as string);
+                    if (!current.has(id as string)) bulkSelection.toggleSelection(id as string);
                   });
                   current.forEach((id) => {
                     if (!ids.has(id)) bulkSelection.toggleSelection(id as string);

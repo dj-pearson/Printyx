@@ -536,7 +536,7 @@ export default function Contacts() {
     },
   });
 
-  const contacts = contactsData?.contacts || [];
+  const contacts: Contact[] = contactsData?.contacts || [];
   const totalContacts = contactsData?.total || 0;
   const totalPages = Math.ceil(totalContacts / pageSize);
 
@@ -624,15 +624,19 @@ export default function Contacts() {
   ];
 
   // Get unique values for filters
-  const uniqueOwners = [...new Set(contacts.map((c: Contact) => c.ownerName).filter(Boolean))];
-  const uniqueStatuses = [...new Set(contacts.map((c: Contact) => c.leadStatus).filter(Boolean))];
+  const uniqueOwners = [
+    ...new Set(contacts.map((c: Contact) => c.ownerName).filter((v): v is string => Boolean(v))),
+  ];
+  const uniqueStatuses = [
+    ...new Set(contacts.map((c: Contact) => c.leadStatus).filter((v): v is string => Boolean(v))),
+  ];
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Never';
     return format(new Date(dateString), 'MMM d, yyyy');
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | null | undefined) => {
     switch (status?.toLowerCase()) {
       case 'new':
         return 'bg-blue-100 text-blue-800';
