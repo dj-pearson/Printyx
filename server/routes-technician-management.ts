@@ -24,30 +24,42 @@ import {
 } from './middleware/rbac-route-helper';
 
 import { getUserId, getTenantId } from './utils/auth-helpers';
-// Validation schemas for update and query operations
-const updateTechnicianSchema = z
-  .object({
-    name: z.string().min(1).optional(),
-    email: z.string().email().optional(),
-    phone: z.string().nullable().optional(),
-    specialties: z.any().nullable().optional(),
-    certifications: z.any().nullable().optional(),
-    status: z.enum(['active', 'inactive', 'on_leave']).optional(),
-    location: z.string().nullable().optional(),
-    availability: z.enum(['available', 'busy', 'off_duty']).optional(),
-    skillLevel: z.enum(['junior', 'mid', 'senior', 'lead']).optional(),
-    hourlyRate: z.string().or(z.number()).nullable().optional(),
-    emergencyContact: z.string().nullable().optional(),
-    employeeId: z.string().nullable().optional(),
-    hireDate: z.string().or(z.date()).nullable().optional(),
-    lastTrainingDate: z.string().or(z.date()).nullable().optional(),
-    performanceRating: z.number().min(0).max(5).nullable().optional(),
-  })
-  .strict();
+// Validation schema for update operations.
+// Accepts both the real column names and the friendlier aliases the client
+// sends (name -> first/last, specialties -> skills, location ->
+// currentLocation, status -> isActive, availability -> isAvailable); the
+// handler translates them to the real `technicians` columns. Unknown keys are
+// stripped rather than rejected so older clients don't 400.
+const updateTechnicianSchema = z.object({
+  name: z.string().min(1).optional(),
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  phone: z.string().nullable().optional(),
+  specialties: z.array(z.string()).nullable().optional(),
+  skills: z.array(z.string()).nullable().optional(),
+  certifications: z.array(z.string()).nullable().optional(),
+  status: z.enum(['active', 'inactive', 'on_leave']).optional(),
+  isActive: z.boolean().optional(),
+  location: z.string().nullable().optional(),
+  currentLocation: z.string().nullable().optional(),
+  availability: z.enum(['available', 'busy', 'off_duty']).optional(),
+  isAvailable: z.boolean().optional(),
+  workingHours: z.string().nullable().optional(),
+  hourlyRate: z.string().or(z.number()).nullable().optional(),
+  employeeId: z.string().nullable().optional(),
+});
 
 const performanceQuerySchema = z.object({
   period: z.string().regex(/^\d+$/, 'Period must be a numeric string').optional().default('30'),
 });
+
+// Computed presentation columns bridging the real lean `technicians` table
+// (firstName/lastName/isActive/isAvailable) to the shape the client expects
+// (name/status/availability).
+const technicianNameSql = sql<string>`trim(coalesce(${technicians.firstName}, '') || ' ' || coalesce(${technicians.lastName}, ''))`;
+const technicianStatusSql = sql<string>`case when ${technicians.isActive} then 'active' else 'inactive' end`;
+const technicianAvailabilitySql = sql<string>`case when ${technicians.isAvailable} then 'available' else 'busy' end`;
 
 export function registerTechnicianManagementRoutes(app: Express) {
   // Apply authentication and RBAC context to all technician management routes
@@ -66,27 +78,25 @@ export function registerTechnicianManagementRoutes(app: Express) {
         const techniciansData = await db
           .select({
             id: technicians.id,
-            name: technicians.name,
+            name: technicianNameSql,
+            firstName: technicians.firstName,
+            lastName: technicians.lastName,
             email: technicians.email,
             phone: technicians.phone,
-            specialties: technicians.specialties,
+            specialties: technicians.skills,
             certifications: technicians.certifications,
-            status: technicians.status,
-            location: technicians.location,
-            availability: technicians.availability,
-            skillLevel: technicians.skillLevel,
+            status: technicianStatusSql,
+            location: technicians.currentLocation,
+            availability: technicianAvailabilitySql,
             hourlyRate: technicians.hourlyRate,
-            emergencyContact: technicians.emergencyContact,
             employeeId: technicians.employeeId,
-            hireDate: technicians.hireDate,
-            lastTrainingDate: technicians.lastTrainingDate,
-            performanceRating: technicians.performanceRating,
+            workingHours: technicians.workingHours,
             createdAt: technicians.createdAt,
             updatedAt: technicians.updatedAt,
           })
           .from(technicians)
           .where(eq(technicians.tenantId, tenantId))
-          .orderBy(technicians.name);
+          .orderBy(technicians.firstName, technicians.lastName);
 
         // Get active ticket counts for each technician
         const technicianStats = await Promise.all(
@@ -96,7 +106,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
               .from(serviceTickets)
               .where(
                 and(
-                  eq(serviceTickets.technicianId, tech.id),
+                  eq(serviceTickets.assignedTechnicianId, tech.id),
                   eq(serviceTickets.tenantId, tenantId),
                   sql`${serviceTickets.status} NOT IN ('completed', 'cancelled')`,
                 ),
@@ -107,7 +117,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
               .from(serviceTickets)
               .where(
                 and(
-                  eq(serviceTickets.technicianId, tech.id),
+                  eq(serviceTickets.assignedTechnicianId, tech.id),
                   eq(serviceTickets.tenantId, tenantId),
                   eq(serviceTickets.status, 'completed'),
                   gte(
@@ -162,13 +172,13 @@ export function registerTechnicianManagementRoutes(app: Express) {
             status: serviceTickets.status,
             customerId: serviceTickets.customerId,
             scheduledDate: serviceTickets.scheduledDate,
-            completedDate: serviceTickets.completedDate,
+            completedDate: serviceTickets.resolvedAt,
             createdAt: serviceTickets.createdAt,
           })
           .from(serviceTickets)
           .where(
             and(
-              eq(serviceTickets.technicianId, technicianId),
+              eq(serviceTickets.assignedTechnicianId, technicianId),
               eq(serviceTickets.tenantId, tenantId),
             ),
           )
@@ -177,6 +187,11 @@ export function registerTechnicianManagementRoutes(app: Express) {
 
         res.json({
           ...technician,
+          name: `${technician.firstName ?? ''} ${technician.lastName ?? ''}`.trim(),
+          specialties: technician.skills,
+          location: technician.currentLocation,
+          status: technician.isActive ? 'active' : 'inactive',
+          availability: technician.isAvailable ? 'available' : 'busy',
           recentTickets: tickets,
         });
       } catch (error) {
@@ -195,12 +210,32 @@ export function registerTechnicianManagementRoutes(app: Express) {
       try {
         const tenantId = req.user!.tenantId;
 
+        // Translate the client's friendly aliases to the real columns before
+        // validating. (userId is a NOT NULL FK to users — the caller must
+        // supply it to link the technician to a user account.)
+        const body: Record<string, unknown> = { ...req.body };
+        if (typeof body.name === 'string' && (!body.firstName || !body.lastName)) {
+          const parts = body.name.trim().split(/\s+/);
+          body.firstName = body.firstName || parts[0] || '';
+          body.lastName = body.lastName || parts.slice(1).join(' ') || parts[0] || '';
+        }
+        if (Array.isArray(body.specialties) && body.skills === undefined) {
+          body.skills = body.specialties;
+        }
+        if (body.location != null && body.currentLocation === undefined) {
+          body.currentLocation = body.location;
+        }
+        if (typeof body.status === 'string' && body.isActive === undefined) {
+          body.isActive = body.status === 'active';
+        }
+        if (typeof body.availability === 'string' && body.isAvailable === undefined) {
+          body.isAvailable = body.availability === 'available';
+        }
+
         const technicianData = insertTechnicianSchema.parse({
-          ...req.body,
+          ...body,
           tenantId,
-          employeeId: req.body.employeeId || `TECH-${Date.now()}`,
-          hireDate: req.body.hireDate || new Date(),
-          status: req.body.status || 'active',
+          employeeId: (body.employeeId as string) || `TECH-${Date.now()}`,
         });
 
         const [newTechnician] = await db.insert(technicians).values(technicianData).returning();
@@ -229,12 +264,43 @@ export function registerTechnicianManagementRoutes(app: Express) {
 
         const validatedData = updateTechnicianSchema.parse(req.body);
 
+        // Translate the accepted aliases into the real `technicians` columns.
+        const updates: Partial<typeof technicians.$inferInsert> = { updatedAt: new Date() };
+        if (validatedData.firstName !== undefined) updates.firstName = validatedData.firstName;
+        if (validatedData.lastName !== undefined) updates.lastName = validatedData.lastName;
+        if (validatedData.name !== undefined) {
+          const parts = validatedData.name.trim().split(/\s+/);
+          updates.firstName = parts[0] || '';
+          updates.lastName = parts.slice(1).join(' ') || parts[0] || '';
+        }
+        if (validatedData.email !== undefined) updates.email = validatedData.email;
+        if (validatedData.phone !== undefined) updates.phone = validatedData.phone;
+        if (validatedData.skills !== undefined) updates.skills = validatedData.skills ?? undefined;
+        if (validatedData.specialties !== undefined)
+          updates.skills = validatedData.specialties ?? undefined;
+        if (validatedData.certifications !== undefined)
+          updates.certifications = validatedData.certifications ?? undefined;
+        if (validatedData.currentLocation !== undefined)
+          updates.currentLocation = validatedData.currentLocation;
+        if (validatedData.location !== undefined) updates.currentLocation = validatedData.location;
+        if (validatedData.isActive !== undefined) updates.isActive = validatedData.isActive;
+        if (validatedData.status !== undefined)
+          updates.isActive = validatedData.status === 'active';
+        if (validatedData.isAvailable !== undefined)
+          updates.isAvailable = validatedData.isAvailable;
+        if (validatedData.availability !== undefined)
+          updates.isAvailable = validatedData.availability === 'available';
+        if (validatedData.workingHours !== undefined)
+          updates.workingHours = validatedData.workingHours;
+        if (validatedData.employeeId !== undefined) updates.employeeId = validatedData.employeeId;
+        if (validatedData.hourlyRate !== undefined) {
+          updates.hourlyRate =
+            validatedData.hourlyRate == null ? null : String(validatedData.hourlyRate);
+        }
+
         const [updatedTechnician] = await db
           .update(technicians)
-          .set({
-            ...validatedData,
-            updatedAt: new Date(),
-          })
+          .set(updates)
           .where(and(eq(technicians.id, technicianId), eq(technicians.tenantId, tenantId)))
           .returning();
 
@@ -270,13 +336,13 @@ export function registerTechnicianManagementRoutes(app: Express) {
           .from(serviceTickets)
           .where(
             and(
-              eq(serviceTickets.technicianId, technicianId),
+              eq(serviceTickets.assignedTechnicianId, technicianId),
               eq(serviceTickets.tenantId, tenantId),
               sql`${serviceTickets.status} NOT IN ('completed', 'cancelled')`,
             ),
           );
 
-        if (activeTickets[0]?.count > 0) {
+        if ((activeTickets[0]?.count ?? 0) > 0) {
           return res.status(400).json({
             error:
               'Cannot delete technician with active service tickets. Please reassign or complete all tickets first.',
@@ -313,14 +379,14 @@ export function registerTechnicianManagementRoutes(app: Express) {
         const availableTechnicians = await db
           .select({
             id: technicians.id,
-            name: technicians.name,
-            specialties: technicians.specialties,
-            location: technicians.location,
-            status: technicians.status,
-            availability: technicians.availability,
+            name: technicianNameSql,
+            specialties: technicians.skills,
+            location: technicians.currentLocation,
+            status: technicianStatusSql,
+            availability: technicianAvailabilitySql,
           })
           .from(technicians)
-          .where(and(eq(technicians.tenantId, tenantId), eq(technicians.status, 'active')));
+          .where(and(eq(technicians.tenantId, tenantId), eq(technicians.isActive, true)));
 
         // If date is provided, check for conflicting appointments
         if (date) {
@@ -329,7 +395,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
           const endOfDay = new Date(dateObj.setHours(23, 59, 59, 999));
 
           const busyTechnicians = await db
-            .select({ technicianId: serviceTickets.technicianId })
+            .select({ technicianId: serviceTickets.assignedTechnicianId })
             .from(serviceTickets)
             .where(
               and(
@@ -373,16 +439,20 @@ export function registerTechnicianManagementRoutes(app: Express) {
 
         const performanceData = await db
           .select({
-            technicianId: serviceTickets.technicianId,
-            technicianName: technicians.name,
+            technicianId: serviceTickets.assignedTechnicianId,
+            technicianName: technicianNameSql,
             totalTickets: count(),
             completedTickets: sql<number>`SUM(CASE WHEN ${serviceTickets.status} = 'completed' THEN 1 ELSE 0 END)`,
-            avgResolutionTime: sql<number>`AVG(EXTRACT(EPOCH FROM (${serviceTickets.completedDate} - ${serviceTickets.createdAt})) / 3600)`,
+            avgResolutionTime: sql<number>`AVG(EXTRACT(EPOCH FROM (${serviceTickets.resolvedAt} - ${serviceTickets.createdAt})) / 3600)`,
           })
           .from(serviceTickets)
-          .leftJoin(technicians, eq(serviceTickets.technicianId, technicians.id))
+          .leftJoin(technicians, eq(serviceTickets.assignedTechnicianId, technicians.id))
           .where(and(eq(serviceTickets.tenantId, tenantId), gte(serviceTickets.createdAt, daysAgo)))
-          .groupBy(serviceTickets.technicianId, technicians.name);
+          .groupBy(
+            serviceTickets.assignedTechnicianId,
+            technicians.firstName,
+            technicians.lastName,
+          );
 
         const performanceMetrics = performanceData.map((data) => ({
           ...data,
@@ -420,7 +490,7 @@ export function registerTechnicianManagementRoutes(app: Express) {
         const activeTechniciansResult = await db
           .select({ count: count() })
           .from(technicians)
-          .where(and(eq(technicians.tenantId, tenantId), eq(technicians.status, 'active')));
+          .where(and(eq(technicians.tenantId, tenantId), eq(technicians.isActive, true)));
 
         const availableTechniciansResult = await db
           .select({ count: count() })
@@ -428,8 +498,8 @@ export function registerTechnicianManagementRoutes(app: Express) {
           .where(
             and(
               eq(technicians.tenantId, tenantId),
-              eq(technicians.status, 'active'),
-              eq(technicians.availability, 'available'),
+              eq(technicians.isActive, true),
+              eq(technicians.isAvailable, true),
             ),
           );
 
@@ -439,8 +509,8 @@ export function registerTechnicianManagementRoutes(app: Express) {
           .where(
             and(
               eq(technicians.tenantId, tenantId),
-              eq(technicians.status, 'active'),
-              eq(technicians.availability, 'busy'),
+              eq(technicians.isActive, true),
+              eq(technicians.isAvailable, false),
             ),
           );
 

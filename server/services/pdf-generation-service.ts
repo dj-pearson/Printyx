@@ -180,8 +180,8 @@ class PDFGenerationService {
     this.renderTotals(doc, invoice);
 
     // Notes and payment terms
-    if (options.includeNotes !== false && invoice.notes) {
-      this.renderNotes(doc, invoice.notes);
+    if (options.includeNotes !== false && invoice.invoiceNotes) {
+      this.renderNotes(doc, invoice.invoiceNotes);
     }
 
     if (options.includePaymentTerms !== false) {
@@ -408,7 +408,10 @@ class PDFGenerationService {
 
       // Quantity
       xPos += colWidths.description;
-      doc.text(item.quantity || '1', xPos, yPos, { width: colWidths.quantity, align: 'center' });
+      doc.text(String(item.quantity ?? 1), xPos, yPos, {
+        width: colWidths.quantity,
+        align: 'center',
+      });
 
       // Unit price
       xPos += colWidths.quantity;
@@ -419,7 +422,7 @@ class PDFGenerationService {
 
       // Total
       xPos += colWidths.unitPrice;
-      doc.text(this.formatCurrency(item.total), xPos, yPos, {
+      doc.text(this.formatCurrency(item.lineTotal ?? item.amount), xPos, yPos, {
         width: colWidths.total,
         align: 'right',
       });
@@ -452,9 +455,9 @@ class PDFGenerationService {
     doc.fontSize(10).font('Helvetica');
 
     // Subtotal
-    if (invoice.subtotal) {
+    if (invoice.subtotalAmount) {
       doc.text('Subtotal:', rightColX, yPos);
-      doc.text(this.formatCurrency(invoice.subtotal), valueColX, yPos, {
+      doc.text(this.formatCurrency(invoice.subtotalAmount), valueColX, yPos, {
         width: valueColWidth,
         align: 'right',
       });
@@ -462,9 +465,9 @@ class PDFGenerationService {
     }
 
     // Tax
-    if (invoice.tax && parseFloat(invoice.tax) > 0) {
+    if (invoice.taxAmount && parseFloat(invoice.taxAmount) > 0) {
       doc.text('Tax:', rightColX, yPos);
-      doc.text(this.formatCurrency(invoice.tax), valueColX, yPos, {
+      doc.text(this.formatCurrency(invoice.taxAmount), valueColX, yPos, {
         width: valueColWidth,
         align: 'right',
       });
@@ -483,7 +486,7 @@ class PDFGenerationService {
 
     // Total (bold and larger)
     doc.fontSize(14).font('Helvetica-Bold').text('Total:', rightColX, yPos);
-    doc.text(this.formatCurrency(invoice.totalAmount || invoice.total), valueColX, yPos, {
+    doc.text(this.formatCurrency(invoice.totalAmount), valueColX, yPos, {
       width: valueColWidth,
       align: 'right',
     });
@@ -491,9 +494,9 @@ class PDFGenerationService {
     yPos += 25;
 
     // Amount paid
-    if (invoice.paid && parseFloat(invoice.paid) > 0) {
+    if (invoice.amountPaid && parseFloat(invoice.amountPaid) > 0) {
       doc.fontSize(10).font('Helvetica').text('Amount Paid:', rightColX, yPos);
-      doc.text(this.formatCurrency(invoice.paid), valueColX, yPos, {
+      doc.text(this.formatCurrency(invoice.amountPaid), valueColX, yPos, {
         width: valueColWidth,
         align: 'right',
       });
@@ -501,13 +504,13 @@ class PDFGenerationService {
     }
 
     // Balance due
-    if (invoice.balance && parseFloat(invoice.balance) !== 0) {
+    if (invoice.balanceDue && parseFloat(invoice.balanceDue) !== 0) {
       doc
         .fontSize(12)
         .font('Helvetica-Bold')
         .fillColor('#EF4444')
         .text('Balance Due:', rightColX, yPos);
-      doc.text(this.formatCurrency(invoice.balance), valueColX, yPos, {
+      doc.text(this.formatCurrency(invoice.balanceDue), valueColX, yPos, {
         width: valueColWidth,
         align: 'right',
       });
@@ -617,22 +620,19 @@ class PDFGenerationService {
         customerEmail: businessRecords.email,
         customerPhone: businessRecords.phone,
         contractId: invoices.contractId,
-        issueDate: invoices.issuedAt,
+        issuedAt: invoices.issuedAt,
         invoiceDate: invoices.invoiceDate,
         dueDate: invoices.dueDate,
-        subtotal: invoices.subtotal,
+        subtotalAmount: invoices.subtotalAmount,
+        taxAmount: invoices.taxAmount,
         totalAmount: invoices.totalAmount,
-        total: invoices.total,
-        balance: invoices.balance,
-        paid: invoices.paid,
-        tax: invoices.tax,
+        amountPaid: invoices.amountPaid,
+        balanceDue: invoices.balanceDue,
         status: invoices.status,
         invoiceStatus: invoices.invoiceStatus,
         paymentTerms: invoices.paymentTerms,
-        paymentDate: invoices.paymentDate,
-        paymentMethod: invoices.paymentMethod,
-        description: invoices.description,
-        notes: invoices.notes,
+        paidDate: invoices.paidDate,
+        invoiceNotes: invoices.invoiceNotes,
         billingPeriodStart: invoices.billingPeriodStart,
         billingPeriodEnd: invoices.billingPeriodEnd,
         tenantId: invoices.tenantId,
