@@ -8947,6 +8947,517 @@
       "priority": 236,
       "passes": false,
       "notes": "Closer story for the batch. The CLAUDE.md section matters as much as the test — every later agent story (phase 2: quote-followup agent, onboarding agent, marketing-blog bridge, ai-employee migration onto the kernel) should be writable from that doc alone."
+    },
+    {
+      "id": "CR-001",
+      "title": "Fix tenant-resolution middleware ordering fail-open bypass",
+      "description": "As a security engineer, I need tenant resolution to run AFTER authentication so an authenticated user of tenant A cannot read/write tenant B by sending an x-tenant-id header. Currently resolveTenant is mounted before JWT auth, so req.supabaseUser is unset, header validation fails open, and req.tenantId is set to any attacker-supplied header value.",
+      "acceptanceCriteria": [
+        "Register authenticateSupabaseJWT/session auth BEFORE resolveTenant so user identity is populated when tenant is resolved (server/routes.ts ordering)",
+        "validateTenantHeader must FAIL CLOSED when no authenticated userId is present (server/middleware/tenancy.ts:64-67)",
+        "Verify the requested x-tenant-id is one the authenticated user is authorized for; reject with 403 otherwise",
+        "Add an integration test proving a tenant-A JWT + tenant-B x-tenant-id header is rejected across customers/leads/products/billing/AP/AR routes",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 237,
+      "passes": false,
+      "notes": "[SECURITY/CRITICAL] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Headline cross-tenant exposure. Files: server/routes.ts:103 (resolveTenant mount) vs :150 (auth), server/middleware/tenancy.ts:64-67 (fail-open) & :129-182. All getTenantId() routes affected."
+    },
+    {
+      "id": "CR-002",
+      "title": "Close cross-tenant IDOR gaps (missing tenant filter on by-id read/write)",
+      "description": "As a security engineer, I need every by-id read/update/delete to also constrain tenant_id, so a user cannot access another tenant's rows by guessing an id. Several edge functions use the RLS-bypassing service client and forget the tenant filter.",
+      "acceptanceCriteria": [
+        "task-comments edge fn: scope all task/comment/time reads+writes by tenant_id, not just URL taskId (supabase/functions/task-comments/index.ts:24,45,70,92)",
+        "oid-mappings PUT/DELETE: add tenant_id filter and stop spreading raw body (supabase/functions/oid-mappings/index.ts:176,185,199)",
+        "warehouse-operations inventory adjust: filter inventory by tenant_id, not just body.inventoryId (supabase/functions/warehouse-operations/index.ts:160-174)",
+        "Express address-book entry PATCH/DELETE: verify the :id entry belongs to the resolved book+tenant (server/routes-address-books.ts:444-480)",
+        "accessibility PATCH /feedback/:id: add tenant filter (server/routes-accessibility.ts:255,286)",
+        "remote-monitoring device update: validate deviceId belongs to tenant (supabase/functions/remote-monitoring/index.ts:257)",
+        "Add regression tests for at least task-comments and warehouse-operations cross-tenant access"
+      ],
+      "priority": 238,
+      "passes": false,
+      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Systemic pattern: service-client (RLS bypassed) edge fns that omit the explicit tenant_id filter."
+    },
+    {
+      "id": "CR-003",
+      "title": "Enforce RBAC on destructive products/AP/AR CRUD routes",
+      "description": "As a security engineer, I need privileged mutations (bulk deletes, AP/AR writes) gated by requirePermission, not just the global 'someone is logged in' check, so low-privilege users cannot perform destructive or financial actions.",
+      "acceptanceCriteria": [
+        "Add requirePermission with appropriate <module>.<resource>.<action>_<scope> to the 67 routes in server/routes-products-crud.ts, especially deletes and AP/AR writes (:345,:460,:522,:967)",
+        "Confirm bulk-delete endpoints require an admin-level scope",
+        "Verify a Guest/low-role user receives 403 on these endpoints via test",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 239,
+      "passes": false,
+      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). server/routes-products-crud.ts currently has zero requirePermission usage."
+    },
+    {
+      "id": "CR-004",
+      "title": "Lock down unauthenticated service-role edge functions",
+      "description": "As a security engineer, I need edge functions that use the service role to require authentication and enforce limits, so they cannot leak schema/data or be abused for write-DoS.",
+      "acceptanceCriteria": [
+        "db-check edge fn: require platform-admin auth (or remove from prod); stop returning information_schema + live rows to anonymous callers (supabase/functions/db-check/index.ts:5-48)",
+        "mobile-logs edge fn: require authentication, add per-request size cap and rate limiting to prevent log injection / write flooding (supabase/functions/mobile-logs/index.ts:11,55-69)",
+        "Audit all edge fns using createSupabaseServiceClient for a missing auth.getUser gate"
+      ],
+      "priority": 240,
+      "passes": false,
+      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Both are unauthenticated + service-role today."
+    },
+    {
+      "id": "CR-005",
+      "title": "Harden SSRF on outbound fetches (SSO, webhooks, audio)",
+      "description": "As a security engineer, I need all server-side fetches to user-supplied URLs to validate the target so an authenticated user cannot reach internal/cloud-metadata endpoints or arbitrary hosts.",
+      "acceptanceCriteria": [
+        "Add an allowlist / block private & link-local ranges (169.254.0.0/16, 127.0.0.0/8, 10/8, 172.16/12, 192.168/16, metadata IPs) before fetching SSO metadataUrl (server/routes/sso-routes.ts:580,591)",
+        "Validate/allowlist social-media webhookUrl before POST (server/routes-social-media.ts:135,206)",
+        "Restrict voice-ticket audioUrl to expected storage host(s) (server/routes-voice-ticket-close.ts:135,397)",
+        "Apply the same guard to SSO OIDC discovery fetch (server/routes/sso-routes.ts:543)",
+        "Centralize the URL guard in a shared helper and unit-test it"
+      ],
+      "priority": 241,
+      "passes": false,
+      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). SSRF cluster from validation audit."
+    },
+    {
+      "id": "CR-006",
+      "title": "Fix open redirect via SAML RelayState in single-logout",
+      "description": "As a security engineer, I need SAML RelayState validated against an allowlist of internal paths so it cannot be used for open-redirect phishing.",
+      "acceptanceCriteria": [
+        "Reject absolute/off-host RelayState values; only allow relative in-app paths (server/routes/sso-routes.ts:474,478)",
+        "Add a unit test for a malicious external RelayState",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 242,
+      "passes": false,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-007",
+      "title": "Harden root-admin raw SQL console",
+      "description": "As a platform operator, I need the root-admin SQL console to be safe: the current sql.raw() path relies on a bypassable regex denylist and fully bypasses tenant isolation.",
+      "acceptanceCriteria": [
+        "Replace the denylist with an explicit allowlist (read-only by default) or gate behind an even stronger confirmation + audit-logged, non-default-off feature flag (server/routes-root-admin.ts:462,521)",
+        "Log every executed statement with user + tenant to the audit trail",
+        "Consider running against a read replica / read-only role for SELECTs",
+        "Document the residual risk in code comments"
+      ],
+      "priority": 243,
+      "passes": false,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). sql.raw() behind regex denylist."
+    },
+    {
+      "id": "CR-008",
+      "title": "Add Zod validation to mass-assignment create/update handlers",
+      "description": "As a developer, I need create/update handlers that currently spread req.body into services/DB to validate and whitelist fields with Zod, preventing over-posting of unintended columns.",
+      "acceptanceCriteria": [
+        "Add insert/update Zod schemas (omit server-injected fields) to: customer-success health score (server/routes/customer-success-routes.ts:74), ai-employee (ai-employee-routes.ts:28), meeting-scheduling (:20), team-collaboration (:20), lease update (lease-routes.ts:109), email-marketing update (email-marketing-routes.ts:95)",
+        "Reject unknown fields / strip via .parse",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 244,
+      "passes": false,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-009",
+      "title": "Harden file uploads (filename sanitization + size limits)",
+      "description": "As a security engineer, I need uploaded filenames sanitized and upload sizes bounded so users cannot traverse paths or exhaust disk.",
+      "acceptanceCriteria": [
+        "Sanitize/normalize file.originalname before building the storage path (server/routes-document-automation.ts:42); reuse the hardened upload middleware that already exists",
+        "Add multer limits (fileSize + files) to the catalog upload and any other unbounded upload (server/routes-catalog.ts:14)",
+        "Reject unexpected content types"
+      ],
+      "priority": 245,
+      "passes": false,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-010",
+      "title": "Replace user-supplied x-tenant-id trust in edge fns / lead routing",
+      "description": "As a security engineer, I need tenant resolution in edge functions and auto-lead-routing to derive tenant from the verified JWT (app_metadata.tenantId), never from a user-editable header or user_metadata.",
+      "acceptanceCriteria": [
+        "auto-lead-routing: resolve tenant from authenticated context, not raw x-tenant-id header (server/routes-auto-lead-routing.ts:34,66)",
+        "Edge fns: prefer app_metadata.tenantId; do not fall back to user_metadata / header when using the service client (supabase/functions/task-comments/index.ts:29, remote-monitoring)",
+        "Add a test asserting header/user_metadata spoofing is ignored"
+      ],
+      "priority": 246,
+      "passes": false,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Related to CR-001 on the edge-fn side."
+    },
+    {
+      "id": "CR-011",
+      "title": "Replace locally-defined requireAuth stubs with centralized middleware",
+      "description": "As a developer, I need all auth middleware imported from the centralized locations (per CLAUDE.md) instead of local stubs that only check req.user and may not be applied everywhere.",
+      "acceptanceCriteria": [
+        "Remove the local requireAuth in server/routes.ts:37-69 and server/integrations/routes.ts:16-22; import from ./replitAuth or ./auth-setup",
+        "Apply the correct middleware to integrations /marketplace (currently unprotected)",
+        "Grep confirms no remaining local requireAuth definitions",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 247,
+      "passes": false,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-012",
+      "title": "Enable Postgres RLS backstop on core business tables",
+      "description": "As a security engineer, I need Row-Level Security policies on the core tenant tables so a missed application-level filter cannot silently leak data. RLS currently covers only ~11 peripheral tables.",
+      "acceptanceCriteria": [
+        "Add tenant-scoped RLS policies for business_records, customers, invoices, contracts, quotes, deals, tasks, accounts_payable, accounts_receivable, inventory (extend drizzle/rls/)",
+        "Ensure service-role paths that legitimately cross tenants still function",
+        "Test that a session scoped to tenant A cannot select tenant B rows with RLS on",
+        "Roll out behind a verified migration"
+      ],
+      "priority": 248,
+      "passes": false,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). drizzle/rls currently: apply-rls.sql + a few files only."
+    },
+    {
+      "id": "CR-013",
+      "title": "Enforce maximum pagination limits on list endpoints",
+      "description": "As a platform operator, I need list endpoints to cap the page size so a client cannot request the entire table (data-extraction / DoS).",
+      "acceptanceCriteria": [
+        "Clamp limit/pageSize to a sane max (e.g. 200) on lead-scoring (server/routes/lead-scoring-routes.ts:420), workflow-automation (:437), lead-intelligence (:198), geofence-alerts (:259) and other unbounded list routes",
+        "Return 400 on invalid limit values",
+        "Add a shared pagination helper if none exists"
+      ],
+      "priority": 249,
+      "passes": false,
+      "notes": "[SECURITY/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-014",
+      "title": "Security hygiene cleanup (CORS, path gate, secrets, JSON-LD escaping)",
+      "description": "As a developer, I need to close several low-severity hygiene gaps found in review.",
+      "acceptanceCriteria": [
+        "Replace wildcard Access-Control-Allow-Origin on the exports edge fn with an origin allowlist (supabase/functions/exports/index.ts:92,129,162,195)",
+        "Make the global public-path auth gate match exact paths, not startsWith prefixes (server/routes.ts:172-186)",
+        "Escape </script> in JSON-LD output (client/src/lib/seoUtils.tsx:253,280; client/src/lib/seo/GEOFaqSection.tsx:54)",
+        "Remove hardcoded production DB IP from tooling (scripts/database-schema-reporter.ts) and demo API keys from seed script (server/seed-signature-data.ts)"
+      ],
+      "priority": 250,
+      "passes": false,
+      "notes": "[SECURITY/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-015",
+      "title": "Move customer-portal session token out of localStorage",
+      "description": "As a security engineer, I need the customer portal session token stored in an httpOnly cookie (or memory) rather than localStorage so it cannot be exfiltrated via XSS.",
+      "acceptanceCriteria": [
+        "Stop persisting the portal session token in localStorage (client/src/pages/CustomerPortal.tsx:105)",
+        "Use an httpOnly, Secure, SameSite cookie or in-memory token with silent refresh",
+        "Verify portal login/logout still works"
+      ],
+      "priority": 251,
+      "passes": false,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-016",
+      "title": "Remove data-leaking console logs and mask PII in Sentry replay",
+      "description": "As a security engineer, I need production paths to stop logging sensitive payloads and Sentry replay to mask text so customer PII is not captured.",
+      "acceptanceCriteria": [
+        "Remove/guard console.log of full form payloads and deal moves (client/src/pages/EnhancedOnboardingForm.tsx:661,748; DealsManagement.tsx:902,908) and sweep the ~221 other console statements in prod paths",
+        "Set Sentry replay maskAllText: true and maskAllInputs in prod (client/src/main.tsx:24)",
+        "Add an ESLint rule (no-console in client prod) to prevent regressions"
+      ],
+      "priority": 252,
+      "passes": false,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-017",
+      "title": "Resolve phantom-table endpoints that permanently 500",
+      "description": "As a developer, I need endpoints that query tables absent from every schema/migration to be fixed (add tables + migration) or disabled, because whole dashboards currently return 500 at runtime.",
+      "acceptanceCriteria": [
+        "operations-extended: 8 phantom tables (server/routes-operations-extended.ts:549,586,987,1192...)",
+        "financial-forecasting: 4 phantom tables (server/routes-financial-forecasting.ts:37-39,364)",
+        "analytics service-performance: 5 phantom tables (server/routes-analytics.ts:176,296,338,382)",
+        "workflow-mobile: 5 phantom tables (server/routes-workflow-mobile.ts:1090,1092,1384,1746)",
+        "billing-core: billing_invoices phantom table (server/routes-billing-core.ts:302)",
+        "automation: automated_tasks phantom table (server/routes-automation.ts:234,269)",
+        "For each: either add the Drizzle table + migration (0000-style DDL) and wire real data, or return a documented 501/empty and hide the UI; do NOT leave silent 500s",
+        "Track each module as its own sub-task"
+      ],
+      "priority": 253,
+      "passes": false,
+      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Same class as documented predictive-service-dispatch phantom tables (still deferred). Verify against shared/schema.ts + drizzle/migrations before building."
+    },
+    {
+      "id": "CR-018",
+      "title": "Fix shadowed route registrations (auth bypass + stale data)",
+      "description": "As a developer, I need route registration order fixed so authenticated/real handlers are not shadowed by unauthenticated or mock ones (first-registered wins in the registry).",
+      "acceptanceCriteria": [
+        "Unauthenticated products-crud handler shadows authenticated /api/software-products (server/routes-products-crud.ts:915 vs routes-software-products.ts:17; registry :359)",
+        "Sample-data mock shadows real /api/mobile/dashboard in prod (server/routes-sample-data.ts:1209 vs routes-workflow-mobile.ts:227; registry :355)",
+        "Unauthenticated routes-tasks shadows enhanced-tasks for PATCH/DELETE /api/tasks/:id (routes-tasks.ts:116 vs routes-enhanced-tasks.ts:283; registry :416)",
+        "Ensure the authenticated/real handler wins; remove or reorder the shadowing registration",
+        "Add a startup check that warns on duplicate method+path registrations"
+      ],
+      "priority": 254,
+      "passes": false,
+      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-019",
+      "title": "Remove dead/duplicate route files",
+      "description": "As a developer, I need unreferenced route files removed so the codebase is not misleading.",
+      "acceptanceCriteria": [
+        "Delete server/routes-modular-dashboard-broken.ts and server/routes-clickup-tasks.ts (never registered) after confirming no imports",
+        "Grep confirms no references remain",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 255,
+      "passes": false,
+      "notes": "[CORRECTNESS/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-020",
+      "title": "Validate numeric money inputs to prevent NaN corruption",
+      "description": "As a developer, I need pricing/quote numeric inputs validated with Zod (coerced numbers) so parseFloat of a missing/non-numeric dealerCost cannot write NaN into every downstream price field.",
+      "acceptanceCriteria": [
+        "Add z.coerce.number() validation for dealerCost and related numeric fields (server/routes-pricing.ts:313,319)",
+        "Reject or default NaN before persisting; never store NaN",
+        "Unit test with missing/garbage dealerCost",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 256,
+      "passes": false,
+      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-021",
+      "title": "Fix print-cost-calculator crash + zero-override handling",
+      "description": "As a developer, I need the server print-cost calculator to match the edge copy: it currently crashes on an unknown fleetAge where the edge copy returns a fallback, and both discard legitimate zero cost overrides via truthiness checks.",
+      "acceptanceCriteria": [
+        "Add the fleetAge fallback to the server copy (server/services/print-cost-calculator-service.ts:245) matching supabase/functions/_shared/print-cost-calculator.ts:254; type fleetAge as an enum not bare z.string()",
+        "Replace truthy checks with != null so a 0 override is honored (service:253 and edge:263)",
+        "Keep server + edge copies in sync (per CLAUDE.md)",
+        "Add unit tests for zero override and unknown fleetAge"
+      ],
+      "priority": 257,
+      "passes": false,
+      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-022",
+      "title": "Round persisted money totals and guard empty-list averages",
+      "description": "As a developer, I need money totals rounded before persistence and averages guarded against empty lists so stored figures are correct.",
+      "acceptanceCriteria": [
+        "Round proposal money totals to cents before persisting (supabase/functions/proposals/index.ts:595)",
+        "Guard service-dispatch averageConfidence against divide-by-zero on empty recommendations (server/routes-service-dispatch.ts:250)",
+        "Add a rounding helper used by both server and edge quote math"
+      ],
+      "priority": 258,
+      "passes": false,
+      "notes": "[CORRECTNESS/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-023",
+      "title": "Standardize API error response format",
+      "description": "As an API consumer, I need a consistent error shape {message, code, details, requestId} per CLAUDE.md; today ~550 handlers return {error} and ~883 return {message}, none include code/requestId.",
+      "acceptanceCriteria": [
+        "Introduce a shared error-response helper emitting {message, code, details, requestId}",
+        "Migrate handlers off ad-hoc {error} shapes (start with financial-forecasting, tasks, billing-core)",
+        "Attach a requestId (reuse existing middleware if present)",
+        "Document the contract and add a lint/test guard"
+      ],
+      "priority": 259,
+      "passes": false,
+      "notes": "[CORRECTNESS/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Large surface — do incrementally."
+    },
+    {
+      "id": "CR-024",
+      "title": "Wrap multi-write operations in transactions",
+      "description": "As a developer, I need multi-step writes wrapped in a DB transaction so a mid-way failure cannot leave partial data.",
+      "acceptanceCriteria": [
+        "Wrap sales-handoff checklist + tasks creation in a single transaction (server/routes-sales-handoff.ts:98)",
+        "Audit other create-then-create handlers for the same partial-write risk",
+        "Add a test simulating a failure on the second write"
+      ],
+      "priority": 260,
+      "passes": false,
+      "notes": "[CORRECTNESS/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-025",
+      "title": "Eliminate nested N+1 in service-dispatch parts availability",
+      "description": "As a user, I need the parts-availability check to not issue tickets×parts individual inventory queries, so service dispatch loads quickly.",
+      "acceptanceCriteria": [
+        "Replace the nested loop with a single batched query (WHERE part_id IN (...) AND tenant_id=...) (server/routes-service-dispatch.ts:699-730)",
+        "Verify identical results with a test fixture",
+        "Measure and record before/after query count"
+      ],
+      "priority": 261,
+      "passes": false,
+      "notes": "[PERFORMANCE/CRITICAL] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-026",
+      "title": "Fix N+1 + per-row AI calls in predictive maintenance hub",
+      "description": "As a user, I need the predictive-maintenance hub to batch its data access and not run per-row AI analysis synchronously, and to be bounded, so it does not time out.",
+      "acceptanceCriteria": [
+        "Batch the per-equipment metrics queries into set-based queries (server/routes-predictive-maintenance-hub.ts:40-140)",
+        "Move per-row AI analysis out of the request path (precompute/cache/queue) or bound it",
+        "Add a LIMIT / pagination to the equipment set processed",
+        "Cache results via server/cache-service.ts"
+      ],
+      "priority": 262,
+      "passes": false,
+      "notes": "[PERFORMANCE/CRITICAL] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-027",
+      "title": "Fix remaining N+1 query clusters",
+      "description": "As a user, I need dashboard/list endpoints that issue one query per row replaced with batched/joined queries.",
+      "acceptanceCriteria": [
+        "technician-management per-technician ticket stats → grouped query (server/routes-technician-management.ts:102-136)",
+        "remote-monitoring per-device metrics → batched (server/routes-remote-monitoring.ts:29-52)",
+        "root-admin per-user role+tenant enrichment (up to 200 queries) → joins (server/routes-root-admin.ts:317-344)",
+        "today-dashboard per-lead business-record enrichment → batched (server/routes-today-dashboard.ts:115-134)",
+        "Record before/after query counts"
+      ],
+      "priority": 263,
+      "passes": false,
+      "notes": "[PERFORMANCE/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-028",
+      "title": "Add missing indexes on hot tables (equipment, invoices, +)",
+      "description": "As a platform operator, I need indexes on frequently-filtered columns so tenant-scoped/status/customer queries do not full-scan. equipment and invoices currently have NO indexes at all.",
+      "acceptanceCriteria": [
+        "Add indexes on equipment (tenant_id, customer_id, status) — shared/schema.ts:1641-1685",
+        "Add indexes on invoices (tenant_id, customer_id, invoice_status, created_at) — shared/schema.ts:1968-2024",
+        "Audit other large tables (business_records, service_tickets) for missing tenant_id/status/FK indexes",
+        "Generate + review + apply migration (npm run db:generate / db:migrate)"
+      ],
+      "priority": 264,
+      "passes": false,
+      "notes": "[PERFORMANCE/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-029",
+      "title": "Optimize universal search (parallelize + trigram indexes)",
+      "description": "As a user, I need universal search to run its sub-queries in parallel and use indexes so it does not perform 6 sequential leading-wildcard full scans.",
+      "acceptanceCriteria": [
+        "Run the 6 entity searches with Promise.all (server/routes-universal-search.ts:59-388)",
+        "Add pg_trgm GIN indexes for the searched text columns; avoid leading-wildcard ILIKE where possible",
+        "Apply the same to business_records search double-scan (server/routes-business-records.ts:151-182)",
+        "Cache frequent queries via cache-service"
+      ],
+      "priority": 265,
+      "passes": false,
+      "notes": "[PERFORMANCE/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-030",
+      "title": "Bound and trim heavy list endpoints",
+      "description": "As a platform operator, I need large list endpoints to paginate and select only needed columns.",
+      "acceptanceCriteria": [
+        "Add pagination/limit to the unbounded deals fetch (server/routes-today-dashboard.ts:137-155)",
+        "Replace SELECT * (~80 cols) with an explicit column list on business-records list (server/routes-business-records.ts:170-176)",
+        "Audit other list routes for unbounded fetches"
+      ],
+      "priority": 266,
+      "passes": false,
+      "notes": "[PERFORMANCE/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-031",
+      "title": "Expand cache-service usage on expensive read paths",
+      "description": "As a platform operator, I need expensive, rarely-changing computations cached, since cache-service exists but is used by only a few endpoints.",
+      "acceptanceCriteria": [
+        "Cache universal-search, predictive-maintenance, and heavy analytics reads via server/cache-service.ts",
+        "Add sensible TTLs and tenant-scoped cache keys",
+        "Add cache-hit metrics/logging"
+      ],
+      "priority": 267,
+      "passes": false,
+      "notes": "[PERFORMANCE/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-032",
+      "title": "Virtualize large tables and reduce aggressive polling",
+      "description": "As a user, I need large data grids virtualized and admin pages to poll less aggressively so the UI stays responsive.",
+      "acceptanceCriteria": [
+        "Use the existing virtualized-data-table for CRM/business-record grids (client/src/components/crm/CrmDataTable.tsx:228-260, BusinessRecordsDataTable.tsx:360)",
+        "Raise 5-10s poll intervals on admin/security pages or switch to on-demand/websocket (client/src/pages/admin/SystemSecurity.tsx:26, MobileLogsViewer.tsx:114, DatabaseUpdaterPage.tsx:58)"
+      ],
+      "priority": 268,
+      "passes": false,
+      "notes": "[PERFORMANCE/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-033",
+      "title": "Add loading and error states to data-fetching pages",
+      "description": "As a user, I need pages to show loading and error UI instead of rendering blank on a failed/slow request. 24 pages call useQuery with no error handling.",
+      "acceptanceCriteria": [
+        "Add isLoading + isError/error UI to the 24 identified pages (ExecutiveDashboard, FinancialIntelligenceDashboard, SalesCommandCenter, PlatformAnalytics, ...)",
+        "Guard data.map against undefined to prevent render crashes",
+        "Provide a retry affordance on error",
+        "Establish a shared query-state wrapper component"
+      ],
+      "priority": 269,
+      "passes": false,
+      "notes": "[FRONTEND/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-034",
+      "title": "Type useQuery generics to stop silent contract drift",
+      "description": "As a developer, I need useQuery calls typed with an explicit generic so field renames/contract drift are caught at compile time instead of silently rendering empty/mock data. ~115 untyped calls remain.",
+      "acceptanceCriteria": [
+        "Add response-type generics to the 115 untyped useQuery calls, prioritizing pages that fall back to mock data",
+        "Derive types from shared schema where possible",
+        "Contributes to the QUALITY-002 typecheck ratchet",
+        "Typecheck passes: npm run check"
+      ],
+      "priority": 270,
+      "passes": false,
+      "notes": "[FRONTEND/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Same pattern documented in CLAUDE.md (BATCH 9/12)."
+    },
+    {
+      "id": "CR-035",
+      "title": "Accessibility remediation (labels, roles, keyboard)",
+      "description": "As a user relying on assistive technology, I need interactive elements to be labeled and keyboard-operable.",
+      "acceptanceCriteria": [
+        "Add aria-label to icon-only buttons (49 identified; e.g. CustomReportBuilder.tsx:404,650, ApiKeyManagement.tsx:308, customers.tsx:730)",
+        "Associate ~329 <Label> elements with inputs via htmlFor; add aria-labels to the 82 placeholder-only search inputs",
+        "Give clickable rows/card-headers/divs role=button + tabIndex + keyboard handlers (LeadsManagement.tsx:554,561, LeadDetail.tsx:786, MeterReadReview.tsx:212)",
+        "Add an a11y lint rule (eslint-plugin-jsx-a11y) to prevent regressions"
+      ],
+      "priority": 271,
+      "passes": false,
+      "notes": "[FRONTEND/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Note: images already have alt text; top-level ErrorBoundary already exists."
+    },
+    {
+      "id": "CR-036",
+      "title": "Fix mobile responsiveness regressions",
+      "description": "As a mobile user, I need dialogs/sheets/tables to fit small screens per the mobile-first requirement.",
+      "acceptanceCriteria": [
+        "Replace fixed-pixel widths (e.g. w-[800px] Sheet) with responsive max-w/percentage widths (CustomReportBuilder.tsx:1237, CrmLeadsPage.tsx:113, customers.tsx:911, RenewalAutoQuote.tsx:364)",
+        "Wrap the 10 raw <table> elements in overflow-x auto containers (contracts.tsx:538, Pricing.tsx:309, enhanced-crm.tsx:433, Contacts.tsx)",
+        "Verify at 375px width"
+      ],
+      "priority": 272,
+      "passes": false,
+      "notes": "[FRONTEND/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "CR-037",
+      "title": "Reduce oversized page components and remove archived files",
+      "description": "As a developer, I need the largest page components decomposed and dead files removed for maintainability.",
+      "acceptanceCriteria": [
+        "Refactor pages >2000 lines into smaller components (CustomerDetail.tsx 2935, DealsManagement.tsx 2854, EnhancedOnboardingForm.tsx, SoftwareProducts.tsx)",
+        "Remove the 12 .backup/_archived page files from client/src",
+        "No behavior change; typecheck + build still pass"
+      ],
+      "priority": 273,
+      "passes": false,
+      "notes": "[FRONTEND/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
     }
   ]
 }
