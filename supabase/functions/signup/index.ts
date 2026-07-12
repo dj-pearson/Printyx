@@ -25,6 +25,18 @@ interface SignupRequest {
   };
 }
 
+// Password policy — mirrors server/auth-routes.ts passwordSchema so production
+// self-service signup can't accept weaker passwords than the app documents
+// (GoTrue's default minimum is only 6). PA-006.
+function validatePasswordComplexity(password: string): string | null {
+  if (password.length < 12) return 'Password must be at least 12 characters';
+  if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
+  if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter';
+  if (!/[0-9]/.test(password)) return 'Password must contain at least one number';
+  if (!/[^A-Za-z0-9]/.test(password)) return 'Password must contain at least one special character';
+  return null;
+}
+
 // Export handler for use by the main server router
 export default async function handler(req: Request) {
   // Handle CORS preflight
@@ -53,6 +65,12 @@ export default async function handler(req: Request) {
         400,
         req,
       );
+    }
+
+    // Enforce the documented password complexity policy (PA-006).
+    const passwordError = validatePasswordComplexity(password);
+    if (passwordError) {
+      return createCorsResponse({ error: passwordError }, 400, req);
     }
 
     // Create admin client (service role for tenant creation)
