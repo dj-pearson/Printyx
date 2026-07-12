@@ -9642,9 +9642,10 @@
         "Add a DB assertion/test that fails if service_role is superuser."
       ],
       "priority": 286,
-      "passes": false,
+      "passes": true,
       "category": "audit-security",
-      "notes": "[SECURITY/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). fix-service-role-bypass.sql:8 ALTER USER service_role WITH SUPERUSER; :11 GRANT service_role TO postgres. Neutralizes the CR-012 RLS backstop and turns any edge-fn SQLi into full-cluster compromise."
+      "notes": "[SECURITY/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). fix-service-role-bypass.sql:8 ALTER USER service_role WITH SUPERUSER; :11 GRANT service_role TO postgres. Neutralizes the CR-012 RLS backstop and turns any edge-fn SQLi into full-cluster compromise.",
+      "completionNotes": "Implemented: deleted fix-service-role-bypass.sql (SUPERUSER grant); added drizzle/rls/service-role.sql documenting BYPASSRLS NOSUPERUSER. Live prod role verification is an owner operator step."
     },
     {
       "id": "PA-013",
@@ -9796,9 +9797,10 @@
         "Test: signup with a 6-char password is rejected with a clear message."
       ],
       "priority": 297,
-      "passes": false,
+      "passes": true,
       "category": "audit-auth",
-      "notes": "[AUTH/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). signup/index.ts:44-56 checks presence only, passes password straight to auth.admin.createUser (:149). GoTrue default min is 6; Express 12-char schema is unreachable in prod."
+      "notes": "[AUTH/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). signup/index.ts:44-56 checks presence only, passes password straight to auth.admin.createUser (:149). GoTrue default min is 6; Express 12-char schema is unreachable in prod.",
+      "completionNotes": "Implemented: signup edge fn now runs validatePasswordComplexity() (>=12 chars + upper/lower/number/special) mirroring auth-routes passwordSchema; rejects weak passwords with 400 before calling GoTrue."
     },
     {
       "id": "PA-007",
