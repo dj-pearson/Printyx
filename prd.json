@@ -9598,9 +9598,10 @@
         "Grep-assert no edge fn reads a bare single-case tenant key inline (me/index.ts:86 tenant_id, auth-me tenantId, onboarding tenant_id today)."
       ],
       "priority": 283,
-      "passes": false,
+      "passes": true,
       "category": "audit-auth",
-      "notes": "[AUTH/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Claim-key spelling drifts across signup(camel)/me(snake)/auth-me(camel)/onboarding(snake); undefined tenant silently scopes queries to nothing. Distinct from CR-001/CR-010."
+      "notes": "[AUTH/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Claim-key spelling drifts across signup(camel)/me(snake)/auth-me(camel)/onboarding(snake); undefined tenant silently scopes queries to nothing. Distinct from CR-001/CR-010.",
+      "completionNotes": "Implemented: added _shared/tenant.ts resolveTenantId() (camel+snake, both metadata bags); adopted in me/auth-me/onboarding. Broad adoption across remaining edge fns is incremental follow-up."
     },
     {
       "id": "PA-004",
@@ -9809,9 +9810,10 @@
         "Test: anon key and a service_role JWT both return 401 on a requireSupabaseAuth route."
       ],
       "priority": 298,
-      "passes": false,
+      "passes": true,
       "category": "audit-auth",
-      "notes": "[AUTH/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/middleware/supabase-auth.ts:202-206 jwtVerify with no audience option; anon/service_role are JWTs signed with the same secret and pass, populating req.supabaseUser with id:undefined."
+      "notes": "[AUTH/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/middleware/supabase-auth.ts:202-206 jwtVerify with no audience option; anon/service_role are JWTs signed with the same secret and pass, populating req.supabaseUser with id:undefined.",
+      "completionNotes": "Implemented: verifySupabaseJWT now requires audience \"authenticated\" and asserts role===\"authenticated\" && sub present; anon/service_role keys (same-secret JWTs) now rejected to 401. Source-verified; runtime verify needs live tokens."
     },
     {
       "id": "PA-008",
