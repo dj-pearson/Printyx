@@ -10004,9 +10004,10 @@
         "Add a normalizer test asserting the edge fn returned keys match each page’s typed interface."
       ],
       "priority": 312,
-      "passes": false,
+      "passes": true,
       "category": "audit-database",
-      "notes": "[DATABASE/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Runtime data-correctness (distinct from QUALITY-002 tsc). Endpoints resolve 200 but field reads are undefined -> blanks or || mockData fabricated numbers. Same class already fixed for MeterReadings/PlatformAnalytics (CLAUDE.md); these two remain. See also EDGE-004/EDGE-005e notes."
+      "notes": "[DATABASE/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Runtime data-correctness (distinct from QUALITY-002 tsc). Endpoints resolve 200 but field reads are undefined -> blanks or || mockData fabricated numbers. Same class already fixed for MeterReadings/PlatformAnalytics (CLAUDE.md); these two remain. See also EDGE-004/EDGE-005e notes.",
+      "completionNotes": "Implemented page-side data-contract mapping for both pages. PlatformCustomerSuccess: mapTenants()/deriveMetrics() map the real platform-cs {healthScores,businessRecord} response + derive metric cards from loaded rows (grade from overall_score, churn normalized, renewal from contract_end_date); also fixed a latent healthy-filter precedence bug. ESignatureIntegration: mapSignatureRequest() maps snake_case signature_requests (title->documentName, provider->documentType, timestamps->valid Dates, status normalized) fixing Invalid Date/blank rendering. FOLLOW-UP: customerName needs a business_records join in the signatures requests list handler (list endpoint returns no name). Source-verified; runtime verify pending."
     },
     {
       "id": "PA-037",
