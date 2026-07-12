@@ -39,6 +39,8 @@ jobs:
       - run: npm ci
       - name: No committed data dumps (PA-011)
         run: npm run check:datadumps
+      - name: No root-level SQL (PA-033)
+        run: npm run check:rootsql
       - run: npm run lint
       - name: Route ownership ratchet (EDGE-018)
         run: npm run check:routes
