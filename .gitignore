@@ -93,6 +93,13 @@ Output.json
 *_rows.csv
 *_rows.sql
 
+# Repo hygiene — design sources, temp/debug files, Office lock files (PA-051).
+# Design binaries belong in asset storage / Git LFS, not the app repo.
+*.psd
+temp.txt
+progress.txt
+~$*
+
 # Security hardening — merged from .gitignore.security-additions (PA-015).
 # NOTE: deliberately NOT ignoring *.sql (would drop drizzle migrations) or
 # .env.* (would drop the intentional .env.example / .env.development templates).
