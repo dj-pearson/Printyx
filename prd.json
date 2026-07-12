@@ -9841,9 +9841,10 @@
         "Document the current anon-key source + rotation procedure in the deployment checklist / .env.example."
       ],
       "priority": 300,
-      "passes": false,
+      "passes": true,
       "category": "audit-auth",
-      "notes": "[AUTH/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). client/src/lib/config.ts:32-33 defaults anonKey to \"\"; supabase.ts:39 createClient throws on empty key at import -> blank screen, no diagnostic. This is the recurring \"login historically broken\" symptom (CLAUDE.md: keys rotated/stale)."
+      "notes": "[AUTH/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). client/src/lib/config.ts:32-33 defaults anonKey to \"\"; supabase.ts:39 createClient throws on empty key at import -> blank screen, no diagnostic. This is the recurring \"login historically broken\" symptom (CLAUDE.md: keys rotated/stale).",
+      "completionNotes": "Implemented: config.configErrors boot check + placeholder key so createClient no longer throws at import (blank-screen fix); main.tsx renders ConfigErrorScreen when misconfigured; pingSupabaseHealth() surfaces a rotated/stale anon-key 401 in that screen; .env.example documents the anon-key source + rotation. Full stale-key surfacing during a normal (key-present) login is a minor follow-up."
     },
     {
       "id": "PA-010",
