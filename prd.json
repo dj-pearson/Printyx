@@ -10111,9 +10111,10 @@
         "Extend the .backup/_archived cleanup beyond client/src/pages to client/src/index.css.backup, tools/_archived/, testing/*.bak; add .gitignore rules (~$*, *.psd, temp.txt, progress.txt, root *_rows.csv) so they do not recur."
       ],
       "priority": 319,
-      "passes": false,
+      "passes": true,
       "category": "audit-build-ci",
-      "notes": "[HYGIENE/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). git ls-files confirms ~45MB+ of binaries + ~40 ad-hoc root scripts + accidental temp/lock files. CR-037 covers only client/src/pages .backup/_archived (12 files); this covers the root clutter + the other .backup locations."
+      "notes": "[HYGIENE/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). git ls-files confirms ~45MB+ of binaries + ~40 ad-hoc root scripts + accidental temp/lock files. CR-037 covers only client/src/pages .backup/_archived (12 files); this covers the root clutter + the other .backup locations.",
+      "completionNotes": "Implemented: removed 34MB of design PSDs + temp/debug files (temp.txt/progress.txt/documents/temp.txt), stray screenshot, imageRUNNER CSV, ~$ Office lock file, and dead backups outside client/src/pages (index.css.backup, testing/*.bak, tools/_archived/*); added .gitignore rules (*.psd/temp.txt/progress.txt/~$*). History bloat remains until PA-011 purge. Root logo/icon PNGs kept (possible brand deliverables); one-off root SQL/scripts are PA-033."
     },
     {
       "id": "PA-018",
