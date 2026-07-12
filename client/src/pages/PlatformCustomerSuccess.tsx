@@ -112,19 +112,130 @@ const CHURN_RISK_CONFIG = {
   critical: { label: 'Critical Risk', variant: 'destructive' as const, color: 'text-red-600' },
 };
 
+// ── Data-contract mapping (PA-036) ─────────────────────────────────────────
+// The /platform-cs/health-scores endpoint returns
+//   { healthScores: [{ ...snake_case health-score cols, businessRecord }], pagination }
+// but this page was built against a camelCase TenantHealth[] mock. Map the real
+// response to the shape the UI renders; fields the backend does not track
+// (per-user counts, onboarding, login history) fall back to safe defaults
+// instead of fabricated numbers.
+
+function gradeFromScore(score: number): TenantHealth['healthGrade'] {
+  if (score >= 90) return 'excellent';
+  if (score >= 75) return 'good';
+  if (score >= 60) return 'fair';
+  if (score >= 40) return 'poor';
+  return 'critical';
+}
+
+function normalizeChurnRisk(value: unknown): TenantHealth['churnRisk'] {
+  switch (value) {
+    case 'critical':
+      return 'critical';
+    case 'high':
+      return 'high';
+    case 'medium':
+      return 'medium';
+    case 'low':
+    case 'very_low':
+      return 'low';
+    default:
+      return 'low';
+  }
+}
+
+function mapTenants(raw: any): TenantHealth[] {
+  const rows: any[] = Array.isArray(raw) ? raw : (raw?.healthScores ?? []);
+  return rows.map((s: any): TenantHealth => {
+    const br = s.businessRecord ?? {};
+    const overall = Number(s.overall_score ?? 0);
+    const endDate: string | null = br.contract_end_date ?? null;
+    const daysUntilRenewal = endDate
+      ? Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400000)
+      : undefined;
+    const totalFeatures = Number(s.total_features ?? 0);
+    const featuresAdopted = Number(s.features_adopted ?? 0);
+    const satisfactionScore =
+      s.satisfaction_score != null ? Number(s.satisfaction_score) : undefined;
+    const csm: string | undefined = br.assigned_csm ?? s.assigned_csm ?? undefined;
+    return {
+      id: s.id,
+      tenantId: s.tenant_id ?? br.tenant_id ?? '',
+      companyName: br.company_name ?? 'Unknown tenant',
+      healthScore: overall,
+      healthGrade: gradeFromScore(overall),
+      churnRisk: normalizeChurnRisk(br.churn_risk),
+      churnProbability:
+        br.churn_probability != null
+          ? Number(br.churn_probability)
+          : Math.max(0, Math.min(1, (100 - overall) / 100)),
+      lastLoginDate: undefined,
+      activeUsers: 0,
+      totalUsers: 0,
+      loginFrequency: 0,
+      featureAdoption: totalFeatures > 0 ? Math.round((featuresAdopted / totalFeatures) * 100) : 0,
+      mrr: br.current_mrr != null ? String(br.current_mrr) : '0',
+      contractValue: br.current_mrr != null ? String(Number(br.current_mrr) * 12) : '0',
+      contractEndDate: endDate ?? undefined,
+      daysUntilRenewal,
+      openTickets: Number(s.open_support_tickets ?? 0),
+      avgResponseTime:
+        s.avg_ticket_resolution_days != null ? Number(s.avg_ticket_resolution_days) : undefined,
+      satisfactionScore,
+      onboardingStatus: 'completed',
+      onboardingProgress: 100,
+      csmId: csm,
+      csmName: csm,
+      createdAt: s.created_at ?? '',
+      updatedAt: s.updated_at ?? '',
+    };
+  });
+}
+
+function deriveMetrics(list: TenantHealth[]): HealthMetrics {
+  const total = list.length;
+  const healthy = list.filter(
+    (t) => t.healthGrade === 'excellent' || t.healthGrade === 'good',
+  ).length;
+  const critical = list.filter((t) => t.healthGrade === 'critical').length;
+  const atRisk = list.filter((t) => t.healthGrade === 'fair' || t.healthGrade === 'poor').length;
+  const avgHealthScore =
+    total > 0 ? Math.round(list.reduce((s, t) => s + t.healthScore, 0) / total) : 0;
+  const totalMRR = list.reduce((s, t) => s + (parseFloat(t.mrr) || 0), 0);
+  const withSat = list.filter((t) => typeof t.satisfactionScore === 'number');
+  // satisfaction_score is a 0-100 scale; the card renders it on a 0-5 scale.
+  const avgSatisfaction =
+    withSat.length > 0
+      ? (withSat.reduce((s, t) => s + (t.satisfactionScore || 0), 0) / withSat.length / 100) * 5
+      : 0;
+  const avgChurnRisk = total > 0 ? list.reduce((s, t) => s + t.churnProbability, 0) / total : 0;
+  return {
+    totalTenants: total,
+    healthyTenants: healthy,
+    atRiskTenants: atRisk,
+    criticalTenants: critical,
+    avgHealthScore,
+    avgChurnRisk,
+    totalMRR: totalMRR.toFixed(2),
+    activeUsers: 0,
+    avgSatisfaction,
+  };
+}
+
 export default function PlatformCustomerSuccess() {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedCSM, setSelectedCSM] = useState<string>('');
 
-  // Fetch tenant health data
-  const { data: tenants = [], isLoading } = useQuery<TenantHealth[]>({
+  // Fetch tenant health data and map the real response to the UI shape (PA-036).
+  const { data: tenants = [], isLoading } = useQuery<unknown, Error, TenantHealth[]>({
     queryKey: ['/api/platform-cs/health-scores', selectedFilter, selectedCSM],
+    select: (raw) => mapTenants(raw as any),
   });
 
-  // Fetch overall metrics
-  const { data: metrics } = useQuery<HealthMetrics>({
-    queryKey: ['/api/platform-cs/metrics'],
-  });
+  // Metrics are derived from the loaded rows. The /platform-cs/metrics endpoint
+  // returns a different field shape (totalCustomers vs totalTenants, no
+  // MRR/satisfaction), so consuming it directly rendered NaN/blank cards.
+  const metrics = deriveMetrics(tenants);
 
   // Fetch available CSMs
   const { data: csms = [] } = useQuery<{ id: string; name: string }[]>({
@@ -137,8 +248,8 @@ export default function PlatformCustomerSuccess() {
       selectedFilter === 'all' ||
       (selectedFilter === 'at_risk' &&
         (tenant.churnRisk === 'high' || tenant.churnRisk === 'critical')) ||
-      (selectedFilter === 'healthy' && tenant.healthGrade === 'excellent') ||
-      tenant.healthGrade === 'good' ||
+      (selectedFilter === 'healthy' &&
+        (tenant.healthGrade === 'excellent' || tenant.healthGrade === 'good')) ||
       (selectedFilter === 'onboarding' && tenant.onboardingStatus !== 'completed') ||
       (selectedFilter === 'renewal' && tenant.daysUntilRenewal && tenant.daysUntilRenewal <= 60);
 
