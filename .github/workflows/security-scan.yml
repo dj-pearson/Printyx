@@ -76,6 +76,17 @@ jobs:
       - name: Run secret scanner
         run: npm run check:secrets
 
+      # gitleaks over the working tree (PA-015). --no-git so it does not fail on
+      # historical secrets that are still being purged (PA-011); report-only for
+      # now because the current tree still carries committed anon JWTs (PA-014).
+      # Flip continue-on-error to false once PA-014 lands to make this blocking.
+      - name: gitleaks (working tree)
+        continue-on-error: true
+        run: |
+          VERSION=8.18.4
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" | tar -xz -C /tmp gitleaks
+          /tmp/gitleaks detect --no-git --source . --redact --no-banner
+
       - name: Grep-based secret patterns
         run: |
           echo "Scanning for common secret patterns in tracked files..."

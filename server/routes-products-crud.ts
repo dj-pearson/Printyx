@@ -1641,8 +1641,14 @@ export function registerProductsCrudRoutes(app: Express) {
 
       let payload: any;
       try {
-        // Prefer strict schema if request already matches it
-        payload = insertMeterReadingSchema.parse({ ...req.body, tenantId });
+        // Prefer strict schema if request already matches it.
+        // created_by is NOT NULL and not omitted from the insert schema, so it
+        // must be injected or the parse (and the insert) fails — PA-035.
+        payload = insertMeterReadingSchema.parse({
+          ...req.body,
+          tenantId,
+          createdBy: getUserId(req),
+        });
       } catch {
         // Map simplified UI fields to schema
         const {
@@ -1657,6 +1663,7 @@ export function registerProductsCrudRoutes(app: Express) {
 
         payload = insertMeterReadingSchema.parse({
           tenantId,
+          createdBy: getUserId(req),
           equipmentId,
           contractId: contractId ?? null,
           readingDate: readingDate ? new Date(readingDate) : new Date(),

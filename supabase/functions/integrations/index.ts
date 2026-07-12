@@ -70,22 +70,23 @@ export default async function handler(req: Request) {
 
     const admin = createSupabaseServiceClient();
     const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
 
+    // Resolve the path via normalizePath so routing is correct whether or not
+    // server.ts has already stripped the `integrations` function-name segment
+    // (PA-024). parts[0] is the resource, parts[1] the action — previously this
+    // read pathParts[1]/[2] off the raw split, which was off-by-one under the
+    // strip (e.g. /integrations/:id arrived as /:id, so :id landed in [0] but
+    // was read from [1], routing every by-id/type/webhooks call to the wrong
+    // branch).
     // Parse path: /integrations, /integrations/:id, /integrations/:type/config, etc.
-    const segment1 = pathParts[1]; // Could be ID, type, or 'webhooks'
-    const segment2 = pathParts[2]; // Could be 'config', 'sync', 'status'
+    const { parts } = normalizePath(url.pathname, 'integrations');
+    const segment1 = parts[0]; // Could be ID, type, 'webhooks', or 'dashboard'
+    const segment2 = parts[1]; // Could be 'config', 'sync', 'status'
 
     // ========== INTEGRATION HUB DASHBOARD (EDGE-005f) ==========
-    //
     // GET /integration-hub/dashboard — aggregate stats for IntegrationHub.tsx.
-    // The frontend calls /api/integration-hub/dashboard; prod route-overrides
-    // `integration-hub` → `integrations` and strips the segment, so the path here
-    // is /dashboard. Detect it via normalizePath (robust to both the stripped and
-    // prefix-preserved calling conventions) BEFORE the `!segment1` list branch,
-    // which would otherwise swallow this GET.
-    const { parts: normParts } = normalizePath(url.pathname, 'integrations');
-    if (req.method === 'GET' && normParts[0] === 'dashboard') {
+    // Checked BEFORE the `!segment1` list branch, which would otherwise swallow it.
+    if (req.method === 'GET' && segment1 === 'dashboard') {
       return await buildIntegrationHubDashboard(admin, tenantId, req);
     }
 

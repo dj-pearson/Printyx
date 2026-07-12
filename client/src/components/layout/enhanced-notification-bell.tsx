@@ -27,7 +27,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
-import { config } from '@/lib/config';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -237,60 +236,10 @@ export function EnhancedNotificationBell() {
     }
   }, [notifications]);
 
-  // WebSocket listener for real-time notification delivery.
-  // Skipped in production — Cloudflare Pages doesn't support WS upgrades and
-  // the Express WS server isn't deployed. Polling (30s refetchInterval above)
-  // is the fallback until Phase 6 US-027 swaps to Supabase Realtime.
-  useEffect(() => {
-    if (config.isProduction) return;
-
-    const userId = user?.id;
-    const tenantId = (user as any)?.tenantId;
-    if (!userId || !tenantId) return;
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws/reporting?userId=${userId}&tenantId=${tenantId}`;
-
-    let ws: WebSocket | null = null;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-
-    function connect() {
-      try {
-        ws = new WebSocket(wsUrl);
-
-        ws.onmessage = (event) => {
-          try {
-            const msg = JSON.parse(event.data);
-            if (msg.type === 'notification' && msg.data) {
-              // Invalidate the notifications query to refetch from server
-              queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
-            }
-          } catch {
-            // Ignore parse errors
-          }
-        };
-
-        ws.onclose = () => {
-          // Reconnect after 10 seconds
-          reconnectTimer = setTimeout(connect, 10_000);
-        };
-
-        ws.onerror = () => {
-          ws?.close();
-        };
-      } catch {
-        // Silently fail - polling fallback is always active
-      }
-    }
-
-    connect();
-
-    return () => {
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      ws?.close();
-    };
-  }, [user, queryClient]);
+  // Real-time notification delivery previously used a dev-only WebSocket here
+  // that reconnected every 10s against a server that isn't deployed (prod
+  // returned early). Removed (PA-030); the 30s poll (refetchInterval above) is
+  // the single freshness source until EDGE-010 swaps to Supabase Realtime.
 
   const unreadNotifications = notifications.filter((n) => !n.read);
   const displayNotifications = selectedTab === 'unread' ? unreadNotifications : notifications;

@@ -134,6 +134,55 @@ const getStatusIcon = (status: string) => {
 
 const STATUS_COLORS = ['#ffc658', '#82ca9d', '#ff7c7c', '#8884d8'];
 
+// ── Data-contract mapping (PA-036) ─────────────────────────────────────────
+// GET /signatures/requests returns raw snake_case signature_requests rows, but
+// this page was built against a camelCase mock (documentName/requestedDate/
+// customerName/remindersSent...). Reading those keys off the real rows produced
+// Invalid Dates and blank status/title. Map the real columns here; the list
+// endpoint carries no customer name (only customer_id), so customerName is a
+// follow-up backend join — it degrades to empty rather than crashing.
+
+const toValidDate = (v: unknown): Date => (v ? new Date(v as string) : new Date(0));
+
+function normalizeSignatureStatus(value: unknown): SignatureRequest['status'] {
+  switch (value) {
+    case 'completed':
+      return 'completed';
+    case 'expired':
+      return 'expired';
+    case 'voided':
+    case 'declined':
+    case 'cancelled':
+      return 'cancelled';
+    default:
+      return 'pending';
+  }
+}
+
+function mapSignatureRequest(r: any): SignatureRequest {
+  return {
+    id: r.id,
+    documentName: r.title ?? r.request_number ?? 'Untitled document',
+    documentType: r.provider ?? 'esignature',
+    businessRecordId: r.customer_id ?? '',
+    customerName: r.customer_name ?? r.customerName ?? '',
+    customerEmail: r.customer_email ?? r.customerEmail ?? '',
+    status: normalizeSignatureStatus(r.status),
+    requestedBy: r.created_by ?? '',
+    requestedDate: toValidDate(r.sent_at ?? r.created_at),
+    expirationDate: toValidDate(r.expires_at),
+    signedDate: r.completed_at ? toValidDate(r.completed_at) : undefined,
+    documentUrl: '',
+    signatureUrl: undefined,
+    remindersSent: 0,
+    lastReminderDate: undefined,
+    contractValue: undefined,
+    contractDuration: undefined,
+    signers: [],
+    createdAt: toValidDate(r.created_at),
+  };
+}
+
 export default function ESignatureIntegration() {
   const [isCreateRequestOpen, setIsCreateRequestOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
@@ -141,17 +190,13 @@ export default function ESignatureIntegration() {
   const { register, handleSubmit, reset, setValue, watch } = useForm();
 
   // Fetch signature requests
-  const { data: signatureRequests = [], isLoading: requestsLoading } = useQuery({
+  const { data: signatureRequests = [], isLoading: requestsLoading } = useQuery<
+    unknown,
+    Error,
+    SignatureRequest[]
+  >({
     queryKey: ['/api/signatures/requests'],
-    select: (data: any[]) =>
-      data.map((request) => ({
-        ...request,
-        requestedDate: new Date(request.requestedDate),
-        expirationDate: new Date(request.expirationDate),
-        signedDate: request.signedDate ? new Date(request.signedDate) : undefined,
-        lastReminderDate: request.lastReminderDate ? new Date(request.lastReminderDate) : undefined,
-        createdAt: new Date(request.createdAt),
-      })),
+    select: (data) => (Array.isArray(data) ? data.map(mapSignatureRequest) : []),
   });
 
   // Fetch signature templates

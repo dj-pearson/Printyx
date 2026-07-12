@@ -9458,6 +9458,733 @@
       "priority": 273,
       "passes": false,
       "notes": "[FRONTEND/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+    },
+    {
+      "id": "PA-001",
+      "title": "Fix signup writing phantom columns to users — new tenant-admin row never created",
+      "description": "As a new customer signing up, I need my tenant-admin profile row to actually be created so I can log in with a real role and tenant.",
+      "acceptanceCriteria": [
+        "signup edge fn users insert maps to REAL columns only — drop full_name / status / is_tenant_admin (users table has firstName/lastName/isPlatformUser/roleId/tenantId, verified shared/schema.ts:949-980).",
+        "On users-row insert failure, roll back the created tenant + role + GoTrue auth user (or retry) instead of logging and returning 201.",
+        "Integration test: signup -> a public.users row exists with correct tenant_id + role_id."
+      ],
+      "priority": 274,
+      "passes": true,
+      "category": "audit-auth",
+      "notes": "[AUTH/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/signup/index.ts:175-192 inserts full_name/status:\"pending_verification\"/is_tenant_admin:true then swallows the PGRST204 failure (\"log but do not fail\"). Every self-service signup half-provisions the tenant.",
+      "completionNotes": "Implemented: signup users insert re-mapped to real columns (role/role_id/access_scope/is_platform_user/is_active + phone/status/isTenantAdmin in metadata jsonb); rolls back auth user+role+tenant on failure instead of swallowing. Source-verified vs shared/schema.ts users cols; runtime verify needs live GoTrue+DB."
+    },
+    {
+      "id": "PA-002",
+      "title": "Fix onboarding edge fn tenant-key mismatch (reads tenant_id, signup writes tenantId) → 400 for every new tenant",
+      "description": "As a freshly signed-up admin, I need the onboarding endpoint to resolve my tenant so the post-signup flow works.",
+      "acceptanceCriteria": [
+        "onboarding/index.ts resolves tenant from BOTH tenantId and tenant_id (mirror onboarding-checklists/index.ts:25-26).",
+        "Remove the duplicated fallback lines (tenant_id currently listed 4x).",
+        "Test: a JWT carrying only app_metadata.tenantId resolves onboarding successfully (no 400)."
+      ],
+      "priority": 275,
+      "passes": true,
+      "category": "audit-auth",
+      "notes": "[AUTH/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/onboarding/index.ts:24-31 reads app_metadata.tenant_id (snake) only; signup writes app_metadata.tenantId (camel) at signup/index.ts:158. Blocks onboarding for all new tenants.",
+      "completionNotes": "Implemented: onboarding/index.ts now resolves tenant from app_metadata.tenantId + tenant_id (+user_metadata), mirroring onboarding-checklists. Fixes 400 for freshly signed-up tenants."
+    },
+    {
+      "id": "PA-011",
+      "title": "Purge committed customer PII / user data dumps from repo and history",
+      "description": "As a data-protection owner, I need real customer PII removed from the git repository and history.",
+      "acceptanceCriteria": [
+        "git rm all *_rows.csv / *_rows.sql dumps (company_contacts_rows.csv = 14,994 real contacts, business_record_activities_rows.csv, users_rows.sql) and purge from history (git filter-repo / BFG).",
+        "Add *_rows.csv / *_rows.sql to .gitignore; add a CI PII/secret scanner that blocks CSV/SQL dumps.",
+        "Rotate/notify per breach policy for the exposed tenant (550e8400-...) contact data."
+      ],
+      "priority": 276,
+      "passes": false,
+      "category": "audit-security",
+      "notes": "[SECURITY/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). git ls-files confirms 3 tracked dumps; company_contacts_rows.csv holds names/emails/phones/mailing addresses/birthdates for one real tenant. Distinct from CR-016 (logs/Sentry). PROGRESS 2026-07-12: removed all 3 dumps from the tree (git rm), added *_rows.csv/*_rows.sql to .gitignore, and added a CI guard (scripts/check-no-data-dumps.mjs wired into ci.yml quality job). REMAINING (owner-driven, repo-wide on main — NOT done here): purge the blobs from git history (git filter-repo) + force-push all refs, and rotate/notify per breach policy for the exposed tenant. Blobs remain retrievable from history until that runs."
+    },
+    {
+      "id": "PA-019",
+      "title": "Fix kpis / reporting / scheduled-reports dev-only pathPrefix proxies → hard 404 in production",
+      "description": "As a user of KPI tiles, the Reporting Engine, and Scheduled Reports, I need those to work in production, not only in dev.",
+      "acceptanceCriteria": [
+        "Add server.ts route overrides so kpis, reporting, and scheduled-reports resolve to the reports fn WHILE preserving the discriminator segment the reports dispatcher keys on (mirror dashboard->dashboard-widgets, not the segment-stripping public->public-calculator pattern).",
+        "Verify /kpis/summary, /reporting/reports/:id/data, /scheduled-reports/:id/toggle round-trip against functions.printyx.net.",
+        "Add a check flagging any crmProxies {fn,pathPrefix} entry whose URL segment lacks a matching server.ts override."
+      ],
+      "priority": 277,
+      "passes": false,
+      "category": "audit-routing",
+      "notes": "[ROUTING/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/middleware/edge-function-proxy.ts:289-319 rewrite these via dev-only pathPrefix to the reports fn; no kpis/reporting/scheduled edge dir and no server.ts override exist, so prod resolves functionName=kpis -> 404. Callers: role-dashboard-config.ts:152, EnhancedReportsHub.tsx, ScheduledReportsDashboard.tsx."
+    },
+    {
+      "id": "PA-020",
+      "title": "Implement customers edge-fn /:id sub-resource routing (Customer 360 dead in prod)",
+      "description": "As a user viewing a customer, I need the detail tabs (invoices, tickets, equipment, financials, supplies, meters, activities, 360) to load real data in production.",
+      "acceptanceCriteria": [
+        "Add sub-resource routing to the customers edge fn (or dedicated fns) for /:id/{invoices,service-tickets,service-calls,equipment,contracts,financial-summary,payments,aging,supply-orders,devices,metrics/history,360-view,activities}, tenant-scoped.",
+        "Return the array/object shapes each component expects; no branch falls through to the single-customer response for a multi-segment path.",
+        "Smoke-test Customer Detail tabs against the functions host; remove the dev-only Express sub-routes once parity holds."
+      ],
+      "priority": 278,
+      "passes": false,
+      "category": "audit-routing",
+      "notes": "[ROUTING/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/customers/index.ts implements only / and /:id CRUD; customerId=pathParts[1] ignores the sub-segment so /customers/:id/invoices returns the customer object. Sub-paths like /360-view,/financial-summary,/payments,/aging,/activities have no Express route either (broken in dev too). Not in the missing-edge baseline (parity heuristic stops at first segment)."
+    },
+    {
+      "id": "PA-031",
+      "title": "Reconcile schema-of-record: build a manifest for ~110 code-referenced tables absent from migrations",
+      "description": "As a platform engineer, I need every table the code queries to be defined by a versioned migration/Drizzle schema so the repo is the source of truth and a fresh DB actually works.",
+      "acceptanceCriteria": [
+        "Produce an authoritative manifest (file -> table) of the ~110 table names referenced by edge-fn .from() / server Drizzle symbols that exist in NO migration or shared/*.ts pgTable.",
+        "Per table, decide and execute: (a) re-point to the real Drizzle table (customers->business_records, inventory->inventory_items, work_orders->service_tickets, notifications->user_notifications, parts->parts_orders, pricing_settings->company_pricing_settings, team_members->sales_team_members, etc.), (b) add a real schema + migration, or (c) delete the dead endpoint.",
+        "Add a CI check grepping every edge-fn .from(\"x\") + server Drizzle symbol against the union of migration CREATE TABLE + pgTable names, failing on unknown tables.",
+        "Smoke-test each remediated fn against a DB provisioned from migrations alone."
+      ],
+      "priority": 279,
+      "passes": false,
+      "category": "audit-database",
+      "notes": "[DATABASE/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). 110 distinct table names across 88 edge-fn files not in any migration/schema (e.g. customers, leads, contacts, activities, parts, inventory, work_orders, notifications, payments, devices, appointments, feature_flags, journal_entries, meeting_*, mfa_*). Server: routes-predictive-service-dispatch.ts imports serviceCallsEnhanced/equipmentMetrics/technicianResourcesEnhanced defined nowhere. NOTE: some tables likely DO exist in the live prod DB (created via drizzle-kit push / manual SQL) so not all endpoints 500 today — the verified defect is schema-of-record drift; classify each table live-exists vs truly-missing in the manifest. Broader than CR-017."
+    },
+    {
+      "id": "PA-040",
+      "title": "Wire or clearly flag the fully-mock dashboards that silently render fabricated data",
+      "description": "As a user/executive, I must not be shown convincing dashboards whose numbers are hardcoded and never touch the backend.",
+      "acceptanceCriteria": [
+        "For each page/component that makes 0 real API calls and renders mock constants — MeetingTranscriptionDashboard, MeetingSchedulingDashboard, AISearchKnowledgeDashboard, AIDocumentationDashboard, AIServiceIntelligence, PredictiveContractProfitability, ServiceDispatchOptimization, and components analytics/PredictiveInsights + analytics/AnomalyDetection — wire it to a real tenant-scoped endpoint OR hide it behind a feature flag / label it clearly as sample data.",
+        "Remove mock constants from the render path; add TanStack Query loading/error states.",
+        "Where a real backend route already exists (e.g. ai-documentation-routes.ts, service-knowledge), bind the page to it."
+      ],
+      "priority": 280,
+      "passes": false,
+      "category": "audit-functionality",
+      "notes": "[FUNCTIONALITY/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). e.g. MeetingTranscriptionDashboard.tsx:169 \"Mock data loading - replace with actual API calls\" (0 API calls); AISearchKnowledgeDashboard.tsx:177; AIDocumentationDashboard.tsx:143; AIServiceIntelligence.tsx:15; ServiceDispatchOptimization.tsx:158-283; PredictiveInsights.tsx:61-178; AnomalyDetection.tsx:53,166. Indistinguishable from real analytics."
+    },
+    {
+      "id": "PA-041",
+      "title": "Implement e-signature provider send + webhook verification (Express send is a no-op)",
+      "description": "As a user sending a document for signature, I need the signer to actually receive it and status to advance to signed.",
+      "acceptanceCriteria": [
+        "Wire at least one provider (DocuSign/Adobe/HelloSign) to actually create + send an envelope from the send handler.",
+        "Implement webhook signature verification and status reconciliation for the provider callbacks.",
+        "Until wired, the UI must not report \"sent\" as if the signer was notified."
+      ],
+      "priority": 281,
+      "passes": false,
+      "category": "audit-functionality",
+      "notes": "[FUNCTIONALITY/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/routes/signature-routes.ts:357 flips status to \"sent\" + writes audit log but sends nothing (TODO integrate provider); :663-692 DocuSign/Adobe/HelloSign webhook handlers are empty stubs. Complements the edge-fn /send stub in CLAUDE.md — the Express path is equally dead."
+    },
+    {
+      "id": "PA-042",
+      "title": "Implement tenant-onboarding \"Execute import\" actual row insertion (imports nothing today)",
+      "description": "As a new tenant importing data, I need Execute to actually create records, not report a fake success.",
+      "acceptanceCriteria": [
+        "Execute inserts validated rows into the target tables scoped by tenant, transactionally.",
+        "importedRows reflects the real inserted count; failures roll back and surface errors.",
+        "Integration test: execute an import and assert the target rows exist."
+      ],
+      "priority": 282,
+      "passes": false,
+      "category": "audit-functionality",
+      "notes": "[FUNCTIONALITY/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/routes-tenant-onboarding.ts:396 \"TODO: Implement actual data import execution\" — sets importExecuted:true + importedRows from req.body but writes no rows. Silent data loss during onboarding."
+    },
+    {
+      "id": "PA-003",
+      "title": "Standardize the tenant claim key across all auth edge functions (camelCase vs snake_case drift)",
+      "description": "As a platform engineer, I need one canonical tenant claim key so requests resolve tenant consistently regardless of which edge function they hit.",
+      "acceptanceCriteria": [
+        "Pick canonical key (tenantId); signup + any admin.updateUserById metadata writes set it.",
+        "Add shared supabase/functions/_shared/resolveTenantId(user) helper accepting both keys during migration; all auth edge fns import it.",
+        "Grep-assert no edge fn reads a bare single-case tenant key inline (me/index.ts:86 tenant_id, auth-me tenantId, onboarding tenant_id today)."
+      ],
+      "priority": 283,
+      "passes": true,
+      "category": "audit-auth",
+      "notes": "[AUTH/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Claim-key spelling drifts across signup(camel)/me(snake)/auth-me(camel)/onboarding(snake); undefined tenant silently scopes queries to nothing. Distinct from CR-001/CR-010.",
+      "completionNotes": "Implemented: added _shared/tenant.ts resolveTenantId() (camel+snake, both metadata bags); adopted in me/auth-me/onboarding. Broad adoption across remaining edge fns is incremental follow-up."
+    },
+    {
+      "id": "PA-004",
+      "title": "Fix auth-me profile lookup by non-existent auth_id column (returns null role/permissions)",
+      "description": "As a client relying on /auth-me, I need my role and permissions returned instead of an empty payload.",
+      "acceptanceCriteria": [
+        "auth-me/index.ts looks up the profile by .eq(\"id\", user.id) (or the agreed identity column) — not auth_id, which does not exist on users.",
+        "Test hitting auth-me with a seeded user asserts role/permissions are populated.",
+        "Document/reconcile duplicate me vs auth-me functions (which do web/mobile call)."
+      ],
+      "priority": 284,
+      "passes": true,
+      "category": "audit-auth",
+      "notes": "[AUTH/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/auth-me/index.ts queries .eq(\"auth_id\", user.id); users has no auth_id (every other reader keys on id/email). Always returns profile:null.",
+      "completionNotes": "Implemented: auth-me GET+PUT now key on users.id (was non-existent auth_id) so role/permissions populate; PUT rewritten off phantom columns to first_name/last_name/profile_image_url + metadata merge. Source-verified; runtime verify needs live DB."
+    },
+    {
+      "id": "PA-005",
+      "title": "Enforce brute-force lockout / rate-limiting on the live login paths (GoTrue + mobile-auth)",
+      "description": "As a security owner, I need credential-stuffing protection on the deployed login path, not only in the bypassed Express stack.",
+      "acceptanceCriteria": [
+        "Per-account failed-attempt lockout enforced on the live login path (GoTrue hook or a login edge fn using _shared/rate-limit.ts), matching the Express LOCKOUT_TIERS policy.",
+        "Rate-limit mobile-auth login/refresh by email + client IP; return 429 with Retry-After.",
+        "Test: N failed logins for one account triggers lockout on the deployed path."
+      ],
+      "priority": 285,
+      "passes": false,
+      "category": "audit-auth",
+      "notes": "[AUTH/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/auth-routes.ts:19-27 lockout logic is dead — web login uses supabase.auth.signInWithPassword (useSupabaseAuth.ts:414); mobile via mobile-auth/index.ts:87. Neither touches auth-routes; _shared/rate-limit.ts unused by auth fns."
+    },
+    {
+      "id": "PA-012",
+      "title": "Remove service_role SUPERUSER grant script; enforce BYPASSRLS-only",
+      "description": "As a security owner, I need the edge-function service role to not be a Postgres superuser.",
+      "acceptanceCriteria": [
+        "Delete fix-service-role-bypass.sql; document that service_role uses BYPASSRLS (scoped), never SUPERUSER.",
+        "Verify prod service_role is NOSUPERUSER and holds only table DML grants.",
+        "Add a DB assertion/test that fails if service_role is superuser."
+      ],
+      "priority": 286,
+      "passes": true,
+      "category": "audit-security",
+      "notes": "[SECURITY/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). fix-service-role-bypass.sql:8 ALTER USER service_role WITH SUPERUSER; :11 GRANT service_role TO postgres. Neutralizes the CR-012 RLS backstop and turns any edge-fn SQLi into full-cluster compromise.",
+      "completionNotes": "Implemented: deleted fix-service-role-bypass.sql (SUPERUSER grant); added drizzle/rls/service-role.sql documenting BYPASSRLS NOSUPERUSER. Live prod role verification is an owner operator step."
+    },
+    {
+      "id": "PA-013",
+      "title": "Encrypt third-party integration credentials at rest (currently plaintext)",
+      "description": "As a security owner, I need provider API keys/secrets/OAuth tokens encrypted at rest like the blog/address-book modules already do.",
+      "acceptanceCriteria": [
+        "Encrypt integration_credentials (apiKey/apiSecret/accessToken/refreshToken/webhookSecret) + signatures handlers + platform/manufacturer credentials with the existing credential-vault (encryptCredential) on write; decrypt only in-memory at use.",
+        "Backfill-encrypt existing rows via migration.",
+        "Test asserting stored api_key / credentials values are ciphertext, not plaintext."
+      ],
+      "priority": 287,
+      "passes": false,
+      "category": "audit-security",
+      "notes": "[SECURITY/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). shared/schema.ts:7037 integration_credentials text fields (\"encrypted at application level\" comment) but server/storage.ts:5919 inserts raw; signatures/handlers/credentials.ts:180-181 passthrough. DB dump leaks all tenants provider creds."
+    },
+    {
+      "id": "PA-021",
+      "title": "Unify /api/customers list handler across dev and prod + honor sort/scope/filter params",
+      "description": "As a dashboard user, I need regional-scoped and churn-risk customer views to actually filter, consistently in dev and prod.",
+      "acceptanceCriteria": [
+        "Dev and prod resolve GET /api/customers list to the SAME backend (either proxy to the customers fn or delete the companies?recordType=Customer redirect).",
+        "The chosen handler honors sort, scope, filter (or explicitly rejects unknown params).",
+        "POST/PATCH/DELETE /api/customers resolve to the same backend in dev and prod."
+      ],
+      "priority": 288,
+      "passes": false,
+      "category": "audit-routing",
+      "notes": "[ROUTING/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). edge-function-proxy.ts:423-431 special-cases GET /api/customers (dev-only) to companies fn forwarding only search/limit/offset — drops sort/scope/filter; prod hits the real customers fn list (different backend). role-dashboard-config.ts:111,146 rely on the dropped params."
+    },
+    {
+      "id": "PA-022",
+      "title": "Resolve endpoints that live pages call but exist in NEITHER Express nor an edge function (dead in dev and prod)",
+      "description": "As a user of Quote Templates, My Approvals, Sales Command Center, and Document Builder, I need their primary data to load somewhere.",
+      "acceptanceCriteria": [
+        "For each dead-in-both prefix (/api/quote-templates, /api/approvals + /:id/respond, /api/sales-forecasts, /api/pipeline-forecast, /api/documents, and the rest: assignment-groups, content, equipment-disposal, financial-forecasting, lead-intelligence, lease-payments, sales-performance, system-monitoring, technician-sessions): build the edge fn (tenant-scoped + RBAC) or confirm-and-remove the dead page/query.",
+        "Prioritize prefixes backing shipped nav entries (quote-templates, approvals, sales-forecasts/pipeline-forecast, documents).",
+        "Split \"dead-in-both\" out of the generic missing-edge bucket in docs/route-ownership-baseline.json so they triage distinctly."
+      ],
+      "priority": 289,
+      "passes": false,
+      "category": "audit-routing",
+      "notes": "[ROUTING/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Parity computeParity() dead-in-both subset. These present as working UI with empty/erroring data; grandfathered under the EDGE-014 umbrella with no per-domain AC."
+    },
+    {
+      "id": "PA-026",
+      "title": "Add missing indexes (incl. tenant_id composites) to core CRM/ERP tables with zero indexes",
+      "description": "As the platform scales across tenants, I need core tables indexed so tenant-scoped queries do not sequentially scan every tenant’s rows.",
+      "acceptanceCriteria": [
+        "Add composite (tenant_id, ...) btree indexes to contracts, proposals, proposal_line_items, quotes, tasks, invoice_line_items, opportunities, purchase_orders, inventory_items (lead with tenant_id + common filter/FK cols: customer_id, status, created_at).",
+        "Add FK indexes for proposal_line_items.proposal_id and invoice_line_items.invoice_id.",
+        "Generate via db:generate, review SQL, apply via db:migrate; EXPLAIN confirms index scans on representative list queries."
+      ],
+      "priority": 290,
+      "passes": false,
+      "category": "audit-performance",
+      "notes": "[PERFORMANCE/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). All listed tables have 0 CREATE INDEX in drizzle/migrations/0000 despite tenant_id NOT NULL (contracts referenced with eq(...tenantId) in 14 route files). Newer tables ARE indexed (deals=5, service_tickets=5). Distinct from CR-028 (equipment/invoices only)."
+    },
+    {
+      "id": "PA-032",
+      "title": "Make a fresh database provisionable from versioned migrations alone (DR readiness)",
+      "description": "As an operator doing disaster recovery, I need db:migrate on an empty DB to reproduce the running schema.",
+      "acceptanceCriteria": [
+        "Generate a baseline migration reproducing the actual production schema (drift-diff the live DB) so db:migrate on an empty DB yields the running schema incl. the tables from PA-031.",
+        "Rename duplicate migration numbers (0008_client_enrollment_tokens vs 0008_pretty_rocket_raccoon; 0009_colorful_meggan vs 0009_monitoring_clients_customer_id) to unique ordered numbers; verify db:migrate:status replay.",
+        "Retire push-based provisioning (create-all-tables-from-drizzle.sh uses drizzle-kit push against the live container) in favor of db:migrate; document the DR runbook (ties LAUNCH-011)."
+      ],
+      "priority": 291,
+      "passes": false,
+      "category": "audit-database",
+      "notes": "[DATABASE/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Real schema was materialized via drizzle-kit push + manual SQL, not the 21 numbered migrations. Duplicate 0008/0009 sequence numbers make ordered replay ambiguous."
+    },
+    {
+      "id": "PA-033",
+      "title": "Reconcile ad-hoc root patch SQL/shell into numbered migrations + forbid root *.sql",
+      "description": "As a maintainer, I need all schema mutations to live in the migration chain, not loose root scripts.",
+      "acceptanceCriteria": [
+        "Reconcile each root SQL/shell (add-activity-columns.sql, add-business-records-columns.sql, add-missing-columns.sql, create-business-record*.sql, fix-database.sql, fix-tasks-table.sql, fix-tenant-id-camelcase*.sql, fix-roles-grant.sql, fix-platform-admin*.sql, create-*-tables*.sh, fix-ownership-and-apply-schema.sh) into a numbered migration, or delete if already folded.",
+        "Remove the loose files from repo root.",
+        "Add a lint/CI rule forbidding *.sql at repo root outside drizzle/migrations/ and supabase/migrations/."
+      ],
+      "priority": 292,
+      "passes": true,
+      "category": "audit-database",
+      "notes": "[DATABASE/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). ~18 loose *.sql + several *.sh mutate schema outside the migration chain; column adds/renames applied by hand are how the phantom/DRIFT/camelCase drift entered. (fix-service-role-bypass.sql removal is PA-012; setup-rls-policies.sql is PA-017.)",
+      "completionNotes": "Implemented: moved 15 root *.sql one-offs into scripts/legacy-sql/ (with README), added scripts/check-no-root-sql.mjs + check:rootsql CI guard forbidding root *.sql. Reconciling each archived patch into a numbered migration (vs confirm-and-delete) needs a live DB and is follow-up."
+    },
+    {
+      "id": "PA-035",
+      "title": "Inject created_by/tenantId before insert-schema parse (meter-readings POST 500 + systemic NOT NULL audit)",
+      "description": "As a technician, I need creating a meter reading to succeed instead of 500-ing.",
+      "acceptanceCriteria": [
+        "Inject createdBy: getUserId(req) (and tenantId) before insertMeterReadingSchema.parse at both routes-products-crud.ts:1645 and :1658.",
+        "Audit all insertXSchema.parse server call sites for tables with NOT NULL created_by/tenant_id and add the injection (or .omit() server-injected cols from the parse schema) — ~10 tables carry created_by NOT NULL.",
+        "Integration test: POST a meter reading asserts 201."
+      ],
+      "priority": 293,
+      "passes": false,
+      "category": "audit-database",
+      "notes": "[DATABASE/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). routes-products-crud.ts:1645/1658 parse insertMeterReadingSchema without createdBy; meter_readings.created_by is NOT NULL -> parse throws -> 500. CLAUDE.md BATCH 8 flagged this as still-open server debt; pattern recurs across schema.ts lines 1394/1815/2021/2218/2281/2566/2700/2807/2871. PROGRESS 2026-07-12: meter-readings POST fixed (createdBy injected at both parse sites); systemic sweep of other NOT-NULL created_by insert-parse sites + integration test still pending a tsc/live-DB environment."
+    },
+    {
+      "id": "PA-043",
+      "title": "Wire the Email Autopilot provider layer (inbox scan + draft creation are stubs)",
+      "description": "As a rep using Email Autopilot, I need it to read my real inbox and create real drafts in my mailbox.",
+      "acceptanceCriteria": [
+        "Wire real Gmail/Outlook OAuth (read + create-draft scope only); store creds in the shared credential vault (not base64).",
+        "fetchInbox / createProviderDraft hit the real provider; the voice fingerprint derives from real sent mail.",
+        "Feature-flag the feature off until a provider is connected."
+      ],
+      "priority": 294,
+      "passes": false,
+      "category": "audit-functionality",
+      "notes": "[FUNCTIONALITY/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/routes-email-autopilot.ts:126 fetchInbox() returns sample emails; :183 createProviderDraft() returns a fake id; :486 TODO real OAuth; :107 creds are base64 obfuscation not the vault. Scans fake mail, creates drafts that never appear in the mailbox."
+    },
+    {
+      "id": "PA-044",
+      "title": "Persist Chrome-extension API keys (generated but never stored → extension cannot authenticate)",
+      "description": "As a user of the browser extension, I need the generated API key to actually work for authenticating extension requests.",
+      "acceptanceCriteria": [
+        "Create an extension_api_keys table + persistence with hashing and expiry (schema + migration).",
+        "Validate incoming extension requests against stored keys.",
+        "Wire expiration and the ZoomInfo capability flag instead of the hardcoded stubs."
+      ],
+      "priority": 295,
+      "passes": false,
+      "category": "audit-functionality",
+      "notes": "[FUNCTIONALITY/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/routes/chrome-extension-routes.ts:467 \"TODO: Store API key in database (create extension_api_keys table)\"; :481 expiresAt:null TODO; :522 zoominfo:false TODO. The returned key is never stored so it can never authenticate later."
+    },
+    {
+      "id": "PA-048",
+      "title": "Fix ESLint flat config skipping all .ts/.tsx — Lint and Static-Security CI gates are no-ops",
+      "description": "As a maintainer, I need the Lint and Static Security Analysis CI checks to actually run over TypeScript, not pass unconditionally.",
+      "acceptanceCriteria": [
+        "Migrate the .eslintrc.cjs ruleset (typescript-eslint, react-hooks, security) into eslint.config.js so .ts/.tsx are linted; remove the \"**/*.{ts,tsx}\" ignore.",
+        "npm run lint reports real findings on a known-bad file; add a ratchet (like typecheck) if the backlog is large.",
+        "Confirm security-scan.yml no-eval/no-implied-eval rules flag an injected eval() in a .ts file; delete the redundant .eslintrc.cjs."
+      ],
+      "priority": 296,
+      "passes": false,
+      "category": "audit-build-ci",
+      "notes": "[BUILD-CI/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). eslint.config.js:35 ignores \"**/*.{ts,tsx}\" (\"Skip TypeScript files due to parsing issues\"); ESLint 9 uses the flat config and ignores .eslintrc.cjs. Verified: eslint client/src/main.tsx -> \"File ignored\", exit 0. Both ci.yml quality and security-scan.yml gates are decorative."
+    },
+    {
+      "id": "PA-006",
+      "title": "Enforce password-complexity policy in the signup edge function (12-char policy currently bypassed)",
+      "description": "As a security owner, I need production signup to reject weak passwords per the documented policy.",
+      "acceptanceCriteria": [
+        "Apply the auth-routes.ts passwordSchema complexity (>=12 chars + classes) in signup/index.ts and password reset/update paths before calling GoTrue.",
+        "Configure GoTrue PASSWORD_MIN_LENGTH/strength as a backstop.",
+        "Test: signup with a 6-char password is rejected with a clear message."
+      ],
+      "priority": 297,
+      "passes": true,
+      "category": "audit-auth",
+      "notes": "[AUTH/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). signup/index.ts:44-56 checks presence only, passes password straight to auth.admin.createUser (:149). GoTrue default min is 6; Express 12-char schema is unreachable in prod.",
+      "completionNotes": "Implemented: signup edge fn now runs validatePasswordComplexity() (>=12 chars + upper/lower/number/special) mirroring auth-routes passwordSchema; rejects weak passwords with 400 before calling GoTrue."
+    },
+    {
+      "id": "PA-007",
+      "title": "Validate JWT aud/role/sub in Express verifySupabaseJWT (anon/service_role keys accepted as principals)",
+      "description": "As a security owner, I need Express to reject the anon and service_role keys presented as bearer tokens.",
+      "acceptanceCriteria": [
+        "verifySupabaseJWT passes { audience: \"authenticated\" } (or asserts payload.role===\"authenticated\" and payload.sub present); reject otherwise 401.",
+        "Reject tokens with no sub.",
+        "Test: anon key and a service_role JWT both return 401 on a requireSupabaseAuth route."
+      ],
+      "priority": 298,
+      "passes": true,
+      "category": "audit-auth",
+      "notes": "[AUTH/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/middleware/supabase-auth.ts:202-206 jwtVerify with no audience option; anon/service_role are JWTs signed with the same secret and pass, populating req.supabaseUser with id:undefined.",
+      "completionNotes": "Implemented: verifySupabaseJWT now requires audience \"authenticated\" and asserts role===\"authenticated\" && sub present; anon/service_role keys (same-secret JWTs) now rejected to 401. Source-verified; runtime verify needs live tokens."
+    },
+    {
+      "id": "PA-008",
+      "title": "Enforce MFA/AAL step-up at web sign-in (TOTP enrolled but never challenged)",
+      "description": "As a user who enabled MFA, I need to be actually challenged for my TOTP factor at login.",
+      "acceptanceCriteria": [
+        "After signInWithPassword, check getAuthenticatorAssuranceLevel(); if nextLevel===\"aal2\" && currentLevel===\"aal1\", present a TOTP challenge before treating the user as authenticated.",
+        "Gate isAuthenticated on reaching the required AAL for users with enrolled factors.",
+        "Test: an enrolled user cannot reach an authenticated route without completing the TOTP challenge."
+      ],
+      "priority": 299,
+      "passes": false,
+      "category": "audit-auth",
+      "notes": "[AUTH/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). MFA infra exists (mfa edge fn, mfa-routes, MFASettings) but useSupabaseAuth.login returns immediately after signInWithPassword with no AAL step-up; grep for aal/listFactors/challenge in client finds nothing."
+    },
+    {
+      "id": "PA-009",
+      "title": "Boot-time env validation + GoTrue health check + anon-key rotation runbook (blank-screen login failure)",
+      "description": "As an operator, I need a clear config-error instead of a blank white app when the anon key is missing or stale.",
+      "acceptanceCriteria": [
+        "Validate VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY at boot; render a config-error screen instead of throwing at createClient.",
+        "Health check pings GoTrue /auth/v1/health and surfaces a \"stale/rotated anon key\" message on 401.",
+        "Document the current anon-key source + rotation procedure in the deployment checklist / .env.example."
+      ],
+      "priority": 300,
+      "passes": true,
+      "category": "audit-auth",
+      "notes": "[AUTH/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). client/src/lib/config.ts:32-33 defaults anonKey to \"\"; supabase.ts:39 createClient throws on empty key at import -> blank screen, no diagnostic. This is the recurring \"login historically broken\" symptom (CLAUDE.md: keys rotated/stale).",
+      "completionNotes": "Implemented: config.configErrors boot check + placeholder key so createClient no longer throws at import (blank-screen fix); main.tsx renders ConfigErrorScreen when misconfigured; pingSupabaseHealth() surfaces a rotated/stale anon-key 401 in that screen; .env.example documents the anon-key source + rotation. Full stale-key surfacing during a normal (key-present) login is a minor follow-up."
+    },
+    {
+      "id": "PA-010",
+      "title": "Add mobile-auth logout/token revocation + remove false bcrypt-fallback comment + rate limit",
+      "description": "As a mobile user, I need sign-out to actually revoke my refresh token server-side.",
+      "acceptanceCriteria": [
+        "Add a mobile-auth logout action calling GoTrue admin.signOut/revoke for the presented refresh token; return actionable success/failure.",
+        "Remove or implement the documented bcrypt fallback (delete the false header comment at minimum).",
+        "Rate-limit login/refresh; return 429 with Retry-After."
+      ],
+      "priority": 301,
+      "passes": true,
+      "category": "audit-auth",
+      "notes": "[AUTH/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). mobile-auth/index.ts:6-13 claims a bcrypt DB fallback that does not exist; no logout/revoke action (:196 returns 404). Stolen refresh tokens valid until natural expiry.",
+      "completionNotes": "Implemented: added POST /mobile-auth/logout (setSession+signOut revokes the refresh token, idempotent); added best-effort per-instance rate limiting (10/15min, 429+Retry-After) to login/refresh; removed the false bcrypt-fallback header comment. Hard cluster-wide per-account lockout remains PA-005."
+    },
+    {
+      "id": "PA-014",
+      "title": "Move committed anon JWTs out of mobile/eas.json and AppConfig.swift; bound expiry + rotate",
+      "description": "As a security owner, I need anon keys out of committed source and rotatable without recompiling clients.",
+      "acceptanceCriteria": [
+        "Move anon keys to EAS secrets / build-time env (not committed JSON/Swift).",
+        "Issue anon keys with a bounded exp and document a rotation runbook.",
+        "Confirm whether the committed key (mobile/eas.json:12,25,40; ios AppConfig.swift:26, exp ~2126) is still live; rotate if so."
+      ],
+      "priority": 302,
+      "passes": false,
+      "category": "audit-security",
+      "notes": "[SECURITY/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Long-lived (100yr) anon JWTs baked into shipped app binaries widen the unauthenticated GoTrue attack surface. UNVERIFIED whether this specific key is still active."
+    },
+    {
+      "id": "PA-015",
+      "title": "Merge .gitignore.security-additions and untrack secret-bearing files; wire gitleaks into CI",
+      "description": "As a security owner, I need the authored hardening ignore-patterns actually applied so secret files stop getting committed.",
+      "acceptanceCriteria": [
+        "Merge .gitignore.security-additions patterns into .gitignore; delete the standalone file.",
+        "Audit tracked files against the merged patterns; git rm --cached any secret/PII matches (temp.txt, debug-admin.sql, fix-service-role-bypass.sql, etc.).",
+        "Wire gitleaks/trufflehog into CI."
+      ],
+      "priority": 303,
+      "passes": true,
+      "category": "audit-security",
+      "notes": "[SECURITY/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). .gitignore.security-additions was authored but never merged; live .gitignore does not cover .env.development/.env.example (both tracked) nor broad secret patterns.",
+      "completionNotes": "Implemented: merged safe security patterns into .gitignore (excluding *.sql/migrations and .env.* templates), deleted the standalone .gitignore.security-additions, audited tracked secret files (all templates/code — none needed untracking), and wired a working-tree gitleaks step (report-only until PA-014 clears the committed anon JWTs, then flip to blocking)."
+    },
+    {
+      "id": "PA-016",
+      "title": "Replace wildcard CORS on the data-export edge function with the shared allowlist",
+      "description": "As a security owner, I need the full-tenant CSV export endpoint to not send Access-Control-Allow-Origin: *.",
+      "acceptanceCriteria": [
+        "Replace hardcoded \"*\" with getCorsHeaders(req) from _shared/cors.ts on every response branch of exports/index.ts.",
+        "Test asserting a non-allowlisted Origin gets no Access-Control-Allow-Origin: *."
+      ],
+      "priority": 304,
+      "passes": true,
+      "category": "audit-security",
+      "notes": "[SECURITY/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/exports/index.ts:92,129,162,195,228 each set \"*\". This is the highest-value exfil endpoint (full-tenant customer/lead CSVs) and diverges from the hardened Express CORS.",
+      "completionNotes": "Implemented: all 5 CSV response branches in exports/index.ts now spread getCorsHeaders(req Origin) instead of Access-Control-Allow-Origin:* . Verified 0 remaining wildcards."
+    },
+    {
+      "id": "PA-017",
+      "title": "Fix root RLS script claim key + add an RLS apply step to the migration pipeline",
+      "description": "As a security owner, I need RLS policies keyed on the correct JWT claim and applied automatically so tenant isolation is deterministic.",
+      "acceptanceCriteria": [
+        "Fix/delete setup-rls-policies.sql (uses snake_case tenant_id claim which is always NULL); make drizzle/rls/apply-rls.sql (correct tenantId claim) the single source.",
+        "Add a db:rls step run by db:migrate (or CI) applying every drizzle/rls/*.sql and verifying rowsecurity=true on core tenant tables.",
+        "Run scripts/audit/database-rls-audit.ts in CI as a gate."
+      ],
+      "priority": 305,
+      "passes": true,
+      "category": "audit-security",
+      "notes": "[SECURITY/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). setup-rls-policies.sql:56 keys on app_metadata->>tenant_id (snake); app JWT carries tenantId (camel). No db:rls script; drizzle/rls/*.sql applied manually. Mechanism gap behind CR-012, not a duplicate.",
+      "completionNotes": "Implemented: deleted setup-rls-policies.sql (snake_case tenant_id claim, always NULL); drizzle/rls (correct tenantId claim) is now the single source. Added npm run db:rls (scripts/apply-rls.sh) applying apply-rls.sql -> *-tables.sql -> domain policy files idempotently. CI rowsecurity=true assertion deferred (needs DB)."
+    },
+    {
+      "id": "PA-023",
+      "title": "Support the /api/v1 version prefix in the edge dispatcher (or drop it from the docs)",
+      "description": "As an API consumer, I need URL versioning to work in production or the docs to stop promising it.",
+      "acceptanceCriteria": [
+        "Either strip a leading v\\d+ segment in server.ts before function resolution (and echo X-API-Version), or update CLAUDE.md/docs to state URL versioning is not honored in prod.",
+        "If kept: test asserting /v1/<fn> resolves to <fn>; edge functions emit X-API-Version/Deprecation headers."
+      ],
+      "priority": 306,
+      "passes": true,
+      "category": "audit-routing",
+      "notes": "[ROUTING/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/server.ts:98 sets functionName=pathParts[0]; /api/v1/leads -> functionName=\"v1\" -> 404. Documented versioning is Express-middleware-only. Latent (no caller uses /api/v1 yet).",
+      "completionNotes": "Implemented: server.ts strips a leading v<digits> path segment before function resolution so /v1/<fn> resolves to <fn> instead of 404. X-API-Version response-header echo deferred (needs per-handler response wrapping)."
+    },
+    {
+      "id": "PA-024",
+      "title": "Migrate integrations edge fn to normalizePath (pathParts[1] off-by-one under server.ts strip)",
+      "description": "As an Integration Hub user, I need all integrations routes (not just /dashboard) to resolve in production.",
+      "acceptanceCriteria": [
+        "Migrate integrations/index.ts to normalizePath(pathname, \"integrations\") like the EDGE-004 fns.",
+        "Enumerate every /api/integration-hub/* and /api/integrations/* caller and verify each resolves post-strip."
+      ],
+      "priority": 307,
+      "passes": true,
+      "category": "audit-routing",
+      "notes": "[ROUTING/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). CLAUDE.md EDGE-005f: integrations fn still indexes pathParts[1], so non-dashboard routes are off-by-one after server.ts strips the fn-name segment. Only /dashboard is special-cased today.",
+      "completionNotes": "Implemented: integrations/index.ts now derives segment1/segment2 from normalizePath(pathname,\"integrations\").parts instead of raw pathParts[1]/[2], fixing the off-by-one under server.ts fn-name stripping that routed by-id/type/webhooks/config/sync/status calls to the wrong branch."
+    },
+    {
+      "id": "PA-025",
+      "title": "Extend the route-ownership CI ratchet to sub-path and query-param divergences",
+      "description": "As a maintainer, I need the parity guard to catch the most common real defect class (an edge fn that omits a sub-path/param the frontend calls).",
+      "acceptanceCriteria": [
+        "Extend the parity model to record full called paths (/api/customers/:id/invoices) and the sub-routes each edge fn actually dispatches; flag called-but-unhandled sub-paths.",
+        "Detect {fn,pathPrefix} proxy entries lacking a server.ts override (PA-019 root cause).",
+        "Fail CI on new sub-path/param divergences, not just first-segment ownership."
+      ],
+      "priority": 308,
+      "passes": false,
+      "category": "audit-routing",
+      "notes": "[ROUTING/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). scripts/lib/route-parity.mjs:124-136 classifies only the first /api/<segment> token, so PA-019/020/021 all pass green. This blind spot lets the class keep shipping."
+    },
+    {
+      "id": "PA-027",
+      "title": "Split client-consumed Zod insert schemas out of the 8,910-line shared/schema barrel",
+      "description": "As a user on a slow connection, I need pages to not ship all 147 table insert schemas just to validate one form.",
+      "acceptanceCriteria": [
+        "Move client-consumed Zod insert schemas into small per-feature modules (shared/forms/*.ts) that do not re-export the whole table universe, or generate form schemas client-side.",
+        "Ensure remaining @shared/schema client imports are import type only.",
+        "Measure the shared-schema chunk before/after with ANALYZE=true npm run build (visualizer already wired)."
+      ],
+      "priority": 309,
+      "passes": false,
+      "category": "audit-performance",
+      "notes": "[PERFORMANCE/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). shared/schema.ts = 8,910 lines, 147 createInsertSchema() module-level (side-effectful, not tree-shaken); 34 client files import from it, several import runtime insert schemas. vite.config.ts:118 isolates it into one shared-schema chunk shipped for form validation."
+    },
+    {
+      "id": "PA-028",
+      "title": "Stream or offload synchronous PDF / XLSX / CSV export generation",
+      "description": "As any user, I need document exports to not block the Node event loop for everyone on the instance.",
+      "acceptanceCriteria": [
+        "Stream PDF/XLSX output (pdfkit/exceljs streaming) instead of buffering the whole document in memory.",
+        "Offload large exports to a worker thread or background job with a download-when-ready pattern.",
+        "Add a row/size cap and timeout on synchronous export endpoints."
+      ],
+      "priority": 310,
+      "passes": false,
+      "category": "audit-performance",
+      "notes": "[PERFORMANCE/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/routes-export.ts builds pdf(:37)/xlsx(:76)/csv(:112) in-request; service-report-pdf.ts, pdf-generation-service.ts, document-generation-service.ts render in-request. CPU-bound work on the single event loop."
+    },
+    {
+      "id": "PA-034",
+      "title": "Add Drizzle schema + migration for the billing DRIFT tables",
+      "description": "As a billing engineer, I need billing_configurations/cycles/adjustments to have a schema-of-record so a fresh DB does not silently 503 billing writes.",
+      "acceptanceCriteria": [
+        "Add Drizzle schemas + a migration for billing_configurations, billing_cycles, billing_adjustments reflecting the columns the billing handlers actually read/write.",
+        "Remove the isMissingTableError tolerance once the tables are guaranteed by migration, or keep it but log a provisioning warning."
+      ],
+      "priority": 311,
+      "passes": false,
+      "category": "audit-database",
+      "notes": "[DATABASE/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). All three absent from shared/*.ts and every migration; billing/handlers/_context.ts documents them raw-SQL-only, handlers degrade GET->[] / write->503. No type safety."
+    },
+    {
+      "id": "PA-036",
+      "title": "Fix data-contract mismatches: ESignatureIntegration.tsx + PlatformCustomerSuccess.tsx real-column remap",
+      "description": "As a user of these pages, I need real data, not blanks or silent mock fallbacks, because the page fields do not match the real columns.",
+      "acceptanceCriteria": [
+        "Re-map ESignatureIntegration.tsx (documentName/requestedDate/remindersSent) to the real snake_case signature_requests columns.",
+        "Re-map PlatformCustomerSuccess.tsx (healthGrade/daysUntilRenewal/csmId) to the real platform_health_scores columns (overall_score/health_status/...).",
+        "Add a normalizer test asserting the edge fn returned keys match each page’s typed interface."
+      ],
+      "priority": 312,
+      "passes": true,
+      "category": "audit-database",
+      "notes": "[DATABASE/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Runtime data-correctness (distinct from QUALITY-002 tsc). Endpoints resolve 200 but field reads are undefined -> blanks or || mockData fabricated numbers. Same class already fixed for MeterReadings/PlatformAnalytics (CLAUDE.md); these two remain. See also EDGE-004/EDGE-005e notes.",
+      "completionNotes": "Implemented page-side data-contract mapping for both pages. PlatformCustomerSuccess: mapTenants()/deriveMetrics() map the real platform-cs {healthScores,businessRecord} response + derive metric cards from loaded rows (grade from overall_score, churn normalized, renewal from contract_end_date); also fixed a latent healthy-filter precedence bug. ESignatureIntegration: mapSignatureRequest() maps snake_case signature_requests (title->documentName, provider->documentType, timestamps->valid Dates, status normalized) fixing Invalid Date/blank rendering. FOLLOW-UP: customerName needs a business_records join in the signatures requests list handler (list endpoint returns no name). Source-verified; runtime verify pending."
+    },
+    {
+      "id": "PA-037",
+      "title": "Version the report/analytics Postgres stored functions called via db.rpc (or remove the dead execute path)",
+      "description": "As a reporting user, I need report execution backed by versioned stored functions, and a fresh DB to have them.",
+      "acceptanceCriteria": [
+        "Inventory every db.rpc(...) call in supabase/functions/** and confirm each target function is created by a repo migration; add migrations for any missing.",
+        "Either implement the versioned report stored functions or remove the generic execute path and its UI entry."
+      ],
+      "priority": 313,
+      "passes": false,
+      "category": "audit-database",
+      "notes": "[DATABASE/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). reports/handlers/reporting-engine.ts:18,214 require stored functions via db.rpc; grep of all migrations for report/kpi/metric CREATE FUNCTION = zero. Generic execute path returns an error string. Same drift class as EDGE-007a."
+    },
+    {
+      "id": "PA-039",
+      "title": "Unify the two migration systems (drizzle/ vs supabase/) + sequence the _backfill_*.sql files",
+      "description": "As an operator, I need one ordered chain that provisions DDL + RLS + grants + backfills correctly.",
+      "acceptanceCriteria": [
+        "Define one canonical apply order across drizzle/migrations/ and supabase/migrations/ (or consolidate), documented in the migration runbook.",
+        "Give every _backfill_*.sql a sequence prefix and record it in the migration ledger, or move them under a clearly separated post-migration data step invoked by db:migrate.",
+        "Verify: clean empty DB -> full chain -> matches production schema + RLS."
+      ],
+      "priority": 314,
+      "passes": false,
+      "category": "audit-database",
+      "notes": "[DATABASE/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). DDL in drizzle/migrations/ (21 numbered + 40+ un-numbered _backfill_*.sql); RLS/grants + 005_comprehensive_schema.sql in supabase/migrations/ with its own numbering + tool. RLS may reference tables created only by the other set; apply order matters but is unenforced. Governance root cause behind PA-031/032/033."
+    },
+    {
+      "id": "PA-045",
+      "title": "Implement Journal Entries API (currently 501) and data-import merge/upsert mode (TODO)",
+      "description": "As a finance user I need GL journal entries; as an importer I need merge mode to actually dedupe/upsert.",
+      "acceptanceCriteria": [
+        "Implement journal-entry storage methods + tenant-scoped, Zod-validated CRUD, or remove the entry point from the UI (routes-financial.ts:57-61 returns 501).",
+        "Implement import merge/upsert against a stable key (routes-import.ts:586 \"TODO: Implement merge logic\"); report merged vs inserted counts.",
+        "Add a test covering the merge path."
+      ],
+      "priority": 315,
+      "passes": false,
+      "category": "audit-functionality",
+      "notes": "[FUNCTIONALITY/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). routes-financial.ts:57-61 journal entries \"temporarily disabled ... storage methods not implemented\" -> 501; routes-import.ts:586 merge is a TODO so merge-mode imports silently do not merge."
+    },
+    {
+      "id": "PA-046",
+      "title": "Replace hardcoded mock in Daily Briefing exec metrics and the integrations/webhooks Express endpoints",
+      "description": "As an executive/integrations user, I need real figures or clearly-badged estimates, not proxies that read as real.",
+      "acceptanceCriteria": [
+        "Add a revenue-target table + real win-probability scoring for Daily Briefing, or clearly badge those tiles as estimates; do not emit a numeric headline for metrics with no backing data.",
+        "GET /api/webhooks lists real registered webhooks with real delivery stats (or remove the panel); routes-integrations.ts mock metrics removed.",
+        "Confirm the frontend uses the real deployment-readiness edge fn in all environments (Express endpoint still returns static mock)."
+      ],
+      "priority": 316,
+      "passes": false,
+      "category": "audit-functionality",
+      "notes": "[FUNCTIONALITY/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). routes-daily-briefing.ts:226/267/329/392/468 STUB revenue-vs-target/tech-utilization/win-probability; routes-integrations.ts:86-124 mockMetrics + sample webhooks with invented success rates."
+    },
+    {
+      "id": "PA-049",
+      "title": "Gate E2E in CI + make integration tests blocking with a migrated test DB + enforce coverage",
+      "description": "As a maintainer, I need critical-path tests to actually gate merges.",
+      "acceptanceCriteria": [
+        "Add a CI job running npm run test:e2e:chromium on PR (or nightly); publish the Playwright report artifact.",
+        "Apply migrations against TEST_DATABASE_URL in the test job so integration tests run; remove continue-on-error once green.",
+        "Run test:coverage:check in CI (at least reporting), or drop the unenforced 50% thresholds."
+      ],
+      "priority": 317,
+      "passes": false,
+      "category": "audit-build-ci",
+      "notes": "[BUILD-CI/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). 9 *.spec.ts exist but no workflow runs Playwright; ci.yml runs test:integration with continue-on-error:true (2 files, test DB not migrated -> \"relation rbac_audit_log does not exist\"); vitest 50% thresholds are never enforced."
+    },
+    {
+      "id": "PA-050",
+      "title": "Pin the Node version and validate the server bundle on PRs",
+      "description": "As a maintainer, I need one supported Node runtime and the esbuild server bundle checked before merge.",
+      "acceptanceCriteria": [
+        "Add .nvmrc + \"engines\":{\"node\":\">=X\"}; align Dockerfile (node:20) and all workflows (ci.yml/prd-verify.yml use 22, security-scan.yml 20) on one major.",
+        "Run npm run build:fullstack (or the Docker build) on PRs, or add an esbuild dry-run to the quality gate.",
+        "Optionally set packageManager for npm-version consistency."
+      ],
+      "priority": 318,
+      "passes": true,
+      "category": "audit-build-ci",
+      "notes": "[BUILD-CI/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). No .nvmrc/engines/packageManager; CI runs Node 22 but the shipped image runs Node 20 (native modules bcrypt/sentry-profiling ABI risk). build:fullstack esbuild bundle only runs in the main-only Docker job, not on PRs.",
+      "completionNotes": "Implemented: added .nvmrc (20) + package.json engines 20.x (enforced by engine-strict); aligned ci.yml + prd-verify.yml from Node 22 to 20 to match Dockerfile/mobile-ci/security-scan; added a Server bundle check (esbuild of server/index.ts) to the CI quality job so server-side bundling breaks are caught on PRs."
+    },
+    {
+      "id": "PA-051",
+      "title": "Repo hygiene cleanup: large binaries, temp/debug files, one-off root scripts, stray .backup files",
+      "description": "As a developer, I need a clean repo so clones/CI/Docker context are fast and the real migration workflow is obvious.",
+      "acceptanceCriteria": [
+        "Move design binaries (logo*.psd ~34MB, logo*.png) to asset storage / Git LFS; remove temp.txt, progress.txt, ~$intyx_QA_Report.docx, the stray 6f3e951a-*.png and imageRUNNER_* files.",
+        "Archive or delete the root fix-*.sql/create-*.sql/*.ps1/*.sh one-offs (or move under scripts/legacy/) — coordinate with PA-033.",
+        "Extend the .backup/_archived cleanup beyond client/src/pages to client/src/index.css.backup, tools/_archived/, testing/*.bak; add .gitignore rules (~$*, *.psd, temp.txt, progress.txt, root *_rows.csv) so they do not recur."
+      ],
+      "priority": 319,
+      "passes": true,
+      "category": "audit-build-ci",
+      "notes": "[HYGIENE/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). git ls-files confirms ~45MB+ of binaries + ~40 ad-hoc root scripts + accidental temp/lock files. CR-037 covers only client/src/pages .backup/_archived (12 files); this covers the root clutter + the other .backup locations.",
+      "completionNotes": "Implemented: removed 34MB of design PSDs + temp/debug files (temp.txt/progress.txt/documents/temp.txt), stray screenshot, imageRUNNER CSV, ~$ Office lock file, and dead backups outside client/src/pages (index.css.backup, testing/*.bak, tools/_archived/*); added .gitignore rules (*.psd/temp.txt/progress.txt/~$*). History bloat remains until PA-011 purge. Root logo/icon PNGs kept (possible brand deliverables); one-off root SQL/scripts are PA-033."
+    },
+    {
+      "id": "PA-018",
+      "title": "Fix generic webhook HMAC verifier computing signature over re-serialized JSON, not raw body",
+      "description": "As an integrations owner, I need the generic webhook verifier to validate real provider signatures.",
+      "acceptanceCriteria": [
+        "verifyStripeSignature (and Salesforce/Microsoft paths) hash the raw request buffer, not JSON.stringify(payload); preserve req.rawBody.",
+        "Test with a Stripe-format signature fixture that passes only against raw-body HMAC."
+      ],
+      "priority": 320,
+      "passes": false,
+      "category": "audit-security",
+      "notes": "[SECURITY/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). server/integrations/webhook-service.ts:230,275 use JSON.stringify(payload); real signatures are over raw bytes so it can never validate. Fails-closed today (rejects all), but is a latent bypass if any caller treats false as \"skip\". Primary Stripe path (stripe-service.ts) correctly uses constructEvent."
+    },
+    {
+      "id": "PA-029",
+      "title": "Lazy-load eager-imported auth/legal pages in App.tsx",
+      "description": "As an authenticated user, I should not download Login/Signup/legal pages in the main entry chunk.",
+      "acceptanceCriteria": [
+        "Convert the legal pages (EULA/Privacy/Terms) and post-login auth pages (VerifyEmail/AuthCallback/Reset) to lazy() like the other 259 routes.",
+        "Keep only truly first-paint-critical page(s) eager."
+      ],
+      "priority": 321,
+      "passes": false,
+      "category": "audit-performance",
+      "notes": "[PERFORMANCE/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). client/src/App.tsx:26-35 statically imports 10 pages (NotFound, Login, ForgotPassword, ResetPassword, Signup, VerifyEmail, AuthCallback, EULA, PrivacyPolicy, Terms) while lazy()-ing 259. Small easy win; overall splitting is healthy."
+    },
+    {
+      "id": "PA-030",
+      "title": "Remove dead-in-prod WebSocket code paths that run alongside polling",
+      "description": "As a maintainer, I need one freshness source per consumer and no reconnect churn from a WS that is disabled in prod.",
+      "acceptanceCriteria": [
+        "Remove or gate the WebSocket code paths that are unconditionally disabled in production, or finish the Supabase Realtime swap referenced in the comments (see EDGE-010).",
+        "Ensure a single freshness source per consumer (poll OR realtime).",
+        "Guarantee the WS effect cannot reconnect on unrelated re-renders (stable deps/ref)."
+      ],
+      "priority": 322,
+      "passes": true,
+      "category": "audit-performance",
+      "notes": "[PERFORMANCE/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). client/src/hooks/useRealTimeData.ts:113 opens a WS after if(config.isProduction) return; enhanced-notification-bell.tsx runs a 30s poll AND a WS connect/reconnect. Framed to avoid CR-032 overlap (this is the dead second path, not interval tuning).",
+      "completionNotes": "Implemented: removed the unused useWebSocketData hook (0 callers, dev-only) and the notification-bell dev-only WS listener (reconnected every 10s vs an undeployed server); 30s poll is now the single freshness source. Removed now-unused config imports. No prod change; EDGE-010 owns the Realtime swap."
+    },
+    {
+      "id": "PA-038",
+      "title": "Assign explicit onDelete to the 72 foreign keys lacking a delete policy; document cascade-trigger coverage",
+      "description": "As a data-integrity owner, I need deliberate delete semantics on every relationship instead of accidental NO ACTION.",
+      "acceptanceCriteria": [
+        "Review the 72 .references() without onDelete and assign explicit cascade/set null/restrict per relationship; regenerate the migration.",
+        "Document which child tables rely on the cascade_delete_business_record trigger vs FK cascade; add a test that deleting a business_records row removes all children."
+      ],
+      "priority": 323,
+      "passes": false,
+      "category": "audit-database",
+      "notes": "[DATABASE/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Migration 0000 emits 71 ON DELETE NO ACTION FKs (Drizzle default when onDelete omitted; 72 of 214 .references() lack it). business_records child cleanup depends on an app PL/pgSQL trigger that must stay in sync with schema changes."
+    },
+    {
+      "id": "PA-047",
+      "title": "Fix no-op \"coming soon\" primary-action buttons (bulk assign/delete, manual backup)",
+      "description": "As a user, I should not see action buttons that toast \"coming soon\" and do nothing (especially destructive-looking ones).",
+      "acceptanceCriteria": [
+        "PlatformBusinessRecords.tsx:438,453 bulk assign / bulk delete either work (tenant-scoped, RBAC-gated) or are removed.",
+        "DatabaseManagement.tsx:1049 manual backup is wired to the existing db:backup path or removed from the UI.",
+        "Audit for other \"functionality coming soon\" toasts on primary actions and either wire or hide them."
+      ],
+      "priority": 324,
+      "passes": true,
+      "category": "audit-functionality",
+      "notes": "[FUNCTIONALITY/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Destructive-looking buttons that no-op. Lower severity; honestly-labeled placeholder pages (MeetingToProposalDashboard) excluded.",
+      "completionNotes": "Implemented: disabled the misleading no-op bulk Assign/Delete buttons (PlatformBusinessRecords) with tooltips instead of the confirm->toast(\"coming soon\") pattern. DatabaseManagement backup button left as-is (its toast honestly explains backups are provider-managed)."
     }
   ]
 }

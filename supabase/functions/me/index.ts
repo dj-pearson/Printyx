@@ -2,6 +2,7 @@
 // Returns current user profile + role/team from DB using service role (bypasses RLS).
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
+import { resolveTenantId } from '../_shared/tenant.ts';
 
 type PermissionsObject = Record<string, boolean>;
 
@@ -83,7 +84,7 @@ export default async function handler(req: Request) {
           firstName:
             (user.user_metadata as any)?.firstName || (user.user_metadata as any)?.first_name,
           lastName: (user.user_metadata as any)?.lastName || (user.user_metadata as any)?.last_name,
-          tenantId: (user.app_metadata as any)?.tenant_id,
+          tenantId: resolveTenantId(user),
           roleId: (user.app_metadata as any)?.roleId,
           teamId: (user.app_metadata as any)?.teamId,
           accessScope: (user.app_metadata as any)?.accessScope || 'own',
@@ -149,7 +150,7 @@ export default async function handler(req: Request) {
         email: profile.email,
         firstName: profile.first_name ?? profile.firstName,
         lastName: profile.last_name ?? profile.lastName,
-        tenantId: profile.tenant_id ?? profile.tenant_id ?? (user.app_metadata as any)?.tenant_id,
+        tenantId: profile.tenant_id ?? profile.tenantId ?? resolveTenantId(user),
         roleId: profile.role_id ?? profile.roleId ?? (user.app_metadata as any)?.roleId,
         teamId: profile.team_id ?? profile.teamId ?? (user.app_metadata as any)?.teamId,
         accessScope:

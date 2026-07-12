@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "ralph": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ralph/ralph.ps1",
     "dev": "cross-env NODE_ENV=development tsx server/index.ts",
@@ -14,6 +17,8 @@
     "build:client-agent": "cd printyx-client && npm install --no-audit --no-fund && npm run bundle",
     "audit:routes": "node scripts/audit-route-parity.mjs",
     "check:routes": "node scripts/check-route-ownership.mjs",
+    "check:datadumps": "node scripts/check-no-data-dumps.mjs",
+    "check:rootsql": "node scripts/check-no-root-sql.mjs",
     "check:types": "node scripts/check-types.mjs",
     "validate": "npm run validate:types && npm run validate:lint",
     "validate:types": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" tsc --noEmit",
@@ -55,6 +60,7 @@
     "db:migrate:baseline": "tsx server/lib/migrate.ts baseline",
     "db:backfill": "tsx server/lib/run-backfills.ts",
     "db:push": "drizzle-kit push",
+    "db:rls": "bash scripts/apply-rls.sh",
     "db:push:forecast": "drizzle-kit push --config=drizzle.forecasting.config.ts",
     "db:backup": "bash scripts/db-backup.sh --all --retention",
     "db:backup:main": "bash scripts/db-backup.sh",

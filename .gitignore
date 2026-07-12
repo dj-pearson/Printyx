@@ -89,6 +89,36 @@ report*
 Output.json
 .env.tmp
 
+# Database table dumps — never commit (may contain customer PII). PA-011.
+*_rows.csv
+*_rows.sql
+
+# Repo hygiene — design sources, temp/debug files, Office lock files (PA-051).
+# Design binaries belong in asset storage / Git LFS, not the app repo.
+*.psd
+temp.txt
+progress.txt
+~$*
+
+# Security hardening — merged from .gitignore.security-additions (PA-015).
+# NOTE: deliberately NOT ignoring *.sql (would drop drizzle migrations) or
+# .env.* (would drop the intentional .env.example / .env.development templates).
+.env.local
+.env.*.local
+.env.production
+.env.staging
+*.env
+.env.save
+*.env.backup
+*.env.bak
+CLOUDFLARE_ENV_VARS.txt
+setup-output.txt
+*.credentials
+*.secrets
+Thumbs.db
+*.swp
+*.swo
+
 # Audit reports
 audit-reports/
 roles_rows.csv

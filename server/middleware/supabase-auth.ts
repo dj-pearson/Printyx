@@ -201,7 +201,16 @@ async function verifySupabaseJWT(token: string): Promise<JWTPayload> {
 
   const { payload } = await jose.jwtVerify(token, secret, {
     algorithms: ['HS256'],
+    audience: 'authenticated',
   });
+
+  // The Supabase anon and service_role keys are JWTs signed with the SAME
+  // secret; without this check either would pass verification and authenticate
+  // as a principal with id:undefined. A genuine end-user token carries
+  // role:"authenticated" and a `sub` (PA-007).
+  if (payload.role !== 'authenticated' || !payload.sub) {
+    throw new jose.errors.JWTInvalid('Not an authenticated end-user token');
+  }
 
   return payload as unknown as JWTPayload;
 }
