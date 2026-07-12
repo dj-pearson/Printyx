@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
       - run: npm ci
       - name: No committed data dumps (PA-011)
@@ -43,6 +43,8 @@ jobs:
       - name: Route ownership ratchet (EDGE-018)
         run: npm run check:routes
       - run: npm run build
+      - name: Server bundle check (PA-050)
+        run: npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server-bundle-check.mjs
       - name: Dependency audit
         run: npm audit --audit-level=high --omit=dev || true
       - name: Supply chain security check
@@ -64,7 +66,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
       - run: npm ci
       - name: Assert tsc error count did not grow
@@ -79,7 +81,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
       - run: npm ci
       - name: Regenerate route-parity matrix
@@ -130,7 +132,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
       - run: npm ci
       # Unit tests only. `npm run test` (bare `vitest run`) also pulls in
@@ -153,7 +155,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
       - run: npm ci
       - name: Build with source maps
