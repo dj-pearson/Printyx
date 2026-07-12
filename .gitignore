@@ -93,6 +93,25 @@ Output.json
 *_rows.csv
 *_rows.sql
 
+# Security hardening — merged from .gitignore.security-additions (PA-015).
+# NOTE: deliberately NOT ignoring *.sql (would drop drizzle migrations) or
+# .env.* (would drop the intentional .env.example / .env.development templates).
+.env.local
+.env.*.local
+.env.production
+.env.staging
+*.env
+.env.save
+*.env.backup
+*.env.bak
+CLOUDFLARE_ENV_VARS.txt
+setup-output.txt
+*.credentials
+*.secrets
+Thumbs.db
+*.swp
+*.swo
+
 # Audit reports
 audit-reports/
 roles_rows.csv
