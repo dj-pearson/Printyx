@@ -9501,7 +9501,7 @@
       "priority": 276,
       "passes": false,
       "category": "audit-security",
-      "notes": "[SECURITY/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). git ls-files confirms 3 tracked dumps; company_contacts_rows.csv holds names/emails/phones/mailing addresses/birthdates for one real tenant. Distinct from CR-016 (logs/Sentry)."
+      "notes": "[SECURITY/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). git ls-files confirms 3 tracked dumps; company_contacts_rows.csv holds names/emails/phones/mailing addresses/birthdates for one real tenant. Distinct from CR-016 (logs/Sentry). PROGRESS 2026-07-12: removed all 3 dumps from the tree (git rm), added *_rows.csv/*_rows.sql to .gitignore, and added a CI guard (scripts/check-no-data-dumps.mjs wired into ci.yml quality job). REMAINING (owner-driven, repo-wide on main — NOT done here): purge the blobs from git history (git filter-repo) + force-push all refs, and rotate/notify per breach policy for the exposed tenant. Blobs remain retrievable from history until that runs."
     },
     {
       "id": "PA-019",
