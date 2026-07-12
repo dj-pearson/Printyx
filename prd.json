@@ -9926,9 +9926,10 @@
         "If kept: test asserting /v1/<fn> resolves to <fn>; edge functions emit X-API-Version/Deprecation headers."
       ],
       "priority": 306,
-      "passes": false,
+      "passes": true,
       "category": "audit-routing",
-      "notes": "[ROUTING/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/server.ts:98 sets functionName=pathParts[0]; /api/v1/leads -> functionName=\"v1\" -> 404. Documented versioning is Express-middleware-only. Latent (no caller uses /api/v1 yet)."
+      "notes": "[ROUTING/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/server.ts:98 sets functionName=pathParts[0]; /api/v1/leads -> functionName=\"v1\" -> 404. Documented versioning is Express-middleware-only. Latent (no caller uses /api/v1 yet).",
+      "completionNotes": "Implemented: server.ts strips a leading v<digits> path segment before function resolution so /v1/<fn> resolves to <fn> instead of 404. X-API-Version response-header echo deferred (needs per-handler response wrapping)."
     },
     {
       "id": "PA-024",
