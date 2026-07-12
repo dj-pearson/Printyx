@@ -94,6 +94,14 @@ await serve(
       );
     }
 
+    // Support the documented /api/v<N> URL version prefix (CLAUDE.md API
+    // Conventions). The frontend strips /api, so a versioned call arrives as
+    // /v1/<fn>; drop a leading v<digits> segment so it resolves to <fn> instead
+    // of 404ing as a function literally named "v1" (PA-023).
+    if (/^v\d+$/.test(pathParts[0] ?? '')) {
+      pathParts.shift();
+    }
+
     // Route to function
     let functionName = pathParts[0];
     const subPath = pathParts.slice(1);
