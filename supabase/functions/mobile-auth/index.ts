@@ -4,17 +4,46 @@
  * Provides authentication for the iOS app by proxying to GoTrue
  * through the internal Supabase client (bypasses external Kong issues).
  *
- * If the internal GoTrue connection also fails, falls back to direct
- * database authentication with bcrypt password verification and JWT signing.
- *
  * Endpoints:
  *   POST /mobile-auth/login   - Authenticate with email/password
  *   POST /mobile-auth/refresh - Refresh an expired access token
+ *   POST /mobile-auth/logout  - Revoke the refresh token (server-side sign-out)
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { createSupabaseServiceClient } from '../_shared/supabase.ts';
-import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { handleCors, createCorsResponse, getCorsHeaders } from '../_shared/cors.ts';
+import { rateLimit } from '../_shared/rate-limit.ts';
+
+// Best-effort per-instance throttle on the live login/refresh path (~10 attempts
+// / 15 min). Hard, cluster-wide, per-account lockout is tracked by PA-005.
+const LOGIN_RATE_LIMIT = { capacity: 10, refillPerSecond: 10 / 900 };
+
+function clientIp(req: Request): string {
+  return (
+    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    req.headers.get('x-real-ip') ||
+    'unknown'
+  );
+}
+
+function tooManyRequests(req: Request, retryAfterSeconds: number): Response {
+  return new Response(
+    JSON.stringify({
+      error: 'rate_limited',
+      error_description: 'Too many attempts. Please try again later.',
+      retry_after: retryAfterSeconds,
+    }),
+    {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'Retry-After': String(retryAfterSeconds),
+        ...getCorsHeaders(req.headers.get('Origin')),
+      },
+    },
+  );
+}
 
 // ── Handler ──────────────────────────────────────────────────────────
 
@@ -80,6 +109,15 @@ export default async function handler(req: Request) {
           400,
           req,
         );
+      }
+
+      const loginLimit = rateLimit(
+        `mobile-login:${email.toLowerCase()}:${clientIp(req)}`,
+        LOGIN_RATE_LIMIT,
+      );
+      if (!loginLimit.allowed) {
+        console.warn(`[mobile-auth] Login rate-limited for: ${email}`);
+        return tooManyRequests(req, loginLimit.retryAfterSeconds);
       }
 
       console.log(`[mobile-auth] Login attempt for: ${email}`);
@@ -152,6 +190,12 @@ export default async function handler(req: Request) {
         );
       }
 
+      const refreshLimit = rateLimit(`mobile-refresh:${clientIp(req)}`, LOGIN_RATE_LIMIT);
+      if (!refreshLimit.allowed) {
+        console.warn('[mobile-auth] Refresh rate-limited');
+        return tooManyRequests(req, refreshLimit.retryAfterSeconds);
+      }
+
       console.log('[mobile-auth] Token refresh attempt');
 
       // Set the session with the refresh token, then refresh it
@@ -191,6 +235,61 @@ export default async function handler(req: Request) {
         200,
         req,
       );
+    }
+
+    // ── LOGOUT ─────────────────────────────────────────────────────
+
+    if (action === 'logout') {
+      const authHeader = req.headers.get('Authorization');
+      const headerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+
+      let body: Record<string, string> = {};
+      try {
+        body = await req.json();
+      } catch {
+        // Body is optional for logout.
+      }
+
+      const refreshToken = body.refresh_token;
+      const accessToken = headerToken ?? body.access_token;
+
+      if (!accessToken || !refreshToken) {
+        return createCorsResponse(
+          {
+            error: 'invalid_request',
+            error_description: 'access token (Bearer or body) and refresh_token are required',
+          },
+          400,
+          req,
+        );
+      }
+
+      // Establish the session client-side, then revoke it server-side so the
+      // refresh token can no longer mint new access tokens (PA-010).
+      const { error: setErr } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (setErr) {
+        // Token already invalid/expired — nothing to revoke. Logout is
+        // idempotent, so report success.
+        console.warn('[mobile-auth] logout: session already invalid:', setErr.message);
+        return createCorsResponse({ success: true }, 200, req);
+      }
+
+      const { error: signOutErr } = await supabase.auth.signOut();
+      if (signOutErr) {
+        console.error('[mobile-auth] logout failed:', signOutErr.message);
+        return createCorsResponse(
+          { error: 'server_error', error_description: signOutErr.message },
+          500,
+          req,
+        );
+      }
+
+      console.log('[mobile-auth] logout successful');
+      return createCorsResponse({ success: true }, 200, req);
     }
 
     return createCorsResponse({ error: 'Not found' }, 404, req);
