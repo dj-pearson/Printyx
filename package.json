@@ -14,6 +14,7 @@
     "build:client-agent": "cd printyx-client && npm install --no-audit --no-fund && npm run bundle",
     "audit:routes": "node scripts/audit-route-parity.mjs",
     "check:routes": "node scripts/check-route-ownership.mjs",
+    "check:datadumps": "node scripts/check-no-data-dumps.mjs",
     "check:types": "node scripts/check-types.mjs",
     "validate": "npm run validate:types && npm run validate:lint",
     "validate:types": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" tsc --noEmit",

@@ -89,6 +89,10 @@ report*
 Output.json
 .env.tmp
 
+# Database table dumps — never commit (may contain customer PII). PA-011.
+*_rows.csv
+*_rows.sql
+
 # Audit reports
 audit-reports/
 roles_rows.csv
