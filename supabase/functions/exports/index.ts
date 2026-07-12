@@ -1,7 +1,7 @@
 // Exports Edge Function
 // Handles data exports in various formats (CSV, JSON, etc.)
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
-import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { handleCors, createCorsResponse, getCorsHeaders } from '../_shared/cors.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -89,7 +89,7 @@ export default async function handler(req: Request) {
           headers: {
             'Content-Type': 'text/csv',
             'Content-Disposition': `attachment; filename="customers-${new Date().toISOString().split('T')[0]}.csv"`,
-            'Access-Control-Allow-Origin': '*',
+            ...getCorsHeaders(req.headers.get('Origin')),
           },
         });
       }
@@ -126,7 +126,7 @@ export default async function handler(req: Request) {
           headers: {
             'Content-Type': 'text/csv',
             'Content-Disposition': `attachment; filename="leads-${new Date().toISOString().split('T')[0]}.csv"`,
-            'Access-Control-Allow-Origin': '*',
+            ...getCorsHeaders(req.headers.get('Origin')),
           },
         });
       }
@@ -159,7 +159,7 @@ export default async function handler(req: Request) {
           headers: {
             'Content-Type': 'text/csv',
             'Content-Disposition': `attachment; filename="quotes-${new Date().toISOString().split('T')[0]}.csv"`,
-            'Access-Control-Allow-Origin': '*',
+            ...getCorsHeaders(req.headers.get('Origin')),
           },
         });
       }
@@ -192,7 +192,7 @@ export default async function handler(req: Request) {
           headers: {
             'Content-Type': 'text/csv',
             'Content-Disposition': `attachment; filename="invoices-${new Date().toISOString().split('T')[0]}.csv"`,
-            'Access-Control-Allow-Origin': '*',
+            ...getCorsHeaders(req.headers.get('Origin')),
           },
         });
       }
@@ -225,7 +225,7 @@ export default async function handler(req: Request) {
           headers: {
             'Content-Type': 'text/csv',
             'Content-Disposition': `attachment; filename="activities-${new Date().toISOString().split('T')[0]}.csv"`,
-            'Access-Control-Allow-Origin': '*',
+            ...getCorsHeaders(req.headers.get('Origin')),
           },
         });
       }
