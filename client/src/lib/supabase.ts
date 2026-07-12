@@ -35,10 +35,14 @@ const customFetch = async (url: RequestInfo | URL, options?: RequestInit) => {
   return res;
 };
 
-// Create Supabase client with custom domain configuration
+// Create Supabase client with custom domain configuration.
+// Fall back to a placeholder when the anon key is missing so createClient does
+// not throw at import time (which blanked the whole app). main.tsx detects the
+// missing key via config.configErrors and renders a config-error screen instead
+// of ever using this client. (PA-009)
 export const supabase = createClient(
   config.supabase.url, // https://api.printyx.net in production
-  config.supabase.anonKey,
+  config.supabase.anonKey || 'anon-key-not-configured',
   {
     auth: {
       // PKCE flow for secure authentication

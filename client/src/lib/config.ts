@@ -43,6 +43,46 @@ export const config = {
   appVersion: import.meta.env.VITE_APP_VERSION || '1.0.0',
 } as const;
 
+// Boot-time configuration validation (PA-009).
+// A missing VITE_SUPABASE_ANON_KEY makes @supabase/supabase-js throw at
+// createClient() during module import — which crashed the whole app to a blank
+// white screen with no diagnostic. main.tsx checks this and renders a config
+// error screen instead. (VITE_SUPABASE_URL has a sane default, so only the key
+// is fatal.)
+export const configErrors: string[] = [];
+if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  configErrors.push(
+    'VITE_SUPABASE_ANON_KEY is not set. The app cannot authenticate without it. ' +
+      'Set it at build time — see .env.example for the anon-key source and rotation notes.',
+  );
+}
+
+/**
+ * Ping GoTrue's health endpoint so a *present-but-rotated/stale* anon key can be
+ * distinguished from a missing one — a stale key returns 401 (see .env.example).
+ */
+export async function pingSupabaseHealth(): Promise<{ ok: boolean; status: number; hint?: string }> {
+  try {
+    const res = await fetch(`${config.supabase.url}/auth/v1/health`, {
+      headers: {
+        apikey: config.supabase.anonKey,
+        Authorization: `Bearer ${config.supabase.anonKey}`,
+      },
+    });
+    let hint: string | undefined;
+    if (res.status === 401) {
+      hint = 'GoTrue returned 401 for the anon key — it is likely rotated/stale and must be updated.';
+    }
+    return { ok: res.ok, status: res.status, hint };
+  } catch (e) {
+    return {
+      ok: false,
+      status: 0,
+      hint: e instanceof Error ? e.message : 'Network error reaching Supabase.',
+    };
+  }
+}
+
 // Helper to construct full API URLs
 // In production, transforms /api/tasks -> functions.printyx.net/tasks
 export function getApiUrl(path: string): string {

@@ -8,6 +8,8 @@ import NProgress from 'nprogress';
 import 'nprogress/nprogress.css';
 import { queryClient } from '@/lib/queryClient';
 import { initializePWA } from '@/lib/pwa';
+import { configErrors } from '@/lib/config';
+import ConfigErrorScreen from '@/components/ConfigErrorScreen';
 
 // Initialize Sentry for frontend error tracking
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
@@ -128,11 +130,17 @@ try {
   }
 
   const root = createRoot(rootElement);
-  root.render(
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>,
-  );
+  if (configErrors.length > 0) {
+    // Required runtime config missing (e.g. VITE_SUPABASE_ANON_KEY) — render a
+    // clear diagnostic instead of a blank white screen (PA-009).
+    root.render(<ConfigErrorScreen errors={configErrors} />);
+  } else {
+    root.render(
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>,
+    );
+  }
 } catch (error) {
   // Only log errors in development
   if (import.meta.env.DEV) {
