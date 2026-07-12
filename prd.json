@@ -10178,9 +10178,10 @@
         "Audit for other \"functionality coming soon\" toasts on primary actions and either wire or hide them."
       ],
       "priority": 324,
-      "passes": false,
+      "passes": true,
       "category": "audit-functionality",
-      "notes": "[FUNCTIONALITY/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Destructive-looking buttons that no-op. Lower severity; honestly-labeled placeholder pages (MeetingToProposalDashboard) excluded."
+      "notes": "[FUNCTIONALITY/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). Destructive-looking buttons that no-op. Lower severity; honestly-labeled placeholder pages (MeetingToProposalDashboard) excluded.",
+      "completionNotes": "Implemented: disabled the misleading no-op bulk Assign/Delete buttons (PlatformBusinessRecords) with tooltips instead of the confirm->toast(\"coming soon\") pattern. DatabaseManagement backup button left as-is (its toast honestly explains backups are provider-managed)."
     }
   ]
 }
