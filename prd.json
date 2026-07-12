@@ -10153,9 +10153,10 @@
         "Guarantee the WS effect cannot reconnect on unrelated re-renders (stable deps/ref)."
       ],
       "priority": 322,
-      "passes": false,
+      "passes": true,
       "category": "audit-performance",
-      "notes": "[PERFORMANCE/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). client/src/hooks/useRealTimeData.ts:113 opens a WS after if(config.isProduction) return; enhanced-notification-bell.tsx runs a 30s poll AND a WS connect/reconnect. Framed to avoid CR-032 overlap (this is the dead second path, not interval tuning)."
+      "notes": "[PERFORMANCE/LOW] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). client/src/hooks/useRealTimeData.ts:113 opens a WS after if(config.isProduction) return; enhanced-notification-bell.tsx runs a 30s poll AND a WS connect/reconnect. Framed to avoid CR-032 overlap (this is the dead second path, not interval tuning).",
+      "completionNotes": "Implemented: removed the unused useWebSocketData hook (0 callers, dev-only) and the notification-bell dev-only WS listener (reconnected every 10s vs an undeployed server); 30s poll is now the single freshness source. Removed now-unused config imports. No prod change; EDGE-010 owns the Realtime swap."
     },
     {
       "id": "PA-038",
