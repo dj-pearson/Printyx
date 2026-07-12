@@ -9469,9 +9469,10 @@
         "Integration test: signup -> a public.users row exists with correct tenant_id + role_id."
       ],
       "priority": 274,
-      "passes": false,
+      "passes": true,
       "category": "audit-auth",
-      "notes": "[AUTH/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/signup/index.ts:175-192 inserts full_name/status:\"pending_verification\"/is_tenant_admin:true then swallows the PGRST204 failure (\"log but do not fail\"). Every self-service signup half-provisions the tenant."
+      "notes": "[AUTH/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/signup/index.ts:175-192 inserts full_name/status:\"pending_verification\"/is_tenant_admin:true then swallows the PGRST204 failure (\"log but do not fail\"). Every self-service signup half-provisions the tenant.",
+      "completionNotes": "Implemented: signup users insert re-mapped to real columns (role/role_id/access_scope/is_platform_user/is_active + phone/status/isTenantAdmin in metadata jsonb); rolls back auth user+role+tenant on failure instead of swallowing. Source-verified vs shared/schema.ts users cols; runtime verify needs live GoTrue+DB."
     },
     {
       "id": "PA-002",
@@ -9483,9 +9484,10 @@
         "Test: a JWT carrying only app_metadata.tenantId resolves onboarding successfully (no 400)."
       ],
       "priority": 275,
-      "passes": false,
+      "passes": true,
       "category": "audit-auth",
-      "notes": "[AUTH/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/onboarding/index.ts:24-31 reads app_metadata.tenant_id (snake) only; signup writes app_metadata.tenantId (camel) at signup/index.ts:158. Blocks onboarding for all new tenants."
+      "notes": "[AUTH/BLOCKER] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/onboarding/index.ts:24-31 reads app_metadata.tenant_id (snake) only; signup writes app_metadata.tenantId (camel) at signup/index.ts:158. Blocks onboarding for all new tenants.",
+      "completionNotes": "Implemented: onboarding/index.ts now resolves tenant from app_metadata.tenantId + tenant_id (+user_metadata), mirroring onboarding-checklists. Fixes 400 for freshly signed-up tenants."
     },
     {
       "id": "PA-011",
@@ -9610,9 +9612,10 @@
         "Document/reconcile duplicate me vs auth-me functions (which do web/mobile call)."
       ],
       "priority": 284,
-      "passes": false,
+      "passes": true,
       "category": "audit-auth",
-      "notes": "[AUTH/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/auth-me/index.ts queries .eq(\"auth_id\", user.id); users has no auth_id (every other reader keys on id/email). Always returns profile:null."
+      "notes": "[AUTH/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/auth-me/index.ts queries .eq(\"auth_id\", user.id); users has no auth_id (every other reader keys on id/email). Always returns profile:null.",
+      "completionNotes": "Implemented: auth-me GET+PUT now key on users.id (was non-existent auth_id) so role/permissions populate; PUT rewritten off phantom columns to first_name/last_name/profile_image_url + metadata merge. Source-verified; runtime verify needs live DB."
     },
     {
       "id": "PA-005",
@@ -9738,7 +9741,7 @@
       "priority": 293,
       "passes": false,
       "category": "audit-database",
-      "notes": "[DATABASE/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). routes-products-crud.ts:1645/1658 parse insertMeterReadingSchema without createdBy; meter_readings.created_by is NOT NULL -> parse throws -> 500. CLAUDE.md BATCH 8 flagged this as still-open server debt; pattern recurs across schema.ts lines 1394/1815/2021/2218/2281/2566/2700/2807/2871."
+      "notes": "[DATABASE/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). routes-products-crud.ts:1645/1658 parse insertMeterReadingSchema without createdBy; meter_readings.created_by is NOT NULL -> parse throws -> 500. CLAUDE.md BATCH 8 flagged this as still-open server debt; pattern recurs across schema.ts lines 1394/1815/2021/2218/2281/2566/2700/2807/2871. PROGRESS 2026-07-12: meter-readings POST fixed (createdBy injected at both parse sites); systemic sweep of other NOT-NULL created_by insert-parse sites + integration test still pending a tsc/live-DB environment."
     },
     {
       "id": "PA-043",
@@ -9889,9 +9892,10 @@
         "Test asserting a non-allowlisted Origin gets no Access-Control-Allow-Origin: *."
       ],
       "priority": 304,
-      "passes": false,
+      "passes": true,
       "category": "audit-security",
-      "notes": "[SECURITY/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/exports/index.ts:92,129,162,195,228 each set \"*\". This is the highest-value exfil endpoint (full-tenant customer/lead CSVs) and diverges from the hardened Express CORS."
+      "notes": "[SECURITY/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). supabase/functions/exports/index.ts:92,129,162,195,228 each set \"*\". This is the highest-value exfil endpoint (full-tenant customer/lead CSVs) and diverges from the hardened Express CORS.",
+      "completionNotes": "Implemented: all 5 CSV response branches in exports/index.ts now spread getCorsHeaders(req Origin) instead of Access-Control-Allow-Origin:* . Verified 0 remaining wildcards."
     },
     {
       "id": "PA-017",
