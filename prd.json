@@ -9855,9 +9855,10 @@
         "Rate-limit login/refresh; return 429 with Retry-After."
       ],
       "priority": 301,
-      "passes": false,
+      "passes": true,
       "category": "audit-auth",
-      "notes": "[AUTH/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). mobile-auth/index.ts:6-13 claims a bcrypt DB fallback that does not exist; no logout/revoke action (:196 returns 404). Stolen refresh tokens valid until natural expiry."
+      "notes": "[AUTH/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). mobile-auth/index.ts:6-13 claims a bcrypt DB fallback that does not exist; no logout/revoke action (:196 returns 404). Stolen refresh tokens valid until natural expiry.",
+      "completionNotes": "Implemented: added POST /mobile-auth/logout (setSession+signOut revokes the refresh token, idempotent); added best-effort per-instance rate limiting (10/15min, 429+Retry-After) to login/refresh; removed the false bcrypt-fallback header comment. Hard cluster-wide per-account lockout remains PA-005."
     },
     {
       "id": "PA-014",
@@ -10090,9 +10091,10 @@
         "Optionally set packageManager for npm-version consistency."
       ],
       "priority": 318,
-      "passes": false,
+      "passes": true,
       "category": "audit-build-ci",
-      "notes": "[BUILD-CI/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). No .nvmrc/engines/packageManager; CI runs Node 22 but the shipped image runs Node 20 (native modules bcrypt/sentry-profiling ABI risk). build:fullstack esbuild bundle only runs in the main-only Docker job, not on PRs."
+      "notes": "[BUILD-CI/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). No .nvmrc/engines/packageManager; CI runs Node 22 but the shipped image runs Node 20 (native modules bcrypt/sentry-profiling ABI risk). build:fullstack esbuild bundle only runs in the main-only Docker job, not on PRs.",
+      "completionNotes": "Implemented: added .nvmrc (20) + package.json engines 20.x (enforced by engine-strict); aligned ci.yml + prd-verify.yml from Node 22 to 20 to match Dockerfile/mobile-ci/security-scan; added a Server bundle check (esbuild of server/index.ts) to the CI quality job so server-side bundling breaks are caught on PRs."
     },
     {
       "id": "PA-051",
