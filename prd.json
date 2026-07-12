@@ -9942,9 +9942,10 @@
         "Enumerate every /api/integration-hub/* and /api/integrations/* caller and verify each resolves post-strip."
       ],
       "priority": 307,
-      "passes": false,
+      "passes": true,
       "category": "audit-routing",
-      "notes": "[ROUTING/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). CLAUDE.md EDGE-005f: integrations fn still indexes pathParts[1], so non-dashboard routes are off-by-one after server.ts strips the fn-name segment. Only /dashboard is special-cased today."
+      "notes": "[ROUTING/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). CLAUDE.md EDGE-005f: integrations fn still indexes pathParts[1], so non-dashboard routes are off-by-one after server.ts strips the fn-name segment. Only /dashboard is special-cased today.",
+      "completionNotes": "Implemented: integrations/index.ts now derives segment1/segment2 from normalizePath(pathname,\"integrations\").parts instead of raw pathParts[1]/[2], fixing the off-by-one under server.ts fn-name stripping that routed by-id/type/webhooks/config/sync/status calls to the wrong branch."
     },
     {
       "id": "PA-025",
