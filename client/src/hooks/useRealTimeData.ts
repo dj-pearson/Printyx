@@ -5,7 +5,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { POLLING_INTERVALS, CACHE_TIMES } from '../lib/queryOptimizations';
-import { config } from '../lib/config';
 
 interface UseRealTimeDataOptions {
   enabled?: boolean;
@@ -100,70 +99,6 @@ export function useEquipmentStatus(equipmentId?: string, enabled = true) {
   );
 }
 
-// WebSocket alternative for truly real-time data
-export function useWebSocketData<T>(
-  endpoint: string,
-  fallbackQueryKey: any[],
-  fallbackQueryFn: () => Promise<T>,
-  enabled = true,
-) {
-  const [wsData, setWsData] = useState<T | null>(null);
-  const [wsConnected, setWsConnected] = useState(false);
-
-  useEffect(() => {
-    if (!enabled) return;
-    // Skip WS in production — Cloudflare Pages doesn't support WS upgrades
-    // and the Express WS server isn't deployed. Polling fallback below handles
-    // freshness until Phase 6 US-027 swaps to Supabase Realtime.
-    if (config.isProduction) return;
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}${endpoint}`);
-
-    ws.onopen = () => {
-      setWsConnected(true);
-      console.log(`WebSocket connected: ${endpoint}`);
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        setWsData(data);
-      } catch (error) {
-        console.error('Failed to parse WebSocket data:', error);
-      }
-    };
-
-    ws.onclose = () => {
-      setWsConnected(false);
-      console.log(`WebSocket disconnected: ${endpoint}`);
-    };
-
-    ws.onerror = () => {
-      // Downgraded from console.error — the prod path is guarded above; dev-time
-      // errors here are usually "server not running", not actionable.
-      setWsConnected(false);
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [endpoint, enabled]);
-
-  // Fallback to polling if WebSocket not available
-  const fallbackQuery = useQuery({
-    queryKey: fallbackQueryKey,
-    queryFn: fallbackQueryFn,
-    enabled: enabled && !wsConnected,
-    refetchInterval: POLLING_INTERVALS.HIGH,
-    staleTime: CACHE_TIMES.REAL_TIME,
-  });
-
-  return {
-    data: wsData || fallbackQuery.data,
-    isLoading: !wsConnected && fallbackQuery.isLoading,
-    error: fallbackQuery.error,
-    isConnected: wsConnected,
-    isWebSocket: wsConnected,
-  };
-}
+// NOTE: the former useWebSocketData hook was removed (PA-030) — it had zero
+// callers and only ran in dev (prod returned early since the Express WS server
+// isn't deployed). Real-time delivery is tracked by EDGE-010 (Supabase Realtime).
