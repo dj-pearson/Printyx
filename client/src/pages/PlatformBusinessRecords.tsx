@@ -428,32 +428,17 @@ export default function PlatformBusinessRecords() {
                   <Button variant="outline" size="sm" onClick={() => setSelectedRecords(new Set())}>
                     Clear Selection
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      // Bulk assign dialog would go here
-                      toast({
-                        title: 'Bulk Assign',
-                        description: 'Bulk assign functionality coming soon',
-                      });
-                    }}
-                  >
+                  {/* Bulk assign/delete have no backend yet — disabled rather than
+                      shown as working buttons that only toast "coming soon" (PA-047). */}
+                  <Button variant="outline" size="sm" disabled title="Bulk assign is not available yet">
                     <UserCheck className="w-4 h-4 mr-2" />
                     Assign
                   </Button>
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => {
-                      if (confirm(`Delete ${selectedRecords.size} records?`)) {
-                        // Bulk delete would go here
-                        toast({
-                          title: 'Bulk Delete',
-                          description: 'Bulk delete functionality coming soon',
-                        });
-                      }
-                    }}
+                    disabled
+                    title="Bulk delete is not available yet"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete
