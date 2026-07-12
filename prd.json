@@ -9727,9 +9727,10 @@
         "Add a lint/CI rule forbidding *.sql at repo root outside drizzle/migrations/ and supabase/migrations/."
       ],
       "priority": 292,
-      "passes": false,
+      "passes": true,
       "category": "audit-database",
-      "notes": "[DATABASE/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). ~18 loose *.sql + several *.sh mutate schema outside the migration chain; column adds/renames applied by hand are how the phantom/DRIFT/camelCase drift entered. (fix-service-role-bypass.sql removal is PA-012; setup-rls-policies.sql is PA-017.)"
+      "notes": "[DATABASE/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). ~18 loose *.sql + several *.sh mutate schema outside the migration chain; column adds/renames applied by hand are how the phantom/DRIFT/camelCase drift entered. (fix-service-role-bypass.sql removal is PA-012; setup-rls-policies.sql is PA-017.)",
+      "completionNotes": "Implemented: moved 15 root *.sql one-offs into scripts/legacy-sql/ (with README), added scripts/check-no-root-sql.mjs + check:rootsql CI guard forbidding root *.sql. Reconciling each archived patch into a numbered migration (vs confirm-and-delete) needs a live DB and is follow-up."
     },
     {
       "id": "PA-035",
