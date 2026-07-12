@@ -2,6 +2,7 @@
 // Returns current user information
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { resolveTenantId } from '../_shared/tenant.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -21,12 +22,9 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    // Canonical resolution (camel/snake, both metadata bags). The x-tenant-id
+    // header fallback is user-supplied and tracked separately by CR-010.
+    const tenantId = resolveTenantId(user) || req.headers.get('x-tenant-id');
 
     const admin = createSupabaseServiceClient();
 
