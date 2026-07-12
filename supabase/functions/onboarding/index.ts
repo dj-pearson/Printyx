@@ -21,10 +21,13 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: 'Unauthorized' }, 401, req);
     }
 
+    // Accept both camelCase (signup writes app_metadata.tenantId) and snake_case
+    // spellings, in both metadata bags — mirrors onboarding-checklists. Reading
+    // only tenant_id previously 400'd every freshly signed-up tenant (PA-002).
     const tenantId =
+      (user.app_metadata?.tenantId as string) ||
       (user.app_metadata?.tenant_id as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenant_id as string) ||
+      (user.user_metadata?.tenantId as string) ||
       (user.user_metadata?.tenant_id as string);
 
     if (!tenantId) {

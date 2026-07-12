@@ -171,6 +171,10 @@ export default async function handler(req: Request) {
     }
 
     // Step 4: Create user record in users table (synced with auth.users)
+    // Map ONLY to columns that exist on `users` (shared/schema.ts). The table has
+    // no full_name / status / is_tenant_admin / phone columns — those are carried
+    // in the `metadata` jsonb. Writing phantom columns previously caused a silent
+    // PGRST204 that left the tenant with no admin profile row (PA-001).
     if (authData.user) {
       const { error: userRecordError } = await supabaseAdmin.from('users').insert({
         id: authData.user.id,
@@ -178,19 +182,35 @@ export default async function handler(req: Request) {
         email: authData.user.email,
         first_name: metadata.firstName,
         last_name: metadata.lastName,
-        full_name: `${metadata.firstName} ${metadata.lastName}`,
-        phone: metadata.phone || null,
+        role: 'admin', // legacy string role, kept for backward compatibility
         role_id: roleId,
-        status: 'pending_verification',
-        is_tenant_admin: true,
+        access_scope: 'company', // tenant admin gets company-wide access
+        is_platform_user: false,
+        is_active: true,
+        metadata: {
+          phone: metadata.phone || null,
+          source: 'signup',
+          isTenantAdmin: true,
+          status: 'pending_verification',
+        },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
 
       if (userRecordError) {
+        // The users row is required for downstream tenant/role resolution; a
+        // signup that can't create it is a half-provisioned tenant. Roll back
+        // the auth user, role, and tenant so the caller can safely retry
+        // (previously this was logged and swallowed — PA-001).
         console.error('User record creation error:', userRecordError);
-        // Note: User is already created in auth, so we log but don't fail
-        // The user can still login and the record can be synced later
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        await supabaseAdmin.from('roles').delete().eq('id', roleId);
+        await supabaseAdmin.from('tenants').delete().eq('id', tenantId);
+        return createCorsResponse(
+          { error: 'Failed to create user profile: ' + userRecordError.message },
+          500,
+          req,
+        );
       }
     }
 

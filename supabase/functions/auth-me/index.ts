@@ -45,7 +45,7 @@ export default async function handler(req: Request) {
           )
         `,
         )
-        .eq('auth_id', user.id)
+        .eq('id', user.id)
         .single();
 
       // Get tenant info if available
@@ -85,18 +85,43 @@ export default async function handler(req: Request) {
     if (req.method === 'PUT') {
       const body = await req.json();
 
-      // Update user profile
+      // Map to real `users` columns only. The table has no full_name / phone /
+      // job_title / department / avatar_url columns — name maps to first/last,
+      // avatar to profile_image_url, and the rest live in the `metadata` jsonb.
+      // (Previously wrote phantom columns keyed on a non-existent auth_id — PA-004.)
+      const { data: current } = await admin
+        .from('users')
+        .select('metadata')
+        .eq('id', user.id)
+        .single();
+
+      const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+      const fullName = body.fullName || body.full_name;
+      if (typeof fullName === 'string' && fullName.trim()) {
+        const [firstName, ...rest] = fullName.trim().split(/\s+/);
+        updates.first_name = firstName;
+        updates.last_name = rest.join(' ') || null;
+      }
+      if (body.firstName || body.first_name) updates.first_name = body.firstName || body.first_name;
+      if (body.lastName || body.last_name) updates.last_name = body.lastName || body.last_name;
+
+      const avatarUrl = body.avatarUrl || body.avatar_url;
+      if (avatarUrl !== undefined) updates.profile_image_url = avatarUrl;
+
+      const metadataPatch: Record<string, unknown> = {};
+      if (body.phone !== undefined) metadataPatch.phone = body.phone;
+      if (body.jobTitle !== undefined || body.job_title !== undefined)
+        metadataPatch.jobTitle = body.jobTitle ?? body.job_title;
+      if (body.department !== undefined) metadataPatch.department = body.department;
+      if (Object.keys(metadataPatch).length > 0) {
+        updates.metadata = { ...((current?.metadata as Record<string, unknown>) ?? {}), ...metadataPatch };
+      }
+
       const { data: profile, error } = await admin
         .from('users')
-        .update({
-          full_name: body.fullName || body.full_name,
-          phone: body.phone,
-          job_title: body.jobTitle || body.job_title,
-          department: body.department,
-          avatar_url: body.avatarUrl || body.avatar_url,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('auth_id', user.id)
+        .update(updates)
+        .eq('id', user.id)
         .select()
         .single();
 
