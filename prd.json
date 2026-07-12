@@ -9885,9 +9885,10 @@
         "Wire gitleaks/trufflehog into CI."
       ],
       "priority": 303,
-      "passes": false,
+      "passes": true,
       "category": "audit-security",
-      "notes": "[SECURITY/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). .gitignore.security-additions was authored but never merged; live .gitignore does not cover .env.development/.env.example (both tracked) nor broad secret patterns."
+      "notes": "[SECURITY/MEDIUM] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). .gitignore.security-additions was authored but never merged; live .gitignore does not cover .env.development/.env.example (both tracked) nor broad secret patterns.",
+      "completionNotes": "Implemented: merged safe security patterns into .gitignore (excluding *.sql/migrations and .env.* templates), deleted the standalone .gitignore.security-additions, audited tracked secret files (all templates/code — none needed untracking), and wired a working-tree gitleaks step (report-only until PA-014 clears the committed anon JWTs, then flip to blocking)."
     },
     {
       "id": "PA-016",
