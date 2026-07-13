@@ -7,6 +7,7 @@ import { eq, desc, sql, count, and, gte, lte, like, inArray } from 'drizzle-orm'
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
+import { logAdminAction } from './services/audit-log-service';
 const log = createModuleLogger('routes-root-admin');
 
 const router = Router();
@@ -456,8 +457,17 @@ router.post(
   requireRootAdmin,
   async (req, res) => {
     const userId = getUserId(req);
+    const tenantId = getTenantId(req) || 'platform';
     const clientIp = req.ip || req.socket?.remoteAddress || 'unknown';
 
+    // CR-007 — RESIDUAL RISK: this endpoint runs operator-supplied SQL via
+    // sql.raw() with the app's DB role, so it fully bypasses tenant/RLS isolation
+    // and any SELECT can read across tenants. It is gated to root-admins only and
+    // hardened by an ALLOWLIST (SELECT-only), single-statement enforcement, a
+    // dangerous-keyword denylist (defense-in-depth), a 1000-row cap, and a 10s
+    // statement timeout. Every executed statement is written to the persistent
+    // audit trail (user + tenant) below. TODO(prod): run SELECTs against a
+    // read-only DB role / read replica to remove the write-capability residual.
     try {
       const { query } = req.body;
 
@@ -507,13 +517,21 @@ router.post(
         ? query
         : `${query} LIMIT ${MAX_ROWS}`;
 
-      // Audit log: record query execution
+      // CR-007: persist every executed statement to the audit trail (user +
+      // tenant), not just the app log. Best-effort — a logging failure must not
+      // silently drop the audit record, so we await it before executing.
       log.info('Root admin SQL query executed', {
         userId,
         clientIp,
         query: query.substring(0, 500),
         timestamp: new Date().toISOString(),
       });
+      if (userId) {
+        await logAdminAction('sql_console.execute', 'database', 'query', userId, tenantId, req, {
+          query: query.substring(0, 500),
+          clientIp,
+        });
+      }
 
       // Set a statement timeout to prevent long-running queries (10 seconds)
       const startTime = Date.now();

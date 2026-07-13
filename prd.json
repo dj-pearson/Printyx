@@ -9046,8 +9046,8 @@
         "Document the residual risk in code comments"
       ],
       "priority": 243,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). sql.raw() behind regex denylist."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). sql.raw() behind regex denylist. [DONE 2026-07-13] The console was already hardened since review: SELECT-only ALLOWLIST (primary gate — rejects non-SELECT), single-statement enforcement (semicolon check after stripping strings/comments), dangerous-keyword denylist (now defense-in-depth), 1000-row cap, 10s statement timeout. Added: persistent audit-trail write via logAdminAction(sql_console.execute, database, query, userId, tenantId, req, {query,clientIp}) — category authorization/severity high (was only log.info) — with tenant; residual-risk documented in code comment (bypasses tenant/RLS; TODO read-only role/replica). Ratchet 1353."
     },
     {
       "id": "CR-008",
