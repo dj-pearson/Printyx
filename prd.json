@@ -9336,8 +9336,8 @@
         "Generate + review + apply migration (npm run db:generate / db:migrate)"
       ],
       "priority": 264,
-      "passes": false,
-      "notes": "[PERFORMANCE/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[PERFORMANCE/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Added .index() defs to equipment (tenant+customer, tenant+equipment_status) and invoices (tenant+customer, tenant+invoice_status, tenant+created_at) in shared/schema.ts — both had zero indexes. db:generate is unusable here (bundles ~100 tables of pre-existing migration drift, PA-031/039), so hand-wrote idempotent CREATE INDEX IF NOT EXISTS migration drizzle/migrations/0010_cr028_perf_indexes.sql + journal entry (drizzle migrate() applies by journal+hash, no snapshot needed). business_records/service_tickets already indexed. PA-026 (9 more tables) deferred — needs careful per-table column verification."
     },
     {
       "id": "CR-029",

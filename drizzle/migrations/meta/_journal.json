@@ -71,6 +71,13 @@
       "when": 1780341756873,
       "tag": "0009_colorful_meggan",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783925568670,
+      "tag": "0010_cr028_perf_indexes",
+      "breakpoints": true
     }
   ]
 }

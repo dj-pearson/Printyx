@@ -1638,51 +1638,59 @@ export const enhancedProducts = pgTable('enhanced_products', {
 });
 
 // Equipment/Assets Table (E-Automate compatible)
-export const equipment = pgTable('equipment', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const equipment = pgTable(
+  'equipment',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // E-Automate Compatibility
-  externalEquipmentId: varchar('external_equipment_id'), // E-Automate EquipmentKey
-  externalCustomerId: varchar('external_customer_id'), // E-Automate CustomerKey
-  lastSyncDate: timestamp('last_sync_date'),
+    // E-Automate Compatibility
+    externalEquipmentId: varchar('external_equipment_id'), // E-Automate EquipmentKey
+    externalCustomerId: varchar('external_customer_id'), // E-Automate CustomerKey
+    lastSyncDate: timestamp('last_sync_date'),
 
-  // Equipment Identification
-  serialNumber: varchar('serial_number').unique(), // E-Automate SerialNumber
-  modelNumber: varchar('model_number'), // E-Automate ModelNumber
-  manufacturer: varchar('manufacturer'), // E-Automate Manufacturer
-  description: text('description'), // E-Automate Description
-  assetTag: varchar('asset_tag'), // E-Automate AssetTag
+    // Equipment Identification
+    serialNumber: varchar('serial_number').unique(), // E-Automate SerialNumber
+    modelNumber: varchar('model_number'), // E-Automate ModelNumber
+    manufacturer: varchar('manufacturer'), // E-Automate Manufacturer
+    description: text('description'), // E-Automate Description
+    assetTag: varchar('asset_tag'), // E-Automate AssetTag
 
-  // Location & Installation
-  customerId: varchar('customer_id').notNull(), // References business_records.id
-  locationDescription: text('location_description'), // E-Automate LocationDescription
-  installDate: timestamp('install_date'), // E-Automate InstallDate
-  ipAddress: varchar('ip_address'), // E-Automate NetworkAddress
+    // Location & Installation
+    customerId: varchar('customer_id').notNull(), // References business_records.id
+    locationDescription: text('location_description'), // E-Automate LocationDescription
+    installDate: timestamp('install_date'), // E-Automate InstallDate
+    ipAddress: varchar('ip_address'), // E-Automate NetworkAddress
 
-  // Equipment Specifications
-  meterType: varchar('meter_type'), // E-Automate MeterType: bw_only, color, scan, fax
-  isColorCapable: boolean('is_color_capable').default(false), // E-Automate ColorCapable
-  equipmentStatus: varchar('equipment_status').default('active'), // E-Automate Status
+    // Equipment Specifications
+    meterType: varchar('meter_type'), // E-Automate MeterType: bw_only, color, scan, fax
+    isColorCapable: boolean('is_color_capable').default(false), // E-Automate ColorCapable
+    equipmentStatus: varchar('equipment_status').default('active'), // E-Automate Status
 
-  // Financial Information
-  purchasePrice: decimal('purchase_price', { precision: 10, scale: 2 }), // E-Automate PurchasePrice
-  monthlyPayment: decimal('monthly_payment', { precision: 10, scale: 2 }), // E-Automate MonthlyPayment
-  leaseExpiresDate: timestamp('lease_expires_date'), // E-Automate LeaseExpires
-  warrantyExpiresDate: timestamp('warranty_expires_date'), // E-Automate WarrantyExpires
+    // Financial Information
+    purchasePrice: decimal('purchase_price', { precision: 10, scale: 2 }), // E-Automate PurchasePrice
+    monthlyPayment: decimal('monthly_payment', { precision: 10, scale: 2 }), // E-Automate MonthlyPayment
+    leaseExpiresDate: timestamp('lease_expires_date'), // E-Automate LeaseExpires
+    warrantyExpiresDate: timestamp('warranty_expires_date'), // E-Automate WarrantyExpires
 
-  // Service Information
-  serviceContractNumber: varchar('service_contract_number'), // E-Automate ServiceContract
-  lastServiceDate: timestamp('last_service_date'), // E-Automate LastServiceDate
-  nextServiceDueDate: timestamp('next_service_due_date'), // E-Automate NextServiceDue
+    // Service Information
+    serviceContractNumber: varchar('service_contract_number'), // E-Automate ServiceContract
+    lastServiceDate: timestamp('last_service_date'), // E-Automate LastServiceDate
+    nextServiceDueDate: timestamp('next_service_due_date'), // E-Automate NextServiceDue
 
-  // System Tracking
-  notes: text('notes'), // E-Automate Notes
-  createdAt: timestamp('created_at').defaultNow(), // E-Automate DateCreated
-  updatedAt: timestamp('updated_at').defaultNow(), // E-Automate LastModified
-});
+    // System Tracking
+    notes: text('notes'), // E-Automate Notes
+    createdAt: timestamp('created_at').defaultNow(), // E-Automate DateCreated
+    updatedAt: timestamp('updated_at').defaultNow(), // E-Automate LastModified
+  },
+  (table) => ({
+    // Tenant-scoped list/filter indexes (CR-028) — this table had none.
+    tenantCustomerIdx: index('equipment_tenant_customer_idx').on(table.tenantId, table.customerId),
+    tenantStatusIdx: index('equipment_tenant_status_idx').on(table.tenantId, table.equipmentStatus),
+  }),
+);
 
 // Service Contracts Table (E-Automate compatible)
 export const serviceContracts = pgTable('service_contracts', {
@@ -1965,63 +1973,72 @@ export const inventoryItems = pgTable('inventory_items', {
 });
 
 // Enhanced Invoices Table (E-Automate compatible)
-export const invoices = pgTable('invoices', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const invoices = pgTable(
+  'invoices',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // E-Automate Compatibility
-  externalInvoiceId: varchar('external_invoice_id'), // E-Automate InvoiceKey
-  externalCustomerId: varchar('external_customer_id'), // E-Automate CustomerKey
-  lastSyncDate: timestamp('last_sync_date'),
+    // E-Automate Compatibility
+    externalInvoiceId: varchar('external_invoice_id'), // E-Automate InvoiceKey
+    externalCustomerId: varchar('external_customer_id'), // E-Automate CustomerKey
+    lastSyncDate: timestamp('last_sync_date'),
 
-  // Invoice Identification
-  customerId: varchar('customer_id').notNull(), // References business_records.id
-  contractId: varchar('contract_id'), // References contracts.id
-  invoiceNumber: varchar('invoice_number').unique(), // E-Automate InvoiceNumber
-  invoiceDate: timestamp('invoice_date').notNull(), // E-Automate InvoiceDate
-  dueDate: timestamp('due_date').notNull(), // E-Automate DueDate
-  poNumber: varchar('po_number'), // E-Automate PONumber
+    // Invoice Identification
+    customerId: varchar('customer_id').notNull(), // References business_records.id
+    contractId: varchar('contract_id'), // References contracts.id
+    invoiceNumber: varchar('invoice_number').unique(), // E-Automate InvoiceNumber
+    invoiceDate: timestamp('invoice_date').notNull(), // E-Automate InvoiceDate
+    dueDate: timestamp('due_date').notNull(), // E-Automate DueDate
+    poNumber: varchar('po_number'), // E-Automate PONumber
 
-  // Sales Information
-  salesRep: varchar('sales_rep'), // E-Automate SalesRep
-  invoiceType: varchar('invoice_type').default('sales'), // E-Automate InvoiceType: sales, service, lease, rental
+    // Sales Information
+    salesRep: varchar('sales_rep'), // E-Automate SalesRep
+    invoiceType: varchar('invoice_type').default('sales'), // E-Automate InvoiceType: sales, service, lease, rental
 
-  // Financial Totals
-  subtotalAmount: decimal('subtotal_amount', { precision: 10, scale: 2 }), // E-Automate Subtotal
-  taxAmount: decimal('tax_amount', { precision: 10, scale: 2 }), // E-Automate TaxAmount
-  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(), // E-Automate Total
-  amountPaid: decimal('amount_paid', { precision: 10, scale: 2 }).default('0'), // E-Automate AmountPaid
-  balanceDue: decimal('balance_due', { precision: 10, scale: 2 }), // E-Automate Balance
+    // Financial Totals
+    subtotalAmount: decimal('subtotal_amount', { precision: 10, scale: 2 }), // E-Automate Subtotal
+    taxAmount: decimal('tax_amount', { precision: 10, scale: 2 }), // E-Automate TaxAmount
+    totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(), // E-Automate Total
+    amountPaid: decimal('amount_paid', { precision: 10, scale: 2 }).default('0'), // E-Automate AmountPaid
+    balanceDue: decimal('balance_due', { precision: 10, scale: 2 }), // E-Automate Balance
 
-  // Invoice Status
-  invoiceStatus: varchar('invoice_status').default('open'), // E-Automate Status: open, paid, partial, overdue, void
-  paymentTerms: varchar('payment_terms'), // E-Automate PaymentTerms
+    // Invoice Status
+    invoiceStatus: varchar('invoice_status').default('open'), // E-Automate Status: open, paid, partial, overdue, void
+    paymentTerms: varchar('payment_terms'), // E-Automate PaymentTerms
 
-  // Billing Period (for recurring invoices)
-  billingPeriodStart: timestamp('billing_period_start'), // E-Automate BillingPeriodStart
-  billingPeriodEnd: timestamp('billing_period_end'), // E-Automate BillingPeriodEnd
+    // Billing Period (for recurring invoices)
+    billingPeriodStart: timestamp('billing_period_start'), // E-Automate BillingPeriodStart
+    billingPeriodEnd: timestamp('billing_period_end'), // E-Automate BillingPeriodEnd
 
-  // Legacy fields for compatibility
-  monthlyBase: decimal('monthly_base', { precision: 10, scale: 2 }).default('0'),
-  blackCopiesTotal: integer('black_copies_total').default(0),
-  colorCopiesTotal: integer('color_copies_total').default(0),
-  blackAmount: decimal('black_amount', { precision: 10, scale: 2 }).default('0'),
-  colorAmount: decimal('color_amount', { precision: 10, scale: 2 }).default('0'),
-  status: varchar('status').default('draft'), // Legacy status field
-  paidDate: timestamp('paid_date'),
+    // Legacy fields for compatibility
+    monthlyBase: decimal('monthly_base', { precision: 10, scale: 2 }).default('0'),
+    blackCopiesTotal: integer('black_copies_total').default(0),
+    colorCopiesTotal: integer('color_copies_total').default(0),
+    blackAmount: decimal('black_amount', { precision: 10, scale: 2 }).default('0'),
+    colorAmount: decimal('color_amount', { precision: 10, scale: 2 }).default('0'),
+    status: varchar('status').default('draft'), // Legacy status field
+    paidDate: timestamp('paid_date'),
 
-  // LEAN Metrics Tracking
-  issuanceDelayHours: integer('issuance_delay_hours').default(0), // Time between service completion and invoice issuance
-  issuedAt: timestamp('issued_at'), // When invoice was actually issued/sent
+    // LEAN Metrics Tracking
+    issuanceDelayHours: integer('issuance_delay_hours').default(0), // Time between service completion and invoice issuance
+    issuedAt: timestamp('issued_at'), // When invoice was actually issued/sent
 
-  // System Tracking
-  invoiceNotes: text('invoice_notes'), // E-Automate Notes
-  createdBy: varchar('created_by').notNull(),
-  createdAt: timestamp('created_at').defaultNow(), // E-Automate DateCreated
-  updatedAt: timestamp('updated_at').defaultNow(), // E-Automate LastModified
-});
+    // System Tracking
+    invoiceNotes: text('invoice_notes'), // E-Automate Notes
+    createdBy: varchar('created_by').notNull(),
+    createdAt: timestamp('created_at').defaultNow(), // E-Automate DateCreated
+    updatedAt: timestamp('updated_at').defaultNow(), // E-Automate LastModified
+  },
+  (table) => ({
+    // Tenant-scoped list/filter indexes (CR-028) — this table had none.
+    tenantCustomerIdx: index('invoices_tenant_customer_idx').on(table.tenantId, table.customerId),
+    tenantStatusIdx: index('invoices_tenant_status_idx').on(table.tenantId, table.invoiceStatus),
+    tenantCreatedIdx: index('invoices_tenant_created_idx').on(table.tenantId, table.createdAt),
+  }),
+);
 
 // Enhanced Invoice Line Items Table (E-Automate compatible)
 export const invoiceLineItems = pgTable('invoice_line_items', {
