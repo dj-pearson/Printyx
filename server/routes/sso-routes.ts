@@ -12,6 +12,21 @@ const log = createModuleLogger('sso-routes');
 
 const router = Router();
 
+/**
+ * Restrict a SAML/OIDC RelayState (or decoded state.redirectUrl) to a relative
+ * in-app path so it cannot be used for open-redirect phishing (CR-006). Only a
+ * single leading '/' (not '//' or '/\', which browsers treat as protocol-
+ * relative host references) and no control characters are allowed; anything
+ * else falls back to a safe default.
+ */
+export function safeInternalPath(value: unknown, fallback: string): string {
+  if (typeof value !== 'string' || value.length === 0) return fallback;
+  if (!value.startsWith('/')) return fallback; // must be a relative path
+  if (value.startsWith('//') || value.startsWith('/\\')) return fallback; // //host or /\host
+  if ([...value].some((c) => c.charCodeAt(0) < 0x20 || c.charCodeAt(0) === 0x7f)) return fallback; // control chars
+  return value;
+}
+
 // Validation schemas
 const createProviderSchema = z.object({
   providerType: z.enum([
@@ -308,7 +323,7 @@ router.post('/callback/saml/:providerId', async (req: Request, res: Response) =>
     }
 
     // Redirect to the original destination or dashboard
-    const redirectUrl = RelayState || '/dashboard';
+    const redirectUrl = safeInternalPath(RelayState, '/dashboard');
     res.redirect(redirectUrl);
   } catch (error: any) {
     log.error('[SSO Routes] SAML callback error:', error);
@@ -345,7 +360,7 @@ router.get('/callback/oidc/:providerId', async (req: Request, res: Response) => 
       try {
         const decoded = Buffer.from(state.toString(), 'base64').toString('utf-8');
         relayStateData = JSON.parse(decoded);
-        redirectUrl = relayStateData.redirectUrl || redirectUrl;
+        redirectUrl = safeInternalPath(relayStateData.redirectUrl, redirectUrl);
       } catch {
         // Invalid state format
       }
@@ -471,11 +486,11 @@ router.post('/logout/saml/:providerId', async (req: Request, res: Response) => {
       req.session.destroy(() => {});
 
       // TODO: Send LogoutResponse back to IdP
-      res.redirect(RelayState || '/login');
+      res.redirect(safeInternalPath(RelayState, '/login'));
     } else if (SAMLResponse) {
       // Handle logout response from IdP
       req.session.destroy(() => {});
-      res.redirect(RelayState || '/login');
+      res.redirect(safeInternalPath(RelayState, '/login'));
     } else {
       res.status(400).json({ error: 'Invalid SLO request' });
     }

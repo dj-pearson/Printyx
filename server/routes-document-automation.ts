@@ -18,6 +18,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import multer from 'multer';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { sanitizeFilename } from './middleware/file-upload-security';
 import { DocumentGenerationService } from './services/document-generation-service';
 import {
   DocumentProcessingService,
@@ -40,8 +41,15 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
+    // Sanitize the client-supplied name so it can't traverse paths / inject
+    // separators into the storage path (CR-009).
+    const safeName = sanitizeFilename(file.originalname);
+    if (!safeName) {
+      cb(new Error('Invalid filename'), '');
+      return;
+    }
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${uniqueSuffix}-${file.originalname}`);
+    cb(null, `${uniqueSuffix}-${safeName}`);
   },
 });
 

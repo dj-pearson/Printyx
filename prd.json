@@ -9032,8 +9032,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 242,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Added safeInternalPath() in sso-routes.ts (only relative in-app paths; rejects absolute/off-host, //host, /host, schemes, control chars) applied to all 4 RelayState/state redirect sinks (ACS 326, OIDC 363, SLO 489/493). Unit test for malicious external RelayState."
     },
     {
       "id": "CR-007",
@@ -9072,8 +9072,8 @@
         "Reject unexpected content types"
       ],
       "priority": 245,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] document-automation multer filename cb now runs sanitizeFilename() (rejects traversal/separators) from the hardened file-upload-security middleware; catalog upload switched from unbounded multer.memoryStorage() to createSecureUpload() (fileSize/files/fieldSize limits + allowlist fileFilter incl CSV). Reused existing hardened middleware (already unit-tested)."
     },
     {
       "id": "CR-010",
