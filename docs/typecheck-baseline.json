@@ -1,4 +1,4 @@
 {
-  "note": "QUALITY-002 tsc-error ratchet baseline. scripts/check-types.mjs fails CI only when the error count grows above `total`. Lower it (never raise it) as debt is fixed: node scripts/check-types.mjs --update-baseline. Exception: reconcile upward ONLY to absorb pre-existing upstream drift from main merges when the current story's own tree adds 0 tsc errors (per CLAUDE.md). 2026-07-13: 1362 -> 1360 after CR-014 + creating the missing server/domains/reporting.ts barrel (fixed a TS2307 module-not-found on ./domains/reporting).",
-  "total": 1360
+  "note": "QUALITY-002 tsc-error ratchet baseline. scripts/check-types.mjs fails CI only when the error count grows above `total`. Lower it (never raise it) as debt is fixed: node scripts/check-types.mjs --update-baseline.",
+  "total": 1353
 }

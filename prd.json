@@ -9099,8 +9099,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 247,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Removed local requireAuth stubs in server/routes.ts (permissive, hydrated undefined user) + server/integrations/routes.ts (defined-but-never-applied); both now import centralized requireAuth from ./replitAuth. Applied requireAuth to 6 integration data routes incl. /marketplace (OAuth :provider/callback left public as a redirect target). Grep confirms no local requireAuth defs remain (only canonical export in replitAuth.ts)."
     },
     {
       "id": "CR-012",
@@ -9212,8 +9212,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 255,
-      "passes": false,
-      "notes": "[CORRECTNESS/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[CORRECTNESS/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Deleted unreferenced server/routes-modular-dashboard-broken.ts + server/routes-clickup-tasks.ts (live imports resolve to routes-modular-dashboard.ts / routes-enhanced-tasks.ts). Removed 7 latent tsc errors; ratchet 1360->1353."
     },
     {
       "id": "CR-020",

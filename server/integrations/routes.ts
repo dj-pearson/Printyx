@@ -11,22 +11,15 @@ import { integrationMetrics, integrationApiLogs } from '../../shared/schema';
 import { eq, and, gte, desc } from 'drizzle-orm';
 import { createModuleLogger } from '../lib/logger';
 import { getUserId, getTenantId } from '../utils/auth-helpers';
+import { requireAuth } from '../replitAuth';
 const log = createModuleLogger('routes');
-
-// Using inline auth middleware since requireAuth is not available
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Not authenticated' });
-  }
-  next();
-};
 
 const router = express.Router();
 
 /**
  * Get available integrations marketplace
  */
-router.get('/api/integrations/marketplace', async (req: any, res) => {
+router.get('/api/integrations/marketplace', requireAuth, async (req: any, res) => {
   try {
     const { valid, errors } = validateOAuthConfig();
 
@@ -56,7 +49,7 @@ router.get('/api/integrations/marketplace', async (req: any, res) => {
 /**
  * Get user's active integrations with real metrics data
  */
-router.get('/api/integrations', async (req: any, res) => {
+router.get('/api/integrations', requireAuth, async (req: any, res) => {
   try {
     const tenantId = req.user?.tenantId;
 
@@ -160,7 +153,7 @@ router.get('/api/integrations', async (req: any, res) => {
 /**
  * Initialize OAuth flow
  */
-router.post('/api/integrations/oauth/init', async (req: any, res) => {
+router.post('/api/integrations/oauth/init', requireAuth, async (req: any, res) => {
   try {
     const { providerId } = req.body;
     const tenantId = req.user?.tenantId;
@@ -237,57 +230,61 @@ router.get('/api/integrations/:provider/callback', async (req: any, res) => {
 /**
  * Get calendar events from an integration
  */
-router.get('/api/integrations/:integrationId/calendar/events', async (req: any, res) => {
-  try {
-    const { integrationId } = req.params;
-    const { startDate, endDate } = req.query;
-    const tenantId = req.user?.tenantId;
+router.get(
+  '/api/integrations/:integrationId/calendar/events',
+  requireAuth,
+  async (req: any, res) => {
+    try {
+      const { integrationId } = req.params;
+      const { startDate, endDate } = req.query;
+      const tenantId = req.user?.tenantId;
 
-    if (!tenantId) {
-      return res.status(400).json({ message: 'Tenant ID is required' });
+      if (!tenantId) {
+        return res.status(400).json({ message: 'Tenant ID is required' });
+      }
+
+      const start = startDate ? new Date(startDate as string) : undefined;
+      const end = endDate ? new Date(endDate as string) : undefined;
+
+      // First, determine which provider this integration uses
+      const integrations = await IntegrationService.getIntegrations(tenantId);
+      const integration = integrations.find((i) => i.id === integrationId);
+
+      if (!integration) {
+        return res.status(404).json({ message: 'Integration not found' });
+      }
+
+      let events;
+      if (integration.providerId === 'google-calendar') {
+        events = await IntegrationService.getGoogleCalendarEvents(
+          integrationId,
+          tenantId,
+          start,
+          end,
+        );
+      } else if (integration.providerId === 'microsoft-calendar') {
+        events = await IntegrationService.getMicrosoftCalendarEvents(
+          integrationId,
+          tenantId,
+          start,
+          end,
+        );
+      } else {
+        return res.status(400).json({ message: 'Unsupported calendar provider' });
+      }
+
+      res.json({ events, count: events.length });
+    } catch (error) {
+      log.error('Error fetching calendar events:', error);
+      res.status(500).json({ message: 'Failed to fetch calendar events' });
     }
-
-    const start = startDate ? new Date(startDate as string) : undefined;
-    const end = endDate ? new Date(endDate as string) : undefined;
-
-    // First, determine which provider this integration uses
-    const integrations = await IntegrationService.getIntegrations(tenantId);
-    const integration = integrations.find((i) => i.id === integrationId);
-
-    if (!integration) {
-      return res.status(404).json({ message: 'Integration not found' });
-    }
-
-    let events;
-    if (integration.providerId === 'google-calendar') {
-      events = await IntegrationService.getGoogleCalendarEvents(
-        integrationId,
-        tenantId,
-        start,
-        end,
-      );
-    } else if (integration.providerId === 'microsoft-calendar') {
-      events = await IntegrationService.getMicrosoftCalendarEvents(
-        integrationId,
-        tenantId,
-        start,
-        end,
-      );
-    } else {
-      return res.status(400).json({ message: 'Unsupported calendar provider' });
-    }
-
-    res.json({ events, count: events.length });
-  } catch (error) {
-    log.error('Error fetching calendar events:', error);
-    res.status(500).json({ message: 'Failed to fetch calendar events' });
-  }
-});
+  },
+);
 
 /**
  * Delete an integration
  */
-router.delete('/api/integrations/:integrationId', async (req: any, res) => {
+router.delete('/api/integrations/:integrationId', requireAuth, async (req: any, res) => {
   try {
     const { integrationId } = req.params;
     const tenantId = req.user?.tenantId;
@@ -308,7 +305,7 @@ router.delete('/api/integrations/:integrationId', async (req: any, res) => {
 /**
  * Test an integration connection
  */
-router.post('/api/integrations/:integrationId/test', async (req: any, res) => {
+router.post('/api/integrations/:integrationId/test', requireAuth, async (req: any, res) => {
   try {
     const { integrationId } = req.params;
     const tenantId = req.user?.tenantId;

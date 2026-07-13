@@ -20,7 +20,7 @@ import rateLimit from 'express-rate-limit';
 import { csrfProtection, csrfTokenHandler } from './middleware/csrf-protection';
 import connectPg from 'connect-pg-simple';
 import { globalTieredRateLimit } from './middleware/user-rate-limit';
-import { setupAuth } from './replitAuth';
+import { setupAuth, requireAuth } from './replitAuth';
 import { blockRegistrations } from './middleware/registration-lock';
 import { apiVersioning, legacyRouteSupport, apiVersionInfo } from './middleware/api-versioning';
 import { resolveTenant } from './middleware/tenancy';
@@ -33,40 +33,9 @@ import { getUserId, getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes');
 
-// ─── Legacy Auth Middleware (used by setupSalesPipelineRoutes) ─────────
-const requireAuth = async (req: any, res: any, next: any) => {
-  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
-  if (!isAuthenticated) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-  const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
-  if (userId && (!req.user || !req.user.tenantId)) {
-    try {
-      const fullUser = await storage.getUser(userId);
-      if (fullUser) {
-        req.user = {
-          ...req.user,
-          id: fullUser.id,
-          tenantId: fullUser.tenantId,
-          isPlatformUser: fullUser.isPlatformUser,
-          email: fullUser.email,
-          firstName: fullUser.firstName,
-          lastName: fullUser.lastName,
-        };
-      }
-    } catch (error) {
-      log.error('Error fetching user details:', error);
-    }
-  }
-  const helperUserId = getUserId(req);
-  const helperTenantId = getTenantId(req);
-  if (!req.user) {
-    req.user = { id: helperUserId, tenantId: helperTenantId };
-  } else if (!req.user.tenantId && !req.user.id) {
-    req.user = { id: helperUserId, tenantId: helperTenantId };
-  }
-  next();
-};
+// requireAuth is imported from ./replitAuth (centralized JWT + test + session
+// auth per CLAUDE.md). It is passed into registerAllRouteModules below so every
+// module shares the same middleware instead of a permissive local stub (CR-011).
 
 // ═══════════════════════════════════════════════════════════════════════
 // Route Registration
