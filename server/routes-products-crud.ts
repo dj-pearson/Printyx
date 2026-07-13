@@ -6,6 +6,13 @@ import type { Express } from 'express';
 import { storage } from './storage';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes-products-crud');
+import { enhanceUserContext, requirePermission, PERMISSIONS } from './middleware/rbac-route-helper';
+import type { RequestHandler } from 'express';
+// requirePermission/enhanceUserContext are typed against AuthenticatedRequest,
+// which does not unify with the app.<method> overloads; cast to RequestHandler (CR-003).
+const ctx = enhanceUserContext as unknown as RequestHandler;
+const can = (perms: string[]): RequestHandler =>
+  requirePermission(perms) as unknown as RequestHandler;
 
 import {
   insertProductModelSchema,
@@ -378,192 +385,214 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.post('/api/product-models', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      const validatedData = insertProductModelSchema.parse({
-        ...req.body,
-        tenantId,
-      });
-      const model = await storage.createProductModel(validatedData);
-      res.json(model);
-    } catch (error) {
-      log.error('Error creating product model:', error);
-      res.status(500).json({ message: 'Failed to create product model' });
-    }
-  });
-
-  app.patch('/api/product-models/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      // Clean up numeric fields - convert empty strings to null
-      const cleanedData = { ...req.body };
-      const numericFields = [
-        'msrp',
-        'newRepPrice',
-        'upgradeRepPrice',
-        'lexmarkRepPrice',
-        'cost',
-        'weight',
-        'warrantyMonths',
-        'standardCost',
-        'standardRepPrice',
-        'newCost',
-        'upgradeCost',
-        'minVolume',
-        'maxVolume',
-        'baseRate',
-        'cpc',
-        'cpcOverage',
-      ];
-
-      numericFields.forEach((field) => {
-        if (cleanedData[field] === '' || cleanedData[field] === undefined) {
-          cleanedData[field] = null;
-        } else if (cleanedData[field] && typeof cleanedData[field] === 'string') {
-          const parsed = parseFloat(cleanedData[field]);
-          cleanedData[field] = isNaN(parsed) ? null : parsed;
+  app.post(
+    '/api/product-models',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.CREATE]),
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
-      });
-
-      // First check if this is a master product model (displayed in ProductModels page)
-      const existingMasterModel = await storage.getMasterProductModel(id);
-      let model;
-
-      if (existingMasterModel) {
-        // Update master product model
-        model = await storage.updateMasterProductModel(id, cleanedData);
-      } else {
-        // Update regular product model
-        model = await storage.updateProductModel(id, cleanedData, tenantId);
+        const validatedData = insertProductModelSchema.parse({
+          ...req.body,
+          tenantId,
+        });
+        const model = await storage.createProductModel(validatedData);
+        res.json(model);
+      } catch (error) {
+        log.error('Error creating product model:', error);
+        res.status(500).json({ message: 'Failed to create product model' });
       }
+    },
+  );
 
-      if (!model) {
-        return res.status(404).json({ message: 'Product model not found' });
+  app.patch(
+    '/api/product-models/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+
+        // Clean up numeric fields - convert empty strings to null
+        const cleanedData = { ...req.body };
+        const numericFields = [
+          'msrp',
+          'newRepPrice',
+          'upgradeRepPrice',
+          'lexmarkRepPrice',
+          'cost',
+          'weight',
+          'warrantyMonths',
+          'standardCost',
+          'standardRepPrice',
+          'newCost',
+          'upgradeCost',
+          'minVolume',
+          'maxVolume',
+          'baseRate',
+          'cpc',
+          'cpcOverage',
+        ];
+
+        numericFields.forEach((field) => {
+          if (cleanedData[field] === '' || cleanedData[field] === undefined) {
+            cleanedData[field] = null;
+          } else if (cleanedData[field] && typeof cleanedData[field] === 'string') {
+            const parsed = parseFloat(cleanedData[field]);
+            cleanedData[field] = isNaN(parsed) ? null : parsed;
+          }
+        });
+
+        // First check if this is a master product model (displayed in ProductModels page)
+        const existingMasterModel = await storage.getMasterProductModel(id);
+        let model;
+
+        if (existingMasterModel) {
+          // Update master product model
+          model = await storage.updateMasterProductModel(id, cleanedData);
+        } else {
+          // Update regular product model
+          model = await storage.updateProductModel(id, cleanedData, tenantId);
+        }
+
+        if (!model) {
+          return res.status(404).json({ message: 'Product model not found' });
+        }
+        res.json(model);
+      } catch (error) {
+        log.error('Error updating product model:', error);
+        res.status(500).json({ message: 'Failed to update product model' });
       }
-      res.json(model);
-    } catch (error) {
-      log.error('Error updating product model:', error);
-      res.status(500).json({ message: 'Failed to update product model' });
-    }
-  });
+    },
+  );
 
   // Bulk delete product models (must be before single delete route)
-  app.delete('/api/product-models/bulk-delete', async (req: any, res) => {
-    try {
-      const { ids } = req.body;
-      const tenantId = req.user?.tenantId;
+  app.delete(
+    '/api/product-models/bulk-delete',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.DELETE]),
+    async (req: any, res) => {
+      try {
+        const { ids } = req.body;
+        const tenantId = req.user?.tenantId;
 
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      if (!ids || !Array.isArray(ids) || ids.length === 0) {
-        return res.status(400).json({ error: 'Invalid or empty ids array' });
-      }
-
-      log.info('Bulk deleting master models:', ids);
-      const results = [];
-
-      for (const id of ids) {
-        try {
-          // Check if this is a master product model (since that's what the frontend displays)
-          const existingMasterModel = await storage.getMasterProductModel(id);
-          if (existingMasterModel) {
-            // Delete from master product models table
-            const result = await storage.deleteMasterProductModel(id);
-            results.push({ id, success: result });
-            log.info(`Delete result for master model ${id}:`, result);
-          } else {
-            // Fallback: check tenant product models table
-            const existingModel = await storage.getProductModel(id, tenantId);
-            if (existingModel) {
-              const result = await storage.deleteProductModel(id, tenantId);
-              results.push({ id, success: result });
-              log.info(`Delete result for tenant model ${id}:`, result);
-            } else {
-              results.push({ id, success: false, error: 'Product model not found' });
-            }
-          }
-        } catch (error) {
-          log.error(`Error deleting model ${id}:`, error);
-          results.push({
-            id,
-            success: false,
-            error: error instanceof Error ? error.message : String(error),
-          });
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
         }
+
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+          return res.status(400).json({ error: 'Invalid or empty ids array' });
+        }
+
+        log.info('Bulk deleting master models:', ids);
+        const results = [];
+
+        for (const id of ids) {
+          try {
+            // Check if this is a master product model (since that's what the frontend displays)
+            const existingMasterModel = await storage.getMasterProductModel(id);
+            if (existingMasterModel) {
+              // Delete from master product models table
+              const result = await storage.deleteMasterProductModel(id);
+              results.push({ id, success: result });
+              log.info(`Delete result for master model ${id}:`, result);
+            } else {
+              // Fallback: check tenant product models table
+              const existingModel = await storage.getProductModel(id, tenantId);
+              if (existingModel) {
+                const result = await storage.deleteProductModel(id, tenantId);
+                results.push({ id, success: result });
+                log.info(`Delete result for tenant model ${id}:`, result);
+              } else {
+                results.push({ id, success: false, error: 'Product model not found' });
+              }
+            }
+          } catch (error) {
+            log.error(`Error deleting model ${id}:`, error);
+            results.push({
+              id,
+              success: false,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
+
+        const successful = results.filter((r) => r.success).length;
+        const failed = results.filter((r) => !r.success).length;
+
+        log.info(`Bulk delete complete: ${successful} successful, ${failed} failed`);
+        res.json({
+          message: `Successfully deleted ${successful} of ${ids.length} product models`,
+          successful,
+          failed,
+          results,
+        });
+      } catch (error) {
+        log.error('Error in bulk delete:', error);
+        res.status(500).json({ error: 'Failed to perform bulk delete' });
       }
+    },
+  );
 
-      const successful = results.filter((r) => r.success).length;
-      const failed = results.filter((r) => !r.success).length;
+  app.delete(
+    '/api/product-models/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.DELETE]),
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
 
-      log.info(`Bulk delete complete: ${successful} successful, ${failed} failed`);
-      res.json({
-        message: `Successfully deleted ${successful} of ${ids.length} product models`,
-        successful,
-        failed,
-        results,
-      });
-    } catch (error) {
-      log.error('Error in bulk delete:', error);
-      res.status(500).json({ error: 'Failed to perform bulk delete' });
-    }
-  });
+        // Check if this is a master product model (since that's what the frontend displays)
+        const existingMasterModel = await storage.getMasterProductModel(id);
+        if (existingMasterModel) {
+          // Delete from master product models table
+          const deleted = await storage.deleteMasterProductModel(id);
+          log.info(`Delete result for master model ${id}:`, deleted);
 
-  app.delete('/api/product-models/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
+          if (!deleted) {
+            log.info(`Delete failed: No rows affected for master model ${id}`);
+            return res
+              .status(404)
+              .json({ message: 'Product model not found or could not be deleted' });
+          }
+          res.json({ message: 'Product model deleted successfully' });
+          return;
+        }
 
-      // Check if this is a master product model (since that's what the frontend displays)
-      const existingMasterModel = await storage.getMasterProductModel(id);
-      if (existingMasterModel) {
-        // Delete from master product models table
-        const deleted = await storage.deleteMasterProductModel(id);
-        log.info(`Delete result for master model ${id}:`, deleted);
+        // Fallback: check tenant product models table
+        const existingModel = await storage.getProductModel(id, tenantId);
+        if (!existingModel) {
+          log.info(`Delete failed: Product model ${id} not found in either table`);
+          return res.status(404).json({ message: 'Product model not found' });
+        }
+
+        const deleted = await storage.deleteProductModel(id, tenantId);
+        log.info(`Delete result for model ${id}:`, deleted);
 
         if (!deleted) {
-          log.info(`Delete failed: No rows affected for master model ${id}`);
+          log.info(`Delete failed: No rows affected for model ${id} in tenant ${tenantId}`);
           return res
             .status(404)
             .json({ message: 'Product model not found or could not be deleted' });
         }
         res.json({ message: 'Product model deleted successfully' });
-        return;
+      } catch (error) {
+        log.error('Error deleting product model:', error);
+        res.status(500).json({ message: 'Failed to delete product model' });
       }
-
-      // Fallback: check tenant product models table
-      const existingModel = await storage.getProductModel(id, tenantId);
-      if (!existingModel) {
-        log.info(`Delete failed: Product model ${id} not found in either table`);
-        return res.status(404).json({ message: 'Product model not found' });
-      }
-
-      const deleted = await storage.deleteProductModel(id, tenantId);
-      log.info(`Delete result for model ${id}:`, deleted);
-
-      if (!deleted) {
-        log.info(`Delete failed: No rows affected for model ${id} in tenant ${tenantId}`);
-        return res.status(404).json({ message: 'Product model not found or could not be deleted' });
-      }
-      res.json({ message: 'Product model deleted successfully' });
-    } catch (error) {
-      log.error('Error deleting product model:', error);
-      res.status(500).json({ message: 'Failed to delete product model' });
-    }
-  });
+    },
+  );
 
   // ============= PRODUCT ACCESSORIES =============
 
@@ -609,41 +638,51 @@ export function registerProductsCrudRoutes(app: Express) {
     },
   );
 
-  app.post('/api/product-accessories', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.post(
+    '/api/product-accessories',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.CREATE]),
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const validatedData = insertProductAccessorySchema.parse({
+          ...req.body,
+          tenantId,
+        });
+        const accessory = await storage.createProductAccessory(validatedData);
+        res.json(accessory);
+      } catch (error) {
+        log.error('Error creating product accessory:', error);
+        res.status(500).json({ message: 'Failed to create product accessory' });
       }
-      const validatedData = insertProductAccessorySchema.parse({
-        ...req.body,
-        tenantId,
-      });
-      const accessory = await storage.createProductAccessory(validatedData);
-      res.json(accessory);
-    } catch (error) {
-      log.error('Error creating product accessory:', error);
-      res.status(500).json({ message: 'Failed to create product accessory' });
-    }
-  });
+    },
+  );
 
-  app.delete('/api/product-accessories/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.delete(
+    '/api/product-accessories/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.DELETE]),
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const success = await storage.deleteProductAccessory(id, tenantId);
+        if (!success) {
+          return res.status(404).json({ message: 'Product accessory not found' });
+        }
+        res.json({ message: 'Product accessory deleted successfully' });
+      } catch (error) {
+        log.error('Error deleting product accessory:', error);
+        res.status(500).json({ message: 'Failed to delete product accessory' });
       }
-      const success = await storage.deleteProductAccessory(id, tenantId);
-      if (!success) {
-        return res.status(404).json({ message: 'Product accessory not found' });
-      }
-      res.json({ message: 'Product accessory deleted successfully' });
-    } catch (error) {
-      log.error('Error deleting product accessory:', error);
-      res.status(500).json({ message: 'Failed to delete product accessory' });
-    }
-  });
+    },
+  );
 
   app.post(
     '/api/product-models/:modelId/accessories',
@@ -680,23 +719,28 @@ export function registerProductsCrudRoutes(app: Express) {
     },
   );
 
-  app.patch('/api/product-accessories/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.patch(
+    '/api/product-accessories/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const accessory = await storage.updateProductAccessory(id, req.body, tenantId);
+        if (!accessory) {
+          return res.status(404).json({ message: 'Product accessory not found' });
+        }
+        res.json(accessory);
+      } catch (error) {
+        log.error('Error updating product accessory:', error);
+        res.status(500).json({ message: 'Failed to update product accessory' });
       }
-      const accessory = await storage.updateProductAccessory(id, req.body, tenantId);
-      if (!accessory) {
-        return res.status(404).json({ message: 'Product accessory not found' });
-      }
-      res.json(accessory);
-    } catch (error) {
-      log.error('Error updating product accessory:', error);
-      res.status(500).json({ message: 'Failed to update product accessory' });
-    }
-  });
+    },
+  );
 
   // ============= ACCESSORY-MODEL COMPATIBILITY =============
 
@@ -715,25 +759,30 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.post('/api/accessories/:accessoryId/compatibility', async (req: any, res) => {
-    try {
-      const { accessoryId } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.post(
+    '/api/accessories/:accessoryId/compatibility',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
+    async (req: any, res) => {
+      try {
+        const { accessoryId } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const validatedData = insertAccessoryModelCompatibilitySchema.parse({
+          ...req.body,
+          accessoryId,
+          tenantId,
+        });
+        const compatibility = await storage.createAccessoryModelCompatibility(validatedData);
+        res.status(201).json(compatibility);
+      } catch (error) {
+        log.error('Error creating accessory compatibility:', error);
+        res.status(500).json({ message: 'Failed to create compatibility' });
       }
-      const validatedData = insertAccessoryModelCompatibilitySchema.parse({
-        ...req.body,
-        accessoryId,
-        tenantId,
-      });
-      const compatibility = await storage.createAccessoryModelCompatibility(validatedData);
-      res.status(201).json(compatibility);
-    } catch (error) {
-      log.error('Error creating accessory compatibility:', error);
-      res.status(500).json({ message: 'Failed to create compatibility' });
-    }
-  });
+    },
+  );
 
   app.delete(
     '/api/accessories/:accessoryId/compatibility/:modelId',
@@ -769,23 +818,28 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.post('/api/accessory-model-compatibility', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.post(
+    '/api/accessory-model-compatibility',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const validatedData = insertAccessoryModelCompatibilitySchema.parse({
+          ...req.body,
+          tenantId,
+        });
+        const compatibility = await storage.createAccessoryModelCompatibility(validatedData);
+        res.status(201).json(compatibility);
+      } catch (error) {
+        log.error('Error creating accessory compatibility:', error);
+        res.status(500).json({ message: 'Failed to create compatibility' });
       }
-      const validatedData = insertAccessoryModelCompatibilitySchema.parse({
-        ...req.body,
-        tenantId,
-      });
-      const compatibility = await storage.createAccessoryModelCompatibility(validatedData);
-      res.status(201).json(compatibility);
-    } catch (error) {
-      log.error('Error creating accessory compatibility:', error);
-      res.status(500).json({ message: 'Failed to create compatibility' });
-    }
-  });
+    },
+  );
 
   app.delete(
     '/api/accessory-model-compatibility/:accessoryId/:modelId',
@@ -822,59 +876,74 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.post('/api/professional-services', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.post(
+    '/api/professional-services',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.CREATE]),
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const validatedData = insertProfessionalServiceSchema.parse({
+          ...req.body,
+          tenantId,
+        });
+        const service = await storage.createProfessionalService(validatedData);
+        res.json(service);
+      } catch (error) {
+        log.error('Error creating professional service:', error);
+        res.status(500).json({ message: 'Failed to create professional service' });
       }
-      const validatedData = insertProfessionalServiceSchema.parse({
-        ...req.body,
-        tenantId,
-      });
-      const service = await storage.createProfessionalService(validatedData);
-      res.json(service);
-    } catch (error) {
-      log.error('Error creating professional service:', error);
-      res.status(500).json({ message: 'Failed to create professional service' });
-    }
-  });
+    },
+  );
 
-  app.patch('/api/professional-services/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.patch(
+    '/api/professional-services/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const updated = await storage.updateProfessionalService(id, req.body, tenantId);
+        if (!updated) {
+          return res.status(404).json({ message: 'Professional service not found' });
+        }
+        res.json(updated);
+      } catch (error) {
+        log.error('Error updating professional service:', error);
+        res.status(500).json({ message: 'Failed to update professional service' });
       }
-      const updated = await storage.updateProfessionalService(id, req.body, tenantId);
-      if (!updated) {
-        return res.status(404).json({ message: 'Professional service not found' });
-      }
-      res.json(updated);
-    } catch (error) {
-      log.error('Error updating professional service:', error);
-      res.status(500).json({ message: 'Failed to update professional service' });
-    }
-  });
+    },
+  );
 
-  app.delete('/api/professional-services/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.delete(
+    '/api/professional-services/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.DELETE]),
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const success = await storage.deleteProfessionalService(id, tenantId);
+        if (!success) {
+          return res.status(404).json({ message: 'Professional service not found' });
+        }
+        res.json({ message: 'Professional service deleted successfully' });
+      } catch (error) {
+        log.error('Error deleting professional service:', error);
+        res.status(500).json({ message: 'Failed to delete professional service' });
       }
-      const success = await storage.deleteProfessionalService(id, tenantId);
-      if (!success) {
-        return res.status(404).json({ message: 'Professional service not found' });
-      }
-      res.json({ message: 'Professional service deleted successfully' });
-    } catch (error) {
-      log.error('Error deleting professional service:', error);
-      res.status(500).json({ message: 'Failed to delete professional service' });
-    }
-  });
+    },
+  );
 
   // ============= SERVICE PRODUCTS =============
 
@@ -892,23 +961,28 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.post('/api/service-products', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.post(
+    '/api/service-products',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.CREATE]),
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const validatedData = insertServiceProductSchema.parse({
+          ...req.body,
+          tenantId,
+        });
+        const service = await storage.createServiceProduct(validatedData);
+        res.json(service);
+      } catch (error) {
+        log.error('Error creating service product:', error);
+        res.status(500).json({ message: 'Failed to create service product' });
       }
-      const validatedData = insertServiceProductSchema.parse({
-        ...req.body,
-        tenantId,
-      });
-      const service = await storage.createServiceProduct(validatedData);
-      res.json(service);
-    } catch (error) {
-      log.error('Error creating service product:', error);
-      res.status(500).json({ message: 'Failed to create service product' });
-    }
-  });
+    },
+  );
 
   // ============= SUPPLIES =============
 
@@ -926,59 +1000,74 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.post('/api/supplies', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.post(
+    '/api/supplies',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.CREATE]),
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const validatedData = insertSupplySchema.parse({
+          ...req.body,
+          tenantId,
+        });
+        const supply = await storage.createSupply(validatedData);
+        res.json(supply);
+      } catch (error) {
+        log.error('Error creating supply:', error);
+        res.status(500).json({ message: 'Failed to create supply' });
       }
-      const validatedData = insertSupplySchema.parse({
-        ...req.body,
-        tenantId,
-      });
-      const supply = await storage.createSupply(validatedData);
-      res.json(supply);
-    } catch (error) {
-      log.error('Error creating supply:', error);
-      res.status(500).json({ message: 'Failed to create supply' });
-    }
-  });
+    },
+  );
 
-  app.patch('/api/supplies/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.patch(
+    '/api/supplies/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const updated = await storage.updateSupply(id, req.body, tenantId);
+        if (!updated) {
+          return res.status(404).json({ message: 'Supply not found' });
+        }
+        res.json(updated);
+      } catch (error) {
+        log.error('Error updating supply:', error);
+        res.status(500).json({ message: 'Failed to update supply' });
       }
-      const updated = await storage.updateSupply(id, req.body, tenantId);
-      if (!updated) {
-        return res.status(404).json({ message: 'Supply not found' });
-      }
-      res.json(updated);
-    } catch (error) {
-      log.error('Error updating supply:', error);
-      res.status(500).json({ message: 'Failed to update supply' });
-    }
-  });
+    },
+  );
 
-  app.delete('/api/supplies/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.delete(
+    '/api/supplies/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.DELETE]),
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const success = await storage.deleteSupply(id, tenantId);
+        if (!success) {
+          return res.status(404).json({ message: 'Supply not found' });
+        }
+        res.json({ message: 'Supply deleted successfully' });
+      } catch (error) {
+        log.error('Error deleting supply:', error);
+        res.status(500).json({ message: 'Failed to delete supply' });
       }
-      const success = await storage.deleteSupply(id, tenantId);
-      if (!success) {
-        return res.status(404).json({ message: 'Supply not found' });
-      }
-      res.json({ message: 'Supply deleted successfully' });
-    } catch (error) {
-      log.error('Error deleting supply:', error);
-      res.status(500).json({ message: 'Failed to delete supply' });
-    }
-  });
+    },
+  );
 
   // ============= MANAGED SERVICES =============
 
@@ -1021,118 +1110,143 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.post('/api/inventory', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      // Prefer strict validation against insert schema if client sends schema-compatible payload
-      let payload: any;
+  app.post(
+    '/api/inventory',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.CREATE]),
+    async (req: any, res) => {
       try {
-        payload = insertInventoryItemSchema.parse({ ...req.body, tenantId });
-      } catch {
-        // Fallback: map simplified UI shape to schema
-        const { name, sku, reorderPoint, unitCost, currentStock } = req.body ?? {};
-        payload = insertInventoryItemSchema.parse({
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        // Prefer strict validation against insert schema if client sends schema-compatible payload
+        let payload: any;
+        try {
+          payload = insertInventoryItemSchema.parse({ ...req.body, tenantId });
+        } catch {
+          // Fallback: map simplified UI shape to schema
+          const { name, sku, reorderPoint, unitCost, currentStock } = req.body ?? {};
+          payload = insertInventoryItemSchema.parse({
+            tenantId,
+            partNumber: sku,
+            itemDescription: name,
+            reorderPoint: reorderPoint ?? 0,
+            unitCost: unitCost ?? 0,
+            quantityOnHand: currentStock ?? 0,
+          });
+        }
+        const created = await storage.createInventoryItem(payload);
+        res.json(created);
+      } catch (error) {
+        log.error('Error creating inventory item:', error);
+        res.status(500).json({ message: 'Failed to create inventory item' });
+      }
+    },
+  );
+
+  app.patch(
+    '/api/inventory/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        // Allow partial updates either in schema fields or UI fields
+        const body = req.body ?? {};
+        const updates: any = {
+          ...body,
+        };
+        if (body.name) updates.itemDescription = body.name;
+        if (body.sku) updates.partNumber = body.sku;
+        if (typeof body.currentStock === 'number') updates.quantityOnHand = body.currentStock;
+        if (typeof body.reorderPoint === 'number') updates.reorderPoint = body.reorderPoint;
+        if (typeof body.unitCost === 'number') updates.unitCost = body.unitCost;
+
+        const updated = await storage.updateInventoryItem(id, updates, tenantId);
+        if (!updated) {
+          return res.status(404).json({ message: 'Inventory item not found' });
+        }
+        res.json(updated);
+      } catch (error) {
+        log.error('Error updating inventory item:', error);
+        res.status(500).json({ message: 'Failed to update inventory item' });
+      }
+    },
+  );
+
+  app.post(
+    '/api/managed-services',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.CREATE]),
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const validatedData = insertManagedServiceSchema.parse({
+          ...req.body,
           tenantId,
-          partNumber: sku,
-          itemDescription: name,
-          reorderPoint: reorderPoint ?? 0,
-          unitCost: unitCost ?? 0,
-          quantityOnHand: currentStock ?? 0,
         });
+        const service = await storage.createManagedService(validatedData);
+        res.json(service);
+      } catch (error) {
+        log.error('Error creating managed service:', error);
+        res.status(500).json({ message: 'Failed to create managed service' });
       }
-      const created = await storage.createInventoryItem(payload);
-      res.json(created);
-    } catch (error) {
-      log.error('Error creating inventory item:', error);
-      res.status(500).json({ message: 'Failed to create inventory item' });
-    }
-  });
+    },
+  );
 
-  app.patch('/api/inventory/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.patch(
+    '/api/managed-services/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.UPDATE]),
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const updated = await storage.updateManagedService(id, req.body, tenantId);
+        if (!updated) {
+          return res.status(404).json({ message: 'Managed service not found' });
+        }
+        res.json(updated);
+      } catch (error) {
+        log.error('Error updating managed service:', error);
+        res.status(500).json({ message: 'Failed to update managed service' });
       }
-      // Allow partial updates either in schema fields or UI fields
-      const body = req.body ?? {};
-      const updates: any = {
-        ...body,
-      };
-      if (body.name) updates.itemDescription = body.name;
-      if (body.sku) updates.partNumber = body.sku;
-      if (typeof body.currentStock === 'number') updates.quantityOnHand = body.currentStock;
-      if (typeof body.reorderPoint === 'number') updates.reorderPoint = body.reorderPoint;
-      if (typeof body.unitCost === 'number') updates.unitCost = body.unitCost;
+    },
+  );
 
-      const updated = await storage.updateInventoryItem(id, updates, tenantId);
-      if (!updated) {
-        return res.status(404).json({ message: 'Inventory item not found' });
+  app.delete(
+    '/api/managed-services/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.DELETE]),
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const success = await storage.deleteManagedService(id, tenantId);
+        if (!success) {
+          return res.status(404).json({ message: 'Managed service not found' });
+        }
+        res.json({ message: 'Managed service deleted successfully' });
+      } catch (error) {
+        log.error('Error deleting managed service:', error);
+        res.status(500).json({ message: 'Failed to delete managed service' });
       }
-      res.json(updated);
-    } catch (error) {
-      log.error('Error updating inventory item:', error);
-      res.status(500).json({ message: 'Failed to update inventory item' });
-    }
-  });
-
-  app.post('/api/managed-services', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      const validatedData = insertManagedServiceSchema.parse({
-        ...req.body,
-        tenantId,
-      });
-      const service = await storage.createManagedService(validatedData);
-      res.json(service);
-    } catch (error) {
-      log.error('Error creating managed service:', error);
-      res.status(500).json({ message: 'Failed to create managed service' });
-    }
-  });
-
-  app.patch('/api/managed-services/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      const updated = await storage.updateManagedService(id, req.body, tenantId);
-      if (!updated) {
-        return res.status(404).json({ message: 'Managed service not found' });
-      }
-      res.json(updated);
-    } catch (error) {
-      log.error('Error updating managed service:', error);
-      res.status(500).json({ message: 'Failed to update managed service' });
-    }
-  });
-
-  app.delete('/api/managed-services/:id', async (req: any, res) => {
-    try {
-      const { id } = req.params;
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-      const success = await storage.deleteManagedService(id, tenantId);
-      if (!success) {
-        return res.status(404).json({ message: 'Managed service not found' });
-      }
-      res.json({ message: 'Managed service deleted successfully' });
-    } catch (error) {
-      log.error('Error deleting managed service:', error);
-      res.status(500).json({ message: 'Failed to delete managed service' });
-    }
-  });
+    },
+  );
 
   // ============= ACCOUNTING API ROUTES =============
 
@@ -1163,7 +1277,7 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.post('/api/vendors', async (req, res) => {
+  app.post('/api/vendors', ctx, can([PERMISSIONS.INVENTORY.ITEM.CREATE]), async (req, res) => {
     try {
       const { tenantId } = (req as any).user || {};
       const vendorData = { ...req.body, tenantId };
@@ -1175,7 +1289,7 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.patch('/api/vendors/:id', async (req, res) => {
+  app.patch('/api/vendors/:id', ctx, can([PERMISSIONS.INVENTORY.ITEM.UPDATE]), async (req, res) => {
     try {
       const { tenantId } = (req as any).user || {};
       const { id } = req.params;
@@ -1190,21 +1304,26 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.delete('/api/vendors/:id', async (req, res) => {
-    try {
-      const { tenantId } = (req as any).user || {};
-      const { id } = req.params;
-      const success = await storage.deleteVendor(id, tenantId);
-      if (success) {
-        res.json({ message: 'Vendor deleted successfully' });
-      } else {
-        res.status(404).json({ message: 'Vendor not found' });
+  app.delete(
+    '/api/vendors/:id',
+    ctx,
+    can([PERMISSIONS.INVENTORY.ITEM.DELETE]),
+    async (req, res) => {
+      try {
+        const { tenantId } = (req as any).user || {};
+        const { id } = req.params;
+        const success = await storage.deleteVendor(id, tenantId);
+        if (success) {
+          res.json({ message: 'Vendor deleted successfully' });
+        } else {
+          res.status(404).json({ message: 'Vendor not found' });
+        }
+      } catch (error) {
+        log.error('Error deleting vendor:', error);
+        res.status(500).json({ message: 'Failed to delete vendor' });
       }
-    } catch (error) {
-      log.error('Error deleting vendor:', error);
-      res.status(500).json({ message: 'Failed to delete vendor' });
-    }
-  });
+    },
+  );
 
   // Accounts Payable Management
   app.get('/api/accounts-payable', async (req, res) => {
@@ -1218,7 +1337,7 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.post('/api/accounts-payable', async (req, res) => {
+  app.post('/api/accounts-payable', ctx, can(['finance.bill.enter']), async (req, res) => {
     try {
       const { tenantId, id: userId } = (req as any).user || {};
       const apData = { ...req.body, tenantId, createdBy: userId };
@@ -1242,17 +1361,22 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.post('/api/accounts-receivable', async (req, res) => {
-    try {
-      const { tenantId, id: userId } = (req as any).user || {};
-      const arData = { ...req.body, tenantId, createdBy: userId };
-      const newAR = await storage.createAccountsReceivable(arData);
-      res.status(201).json(newAR);
-    } catch (error) {
-      log.error('Error creating account receivable:', error);
-      res.status(500).json({ message: 'Failed to create account receivable' });
-    }
-  });
+  app.post(
+    '/api/accounts-receivable',
+    ctx,
+    can([PERMISSIONS.FINANCE.INVOICE.CREATE]),
+    async (req, res) => {
+      try {
+        const { tenantId, id: userId } = (req as any).user || {};
+        const arData = { ...req.body, tenantId, createdBy: userId };
+        const newAR = await storage.createAccountsReceivable(arData);
+        res.status(201).json(newAR);
+      } catch (error) {
+        log.error('Error creating account receivable:', error);
+        res.status(500).json({ message: 'Failed to create account receivable' });
+      }
+    },
+  );
 
   /**
    * NOTE: Migrated to routes-financial.ts (Phase 2):
@@ -1295,17 +1419,22 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.post('/api/purchase-orders', async (req, res) => {
-    try {
-      const { tenantId, id: userId } = (req as any).user || {};
-      const poData = { ...req.body, tenantId, createdBy: userId };
-      const newPO = await storage.createPurchaseOrder(poData);
-      res.status(201).json(newPO);
-    } catch (error) {
-      log.error('Error creating purchase order:', error);
-      res.status(500).json({ message: 'Failed to create purchase order' });
-    }
-  });
+  app.post(
+    '/api/purchase-orders',
+    ctx,
+    can([PERMISSIONS.INVENTORY.PURCHASE_ORDER.CREATE]),
+    async (req, res) => {
+      try {
+        const { tenantId, id: userId } = (req as any).user || {};
+        const poData = { ...req.body, tenantId, createdBy: userId };
+        const newPO = await storage.createPurchaseOrder(poData);
+        res.status(201).json(newPO);
+      } catch (error) {
+        log.error('Error creating purchase order:', error);
+        res.status(500).json({ message: 'Failed to create purchase order' });
+      }
+    },
+  );
 
   // Low stock suggestions for auto-generating POs
   app.get('/api/purchase-orders/suggestions/low-stock', async (req: any, res) => {
@@ -1372,74 +1501,79 @@ export function registerProductsCrudRoutes(app: Express) {
   });
 
   // Generate purchase orders from low-stock suggestions
-  app.post('/api/purchase-orders/generate-from-suggestions', async (req: any, res) => {
-    try {
-      const { tenantId, id: userId } = req.user || {};
-      const { groups, orderDate, expectedDate, description } = req.body || {};
-      if (!Array.isArray(groups) || groups.length === 0) {
-        return res.status(400).json({ message: 'No groups provided' });
-      }
-
-      const createdPoIds: string[] = [];
-      for (let i = 0; i < groups.length; i++) {
-        const group = groups[i];
-        if (!group.vendorId || !Array.isArray(group.items) || group.items.length === 0) continue;
-
-        let subtotal = 0;
-        const lineItems = group.items.map((it: any, idx: number) => {
-          const qty = Number(it.quantity || it.recommendedQty || 0);
-          const price = Number(it.unitCost || 0);
-          const total = qty * price;
-          subtotal += total;
-          return {
-            tenantId,
-            purchaseOrderId: '',
-            lineNumber: idx + 1,
-            itemDescription: it.itemDescription || it.partNumber || 'Item',
-            itemCode: it.partNumber || null,
-            quantity: qty,
-            unitPrice: price,
-            totalPrice: total,
-          };
-        });
-
-        const poNumber = `PO-${Date.now()}-${i + 1}`;
-        const poData = {
-          tenantId,
-          poNumber,
-          vendorId: group.vendorId,
-          requestedBy: userId,
-          orderDate: orderDate ? new Date(orderDate) : new Date(),
-          expectedDate: expectedDate ? new Date(expectedDate) : null,
-          description:
-            description ||
-            `Auto-generated from low stock for ${group.vendorName || group.vendorId}`,
-          subtotal,
-          taxAmount: 0,
-          shippingAmount: 0,
-          totalAmount: subtotal,
-          status: 'draft',
-          deliveryAddress: null,
-          specialInstructions: null,
-          approvedBy: null,
-          approvedDate: null,
-          createdBy: userId,
-        } as any;
-
-        const createdPO = await storage.createPurchaseOrder(poData);
-        createdPoIds.push(createdPO.id);
-
-        for (const li of lineItems) {
-          await storage.createPurchaseOrderItem({ ...li, purchaseOrderId: createdPO.id });
+  app.post(
+    '/api/purchase-orders/generate-from-suggestions',
+    ctx,
+    can([PERMISSIONS.INVENTORY.PURCHASE_ORDER.CREATE]),
+    async (req: any, res) => {
+      try {
+        const { tenantId, id: userId } = req.user || {};
+        const { groups, orderDate, expectedDate, description } = req.body || {};
+        if (!Array.isArray(groups) || groups.length === 0) {
+          return res.status(400).json({ message: 'No groups provided' });
         }
-      }
 
-      res.json({ createdPoIds });
-    } catch (error) {
-      log.error('Error generating purchase orders:', error);
-      res.status(500).json({ message: 'Failed to generate purchase orders' });
-    }
-  });
+        const createdPoIds: string[] = [];
+        for (let i = 0; i < groups.length; i++) {
+          const group = groups[i];
+          if (!group.vendorId || !Array.isArray(group.items) || group.items.length === 0) continue;
+
+          let subtotal = 0;
+          const lineItems = group.items.map((it: any, idx: number) => {
+            const qty = Number(it.quantity || it.recommendedQty || 0);
+            const price = Number(it.unitCost || 0);
+            const total = qty * price;
+            subtotal += total;
+            return {
+              tenantId,
+              purchaseOrderId: '',
+              lineNumber: idx + 1,
+              itemDescription: it.itemDescription || it.partNumber || 'Item',
+              itemCode: it.partNumber || null,
+              quantity: qty,
+              unitPrice: price,
+              totalPrice: total,
+            };
+          });
+
+          const poNumber = `PO-${Date.now()}-${i + 1}`;
+          const poData = {
+            tenantId,
+            poNumber,
+            vendorId: group.vendorId,
+            requestedBy: userId,
+            orderDate: orderDate ? new Date(orderDate) : new Date(),
+            expectedDate: expectedDate ? new Date(expectedDate) : null,
+            description:
+              description ||
+              `Auto-generated from low stock for ${group.vendorName || group.vendorId}`,
+            subtotal,
+            taxAmount: 0,
+            shippingAmount: 0,
+            totalAmount: subtotal,
+            status: 'draft',
+            deliveryAddress: null,
+            specialInstructions: null,
+            approvedBy: null,
+            approvedDate: null,
+            createdBy: userId,
+          } as any;
+
+          const createdPO = await storage.createPurchaseOrder(poData);
+          createdPoIds.push(createdPO.id);
+
+          for (const li of lineItems) {
+            await storage.createPurchaseOrderItem({ ...li, purchaseOrderId: createdPO.id });
+          }
+        }
+
+        res.json({ createdPoIds });
+      } catch (error) {
+        log.error('Error generating purchase orders:', error);
+        res.status(500).json({ message: 'Failed to generate purchase orders' });
+      }
+    },
+  );
 
   // ============= COMPANY CONTACTS =============
 
@@ -1538,56 +1672,61 @@ export function registerProductsCrudRoutes(app: Express) {
   });
 
   // Create meter reading (accepts UI shape and schema shape)
-  app.post('/api/meter-readings', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      let payload: any;
+  app.post(
+    '/api/meter-readings',
+    ctx,
+    can([PERMISSIONS.FINANCE.BILLING.METER_BILLING]),
+    async (req: any, res) => {
       try {
-        // Prefer strict schema if request already matches it.
-        // created_by is NOT NULL and not omitted from the insert schema, so it
-        // must be injected or the parse (and the insert) fails — PA-035.
-        payload = insertMeterReadingSchema.parse({
-          ...req.body,
-          tenantId,
-          createdBy: getUserId(req),
-        });
-      } catch {
-        // Map simplified UI fields to schema
-        const {
-          equipmentId,
-          contractId,
-          readingDate,
-          blackMeter,
-          colorMeter,
-          collectionMethod,
-          notes,
-        } = req.body ?? {};
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
 
-        payload = insertMeterReadingSchema.parse({
-          tenantId,
-          createdBy: getUserId(req),
-          equipmentId,
-          contractId: contractId ?? null,
-          readingDate: readingDate ? new Date(readingDate) : new Date(),
-          bwMeterReading: Number.parseInt(String(blackMeter ?? 0), 10),
-          colorMeterReading: Number.parseInt(String(colorMeter ?? 0), 10),
-          collectionMethod: collectionMethod ?? 'manual',
-          readingNotes: notes ?? null,
-        } as any);
+        let payload: any;
+        try {
+          // Prefer strict schema if request already matches it.
+          // created_by is NOT NULL and not omitted from the insert schema, so it
+          // must be injected or the parse (and the insert) fails — PA-035.
+          payload = insertMeterReadingSchema.parse({
+            ...req.body,
+            tenantId,
+            createdBy: getUserId(req),
+          });
+        } catch {
+          // Map simplified UI fields to schema
+          const {
+            equipmentId,
+            contractId,
+            readingDate,
+            blackMeter,
+            colorMeter,
+            collectionMethod,
+            notes,
+          } = req.body ?? {};
+
+          payload = insertMeterReadingSchema.parse({
+            tenantId,
+            createdBy: getUserId(req),
+            equipmentId,
+            contractId: contractId ?? null,
+            readingDate: readingDate ? new Date(readingDate) : new Date(),
+            bwMeterReading: Number.parseInt(String(blackMeter ?? 0), 10),
+            colorMeterReading: Number.parseInt(String(colorMeter ?? 0), 10),
+            collectionMethod: collectionMethod ?? 'manual',
+            readingNotes: notes ?? null,
+          } as any);
+        }
+
+        // Use storage if available to keep persistence consistent
+        const created = await storage.createMeterReading(payload);
+        res.json(created);
+      } catch (error) {
+        log.error('Error creating meter reading:', error);
+        res.status(500).json({ message: 'Failed to create meter reading' });
       }
-
-      // Use storage if available to keep persistence consistent
-      const created = await storage.createMeterReading(payload);
-      res.json(created);
-    } catch (error) {
-      log.error('Error creating meter reading:', error);
-      res.status(500).json({ message: 'Failed to create meter reading' });
-    }
-  });
+    },
+  );
 
   // ============= CONTRACT TIERED RATES =============
 
@@ -1605,23 +1744,28 @@ export function registerProductsCrudRoutes(app: Express) {
     }
   });
 
-  app.post('/api/contract-tiered-rates', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
+  app.post(
+    '/api/contract-tiered-rates',
+    ctx,
+    can([PERMISSIONS.FINANCE.BILLING.CONFIGURE]),
+    async (req: any, res) => {
+      try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+          return res.status(400).json({ message: 'Tenant ID is required' });
+        }
+        const validatedData = insertContractTieredRateSchema.parse({
+          ...req.body,
+          tenantId,
+        });
+        const rate = await storage.createContractTieredRate(validatedData);
+        res.json(rate);
+      } catch (error) {
+        log.error('Error creating contract tiered rate:', error);
+        res.status(500).json({ message: 'Failed to create contract tiered rate' });
       }
-      const validatedData = insertContractTieredRateSchema.parse({
-        ...req.body,
-        tenantId,
-      });
-      const rate = await storage.createContractTieredRate(validatedData);
-      res.json(rate);
-    } catch (error) {
-      log.error('Error creating contract tiered rate:', error);
-      res.status(500).json({ message: 'Failed to create contract tiered rate' });
-    }
-  });
+    },
+  );
 
   // NOTE: Invoice generation and contract profitability migrated to routes-billing-core.ts
 

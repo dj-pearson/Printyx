@@ -8991,8 +8991,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 239,
-      "passes": false,
-      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). server/routes-products-crud.ts currently has zero requirePermission usage."
+      "passes": true,
+      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). server/routes-products-crud.ts currently has zero requirePermission usage. [DONE 2026-07-13] Gated all 30 mutation routes (POST/PATCH/DELETE) in routes-products-crud.ts with enhanceUserContext + requirePermission: catalog items/inventory/vendors -> inventory.item.{create,update,delete}; purchase-orders -> inventory.po.create; accounts-payable -> finance.bill.enter; accounts-receivable -> finance.invoice.create; meter-readings -> finance.billing.meter_billing; contract-tiered-rates -> finance.billing.configure. bulk-delete requires inventory.item.delete (admin scope). Added ctx/can RequestHandler cast helpers (AuthenticatedRequest doesn strip unify with app.<method>). Unit test: low-role/Guest gets 403, permitted user passes. Also incidentally protects the product-models routes that shadowed the RBAC-gated routes-product-models.ts. Ratchet 1353."
     },
     {
       "id": "CR-004",
