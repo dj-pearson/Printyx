@@ -31,7 +31,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
   app.post('/api/auto-lead-routing/route/:leadId', async (req, res) => {
     try {
       const { leadId } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req); // CR-010: from authenticated context, not raw header
 
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
@@ -63,7 +63,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
   app.post('/api/auto-lead-routing/route-batch', async (req, res) => {
     try {
       const { leadIds } = req.body;
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req); // CR-010: from authenticated context, not raw header
 
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
@@ -108,7 +108,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
    */
   app.get('/api/auto-lead-routing/dashboard', async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req); // CR-010: from authenticated context, not raw header
 
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
@@ -242,7 +242,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
    */
   app.get('/api/auto-lead-routing/config', async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req); // CR-010: from authenticated context, not raw header
 
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
@@ -276,7 +276,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
    */
   app.put('/api/auto-lead-routing/config', async (req, res) => {
     try {
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req); // CR-010: from authenticated context, not raw header
 
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });
@@ -306,7 +306,7 @@ export function registerAutoLeadRoutingRoutes(app: Express) {
   app.get('/api/auto-lead-routing/preview/:leadId', async (req, res) => {
     try {
       const { leadId } = req.params;
-      const tenantId = req.headers['x-tenant-id'] as string;
+      const tenantId = getTenantId(req); // CR-010: from authenticated context, not raw header
 
       if (!tenantId) {
         return res.status(400).json({ error: 'Tenant ID required' });

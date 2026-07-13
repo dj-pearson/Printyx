@@ -1,5 +1,5 @@
 import type { Express } from 'express';
-import { eq, and, desc, sql, count, like } from 'drizzle-orm';
+import { eq, and, desc, sql, count, like, inArray } from 'drizzle-orm';
 import { db } from './db';
 import { isAuthenticated } from './replitAuth';
 import { createModuleLogger } from './lib/logger';
@@ -132,6 +132,30 @@ export function registerSoftwareProductsRoutes(app: Express) {
     } catch (error) {
       log.error('Error updating software product:', error);
       res.status(500).json({ error: 'Failed to update software product' });
+    }
+  });
+
+  // Bulk delete software products (must be registered before the :id route so
+  // "bulk-delete" is not captured as an :id). Ported from routes-products-crud
+  // with authentication added (CR-018).
+  app.delete('/api/software-products/bulk-delete', isAuthenticated, async (req: any, res) => {
+    try {
+      const tenantId = req.user.tenantId;
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: 'IDs array is required' });
+      }
+      const deleted = await db
+        .delete(softwareProducts)
+        .where(and(inArray(softwareProducts.id, ids), eq(softwareProducts.tenantId, tenantId)))
+        .returning();
+      res.json({
+        message: `Successfully deleted ${deleted.length} software products`,
+        deletedCount: deleted.length,
+      });
+    } catch (error) {
+      log.error('Error bulk deleting software products:', error);
+      res.status(500).json({ error: 'Failed to bulk delete software products' });
     }
   });
 

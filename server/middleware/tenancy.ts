@@ -61,9 +61,12 @@ function validateTenantHeader(
   const userId = getUserId(req as Request);
   const isAdmin = isPlatformAdmin(req as Request);
 
-  // If user is not authenticated, allow the header (public endpoints)
+  // CR-001: FAIL CLOSED. An unauthenticated request must not be able to select a
+  // tenant by sending an x-tenant-id header (previously this returned valid=true
+  // and trusted the attacker-supplied value). Public endpoints that don't send
+  // the header are unaffected — they fall through to subdomain/session resolution.
   if (!userId) {
-    return { valid: true, tenantId: headerTenantId };
+    return { valid: false, reason: 'Authentication required to resolve tenant from header' };
   }
 
   // Platform admins can access any tenant

@@ -20,7 +20,7 @@ import rateLimit from 'express-rate-limit';
 import { csrfProtection, csrfTokenHandler } from './middleware/csrf-protection';
 import connectPg from 'connect-pg-simple';
 import { globalTieredRateLimit } from './middleware/user-rate-limit';
-import { setupAuth } from './replitAuth';
+import { setupAuth, requireAuth } from './replitAuth';
 import { blockRegistrations } from './middleware/registration-lock';
 import { apiVersioning, legacyRouteSupport, apiVersionInfo } from './middleware/api-versioning';
 import { resolveTenant } from './middleware/tenancy';
@@ -33,40 +33,9 @@ import { getUserId, getTenantId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('routes');
 
-// ─── Legacy Auth Middleware (used by setupSalesPipelineRoutes) ─────────
-const requireAuth = async (req: any, res: any, next: any) => {
-  const isAuthenticated = req.session?.userId || req.user?.id || req.user?.claims?.sub;
-  if (!isAuthenticated) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-  const userId = req.user?.id || req.user?.claims?.sub || req.session?.userId;
-  if (userId && (!req.user || !req.user.tenantId)) {
-    try {
-      const fullUser = await storage.getUser(userId);
-      if (fullUser) {
-        req.user = {
-          ...req.user,
-          id: fullUser.id,
-          tenantId: fullUser.tenantId,
-          isPlatformUser: fullUser.isPlatformUser,
-          email: fullUser.email,
-          firstName: fullUser.firstName,
-          lastName: fullUser.lastName,
-        };
-      }
-    } catch (error) {
-      log.error('Error fetching user details:', error);
-    }
-  }
-  const helperUserId = getUserId(req);
-  const helperTenantId = getTenantId(req);
-  if (!req.user) {
-    req.user = { id: helperUserId, tenantId: helperTenantId };
-  } else if (!req.user.tenantId && !req.user.id) {
-    req.user = { id: helperUserId, tenantId: helperTenantId };
-  }
-  next();
-};
+// requireAuth is imported from ./replitAuth (centralized JWT + test + session
+// auth per CLAUDE.md). It is passed into registerAllRouteModules below so every
+// module shares the same middleware instead of a permissive local stub (CR-011).
 
 // ═══════════════════════════════════════════════════════════════════════
 // Route Registration
@@ -99,11 +68,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
   app.get('/api/versions', apiVersionInfo());
 
-  // ─── Tenant Resolution & API Tracking ─────────────────────────────
-  app.use('/api', resolveTenant as any);
-  const { trackApiCall } = await import('./middleware/subscription');
-  app.use('/api', trackApiCall);
-  app.use('/api', blockRegistrations);
+  // NOTE: Tenant resolution + API tracking were moved to AFTER authentication
+  // (below) so resolveTenant sees req.supabaseUser/req.user and can validate the
+  // x-tenant-id header against the caller's real tenant instead of failing open
+  // on an unauthenticated request (CR-001).
 
   // ─── Session Management ───────────────────────────────────────────
   if (app.get('env') === 'production' && !process.env.SESSION_SECRET) {
@@ -167,6 +135,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
 
+  // ─── Tenant Resolution & API Tracking (after auth — CR-001) ───────
+  // Runs after authenticateSupabaseJWT + req.user population so resolveTenant
+  // can validate x-tenant-id against the authenticated user's tenant.
+  app.use('/api', resolveTenant as any);
+  const { trackApiCall } = await import('./middleware/subscription');
+  app.use('/api', trackApiCall);
+  app.use('/api', blockRegistrations);
+
   // Require authentication (except public paths)
   app.use('/api', async (req: any, res, next) => {
     const publicPaths = [
@@ -178,7 +154,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       '/api/signup-crm',
       '/api/webhooks', // Webhooks use provider-specific signature verification, not JWT
     ];
-    if (publicPaths.some((p) => req.path.startsWith(p))) return next();
+    // Match exact path or a proper sub-path (segment boundary) so that e.g.
+    // "/api/authx" or "/api/health-internal" are NOT treated as public (CR-014).
+    if (publicPaths.some((p) => req.path === p || req.path.startsWith(p + '/'))) return next();
     const userId = getUserId(req);
     if (!userId) {
       return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });

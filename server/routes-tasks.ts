@@ -113,24 +113,10 @@ export function registerTaskRoutes(app: Express) {
   });
 
   // Update task (PATCH method)
-  app.patch('/api/tasks/:id', async (req: any, res) => {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId) return res.status(400).json({ error: 'Tenant ID required' });
-      const taskId = req.params.id;
-
-      const task = await storage.updateTask(taskId, req.body, tenantId);
-
-      if (!task) {
-        return res.status(404).json({ error: 'Task not found' });
-      }
-
-      res.json(task);
-    } catch (error) {
-      log.error('Error updating task:', error);
-      res.status(500).json({ error: 'Failed to update task' });
-    }
-  });
+  // PATCH /api/tasks/:id is intentionally NOT registered here. The authenticated
+  // handler in routes-enhanced-tasks.ts owns it; this file used to register an
+  // unauthenticated duplicate that shadowed it (CR-018). PUT /api/tasks/:id above
+  // remains this module's update path.
 
   // Get projects
   app.get('/api/projects', async (req: any, res) => {

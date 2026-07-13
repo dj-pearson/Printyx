@@ -11,6 +11,7 @@ import { leadIntelligenceService } from '../services/lead-intelligence-service';
 import { z } from 'zod';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('lead-intelligence-routes');
+import { parseListLimit } from '../lib/pagination';
 
 const router = express.Router();
 
@@ -195,15 +196,16 @@ router.get('/attention/required', isAuthenticated, async (req: Request, res: Res
       return res.status(403).json({ error: 'No tenant context found' });
     }
 
-    const limit = parseInt(req.query.limit as string) || 20;
+    const limit = parseListLimit(req.query.limit, { def: 20 });
+    if (limit === null) {
+      return res.status(400).json({ error: 'Invalid limit parameter' });
+    }
     const leads = await leadIntelligenceService.getLeadsRequiringAttention(context.tenantId, limit);
 
     res.json(leads);
   } catch (error: any) {
     log.error('Get attention required error:', error);
-    res
-      .status(500)
-      .json({ error: 'Failed to get leads requiring attention' });
+    res.status(500).json({ error: 'Failed to get leads requiring attention' });
   }
 });
 

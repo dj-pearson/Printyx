@@ -657,9 +657,7 @@ export default function EnhancedOnboardingForm() {
   });
 
   const onSubmit = (data: EnhancedOnboardingFormData) => {
-    console.log('Button clicked');
-    console.log('Form data:', data);
-    console.log('Form errors:', form.formState.errors);
+    // CR-016: do not console.log form data / payloads — they contain customer PII.
 
     // Ensure all equipment items have required fields populated
     if (data.equipment && data.equipment.length > 0) {
@@ -745,7 +743,6 @@ export default function EnhancedOnboardingForm() {
       specialInstructions: undefined,
     };
 
-    console.log('Payload to submit:', payload);
     createChecklistMutation.mutate(payload);
   };
 
@@ -2223,10 +2220,7 @@ export default function EnhancedOnboardingForm() {
                     <Button
                       type="button"
                       onClick={() => {
-                        console.log('Button clicked');
-                        console.log('Form errors:', form.formState.errors);
-                        console.log('Form values:', form.getValues());
-                        console.log('Form is valid:', form.formState.isValid);
+                        // CR-016: removed form-value logging (customer PII).
                         form.handleSubmit(onSubmit)();
                       }}
                       disabled={createChecklistMutation.isPending}

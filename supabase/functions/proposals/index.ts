@@ -109,6 +109,12 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+// Round money to cents before persisting so floating-point drift never reaches
+// the DB (CR-022). Mirrors round2() in shared/quote-math.ts — keep in sync.
+function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
 // ─── Proposal template helpers (PROP-001) ──────────────────────────────────────
 
 // camelCase (what the UI sends) OR snake_case → real snake_case columns. Anything
@@ -592,9 +598,9 @@ async function recalculateProposalTotals(
   await db
     .from('proposals')
     .update({
-      subtotal: String(subtotal),
-      total_amount: String(totalAmount),
-      total_dealer_cost: String(totalCost),
+      subtotal: String(round2(subtotal)),
+      total_amount: String(round2(totalAmount)),
+      total_dealer_cost: String(round2(totalCost)),
       total_margin_percentage: String(marginPct),
       updated_at: new Date().toISOString(),
     })

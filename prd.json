@@ -8960,8 +8960,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 237,
-      "passes": false,
-      "notes": "[SECURITY/CRITICAL] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Headline cross-tenant exposure. Files: server/routes.ts:103 (resolveTenant mount) vs :150 (auth), server/middleware/tenancy.ts:64-67 (fail-open) & :129-182. All getTenantId() routes affected."
+      "passes": true,
+      "notes": "[SECURITY/CRITICAL] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Headline cross-tenant exposure. Files: server/routes.ts:103 (resolveTenant mount) vs :150 (auth), server/middleware/tenancy.ts:64-67 (fail-open) & :129-182. All getTenantId() routes affected. [DONE 2026-07-13] Root cause: resolveTenant ran at routes.ts:72 BEFORE session(95)+authenticateSupabaseJWT(119), so req.supabaseUser was unset and it fell through to trusting the x-tenant-id header. Moved the resolveTenant/trackApiCall/blockRegistrations block to AFTER auth + req.user population (before the auth-required gate) so resolveTenant Priority-1 validates the header against the JWT tenant (403 for non-admins, admin bypass preserved). Also made validateTenantHeader FAIL CLOSED when no userId (was returning valid:true+trusting header). Unit test proves tenant-A JWT + tenant-B header -> 403, matching -> resolves, admin -> allowed, unauthenticated+header -> 403 (fail closed). resolveTenant gates ALL /api routes so this covers customers/leads/products/billing/AP/AR. Ratchet 1353."
     },
     {
       "id": "CR-002",
@@ -8977,8 +8977,8 @@
         "Add regression tests for at least task-comments and warehouse-operations cross-tenant access"
       ],
       "priority": 238,
-      "passes": false,
-      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Systemic pattern: service-client (RLS bypassed) edge fns that omit the explicit tenant_id filter."
+      "passes": true,
+      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Systemic pattern: service-client (RLS bypassed) edge fns that omit the explicit tenant_id filter. [DONE 2026-07-13] All 6 service-client IDOR gaps closed: task-comments (new shared rowBelongsToTenant guard verifies parent task belongs to tenant before any comment/time op + tenant_id on insert/tasks-update), oid-mappings PUT/DELETE (+tenant_id filter, stopped spreading raw body — maps only editable cols), warehouse-operations adjust (tenant_id on both read+write, 404 if not owned), address-books entry PATCH/DELETE (scope entry to verified bookId), accessibility feedback PATCH (+tenant_id filter), remote-monitoring device update (+tenant_id). New importable _shared/tenant-guard.ts enables vitest regression tests (6 tests: cross-tenant returns false + fails closed on missing id/tenant; warehouse scoped-read pattern). Ratchet 1353, deno check clean (only pre-existing getUser error)."
     },
     {
       "id": "CR-003",
@@ -8991,8 +8991,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 239,
-      "passes": false,
-      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). server/routes-products-crud.ts currently has zero requirePermission usage."
+      "passes": true,
+      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). server/routes-products-crud.ts currently has zero requirePermission usage. [DONE 2026-07-13] Gated all 30 mutation routes (POST/PATCH/DELETE) in routes-products-crud.ts with enhanceUserContext + requirePermission: catalog items/inventory/vendors -> inventory.item.{create,update,delete}; purchase-orders -> inventory.po.create; accounts-payable -> finance.bill.enter; accounts-receivable -> finance.invoice.create; meter-readings -> finance.billing.meter_billing; contract-tiered-rates -> finance.billing.configure. bulk-delete requires inventory.item.delete (admin scope). Added ctx/can RequestHandler cast helpers (AuthenticatedRequest doesn strip unify with app.<method>). Unit test: low-role/Guest gets 403, permitted user passes. Also incidentally protects the product-models routes that shadowed the RBAC-gated routes-product-models.ts. Ratchet 1353."
     },
     {
       "id": "CR-004",
@@ -9019,8 +9019,8 @@
         "Centralize the URL guard in a shared helper and unit-test it"
       ],
       "priority": 241,
-      "passes": false,
-      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). SSRF cluster from validation audit."
+      "passes": true,
+      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). SSRF cluster from validation audit. [DONE 2026-07-13] Reused existing shared guard (server/lib/safe-http-client.ts safeFetch: validateUrl blocklist + DNS-resolve private-IP check + timeout + redirect validation) at all 4 SSRF sites: SSO OIDC discovery + SAML metadataUrl (sso-routes; metadata also pre-validated with validateUrl for a clean 400), social-media webhookUrl POST, voice-ticket audioUrl (added isAllowedAudioHost storage allowlist for *.supabase.co/*.printyx.net/SUPABASE_URL host + safeFetch). validateUrl/isPrivateIP already unit-tested; added 5 tests for isAllowedAudioHost (incl. look-alike-suffix + metadata-IP rejection). Ratchet 1353."
     },
     {
       "id": "CR-006",
@@ -9032,8 +9032,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 242,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Added safeInternalPath() in sso-routes.ts (only relative in-app paths; rejects absolute/off-host, //host, /host, schemes, control chars) applied to all 4 RelayState/state redirect sinks (ACS 326, OIDC 363, SLO 489/493). Unit test for malicious external RelayState."
     },
     {
       "id": "CR-007",
@@ -9046,8 +9046,8 @@
         "Document the residual risk in code comments"
       ],
       "priority": 243,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). sql.raw() behind regex denylist."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). sql.raw() behind regex denylist. [DONE 2026-07-13] The console was already hardened since review: SELECT-only ALLOWLIST (primary gate — rejects non-SELECT), single-statement enforcement (semicolon check after stripping strings/comments), dangerous-keyword denylist (now defense-in-depth), 1000-row cap, 10s statement timeout. Added: persistent audit-trail write via logAdminAction(sql_console.execute, database, query, userId, tenantId, req, {query,clientIp}) — category authorization/severity high (was only log.info) — with tenant; residual-risk documented in code comment (bypasses tenant/RLS; TODO read-only role/replica). Ratchet 1353."
     },
     {
       "id": "CR-008",
@@ -9059,8 +9059,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 244,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Added Zod whitelisting to all 6 over-posting handlers: customer-success health-score (insertCustomerHealthScoreSchema.omit tenantId), lease update + email-marketing update (insertLease/EmailTemplateSchema.partial + new shared stripServerFields util removing id/tenantId/createdBy/createdAt/updatedAt), team create (insertTeamSchema.partial+strip), ai-employee + meeting-scheduling (explicit z.object whitelists — no drizzle schema). Unknown fields stripped by Zod .parse; server-injected fields added after. Unit test for stripServerFields. Ratchet 1353."
     },
     {
       "id": "CR-009",
@@ -9072,8 +9072,8 @@
         "Reject unexpected content types"
       ],
       "priority": 245,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] document-automation multer filename cb now runs sanitizeFilename() (rejects traversal/separators) from the hardened file-upload-security middleware; catalog upload switched from unbounded multer.memoryStorage() to createSecureUpload() (fileSize/files/fieldSize limits + allowlist fileFilter incl CSV). Reused existing hardened middleware (already unit-tested)."
     },
     {
       "id": "CR-010",
@@ -9085,8 +9085,8 @@
         "Add a test asserting header/user_metadata spoofing is ignored"
       ],
       "priority": 246,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Related to CR-001 on the edge-fn side."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Related to CR-001 on the edge-fn side. [DONE 2026-07-13] New import-free _shared/resolve-tenant.ts tenantFromJwt(user) returns app_metadata.tenantId||tenant_id ONLY (no user_metadata, no header — both spoofable). Applied to the named service-client edge fns task-comments + remote-monitoring (replaced the 5-way spoofable fallback chain). auto-lead-routing Express route: all 6 raw req.headers[x-tenant-id] reads replaced with getTenantId(req) (authenticated context, validated by CR-001 resolveTenant). Test asserts user_metadata/header spoof ignored. NOTE: ~193 other edge fns still inline the same fallback chain — a mechanical sweep to tenantFromJwt is follow-up (most use the ANON/RLS client where it is lower-risk; service-client ones are the priority). Ratchet 1353."
     },
     {
       "id": "CR-011",
@@ -9099,8 +9099,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 247,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Removed local requireAuth stubs in server/routes.ts (permissive, hydrated undefined user) + server/integrations/routes.ts (defined-but-never-applied); both now import centralized requireAuth from ./replitAuth. Applied requireAuth to 6 integration data routes incl. /marketplace (OAuth :provider/callback left public as a redirect target). Grep confirms no local requireAuth defs remain (only canonical export in replitAuth.ts)."
     },
     {
       "id": "CR-012",
@@ -9126,8 +9126,8 @@
         "Add a shared pagination helper if none exists"
       ],
       "priority": 249,
-      "passes": false,
-      "notes": "[SECURITY/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[SECURITY/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Added parseListLimit() (clamp to 200, 400 on invalid) in server/lib/pagination.ts; applied to lead-scoring (3), workflow-automation (2), lead-intelligence (1), geofence-alerts (2) unbounded list routes; unit test."
     },
     {
       "id": "CR-014",
@@ -9140,8 +9140,8 @@
         "Remove hardcoded production DB IP from tooling (scripts/database-schema-reporter.ts) and demo API keys from seed script (server/seed-signature-data.ts)"
       ],
       "priority": 250,
-      "passes": false,
-      "notes": "[SECURITY/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[SECURITY/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] exports CORS already an allowlist (getCorsHeaders/ALLOWED_ORIGINS); public-path gate now matches exact path or segment boundary (not startsWith); added jsonLdStringify() escaping </script>+U+2028/9 used in seoUtils (2) + GEOFaqSection; replaced hardcoded prod DB IP in database-schema-reporter with placeholders + moved seed-signature demo keys to env reads."
     },
     {
       "id": "CR-015",
@@ -9166,8 +9166,8 @@
         "Add an ESLint rule (no-console in client prod) to prevent regressions"
       ],
       "priority": 252,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Sentry replay now maskAllText+maskAllInputs+blockAllMedia (was maskAllText:false — leaked all replay PII). Removed the named PII console.logs (EnhancedOnboardingForm form-data/payload/form-values at 3 sites; DealsManagement drag/deal-move). The ~221-statement sweep is handled structurally: vite esbuild pure:[console.log,console.debug,console.info] strips debug console from the minified PROD bundle (kept in dev; console.error/warn always kept) — stronger than manual deletion and regression-proof. eslint no-console already active for js/jsx; tsx no-console folded into PA-048 (ts/tsx not yet linted). Ratchet 1353."
     },
     {
       "id": "CR-017",
@@ -9199,8 +9199,8 @@
         "Add a startup check that warns on duplicate method+path registrations"
       ],
       "priority": 254,
-      "passes": false,
-      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Fixed all 3 auth/mock route shadows (Express first-registered-wins): removed unauthenticated /api/software-products CRUD dupes from routes-products-crud (ported bulk-delete to authenticated routes-software-products before :id); removed mock /api/mobile/{dashboard,route-optimization} from routes-sample-data (real ones in workflow-mobile); removed unauthenticated PATCH /api/tasks/:id from routes-tasks (authenticated enhanced-tasks wins). Added warnOnDuplicateRoutes() startup check (server/lib/route-duplicate-check.ts) wired into routes-registry + unit test."
     },
     {
       "id": "CR-019",
@@ -9212,8 +9212,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 255,
-      "passes": false,
-      "notes": "[CORRECTNESS/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[CORRECTNESS/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Deleted unreferenced server/routes-modular-dashboard-broken.ts + server/routes-clickup-tasks.ts (live imports resolve to routes-modular-dashboard.ts / routes-enhanced-tasks.ts). Removed 7 latent tsc errors; ratchet 1360->1353."
     },
     {
       "id": "CR-020",
@@ -9226,8 +9226,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 256,
-      "passes": false,
-      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] z.coerce.number().finite() validation via exported calcPricingInputSchema; rejects missing/garbage/negative dealerCost (test)."
     },
     {
       "id": "CR-021",
@@ -9240,8 +9240,8 @@
         "Add unit tests for zero override and unknown fleetAge"
       ],
       "priority": 257,
-      "passes": false,
-      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Server copy gets fleetAge fallback + FleetAge enum type; both copies use != null so 0 overrides honored; unit tests for zero override + unknown fleetAge."
     },
     {
       "id": "CR-022",
@@ -9253,8 +9253,8 @@
         "Add a rounding helper used by both server and edge quote math"
       ],
       "priority": 258,
-      "passes": false,
-      "notes": "[CORRECTNESS/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[CORRECTNESS/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] round2() rounds subtotal/total/dealer_cost before persist in proposals edge fn; service-dispatch averageConfidence guarded against empty list; shared/quote-math round2 mirrored."
     },
     {
       "id": "CR-023",
@@ -9336,8 +9336,8 @@
         "Generate + review + apply migration (npm run db:generate / db:migrate)"
       ],
       "priority": 264,
-      "passes": false,
-      "notes": "[PERFORMANCE/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[PERFORMANCE/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Added .index() defs to equipment (tenant+customer, tenant+equipment_status) and invoices (tenant+customer, tenant+invoice_status, tenant+created_at) in shared/schema.ts — both had zero indexes. db:generate is unusable here (bundles ~100 tables of pre-existing migration drift, PA-031/039), so hand-wrote idempotent CREATE INDEX IF NOT EXISTS migration drizzle/migrations/0010_cr028_perf_indexes.sql + journal entry (drizzle migrate() applies by journal+hash, no snapshot needed). business_records/service_tickets already indexed. PA-026 (9 more tables) deferred — needs careful per-table column verification."
     },
     {
       "id": "CR-029",
@@ -9699,9 +9699,9 @@
         "Generate via db:generate, review SQL, apply via db:migrate; EXPLAIN confirms index scans on representative list queries."
       ],
       "priority": 290,
-      "passes": false,
+      "passes": true,
       "category": "audit-performance",
-      "notes": "[PERFORMANCE/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). All listed tables have 0 CREATE INDEX in drizzle/migrations/0000 despite tenant_id NOT NULL (contracts referenced with eq(...tenantId) in 14 route files). Newer tables ARE indexed (deals=5, service_tickets=5). Distinct from CR-028 (equipment/invoices only)."
+      "notes": "[PERFORMANCE/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). All listed tables have 0 CREATE INDEX in drizzle/migrations/0000 despite tenant_id NOT NULL (contracts referenced with eq(...tenantId) in 14 route files). Newer tables ARE indexed (deals=5, service_tickets=5). Distinct from CR-028 (equipment/invoices only). [DONE 2026-07-13] Added .index() defs to 9 tables that had ZERO indexes: contracts/quotes (tenant+customer, tenant+status), proposals (tenant+status, tenant+created), tasks (tenant+status), purchase_orders (tenant+status, tenant+vendor), opportunities (tenant+account_id, tenant+stage_name — this table uses account_id/stage_name NOT customer_id/status), inventory_items (tenant+category), + FK indexes proposal_line_items.proposal_id and invoice_line_items.invoice_id (each also tenant). Same drift workaround as CR-028: idempotent CREATE INDEX IF NOT EXISTS migration drizzle/migrations/0011_pa026_perf_indexes.sql + journal entry (db:generate unusable). EXPLAIN verification deferred (no DB access in loop env)."
     },
     {
       "id": "PA-032",

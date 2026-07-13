@@ -895,18 +895,15 @@ export default function DealsManagement() {
     // Verify it's a valid stage
     const validStage = stages.find((s) => s.id === newStageId);
     if (!validStage) {
-      console.log('Invalid stage ID:', newStageId);
       return;
     }
 
-    console.log('Drag end:', { dealId, newStageId, overId: over.id, isDeal });
+    // CR-016: removed drag/deal-move console logging (leaked business data).
 
     // Find the deal and check if it's actually moving to a different stage
     const deal = deals.find((d) => d.id === dealId);
 
     if (deal && deal.stageId !== newStageId) {
-      console.log('Moving deal from', deal.stageId, 'to', newStageId);
-
       // Optimistically update the UI first
       queryClient.setQueryData(
         ['/api/deals', selectedStageId, searchTerm],

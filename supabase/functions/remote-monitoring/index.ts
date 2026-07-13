@@ -2,6 +2,7 @@
 // Handles remote device monitoring and alerts
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { tenantFromJwt } from '../_shared/resolve-tenant.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -21,12 +22,9 @@ export default async function handler(req: Request) {
       return createCorsResponse({ error: userError?.message || 'Unauthorized' }, 401, req);
     }
 
-    const tenantId =
-      (user.app_metadata?.tenantId as string) ||
-      (user.app_metadata?.tenant_id as string) ||
-      (user.user_metadata?.tenantId as string) ||
-      (user.user_metadata?.tenant_id as string) ||
-      req.headers.get('x-tenant-id');
+    // CR-010: service client bypasses RLS — derive tenant from the verified JWT
+    // app_metadata ONLY (never user_metadata / x-tenant-id header, both spoofable).
+    const tenantId = tenantFromJwt(user);
 
     if (!tenantId) {
       return createCorsResponse({ error: 'No tenant ID found' }, 400, req);
@@ -257,7 +255,8 @@ export default async function handler(req: Request) {
       await admin
         .from('monitored_devices')
         .update({ last_seen: new Date().toISOString(), status: 'online' })
-        .eq('id', body.deviceId || body.device_id);
+        .eq('id', body.deviceId || body.device_id)
+        .eq('tenant_id', tenantId); // CR-002: scope device update to caller's tenant
 
       return createCorsResponse(reading, 201, req);
     }

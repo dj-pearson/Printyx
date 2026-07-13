@@ -4,10 +4,28 @@
  */
 
 import express from 'express';
+import { z } from 'zod';
 import MeetingSchedulingService from '../services/meeting-scheduling-service';
 import { createModuleLogger } from '../lib/logger';
 import { getUserId, getTenantId } from '../utils/auth-helpers';
 const log = createModuleLogger('meeting-scheduling-routes');
+
+// CR-008: whitelist the scheduling-request body (tenantId/requesterId injected).
+const createSchedulingRequestSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  meetingTypeId: z.string().optional(),
+  durationMinutes: z.coerce.number().int().positive(),
+  earliestStartTime: z.coerce.date().optional(),
+  latestEndTime: z.coerce.date().optional(),
+  preferredTimeSlots: z
+    .array(z.object({ start: z.coerce.date(), end: z.coerce.date() }))
+    .optional()
+    .default([]),
+  requiredParticipants: z.array(z.string()).optional().default([]),
+  optionalParticipants: z.array(z.string()).optional().default([]),
+  deadline: z.coerce.date().optional(),
+});
 
 const router = express.Router();
 
@@ -17,8 +35,9 @@ const router = express.Router();
  */
 router.post('/schedule-request', async (req, res) => {
   try {
+    const parsed = createSchedulingRequestSchema.parse(req.body ?? {});
     const requestData = {
-      ...req.body,
+      ...parsed,
       tenantId: req.user!.tenantId,
       requesterId: req.user!.id,
     };

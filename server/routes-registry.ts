@@ -213,6 +213,7 @@ import apiKeyRoutes from './routes/api-key-routes';
 import { storage } from './storage';
 import { registerEdgeFunctionProxy } from './middleware/edge-function-proxy';
 import { logRouteDivergence } from './middleware/route-divergence-detector';
+import { warnOnDuplicateRoutes } from './lib/route-duplicate-check';
 import { createModuleLogger } from './lib/logger';
 
 const log = createModuleLogger('routes-registry');
@@ -749,6 +750,11 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
       timestamp: new Date().toISOString(),
     });
   }
+
+  // ─── Duplicate route registration check (CR-018) ───────────────────
+  // Warns when the same method+path was registered by two modules (Express
+  // serves only the first, silently shadowing the second).
+  warnOnDuplicateRoutes(app, log);
 
   // ─── Dev route-divergence check (no-op in prod) ────────────────────
   // Warns when dev serves an Express handler for a route prod serves via an

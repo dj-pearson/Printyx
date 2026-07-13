@@ -37,7 +37,7 @@ router.post('/api/public/calculator/sessions', async (req, res) => {
     const inputSchema = z.object({
       deviceCount: z.number().int().min(1).max(500),
       deviceTypes: z.array(z.string()),
-      fleetAge: z.string(),
+      fleetAge: z.enum(['under_2_years', '2_4_years', '5_7_years', '8_plus_years']),
       monthlyPageVolume: z.number().int().min(0).max(10000000),
       colorRatio: z.number().min(0).max(100),
       employeeCount: z.number().int().min(1).max(100000),
@@ -162,7 +162,7 @@ router.get('/api/public/calculator/sessions/:sessionKey', async (req, res) => {
     const fleetInputs: FleetInputs = {
       deviceCount: session.deviceCount,
       deviceTypes: session.deviceTypes as string[],
-      fleetAge: session.fleetAge,
+      fleetAge: session.fleetAge as FleetInputs['fleetAge'],
       monthlyPageVolume: session.monthlyPageVolume,
       colorRatio: parseFloat(session.colorRatio),
       employeeCount: session.employeeCount,
@@ -249,7 +249,7 @@ router.post('/api/public/calculator/leads', async (req, res) => {
       const fleetInputs: FleetInputs = {
         deviceCount: session.deviceCount,
         deviceTypes: session.deviceTypes as string[],
-        fleetAge: session.fleetAge,
+        fleetAge: session.fleetAge as FleetInputs['fleetAge'],
         monthlyPageVolume: session.monthlyPageVolume,
         colorRatio: parseFloat(session.colorRatio),
         employeeCount: session.employeeCount,

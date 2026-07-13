@@ -195,13 +195,13 @@ async function getDatabaseConnection(useSSH: boolean = false): Promise<Client> {
       throw new Error(
         'SSH mode requires DB_HOST environment variable.\n\n' +
           'Please add to your .env file:\n' +
-          '  DB_HOST=209.145.59.219\n' +
+          '  DB_HOST=your_db_host\n' +
           '  DB_PORT=5433\n' +
           '  DB_USER=postgres\n' +
           '  DB_PASSWORD=your_password\n' +
           '  DB_NAME=postgres\n\n' +
           'Optional (will use SSH keys from ~/.ssh/ by default):\n' +
-          '  SERVER_HOST=209.145.59.219\n' +
+          '  SERVER_HOST=your_server_host\n' +
           '  SERVER_USER=root',
       );
     }

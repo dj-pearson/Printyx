@@ -5,13 +5,15 @@ import { db } from './db';
 import { masterProductModels } from '../shared/schema';
 import { eq } from 'drizzle-orm';
 import { insertMasterProductModelSchema } from '../shared/schema';
-import multer from 'multer';
 import { createModuleLogger } from './lib/logger';
 import { enhanceUserContext, requirePermission } from './middleware/rbac-route-helper';
 import { isPlatformAdmin } from './utils/auth-helpers';
+import { createSecureUpload } from './middleware/file-upload-security';
 const log = createModuleLogger('routes-catalog');
 
-const upload = multer({ storage: multer.memoryStorage() });
+// Bounded, content-type-filtered upload (CR-009): memory storage with fileSize
+// / file-count limits and an allowlist fileFilter (CSV is permitted).
+const upload = createSecureUpload();
 const router = Router();
 
 /**

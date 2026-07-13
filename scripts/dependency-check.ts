@@ -15,6 +15,7 @@ import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
 import { execSync } from 'child_process';
+import { pathToFileURL } from 'node:url';
 
 // ============================================================================
 // Configuration
@@ -250,7 +251,9 @@ export function checkLockfileIntegrity(rootDir: string): CheckResult {
         // Check if it might be nested
         const found = Object.keys(lockPackages).some((k) => k.endsWith(`/${depName}`));
         if (!found) {
-          findings.push(`Dependency "${depName}" declared in package.json but not found in lockfile`);
+          findings.push(
+            `Dependency "${depName}" declared in package.json but not found in lockfile`,
+          );
         }
       }
     }
@@ -316,9 +319,14 @@ export function checkInstallScripts(rootDir: string): CheckResult {
       // Check if package has install/preinstall/postinstall scripts
       if (pkg.hasInstallScript) {
         const pkgName = key.replace(/^node_modules\//, '');
+        // Basename after the LAST node_modules/ so nested/deduped copies
+        // (e.g. "vite/node_modules/esbuild") resolve to their real package name.
+        const baseName = pkgName.split('/node_modules/').pop() as string;
 
         // Check if it's from a trusted scope
-        const isTrusted = TRUSTED_SCOPES.some((scope) => pkgName.startsWith(scope + '/'));
+        const isTrusted = TRUSTED_SCOPES.some(
+          (scope) => pkgName.startsWith(scope + '/') || baseName.startsWith(scope + '/'),
+        );
 
         // Known packages with legitimate install scripts
         const knownInstallScripts = [
@@ -335,15 +343,26 @@ export function checkInstallScripts(rootDir: string): CheckResult {
           'ssh2',
           'husky',
           '@sentry/profiling-node',
+          '@sentry-internal/node-cpu-profiler',
           'tesseract.js',
           'playwright',
           '@playwright/test',
           'playwright-core',
           'node-gyp',
+          // Ubiquitous build/runtime deps whose install scripts only print
+          // funding notices or build native bindings (all first-party publishers).
+          'core-js',
+          'core-js-pure',
+          'es5-ext',
+          'fsevents',
         ];
 
         const isKnown = knownInstallScripts.some(
-          (known) => pkgName === known || pkgName.startsWith(known + '/'),
+          (known) =>
+            pkgName === known ||
+            pkgName.startsWith(known + '/') ||
+            baseName === known ||
+            baseName.startsWith(known + '/'),
         );
 
         if (!isTrusted && !isKnown) {
@@ -417,12 +436,7 @@ export function runDependencyCheck(rootDir: string): DependencyCheckReport {
 
 function printReport(report: DependencyCheckReport): void {
   console.log(
-    '\n' +
-      '='.repeat(64) +
-      '\n' +
-      '  SEC-007: Dependency Security Check\n' +
-      '='.repeat(64) +
-      '\n',
+    '\n' + '='.repeat(64) + '\n' + '  SEC-007: Dependency Security Check\n' + '='.repeat(64) + '\n',
   );
 
   for (const result of report.results) {
@@ -467,11 +481,12 @@ function main(): void {
   }
 }
 
-// Run if executed directly
+// Run if executed directly. pathToFileURL handles Windows drive letters +
+// slashes correctly (the old string form no-op'd on Windows).
 const isMainModule =
   typeof process !== 'undefined' &&
-  process.argv[1] &&
-  import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`;
+  !!process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isMainModule) {
   main();

@@ -247,7 +247,9 @@ router.get(
           autoAssigned: autoAssignedTickets.length,
           requiresManualReview: recommendations.filter((r) => !r.autoAssigned).length,
           averageConfidence:
-            recommendations.reduce((sum, r) => sum + r.aiConfidence, 0) / recommendations.length,
+            recommendations.length > 0
+              ? recommendations.reduce((sum, r) => sum + r.aiConfidence, 0) / recommendations.length
+              : 0,
         },
       });
     } catch (error) {

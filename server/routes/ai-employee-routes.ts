@@ -1,8 +1,20 @@
 // server/routes/ai-employee-routes.ts
 import express from 'express';
+import { z } from 'zod';
 import { aiEmployeeService } from '../services/ai-employee-service';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('ai-employee-routes');
+
+// CR-008: whitelist the create-employee body (createdBy is server-injected).
+const createAiEmployeeSchema = z.object({
+  employeeName: z.string().min(1),
+  employeeType: z.string().min(1),
+  employeeRole: z.string().min(1),
+  aiPersonality: z.any().optional(),
+  aiExpertiseAreas: z.array(z.string()).optional(),
+  aiCapabilities: z.array(z.string()).optional(),
+  autonomyLevel: z.string().optional(),
+});
 
 // import { authMiddleware } from '../middleware/authMiddleware'; // Assuming auth middleware
 
@@ -25,8 +37,9 @@ router.post('/ai-employees', async (req, res) => {
     const tenantId = (req as any).tenantId;
     const userId = (req as any).userId;
 
+    const parsed = createAiEmployeeSchema.parse(req.body ?? {});
     const employeeData = {
-      ...req.body,
+      ...parsed,
       createdBy: userId,
     };
 
