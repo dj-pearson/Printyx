@@ -176,13 +176,22 @@ export default async function handler(req: Request) {
     if (req.method === 'PUT' && mappingId && !subResource) {
       const body = await req.json();
 
+      // CR-002: map only editable columns (never id/tenant_id/created_by from the
+      // raw body) and scope the update to the caller's tenant so one tenant cannot
+      // overwrite another tenant's (or a global) mapping by id.
+      const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      for (const col of ['oid', 'name', 'description', 'category', 'manufacturer', 'unit']) {
+        if (body[col] !== undefined) updateData[col] = body[col];
+      }
+      if (body.dataType !== undefined || body.data_type !== undefined) {
+        updateData.data_type = body.dataType ?? body.data_type;
+      }
+
       const { data: mapping, error } = await admin
         .from('oid_mappings')
-        .update({
-          ...body,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', mappingId)
+        .eq('tenant_id', tenantId)
         .select()
         .single();
 
@@ -196,7 +205,12 @@ export default async function handler(req: Request) {
 
     // DELETE /oid-mappings/:id - Delete OID mapping
     if (req.method === 'DELETE' && mappingId) {
-      const { error } = await admin.from('oid_mappings').delete().eq('id', mappingId);
+      // CR-002: scope delete to the caller's tenant.
+      const { error } = await admin
+        .from('oid_mappings')
+        .delete()
+        .eq('id', mappingId)
+        .eq('tenant_id', tenantId);
 
       if (error) {
         console.error('Error deleting OID mapping:', error);

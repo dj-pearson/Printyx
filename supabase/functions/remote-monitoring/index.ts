@@ -257,7 +257,8 @@ export default async function handler(req: Request) {
       await admin
         .from('monitored_devices')
         .update({ last_seen: new Date().toISOString(), status: 'online' })
-        .eq('id', body.deviceId || body.device_id);
+        .eq('id', body.deviceId || body.device_id)
+        .eq('tenant_id', tenantId); // CR-002: scope device update to caller's tenant
 
       return createCorsResponse(reading, 201, req);
     }

@@ -2,6 +2,7 @@
 // Handles task comments and time tracking
 import { createSupabaseClient, createSupabaseServiceClient } from '../_shared/supabase.ts';
 import { handleCors, createCorsResponse } from '../_shared/cors.ts';
+import { rowBelongsToTenant } from '../_shared/tenant-guard.ts';
 
 export default async function handler(req: Request) {
   const corsResponse = handleCors(req);
@@ -38,6 +39,13 @@ export default async function handler(req: Request) {
     const taskId = pathParts[1]; // tasks/:id/comments or tasks/:id/time
     const resource = pathParts[2]; // comments or time
 
+    // CR-002: the service client bypasses RLS, so verify the parent task belongs
+    // to the caller's tenant before any comment/time read or write. This scopes
+    // every child operation by tenant, not just the URL taskId.
+    if (taskId && !(await rowBelongsToTenant(admin, 'tasks', taskId, tenantId))) {
+      return createCorsResponse({ error: 'Task not found' }, 404, req);
+    }
+
     // POST /tasks/:id/comments - Add comment to task
     if (req.method === 'POST' && taskId && resource === 'comments') {
       const body = await req.json();
@@ -46,6 +54,7 @@ export default async function handler(req: Request) {
         .from('task_comments')
         .insert({
           task_id: taskId,
+          tenant_id: tenantId,
           user_id: user.id,
           content: body.content,
           created_at: new Date().toISOString(),
@@ -114,7 +123,11 @@ export default async function handler(req: Request) {
 
       const total = (totalHours || []).reduce((sum: number, t: any) => sum + (t.hours || 0), 0);
 
-      await admin.from('tasks').update({ actual_hours: total }).eq('id', taskId);
+      await admin
+        .from('tasks')
+        .update({ actual_hours: total })
+        .eq('id', taskId)
+        .eq('tenant_id', tenantId);
 
       return createCorsResponse(timeEntry, 201, req);
     }

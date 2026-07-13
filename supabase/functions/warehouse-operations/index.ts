@@ -157,11 +157,19 @@ export default async function handler(req: Request) {
     if (req.method === 'POST' && endpoint === 'inventory' && resourceId === 'adjust') {
       const body = await req.json();
 
+      // CR-002: scope both the read and the write to the caller's tenant so a
+      // guessed inventoryId from another tenant cannot be read or adjusted.
+      const inventoryId = body.inventoryId || body.inventory_id;
       const { data: current } = await admin
         .from('inventory')
         .select('quantity')
-        .eq('id', body.inventoryId || body.inventory_id)
-        .single();
+        .eq('id', inventoryId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+
+      if (!current) {
+        return createCorsResponse({ error: 'Inventory item not found' }, 404, req);
+      }
 
       const newQuantity = (current?.quantity || 0) + (body.adjustment || 0);
 
@@ -171,7 +179,8 @@ export default async function handler(req: Request) {
           quantity: newQuantity,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', body.inventoryId || body.inventory_id)
+        .eq('id', inventoryId)
+        .eq('tenant_id', tenantId)
         .select()
         .single();
 

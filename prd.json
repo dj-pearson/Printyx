@@ -8977,8 +8977,8 @@
         "Add regression tests for at least task-comments and warehouse-operations cross-tenant access"
       ],
       "priority": 238,
-      "passes": false,
-      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Systemic pattern: service-client (RLS bypassed) edge fns that omit the explicit tenant_id filter."
+      "passes": true,
+      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Systemic pattern: service-client (RLS bypassed) edge fns that omit the explicit tenant_id filter. [DONE 2026-07-13] All 6 service-client IDOR gaps closed: task-comments (new shared rowBelongsToTenant guard verifies parent task belongs to tenant before any comment/time op + tenant_id on insert/tasks-update), oid-mappings PUT/DELETE (+tenant_id filter, stopped spreading raw body — maps only editable cols), warehouse-operations adjust (tenant_id on both read+write, 404 if not owned), address-books entry PATCH/DELETE (scope entry to verified bookId), accessibility feedback PATCH (+tenant_id filter), remote-monitoring device update (+tenant_id). New importable _shared/tenant-guard.ts enables vitest regression tests (6 tests: cross-tenant returns false + fails closed on missing id/tenant; warehouse scoped-read pattern). Ratchet 1353, deno check clean (only pre-existing getUser error)."
     },
     {
       "id": "CR-003",

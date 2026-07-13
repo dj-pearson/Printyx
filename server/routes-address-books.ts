@@ -457,7 +457,12 @@ router.patch(
           ...(credentialId ? { credentialId } : {}),
           updatedAt: new Date(),
         })
-        .where(eq(addressBookEntries.id, req.params.id))
+        .where(
+          and(
+            eq(addressBookEntries.id, req.params.id),
+            eq(addressBookEntries.bookId, req.params.bookId),
+          ),
+        )
         .returning();
       if (!updated) return res.status(404).json({ message: 'Entry not found', code: 'NOT_FOUND' });
       res.json(rowToCanonical(updated));
@@ -477,7 +482,14 @@ router.delete(
     try {
       const book = await loadBook(tenantId, req.params.bookId);
       if (!book) return res.status(404).json({ message: 'Not found', code: 'NOT_FOUND' });
-      await db.delete(addressBookEntries).where(eq(addressBookEntries.id, req.params.id));
+      await db
+        .delete(addressBookEntries)
+        .where(
+          and(
+            eq(addressBookEntries.id, req.params.id),
+            eq(addressBookEntries.bookId, req.params.bookId),
+          ),
+        );
       res.status(204).end();
     } catch (err) {
       logErr('delete entry failed', err);

@@ -256,9 +256,10 @@ router.patch('/feedback/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userId = getUserId(req);
+    const tenantId = getTenantId(req);
     const { status, resolution } = req.body;
 
-    if (!userId) {
+    if (!userId || !tenantId) {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
@@ -286,7 +287,9 @@ router.patch('/feedback/:id', async (req: Request, res: Response) => {
     const updated = await db
       .update(accessibilityFeedback)
       .set(updateData)
-      .where(eq(accessibilityFeedback.id, id))
+      // CR-002: scope by tenant so a guessed feedback id from another tenant
+      // cannot be updated.
+      .where(and(eq(accessibilityFeedback.id, id), eq(accessibilityFeedback.tenantId, tenantId)))
       .returning();
 
     if (updated.length === 0) {
