@@ -8,6 +8,8 @@ import { Router, Request, Response } from 'express';
 import { ssoService, SsoCallbackData } from '../services/sso-service';
 import { z } from 'zod';
 import { createModuleLogger } from '../lib/logger';
+import { safeFetch } from '../lib/safe-http-client';
+import { validateUrl } from '../middleware/ssrf-protection';
 const log = createModuleLogger('sso-routes');
 
 const router = Router();
@@ -556,7 +558,8 @@ router.post('/providers/:id/test', async (req: Request, res: Response) => {
       if (provider.oidcIssuer) {
         try {
           const discoveryUrl = `${provider.oidcIssuer}/.well-known/openid-configuration`;
-          const response = await fetch(discoveryUrl);
+          // CR-005: SSRF guard — the OIDC issuer is operator-supplied config.
+          const response = await safeFetch(discoveryUrl);
           tests.push({
             name: 'OIDC Discovery',
             passed: response.ok,
@@ -602,8 +605,15 @@ router.post('/providers/import', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'metadataUrl and name are required' });
     }
 
+    // CR-005: SSRF guard — metadataUrl is user-supplied; reject private/internal
+    // targets up front, and safeFetch re-checks (incl. DNS + redirects).
+    const urlCheck = validateUrl(metadataUrl);
+    if (!urlCheck.valid) {
+      return res.status(400).json({ error: `Invalid metadata URL: ${urlCheck.reason}` });
+    }
+
     // Fetch metadata
-    const response = await fetch(metadataUrl);
+    const response = await safeFetch(metadataUrl);
     if (!response.ok) {
       return res.status(400).json({ error: 'Failed to fetch metadata' });
     }

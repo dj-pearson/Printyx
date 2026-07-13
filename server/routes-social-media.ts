@@ -14,6 +14,7 @@ import {
 } from '../shared/schema';
 // Auth helpers for Supabase JWT + session fallback
 import { getUserId, getTenantId } from './utils/auth-helpers';
+import { safeFetch } from './lib/safe-http-client';
 
 // Basic authentication middleware - Updated to work with current auth system
 const isAuthenticated = (req: any, res: any, next: any) => {
@@ -132,7 +133,9 @@ async function sendWebhook(webhookUrl: string, post: SocialMediaPost): Promise<b
       generationType: post.generationType,
     };
 
-    const response = await fetch(webhookUrl, {
+    // CR-005: SSRF guard — webhookUrl is user-supplied; block private/internal
+    // targets (safeFetch validates + DNS-checks + bounds redirects/timeout).
+    const response = await safeFetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

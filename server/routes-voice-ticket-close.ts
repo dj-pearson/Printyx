@@ -57,10 +57,37 @@ import { requireAuth } from './replitAuth';
 import { resolveTenant } from './middleware/tenancy';
 import { getTenantId, getUserId } from './utils/auth-helpers';
 import { createModuleLogger } from './lib/logger';
+import { safeFetch } from './lib/safe-http-client';
 import ClaudeAIService from './services/claude-ai-service';
 import { voiceTicketCloses, serviceTickets, inventoryItems, truckInventory } from '@shared/schema';
 
 const log = createModuleLogger('routes-voice-ticket-close');
+
+/**
+ * CR-005: restrict the audioUrl to expected storage host(s) before fetching, so
+ * a user-supplied URL cannot be used for SSRF. Allows the configured Supabase
+ * host and *.supabase.co / *.printyx.net storage domains.
+ */
+export function isAllowedAudioHost(rawUrl: string): boolean {
+  let host: string;
+  try {
+    host = new URL(rawUrl).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  const suffixes = ['.supabase.co', '.supabase.in', '.printyx.net'];
+  if (suffixes.some((s) => host.endsWith(s))) return true;
+  try {
+    if (
+      process.env.SUPABASE_URL &&
+      host === new URL(process.env.SUPABASE_URL).hostname.toLowerCase()
+    )
+      return true;
+  } catch {
+    /* ignore malformed env */
+  }
+  return false;
+}
 
 const THIRTY_DAYS_MS = 30 * 86_400_000;
 /** A chosen SKU is auto-selected only when the top candidate's score clears this. */
@@ -132,9 +159,19 @@ export async function transcribeAudio(args: {
       if (args.audioBase64) {
         bytes = new Uint8Array(Buffer.from(args.audioBase64, 'base64'));
       } else if (args.audioUrl) {
-        const dl = await fetch(args.audioUrl);
-        if (dl.ok) {
-          bytes = new Uint8Array(await dl.arrayBuffer());
+        // CR-005: only fetch audio from an expected storage host; safeFetch adds
+        // the SSRF blocklist + DNS + redirect checks on top.
+        if (isAllowedAudioHost(args.audioUrl)) {
+          try {
+            const dl = await safeFetch(args.audioUrl);
+            if (dl.ok) {
+              bytes = new Uint8Array(await dl.arrayBuffer());
+            }
+          } catch (err) {
+            log.warn({ err }, 'Blocked or failed audio fetch');
+          }
+        } else {
+          log.warn({ audioUrl: args.audioUrl }, 'Rejected audioUrl: host not allowlisted');
         }
       }
       if (bytes && bytes.byteLength > 0) {

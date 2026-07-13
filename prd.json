@@ -9019,8 +9019,8 @@
         "Centralize the URL guard in a shared helper and unit-test it"
       ],
       "priority": 241,
-      "passes": false,
-      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). SSRF cluster from validation audit."
+      "passes": true,
+      "notes": "[SECURITY/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). SSRF cluster from validation audit. [DONE 2026-07-13] Reused existing shared guard (server/lib/safe-http-client.ts safeFetch: validateUrl blocklist + DNS-resolve private-IP check + timeout + redirect validation) at all 4 SSRF sites: SSO OIDC discovery + SAML metadataUrl (sso-routes; metadata also pre-validated with validateUrl for a clean 400), social-media webhookUrl POST, voice-ticket audioUrl (added isAllowedAudioHost storage allowlist for *.supabase.co/*.printyx.net/SUPABASE_URL host + safeFetch). validateUrl/isPrivateIP already unit-tested; added 5 tests for isAllowedAudioHost (incl. look-alike-suffix + metadata-IP rejection). Ratchet 1353."
     },
     {
       "id": "CR-006",
