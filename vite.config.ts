@@ -35,6 +35,12 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname, 'client'),
   publicDir: path.resolve(import.meta.dirname, 'client/public'),
+  // CR-016: mark debug console.* as pure so the production minifier drops them
+  // (they contain customer PII in some paths). Dev builds don't minify, so
+  // console.log still works locally; console.error/warn are always kept.
+  esbuild: {
+    pure: ['console.log', 'console.debug', 'console.info'],
+  },
   build: {
     outDir: '../dist',
     emptyOutDir: true,

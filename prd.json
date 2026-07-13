@@ -9166,8 +9166,8 @@
         "Add an ESLint rule (no-console in client prod) to prevent regressions"
       ],
       "priority": 252,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Sentry replay now maskAllText+maskAllInputs+blockAllMedia (was maskAllText:false — leaked all replay PII). Removed the named PII console.logs (EnhancedOnboardingForm form-data/payload/form-values at 3 sites; DealsManagement drag/deal-move). The ~221-statement sweep is handled structurally: vite esbuild pure:[console.log,console.debug,console.info] strips debug console from the minified PROD bundle (kept in dev; console.error/warn always kept) — stronger than manual deletion and regression-proof. eslint no-console already active for js/jsx; tsx no-console folded into PA-048 (ts/tsx not yet linted). Ratchet 1353."
     },
     {
       "id": "CR-017",

@@ -20,7 +20,13 @@ if (SENTRY_DSN) {
     release: import.meta.env.VITE_APP_VERSION || '1.0.0',
     integrations: [
       Sentry.browserTracingIntegration(),
-      Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false }),
+      // CR-016: mask all text + inputs in session replay so customer PII is not
+      // captured. blockAllMedia also enabled to avoid recording uploaded media.
+      Sentry.replayIntegration({
+        maskAllText: true,
+        maskAllInputs: true,
+        blockAllMedia: true,
+      }),
     ],
     tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
     replaysSessionSampleRate: 0.1,
