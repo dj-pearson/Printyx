@@ -9085,8 +9085,8 @@
         "Add a test asserting header/user_metadata spoofing is ignored"
       ],
       "priority": 246,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Related to CR-001 on the edge-fn side."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Related to CR-001 on the edge-fn side. [DONE 2026-07-13] New import-free _shared/resolve-tenant.ts tenantFromJwt(user) returns app_metadata.tenantId||tenant_id ONLY (no user_metadata, no header — both spoofable). Applied to the named service-client edge fns task-comments + remote-monitoring (replaced the 5-way spoofable fallback chain). auto-lead-routing Express route: all 6 raw req.headers[x-tenant-id] reads replaced with getTenantId(req) (authenticated context, validated by CR-001 resolveTenant). Test asserts user_metadata/header spoof ignored. NOTE: ~193 other edge fns still inline the same fallback chain — a mechanical sweep to tenantFromJwt is follow-up (most use the ANON/RLS client where it is lower-risk; service-client ones are the priority). Ratchet 1353."
     },
     {
       "id": "CR-011",
