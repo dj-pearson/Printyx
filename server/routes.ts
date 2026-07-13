@@ -178,7 +178,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       '/api/signup-crm',
       '/api/webhooks', // Webhooks use provider-specific signature verification, not JWT
     ];
-    if (publicPaths.some((p) => req.path.startsWith(p))) return next();
+    // Match exact path or a proper sub-path (segment boundary) so that e.g.
+    // "/api/authx" or "/api/health-internal" are NOT treated as public (CR-014).
+    if (publicPaths.some((p) => req.path === p || req.path.startsWith(p + '/'))) return next();
     const userId = getUserId(req);
     if (!userId) {
       return res.status(401).json({ message: 'Authentication required', code: 'UNAUTHORIZED' });

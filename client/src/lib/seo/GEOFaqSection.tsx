@@ -11,6 +11,7 @@
  */
 
 import React from 'react';
+import { jsonLdStringify } from '../seoUtils';
 
 export interface FAQItem {
   question: string;
@@ -51,7 +52,7 @@ export function GEOFaqSection({
     <section className={`geo-faq-section ${className}`} aria-labelledby="faq-heading">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdStringify(faqSchema) }}
       />
       <h2 id="faq-heading" className="text-2xl font-bold mb-6">
         {title}

@@ -9140,8 +9140,8 @@
         "Remove hardcoded production DB IP from tooling (scripts/database-schema-reporter.ts) and demo API keys from seed script (server/seed-signature-data.ts)"
       ],
       "priority": 250,
-      "passes": false,
-      "notes": "[SECURITY/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[SECURITY/LOW] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] exports CORS already an allowlist (getCorsHeaders/ALLOWED_ORIGINS); public-path gate now matches exact path or segment boundary (not startsWith); added jsonLdStringify() escaping </script>+U+2028/9 used in seoUtils (2) + GEOFaqSection; replaced hardcoded prod DB IP in database-schema-reporter with placeholders + moved seed-signature demo keys to env reads."
     },
     {
       "id": "CR-015",

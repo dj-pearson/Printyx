@@ -46,8 +46,8 @@ async function seedSignatureData() {
         provider: 'docusign',
         integrationName: 'DocuSign Production',
         status: 'active',
-        apiKey: 'demo_api_key_12345',
-        accountId: 'acc_67890',
+        apiKey: process.env.SEED_DOCUSIGN_API_KEY ?? '',
+        accountId: process.env.SEED_DOCUSIGN_ACCOUNT_ID ?? '',
         sandboxMode: false,
         config: {
           baseUrl: 'https://www.docusign.net/restapi',
@@ -65,9 +65,9 @@ async function seedSignatureData() {
         provider: 'adobe_sign',
         integrationName: 'Adobe Sign Development',
         status: 'active',
-        apiKey: 'demo_adobe_key_54321',
-        accessToken: 'demo_access_token',
-        refreshToken: 'demo_refresh_token',
+        apiKey: process.env.SEED_ADOBE_SIGN_API_KEY ?? '',
+        accessToken: process.env.SEED_ADOBE_SIGN_ACCESS_TOKEN ?? '',
+        refreshToken: process.env.SEED_ADOBE_SIGN_REFRESH_TOKEN ?? '',
         tokenExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
         sandboxMode: true,
         config: {
@@ -85,7 +85,7 @@ async function seedSignatureData() {
         provider: 'hellosign',
         integrationName: 'HelloSign Testing',
         status: 'inactive',
-        apiKey: 'demo_hellosign_key',
+        apiKey: process.env.SEED_HELLOSIGN_API_KEY ?? '',
         sandboxMode: true,
         config: {
           baseUrl: 'https://api.hellosign.com/v3',

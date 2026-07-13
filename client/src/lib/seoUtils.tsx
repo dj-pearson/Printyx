@@ -1,6 +1,21 @@
 import { useEffect } from 'react';
 
 /**
+ * Serialize an object for embedding in a <script type="application/ld+json">
+ * block. Escapes `<`, `>`, `&` and the JS line separators so a value containing
+ * `</script>` (or U+2028/U+2029) cannot break out of the script element (XSS).
+ * See CR-014.
+ */
+export function jsonLdStringify(obj: unknown): string {
+  return JSON.stringify(obj)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+/**
  * Enhanced SEO hook for setting meta tags dynamically
  */
 export function usePageSeo(params: {
@@ -250,7 +265,7 @@ export function FAQSchemaScript({ faqs }: { faqs: Array<{ question: string; answ
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: jsonLdStringify(schema) }}
     />
   );
 }
@@ -277,7 +292,7 @@ export function BreadcrumbSchemaScript({
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: jsonLdStringify(schema) }}
     />
   );
 }
