@@ -9699,9 +9699,9 @@
         "Generate via db:generate, review SQL, apply via db:migrate; EXPLAIN confirms index scans on representative list queries."
       ],
       "priority": 290,
-      "passes": false,
+      "passes": true,
       "category": "audit-performance",
-      "notes": "[PERFORMANCE/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). All listed tables have 0 CREATE INDEX in drizzle/migrations/0000 despite tenant_id NOT NULL (contracts referenced with eq(...tenantId) in 14 route files). Newer tables ARE indexed (deals=5, service_tickets=5). Distinct from CR-028 (equipment/invoices only)."
+      "notes": "[PERFORMANCE/HIGH] Source: platform audit 2026-07-12 (branch claude/platform-audit-prd-e5lp6t). All listed tables have 0 CREATE INDEX in drizzle/migrations/0000 despite tenant_id NOT NULL (contracts referenced with eq(...tenantId) in 14 route files). Newer tables ARE indexed (deals=5, service_tickets=5). Distinct from CR-028 (equipment/invoices only). [DONE 2026-07-13] Added .index() defs to 9 tables that had ZERO indexes: contracts/quotes (tenant+customer, tenant+status), proposals (tenant+status, tenant+created), tasks (tenant+status), purchase_orders (tenant+status, tenant+vendor), opportunities (tenant+account_id, tenant+stage_name — this table uses account_id/stage_name NOT customer_id/status), inventory_items (tenant+category), + FK indexes proposal_line_items.proposal_id and invoice_line_items.invoice_id (each also tenant). Same drift workaround as CR-028: idempotent CREATE INDEX IF NOT EXISTS migration drizzle/migrations/0011_pa026_perf_indexes.sql + journal entry (db:generate unusable). EXPLAIN verification deferred (no DB access in loop env)."
     },
     {
       "id": "PA-032",

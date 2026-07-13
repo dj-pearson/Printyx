@@ -78,6 +78,13 @@
       "when": 1783925568670,
       "tag": "0010_cr028_perf_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1783925568680,
+      "tag": "0011_pa026_perf_indexes",
+      "breakpoints": true
     }
   ]
 }

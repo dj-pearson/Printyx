@@ -1499,81 +1499,89 @@ export const enhancedContacts = pgTable('enhanced_contacts', {
 });
 
 // Sales Opportunities (Salesforce-style deal management)
-export const opportunities = pgTable('opportunities', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const opportunities = pgTable(
+  'opportunities',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // External System Integration
-  externalOpportunityId: varchar('external_opportunity_id'), // Salesforce Opportunity.Id
-  externalAccountId: varchar('external_account_id'), // Salesforce Opportunity.AccountId
-  migrationStatus: varchar('migration_status'),
-  lastSyncDate: timestamp('last_sync_date'),
+    // External System Integration
+    externalOpportunityId: varchar('external_opportunity_id'), // Salesforce Opportunity.Id
+    externalAccountId: varchar('external_account_id'), // Salesforce Opportunity.AccountId
+    migrationStatus: varchar('migration_status'),
+    lastSyncDate: timestamp('last_sync_date'),
 
-  // Basic Opportunity Information
-  opportunityName: varchar('opportunity_name').notNull(), // Salesforce Opportunity.Name
-  accountId: varchar('account_id'), // References business_records.id
-  accountName: varchar('account_name'), // Denormalized for performance
+    // Basic Opportunity Information
+    opportunityName: varchar('opportunity_name').notNull(), // Salesforce Opportunity.Name
+    accountId: varchar('account_id'), // References business_records.id
+    accountName: varchar('account_name'), // Denormalized for performance
 
-  // Sales Process
-  stageName: varchar('stage_name').notNull(), // Salesforce Opportunity.StageName
-  amount: decimal('amount', { precision: 15, scale: 2 }), // Salesforce Opportunity.Amount
-  probability: integer('probability').default(50), // Salesforce Opportunity.Probability (0-100%)
-  closeDate: timestamp('close_date'), // Salesforce Opportunity.CloseDate
+    // Sales Process
+    stageName: varchar('stage_name').notNull(), // Salesforce Opportunity.StageName
+    amount: decimal('amount', { precision: 15, scale: 2 }), // Salesforce Opportunity.Amount
+    probability: integer('probability').default(50), // Salesforce Opportunity.Probability (0-100%)
+    closeDate: timestamp('close_date'), // Salesforce Opportunity.CloseDate
 
-  // Opportunity Classification
-  opportunityType: varchar('opportunity_type'), // Salesforce Opportunity.Type (New Business, Existing Business, Renewal)
-  leadSource: varchar('lead_source'), // Salesforce Opportunity.LeadSource
-  campaignId: varchar('campaign_id'), // Salesforce Opportunity.CampaignId
+    // Opportunity Classification
+    opportunityType: varchar('opportunity_type'), // Salesforce Opportunity.Type (New Business, Existing Business, Renewal)
+    leadSource: varchar('lead_source'), // Salesforce Opportunity.LeadSource
+    campaignId: varchar('campaign_id'), // Salesforce Opportunity.CampaignId
 
-  // Status Tracking
-  isWon: boolean('is_won').default(false), // Salesforce Opportunity.IsWon
-  isClosed: boolean('is_closed').default(false), // Salesforce Opportunity.IsClosed
-  isPrivate: boolean('is_private').default(false), // Salesforce Opportunity.IsPrivate
+    // Status Tracking
+    isWon: boolean('is_won').default(false), // Salesforce Opportunity.IsWon
+    isClosed: boolean('is_closed').default(false), // Salesforce Opportunity.IsClosed
+    isPrivate: boolean('is_private').default(false), // Salesforce Opportunity.IsPrivate
 
-  // Sales Information
-  ownerId: varchar('owner_id'), // Salesforce Opportunity.OwnerId - assigned rep
-  ownerName: varchar('owner_name'), // Denormalized for performance
-  description: text('description'), // Salesforce Opportunity.Description
-  nextStep: text('next_step'), // Salesforce Opportunity.NextStep
-  forecastCategory: varchar('forecast_category'), // Salesforce Opportunity.ForecastCategoryName
+    // Sales Information
+    ownerId: varchar('owner_id'), // Salesforce Opportunity.OwnerId - assigned rep
+    ownerName: varchar('owner_name'), // Denormalized for performance
+    description: text('description'), // Salesforce Opportunity.Description
+    nextStep: text('next_step'), // Salesforce Opportunity.NextStep
+    forecastCategory: varchar('forecast_category'), // Salesforce Opportunity.ForecastCategoryName
 
-  // Financial Details
-  expectedRevenue: decimal('expected_revenue', { precision: 15, scale: 2 }), // Salesforce Opportunity.ExpectedRevenue
-  totalQuantity: decimal('total_quantity', { precision: 10, scale: 2 }), // Salesforce Opportunity.TotalOpportunityQuantity
-  hasLineItems: boolean('has_line_items').default(false), // Salesforce Opportunity.HasOpportunityLineItem
-  priceBookId: varchar('price_book_id'), // Salesforce Opportunity.Pricebook2Id
+    // Financial Details
+    expectedRevenue: decimal('expected_revenue', { precision: 15, scale: 2 }), // Salesforce Opportunity.ExpectedRevenue
+    totalQuantity: decimal('total_quantity', { precision: 10, scale: 2 }), // Salesforce Opportunity.TotalOpportunityQuantity
+    hasLineItems: boolean('has_line_items').default(false), // Salesforce Opportunity.HasOpportunityLineItem
+    priceBookId: varchar('price_book_id'), // Salesforce Opportunity.Pricebook2Id
 
-  // Industry-Specific Fields (Copier Dealer)
-  mainCompetitors: text('main_competitors'), // Salesforce Opportunity.MainCompetitors__c
-  deliveryStatus: varchar('delivery_status'), // Salesforce Opportunity.DeliveryInstallationStatus__c
-  trackingNumber: varchar('tracking_number'), // Salesforce Opportunity.TrackingNumber__c
-  orderNumber: varchar('order_number'), // Salesforce Opportunity.OrderNumber__c
-  currentSituation: text('current_situation'), // Salesforce Opportunity.CurrentSituation__c
+    // Industry-Specific Fields (Copier Dealer)
+    mainCompetitors: text('main_competitors'), // Salesforce Opportunity.MainCompetitors__c
+    deliveryStatus: varchar('delivery_status'), // Salesforce Opportunity.DeliveryInstallationStatus__c
+    trackingNumber: varchar('tracking_number'), // Salesforce Opportunity.TrackingNumber__c
+    orderNumber: varchar('order_number'), // Salesforce Opportunity.OrderNumber__c
+    currentSituation: text('current_situation'), // Salesforce Opportunity.CurrentSituation__c
 
-  // Product & Financing
-  productType: varchar('product_type'), // Salesforce Opportunity.ProductType__c (Copier, Production, IT Services, Software)
-  financingType: varchar('financing_type'), // Salesforce Opportunity.Financing__c (Purchase, Lease, Rental)
-  monthlyPayment: decimal('monthly_payment', { precision: 10, scale: 2 }), // Salesforce Opportunity.MonthlyPayment__c
-  leaseTermMonths: integer('lease_term_months'), // Salesforce Opportunity.LeaseTerm__c
+    // Product & Financing
+    productType: varchar('product_type'), // Salesforce Opportunity.ProductType__c (Copier, Production, IT Services, Software)
+    financingType: varchar('financing_type'), // Salesforce Opportunity.Financing__c (Purchase, Lease, Rental)
+    monthlyPayment: decimal('monthly_payment', { precision: 10, scale: 2 }), // Salesforce Opportunity.MonthlyPayment__c
+    leaseTermMonths: integer('lease_term_months'), // Salesforce Opportunity.LeaseTerm__c
 
-  // Sales Performance
-  commissionRate: decimal('commission_rate', { precision: 5, scale: 4 }), // Salesforce Opportunity.CommissionRate__c
-  grossMarginPercent: decimal('gross_margin_percent', {
-    precision: 5,
-    scale: 2,
-  }), // Salesforce Opportunity.GrossMargin__c
-  territory: varchar('territory'), // Salesforce Opportunity.Territory__c
-  partnerAccountId: varchar('partner_account_id'), // Salesforce Opportunity.PartnerAccount__c
+    // Sales Performance
+    commissionRate: decimal('commission_rate', { precision: 5, scale: 4 }), // Salesforce Opportunity.CommissionRate__c
+    grossMarginPercent: decimal('gross_margin_percent', {
+      precision: 5,
+      scale: 2,
+    }), // Salesforce Opportunity.GrossMargin__c
+    territory: varchar('territory'), // Salesforce Opportunity.Territory__c
+    partnerAccountId: varchar('partner_account_id'), // Salesforce Opportunity.PartnerAccount__c
 
-  // Activity Tracking
-  lastActivityDate: timestamp('last_activity_date'), // Salesforce Opportunity.LastActivityDate
+    // Activity Tracking
+    lastActivityDate: timestamp('last_activity_date'), // Salesforce Opportunity.LastActivityDate
 
-  // System Tracking
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+    // System Tracking
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // PA-026: tenant-scoped indexes (table had none).
+    tenantAccountIdx: index('opportunities_tenant_account_idx').on(table.tenantId, table.accountId),
+    tenantStageIdx: index('opportunities_tenant_stage_idx').on(table.tenantId, table.stageName),
+  }),
+);
 
 // Enhanced Products Catalog (Salesforce-compatible)
 export const enhancedProducts = pgTable('enhanced_products', {
@@ -1911,66 +1919,76 @@ export const serviceCalls = pgTable('service_calls', {
 });
 
 // Inventory/Parts Table (E-Automate compatible)
-export const inventoryItems = pgTable('inventory_items', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const inventoryItems = pgTable(
+  'inventory_items',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // Basic Identification (legacy fields from simplified schema)
-  name: varchar('name').notNull(), // Item name (legacy, keep for compatibility)
-  category: varchar('category').notNull(), // Category (legacy, keep for compatibility)
+    // Basic Identification (legacy fields from simplified schema)
+    name: varchar('name').notNull(), // Item name (legacy, keep for compatibility)
+    category: varchar('category').notNull(), // Category (legacy, keep for compatibility)
 
-  // E-Automate Compatibility
-  externalItemId: varchar('external_item_id'), // E-Automate ItemKey
-  lastSyncDate: timestamp('last_sync_date'),
+    // E-Automate Compatibility
+    externalItemId: varchar('external_item_id'), // E-Automate ItemKey
+    lastSyncDate: timestamp('last_sync_date'),
 
-  // Item Identification
-  partNumber: varchar('part_number').unique(), // E-Automate PartNumber
-  manufacturerPartNumber: varchar('manufacturer_part_number'), // E-Automate ManufacturerPartNumber
-  itemDescription: text('item_description'), // E-Automate Description
-  itemCategory: varchar('item_category'), // E-Automate Category
-  manufacturer: varchar('manufacturer'), // E-Automate Manufacturer
+    // Item Identification
+    partNumber: varchar('part_number').unique(), // E-Automate PartNumber
+    manufacturerPartNumber: varchar('manufacturer_part_number'), // E-Automate ManufacturerPartNumber
+    itemDescription: text('item_description'), // E-Automate Description
+    itemCategory: varchar('item_category'), // E-Automate Category
+    manufacturer: varchar('manufacturer'), // E-Automate Manufacturer
 
-  // Inventory Levels
-  quantityOnHand: integer('quantity_on_hand').default(0), // E-Automate QtyOnHand
-  quantityCommitted: integer('quantity_committed').default(0), // E-Automate QtyCommitted
-  quantityAvailable: integer('quantity_available').default(0), // E-Automate QtyAvailable
-  quantityOnOrder: integer('quantity_on_order').default(0), // E-Automate QtyOnOrder
-  reorderPoint: integer('reorder_point').default(0), // E-Automate ReorderPoint
-  reorderQuantity: integer('reorder_quantity').default(0), // E-Automate ReorderQty
-  maxStockLevel: integer('max_stock_level'), // E-Automate MaxStockLevel
+    // Inventory Levels
+    quantityOnHand: integer('quantity_on_hand').default(0), // E-Automate QtyOnHand
+    quantityCommitted: integer('quantity_committed').default(0), // E-Automate QtyCommitted
+    quantityAvailable: integer('quantity_available').default(0), // E-Automate QtyAvailable
+    quantityOnOrder: integer('quantity_on_order').default(0), // E-Automate QtyOnOrder
+    reorderPoint: integer('reorder_point').default(0), // E-Automate ReorderPoint
+    reorderQuantity: integer('reorder_quantity').default(0), // E-Automate ReorderQty
+    maxStockLevel: integer('max_stock_level'), // E-Automate MaxStockLevel
 
-  // Pricing Information
-  unitCost: decimal('unit_cost', { precision: 10, scale: 4 }), // E-Automate Cost
-  averageCost: decimal('average_cost', { precision: 10, scale: 4 }), // E-Automate AverageCost
-  lastCost: decimal('last_cost', { precision: 10, scale: 4 }), // E-Automate LastCost
-  unitPrice: decimal('unit_price', { precision: 10, scale: 4 }), // E-Automate Price
-  retailPrice: decimal('retail_price', { precision: 10, scale: 4 }), // E-Automate RetailPrice
+    // Pricing Information
+    unitCost: decimal('unit_cost', { precision: 10, scale: 4 }), // E-Automate Cost
+    averageCost: decimal('average_cost', { precision: 10, scale: 4 }), // E-Automate AverageCost
+    lastCost: decimal('last_cost', { precision: 10, scale: 4 }), // E-Automate LastCost
+    unitPrice: decimal('unit_price', { precision: 10, scale: 4 }), // E-Automate Price
+    retailPrice: decimal('retail_price', { precision: 10, scale: 4 }), // E-Automate RetailPrice
 
-  // Location Information
-  warehouseLocation: varchar('warehouse_location'), // E-Automate Location
-  binLocation: varchar('bin_location'), // E-Automate BinLocation
+    // Location Information
+    warehouseLocation: varchar('warehouse_location'), // E-Automate Location
+    binLocation: varchar('bin_location'), // E-Automate BinLocation
 
-  // Vendor Information
-  primaryVendor: varchar('primary_vendor'), // E-Automate Vendor
-  vendorPartNumber: varchar('vendor_part_number'), // E-Automate VendorPartNumber
+    // Vendor Information
+    primaryVendor: varchar('primary_vendor'), // E-Automate Vendor
+    vendorPartNumber: varchar('vendor_part_number'), // E-Automate VendorPartNumber
 
-  // Item Specifications
-  unitOfMeasure: varchar('unit_of_measure').default('EA'), // E-Automate UOM
-  itemWeight: decimal('item_weight', { precision: 8, scale: 3 }), // E-Automate Weight
-  isTaxable: boolean('is_taxable').default(true), // E-Automate Taxable
-  isSerialized: boolean('is_serialized').default(false), // E-Automate Serialized
-  isActive: boolean('is_active').default(true), // E-Automate Active
+    // Item Specifications
+    unitOfMeasure: varchar('unit_of_measure').default('EA'), // E-Automate UOM
+    itemWeight: decimal('item_weight', { precision: 8, scale: 3 }), // E-Automate Weight
+    isTaxable: boolean('is_taxable').default(true), // E-Automate Taxable
+    isSerialized: boolean('is_serialized').default(false), // E-Automate Serialized
+    isActive: boolean('is_active').default(true), // E-Automate Active
 
-  // Activity Tracking
-  lastSoldDate: timestamp('last_sold_date'), // E-Automate LastSold
-  lastReceivedDate: timestamp('last_received_date'), // E-Automate LastReceived
+    // Activity Tracking
+    lastSoldDate: timestamp('last_sold_date'), // E-Automate LastSold
+    lastReceivedDate: timestamp('last_received_date'), // E-Automate LastReceived
 
-  // System Tracking
-  createdAt: timestamp('created_at').defaultNow(), // E-Automate DateCreated
-  updatedAt: timestamp('updated_at').defaultNow(), // E-Automate LastModified
-});
+    // System Tracking
+    createdAt: timestamp('created_at').defaultNow(), // E-Automate DateCreated
+    updatedAt: timestamp('updated_at').defaultNow(), // E-Automate LastModified
+  },
+  (table) => ({
+    // PA-026: tenant-scoped indexes (table had none).
+    tenantCategoryIdx: index('inventory_items_tenant_category_idx').on(
+      table.tenantId,
+      table.category,
+    ),
+  }),
+);
 
 // Enhanced Invoices Table (E-Automate compatible)
 export const invoices = pgTable(
@@ -2041,57 +2059,65 @@ export const invoices = pgTable(
 );
 
 // Enhanced Invoice Line Items Table (E-Automate compatible)
-export const invoiceLineItems = pgTable('invoice_line_items', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const invoiceLineItems = pgTable(
+  'invoice_line_items',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // E-Automate Compatibility
-  externalLineItemId: varchar('external_line_item_id'), // E-Automate DetailKey
-  externalInvoiceId: varchar('external_invoice_id'), // E-Automate InvoiceKey
-  externalItemId: varchar('external_item_id'), // E-Automate ItemKey
-  externalEquipmentId: varchar('external_equipment_id'), // E-Automate EquipmentKey
+    // E-Automate Compatibility
+    externalLineItemId: varchar('external_line_item_id'), // E-Automate DetailKey
+    externalInvoiceId: varchar('external_invoice_id'), // E-Automate InvoiceKey
+    externalItemId: varchar('external_item_id'), // E-Automate ItemKey
+    externalEquipmentId: varchar('external_equipment_id'), // E-Automate EquipmentKey
 
-  // Line Item Identification
-  invoiceId: varchar('invoice_id').notNull(), // References invoices.id
-  equipmentId: varchar('equipment_id'), // References equipment.id
-  meterReadingId: varchar('meter_reading_id'), // References meter_readings.id
+    // Line Item Identification
+    invoiceId: varchar('invoice_id').notNull(), // References invoices.id
+    equipmentId: varchar('equipment_id'), // References equipment.id
+    meterReadingId: varchar('meter_reading_id'), // References meter_readings.id
 
-  // Line Item Details
-  lineDescription: text('line_description'), // E-Automate Description
-  quantity: integer('quantity').default(0), // E-Automate Quantity
-  unitPrice: decimal('unit_price', { precision: 10, scale: 4 }), // E-Automate UnitPrice
-  extendedPrice: decimal('extended_price', { precision: 10, scale: 2 }), // E-Automate ExtendedPrice
+    // Line Item Details
+    lineDescription: text('line_description'), // E-Automate Description
+    quantity: integer('quantity').default(0), // E-Automate Quantity
+    unitPrice: decimal('unit_price', { precision: 10, scale: 4 }), // E-Automate UnitPrice
+    extendedPrice: decimal('extended_price', { precision: 10, scale: 2 }), // E-Automate ExtendedPrice
 
-  // Discounts
-  discountPercent: decimal('discount_percent', { precision: 5, scale: 2 }), // E-Automate DiscountPercent
-  discountAmount: decimal('discount_amount', { precision: 10, scale: 2 }), // E-Automate DiscountAmount
+    // Discounts
+    discountPercent: decimal('discount_percent', { precision: 5, scale: 2 }), // E-Automate DiscountPercent
+    discountAmount: decimal('discount_amount', { precision: 10, scale: 2 }), // E-Automate DiscountAmount
 
-  // Tax Information
-  taxRate: decimal('tax_rate', { precision: 5, scale: 4 }), // E-Automate TaxRate
-  taxAmount: decimal('tax_amount', { precision: 10, scale: 2 }), // E-Automate TaxAmount
-  lineTotal: decimal('line_total', { precision: 10, scale: 2 }), // E-Automate LineTotal
+    // Tax Information
+    taxRate: decimal('tax_rate', { precision: 5, scale: 4 }), // E-Automate TaxRate
+    taxAmount: decimal('tax_amount', { precision: 10, scale: 2 }), // E-Automate TaxAmount
+    lineTotal: decimal('line_total', { precision: 10, scale: 2 }), // E-Automate LineTotal
 
-  // Accounting
-  glAccountCode: varchar('gl_account_code'), // E-Automate GLAccount
+    // Accounting
+    glAccountCode: varchar('gl_account_code'), // E-Automate GLAccount
 
-  // Equipment/Service Specific
-  serialNumber: varchar('serial_number'), // E-Automate SerialNumber
-  meterStartReading: integer('meter_start_reading'), // E-Automate MeterStart
-  meterEndReading: integer('meter_end_reading'), // E-Automate MeterEnd
-  meterUsage: integer('meter_usage'), // E-Automate MeterUsage
-  billingType: varchar('billing_type'), // E-Automate BillingType: base, overage, one-time, recurring
+    // Equipment/Service Specific
+    serialNumber: varchar('serial_number'), // E-Automate SerialNumber
+    meterStartReading: integer('meter_start_reading'), // E-Automate MeterStart
+    meterEndReading: integer('meter_end_reading'), // E-Automate MeterEnd
+    meterUsage: integer('meter_usage'), // E-Automate MeterUsage
+    billingType: varchar('billing_type'), // E-Automate BillingType: base, overage, one-time, recurring
 
-  // Legacy fields for compatibility
-  description: varchar('description'), // Legacy description field
-  rate: decimal('rate', { precision: 10, scale: 4 }).default('0'),
-  amount: decimal('amount', { precision: 10, scale: 2 }),
-  lineType: varchar('line_type').default('meter'),
+    // Legacy fields for compatibility
+    description: varchar('description'), // Legacy description field
+    rate: decimal('rate', { precision: 10, scale: 4 }).default('0'),
+    amount: decimal('amount', { precision: 10, scale: 2 }),
+    lineType: varchar('line_type').default('meter'),
 
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // PA-026: FK + tenant indexes (table had none).
+    invoiceIdx: index('invoice_line_items_invoice_idx').on(table.invoiceId),
+    tenantIdx: index('invoice_line_items_tenant_idx').on(table.tenantId),
+  }),
+);
 
 // Employees/Technicians Table (E-Automate compatible)
 export const employees = pgTable('employees', {
@@ -2218,26 +2244,34 @@ export const leadRelatedRecords = pgTable('lead_related_records', {
 });
 
 // CRM - Quotes/Proposals
-export const quotes = pgTable('quotes', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  leadId: varchar('lead_id'),
-  customerId: varchar('customer_id'),
-  quoteNumber: varchar('quote_number').notNull(),
-  title: varchar('title').notNull(),
-  status: varchar('status').notNull().default('draft'), // draft, sent, accepted, rejected, expired
-  totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
-  validUntil: timestamp('valid_until').notNull(),
-  terms: text('terms'),
-  notes: text('notes'),
-  createdBy: varchar('created_by').notNull(),
-  sentDate: timestamp('sent_date'),
-  acceptedDate: timestamp('accepted_date'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+export const quotes = pgTable(
+  'quotes',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
+    leadId: varchar('lead_id'),
+    customerId: varchar('customer_id'),
+    quoteNumber: varchar('quote_number').notNull(),
+    title: varchar('title').notNull(),
+    status: varchar('status').notNull().default('draft'), // draft, sent, accepted, rejected, expired
+    totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
+    validUntil: timestamp('valid_until').notNull(),
+    terms: text('terms'),
+    notes: text('notes'),
+    createdBy: varchar('created_by').notNull(),
+    sentDate: timestamp('sent_date'),
+    acceptedDate: timestamp('accepted_date'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // PA-026: tenant-scoped indexes (table had none).
+    tenantCustomerIdx: index('quotes_tenant_customer_idx').on(table.tenantId, table.customerId),
+    tenantStatusIdx: index('quotes_tenant_status_idx').on(table.tenantId, table.status),
+  }),
+);
 
 // CRM - Quote line items
 export const quoteLineItems = pgTable('quote_line_items', {
@@ -2473,30 +2507,38 @@ export const dealActivities = pgTable('deal_activities', {
 // The comprehensive customers table is defined above (line 448) with all necessary fields
 
 // Contracts table - Simplified to match actual database structure
-export const contracts = pgTable('contracts', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  customerId: varchar('customer_id').notNull(),
-  contractNumber: varchar('contract_number').notNull(),
+export const contracts = pgTable(
+  'contracts',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
+    customerId: varchar('customer_id').notNull(),
+    contractNumber: varchar('contract_number').notNull(),
 
-  // Contract Dates
-  startDate: timestamp('start_date').notNull(),
-  endDate: timestamp('end_date').notNull(),
+    // Contract Dates
+    startDate: timestamp('start_date').notNull(),
+    endDate: timestamp('end_date').notNull(),
 
-  // Base Rates
-  blackRate: decimal('black_rate', { precision: 10, scale: 4 }),
-  colorRate: decimal('color_rate', { precision: 10, scale: 4 }),
-  monthlyBase: decimal('monthly_base', { precision: 10, scale: 2 }),
+    // Base Rates
+    blackRate: decimal('black_rate', { precision: 10, scale: 4 }),
+    colorRate: decimal('color_rate', { precision: 10, scale: 4 }),
+    monthlyBase: decimal('monthly_base', { precision: 10, scale: 2 }),
 
-  // Status
-  status: varchar('status').notNull().default('active'),
+    // Status
+    status: varchar('status').notNull().default('active'),
 
-  // Timestamps
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+    // Timestamps
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // PA-026: tenant-scoped indexes (table had none).
+    tenantCustomerIdx: index('contracts_tenant_customer_idx').on(table.tenantId, table.customerId),
+    tenantStatusIdx: index('contracts_tenant_status_idx').on(table.tenantId, table.status),
+  }),
+);
 
 // Contract Tiered Rates - For complex billing structures
 export const contractTieredRates = pgTable('contract_tiered_rates', {
@@ -5487,28 +5529,35 @@ export * from './equipment-schema';
 // ============= TASK MANAGEMENT SYSTEM =============
 
 // Tasks table
-export const tasks = pgTable('tasks', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  title: varchar('title').notNull(),
-  description: text('description'),
-  status: varchar('status').notNull().default('todo'), // todo, in_progress, completed, cancelled
-  priority: varchar('priority').notNull().default('medium'), // low, medium, high, urgent
-  assignedTo: varchar('assigned_to'), // user id
-  projectId: varchar('project_id'),
-  customerId: varchar('customer_id'),
-  dueDate: timestamp('due_date'),
-  estimatedHours: integer('estimated_hours'),
-  actualHours: integer('actual_hours'),
-  completionPercentage: integer('completion_percentage').default(0),
-  tags: text('tags').array(),
-  createdBy: varchar('created_by').notNull(),
-  completedAt: timestamp('completed_at'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+export const tasks = pgTable(
+  'tasks',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
+    title: varchar('title').notNull(),
+    description: text('description'),
+    status: varchar('status').notNull().default('todo'), // todo, in_progress, completed, cancelled
+    priority: varchar('priority').notNull().default('medium'), // low, medium, high, urgent
+    assignedTo: varchar('assigned_to'), // user id
+    projectId: varchar('project_id'),
+    customerId: varchar('customer_id'),
+    dueDate: timestamp('due_date'),
+    estimatedHours: integer('estimated_hours'),
+    actualHours: integer('actual_hours'),
+    completionPercentage: integer('completion_percentage').default(0),
+    tags: text('tags').array(),
+    createdBy: varchar('created_by').notNull(),
+    completedAt: timestamp('completed_at'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // PA-026: tenant-scoped indexes (table had none).
+    tenantStatusIdx: index('tasks_tenant_status_idx').on(table.tenantId, table.status),
+  }),
+);
 
 // Projects table
 export const projects = pgTable('projects', {
@@ -5784,124 +5833,140 @@ export const equipmentPackages = pgTable('equipment_packages', {
 });
 
 // Main Proposals Table
-export const proposals = pgTable('proposals', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const proposals = pgTable(
+  'proposals',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // Proposal Identification
-  proposalNumber: varchar('proposal_number').notNull().unique(),
-  version: varchar('version').default('1.0'),
-  title: varchar('title').notNull(),
+    // Proposal Identification
+    proposalNumber: varchar('proposal_number').notNull().unique(),
+    version: varchar('version').default('1.0'),
+    title: varchar('title').notNull(),
 
-  // Customer Information
-  businessRecordId: varchar('business_record_id').notNull(),
-  contactId: varchar('contact_id'), // Primary contact for this proposal
+    // Customer Information
+    businessRecordId: varchar('business_record_id').notNull(),
+    contactId: varchar('contact_id'), // Primary contact for this proposal
 
-  // Assignment and Ownership
-  createdBy: varchar('created_by').notNull(),
-  assignedTo: varchar('assigned_to').notNull(),
-  teamId: varchar('team_id'), // Sales team responsible
+    // Assignment and Ownership
+    createdBy: varchar('created_by').notNull(),
+    assignedTo: varchar('assigned_to').notNull(),
+    teamId: varchar('team_id'), // Sales team responsible
 
-  // Proposal Details
-  proposalType: varchar('proposal_type').notNull(), // equipment_lease, service_contract, etc.
-  description: text('description'),
+    // Proposal Details
+    proposalType: varchar('proposal_type').notNull(), // equipment_lease, service_contract, etc.
+    description: text('description'),
 
-  // Content Sections
-  executiveSummary: text('executive_summary'),
-  companyIntroduction: text('company_introduction'),
-  solutionOverview: text('solution_overview'),
-  termsAndConditions: text('terms_and_conditions'),
-  investmentSummary: text('investment_summary'),
-  nextSteps: text('next_steps'),
+    // Content Sections
+    executiveSummary: text('executive_summary'),
+    companyIntroduction: text('company_introduction'),
+    solutionOverview: text('solution_overview'),
+    termsAndConditions: text('terms_and_conditions'),
+    investmentSummary: text('investment_summary'),
+    nextSteps: text('next_steps'),
 
-  // Pricing Information
-  subtotal: decimal('subtotal').default('0'),
-  discountAmount: decimal('discount_amount').default('0'),
-  discountPercentage: decimal('discount_percentage').default('0'),
-  taxAmount: decimal('tax_amount').default('0'),
-  totalAmount: decimal('total_amount').default('0'),
+    // Pricing Information
+    subtotal: decimal('subtotal').default('0'),
+    discountAmount: decimal('discount_amount').default('0'),
+    discountPercentage: decimal('discount_percentage').default('0'),
+    taxAmount: decimal('tax_amount').default('0'),
+    totalAmount: decimal('total_amount').default('0'),
 
-  // Validity and Timeline
-  validUntil: timestamp('valid_until'),
-  estimatedStartDate: timestamp('estimated_start_date'),
-  estimatedEndDate: timestamp('estimated_end_date'),
+    // Validity and Timeline
+    validUntil: timestamp('valid_until'),
+    estimatedStartDate: timestamp('estimated_start_date'),
+    estimatedEndDate: timestamp('estimated_end_date'),
 
-  // Template and Customization
-  templateId: varchar('template_id'), // references proposal_templates.id
-  customStyling: jsonb('custom_styling').default('{}'), // Company branding, colors, fonts
+    // Template and Customization
+    templateId: varchar('template_id'), // references proposal_templates.id
+    customStyling: jsonb('custom_styling').default('{}'), // Company branding, colors, fonts
 
-  // Status and Tracking
-  status: varchar('status').default('draft'), // draft, sent, viewed, accepted, rejected, expired
-  priority: varchar('priority').default('medium'), // low, medium, high, urgent
+    // Status and Tracking
+    status: varchar('status').default('draft'), // draft, sent, viewed, accepted, rejected, expired
+    priority: varchar('priority').default('medium'), // low, medium, high, urgent
 
-  // Timestamps for status tracking
-  sentAt: timestamp('sent_at'),
-  viewedAt: timestamp('viewed_at'),
-  acceptedAt: timestamp('accepted_at'),
-  rejectedAt: timestamp('rejected_at'),
+    // Timestamps for status tracking
+    sentAt: timestamp('sent_at'),
+    viewedAt: timestamp('viewed_at'),
+    acceptedAt: timestamp('accepted_at'),
+    rejectedAt: timestamp('rejected_at'),
 
-  // Analytics and Tracking
-  openCount: integer('open_count').default(0),
-  lastOpenedAt: timestamp('last_opened_at'),
+    // Analytics and Tracking
+    openCount: integer('open_count').default(0),
+    lastOpenedAt: timestamp('last_opened_at'),
 
-  // Internal Notes and Comments
-  internalNotes: text('internal_notes'),
+    // Internal Notes and Comments
+    internalNotes: text('internal_notes'),
 
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // PA-026: tenant-scoped indexes (table had none).
+    tenantStatusIdx: index('proposals_tenant_status_idx').on(table.tenantId, table.status),
+    tenantCreatedIdx: index('proposals_tenant_created_idx').on(table.tenantId, table.createdAt),
+  }),
+);
 
 // Proposal Line Items - Individual items/services in a proposal
-export const proposalLineItems = pgTable('proposal_line_items', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
-  proposalId: varchar('proposal_id').notNull(),
+export const proposalLineItems = pgTable(
+  'proposal_line_items',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
+    proposalId: varchar('proposal_id').notNull(),
 
-  // Line Item Details
-  lineNumber: integer('line_number').notNull(),
-  itemType: varchar('item_type').notNull(), // equipment, accessory, service, software, supply
-  productId: varchar('product_id'), // Reference to product table
-  productCode: varchar('product_code'), // Vendor/catalog SKU sent by the quote builder
-  productName: varchar('product_name').notNull(),
-  description: text('description'),
-  notes: text('notes'), // Per-line internal note from the quote builder
+    // Line Item Details
+    lineNumber: integer('line_number').notNull(),
+    itemType: varchar('item_type').notNull(), // equipment, accessory, service, software, supply
+    productId: varchar('product_id'), // Reference to product table
+    productCode: varchar('product_code'), // Vendor/catalog SKU sent by the quote builder
+    productName: varchar('product_name').notNull(),
+    description: text('description'),
+    notes: text('notes'), // Per-line internal note from the quote builder
 
-  // Pricing Details
-  quantity: integer('quantity').default(1),
-  unitPrice: decimal('unit_price').notNull(),
-  unitCost: decimal('unit_cost'), // Internal cost
-  totalPrice: decimal('total_price').notNull(),
-  margin: decimal('margin'), // Line margin %, server-computed from cost vs price
+    // Pricing Details
+    quantity: integer('quantity').default(1),
+    unitPrice: decimal('unit_price').notNull(),
+    unitCost: decimal('unit_cost'), // Internal cost
+    totalPrice: decimal('total_price').notNull(),
+    margin: decimal('margin'), // Line margin %, server-computed from cost vs price
 
-  // Service-specific fields
-  serviceFrequency: varchar('service_frequency'), // monthly, quarterly, annually
-  serviceDuration: varchar('service_duration'), // Contract duration
+    // Service-specific fields
+    serviceFrequency: varchar('service_frequency'), // monthly, quarterly, annually
+    serviceDuration: varchar('service_duration'), // Contract duration
 
-  // Equipment-specific fields
-  equipmentCondition: varchar('equipment_condition'), // new, refurbished, demo
-  warrantyInfo: text('warranty_info'),
+    // Equipment-specific fields
+    equipmentCondition: varchar('equipment_condition'), // new, refurbished, demo
+    warrantyInfo: text('warranty_info'),
 
-  // Configuration and Options
-  isOptional: boolean('is_optional').default(false),
-  isAlternative: boolean('is_alternative').default(false),
-  packageId: varchar('package_id'), // If part of an equipment package
+    // Configuration and Options
+    isOptional: boolean('is_optional').default(false),
+    isAlternative: boolean('is_alternative').default(false),
+    packageId: varchar('package_id'), // If part of an equipment package
 
-  // Additional Details
-  specifications: jsonb('specifications'),
-  alternativeOptions: jsonb('alternative_options').$type<{
-    productId?: string;
-    productName?: string;
-    unitPrice?: number;
-    description?: string;
-  }>(),
+    // Additional Details
+    specifications: jsonb('specifications'),
+    alternativeOptions: jsonb('alternative_options').$type<{
+      productId?: string;
+      productName?: string;
+      unitPrice?: number;
+      description?: string;
+    }>(),
 
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // PA-026: FK + tenant indexes (table had none).
+    proposalIdx: index('proposal_line_items_proposal_idx').on(table.proposalId),
+    tenantIdx: index('proposal_line_items_tenant_idx').on(table.tenantId),
+  }),
+);
 
 // Proposal Comments and Communication
 export const proposalComments = pgTable('proposal_comments', {
@@ -6513,47 +6578,55 @@ export const chartOfAccounts = pgTable('chart_of_accounts', {
 });
 
 // Purchase Orders
-export const purchaseOrders = pgTable('purchase_orders', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  tenantId: varchar('tenant_id').notNull(),
+export const purchaseOrders = pgTable(
+  'purchase_orders',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar('tenant_id').notNull(),
 
-  // Reference Information
-  poNumber: varchar('po_number').notNull(),
-  vendorId: varchar('vendor_id').notNull(),
-  requestedBy: varchar('requested_by').notNull(),
+    // Reference Information
+    poNumber: varchar('po_number').notNull(),
+    vendorId: varchar('vendor_id').notNull(),
+    requestedBy: varchar('requested_by').notNull(),
 
-  // Order Details
-  orderDate: timestamp('order_date').notNull(),
-  expectedDate: timestamp('expected_date'),
-  description: text('description'),
+    // Order Details
+    orderDate: timestamp('order_date').notNull(),
+    expectedDate: timestamp('expected_date'),
+    description: text('description'),
 
-  // Financial Information
-  subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
-  taxAmount: decimal('tax_amount', { precision: 12, scale: 2 }).default('0'),
-  shippingAmount: decimal('shipping_amount', {
-    precision: 12,
-    scale: 2,
-  }).default('0'),
-  totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
+    // Financial Information
+    subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
+    taxAmount: decimal('tax_amount', { precision: 12, scale: 2 }).default('0'),
+    shippingAmount: decimal('shipping_amount', {
+      precision: 12,
+      scale: 2,
+    }).default('0'),
+    totalAmount: decimal('total_amount', { precision: 12, scale: 2 }).notNull(),
 
-  // Status
-  status: varchar('status').notNull().default('draft'),
+    // Status
+    status: varchar('status').notNull().default('draft'),
 
-  // Delivery Information
-  deliveryAddress: text('delivery_address'),
-  specialInstructions: text('special_instructions'),
+    // Delivery Information
+    deliveryAddress: text('delivery_address'),
+    specialInstructions: text('special_instructions'),
 
-  // Approval
-  approvedBy: varchar('approved_by'),
-  approvedDate: timestamp('approved_date'),
+    // Approval
+    approvedBy: varchar('approved_by'),
+    approvedDate: timestamp('approved_date'),
 
-  // Tracking
-  createdBy: varchar('created_by').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+    // Tracking
+    createdBy: varchar('created_by').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  (table) => ({
+    // PA-026: tenant-scoped indexes (table had none).
+    tenantStatusIdx: index('purchase_orders_tenant_status_idx').on(table.tenantId, table.status),
+    tenantVendorIdx: index('purchase_orders_tenant_vendor_idx').on(table.tenantId, table.vendorId),
+  }),
+);
 
 // Purchase Order Line Items
 export const purchaseOrderItems = pgTable('purchase_order_items', {
