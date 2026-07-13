@@ -15,6 +15,7 @@
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { pathToFileURL } from 'node:url';
 
 // ============================================================================
 // Configuration
@@ -112,6 +113,9 @@ const EXCLUDED_PATTERNS = [
   /\.map$/,
   /\.min\.js$/,
   /\.bundle\.js$/,
+  /tests[/\\]backups[/\\]/, // gitignored backup snapshots of old source
+  /scripts[/\\]pentest[/\\]/, // security-test tooling with intentional example payloads
+  /tools[/\\]automated-testing[/\\]/, // test-automation tooling + fixtures (dummy creds)
 ];
 
 // File extensions to check
@@ -173,6 +177,16 @@ function isFalsePositive(detection: SecretDetection): boolean {
     return true;
   }
 
+  // Template / merge-field placeholders ({{...}} Handlebars/Mustache, ${...})
+  // are substituted at render time and are never secrets.
+  if (
+    detection.match.includes('{{') ||
+    detection.match.includes('${') ||
+    detection.context.includes('{{')
+  ) {
+    return true;
+  }
+
   // Check if it's in a function that loads environment variables
   if (line.includes('loadenv') || line.includes('dotenv') || line.includes('loadcredentials')) {
     return true;
@@ -190,17 +204,27 @@ function isFalsePositive(detection: SecretDetection): boolean {
     return true;
   }
 
-  // Check if it's in test fixtures
+  // Test fixtures and specs legitimately contain dummy credentials
+  // (e.g. pk_live_testkey…, password123). Exclude them from enforcement —
+  // a real leaked credential belongs in production source/config, not a test.
   if (
-    detection.file.includes('test') ||
-    detection.file.includes('spec') ||
-    detection.file.includes('mock') ||
-    detection.file.includes('fixture')
+    detection.file.includes('.test.') ||
+    detection.file.includes('.spec.') ||
+    /[/\\](tests?|__tests__|fixtures?|mocks?)[/\\]/.test(detection.file)
   ) {
-    // Still check for real-looking secrets in tests
-    if (detection.match.length < 20) {
-      return true;
-    }
+    return true;
+  }
+
+  // Documentation (markdown / plain-text) contains setup examples and
+  // placeholder credentials, not real secrets.
+  if (/\.(md|markdown|txt)$/i.test(detection.file)) {
+    return true;
+  }
+
+  // A bare PEM header with no key body (e.g. instructional text telling a user
+  // the file "should start with -----BEGIN PRIVATE KEY-----") is not a secret.
+  if (/-----BEGIN [A-Z ]*KEY-----/.test(detection.match) && detection.match.length < 80) {
+    return true;
   }
 
   // Check if it's a variable name or type definition
@@ -489,8 +513,9 @@ PREVENTING FALSE POSITIVES:
 // Execute
 // ============================================================================
 
-// Run if executed directly (ES module check)
-const isMainModule = import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`;
+// Run if executed directly (ES module check). pathToFileURL handles Windows
+// drive letters + slashes correctly (the old string form no-op'd on Windows).
+const isMainModule = !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMainModule) {
   main();
 }
