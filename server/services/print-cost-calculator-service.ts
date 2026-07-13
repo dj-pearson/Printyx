@@ -5,10 +5,12 @@
 
 // ==================== Types ====================
 
+export type FleetAge = 'under_2_years' | '2_4_years' | '5_7_years' | '8_plus_years';
+
 export interface FleetInputs {
   deviceCount: number;
   deviceTypes: string[];
-  fleetAge: string;
+  fleetAge: FleetAge;
   monthlyPageVolume: number;
   colorRatio: number; // 0-100
   employeeCount: number;
@@ -242,7 +244,8 @@ const MANAGED_PRINT_SERVICES_SAVINGS_PERCENT = 0.25; // 25% average savings with
 export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
   // Get industry benchmarks
   const industryBenchmark = INDUSTRY_BENCHMARKS[inputs.industry] || INDUSTRY_BENCHMARKS.other;
-  const fleetAgeMultiplier = FLEET_AGE_MULTIPLIERS[inputs.fleetAge];
+  const fleetAgeMultiplier =
+    FLEET_AGE_MULTIPLIERS[inputs.fleetAge] || FLEET_AGE_MULTIPLIERS.under_2_years;
 
   // Calculate B&W and color volumes
   const monthlyBWPages = inputs.monthlyPageVolume * ((100 - inputs.colorRatio) / 100);
@@ -250,7 +253,7 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
 
   // ==================== Supply Costs ====================
   let monthlySupplieCost: number;
-  if (inputs.monthlySupplieCost) {
+  if (inputs.monthlySupplieCost != null) {
     monthlySupplieCost = inputs.monthlySupplieCost;
   } else {
     // Estimate based on device types and page volume
@@ -261,7 +264,7 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
 
   // ==================== Service/Maintenance Costs ====================
   let monthlyServiceCost: number;
-  if (inputs.monthlyServiceCost) {
+  if (inputs.monthlyServiceCost != null) {
     monthlyServiceCost = inputs.monthlyServiceCost;
   } else {
     // Estimate based on device count, types, and age
@@ -272,7 +275,7 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
 
   // ==================== Energy Costs ====================
   let monthlyEnergyCost: number;
-  if (inputs.monthlyEnergyCost) {
+  if (inputs.monthlyEnergyCost != null) {
     monthlyEnergyCost = inputs.monthlyEnergyCost;
   } else {
     // Estimate based on device types and age
@@ -286,7 +289,7 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
 
   // ==================== Downtime Costs ====================
   let monthlyDowntimeHours: number;
-  if (inputs.monthlyDowntimeHours) {
+  if (inputs.monthlyDowntimeHours != null) {
     monthlyDowntimeHours = inputs.monthlyDowntimeHours;
   } else {
     // Estimate based on age and reliability

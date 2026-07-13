@@ -12,6 +12,18 @@ import {
 import { z } from 'zod';
 
 import { getUserId, getTenantId } from './utils/auth-helpers';
+
+// Numeric money inputs for the pricing calculator. z.coerce + .finite() rejects
+// missing/garbage values so parseFloat(NaN) can never propagate into stored
+// price fields (CR-020).
+export const calcPricingInputSchema = z.object({
+  productId: z.string().optional(),
+  productType: z.string().optional(),
+  dealerCost: z.coerce.number().finite().min(0),
+  customMarkup: z.coerce.number().finite().optional(),
+  quantity: z.coerce.number().int().min(1).default(1),
+});
+
 // Company Pricing Settings Routes
 export async function getCompanyPricingSettings(req: Request, res: Response) {
   try {
@@ -297,30 +309,46 @@ export async function calculatePricingForProduct(req: Request, res: Response) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const { productId, productType, dealerCost, customMarkup, quantity = 1 } = req.body;
+    // Validate numeric money inputs with coercion so a missing/garbage
+    // dealerCost cannot write NaN into every downstream price field (CR-020).
+    const parsed = calcPricingInputSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: 'Invalid pricing input',
+        code: 'INVALID_PRICING_INPUT',
+        details: parsed.error.flatten(),
+      });
+    }
+    const {
+      productId,
+      productType,
+      dealerCost: dealerCostNum,
+      customMarkup,
+      quantity,
+    } = parsed.data;
 
     // Get company settings
     const companySettings = await storage.getCompanyPricingSettings(user.tenantId);
 
     // Get product-specific pricing if exists
     const productPricing = await storage.getProductPricingByProductId(
-      productId,
-      productType,
+      productId ?? '',
+      productType ?? '',
       user.tenantId,
     );
 
     // Calculate pricing layers
-    const dealerCostNum = parseFloat(dealerCost);
-    const markupPercentage =
-      customMarkup ||
-      productPricing?.companyMarkupPercentage ||
-      companySettings?.defaultMarkupPercentage ||
+    const markupPercentageRaw =
+      customMarkup ??
+      productPricing?.companyMarkupPercentage ??
+      companySettings?.defaultMarkupPercentage ??
       20;
-    const companyPrice = dealerCostNum * (1 + parseFloat(markupPercentage) / 100);
+    const markupPercentage = Number(markupPercentageRaw);
+    const companyPrice = dealerCostNum * (1 + markupPercentage / 100);
 
     const calculations = {
       dealerCost: dealerCostNum,
-      markupPercentage: parseFloat(markupPercentage),
+      markupPercentage,
       companyPrice,
       minimumSalePrice: productPricing?.minimumSalePrice || companyPrice,
       suggestedRetailPrice: productPricing?.suggestedRetailPrice || companyPrice * 1.3,

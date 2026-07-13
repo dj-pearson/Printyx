@@ -14,10 +14,12 @@
 
 // ==================== Types ====================
 
+export type FleetAge = 'under_2_years' | '2_4_years' | '5_7_years' | '8_plus_years';
+
 export interface FleetInputs {
   deviceCount: number;
   deviceTypes: string[];
-  fleetAge: string;
+  fleetAge: FleetAge;
   monthlyPageVolume: number;
   colorRatio: number; // 0-100
   employeeCount: number;
@@ -260,7 +262,7 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
 
   // ==================== Supply Costs ====================
   let monthlySupplieCost: number;
-  if (inputs.monthlySupplieCost) {
+  if (inputs.monthlySupplieCost != null) {
     monthlySupplieCost = inputs.monthlySupplieCost;
   } else {
     // Estimate based on device types and page volume
@@ -271,7 +273,7 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
 
   // ==================== Service/Maintenance Costs ====================
   let monthlyServiceCost: number;
-  if (inputs.monthlyServiceCost) {
+  if (inputs.monthlyServiceCost != null) {
     monthlyServiceCost = inputs.monthlyServiceCost;
   } else {
     // Estimate based on device count, types, and age
@@ -282,7 +284,7 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
 
   // ==================== Energy Costs ====================
   let monthlyEnergyCost: number;
-  if (inputs.monthlyEnergyCost) {
+  if (inputs.monthlyEnergyCost != null) {
     monthlyEnergyCost = inputs.monthlyEnergyCost;
   } else {
     // Estimate based on device types and age
@@ -296,7 +298,7 @@ export function calculatePrintCosts(inputs: FleetInputs): CalculationResults {
 
   // ==================== Downtime Costs ====================
   let monthlyDowntimeHours: number;
-  if (inputs.monthlyDowntimeHours) {
+  if (inputs.monthlyDowntimeHours != null) {
     monthlyDowntimeHours = inputs.monthlyDowntimeHours;
   } else {
     // Estimate based on age and reliability

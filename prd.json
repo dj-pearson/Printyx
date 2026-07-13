@@ -9226,8 +9226,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 256,
-      "passes": false,
-      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] z.coerce.number().finite() validation via exported calcPricingInputSchema; rejects missing/garbage/negative dealerCost (test)."
     },
     {
       "id": "CR-021",
@@ -9240,8 +9240,8 @@
         "Add unit tests for zero override and unknown fleetAge"
       ],
       "priority": 257,
-      "passes": false,
-      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[CORRECTNESS/HIGH] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Server copy gets fleetAge fallback + FleetAge enum type; both copies use != null so 0 overrides honored; unit tests for zero override + unknown fleetAge."
     },
     {
       "id": "CR-022",
@@ -9253,8 +9253,8 @@
         "Add a rounding helper used by both server and edge quote math"
       ],
       "priority": 258,
-      "passes": false,
-      "notes": "[CORRECTNESS/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[CORRECTNESS/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] round2() rounds subtotal/total/dealer_cost before persist in proposals edge fn; service-dispatch averageConfidence guarded against empty list; shared/quote-math round2 mirrored."
     },
     {
       "id": "CR-023",
