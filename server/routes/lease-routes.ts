@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { storage } from '../storage';
+import { stripServerFields } from '../utils/strip-server-fields';
 import {
   insertLeaseSchema,
   insertLeasePaymentSchema,
@@ -106,8 +107,11 @@ router.patch('/leases/:id', async (req, res, next) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
+    // CR-008: whitelist body via the insert schema (partial for update) + strip
+    // server-controlled columns to prevent mass-assignment over-posting.
+    const parsed = stripServerFields(insertLeaseSchema.partial().parse(req.body ?? {}));
     const updatedLease = await storage.updateLease(req.params.id, tenantId, {
-      ...req.body,
+      ...parsed,
       updatedBy: userId,
     });
 

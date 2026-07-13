@@ -9059,8 +9059,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 244,
-      "passes": false,
-      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny)."
+      "passes": true,
+      "notes": "[SECURITY/MEDIUM] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). [DONE 2026-07-13] Added Zod whitelisting to all 6 over-posting handlers: customer-success health-score (insertCustomerHealthScoreSchema.omit tenantId), lease update + email-marketing update (insertLease/EmailTemplateSchema.partial + new shared stripServerFields util removing id/tenantId/createdBy/createdAt/updatedAt), team create (insertTeamSchema.partial+strip), ai-employee + meeting-scheduling (explicit z.object whitelists — no drizzle schema). Unknown fields stripped by Zod .parse; server-injected fields added after. Unit test for stripServerFields. Ratchet 1353."
     },
     {
       "id": "CR-009",

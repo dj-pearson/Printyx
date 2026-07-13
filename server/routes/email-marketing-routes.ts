@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { storage } from '../storage';
+import { stripServerFields } from '../utils/strip-server-fields';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('email-marketing-routes');
 
@@ -92,8 +93,11 @@ router.patch('/email-templates/:id', async (req: Request, res: Response) => {
     const userId = req.session.user.id;
     const { id } = req.params;
 
+    // CR-008: whitelist body via the insert schema (partial for update) + strip
+    // server-controlled columns to prevent mass-assignment over-posting.
+    const parsed = stripServerFields(insertEmailTemplateSchema.partial().parse(req.body ?? {}));
     const template = await storage.updateEmailTemplate(id, tenantId, {
-      ...req.body,
+      ...parsed,
       lastModifiedBy: userId,
     });
 

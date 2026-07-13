@@ -5,8 +5,10 @@
 
 import express from 'express';
 import TeamCollaborationService from '../services/team-collaboration-service';
+import { insertTeamSchema } from '@shared/schema';
 import { createModuleLogger } from '../lib/logger';
 import { getUserId, getTenantId } from '../utils/auth-helpers';
+import { stripServerFields } from '../utils/strip-server-fields';
 const log = createModuleLogger('team-collaboration-routes');
 
 const router = express.Router();
@@ -17,8 +19,10 @@ const router = express.Router();
  */
 router.post('/teams', async (req, res) => {
   try {
+    // CR-008: whitelist body against the insert schema + strip server columns.
+    const parsed = stripServerFields(insertTeamSchema.partial().parse(req.body ?? {}));
     const teamData = {
-      ...req.body,
+      ...parsed,
       tenantId: req.user!.tenantId,
       createdBy: req.user!.id,
     };

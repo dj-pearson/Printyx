@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import type { IStorage } from '../storage';
+import { insertCustomerHealthScoreSchema } from '@shared/customer-success-schema';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('customer-success-routes');
 
@@ -71,10 +73,14 @@ router.post('/health-scores', async (req: Request, res: Response) => {
   }
 
   try {
+    // CR-008: validate + whitelist body against the insert schema (which already
+    // omits id/createdAt/updatedAt) minus tenantId, so a client cannot over-post
+    // server-controlled columns; the real tenantId is injected below.
+    const parsed = insertCustomerHealthScoreSchema.omit({ tenantId: true }).parse(req.body ?? {});
     const scoreData = {
-      ...req.body,
+      ...parsed,
       tenantId: user.tenantId,
-      calculatedBy: req.body.calculatedBy || 'system',
+      calculatedBy: parsed.calculatedBy || 'system',
     };
 
     const score = await storage.createHealthScore(scoreData);
