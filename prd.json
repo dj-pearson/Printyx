@@ -8960,8 +8960,8 @@
         "Typecheck passes: npm run check"
       ],
       "priority": 237,
-      "passes": false,
-      "notes": "[SECURITY/CRITICAL] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Headline cross-tenant exposure. Files: server/routes.ts:103 (resolveTenant mount) vs :150 (auth), server/middleware/tenancy.ts:64-67 (fail-open) & :129-182. All getTenantId() routes affected."
+      "passes": true,
+      "notes": "[SECURITY/CRITICAL] Source: automated code review 2026-07-11 (branch claude/web-app-code-review-y1eqny). Headline cross-tenant exposure. Files: server/routes.ts:103 (resolveTenant mount) vs :150 (auth), server/middleware/tenancy.ts:64-67 (fail-open) & :129-182. All getTenantId() routes affected. [DONE 2026-07-13] Root cause: resolveTenant ran at routes.ts:72 BEFORE session(95)+authenticateSupabaseJWT(119), so req.supabaseUser was unset and it fell through to trusting the x-tenant-id header. Moved the resolveTenant/trackApiCall/blockRegistrations block to AFTER auth + req.user population (before the auth-required gate) so resolveTenant Priority-1 validates the header against the JWT tenant (403 for non-admins, admin bypass preserved). Also made validateTenantHeader FAIL CLOSED when no userId (was returning valid:true+trusting header). Unit test proves tenant-A JWT + tenant-B header -> 403, matching -> resolves, admin -> allowed, unauthenticated+header -> 403 (fail closed). resolveTenant gates ALL /api routes so this covers customers/leads/products/billing/AP/AR. Ratchet 1353."
     },
     {
       "id": "CR-002",

@@ -68,11 +68,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
   app.get('/api/versions', apiVersionInfo());
 
-  // ─── Tenant Resolution & API Tracking ─────────────────────────────
-  app.use('/api', resolveTenant as any);
-  const { trackApiCall } = await import('./middleware/subscription');
-  app.use('/api', trackApiCall);
-  app.use('/api', blockRegistrations);
+  // NOTE: Tenant resolution + API tracking were moved to AFTER authentication
+  // (below) so resolveTenant sees req.supabaseUser/req.user and can validate the
+  // x-tenant-id header against the caller's real tenant instead of failing open
+  // on an unauthenticated request (CR-001).
 
   // ─── Session Management ───────────────────────────────────────────
   if (app.get('env') === 'production' && !process.env.SESSION_SECRET) {
@@ -135,6 +134,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   });
+
+  // ─── Tenant Resolution & API Tracking (after auth — CR-001) ───────
+  // Runs after authenticateSupabaseJWT + req.user population so resolveTenant
+  // can validate x-tenant-id against the authenticated user's tenant.
+  app.use('/api', resolveTenant as any);
+  const { trackApiCall } = await import('./middleware/subscription');
+  app.use('/api', trackApiCall);
+  app.use('/api', blockRegistrations);
 
   // Require authentication (except public paths)
   app.use('/api', async (req: any, res, next) => {
