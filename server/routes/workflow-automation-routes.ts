@@ -3,6 +3,7 @@ import { storage } from '../storage';
 import { z } from 'zod';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('workflow-automation-routes');
+import { parseListLimit } from '../lib/pagination';
 
 import {
   insertWorkflowSchema,
@@ -434,7 +435,10 @@ router.get('/workflows/:id/executions', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
-    const limit = parseInt(req.query.limit as string) || 50;
+    const limit = parseListLimit(req.query.limit, { def: 50 });
+    if (limit === null) {
+      return res.status(400).json({ error: 'Invalid limit parameter' });
+    }
     const executions = await storage.getWorkflowExecutions(req.params.id, limit);
     res.json(executions);
   } catch (error) {
@@ -480,7 +484,10 @@ router.get('/executions', async (req: Request, res: Response) => {
   }
 
   try {
-    const limit = parseInt(req.query.limit as string) || 100;
+    const limit = parseListLimit(req.query.limit, { def: 100 });
+    if (limit === null) {
+      return res.status(400).json({ error: 'Invalid limit parameter' });
+    }
     const executions = await storage.getWorkflowExecutionsByTenant(user.tenantId, limit);
     res.json(executions);
   } catch (error) {

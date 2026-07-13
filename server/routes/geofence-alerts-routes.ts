@@ -5,6 +5,7 @@ import { db } from '../db';
 import { eq, and, desc } from 'drizzle-orm';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('geofence-alerts-routes');
+import { parseListLimit, LIST_LIMIT_DEFAULT } from '../lib/pagination';
 
 import {
   geofenceAlertRules,
@@ -255,9 +256,11 @@ router.get('/alerts', async (req: Request, res: Response) => {
       .where(and(...whereConditions))
       .orderBy(desc(geofenceAlerts.triggeredAt));
 
-    if (limit) {
-      query = query.limit(parseInt(limit as string)) as any;
+    const parsedLimit = parseListLimit(limit, { def: LIST_LIMIT_DEFAULT });
+    if (parsedLimit === null) {
+      return res.status(400).json({ error: 'Invalid limit parameter' });
     }
+    query = query.limit(parsedLimit) as any;
 
     const alerts = await query;
     res.json(alerts);
@@ -277,9 +280,14 @@ router.get('/alerts/unacknowledged', async (req: Request, res: Response) => {
   try {
     const { severity, limit } = req.query;
 
+    const parsedLimit = parseListLimit(limit, { def: LIST_LIMIT_DEFAULT });
+    if (parsedLimit === null) {
+      return res.status(400).json({ error: 'Invalid limit parameter' });
+    }
+
     const alerts = await geofenceAlertsService.getUnacknowledgedAlerts(user.tenantId, {
       severity: severity as string | undefined,
-      limit: limit ? parseInt(limit as string) : undefined,
+      limit: parsedLimit,
     });
 
     res.json(alerts);

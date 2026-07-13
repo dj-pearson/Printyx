@@ -165,6 +165,32 @@ export function parsePagination(query: Record<string, any>): PaginationParams {
   };
 }
 
+/** Hard ceiling for simple `?limit=` list endpoints (CR-013). */
+export const LIST_LIMIT_MAX = 200;
+/** Default page size for simple `?limit=` list endpoints. */
+export const LIST_LIMIT_DEFAULT = 50;
+
+/**
+ * Parse a bare `?limit=` query param for list endpoints that do NOT use the full
+ * parsePagination() flow. Clamps to a sane maximum so a client cannot request an
+ * entire table (data-extraction / DoS), and signals invalid input so the caller
+ * can return 400 (CR-013).
+ *
+ * @returns the clamped limit, or `null` when the param is present but invalid
+ *          (non-numeric or < 1). An absent param yields the default.
+ */
+export function parseListLimit(
+  raw: unknown,
+  opts: { def?: number; max?: number } = {},
+): number | null {
+  const def = opts.def ?? LIST_LIMIT_DEFAULT;
+  const max = opts.max ?? LIST_LIMIT_MAX;
+  if (raw === undefined || raw === null || raw === '') return def;
+  const n = typeof raw === 'number' ? raw : parseInt(String(raw), 10);
+  if (!Number.isFinite(n) || n < 1) return null; // invalid → caller returns 400
+  return Math.min(Math.floor(n), max);
+}
+
 /**
  * Create pagination metadata
  *

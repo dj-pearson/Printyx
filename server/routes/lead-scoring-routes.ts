@@ -3,6 +3,7 @@ import { storage } from '../storage';
 import { z } from 'zod';
 import { createModuleLogger } from '../lib/logger';
 const log = createModuleLogger('lead-scoring-routes');
+import { parseListLimit } from '../lib/pagination';
 
 import {
   insertLeadScoringRuleSchema,
@@ -417,7 +418,10 @@ router.get('/score/:leadId/history', async (req: Request, res: Response) => {
 
   try {
     const { leadId } = req.params;
-    const limit = parseInt(req.query.limit as string) || 50;
+    const limit = parseListLimit(req.query.limit, { def: 50 });
+    if (limit === null) {
+      return res.status(400).json({ error: 'Invalid limit parameter' });
+    }
 
     const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
@@ -440,7 +444,10 @@ router.get('/leaderboard', async (req: Request, res: Response) => {
   }
 
   try {
-    const limit = parseInt(req.query.limit as string) || 100;
+    const limit = parseListLimit(req.query.limit, { def: 100 });
+    if (limit === null) {
+      return res.status(400).json({ error: 'Invalid limit parameter' });
+    }
     const topLeads = await storage.getTopScoredLeads(user.tenantId, limit);
 
     // Enrich with lead details
@@ -709,7 +716,10 @@ router.get('/engagement/:leadId', async (req: Request, res: Response) => {
 
   try {
     const { leadId } = req.params;
-    const limit = parseInt(req.query.limit as string) || 100;
+    const limit = parseListLimit(req.query.limit, { def: 100 });
+    if (limit === null) {
+      return res.status(400).json({ error: 'Invalid limit parameter' });
+    }
 
     const lead = await storage.getBusinessRecord(leadId, user.tenantId);
     if (!lead || lead.tenantId !== user.tenantId) {
