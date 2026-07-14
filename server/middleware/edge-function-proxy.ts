@@ -389,6 +389,8 @@ export function registerEdgeFunctionProxy(app: any) {
     '/api/deployment': 'deployment-readiness',
     '/api/integration-hub': 'integrations',
     '/api/public/calculator': { fn: 'public-calculator', pathPrefix: '/calculator' },
+    // CRMX-011: unauthenticated web-form capture.
+    '/api/public/forms': { fn: 'public-forms', pathPrefix: '/forms' },
 
     // EDGE-005c: phone-in-tickets. The search-companies/search-contacts/
     // equipment sub-routes the PhoneInTicketCreator calls were ported into the

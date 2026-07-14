@@ -63,6 +63,7 @@ import {
   signupCrmRoutes,
   universalSearchRoutes,
   businessRecordsRoutes,
+  webFormsRoutes,
 } from './domains/crm';
 
 import {
@@ -630,6 +631,7 @@ export async function registerAllRouteModules(app: Express, requireAuth: any): P
   registerAutomationRoutes(app);
   registerCustomerRoutes(app);
   app.use(businessRecordsRoutes);
+  app.use(webFormsRoutes);
   registerDealsManagementRoutes(app);
   registerOpportunitiesRoutes(app);
   // registerDealDeskRoutes(app) — migrated to supabase/functions/deal-desk/

@@ -394,6 +394,16 @@ app.use((req: any, res, next) => {
       serverLog.warn({ err: error as Error }, 'Failed to start workflow runtime sweeper');
     }
 
+    // CRMX-011: start the web-form submission processor (captures → leads:
+    // dedup, scoring, routing, form.submitted workflow trigger).
+    try {
+      const { startWebFormProcessor } = await import('./services/web-form-processor');
+      startWebFormProcessor();
+      serverLog.info('Web-form submission processor started');
+    } catch (error) {
+      serverLog.warn({ err: error as Error }, 'Failed to start web-form processor');
+    }
+
     // Initialize email monitors for all enabled tenants
     try {
       const { startAllEmailMonitors } = await import('./services/email-monitor-service');
