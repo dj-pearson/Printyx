@@ -123,6 +123,11 @@ export const pipelineStages = pgTable(
     includeInForecast: boolean('include_in_forecast').default(true),
     weightedValue: boolean('weighted_value').default(true), // Use probability for weighted pipeline
 
+    // CRMX-005: maps this canonical stage back to the legacy deal_stages.id it was
+    // seeded from, so deal.stage_id (a deal_stages.id) resolves to a pipeline stage
+    // without migrating deal rows.
+    legacyStageId: varchar('legacy_stage_id'),
+
     // Stage Guidance
     bestPractices: text('best_practices'),
     actionRequired: text('action_required'),

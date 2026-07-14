@@ -276,8 +276,16 @@ export function EnhancedPipelineBoard({
 
   // Fetch pipeline stages
   const { data: stagesData } = useQuery<PipelineStageData[]>({
-    queryKey: ['/api/pipeline-config/stages', pipelineId],
+    queryKey: ['/api/pipeline-config/stages', pipelineId, objectType],
     queryFn: async () => {
+      // CRMX-005: deals board reads the canonical (auto-seeded) pipeline. Stage `id`
+      // is the legacy deal_stages.id, so existing deals group correctly and moves
+      // persist. If it yields no stages, fall through to the legacy/hardcoded path.
+      if (objectType === 'deals') {
+        const board = await apiRequest('/api/pipeline-config/board');
+        const boardStages = Array.isArray(board?.stages) ? board.stages : [];
+        if (boardStages.length > 0) return boardStages;
+      }
       if (pipelineId) {
         const result = await apiRequest(`/api/pipeline-config/stages/${pipelineId}`);
         return Array.isArray(result) ? result : (result?.stages ?? []);
@@ -400,7 +408,11 @@ export function EnhancedPipelineBoard({
     mutationFn: async ({ recordId, newStageId }: { recordId: string; newStageId: string }) => {
       // Try different endpoints based on object type
       if (objectType === 'deals') {
-        return apiRequest(`/api/deals/${recordId}`, 'PUT', { stage: newStageId });
+        // CRMX-005: persistent stage move (writes deal.stage_id + history +
+        // automation log). newStageId is the legacy deal_stages.id from the board.
+        return apiRequest(`/api/pipeline-config/deals/${recordId}/move`, 'POST', {
+          toStageId: newStageId,
+        });
       }
       return apiRequest(`/api/business-records/${recordId}/status`, 'PATCH', {
         status: newStageId,

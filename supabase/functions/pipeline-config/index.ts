@@ -44,6 +44,90 @@ function stripPrefix(path: string): string {
   return path.replace(/^\/+/, '/').replace(/^\/pipeline-config/, '') || '/';
 }
 
+// CRMX-005: idempotently mirror a tenant's legacy deal_stages into the canonical
+// pipeline_templates + pipeline_stages model, carrying legacy_stage_id so existing
+// deals (deal.stage_id = deal_stages.id) resolve to a canonical stage without a
+// deal-row migration. Returns the default template + its stages. If the tenant has
+// no deal_stages, returns an empty stage list and the board keeps its prior behavior.
+// deno-lint-ignore no-explicit-any
+async function ensureCanonicalPipeline(db: any, tenantId: string, userId: string) {
+  const { data: legacyStages } = await db
+    .from('deal_stages')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+
+  // Default template (create one if none exists).
+  let { data: template } = await db
+    .from('pipeline_templates')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('is_default', true)
+    .limit(1)
+    .maybeSingle();
+  if (!template) {
+    const { data: anyTemplate } = await db
+      .from('pipeline_templates')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .limit(1)
+      .maybeSingle();
+    template = anyTemplate;
+  }
+  if (!template) {
+    const { data: created } = await db
+      .from('pipeline_templates')
+      .insert({
+        tenant_id: tenantId,
+        name: 'Default Sales Pipeline',
+        is_active: true,
+        is_default: true,
+        created_by: userId,
+      })
+      .select()
+      .single();
+    template = created;
+  }
+  if (!template) return { template: null, stages: [] };
+
+  const { data: existing } = await db
+    .from('pipeline_stages')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('pipeline_template_id', template.id);
+  const byLegacy = new Set((existing ?? []).map((s: any) => s.legacy_stage_id));
+
+  const toInsert = (legacyStages ?? [])
+    .filter((ds: any) => !byLegacy.has(ds.id))
+    .map((ds: any) => ({
+      tenant_id: tenantId,
+      pipeline_template_id: template.id,
+      name: ds.name,
+      display_name: ds.name,
+      color: ds.color ?? '#3B82F6',
+      order: ds.sort_order ?? 0,
+      is_final_stage: !!ds.is_closing_stage,
+      is_closed_won: !!ds.is_won_stage,
+      is_closed_lost: !!ds.is_closing_stage && !ds.is_won_stage,
+      default_probability: ds.is_won_stage ? 100 : ds.is_closing_stage ? 0 : 50,
+      include_in_forecast: true,
+      legacy_stage_id: ds.id,
+    }));
+  if (toInsert.length) {
+    await db.from('pipeline_stages').insert(toInsert);
+  }
+
+  const { data: stages } = await db
+    .from('pipeline_stages')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('pipeline_template_id', template.id)
+    .order('order', { ascending: true });
+
+  return { template, stages: stages ?? [] };
+}
+
 export default async function handler(req: Request) {
   const corsResult = handleCors(req);
   if (corsResult) return corsResult;
@@ -515,6 +599,129 @@ export default async function handler(req: Request) {
         });
       }
       return jsonResponse({ message: 'Stage deleted successfully' }, 200, req, requestId);
+    }
+
+    // ─── GET /board — CRMX-005 unified deal board ───────────────────────────
+    // Canonical pipeline_stages (auto-seeded from deal_stages) mapped to the board
+    // shape. `id` is the legacy deal_stages.id so existing deals group correctly and
+    // moves persist to deal.stage_id. Empty stages ⇒ frontend keeps its fallback.
+    if (path === '/board' && method === 'GET') {
+      const { template, stages } = await ensureCanonicalPipeline(db, ctx.tenantId, ctx.userId);
+      // deno-lint-ignore no-explicit-any
+      const boardStages = (stages as any[]).map((s) => ({
+        id: s.legacy_stage_id ?? s.id,
+        pipelineStageId: s.id,
+        name: s.name,
+        displayName: s.display_name ?? s.name,
+        color: s.color,
+        order: s.order,
+        isClosedWon: s.is_closed_won,
+        isClosedLost: s.is_closed_lost,
+        defaultProbability: s.default_probability,
+        includeInForecast: s.include_in_forecast,
+        slaDays: s.sla_days,
+        slaHours: s.sla_hours,
+      }));
+      return jsonResponse({ template, stages: boardStages }, 200, req, requestId);
+    }
+
+    // ─── POST /deals/:dealId/move — CRMX-005 persistent stage move ───────────
+    // toStageId is the legacy deal_stages.id (the board's stage id). Persists to the
+    // REAL deal.stage_id column, writes deal_stage_history, and logs on_enter
+    // automation triggers to pipeline_automation_logs (executed once CRMX-008 lands).
+    const dealMove = path.match(/^\/deals\/([^/]+)\/move$/);
+    if (dealMove && method === 'POST') {
+      const dealId = dealMove[1];
+      const body = await req.json().catch(() => null);
+      const toStageId = body?.toStageId as string | undefined; // legacy deal_stages.id
+      if (!toStageId) {
+        return errorResponse(400, 'toStageId is required', req, {
+          code: 'VALIDATION_ERROR',
+          requestId,
+        });
+      }
+
+      const { stages } = await ensureCanonicalPipeline(db, ctx.tenantId, ctx.userId);
+      // deno-lint-ignore no-explicit-any
+      const resolve = (legacyId: string | null | undefined) =>
+        (stages as any[]).find((s) => (s.legacy_stage_id ?? s.id) === legacyId);
+      const toStage = resolve(toStageId);
+
+      const { data: deal } = await db
+        .from('deals')
+        .select('*')
+        .eq('id', dealId)
+        .eq('tenant_id', ctx.tenantId)
+        .maybeSingle();
+      if (!deal) {
+        return errorResponse(404, 'Deal not found', req, { code: 'NOT_FOUND', requestId });
+      }
+      const fromStage = resolve(deal.stage_id);
+
+      // deno-lint-ignore no-explicit-any
+      const patch: Record<string, any> = {
+        stage_id: toStageId,
+        updated_at: new Date().toISOString(),
+      };
+      if (toStage?.is_closed_won) {
+        patch.status = 'won';
+        patch.probability = 100;
+        patch.actual_close_date = new Date().toISOString();
+      } else if (toStage?.is_closed_lost) {
+        patch.status = 'lost';
+        patch.probability = 0;
+        patch.actual_close_date = new Date().toISOString();
+      } else {
+        patch.status = 'open';
+        if (toStage?.default_probability != null) patch.probability = toStage.default_probability;
+      }
+
+      const { data: updated, error: updateError } = await db
+        .from('deals')
+        .update(patch)
+        .eq('id', dealId)
+        .eq('tenant_id', ctx.tenantId)
+        .select()
+        .single();
+      if (updateError) {
+        return errorResponse(500, 'Failed to move deal', req, {
+          code: 'DB_ERROR',
+          details: updateError,
+          requestId,
+        });
+      }
+
+      // Stage history (references canonical pipeline_stages ids).
+      await db.from('deal_stage_history').insert({
+        tenant_id: ctx.tenantId,
+        deal_id: dealId,
+        from_stage_id: fromStage?.id ?? null,
+        to_stage_id: toStage?.id ?? toStageId,
+        from_stage_name: fromStage?.name ?? null,
+        to_stage_name: toStage?.name ?? 'Unknown',
+        changed_by: ctx.userId,
+        was_automatic: false,
+      });
+
+      // Log on_enter automation triggers (interface for the CRMX-008 runtime).
+      // deno-lint-ignore no-explicit-any
+      const triggers: any[] = Array.isArray(toStage?.automation_triggers)
+        ? toStage.automation_triggers
+        : [];
+      for (const t of triggers.filter((t) => t?.triggerType === 'on_enter')) {
+        await db.from('pipeline_automation_logs').insert({
+          tenant_id: ctx.tenantId,
+          deal_id: dealId,
+          stage_id: toStage?.id ?? null,
+          trigger_type: 'on_enter',
+          action_type: t?.actionType ?? 'unknown',
+          action_config: t,
+          status: 'skipped',
+          result_data: { note: 'Queued for workflow runtime (CRMX-008); not yet executed' },
+        });
+      }
+
+      return jsonResponse(updated, 200, req, requestId);
     }
 
     // ─── POST /deals/:dealId/transition ─────────────────────────────────────
