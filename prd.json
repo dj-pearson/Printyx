@@ -10198,9 +10198,10 @@
         "Where a real predictive model does not yet exist, the UI honestly labels the section as “coming soon”/beta rather than showing fake output."
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "category": "crm-trust",
-      "notes": "[TRUST/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit flagged these two dashboards as hardcoded mock data presented as real. Highest trust-impact, low blast radius — good first tracer bullet."
+      "notes": "[TRUST/HIGH] Source: CRM competitive roadmap (branch claude/crm-competitive-roadmap-q7gik0), 2026-07-14. Goal: close the HubSpot gap on features + ease-of-use. Grounded in a 3-agent codebase audit. Audit flagged these two dashboards as hardcoded mock data presented as real. Highest trust-impact, low blast radius — good first tracer bullet.",
+      "completionNotes": "Rewrote /api/ai-analytics/dashboard (server/routes-sample-data.ts) to return ONLY real tenant-scoped data: churn from customer_churn_scores (band counts + prioritized at-risk list), predictive maintenance from equipment_failure_predictions (open predictions, alerts, accuracy from real true/false-positive outcomes or null when <5 scored), and real business_records customer/lead counts. Vanity sections (model registry, NLP sentiment, recommendations, CLV, forecasts) now return availability:false and the UI renders an explicit Preview state instead of fabricated numbers. Rewrote AIAnalyticsDashboard.tsx around a live-vs-preview model (Live badges on backed tabs, PreviewNotice on the rest). Removed the unused fabricated /api/predictive-analytics/legacy-dashboard handler and deleted dead unregistered files routes-ai-analytics.ts + routes-predictive-analytics.ts. PredictiveAnalytics.tsx empty state reworded to an honest preview notice (its endpoint was never served). Verified: tsc adds 0 errors (only 2 pre-existing tsconfig deprecation warnings remain), prettier+eslint clean. Live browser drive not possible in this sandbox (stale anon key, remote DB) — verified statically that no unbacked metric is served."
     },
     {
       "id": "CRMX-002",

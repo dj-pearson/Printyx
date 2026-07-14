@@ -1667,187 +1667,127 @@ export function registerSampleDataRoutes(app: Express) {
         return res.status(400).json({ message: 'Tenant ID is required' });
       }
 
-      const aiAnalyticsData = {
-        aiOverview: {
-          modelsDeployed: 12,
-          predictionsGenerated: 15847,
-          accuracyScore: 94.3,
-          automatedDecisions: 8934,
-          mlModelStatus: 'optimal',
-          dataQualityScore: 97.2,
-          lastModelUpdate: new Date('2025-01-28T00:00:00Z'),
-          computeUtilization: 67.8,
-          apiCallsToday: 2456,
-          costOptimization: 23.7,
-        },
-        customerPredictions: {
-          churnPrediction: {
-            totalCustomersAnalyzed: 1247,
-            highRiskCustomersCount: 89,
-            mediumRiskCustomers: 234,
-            lowRiskCustomers: 924,
-            predictionAccuracy: 89.4,
-            interventioneSuccessRate: 73.2,
-            estimatedRevenueSaved: 342500,
-            highRiskCustomers: [
-              {
-                customerId: 'CUST-001',
-                customerName: 'Tech Solutions Inc',
-                churnProbability: 0.87,
-                riskFactors: ['Decreasing usage', 'Service complaints', 'Payment delays'],
-                estimatedValue: 45600,
-                recommendedActions: [
-                  'Schedule executive meeting',
-                  'Offer service upgrade',
-                  'Provide usage training',
-                ],
-                timeToIntervene: 14,
-                lastInteraction: new Date('2025-01-15T00:00:00Z'),
-                trend: 'deteriorating',
-              },
-            ],
-          },
-          lifetimeValuePrediction: {
-            averagePredictedCLV: 48750,
-            clivAccuracyRate: 91.7,
-            customerSegments: [
-              {
-                segment: 'High Value Prospects',
-                count: 156,
-                avgPredictedCLV: 125400,
-                conversionProbability: 0.73,
-                recommendedInvestment: 2800,
-                expectedROI: 4.2,
-              },
-            ],
-          },
-          upsellPredictions: [
-            {
-              customerId: 'CUST-003',
-              customerName: 'Downtown Legal Group',
-              currentMRR: 850,
-              predictedUpsellValue: 2100,
-              upsellProbability: 0.76,
-              recommendedProducts: ['Document Finishing', 'Cloud Services', 'Security Package'],
-              bestApproachTime: new Date('2025-02-15T00:00:00Z'),
-              confidence: 0.83,
-            },
-          ],
-        },
-        salesForecasting: {
-          revenueForecast: {
-            currentMonth: {
-              predicted: 487500,
-              actual: 445200,
-              confidence: 0.94,
-              variance: -8.7,
-            },
-            nextMonth: {
-              predicted: 523800,
-              confidence: 0.89,
-              factors: ['Seasonal uptick', 'Pipeline momentum', 'New product launch'],
-            },
-            quarterlyForecast: {
-              q1: { predicted: 1560000, confidence: 0.87 },
-              q2: { predicted: 1685000, confidence: 0.82 },
-            },
-          },
-          dealProbabilityScoring: [
-            {
-              dealId: 'DEAL-001',
-              prospectName: 'Enterprise Solutions Ltd',
-              dealValue: 125000,
-              originalProbability: 0.6,
-              aiProbability: 0.78,
-              probabilityFactors: [{ factor: 'Engagement level', impact: 0.12, confidence: 0.91 }],
-              recommendedActions: [
-                'Schedule C-level meeting',
-                'Provide competitive differentiation',
-              ],
-              nextBestAction: 'Schedule demo with decision makers',
-              optimalCloseDate: new Date('2025-03-15T00:00:00Z'),
-            },
-          ],
-        },
-        serviceOptimization: {
-          predictiveMaintenance: {
-            equipmentMonitored: 2456,
-            predictedFailures: 23,
-            preventedDowntime: 1247,
-            costSavings: 189400,
-            accuracyRate: 87.6,
-            criticalAlerts: [
-              {
-                equipmentId: 'EQ-001',
-                location: 'Downtown Office Complex',
-                model: 'Canon imageRUNNER C7565i',
-                predictedFailure: 'Fuser assembly failure',
-                probability: 0.89,
-                estimatedFailureDate: new Date('2025-02-08T00:00:00Z'),
-                recommendedAction: 'Schedule preventive replacement',
-                costOfFailure: 4500,
-                costOfPrevention: 850,
-                savingsPotential: 3650,
-              },
-            ],
-          },
-        },
-        nlpInsights: {
-          customerSentiment: {
-            overallSentiment: 0.72,
-            sentimentTrend: 'improving',
-            analysisVolume: 8934,
-            sentimentByChannel: [{ channel: 'Email', sentiment: 0.68, volume: 4567 }],
-            keyTopics: [
-              {
-                topic: 'Service Quality',
-                sentiment: 0.81,
-                volume: 1234,
-                trend: 'improving',
-                keywords: ['fast response', 'professional'],
-              },
-            ],
-          },
-        },
-        modelPerformance: {
-          models: [
-            {
-              modelName: 'Customer Churn Predictor',
-              version: '2.1.0',
-              accuracy: 89.4,
-              precision: 0.87,
-              recall: 0.91,
-              f1Score: 0.89,
-              lastTrained: new Date('2025-01-25T00:00:00Z'),
-              dataPoints: 15647,
-              status: 'production',
-              performanceTrend: 'improving',
-            },
-          ],
-        },
-        recommendationsEngine: {
-          personalizedRecommendations: {
-            customersTargeted: 1247,
-            recommendationAccuracy: 76.8,
-            uptakeRate: 23.4,
-            revenueGenerated: 189400,
-            activeRecommendations: [
-              {
-                customerId: 'CUST-005',
-                customerName: 'Regional Accounting Firm',
-                recommendation: 'Document Management Suite',
-                reasoning: 'High document volume, compliance needs, efficiency gains',
-                confidence: 0.83,
-                estimatedValue: 12400,
-                deliveryChannel: 'email',
-                optimalTiming: new Date('2025-02-07T00:00:00Z'),
-              },
-            ],
-          },
-        },
-      };
+      // CRMX-001: Real, tenant-scoped AI/ML signals. Only churn scoring and
+      // predictive maintenance have backing data today; every other section is
+      // returned as an honest "preview" (available:false) rather than the
+      // fabricated numbers this endpoint used to emit.
 
-      res.json(aiAnalyticsData);
+      // --- Churn (real): latest customer_churn_scores row per customer ---
+      const churnLatest = await db.execute(sql`
+        SELECT DISTINCT ON (s.customer_id)
+          s.customer_id, s.score, s.band, s.signals, s.contract_value,
+          b.company_name
+        FROM customer_churn_scores s
+        LEFT JOIN business_records b
+          ON b.id = s.customer_id AND b.tenant_id = ${tenantId}
+        WHERE s.tenant_id = ${tenantId}
+        ORDER BY s.customer_id, s.calculated_at DESC
+      `);
+      const churnRows = ((churnLatest as any).rows ?? (churnLatest as any) ?? []) as any[];
+      const bandCount = (b: string) => churnRows.filter((r) => r.band === b).length;
+      const churnCustomers = churnRows
+        .map((r) => {
+          const score = Number(r.score) || 0;
+          const contractValue = Number(r.contract_value) || 0;
+          const signals = r.signals ?? null;
+          return {
+            customerId: r.customer_id,
+            companyName: r.company_name ?? 'Unknown account',
+            score,
+            band: r.band,
+            churnProbability: Math.min(1, Math.max(0, score / 100)),
+            contractValue,
+            reasons: Array.isArray(signals?.reasons) ? signals.reasons : [],
+            priorityScore: score * contractValue,
+          };
+        })
+        .sort((a, b) => b.priorityScore - a.priorityScore);
+      const churnAvailable = churnRows.length > 0;
+
+      // --- Predictive maintenance (real): equipment_failure_predictions ---
+      const predRes = await db.execute(sql`
+        SELECT machine_id, confidence, predicted_window_start, contract_value,
+               signals, status, outcome
+        FROM equipment_failure_predictions
+        WHERE tenant_id = ${tenantId}
+        ORDER BY confidence DESC
+      `);
+      const predRows = ((predRes as any).rows ?? (predRes as any) ?? []) as any[];
+      const openPreds = predRows.filter(
+        (r) => r.status === 'pending' || r.status === 'approved' || r.status === 'snoozed',
+      );
+      const monitoredMachines = new Set(predRows.map((r) => r.machine_id)).size;
+      const scoredOutcomes = predRows.filter(
+        (r) => r.outcome === 'true_positive' || r.outcome === 'false_positive',
+      );
+      const truePositives = predRows.filter((r) => r.outcome === 'true_positive').length;
+      const maintenanceAccuracy =
+        scoredOutcomes.length >= 5
+          ? Math.round((truePositives / scoredOutcomes.length) * 1000) / 10
+          : null;
+      const alerts = openPreds.slice(0, 25).map((r) => {
+        const signals = r.signals ?? null;
+        return {
+          machineId: r.machine_id,
+          confidence: Math.min(1, Math.max(0, Number(r.confidence) || 0)),
+          predictedFailureDate: r.predicted_window_start,
+          contractValue: Number(r.contract_value) || 0,
+          status: r.status,
+          suggestedParts: Array.isArray(signals?.suggested_parts) ? signals.suggested_parts : [],
+        };
+      });
+      const maintenanceAvailable = predRows.length > 0;
+
+      // --- Real record counts ---
+      const [customerCountRow] = await db
+        .select({ n: sql<number>`count(*)` })
+        .from(businessRecords)
+        .where(
+          and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'customer')),
+        );
+      const [leadCountRow] = await db
+        .select({ n: sql<number>`count(*)` })
+        .from(businessRecords)
+        .where(and(eq(businessRecords.tenantId, tenantId), eq(businessRecords.recordType, 'lead')));
+      const customersCount = Number(customerCountRow?.n) || 0;
+      const leadsCount = Number(leadCountRow?.n) || 0;
+
+      res.json({
+        generatedAt: new Date().toISOString(),
+        // Which capabilities are backed by real data vs. preview-only. The UI
+        // renders an honest "Preview" state for anything false — never fake data.
+        availability: {
+          churn: churnAvailable,
+          predictiveMaintenance: maintenanceAvailable,
+          salesForecasting: false,
+          sentiment: false,
+          recommendations: false,
+          modelRegistry: false,
+          lifetimeValue: false,
+          upsell: false,
+        },
+        overview: {
+          customersCount,
+          leadsCount,
+          atRiskCustomers: bandCount('at_risk'),
+          equipmentMonitored: monitoredMachines,
+        },
+        churn: {
+          available: churnAvailable,
+          totalAnalyzed: churnRows.length,
+          highRisk: bandCount('at_risk'),
+          mediumRisk: bandCount('watch'),
+          lowRisk: bandCount('healthy'),
+          customers: churnCustomers.slice(0, 25),
+        },
+        predictiveMaintenance: {
+          available: maintenanceAvailable,
+          equipmentMonitored: monitoredMachines,
+          predictedFailures: openPreds.length,
+          accuracyRate: maintenanceAccuracy,
+          alerts,
+        },
+      });
     } catch (error) {
       log.error('Error fetching AI analytics dashboard:', error);
       res.status(500).json({ message: 'Failed to fetch AI analytics dashboard' });
@@ -2011,177 +1951,6 @@ export function registerSampleDataRoutes(app: Express) {
     } catch (error) {
       log.error('Error fetching workflow automation dashboard:', error);
       res.status(500).json({ message: 'Failed to fetch workflow automation dashboard' });
-    }
-  });
-
-  // ──────────────────────────────────────────────
-  // Predictive Analytics Engine Routes (Legacy - keeping for backwards compatibility)
-  // ──────────────────────────────────────────────
-
-  app.get('/api/predictive-analytics/legacy-dashboard', async (req: any, res) => {
-    try {
-      const tenantId = req.user?.tenantId;
-      if (!tenantId) {
-        return res.status(400).json({ message: 'Tenant ID is required' });
-      }
-
-      const predictiveAnalyticsData = {
-        analyticsOverview: {
-          totalModels: 18,
-          activeModels: 15,
-          trainingModels: 2,
-          failedModels: 1,
-          averageAccuracy: 91.3,
-          predictionsToday: 28947,
-          dataPointsProcessed: 4.7,
-          computeTimeUsed: 234.5,
-          modelRefreshFrequency: 'daily',
-          lastModelUpdate: new Date('2025-02-01T06:00:00Z'),
-          predictionSuccessRate: 94.7,
-        },
-        predictiveModels: [
-          {
-            id: 'model-001',
-            name: 'Customer Churn Prediction',
-            category: 'Customer Analytics',
-            type: 'classification',
-            status: 'active',
-            accuracy: 94.2,
-            precision: 92.8,
-            recall: 96.1,
-            f1Score: 94.4,
-            version: '3.2.1',
-            lastTrained: new Date('2025-02-01T06:00:00Z'),
-            trainingDataSize: 145623,
-            features: 47,
-            predictionsToday: 8934,
-            confidenceThreshold: 0.85,
-            featureImportance: [
-              {
-                feature: 'payment_history',
-                importance: 0.234,
-                description: 'Payment delays and defaults',
-              },
-              {
-                feature: 'service_call_frequency',
-                importance: 0.198,
-                description: 'Equipment maintenance frequency',
-              },
-            ],
-          },
-          {
-            id: 'model-002',
-            name: 'Revenue Forecasting',
-            category: 'Financial Analytics',
-            type: 'regression',
-            status: 'active',
-            accuracy: 89.7,
-            version: '2.8.4',
-            lastTrained: new Date('2025-01-31T06:00:00Z'),
-            trainingDataSize: 89456,
-            features: 34,
-            predictionsToday: 5678,
-          },
-        ],
-        businessIntelligence: {
-          keyInsights: [
-            {
-              id: 'insight-001',
-              category: 'Customer Behavior',
-              title: 'Peak Service Request Pattern Identified',
-              description:
-                'Equipment service requests spike 23% on Mondays and 18% after holidays, indicating usage pattern optimization opportunities.',
-              impact: 'high',
-              confidence: 0.94,
-              dataPoints: 12456,
-              timeframe: 'last_6_months',
-              recommendedActions: [
-                'Adjust technician schedules for Monday coverage',
-                'Proactive maintenance before holidays',
-              ],
-              potentialValue: 45000,
-              implementation: 'immediate',
-            },
-          ],
-          marketTrends: [
-            {
-              trend: 'Remote Work Impact',
-              description:
-                'Remote work adoption has reduced office printing by 42% but increased home office equipment demand by 67%',
-              strength: 'strong',
-              confidence: 0.89,
-              businessImpact: 'reshaping_market',
-              opportunity: 'home_office_solutions',
-            },
-          ],
-          competitiveIntelligence: [
-            {
-              competitor: 'Regional Competitor A',
-              activity: 'aggressive_pricing',
-              impact: 'moderate',
-              affectedSegments: ['small_business', 'healthcare'],
-              responseStrategy: 'value_proposition_enhancement',
-              confidence: 0.76,
-            },
-          ],
-        },
-        performanceMetrics: {
-          predictionAccuracy: {
-            churnPrediction: 94.2,
-            revenueForecast: 89.7,
-            equipmentFailure: 92.4,
-            salesConversion: 88.9,
-          },
-          businessImpact: {
-            revenueProtected: 1234000,
-            costsAvoided: 567000,
-            efficiencyGains: 345000,
-            newOpportunities: 789000,
-          },
-          modelPerformance: [
-            {
-              model: 'Customer Churn',
-              accuracy: 94.2,
-              improvement: '+2.3%',
-              trend: 'improving',
-            },
-            {
-              model: 'Revenue Forecast',
-              accuracy: 89.7,
-              improvement: '+1.8%',
-              trend: 'stable',
-            },
-          ],
-        },
-        realTimeAnalytics: {
-          liveMetrics: {
-            predictionsPerMinute: 127,
-            dataIngestionRate: 45.7,
-            modelResponseTime: 234,
-            alertsTriggered: 23,
-            confidenceThreshold: 0.85,
-            activeMonitoringDevices: 1247,
-          },
-          alertsAndNotifications: [
-            {
-              id: 'alert-001',
-              type: 'high_churn_risk',
-              severity: 'critical',
-              customer: 'TechCorp Solutions',
-              probability: 0.87,
-              triggeredAt: new Date('2025-02-01T08:45:00Z'),
-              status: 'active',
-              assignedTo: 'customer_success_team',
-              estimatedImpact: 125000,
-            },
-          ],
-        },
-      };
-
-      res.json(predictiveAnalyticsData);
-    } catch (error) {
-      log.error('Error fetching predictive analytics dashboard:', error);
-      res.status(500).json({ message: 'Failed to fetch predictive analytics dashboard' });
     }
   });
 
